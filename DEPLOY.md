@@ -36,6 +36,18 @@
 
 > **開發環境可不配置 R2 與 Resend** — 留空時文件上傳會報錯，但其他功能正常運作。
 
+**當前倉庫技術棧（摘要）**
+
+| 項目 | 說明 |
+|------|------|
+| 框架 | Next.js **16**（App Router）、React 19 |
+| 路由前綴攔截 | `src/proxy.ts`（Next.js 16 中對應舊稱 *Middleware* 的 **Proxy** 約定） |
+| ORM | Prisma **7**（須 `@prisma/adapter-pg` + `pg`，見 `src/lib/db/prisma.ts`） |
+| 設定 | `prisma.config.mjs` 會合併讀取專案根目錄 `.env`、`.env.local` |
+| 依賴安裝 | `npm install` / `npm ci` 會執行 **`postinstall` → `prisma generate`** |
+| AML 緩存 | `aml-downloads/` 為執行時下載目錄，已列入 **`.gitignore`**，勿提交 |
+| 一鍵部署腳本 | 倉庫根目錄 `deploy.sh`（`deploy-local` / `deploy` 等，默認遠端目錄常為 `/opt/adviser-app`） |
+
 ---
 
 ## 2. 本地開發環境 — macOS (Homebrew)
@@ -77,8 +89,8 @@ psql postgres -c "GRANT ALL PRIVILEGES ON DATABASE adviser_db TO adviser;"
 
 **重要：必須同時更新兩個檔案。**
 
-- **`.env`** — 由 Prisma CLI（`prisma.config.ts` 中的 `dotenv/config`）讀取，用於 `db push` / `migrate` / `seed` 等指令。
-- **`.env.local`** — 由 Next.js dev server 讀取，覆蓋 `.env`。
+- **`.env`** — 由 Prisma CLI（**`prisma.config.mjs`** 內建讀取邏輯）與多數腳本使用。
+- **`.env.local`** — 由 Next.js dev server 讀取，**覆蓋** `.env` 中同名變數。
 
 **步驟一：更新 `.env` 中的 DATABASE_URL**
 
@@ -100,8 +112,10 @@ cat > .env.local << 'EOF'
 # ── Database ────────────────────────────────
 DATABASE_URL="postgresql://adviser:devpassword@localhost:5432/adviser_db"
 
-# ── Auth.js v5 ──────────────────────────────
+# ── Auth.js v5（與瀏覽器位址列協議+主機一致；須含 http:// 或 https://）────
 AUTH_SECRET="dev-secret-key-32chars-local-only"
+AUTH_URL="http://localhost:3000"
+AUTH_TRUST_HOST="false"
 NEXTAUTH_URL="http://localhost:3000"
 
 # ── Cloudflare R2（開發可留空）──────────────
@@ -125,20 +139,21 @@ EOF
 ### 2.5 初始化資料庫
 
 ```bash
-# 生成 Prisma client
-npx prisma generate
+# npm install 已會觸發 postinstall → prisma generate；若要單獨執行：npm run db:generate
+npm install
 
-# 建立所有資料表（首次，尚無 migration 檔案時用 db push）
-npx prisma db push
+# 首次（或拉齊遠端 migration）：套用 prisma/migrations 內既有遷移
+npm run db:deploy
 
-# Seed 初始資料（13 個 AML 名單來源 + Super Admin）
-npx tsx prisma/seed.ts
+# Seed：13 個 AML 來源（含需翻牆/官方 403 時改用的 OpenSanctions 鏡像 URL）+ 預設 Super Admin
+npm run db:seed
 ```
 
-> **`db push` vs `migrate`**
-> - 首次或開發中快速同步 schema → 用 `npx prisma db push`
-> - 需要保留 migration 歷史（生產環境）→ 用 `npm run db:migrate` 建立 migration 檔，再 `npm run db:deploy` 套用
-> - 目前 `prisma/migrations/` 為空，代表尚未建立 migration 歷史
+> **`db push` vs `migrate deploy`**
+> - **建議（與當前倉庫一致）**：已有 `prisma/migrations/`，本地與生產首次建表請用 **`npm run db:deploy`**（等同 `prisma migrate deploy`）。
+> - 開發中若僅快速試 schema、且不準備提交 migration，可臨時使用 `npx prisma db push`（**勿與團隊 migration 流程混用**）。
+
+> **舊版說明**：若見文檔寫 `prisma/migrations` 為空，請以倉庫現狀為準（目前含 `20260420100000_init_schema` 等）。
 
 ### 2.6 啟動開發服務器
 
@@ -226,9 +241,9 @@ docker exec adviser-db-dev pg_isready -U adviser
 ### 3.4 初始化資料庫
 
 ```bash
-npx prisma generate
-npx prisma db push
-npx tsx prisma/seed.ts
+npm install
+npm run db:deploy
+npm run db:seed
 ```
 
 ### 3.5 啟動開發服務器
@@ -303,6 +318,8 @@ docker ps   # 應無報錯
 
 App + DB 全部容器化，最簡單，適合生產環境。
 
+> **路徑**：下文以 `/opt/adviser` 為例；若使用倉庫自帶 `deploy.sh`，默認發布目錄常為 **`/opt/adviser-app`**，請將命令中的路徑一併替換。
+
 ### 5.1 上傳代碼
 
 ```bash
@@ -324,8 +341,10 @@ nano .env
 DATABASE_URL="postgresql://adviser:YOUR_STRONG_PASSWORD@db:5432/adviser_db"
 POSTGRES_PASSWORD="YOUR_STRONG_PASSWORD"
 
-# ── Auth ────────────────────────────────────
+# ── Auth.js v5 ───────────────────────────────────
 AUTH_SECRET="paste-output-of: openssl rand -base64 32"
+AUTH_URL="https://yourdomain.com"
+AUTH_TRUST_HOST="false"
 NEXTAUTH_URL="https://yourdomain.com"
 
 # ── Cloudflare R2 ───────────────────────────
@@ -342,14 +361,17 @@ EMAIL_FROM="noreply@yourdomain.com"
 # ── App ─────────────────────────────────────
 NEXT_PUBLIC_APP_URL="https://yourdomain.com"
 NODE_ENV="production"
-CRON_SECRET="paste-output-of: openssl rand -hex 32"
+# （可選）手動 HTTP 觸發 /api/cron/aml 時帶頭 x-cron-secret；未設則不校驗
+# CRON_SECRET="paste-output-of: openssl rand -hex 32"
 ```
 
-生成隨機密鑰：
+> `docker-compose.yml` 會從根目錄 **`.env`** 讀取 **`POSTGRES_PASSWORD`**（及 `env_file: .env` 注入 app 容器）。請勿遺漏 `POSTGRES_PASSWORD`，並與 `DATABASE_URL` 內密碼一致。
+
+生成隨機密鑰示例：
 
 ```bash
 openssl rand -base64 32   # AUTH_SECRET
-openssl rand -hex 32      # CRON_SECRET
+openssl rand -hex 32     # CRON_SECRET（若啟用）
 ```
 
 ### 5.3 首次啟動
@@ -363,10 +385,12 @@ docker compose up -d --build
 # 跟蹤日誌，等待 db 進入 healthy 狀態（約 15–30 秒）
 docker compose logs -f
 
-# db healthy 後初始化（僅首次執行）
-docker compose exec app npx prisma db push
+# db healthy 後初始化（僅首次執行；套用 migration + seed）
+docker compose exec app npx prisma migrate deploy
 docker compose exec app npx tsx prisma/seed.ts
 ```
+
+> 若 `npx prisma` 在運行映像中失敗（minimal standalone），可在**已 `git pull` 的專案目錄**執行 `npm ci` 後，使用與容器相同庫帳密、且能連上資料庫的 `DATABASE_URL` 於宿主執行 `npx prisma migrate deploy`，或使用 CI/「一次性」Node 容器並加入同一 Docker network（進階）。
 
 ### 5.4 確認服務運行
 
@@ -420,8 +444,8 @@ cd /opt/adviser
 git pull origin main
 docker compose up -d --build
 
-# 如有 schema 變更
-docker compose exec app npx prisma db push   # 或 migrate deploy（有 migration 檔時）
+# 如有 schema / migration 變更
+docker compose exec app npx prisma migrate deploy
 
 # 確認
 docker compose ps
@@ -431,6 +455,8 @@ docker compose logs --tail=50 app
 ---
 
 ## 6. 裸機 PM2 部署方式（無 Docker）
+
+> **路徑**：下文以 `/opt/adviser` 為例；`deploy.sh` 默認 **`REMOTE_DIR=/opt/adviser-app`** 時，請將路徑替換為實際發布目錄。以下 **`ecosystem.config.js` 中的 `cwd`** 必須與 `npm run build` 及 `standalone` 產物所在目錄一致。
 
 ### 6.1 安裝並設定 PostgreSQL 16
 
@@ -472,9 +498,9 @@ npm run build
 cp -r public .next/standalone/public
 cp -r .next/static .next/standalone/.next/static
 
-# 首次初始化
-npx prisma db push
-npx tsx prisma/seed.ts
+# 首次初始化（套用 migration + seed）
+npx prisma migrate deploy
+npm run db:seed
 ```
 
 ### 6.3 建立 PM2 設定
@@ -534,37 +560,52 @@ npm run build
 cp -r public .next/standalone/public
 cp -r .next/static .next/standalone/.next/static
 
-# 如有 schema 變更
-npx prisma db push   # 或 prisma migrate deploy（有 migration 檔時）
+# 如有 schema / migration 變更
+npx prisma migrate deploy
 
 pm2 reload adviser   # 零停機優雅重啟
 ```
 
----
+裸機一鍵發布（倉庫根目錄，需已安裝 Node、PM2，且 `$DEPLOY_TARGET_DIR` 或默認 **`/opt/adviser-app`** 下已有 `.env`）：
+
+```bash
+./deploy.sh deploy-local
+```
+
+詳見腳本開頭註釋（`deploy` / `bootstrap` 等）。
 
 ## 7. 資料庫管理
 
-### `db push` vs `migrate`（重要）
+### `db push` vs `migrate deploy`（重要）
 
 | 情境 | 指令 | 說明 |
 |------|------|------|
-| 首次建表 / 快速開發同步 | `npx prisma db push` | 直接套用 schema，不建立 migration 檔 |
-| 開發中建立 migration 歷史 | `npm run db:migrate` | 互動式建立 migration 檔並套用 |
-| 生產環境套用已有 migration | `npm run db:deploy` | 非互動，套用 `prisma/migrations/` 中的檔案 |
+| 生產 / 全新環境套用倉庫內既有 migration | **`npm run db:deploy`**（`prisma migrate deploy`） | **推薦**；與 `20260420100000_init_schema` 等歷史一致 |
+| 開發中新建一條 migration 並套用 | `npm run db:migrate` | 互動式，會寫入 `prisma/migrations/` |
+| 臨時開發快速對齊 schema（不生成 migration） | `npx prisma db push` | 僅本地實驗；勿與團隊 migration 流程混用 |
 
-> 目前 `prisma/migrations/` 為空，生產部署使用 `npx prisma db push` 即可。
-> 如需 migration 歷史（便於追蹤 schema 變更），在開發環境執行 `npm run db:migrate` 後 commit migration 檔案。
+> 倉庫已包含 `prisma/migrations/`，生產部署請以 **`migrate deploy`** 為主，不再假設「目錄為空」。
 
 ### Schema 有改動時
 
 ```bash
-# 開發環境（快速同步，不留 migration 記錄）
-npx prisma db push
-
-# 開發環境（建立 migration 檔，commit 後生產可用 migrate deploy）
+# 開發環境（提交 migration 檔供生產使用）
 npm run db:migrate
 # 輸入 migration 名稱，例如：add_annual_filing_table
+
+# 開發環境僅本地試驗、不準備提交檔案時（謹慎）
+npx prisma db push
 ```
+
+### 更新 AML 來源 URL（seed 與資料庫不一致時）
+
+若代碼已更新 `prisma/seed.ts` 中的制裁名單 URL，但資料庫仍為舊值，可在伺服器（已配置 `DATABASE_URL`）執行：
+
+```bash
+npm run db:seed
+```
+
+`seed` 對 `AMLSource` 按 `seqNo` **upsert**，會覆寫 `sourceUrl` / `format` 等（不刪除自建資料）。
 
 ### 備份資料庫
 
@@ -764,9 +805,7 @@ const prisma = new PrismaClient({ adapter })
 
 ### ❌ Prisma CLI 報 `P1001: Can't reach database server`
 
-**原因：** `.env` 中的 `DATABASE_URL` 仍是預設佔位值（`johndoe:randompassword@localhost:5432/mydb`）。Prisma CLI 讀 `.env`（透過 `prisma.config.ts` 中的 `dotenv/config`），不讀 `.env.local`。
-
-**解法：** 確認 `.env` 中的 `DATABASE_URL` 已更新為正確值：
+**解法：** 確認 `.env` 已正確設定，並知悉 **Prisma CLI 會經 `prisma.config.mjs` 合併載入 `.env` 與 `.env.local`**（見該檔 `loadEnvFromFiles`）。Next.js 執行時另讀 `.env.local`。
 
 ```env
 DATABASE_URL="postgresql://adviser:devpassword@localhost:5432/adviser_db"
@@ -774,17 +813,35 @@ DATABASE_URL="postgresql://adviser:devpassword@localhost:5432/adviser_db"
 
 ---
 
-### ❌ `No migration found in prisma/migrations`
+### ❌ Auth.js 報 **UntrustedHost** / 登入後重定向異常
 
-**原因：** `prisma/migrations/` 目錄為空，尚未建立 migration 歷史，`prisma migrate deploy` 沒有檔案可套用。
+**原因：** **`AUTH_URL` / `NEXTAUTH_URL` 未包含協議**（錯例：`localhost:3000`），或與瀏覽器實際訪問的 `http/https`、域名不一致。
 
-**解法：** 首次建表改用：
-
-```bash
-npx prisma db push
-```
+**解法：** 使用完整 URL，例如 `https://yourdomain.com` 或本地 `http://localhost:3000`；多域名或反向代理可設 `AUTH_TRUST_HOST=true`（見 `.env.example`）。
 
 ---
+
+### ❌ AML 拉取加拿大 / 澳洲官方檔失敗（`fetch failed` / `HTTP 403`）
+
+**原因：** 部分機房（含香港）訪問 `international.gc.ca`、`dfat.gov.au` 不穩定或被拒。
+
+**解法：** 當前 `seed` 已改為 **OpenSanctions** 鏡像 CSV（與官方同源加工）；部署後執行 **`npm run db:seed`** 更新 `aml_sources` 表。緩存目錄為 `aml-downloads/`（未入庫）。
+
+---
+
+### ❌ 本地 `npm run dev`：Turbopack 根目錄錯誤 / `node-cron`、`@prisma/client` 載入失敗
+
+**原因：** 上層目錄另有 `package-lock.json`，或 Turbopack 錯誤外部化依賴。
+
+**解法：** `next.config.ts` 已配置 **`turbopack.root`** 與 **`serverExternalPackages`**（`node-cron`、`@prisma/client`、`@prisma/adapter-pg`、`pg`）；確認已拉最新代碼並刪除 `.next` 後重試。
+
+---
+
+### ❌ `No migration found in prisma/migrations`（僅少見情況）
+
+**原因：** 使用了空的或截斷的倉庫、或 `prisma/migrations` 被誤刪。
+
+**解法：** 從遠端恢復 `prisma/migrations/` 後執行 `npm run db:deploy`；絕無 migration 的臨時環境才考慮 `npx prisma db push`（不推薦用於生產）。
 
 ### ❌ Docker daemon not running（macOS）
 
@@ -831,7 +888,7 @@ cat /tmp/adviser-dev.log | grep Scheduler
 # [Scheduler] Scheduled daily job at 02:00 HKT (18:00 UTC)
 
 # 若沒有，確認檔案存在：
-ls src/instrumentation.ts
+ls src/instrumentation.ts src/proxy.ts
 ```
 
 ---
@@ -888,11 +945,11 @@ docker stop adviser-db-dev    # 停止 DB
 | 更新部署 | `docker compose up -d --build` | `npm run build && pm2 reload adviser` |
 | 重啟 app | `docker compose restart app` | `pm2 reload adviser` |
 | 查看日誌 | `docker compose logs -f app` | `pm2 logs adviser` |
-| 初始化資料庫 | `docker compose exec app npx prisma db push` | `npx prisma db push` |
-| Seed | `docker compose exec app npx tsx prisma/seed.ts` | `npx tsx prisma/seed.ts` |
+| 初始化 / 遷移資料庫 | `docker compose exec app npx prisma migrate deploy` | `npx prisma migrate deploy` |
+| Seed / 更新 AML 來源（DB upsert） | `docker compose exec app npx tsx prisma/seed.ts`（映像缺 `tsx` 時改在宿主專案目錄執行 `npm run db:seed`） | `npm run db:seed` |
 | 備份 DB | `docker compose exec -T db pg_dump -U adviser adviser_db \| gzip > backup.sql.gz` | `pg_dump -U adviser adviser_db \| gzip > backup.sql.gz` |
 | 資源監控 | `docker stats` | `pm2 monit` |
 
 ---
 
-*Last updated: 2026-04-22 — verified on macOS with Homebrew PostgreSQL 16*
+*Last updated: 2026-05-03 — Next 16 / Prisma 7 / `migrate deploy` 與 Auth、AML 說明對齊當前倉庫*
