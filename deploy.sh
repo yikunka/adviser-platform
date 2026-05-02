@@ -72,8 +72,13 @@ cmd_check() {
 
 cmd_build() {
   cmd_check
-  echo "▶ 安装依赖 (npm ci)..."
-  npm ci
+  echo "▶ 安装依赖..."
+  # 服务器上若只改了 package.json、或 lock 未提交，npm ci 会失败；回退到 npm install 仍可构建
+  if ! npm ci --no-audit --no-fund; then
+    echo "⚠ npm ci 失败（package-lock.json 与 package.json 不一致）。改用 npm install …" >&2
+    echo "  建议在开发机执行 npm install 并提交 package-lock.json 后，在服务器 git pull 再部署。" >&2
+    npm install --no-audit --no-fund
+  fi
   echo "▶ prisma generate..."
   npx prisma generate
   echo "▶ next build..."
