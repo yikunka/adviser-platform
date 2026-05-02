@@ -1,14 +1,8 @@
 import type { Metadata } from 'next'
-import { Geist, Cormorant_Garamond } from 'next/font/google'
 import './globals.css'
 
-const geist = Geist({ variable: '--font-sans', subsets: ['latin'] })
-const cormorant = Cormorant_Garamond({
-  variable: '--font-display',
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  style: ['normal', 'italic'],
-})
+// 不使用 next/font/google：构建时会请求 fonts.googleapis.com，国内/无出口机器会失败。
+// 字体栈在 globals.css 的 html 上定义（接近 Geist / Cormorant Garamond 观感）。
 
 export const metadata: Metadata = {
   title: '6AM Advisory — Hong Kong TCSP',
@@ -17,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html suppressHydrationWarning className={`${geist.variable} ${cormorant.variable} h-full antialiased`}>
+    <html suppressHydrationWarning className="h-full antialiased">
       <body suppressHydrationWarning className="min-h-full flex flex-col bg-background text-foreground">
         {children}
       </body>

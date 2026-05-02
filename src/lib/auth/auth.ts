@@ -24,6 +24,8 @@ declare module 'next-auth' {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // 生产环境务必设置与浏览器一致的应用根 URL：AUTH_URL（或 AUTH_TRUST_HOST=true，见 .env.example）
+  trustHost: process.env.AUTH_TRUST_HOST === 'true',
   session: { strategy: 'jwt' },
   pages: {
     signIn: '/zh/login',

@@ -177,16 +177,30 @@ cmd_deploy_local() {
   rm -f "$APP_DIR/prisma.config.ts"
 
   echo "▶ 数据库迁移 (prisma migrate deploy)…"
-  pushd "$APP_DIR" >/dev/null
-  [[ -f .env ]] || die "缺少 $APP_DIR/.env（请先按 .env.example 创建）"
-  set -a
-  # shellcheck disable=SC1091
-  source .env
-  set +a
-  [[ -n "${DATABASE_URL:-}" ]] || die ".env 中未设置 DATABASE_URL"
-  command -v prisma >/dev/null 2>&1 || die "未找到 prisma，请执行: npm install -g prisma"
-  prisma migrate deploy
-  popd >/dev/null
+  [[ -f "$APP_DIR/.env" ]] || die "缺少 $APP_DIR/.env（请先按 .env.example 创建）"
+
+  # 全局 prisma 在部分环境下会起子进程，config 里 process.env 异常时会退回到「库名=用户名」即库 adviser，触发 P1010。
+  # 优先在已 npm install 的仓库内用 npx prisma，并从发布目录加载 .env（生产库连接串）。
+  if [[ -x "$SCRIPT_DIR/node_modules/.bin/prisma" ]] || [[ -f "$SCRIPT_DIR/node_modules/prisma/package.json" ]]; then
+    pushd "$SCRIPT_DIR" >/dev/null
+    set -a
+    # shellcheck disable=SC1091
+    source "$APP_DIR/.env"
+    set +a
+    [[ -n "${DATABASE_URL:-}" ]] || die ".env 中未设置 DATABASE_URL（检查 $APP_DIR/.env）"
+    npx prisma migrate deploy
+    popd >/dev/null
+  else
+    pushd "$APP_DIR" >/dev/null
+    set -a
+    # shellcheck disable=SC1091
+    source .env
+    set +a
+    [[ -n "${DATABASE_URL:-}" ]] || die ".env 中未设置 DATABASE_URL"
+    command -v prisma >/dev/null 2>&1 || die "未找到 prisma，请执行: npm install -g prisma，或在仓库内 npm ci"
+    prisma migrate deploy
+    popd >/dev/null
+  fi
 
   echo "▶ 写入 start-prod.sh…"
   cat > "$APP_DIR/start-prod.sh" << 'EOS'
@@ -341,6 +355,8 @@ if [[ "\$FAMILY" == deb ]]; then
       sudo -u postgres psql -c "CREATE USER adviser WITH PASSWORD '\$PG_PASS';"
     sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='adviser_db'" | grep -q 1 || \
       sudo -u postgres psql -c "CREATE DATABASE adviser_db OWNER adviser;"
+    sudo -u postgres psql -q -c "ALTER DATABASE adviser_db OWNER TO adviser;" || true
+    sudo -u postgres psql -q -d adviser_db -c "GRANT ALL ON SCHEMA public TO adviser; ALTER SCHEMA public OWNER TO adviser;" || true
     echo "数据库已创建: DATABASE_URL=postgresql://adviser:***@127.0.0.1:5432/adviser_db"
   fi
 
@@ -393,7 +409,9 @@ else
       sudo -u postgres psql -c "CREATE USER adviser WITH PASSWORD '\$PG_PASS';" 2>/dev/null || true
     sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='adviser_db'" 2>/dev/null | grep -q 1 || \
       sudo -u postgres psql -c "CREATE DATABASE adviser_db OWNER adviser;" 2>/dev/null || true
-    echo "数据库已创建（若命令失败请根据发行版已启用的 PostgreSQL 服务名手动执行 initdb）"
+    sudo -u postgres psql -q -c "ALTER DATABASE adviser_db OWNER TO adviser;" 2>/dev/null || true
+    sudo -u postgres psql -q -d adviser_db -c "GRANT ALL ON SCHEMA public TO adviser; ALTER SCHEMA public OWNER TO adviser;" 2>/dev/null || true
+    echo "数据库已创建（请确认 .env 密码与 POSTGRES_APP_PASSWORD 一致；库名须为 adviser_db）"
   fi
 
   if [[ -n "\$DEPLOY_DOMAIN" && -n "\$CERTBOT_EMAIL" ]]; then

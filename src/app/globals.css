@@ -51,6 +51,15 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* 无 Google Fonts 网络：与 @theme 中 var(--font-*) 对齐（原 Geist / Cormorant Garamond） */
+html {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-display: "Palatino Linotype", Palatino, "Iowan Old Style", "Book Antiqua", Georgia,
+    "Times New Roman", "Noto Serif SC", serif;
+  --font-geist-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
+}
+
 /* ── 6AM Advisory: Black × Gold × White theme ─────────────────────── */
 :root {
   /* Gold palette — extracted from 6AM Advisory logo */
