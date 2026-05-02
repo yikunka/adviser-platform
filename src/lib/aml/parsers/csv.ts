@@ -147,27 +147,20 @@ export function parseCSV(content: string, sourceUrl: string): AMLEntry[] {
   const entries: AMLEntry[] = []
 
   for (const row of result.data) {
-    // OpenSanctions targets.simple.csv (e.g. World Bank debarred mirror)
-    const schema = (row['schema'] ?? '').toLowerCase()
-    if (schema === 'legalentity' || schema === 'company' || schema === 'organization') {
+    const schemaRaw = (row['schema'] ?? '').trim()
+    // OpenSanctions targets.simple.csv：含 schema + dataset 列；船舶等为非 person，须按 ENTITY 筛查
+    if (
+      schemaRaw &&
+      (sourceUrl.includes('opensanctions.org') || (row['dataset'] ?? '').trim())
+    ) {
+      const schema = schemaRaw.toLowerCase()
       const nameEn = row['name'] ?? row['Name'] ?? ''
       if (!nameEn.trim()) continue
+      const isPerson = schema === 'person' || schema === 'individual'
       entries.push({
         nameEn: nameEn.trim(),
         aliases: [],
-        entityType: 'ENTITY',
-        idNumbers: [],
-        rawData: row,
-      })
-      continue
-    }
-    if (schema === 'person' || schema === 'individual') {
-      const nameEn = row['name'] ?? row['Name'] ?? ''
-      if (!nameEn.trim()) continue
-      entries.push({
-        nameEn: nameEn.trim(),
-        aliases: [],
-        entityType: 'INDIVIDUAL',
+        entityType: isPerson ? 'INDIVIDUAL' : 'ENTITY',
         idNumbers: [],
         rawData: row,
       })
