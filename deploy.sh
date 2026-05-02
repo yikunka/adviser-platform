@@ -32,6 +32,7 @@
 #   BOOTSTRAP_PG_GROUP      可选；若设置则创建 NOLOGIN 组角色并 GRANT 给应用用户（含 schema / 默认权限）
 #
 # 远端生产环境变量：首次需在服务器 REMOTE_DIR 下放置 .env（可参考 .env.example），勿提交密钥到 Git。
+# prisma：全新 PostgreSQL 会跑 prisma/migrations（单一 init）；若库里曾半路失败可先备份后重置 public schema 再 migrate（见 init migration 头注释）。
 #
 # 安全提示：勿在脚本里写密码。已在服务器上 ssh 登录时再跑 deploy，仍会连 DEPLOY_HOST 做 rsync（常等于再连自己），未配公钥会多次要密码 — 请改用 deploy-local，或在笔记本上执行 deploy。
 # ============================================================================
