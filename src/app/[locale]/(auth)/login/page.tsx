@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { signIn } from 'next-auth/react'
 import { toast } from 'sonner'
@@ -21,7 +21,6 @@ type LoginData = z.infer<typeof loginSchema>
 export default function LoginPage() {
   const t = useTranslations('auth')
   const params = useParams()
-  const router = useRouter()
   const searchParams = useSearchParams()
   const locale = (params.locale as string) ?? 'zh'
   const [loading, setLoading] = useState(false)
@@ -42,30 +41,30 @@ export default function LoginPage() {
         return
       }
 
-      // If a callbackUrl was specified (e.g. from middleware redirect), honour it
+      /** 完整文档跳转，浏览器才能可靠地关联「登录表单 → 成功导航」并提示保存密码；仅用 router.push 时多数浏览器不触发。 */
+      const go = (path: string) => {
+        window.location.assign(path.startsWith('http') ? path : path)
+      }
+
       const callbackUrl = searchParams.get('callbackUrl')
       if (callbackUrl) {
-        router.push(callbackUrl)
-        router.refresh()
+        go(callbackUrl)
         return
       }
 
-      // Otherwise detect role and send to the right portal
       try {
         const sessionRes = await fetch('/api/auth/session')
         const sessionData = await sessionRes.json()
         const role = sessionData?.user?.role as string | undefined
         const ADMIN_ROLES = ['STAFF', 'COMPLIANCE', 'SUPER_ADMIN']
         if (role && ADMIN_ROLES.includes(role)) {
-          router.push(`/${locale}/admin/dashboard`)
+          go(`/${locale}/admin/dashboard`)
         } else {
-          router.push(`/${locale}/dashboard`)
+          go(`/${locale}/dashboard`)
         }
       } catch {
-        router.push(`/${locale}/dashboard`)
+        go(`/${locale}/dashboard`)
       }
-
-      router.refresh()
     } finally {
       setLoading(false)
     }
@@ -89,17 +88,17 @@ export default function LoginPage() {
       </div>
 
       <div className="px-8 pb-8">
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-          {/* Email */}
+        <form method="post" action="#" onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+          {/* Email — login 场景用 username，密码管理器/「记住密码」兼容性最好（web.dev 建议） */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium tracking-wide uppercase" style={{ color: '#9A8060' }}>
+            <label className="text-xs font-medium tracking-wide uppercase" style={{ color: '#9A8060' }} htmlFor="email">
               {t('email')}
             </label>
             <input
               id="email"
               type="email"
               {...form.register('email')}
-              autoComplete="email"
+              autoComplete="username"
               className="w-full rounded-md px-3 py-2.5 text-sm outline-none transition-all"
               style={{
                 background: '#0C0C0C',
@@ -117,7 +116,7 @@ export default function LoginPage() {
           {/* Password */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium tracking-wide uppercase" style={{ color: '#9A8060' }}>
+            <label className="text-xs font-medium tracking-wide uppercase" style={{ color: '#9A8060' }} htmlFor="password">
                 {t('password')}
               </label>
               <Link
