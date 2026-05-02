@@ -12,6 +12,8 @@
 #   DEPLOY_USER          默认 root（建议使用具备 sudo 的专用账号并配置 SSH 公钥）
 #   REMOTE_DIR           默认 /opt/adviser-app
 #
+#   bootstrap 支持的系统：Ubuntu/Debian（apt）、Alibaba Cloud Linux / RHEL / CentOS / Amazon Linux（dnf 或 yum）
+#
 # 可选
 #   DEPLOY_SSH_KEY       SSH 私钥路径，例如 ~/.ssh/id_ed25519
 #   DEPLOY_DOMAIN        对外域名，用于 Nginx server_name（bootstrap 写站点配置时）
@@ -149,7 +151,7 @@ END_SSH
   echo "✓ 部署完成。请确认 Nginx / HTTPS 已指向本机 Node（默认 3000）。"
 }
 
-# 在全新 Ubuntu/Debian 上安装运行栈（需 root 或 sudo）
+# 在全新服务器上安装运行栈（需 root；支持 apt / dnf / yum）
 cmd_bootstrap() {
   require_deploy_host
 
@@ -160,9 +162,8 @@ cmd_bootstrap() {
     [[ -n "${pg_password}" ]] || die "设置 BOOTSTRAP_WITH_POSTGRES=1 时必须设置 POSTGRES_APP_PASSWORD"
   fi
 
-  echo "▶ 在 ${REMOTE} 上执行系统初始化（Ubuntu/Debian apt）..."
+  echo "▶ 在 ${REMOTE} 上执行系统初始化（自动识别 apt / dnf / yum）..."
 
-  # 通过 env 传入远端 heredoc，避免嵌套引号问题
   REMOTE_DIR_ESC="${REMOTE_DIR}"
   DEPLOY_DOMAIN_ESC="${DEPLOY_DOMAIN:-}"
   CERTBOT_EMAIL_ESC="${CERTBOT_EMAIL:-}"
@@ -178,55 +179,23 @@ CERTBOT_EMAIL='${CERTBOT_EMAIL_ESC}'
 WITH_PG='${WITH_PG}'
 PG_PASS='${PG_PASS}'
 
-echo "==> apt 更新与基础包..."
-apt-get update -qq
-apt-get install -y --no-install-recommends \
-  ca-certificates curl gnupg git rsync nginx openssl ufw \
-  build-essential python3
-
-echo "==> 防火墙 (SSH/HTTP/HTTPS)..."
-ufw allow OpenSSH
-ufw allow 'Nginx HTTP'
-ufw allow 'Nginx HTTPS'
-ufw --force enable || true
-
-echo "==> Node.js 22.x (NodeSource)..."
-if command -v node >/dev/null 2>&1; then
-  echo "已安装: \$(node -v)"
+if command -v apt-get >/dev/null 2>&1; then
+  FAMILY=deb
+elif command -v dnf >/dev/null 2>&1; then
+  FAMILY=rpm
+  PM=(dnf -y)
+elif command -v yum >/dev/null 2>&1; then
+  FAMILY=rpm
+  PM=(yum -y)
 else
-  curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-  apt-get install -y nodejs
+  echo "未找到 apt-get / dnf / yum，本脚本不支持当前发行版。"
+  exit 1
 fi
 
-echo "==> 全局 PM2 + Prisma CLI..."
-npm install -g pm2 prisma
-
-mkdir -p "\$REMOTE_DIR"
-chown -R www-data:www-data /var/www/html 2>/dev/null || true
-
-if [[ "\$WITH_PG" == "1" ]]; then
-  echo "==> 安装 PostgreSQL (本机)..."
-  apt-get install -y postgresql postgresql-contrib
-  systemctl enable postgresql
-  systemctl start postgresql
-  sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='adviser'" | grep -q 1 || \
-    sudo -u postgres psql -c "CREATE USER adviser WITH PASSWORD '\$PG_PASS';"
-  sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='adviser_db'" | grep -q 1 || \
-    sudo -u postgres psql -c "CREATE DATABASE adviser_db OWNER adviser;"
-  echo "数据库已创建: DATABASE_URL=postgresql://adviser:***@127.0.0.1:5432/adviser_db"
-fi
-
-echo "==> Nginx 反向代理（上游 127.0.0.1:3000）..."
-SITE_NAME="adviser"
-CONF_PATH="/etc/nginx/sites-available/\${SITE_NAME}"
-ENABLED="/etc/nginx/sites-enabled/\${SITE_NAME}"
-
-SERVER_NAMES="_"
-if [[ -n "\$DEPLOY_DOMAIN" ]]; then
-  SERVER_NAMES="\$DEPLOY_DOMAIN www.\$DEPLOY_DOMAIN"
-fi
-
-cat > "\$CONF_PATH" <<NGX
+write_nginx_site() {
+  local out="\$1"
+  local names="\$2"
+  cat > "\$out" <<NGX
 upstream adviser_nextjs {
     server 127.0.0.1:3000;
     keepalive 64;
@@ -234,7 +203,7 @@ upstream adviser_nextjs {
 
 server {
     listen 80;
-    server_name \$SERVER_NAMES;
+    server_name \$names;
 
     client_max_body_size 50M;
 
@@ -260,19 +229,125 @@ server {
     }
 }
 NGX
+}
 
-rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
-ln -sf "\$CONF_PATH" "\$ENABLED"
-nginx -t
-systemctl reload nginx
-systemctl enable nginx
-
-if [[ -n "\$DEPLOY_DOMAIN" && -n "\$CERTBOT_EMAIL" ]]; then
-  echo "==> Certbot (Let's Encrypt)..."
-  apt-get install -y certbot python3-certbot-nginx
-  certbot --nginx -d "\$DEPLOY_DOMAIN" --non-interactive --agree-tos -m "\$CERTBOT_EMAIL" --redirect || \
-    echo "Certbot 失败（请检查域名 DNS 是否指向本机 80 端口）"
+SERVER_NAMES="_"
+if [[ -n "\$DEPLOY_DOMAIN" ]]; then
+  SERVER_NAMES="\$DEPLOY_DOMAIN www.\$DEPLOY_DOMAIN"
 fi
+
+if [[ "\$FAMILY" == deb ]]; then
+  echo "==> [Debian/Ubuntu] apt 更新与基础包..."
+  apt-get update -qq
+  apt-get install -y --no-install-recommends \
+    ca-certificates curl gnupg git rsync nginx openssl ufw \
+    build-essential python3
+
+  echo "==> 防火墙 (ufw)..."
+  ufw allow OpenSSH
+  ufw allow 'Nginx HTTP'
+  ufw allow 'Nginx HTTPS'
+  ufw --force enable || true
+
+  echo "==> Node.js 22.x (NodeSource deb)..."
+  if command -v node >/dev/null 2>&1; then
+    echo "已安装: \$(node -v)"
+  else
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+    apt-get install -y nodejs
+  fi
+
+  mkdir -p "\$REMOTE_DIR"
+  chown -R www-data:www-data /var/www/html 2>/dev/null || true
+
+  SITE_NAME="adviser"
+  CONF_PATH="/etc/nginx/sites-available/\${SITE_NAME}"
+  ENABLED="/etc/nginx/sites-enabled/\${SITE_NAME}"
+  write_nginx_site "\$CONF_PATH" "\$SERVER_NAMES"
+  rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+  ln -sf "\$CONF_PATH" "\$ENABLED"
+
+  if [[ "\$WITH_PG" == "1" ]]; then
+    echo "==> 安装 PostgreSQL (apt)..."
+    apt-get install -y postgresql postgresql-contrib
+    systemctl enable postgresql
+    systemctl start postgresql
+    sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='adviser'" | grep -q 1 || \
+      sudo -u postgres psql -c "CREATE USER adviser WITH PASSWORD '\$PG_PASS';"
+    sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='adviser_db'" | grep -q 1 || \
+      sudo -u postgres psql -c "CREATE DATABASE adviser_db OWNER adviser;"
+    echo "数据库已创建: DATABASE_URL=postgresql://adviser:***@127.0.0.1:5432/adviser_db"
+  fi
+
+  if [[ -n "\$DEPLOY_DOMAIN" && -n "\$CERTBOT_EMAIL" ]]; then
+    echo "==> Certbot (Let's Encrypt)..."
+    apt-get install -y certbot python3-certbot-nginx
+    certbot --nginx -d "\$DEPLOY_DOMAIN" --non-interactive --agree-tos -m "\$CERTBOT_EMAIL" --redirect || \
+      echo "Certbot 失败（请检查域名 DNS 是否指向本机 80 端口）"
+  fi
+else
+  echo "==> [RHEL 系] 安装基础包 (\"\${PM[*]}\")..."
+  "\${PM[@]}" install ca-certificates curl gnupg2 git rsync nginx openssl python3 gcc gcc-c++ make firewalld ||
+    "\${PM[@]}" install ca-certificates curl gnupg2 git rsync nginx openssl python3 gcc gcc-c++ make
+
+  echo "==> 防火墙 (firewalld)..."
+  if systemctl list-unit-files 2>/dev/null | grep -q '^firewalld\.service'; then
+    systemctl enable firewalld
+    systemctl start firewalld || true
+    firewall-cmd --permanent --add-service=ssh 2>/dev/null || firewall-cmd --permanent --add-service=ssh-client 2>/dev/null || true
+    firewall-cmd --permanent --add-service=http 2>/dev/null || true
+    firewall-cmd --permanent --add-service=https 2>/dev/null || true
+    firewall-cmd --reload 2>/dev/null || true
+  else
+    echo "（未启用 firewalld，请自行放行 22/80/443）"
+  fi
+
+  echo "==> Node.js 22.x (NodeSource rpm)..."
+  if command -v node >/dev/null 2>&1; then
+    echo "已安装: \$(node -v)"
+  else
+    curl -fsSL https://rpm.nodesource.com/setup_22.x | bash -
+    "\${PM[@]}" install nodejs
+  fi
+
+  mkdir -p "\$REMOTE_DIR"
+
+  echo "==> Nginx 站点配置 (conf.d)..."
+  write_nginx_site "/etc/nginx/conf.d/adviser.conf" "\$SERVER_NAMES"
+  rm -f /etc/nginx/conf.d/default.conf 2>/dev/null || true
+
+  if [[ "\$WITH_PG" == "1" ]]; then
+    echo "==> 安装 PostgreSQL (rpm)..."
+    "\${PM[@]}" install postgresql-server postgresql-contrib || "\${PM[@]}" install postgresql15-server 2>/dev/null || "\${PM[@]}" install postgresql-server
+    if command -v postgresql-setup >/dev/null 2>&1; then
+      postgresql-setup --initdb 2>/dev/null || postgresql-setup initdb 2>/dev/null || true
+    fi
+    systemctl enable postgresql 2>/dev/null || systemctl enable postgresql-15 2>/dev/null || true
+    systemctl start postgresql 2>/dev/null || systemctl start postgresql-15 2>/dev/null || true
+    sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='adviser'" 2>/dev/null | grep -q 1 || \
+      sudo -u postgres psql -c "CREATE USER adviser WITH PASSWORD '\$PG_PASS';" 2>/dev/null || true
+    sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='adviser_db'" 2>/dev/null | grep -q 1 || \
+      sudo -u postgres psql -c "CREATE DATABASE adviser_db OWNER adviser;" 2>/dev/null || true
+    echo "数据库已创建（若命令失败请根据发行版已启用的 PostgreSQL 服务名手动执行 initdb）"
+  fi
+
+  if [[ -n "\$DEPLOY_DOMAIN" && -n "\$CERTBOT_EMAIL" ]]; then
+    echo "==> Certbot (Let's Encrypt)..."
+    "\${PM[@]}" install certbot python3-certbot-nginx 2>/dev/null || \
+      ("\${PM[@]}" install epel-release 2>/dev/null; "\${PM[@]}" install certbot python3-certbot-nginx) || \
+      echo "未能安装 certbot，请手动安装后运行 certbot --nginx"
+    command -v certbot >/dev/null 2>&1 && \
+      certbot --nginx -d "\$DEPLOY_DOMAIN" --non-interactive --agree-tos -m "\$CERTBOT_EMAIL" --redirect || \
+      echo "Certbot 失败（请检查域名 DNS 与仓库插件）"
+  fi
+fi
+
+echo "==> 全局 PM2 + Prisma CLI..."
+npm install -g pm2 prisma
+
+nginx -t
+systemctl reload nginx 2>/dev/null || systemctl restart nginx
+systemctl enable nginx
 
 echo ""
 echo "===== Bootstrap 完成 ====="
