@@ -598,17 +598,11 @@ else
 
     echo "--> 将 PGDG 仓库里的 \\\$releasever 固定为 \${RPM_EL}（避免阿里云 Linux VERSION_ID=3 被当成 rhel-3 而 404）..."
     export RPM_EL
-    python3 <<'PGDG_REPOFIX'
-import pathlib, os
-el = os.environ.get("RPM_EL", "").strip()
-if not el.isdigit():
-    raise SystemExit(f"RPM_EL 无效: {el!r}")
-for p in sorted(pathlib.Path("/etc/yum.repos.d").glob("pgdg*.repo")):
-    t = p.read_text(encoding="utf-8", errors="replace")
-    if '$releasever' not in t:
-        continue
-    p.write_text(t.replace('$releasever', el), encoding="utf-8")
-PGDG_REPOFIX
+    for _pgdg_repo in /etc/yum.repos.d/pgdg*.repo; do
+      [[ -e "\${_pgdg_repo}" ]] || continue
+      grep -Fq '$releasever' "\${_pgdg_repo}" 2>/dev/null || continue
+      sed -i "s/\$releasever/\${RPM_EL}/g" "\${_pgdg_repo}"
+    done
 
     if command -v dnf >/dev/null 2>&1; then dnf clean all || true; else yum clean all || true; fi
 
