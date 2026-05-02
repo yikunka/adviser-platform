@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
 # ============================================================================
-# Adviser Platform — 生产部署脚本（本地执行，通过 SSH 操作远端）
+# Adviser Platform — 生产部署（deploy 用 SSH；deploy-local 仅在目标机本机发布）
 #
 # 用法概览
-#   ./deploy.sh bootstrap   # 仅在「全新」Ubuntu/Debian 服务器上执行一次：系统依赖、Node、PM2、Nginx、可选 PostgreSQL
-#   ./deploy.sh deploy      # 默认：本地构建 → 同步 standalone + 静态资源 + Prisma → 远端迁移 → PM2 重启
-#   ./deploy.sh check       # 仅检查本地环境与仓库状态
+#   ./deploy.sh bootstrap     # 仅在「全新」服务器执行一次：系统依赖、Node、PM2、Nginx、可选 PostgreSQL
+#   ./deploy.sh deploy        # 在「当前电脑」构建 → SSH/rsync 到 DEPLOY_HOST → 迁移 → PM2（适合笔记本/CI）
+#   ./deploy.sh deploy-local  # 在「生产服务器本机」构建 → 拷贝到本机目录 → 迁移 → PM2（不发起 SSH，不会二次要密码）
+#   ./deploy.sh check         # 仅检查构建环境与仓库
 #
-# 必设环境变量（bootstrap / deploy 共用）
-#   DEPLOY_HOST          例如 203.0.113.10 或 deploy.example.com
-#   DEPLOY_USER          默认 root（建议使用具备 sudo 的专用账号并配置 SSH 公钥）
-#   REMOTE_DIR           默认 /opt/adviser-app
+# 必设环境变量
+#   deploy / bootstrap:
+#   DEPLOY_HOST          目标 SSH 地址，例如 203.0.113.10
+#   DEPLOY_USER          默认 root（建议专用账号 + SSH 公钥，避免反复输入密码）
+#   REMOTE_DIR           默认 /opt/adviser-app（运行目录，需事先放好 .env）
+#
+#   deploy-local：勿填 DEPLOY_HOST；可选 DEPLOY_TARGET_DIR（默认与 REMOTE_DIR 相同，常为 /opt/adviser-app）
 #
 #   bootstrap 支持的系统：Ubuntu/Debian（apt）、Alibaba Cloud Linux / RHEL / CentOS / Amazon Linux（dnf 或 yum）
 #
@@ -23,7 +27,7 @@
 #
 # 远端生产环境变量：首次需在服务器 REMOTE_DIR 下放置 .env（可参考 .env.example），勿提交密钥到 Git。
 #
-# 安全提示：请勿在脚本中写入明文密码；使用 SSH 密钥与服务器上的 root 可读 .env。
+# 安全提示：勿在脚本里写密码。已在服务器上 ssh 登录时再跑 deploy，仍会连 DEPLOY_HOST 做 rsync（常等于再连自己），未配公钥会多次要密码 — 请改用 deploy-local，或在笔记本上执行 deploy。
 # ============================================================================
 set -euo pipefail
 
@@ -154,6 +158,60 @@ fi
 END_SSH
 
   echo "✓ 部署完成。请确认 Nginx / HTTPS 已指向本机 Node（默认 3000）。"
+}
+
+# 在生产服务器「本机」构建并发布（不向 SSH 回连自己，避免多次密码提示）
+cmd_deploy_local() {
+  local APP_DIR="${DEPLOY_TARGET_DIR:-$REMOTE_DIR}"
+
+  cmd_build
+
+  echo "▶ 发布到本机目录: $APP_DIR（无 SSH）…"
+  mkdir -p "$APP_DIR/.next/static" "$APP_DIR/public" "$APP_DIR/prisma"
+  rsync -a --delete .next/standalone/ "$APP_DIR/"
+  rsync -a --delete .next/static/ "$APP_DIR/.next/static/"
+  rsync -a public/ "$APP_DIR/public/"
+  rsync -a prisma/ "$APP_DIR/prisma/"
+  rsync -a prisma.config.ts "$APP_DIR/prisma.config.ts"
+
+  echo "▶ 数据库迁移 (prisma migrate deploy)…"
+  pushd "$APP_DIR" >/dev/null
+  [[ -f .env ]] || die "缺少 $APP_DIR/.env（请先按 .env.example 创建）"
+  set -a
+  # shellcheck disable=SC1091
+  source .env
+  set +a
+  [[ -n "${DATABASE_URL:-}" ]] || die ".env 中未设置 DATABASE_URL"
+  command -v prisma >/dev/null 2>&1 || die "未找到 prisma，请执行: npm install -g prisma"
+  prisma migrate deploy
+  popd >/dev/null
+
+  echo "▶ 写入 start-prod.sh…"
+  cat > "$APP_DIR/start-prod.sh" << 'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
+[[ -f .env ]] || { echo "缺少 .env"; exit 1; }
+set -a
+# shellcheck disable=SC1091
+source .env
+set +a
+export NODE_ENV=production
+exec node server.js
+EOS
+  chmod +x "$APP_DIR/start-prod.sh"
+
+  echo "▶ PM2 启动 / 重启…"
+  pushd "$APP_DIR" >/dev/null
+  if pm2 describe adviser >/dev/null 2>&1; then
+    pm2 restart adviser --update-env
+  else
+    pm2 start ./start-prod.sh --name adviser --cwd "$APP_DIR" --time
+    pm2 save
+  fi
+  popd >/dev/null
+
+  echo "✓ 本机部署完成 → $APP_DIR（Nginx 应反代到 127.0.0.1:3000）"
 }
 
 # 在全新服务器上安装运行栈（需 root；支持 apt / dnf / yum）
@@ -357,14 +415,14 @@ systemctl enable nginx
 echo ""
 echo "===== Bootstrap 完成 ====="
 echo "1. 在 \$REMOTE_DIR 创建 .env（参考仓库 .env.example）"
-echo "2. 在本机执行: DEPLOY_HOST=${DEPLOY_HOST} ./deploy.sh deploy"
+echo "2. 在笔记本: DEPLOY_HOST=... ./deploy.sh deploy — 或在服务器仓库目录: ./deploy.sh deploy-local"
 END_BOOTSTRAP
 
   echo "✓ 远端系统依赖与 Nginx 已就绪"
 }
 
 usage() {
-  sed -n '2,30p' "$0" | tail -n +2
+  sed -n '2,42p' "$0" | tail -n +2
 }
 
 main() {
@@ -372,10 +430,11 @@ main() {
   case "$sub" in
     check)   cmd_check ;;
     build)   cmd_build ;;
-    deploy)  cmd_deploy ;;
-    bootstrap) cmd_bootstrap ;;
+    deploy)       cmd_deploy ;;
+    deploy-local) cmd_deploy_local ;;
+    bootstrap)    cmd_bootstrap ;;
     -h|--help|help) usage ;;
-    *) die "未知命令: $sub。使用: $0 check | build | deploy | bootstrap | help" ;;
+    *) die "未知命令: $sub。使用: $0 check | build | deploy | deploy-local | bootstrap | help" ;;
   esac
 }
 
