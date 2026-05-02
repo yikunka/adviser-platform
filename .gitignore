@@ -3,6 +3,9 @@
 # local file uploads (migrated to cloud storage later)
 /uploads
 
+# AML list snapshots (ingester cache; regenerated on fetch)
+/aml-downloads
+
 # dependencies
 /node_modules
 /.pnp

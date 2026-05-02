@@ -12,6 +12,19 @@ const adminRoutePattern = /^\/(zh|en)\/(admin)/
 
 const staffRoles = new Set(['STAFF', 'COMPLIANCE', 'SUPER_ADMIN'])
 
+/** Proxy 中 `NextResponse.redirect` 须为绝对 URL；用 `nextUrl.clone()` 避免依赖 `req.url`。 */
+function redirectToPath(req: NextRequest, pathname: string, searchParams?: Record<string, string>) {
+  const u = req.nextUrl.clone()
+  u.pathname = pathname
+  u.search = ''
+  if (searchParams) {
+    for (const [k, v] of Object.entries(searchParams)) {
+      u.searchParams.set(k, v)
+    }
+  }
+  return NextResponse.redirect(u)
+}
+
 // ── Rate limiting (sliding window, in-memory) ──────────────────────
 // Note: resets on cold start; use Redis for multi-instance production
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
@@ -43,21 +56,17 @@ export default auth((req) => {
 
   if (clientRoutePattern.test(pathname) && !session) {
     const locale = pathname.startsWith('/en') ? 'en' : 'zh'
-    const loginUrl = new URL(`/${locale}/login`, req.url)
-    loginUrl.searchParams.set('callbackUrl', pathname)
-    return NextResponse.redirect(loginUrl)
+    return redirectToPath(req, `/${locale}/login`, { callbackUrl: pathname })
   }
 
   if (adminRoutePattern.test(pathname)) {
     if (!session) {
       const locale = pathname.startsWith('/en') ? 'en' : 'zh'
-      const loginUrl = new URL(`/${locale}/login`, req.url)
-      loginUrl.searchParams.set('callbackUrl', pathname)
-      return NextResponse.redirect(loginUrl)
+      return redirectToPath(req, `/${locale}/login`, { callbackUrl: pathname })
     }
     if (!staffRoles.has(session.user?.role)) {
       const locale = pathname.startsWith('/en') ? 'en' : 'zh'
-      return NextResponse.redirect(new URL(`/${locale}/dashboard`, req.url))
+      return redirectToPath(req, `/${locale}/dashboard`)
     }
   }
 
