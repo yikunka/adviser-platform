@@ -213,7 +213,7 @@ source .env
 set +a
 export NODE_ENV=production
 # Next standalone 用 HOSTNAME 作为 listen 地址；云主机常有不可解析的 ECS 实例名 → getaddrinfo ENOTFOUND
-export HOSTNAME="${NEXT_HOST_BIND:-0.0.0.0}"
+export HOSTNAME="0.0.0.0"
 exec node server.js
 EOS
 chmod +x "\$APP_DIR/start-prod.sh"
@@ -288,7 +288,7 @@ source .env
 set +a
 export NODE_ENV=production
 # Next standalone 用 HOSTNAME 作为 listen 地址；云主机常有不可解析的 ECS 实例名 → getaddrinfo ENOTFOUND
-export HOSTNAME="${NEXT_HOST_BIND:-0.0.0.0}"
+export HOSTNAME="0.0.0.0"
 exec node server.js
 EOS
   chmod +x "$APP_DIR/start-prod.sh"
