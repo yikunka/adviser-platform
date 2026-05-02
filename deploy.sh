@@ -104,7 +104,8 @@ cmd_deploy() {
   rsync -az --delete -e "$RSYNC_E" .next/static/ "${REMOTE}:${REMOTE_DIR}/.next/static/"
   rsync -az -e "$RSYNC_E" public/ "${REMOTE}:${REMOTE_DIR}/public/"
   rsync -az -e "$RSYNC_E" prisma/ "${REMOTE}:${REMOTE_DIR}/prisma/"
-  rsync -az -e "$RSYNC_E" prisma.config.ts "${REMOTE}:${REMOTE_DIR}/prisma.config.ts"
+  rsync -az -e "$RSYNC_E" prisma.config.mjs "${REMOTE}:${REMOTE_DIR}/prisma.config.mjs"
+  ssh_remote "rm -f '${REMOTE_DIR}/prisma.config.ts'"
 
   echo "▶ 远端数据库迁移 (prisma migrate deploy)..."
   # 使用 bash source 加载 .env（与 .env.example 中带引号的值兼容）；APP_DIR 由本地 REMOTE_DIR 传入
@@ -172,7 +173,8 @@ cmd_deploy_local() {
   rsync -a --delete .next/static/ "$APP_DIR/.next/static/"
   rsync -a public/ "$APP_DIR/public/"
   rsync -a prisma/ "$APP_DIR/prisma/"
-  rsync -a prisma.config.ts "$APP_DIR/prisma.config.ts"
+  rsync -a prisma.config.mjs "$APP_DIR/prisma.config.mjs"
+  rm -f "$APP_DIR/prisma.config.ts"
 
   echo "▶ 数据库迁移 (prisma migrate deploy)…"
   pushd "$APP_DIR" >/dev/null
