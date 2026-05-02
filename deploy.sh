@@ -24,8 +24,12 @@
 #   DEPLOY_SSH_KEY       SSH 私钥路径，例如 ~/.ssh/id_ed25519
 #   DEPLOY_DOMAIN        对外域名，用于 Nginx server_name（bootstrap 写站点配置时）
 #   CERTBOT_EMAIL        Let's Encrypt 邮箱；若与 DEPLOY_DOMAIN 同时设置，bootstrap 末尾尝试非交互式申请证书
-#   BOOTSTRAP_WITH_POSTGRES=1   在服务器本机安装 PostgreSQL 并创建 adviser / adviser_db（密码见下）
-#   POSTGRES_APP_PASSWORD      与上一项配合，数据库用户 adviser 的密码
+#   BOOTSTRAP_WITH_POSTGRES=1   在服务器本机安装 PostgreSQL 16：先卸载系统已有 PostgreSQL 包再装 PGDG 16（重要：旧数据目录请自行备份）
+#   身份与密码（与本地 DATABASE_URL 对齐，三选一组合）:
+#     • 推荐：BOOTSTRAP_DATABASE_URL="postgresql://用户:密码@主机:5432/库名"（主机可忽略，仅用于解析用户/库/密码）
+#     • 或显式：POSTGRES_APP_USER、POSTGRES_APP_DB（默认 adviser / adviser_db）+ POSTGRES_APP_PASSWORD
+#   若 URL 中无密码，则仍用 POSTGRES_APP_PASSWORD。URL 中的密码可含特殊字符。
+#   BOOTSTRAP_PG_GROUP      可选；若设置则创建 NOLOGIN 组角色并 GRANT 给应用用户（含 schema / 默认权限）
 #
 # 远端生产环境变量：首次需在服务器 REMOTE_DIR 下放置 .env（可参考 .env.example），勿提交密钥到 Git。
 #
@@ -61,6 +65,71 @@ require_deploy_host() {
 ssh_remote() {
   require_deploy_host
   ssh "${SSH_OPTS[@]}" "$REMOTE" "$@"
+}
+
+_bootstrap_pg_ident_ok() {
+  [[ "$1" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]
+}
+
+# 解析 URL 时需在本机已有 python3（bootstrap / bootstrap-local 的机器）
+_bootstrap_resolve_pg_credentials() {
+  PG_USER_ESC="${POSTGRES_APP_USER:-adviser}"
+  PG_DB_ESC="${POSTGRES_APP_DB:-adviser_db}"
+
+  local url="${BOOTSTRAP_DATABASE_URL:-}"
+  PG_PASS_MERGED="${POSTGRES_APP_PASSWORD:-}"
+
+  if [[ -n "${url}" ]]; then
+    command -v python3 >/dev/null 2>&1 || die "解析 BOOTSTRAP_DATABASE_URL 需要已安装 python3（macOS/Python.org 均有）"
+    eval "$(
+      BOOTSTRAP_DATABASE_URL="${url}" \
+        DEFAULT_PG_USER="${PG_USER_ESC}" \
+        DEFAULT_PG_DB="${PG_DB_ESC}" \
+        python3 <<'BOOTSTRAP_URL_PY'
+import os, re, shlex, urllib.parse, sys
+
+url = os.environ.get("BOOTSTRAP_DATABASE_URL", "").strip()
+if not url:
+    sys.exit("BOOTSTRAP_DATABASE_URL 为空")
+if not url.startswith(("postgres://", "postgresql://")):
+    sys.exit("DATABASE_URL 须以 postgres:// 或 postgresql:// 开头")
+u_s = urllib.parse.urlsplit(url)
+user = urllib.parse.unquote(u_s.username or "")
+password = urllib.parse.unquote(u_s.password or "")
+db = (u_s.path or "/").lstrip("/").split("?")[0].split("/")[0]
+dup = os.environ.get("DEFAULT_PG_USER") or "adviser"
+dd = os.environ.get("DEFAULT_PG_DB") or "adviser_db"
+user = user or dup
+db = db or dd
+ident_re = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+for label, val in (("用户名", user), ("数据库名", db)):
+    if not ident_re.match(val):
+        sys.exit(f"{label} 非法（仅允许 PostgreSQL 非引号标识符）: {val!r}")
+
+print(f"export BOOTSTRAP_PARSE_USER={shlex.quote(user)}")
+print(f"export BOOTSTRAP_PARSE_DB={shlex.quote(db)}")
+print(f"export BOOTSTRAP_PARSE_PW_FROM_URL={shlex.quote(password)}")
+BOOTSTRAP_URL_PY
+    )"
+    PG_USER_ESC="${BOOTSTRAP_PARSE_USER}"
+    PG_DB_ESC="${BOOTSTRAP_PARSE_DB}"
+    if [[ -n "${BOOTSTRAP_PARSE_PW_FROM_URL}" ]]; then
+      PG_PASS_MERGED="${BOOTSTRAP_PARSE_PW_FROM_URL}"
+    fi
+  fi
+
+  _bootstrap_pg_ident_ok "$PG_USER_ESC" || die "非法 POSTGRES_APP_USER / 用户名: $PG_USER_ESC"
+  _bootstrap_pg_ident_ok "$PG_DB_ESC" || die "非法 POSTGRES_APP_DB / 数据库名: $PG_DB_ESC"
+
+  BOOTSTRAP_PG_GROUP_ESC="${BOOTSTRAP_PG_GROUP:-}"
+  if [[ -n "${BOOTSTRAP_PG_GROUP_ESC}" ]]; then
+    _bootstrap_pg_ident_ok "$BOOTSTRAP_PG_GROUP_ESC" || die "非法 BOOTSTRAP_PG_GROUP: $BOOTSTRAP_PG_GROUP_ESC"
+  fi
+
+  [[ -n "${PG_PASS_MERGED}" ]] || die "PostgreSQL 应用密码不能为空：在 BOOTSTRAP_DATABASE_URL 中写密码，或设置 POSTGRES_APP_PASSWORD"
+
+  PG_PASS="${PG_PASS_MERGED}"
+  PG_PASS_B64_ESC="$(printf '%s' "${PG_PASS}" | base64 | tr -d '\n')"
 }
 
 # 本地：构建所需
@@ -241,7 +310,10 @@ REMOTE_DIR='${REMOTE_DIR_ESC}'
 DEPLOY_DOMAIN='${DEPLOY_DOMAIN_ESC}'
 CERTBOT_EMAIL='${CERTBOT_EMAIL_ESC}'
 WITH_PG='${WITH_PG}'
-PG_PASS='${PG_PASS}'
+PG_APP_USER='${PG_USER_ESC}'
+PG_APP_DB='${PG_DB_ESC}'
+PG_PASS_B64='${PG_PASS_B64_ESC}'
+BOOTSTRAP_PG_GROUP='${BOOTSTRAP_PG_GROUP_ESC}'
 
 if command -v apt-get >/dev/null 2>&1; then
   FAMILY=deb
@@ -295,6 +367,63 @@ server {
 NGX
 }
 
+# 在安装好 postgres 二进制后调用：\$1 = psql 绝对路径（Debian PG16 / RPM PG16）
+provision_app_pg_after_server_ready() {
+  local pg_bin="\$1"
+  [[ "\$WITH_PG" == "1" ]] || return 0
+  command -v python3 >/dev/null 2>&1 || { echo "服务器需已安装 python3（bootstrap 会先装）"; exit 1; }
+  PG_PASS="\$(printf '%s' "\$PG_PASS_B64" | base64 -d)" || exit 1
+  local usr="\$PG_APP_USER"
+  local db="\$PG_APP_DB"
+  local pw_esc
+  pw_esc=\$(PG_PASS="\$PG_PASS" python3 -c "import os; print(os.environ['PG_PASS'].replace(chr(39), chr(39)*2))")
+
+  if sudo -u postgres "\${pg_bin}" -tc "SELECT 1 FROM pg_roles WHERE rolname='\${usr}'" 2>/dev/null | grep -q 1; then
+    sudo -u postgres "\${pg_bin}" -v ON_ERROR_STOP=1 -c "ALTER ROLE \${usr} WITH LOGIN PASSWORD '\${pw_esc}';"
+  else
+    sudo -u postgres "\${pg_bin}" -v ON_ERROR_STOP=1 -c "CREATE USER \${usr} WITH PASSWORD '\${pw_esc}';"
+  fi
+
+  local grp="\${BOOTSTRAP_PG_GROUP:-}"
+  if [[ -n "\${grp}" ]]; then
+    if ! sudo -u postgres "\${pg_bin}" -tc "SELECT 1 FROM pg_roles WHERE rolname='\${grp}'" 2>/dev/null | grep -q 1; then
+      sudo -u postgres "\${pg_bin}" -v ON_ERROR_STOP=1 -c "CREATE ROLE \${grp} NOLOGIN;"
+    fi
+    sudo -u postgres "\${pg_bin}" -c "GRANT \${grp} TO \${usr};" >/dev/null 2>&1 || true
+  fi
+
+  if ! sudo -u postgres "\${pg_bin}" -tc "SELECT 1 FROM pg_database WHERE datname='\${db}'" 2>/dev/null | grep -q 1; then
+    sudo -u postgres "\${pg_bin}" -v ON_ERROR_STOP=1 -c "CREATE DATABASE \${db} OWNER \${usr};"
+  fi
+  sudo -u postgres "\${pg_bin}" -v ON_ERROR_STOP=1 -d postgres -c "GRANT CONNECT, TEMPORARY ON DATABASE \${db} TO \${usr};"
+  if [[ -n "\${grp}" ]]; then
+    sudo -u postgres "\${pg_bin}" -v ON_ERROR_STOP=1 -d postgres -c "GRANT CONNECT, TEMPORARY ON DATABASE \${db} TO \${grp};"
+  fi
+  sudo -u postgres "\${pg_bin}" -v ON_ERROR_STOP=1 -q -c "ALTER DATABASE \${db} OWNER TO \${usr};" 2>/dev/null || true
+  sudo -u postgres "\${pg_bin}" -v ON_ERROR_STOP=1 -d "\${db}" -c \\
+    "GRANT ALL ON SCHEMA public TO \${usr}; ALTER SCHEMA public OWNER TO \${usr};\\
+     ALTER DEFAULT PRIVILEGES FOR ROLE \${usr} IN SCHEMA public GRANT ALL ON TABLES TO \${usr};\\
+     ALTER DEFAULT PRIVILEGES FOR ROLE \${usr} IN SCHEMA public GRANT ALL ON SEQUENCES TO \${usr};\\
+     ALTER DEFAULT PRIVILEGES FOR ROLE \${usr} IN SCHEMA public GRANT ALL ON FUNCTIONS TO \${usr};\\
+     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO \${usr};\\
+     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO \${usr};\\
+     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO \${usr};"
+  if [[ -n "\${grp}" ]]; then
+    sudo -u postgres "\${pg_bin}" -v ON_ERROR_STOP=1 -d "\${db}" -c \\
+      "GRANT USAGE ON SCHEMA public TO \${grp};\\
+       GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO \${grp};\\
+       GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO \${grp};\\
+       GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO \${grp};\\
+       ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO \${grp};\\
+       ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO \${grp};\\
+       ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO \${grp};\\
+       ALTER DEFAULT PRIVILEGES FOR ROLE \${usr} IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO \${grp};\\
+       ALTER DEFAULT PRIVILEGES FOR ROLE \${usr} IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO \${grp};\\
+       ALTER DEFAULT PRIVILEGES FOR ROLE \${usr} IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO \${grp};"
+  fi
+  echo "--> PostgreSQL 用户/库/授权就绪: \$usr / \$db（组角色 BOOTSTRAP_PG_GROUP=\${grp:-（未设置）}）"
+}
+
 SERVER_NAMES="_"
 if [[ -n "\$DEPLOY_DOMAIN" ]]; then
   SERVER_NAMES="\$DEPLOY_DOMAIN www.\$DEPLOY_DOMAIN"
@@ -332,17 +461,34 @@ if [[ "\$FAMILY" == deb ]]; then
   ln -sf "\$CONF_PATH" "\$ENABLED"
 
   if [[ "\$WITH_PG" == "1" ]]; then
-    echo "==> 安装 PostgreSQL (apt)..."
-    apt-get install -y postgresql postgresql-contrib
-    systemctl enable postgresql
-    systemctl start postgresql
-    sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='adviser'" | grep -q 1 || \
-      sudo -u postgres psql -c "CREATE USER adviser WITH PASSWORD '\$PG_PASS';"
-    sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='adviser_db'" | grep -q 1 || \
-      sudo -u postgres psql -c "CREATE DATABASE adviser_db OWNER adviser;"
-    sudo -u postgres psql -q -c "ALTER DATABASE adviser_db OWNER TO adviser;" || true
-    sudo -u postgres psql -q -d adviser_db -c "GRANT ALL ON SCHEMA public TO adviser; ALTER SCHEMA public OWNER TO adviser;" || true
-    echo "数据库已创建: DATABASE_URL=postgresql://adviser:***@127.0.0.1:5432/adviser_db"
+    echo "==> 停止并卸载系统已有 PostgreSQL（重要：请先备份旧数据目录，如 /etc/postgresql/、/var/lib/postgresql）..."
+    systemctl stop postgresql 2>/dev/null || true
+    systemctl disable postgresql 2>/dev/null || true
+    systemctl stop postgresql@16-main 2>/dev/null || true
+    DEBIAN_FRONTEND=noninteractive apt-get -y purge 'postgresql-*' 2>/dev/null || true
+    DEBIAN_FRONTEND=noninteractive apt-get -y autoremove --purge || true
+
+    apt-get install -y --no-install-recommends gnupg
+
+    echo "==> 添加 PGDG APT 并安装 PostgreSQL 16..."
+    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --batch --yes --dearmor -o /usr/share/keyrings/postgresql-archive-keyring.gpg
+    # shellcheck disable=SC1091
+    . /etc/os-release
+    CODENAME="\${VERSION_CODENAME:?缺少 VERSION_CODENAME，无法用 PGDG 源}"
+    echo "deb [signed-by=/usr/share/keyrings/postgresql-archive-keyring.gpg] https://apt.postgresql.org/pub/apt \${CODENAME}-pgdg main" >/etc/apt/sources.list.d/pgdg.list
+    apt-get update -qq
+    DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql-16 postgresql-contrib-16
+
+    PG_SQL_DEB="/usr/lib/postgresql/16/bin/psql"
+    if systemctl list-unit-files 2>/dev/null | grep -q '^postgresql@16-main.service'; then
+      systemctl enable postgresql@16-main
+      systemctl start postgresql@16-main
+    else
+      systemctl restart postgresql 2>/dev/null || true
+    fi
+
+    provision_app_pg_after_server_ready "\$PG_SQL_DEB"
+    echo "PostgreSQL 16 已通过 PGDG 安装；通常为 systemctl enable --now postgresql@16-main"
   fi
 
   if [[ -n "\$DEPLOY_DOMAIN" && -n "\$CERTBOT_EMAIL" ]]; then
@@ -383,20 +529,74 @@ else
   rm -f /etc/nginx/conf.d/default.conf 2>/dev/null || true
 
   if [[ "\$WITH_PG" == "1" ]]; then
-    echo "==> 安装 PostgreSQL (rpm)..."
-    "\${PM[@]}" install postgresql-server postgresql-contrib || "\${PM[@]}" install postgresql15-server 2>/dev/null || "\${PM[@]}" install postgresql-server
-    if command -v postgresql-setup >/dev/null 2>&1; then
-      postgresql-setup --initdb 2>/dev/null || postgresql-setup initdb 2>/dev/null || true
+    echo "==> 停止并卸载系统已有 PostgreSQL（请先备份旧数据目录，如 /var/lib/pgsql）..."
+    for svc in postgresql postgresql-15 postgresql-14 postgresql-13 postgresql-12 rh-postgresql10-postgresql; do
+      systemctl stop "\${svc}" 2>/dev/null || true
+      systemctl disable "\${svc}" 2>/dev/null || true
+    done
+    for _pkg in \$(rpm -qa | grep -E '^postgresql[0-9]+-server' | grep -v '^postgresql16-' || true); do
+      [[ -z "\$_pkg" ]] && continue
+      "\${PM[@]}" remove -y "\${_pkg}" 2>/dev/null || true
+    done
+    "\${PM[@]}" remove -y postgresql-server postgresql postgresql-contrib postgresql-docs postgresql-upgrade 2>/dev/null || true
+
+    echo "==> 安装 PostgreSQL 16（PostgreSQL 官方 PGDG）..."
+    ARCH="\$(uname -m)"
+    case "\$ARCH" in
+      x86_64) PGDG_ARCH=x86_64 ;;
+      aarch64) PGDG_ARCH=aarch64 ;;
+      *) echo "不支持的架构: \$ARCH"; exit 1 ;;
+    esac
+
+    RPM_EL="\$(rpm -E '%{rhel}' 2>/dev/null || true)"
+    if ! [[ "\${RPM_EL}" =~ ^[0-9]+\$ ]]; then
+      RPM_EL=""
+      if [[ -r /etc/os-release ]]; then
+        # shellcheck disable=SC1091
+        . /etc/os-release
+        case "\${PLATFORM_ID:-}" in
+          platform:el9*|platform:al9*) RPM_EL=9 ;;
+          platform:el8*|platform:al8*) RPM_EL=8 ;;
+          platform:el7*) RPM_EL=7 ;;
+        esac
+        if [[ -z "\$RPM_EL" && "\${ID:-}" == "alinux" ]]; then
+          case "\${VERSION_ID%%.*}" in
+            2) RPM_EL=7 ;;
+            *) RPM_EL=8 ;;
+          esac
+        fi
+        if [[ -z "\$RPM_EL" && "\${ID:-}" == "amzn" && "\${VERSION_ID:-}" == "2023" ]]; then
+          RPM_EL=9
+        fi
+      fi
     fi
-    systemctl enable postgresql 2>/dev/null || systemctl enable postgresql-15 2>/dev/null || true
-    systemctl start postgresql 2>/dev/null || systemctl start postgresql-15 2>/dev/null || true
-    sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='adviser'" 2>/dev/null | grep -q 1 || \
-      sudo -u postgres psql -c "CREATE USER adviser WITH PASSWORD '\$PG_PASS';" 2>/dev/null || true
-    sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='adviser_db'" 2>/dev/null | grep -q 1 || \
-      sudo -u postgres psql -c "CREATE DATABASE adviser_db OWNER adviser;" 2>/dev/null || true
-    sudo -u postgres psql -q -c "ALTER DATABASE adviser_db OWNER TO adviser;" 2>/dev/null || true
-    sudo -u postgres psql -q -d adviser_db -c "GRANT ALL ON SCHEMA public TO adviser; ALTER SCHEMA public OWNER TO adviser;" 2>/dev/null || true
-    echo "数据库已创建（请确认 .env 密码与 POSTGRES_APP_PASSWORD 一致；库名须为 adviser_db）"
+
+    if [[ -z "\$RPM_EL" ]]; then
+      echo "无法推断用于 PGDG 的 EL 主版本（请查看 /etc/os-release；阿里云 Linux 3 常为 EL8）。请改用托管数据库或手动安装 PostgreSQL 16。"
+      exit 1
+    fi
+
+    PGDG_REPORPM="https://download.postgresql.org/pub/repos/yum/reporpms/EL-\${RPM_EL}-\${PGDG_ARCH}/pgdg-redhat-repo-latest.noarch.rpm"
+    echo "--> PGDG 仓库 RPM: \$PGDG_REPORPM"
+
+    command -v dnf >/dev/null 2>&1 && { dnf -qy module disable postgresql 2>/dev/null || true; }
+
+    "\${PM[@]}" install -y "\$PGDG_REPORPM"
+    "\${PM[@]}" install -y postgresql16-server postgresql16 || \\
+      { echo "安装 postgresql16-server / postgresql16 失败"; exit 1; }
+
+    PG_SETUP="/usr/pgsql-16/bin/postgresql-16-setup"
+    PG_DATA="/var/lib/pgsql/16/data"
+    if [[ -x "\$PG_SETUP" ]] && [[ ! -f "\$PG_DATA/PG_VERSION" ]]; then
+      "\$PG_SETUP" initdb
+    fi
+
+    systemctl enable postgresql-16
+    systemctl start postgresql-16
+
+    PG_SQL="/usr/pgsql-16/bin/psql"
+    provision_app_pg_after_server_ready "\$PG_SQL"
+    echo "已安装 PostgreSQL 16（postgresql-16）；.env DATABASE_URL 请使用上述用户 / 数据库名。"
   fi
 
   if [[ -n "\$DEPLOY_DOMAIN" && -n "\$CERTBOT_EMAIL" ]]; then
@@ -426,15 +626,18 @@ END_BOOTSTRAP
 
 _bootstrap_prepare_env() {
   local with_postgres="${BOOTSTRAP_WITH_POSTGRES:-0}"
-  local pg_password="${POSTGRES_APP_PASSWORD:-}"
-  if [[ "${with_postgres}" == "1" ]]; then
-    [[ -n "${pg_password}" ]] || die "设置 BOOTSTRAP_WITH_POSTGRES=1 时必须设置 POSTGRES_APP_PASSWORD"
-  fi
   REMOTE_DIR_ESC="${REMOTE_DIR}"
   DEPLOY_DOMAIN_ESC="${DEPLOY_DOMAIN:-}"
   CERTBOT_EMAIL_ESC="${CERTBOT_EMAIL:-}"
   WITH_PG="${with_postgres}"
-  PG_PASS="${pg_password}"
+  PG_USER_ESC="${POSTGRES_APP_USER:-adviser}"
+  PG_DB_ESC="${POSTGRES_APP_DB:-adviser_db}"
+  BOOTSTRAP_PG_GROUP_ESC="${BOOTSTRAP_PG_GROUP:-}"
+  PG_PASS_B64_ESC=""
+  PG_PASS=""
+  if [[ "${with_postgres}" == "1" ]]; then
+    _bootstrap_resolve_pg_credentials
+  fi
 }
 
 # 全新服务器「本机」执行：系统栈与 Nginx；勿设 DEPLOY_HOST（与 deploy-local 同属本机闭环）
@@ -456,7 +659,7 @@ cmd_bootstrap() {
 }
 
 usage() {
-  sed -n '2,50p' "$0" | tail -n +2
+  sed -n '2,62p' "$0" | tail -n +2
 }
 
 main() {
