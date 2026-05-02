@@ -1,0 +1,840 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum UserRole {
+  CLIENT
+  STAFF
+  COMPLIANCE
+  SUPER_ADMIN
+}
+
+enum CompanyStatus {
+  ACTIVE
+  DORMANT
+  STRUCK_OFF
+  DEREGISTERED
+}
+
+enum ServiceTier {
+  BASIC
+  PROFESSIONAL
+  PREMIUM
+}
+
+enum KYCStatus {
+  DRAFT
+  SUBMITTED
+  PENDING_INFO
+  APPROVED
+  REJECTED
+}
+
+enum DocumentType {
+  CI
+  BR
+  ROD
+  ROM
+  ROSC
+  AR
+  NAR1
+  DDR
+  RESOLUTION
+  MINUTES
+  KYC
+  OTHER
+}
+
+enum AMLEntityType {
+  INDIVIDUAL
+  ENTITY
+}
+
+enum AMLListFormat {
+  XML
+  CSV
+  XLSX
+  JSON
+}
+
+enum AMLCheckResult {
+  CLEAR
+  WEAK_HIT
+  POTENTIAL_HIT
+  STRONG_HIT
+}
+
+enum AMLCheckTrigger {
+  SCHEDULED
+  MANUAL
+  KYC_SUBMIT
+}
+
+enum AMLAlertResolution {
+  PENDING
+  FALSE_POSITIVE
+  CONFIRMED
+  ESCALATED
+}
+
+enum AMLSubjectType {
+  KEY_PERSON
+  COMPANY
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum DDRRecommendation {
+  RECOMMEND
+  NOT_RECOMMEND
+  FURTHER_REVIEW
+}
+
+enum ShareholderChangeType {
+  TRANSFER
+  NEW_ALLOTMENT
+  REDEMPTION
+  NAME_CHANGE
+}
+
+enum ShareClass {
+  ORDINARY
+  PREFERENCE
+  OTHER
+}
+
+enum ShareTransactionType {
+  ALLOTMENT
+  TRANSFER_IN
+  TRANSFER_OUT
+}
+
+enum DirectorIDType {
+  HKID
+  PASSPORT
+  OTHER
+}
+
+enum DirectorStatus {
+  ACTIVE
+  CEASED
+}
+
+enum MemberStatus {
+  ACTIVE
+  TRANSFERRED_OUT
+}
+
+enum ChangeStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+}
+
+enum FilingStatus {
+  NOT_STARTED
+  IN_PREPARATION
+  FILED
+  OVERDUE
+}
+
+enum OrderType {
+  INCORPORATION
+  REGISTERED_ADDRESS
+  ANNUAL_RETURN
+  ACCOUNTING
+  ADVISORY
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  CANCELLED
+}
+
+enum NotificationType {
+  KYC_STATUS_CHANGE
+  AML_ALERT
+  ANNUAL_RETURN_DUE
+  DOCUMENT_READY
+  GENERAL
+}
+
+enum EmploymentStatus {
+  EMPLOYED
+  SELF_EMPLOYED
+  RETIRED
+  UNEMPLOYED
+}
+
+// ─────────────────────────────────────────────
+// USERS & AUTH
+// ─────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  nameEn        String
+  nameZh        String?
+  phone         String?
+  role          UserRole  @default(CLIENT)
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  verificationTokens VerificationToken[]
+  clientCompanies    Company[]           @relation("ClientCompany")
+  assignedCompanies  Company[]           @relation("AssignedStaff")
+  uploadedDocuments  Document[]
+  kycReviews         KeyPerson[]         @relation("KYCReviewer")
+  kycSubmissions     KeyPerson[]         @relation("ClientKycSubmissions")
+  amlChecksTriggered AMLCheck[]          @relation("AMLCheckTrigger")
+  amlAlertsReviewed  AMLAlert[]          @relation("AMLAlertReviewer")
+  auditLogs          AuditLog[]
+  notifications      Notification[]
+  processedChanges   ShareholderChange[]
+  processedAddress   AddressChange[]
+  processedFilings   AnnualFiling[]
+  orders             ServiceOrder[]
+
+  @@map("users")
+}
+
+model VerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  type      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("verification_tokens")
+}
+
+// ─────────────────────────────────────────────
+// COMPANIES
+// ─────────────────────────────────────────────
+
+model Company {
+  id                    String        @id @default(cuid())
+  nameEn                String
+  nameZh                String?
+  companyNumber         String?       @unique
+  dateOfIncorporation   DateTime?
+  registeredAddress     String?
+  businessNature        String?
+  financialYearEndMonth Int?
+  annualReturnDate      DateTime?
+  businessRegNumber     String?
+  brExpiryDate          DateTime?
+  status                CompanyStatus @default(ACTIVE)
+  serviceTier           ServiceTier   @default(BASIC)
+  internalNotes         String?
+  deletedAt             DateTime?
+  clientUserId          String?
+  /// Lowercased email: company is pre-assigned until a CLIENT registers with this email
+  pendingClientEmail    String?
+  assignedStaffId       String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  clientUser    User?    @relation("ClientCompany", fields: [clientUserId], references: [id])
+  assignedStaff User?    @relation("AssignedStaff", fields: [assignedStaffId], references: [id])
+
+  directors              Director[]
+  members                Member[]
+  significantControllers SignificantController[]
+  designatedReps         DesignatedRepresentative[]
+  documents              Document[]
+  amlChecks              AMLCheck[]                 @relation("CompanyAMLCheck")
+  dueDiligenceReports    DueDiligenceReport[]
+  riskAssessments        RiskAssessmentAnswer[]
+  annualFilings          AnnualFiling[]
+  shareholderChanges     ShareholderChange[]
+  addressChanges         AddressChange[]
+  keyPersonLinks         CompanyKeyPerson[]
+  serviceOrders          ServiceOrder[]
+  auditLogs              AuditLog[]                 @relation("CompanyAuditLog")
+
+  @@index([pendingClientEmail])
+  @@map("companies")
+}
+
+// ─────────────────────────────────────────────
+// REGISTER OF DIRECTORS (ROD)
+// ─────────────────────────────────────────────
+
+model Director {
+  id                String         @id @default(cuid())
+  companyId         String
+  nameEn            String
+  nameZh            String?
+  dateOfAppointment DateTime
+  dateAsReserve     DateTime?
+  dateOfCessation   DateTime?
+  addressForService String
+  dateOfBirth       DateTime?
+  placeOfBirth      String?
+  nationality       String?
+  idType            DirectorIDType?
+  idNumber          String?
+  countryOfIssuance String?
+  isCorporation     Boolean        @default(false)
+  corpRegNumber     String?
+  corpRegPlace      String?
+  status            DirectorStatus @default(ACTIVE)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("directors")
+}
+
+// ─────────────────────────────────────────────
+// REGISTER OF MEMBERS (ROM)
+// ─────────────────────────────────────────────
+
+model Member {
+  id                String       @id @default(cuid())
+  companyId         String
+  nameEn            String
+  nameZh            String?
+  shareClass        ShareClass   @default(ORDINARY)
+  registeredAddress String
+  occupation        String?
+  status            MemberStatus @default(ACTIVE)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  company           Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  shareTransactions ShareTransaction[]
+
+  @@map("members")
+}
+
+model ShareTransaction {
+  id                     String               @id @default(cuid())
+  memberId               String
+  transactionType        ShareTransactionType
+  transactionDate        DateTime
+  allotmentTransferNo    String?
+  sharesAcquired         Int?
+  sharesTransferred      Int?
+  sharesHeld             Int
+  certificateNo          String?
+  distinctiveNosFrom     Int?
+  distinctiveNosTo       Int?
+  amountPaid             Decimal?             @db.Decimal(18, 2)
+  certificateSurrendered       String?
+  certificateSurrenderedShares Int?
+  balanceCertificateNo         String?
+  balanceCertificateShares     Int?
+  balanceDistinctiveNosFrom    Int?
+  balanceDistinctiveNosTo      Int?
+  createdAt                    DateTime             @default(now())
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@map("share_transactions")
+}
+
+// ─────────────────────────────────────────────
+// REGISTER OF SIGNIFICANT CONTROLLERS (ROSC)
+// ─────────────────────────────────────────────
+
+model SignificantController {
+  id                    String    @id @default(cuid())
+  companyId             String
+  entryDate             DateTime
+  nameEn                String
+  nameZh                String?
+  correspondenceAddress String?
+  idType                DirectorIDType?
+  idPassportNo          String?
+  issuingCountry        String?
+  natureOfControl       String?
+  becomingDate          DateTime
+  cessationDate         DateTime?
+  isLegalEntity         Boolean   @default(false)
+  legalEntityRegNo      String?
+  legalEntityGovLaw     String?
+  remarks               String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("significant_controllers")
+}
+
+model DesignatedRepresentative {
+  id            String    @id @default(cuid())
+  companyId     String
+  entryDate     DateTime
+  name          String
+  address       String?
+  capacity      String?
+  telFax        String?
+  becomingDate  DateTime
+  cessationDate DateTime?
+  remarks       String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("designated_representatives")
+}
+
+// ─────────────────────────────────────────────
+// KEY PERSONS & KYC
+// ─────────────────────────────────────────────
+
+model KeyPerson {
+  id               String            @id @default(cuid())
+  /// Client who created this KYC (portal); distinct from company-linked key persons
+  submittedByUserId String?
+  titlePrefix      String?
+  nameEn           String
+  nameZh           String?
+  idType           String?
+  idNumber         String?
+  placeOfIssue     String?
+  placeOfBirth     String?
+  idExpiryDate     DateTime?
+  dateOfBirth      DateTime?
+  nationality      String?
+  homeAddress      String?
+  contactAddress   String?
+  homePhone        String?
+  workPhone        String?
+  mobile           String?
+  wechat           String?
+  email            String?
+  isUsCitizen      Boolean?
+  isPep            Boolean?
+  emergencyContact String?
+  employmentStatus EmploymentStatus?
+  employerName     String?
+  employerAddress  String?
+  businessNatures  String[]
+  position         String?
+  workingYears     Int?
+  sourceOfFunds    String?
+  sourcesOfWealth  String[]
+  annualIncome     String?
+  netAssetValue    String?
+  assetItems       String[]
+  declarationSigned Boolean          @default(false)
+  signatureName    String?
+  declarationDate  DateTime?
+  kycStatus        KYCStatus         @default(DRAFT)
+  kycApprovedById  String?
+  kycApprovedAt    DateTime?
+  kycExpiryDate    DateTime?
+  kycRejectionReason String?
+  amlLastChecked   DateTime?
+  amlRiskLevel     RiskLevel?
+  amlAlert         Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  submittedByUser User?              @relation("ClientKycSubmissions", fields: [submittedByUserId], references: [id])
+  kycApprovedBy User?              @relation("KYCReviewer", fields: [kycApprovedById], references: [id])
+  kycDocuments  KYCDocument[]
+  companyLinks  CompanyKeyPerson[]
+  amlChecks     AMLCheck[]         @relation("KeyPersonAMLCheck")
+
+  @@index([submittedByUserId])
+  @@map("key_persons")
+}
+
+model KYCDocument {
+  id              String   @id @default(cuid())
+  keyPersonId     String
+  documentType    String
+  fileName        String
+  storageKey      String
+  mimeType        String
+  fileSize        Int
+  status          String   @default("PENDING")
+  rejectionReason String?
+  uploadedAt      DateTime @default(now())
+  verifiedAt      DateTime?
+
+  keyPerson KeyPerson @relation(fields: [keyPersonId], references: [id], onDelete: Cascade)
+
+  @@map("kyc_documents")
+}
+
+model CompanyKeyPerson {
+  id          String   @id @default(cuid())
+  companyId   String
+  keyPersonId String
+  roles       String[]
+  createdAt   DateTime @default(now())
+
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  keyPerson KeyPerson @relation(fields: [keyPersonId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, keyPersonId])
+  @@map("company_key_persons")
+}
+
+// ─────────────────────────────────────────────
+// DOCUMENTS
+// ─────────────────────────────────────────────
+
+model Document {
+  id            String       @id @default(cuid())
+  companyId     String?
+  documentType  DocumentType
+  name          String
+  storageKey    String
+  mimeType      String
+  fileSize      Int
+  uploadedById  String
+  effectiveDate DateTime?
+  expiryDate    DateTime?
+  version       Int          @default(1)
+  notes         String?
+  deletedAt     DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  company    Company? @relation(fields: [companyId], references: [id])
+  uploadedBy User     @relation(fields: [uploadedById], references: [id])
+
+  shareholderChangeDocs ShareholderChangeDocument[]
+  addressChangeDocs     AddressChangeDocument[]
+  annualFilingDocs      AnnualFilingDocument[]
+
+  @@map("documents")
+}
+
+// ─────────────────────────────────────────────
+// AML ENGINE
+// ─────────────────────────────────────────────
+
+model AMLSource {
+  id          String        @id @default(cuid())
+  seqNo       Int           @unique
+  nameEn      String
+  nameZh      String
+  sourceUrl   String
+  format      AMLListFormat
+  isActive    Boolean       @default(true)
+  lastFetched DateTime?
+  createdAt   DateTime      @default(now())
+
+  records AMLRecord[]
+
+  @@map("aml_sources")
+}
+
+model AMLRecord {
+  id              String        @id @default(cuid())
+  sourceId        String
+  listVersionDate DateTime
+  entityType      AMLEntityType
+  primaryName     String
+  aliases         String[]
+  dateOfBirth     DateTime?
+  nationality     String?
+  gender          String?
+  placeOfBirth    String?
+  addresses       Json?
+  idNumbers       Json?
+  listingReason   String?
+  listingDate     DateTime?
+  rawData         Json?
+  recordHash      String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  source    AMLSource  @relation(fields: [sourceId], references: [id])
+  amlAlerts AMLAlert[]
+
+  @@unique([sourceId, recordHash])
+  @@index([primaryName])
+  @@map("aml_records")
+}
+
+model AMLCheck {
+  id            String          @id @default(cuid())
+  subjectType   AMLSubjectType
+  keyPersonId   String?
+  companyId     String?
+  checkedAt     DateTime        @default(now())
+  trigger       AMLCheckTrigger
+  triggeredById String?
+  result        AMLCheckResult
+  matches       Json?
+
+  keyPerson   KeyPerson? @relation("KeyPersonAMLCheck", fields: [keyPersonId], references: [id])
+  company     Company?   @relation("CompanyAMLCheck", fields: [companyId], references: [id])
+  triggeredBy User?      @relation("AMLCheckTrigger", fields: [triggeredById], references: [id])
+
+  @@map("aml_checks")
+}
+
+model AMLAlert {
+  id           String             @id @default(cuid())
+  amlRecordId  String
+  subjectType  AMLSubjectType
+  keyPersonId  String?
+  companyId    String?
+  matchScore   Float?
+  result       AMLCheckResult
+  resolution   AMLAlertResolution @default(PENDING)
+  reviewedById String?
+  reviewedAt   DateTime?
+  reviewNotes  String?
+  isActive     Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  amlRecord  AMLRecord @relation(fields: [amlRecordId], references: [id])
+  reviewedBy User?     @relation("AMLAlertReviewer", fields: [reviewedById], references: [id])
+
+  @@map("aml_alerts")
+}
+
+// ─────────────────────────────────────────────
+// DUE DILIGENCE REPORTS
+// ─────────────────────────────────────────────
+
+model DueDiligenceReport {
+  id                 String            @id @default(cuid())
+  companyId          String
+  reportDate         DateTime          @default(now())
+  overallRiskLevel   RiskLevel?
+  recommendation     DDRRecommendation?
+  recommendationNote String?
+  recommendedById    String?
+  recommendedAt      DateTime?
+  approvalStatus     Boolean?
+  approvalNote       String?
+  approvedById       String?
+  approvedAt         DateTime?
+  storageKey         String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  company         Company                @relation(fields: [companyId], references: [id])
+  riskAssessments RiskAssessmentAnswer[]
+
+  @@map("due_diligence_reports")
+}
+
+model RiskAssessmentAnswer {
+  id          String   @id @default(cuid())
+  companyId   String
+  ddrId       String?
+  questionKey String
+  category    String
+  answer      String
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company Company             @relation(fields: [companyId], references: [id])
+  ddr     DueDiligenceReport? @relation(fields: [ddrId], references: [id])
+
+  @@unique([companyId, ddrId, questionKey])
+  @@map("risk_assessment_answers")
+}
+
+// ─────────────────────────────────────────────
+// CORPORATE CHANGES
+// ─────────────────────────────────────────────
+
+model ShareholderChange {
+  id              String                @id @default(cuid())
+  companyId       String
+  changeType      ShareholderChangeType
+  effectiveDate   DateTime
+  transferorId    String?
+  transfereeId    String?
+  numberOfShares  Int?
+  shareClass      String?
+  consideration   Decimal?              @db.Decimal(18, 2)
+  filedWithCR     Boolean               @default(false)
+  filingDate      DateTime?
+  filingReference String?
+  processedById   String?
+  status          ChangeStatus          @default(PENDING)
+  notes           String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  company     Company   @relation(fields: [companyId], references: [id])
+  processedBy User?     @relation(fields: [processedById], references: [id])
+  documents   ShareholderChangeDocument[]
+
+  @@map("shareholder_changes")
+}
+
+model ShareholderChangeDocument {
+  changeId   String
+  documentId String
+
+  change   ShareholderChange @relation(fields: [changeId], references: [id], onDelete: Cascade)
+  document Document          @relation(fields: [documentId], references: [id])
+
+  @@id([changeId, documentId])
+  @@map("shareholder_change_documents")
+}
+
+model AddressChange {
+  id              String       @id @default(cuid())
+  companyId       String
+  previousAddress String
+  newAddress      String
+  effectiveDate   DateTime
+  noticeToCR      Boolean      @default(false)
+  nnd1FilingDate  DateTime?
+  nnd1Reference   String?
+  processedById   String?
+  status          ChangeStatus @default(PENDING)
+  notes           String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  company     Company @relation(fields: [companyId], references: [id])
+  processedBy User?   @relation(fields: [processedById], references: [id])
+  documents   AddressChangeDocument[]
+
+  @@map("address_changes")
+}
+
+model AddressChangeDocument {
+  changeId   String
+  documentId String
+
+  change   AddressChange @relation(fields: [changeId], references: [id], onDelete: Cascade)
+  document Document      @relation(fields: [documentId], references: [id])
+
+  @@id([changeId, documentId])
+  @@map("address_change_documents")
+}
+
+// ─────────────────────────────────────────────
+// ANNUAL FILINGS
+// ─────────────────────────────────────────────
+
+model AnnualFiling {
+  id               String       @id @default(cuid())
+  companyId        String
+  annualReturnDate DateTime
+  financialYearEnd DateTime?
+  filingDeadline   DateTime?
+  status           FilingStatus @default(NOT_STARTED)
+  filedDate        DateTime?
+  filingReference  String?
+  processedById    String?
+  notes            String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  company     Company @relation(fields: [companyId], references: [id])
+  processedBy User?   @relation(fields: [processedById], references: [id])
+  documents   AnnualFilingDocument[]
+
+  @@map("annual_filings")
+}
+
+model AnnualFilingDocument {
+  filingId   String
+  documentId String
+
+  filing   AnnualFiling @relation(fields: [filingId], references: [id], onDelete: Cascade)
+  document Document     @relation(fields: [documentId], references: [id])
+
+  @@id([filingId, documentId])
+  @@map("annual_filing_documents")
+}
+
+// ─────────────────────────────────────────────
+// SERVICE ORDERS
+// ─────────────────────────────────────────────
+
+model ServiceOrder {
+  id        String      @id @default(cuid())
+  userId    String
+  companyId String?
+  orderType OrderType
+  status    OrderStatus @default(PENDING)
+  formData  Json
+  notes     String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id])
+  company Company? @relation(fields: [companyId], references: [id])
+
+  @@map("service_orders")
+}
+
+// ─────────────────────────────────────────────
+// AUDIT LOG (append-only)
+// ─────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  userRole   String?
+  action     String
+  entityType String
+  entityId   String?
+  companyId  String?
+  beforeData Json?
+  afterData  Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  user    User?    @relation(fields: [userId], references: [id])
+  company Company? @relation("CompanyAuditLog", fields: [companyId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([companyId, createdAt])
+  @@index([userId, createdAt])
+  @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────────
+
+model Notification {
+  id              String           @id @default(cuid())
+  userId          String
+  type            NotificationType
+  title           String
+  message         String
+  relatedEntityId String?
+  isRead          Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}

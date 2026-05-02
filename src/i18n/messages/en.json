@@ -1,0 +1,686 @@
+{
+  "nav": {
+    "home": "Home",
+    "services": "Services",
+    "about": "About Us",
+    "contact": "Contact",
+    "faq": "FAQ",
+    "login": "Login",
+    "getStarted": "Get Started",
+    "dashboard": "Dashboard",
+    "kyc": "KYC",
+    "documents": "Documents",
+    "orders": "Orders",
+    "notifications": "Notifications",
+    "logout": "Logout",
+    "companies": "Companies",
+    "aml": "AML Screening",
+    "settings": "Settings"
+  },
+  "home": {
+    "heroTitleHighlight": "6AM Advisory",
+    "heroTitleSub": "Build on HK, Grow to the World",
+    "heroTitle": "Build on HK, Grow to the World",
+    "heroSubtitle": "Your trusted Hong Kong TCSP partner for company formation, secretarial, accounting and business advisory services.",
+    "heroCtaStart": "Get Started",
+    "heroCtaLearn": "Learn More",
+    "stat": {
+      "companies": "Client Companies",
+      "years": "Years of Experience",
+      "license": "Licensed TCSP"
+    },
+    "pillarsEyebrow": "Our Services",
+    "pillars": {
+      "secretarial": {
+        "title": "Company Secretarial",
+        "desc": "Company incorporation, statutory filings, annual returns and register maintenance."
+      },
+      "accounting": {
+        "title": "Accounting & Tax",
+        "desc": "Bookkeeping, financial reporting, tax filing and strategic tax planning."
+      },
+      "advisory": {
+        "title": "Business Advisory",
+        "desc": "Cross-border market entry, M&A support and corporate restructuring."
+      }
+    },
+    "whyEyebrow": "Why 6AM Advisory",
+    "whyTitle": "A Professional, Trusted Partner",
+    "whyDesc": "As a licensed Hong Kong TCSP, we combine deep legal and compliance expertise with responsive client service to support your business end to end.",
+    "why": {
+      "compliance": "Compliance focus",
+      "responsive": "Fast turnaround",
+      "team": "Expert team",
+      "bilingual": "Bilingual service"
+    },
+    "processEyebrow": "How It Works",
+    "processTitle": "Setting Up in 6 Steps",
+    "processSub": "From decision to fully operational — as fast as one business day.",
+    "process": {
+      "1": { "title": "Determine Structure", "desc": "Choose company type, shareholding and directorship arrangement." },
+      "2": { "title": "Prepare Documents", "desc": "Finalise the company name and prepare all statutory documentation." },
+      "3": { "title": "Submit Application", "desc": "File with the Companies Registry and obtain your Certificate of Incorporation." },
+      "4": { "title": "Appoint Secretary", "desc": "Designate a qualified Hong Kong resident as company secretary." },
+      "5": { "title": "Register Address", "desc": "Establish a registered office address for official correspondence." },
+      "6": { "title": "Accounting Setup", "desc": "Implement accounting systems and commence tax compliance obligations." }
+    },
+    "testimonialsTitle": "What Our Clients Say",
+    "newsTitle": "Latest News",
+    "pillarsTitle": "What We Do",
+    "ctaTitle": "Ready to Get Started?",
+    "ctaDesc": "Talk to our team today and get your Hong Kong company set up in as little as one business day."
+  },
+  "services": {
+    "title": "Our Services",
+    "subtitle": "A one-stop professional firm tailored for high-net-worth clients — combining rigorous compliance management with strategic business advisory.",
+    "getStarted": "Get Started",
+    "secretarial": {
+      "title": "Company Formation & Secretarial",
+      "intro": "The cornerstone of effective corporate governance and sustainable growth. We offer customised solutions for businesses at every stage, combining rigorous compliance management with efficient execution.",
+      "items": [
+        "Hong Kong company incorporation (fast track, same business day)",
+        "Registered office address provision",
+        "Statutory document filing with Companies Registry",
+        "Director and shareholder changes",
+        "Annual Return preparation and submission",
+        "Board resolutions and AGM minutes",
+        "Share allotment, buyback and equity adjustments",
+        "Company name and business nature changes"
+      ],
+      "tiersEyebrow": "Solutions by Company Size",
+      "startup": {
+        "label": "Startup",
+        "size": "Under 10 employees",
+        "items": [
+          "Company secretary appointment and annual filings",
+          "Registered address and address change management",
+          "Director updates and register maintenance",
+          "Board meeting minutes and resolutions",
+          "Accounting and tax consultation support"
+        ]
+      },
+      "sme": {
+        "label": "SME",
+        "size": "10–20 employees",
+        "items": [
+          "Full compliance reminders and deadline tracking",
+          "Annual filings and legal document submissions",
+          "Director and shareholder changes",
+          "Share buyback and equity adjustment support",
+          "Meeting document preparation and filing",
+          "Tax and accounting coordination"
+        ]
+      },
+      "large": {
+        "label": "Enterprise",
+        "size": "Over 20 employees",
+        "items": [
+          "Full secretarial and daily compliance management",
+          "Board and shareholder meeting support",
+          "Share issuance, buyback and restructuring",
+          "Shareholder registry maintenance",
+          "Director responsibility and compliance consultation",
+          "Business name or nature change filings"
+        ]
+      },
+      "virtualOfficeTitle": "Virtual Office",
+      "virtualOfficeDesc": "A legal registered address and mail handling service — maintain a professional Hong Kong presence without a physical office."
+    },
+    "accounting": {
+      "title": "Accounting & Tax",
+      "intro": "Financial transparency and tax compliance are the cornerstones of sustainable growth. We implement standardised processes and mainstream accounting systems tailored to your needs.",
+      "items": [
+        "General ledger and auxiliary account maintenance",
+        "Income, expense, asset and liability categorisation",
+        "Bank reconciliation and cash flow management",
+        "Monthly, quarterly and annual financial statements",
+        "Profits tax, salaries tax and statutory returns",
+        "Audit coordination with complete documentation",
+        "Financial budgeting and forecasting",
+        "Cross-border tax consulting and IFRS/HKFRS advice"
+      ],
+      "toolsNote": "We work with Xero, QuickBooks and MYOB — applying dual-review principles and encrypted data protection for every client."
+    },
+    "advisory": {
+      "title": "Business Advisory & Expansion",
+      "intro": "Beyond compliance, we provide strategic support to help your business grow across borders and adapt to changing market conditions.",
+      "items": [
+        "Cross-border market entry strategy",
+        "M&A integration and due diligence support",
+        "Corporate restructuring advisory",
+        "Financing coordination and fundraising assistance",
+        "Wealth management compliance advisory",
+        "Business consultation and growth planning"
+      ]
+    },
+    "otherEyebrow": "Extended Services",
+    "otherTitle": "Beyond the Essentials",
+    "otherSubtitle": "Comprehensive support for offshore structures, banking and compliance management.",
+    "other": {
+      "wfoe": {
+        "title": "WFOE Registration",
+        "subtitle": "China Market Entry",
+        "desc": "Full support for establishing a Wholly Foreign-Owned Enterprise in mainland China — from consultation and document preparation through government approval."
+      },
+      "bvi": {
+        "title": "BVI / Offshore Company",
+        "subtitle": "International Structures",
+        "desc": "Quick and efficient BVI company registration, commonly used for international trade, wealth management and tax planning structures."
+      },
+      "bank": {
+        "title": "Bank Account Opening",
+        "subtitle": "Financial Infrastructure",
+        "desc": "Customised solutions for selecting the appropriate bank and managing the due diligence and account-opening process end to end."
+      },
+      "compliance": {
+        "title": "Compliance & Risk Management",
+        "subtitle": "AML & Due Diligence",
+        "desc": "AML policy design, customer due diligence procedures, and comprehensive assessments covering financial, legal and reputational risk."
+      }
+    },
+    "tiers": {
+      "eyebrow": "Service Packages",
+      "title": "Choose Your Package",
+      "popular": "Most Popular",
+      "basic": "Basic",
+      "professional": "Professional",
+      "premium": "Premium",
+      "basicDesc": "Hong Kong company incorporation only",
+      "basicItems": ["Company name search", "Articles of association", "Certificate of Incorporation", "Business Registration Certificate"],
+      "professionalDesc": "Incorporation + 1-year secretarial support",
+      "professionalItems": ["Everything in Basic", "1-year company secretary service", "Compliance reminders & deadline tracking", "Board resolutions & meeting minutes"],
+      "premiumDesc": "Professional + virtual office & privacy protection",
+      "premiumItems": ["Everything in Professional", "1-year registered office address", "Mail handling & forwarding", "Director privacy protection filing"],
+      "customNote": "Need a tailored solution? Contact us and we'll prepare a bespoke quote for your business."
+    }
+  },
+  "about": {
+    "title": "About 6AM Advisory",
+    "subtitle": "A one-stop professional firm for high-net-worth clients and family enterprises.",
+    "intro": "6AM Advisory Limited is a licensed Trust and Company Service Provider (TCSP) in Hong Kong, dedicated to providing comprehensive corporate services to businesses and high-net-worth individuals.",
+    "tcspLicence": "Licensed TCSP under AMLO Cap. 615, Hong Kong",
+    "positioningEyebrow": "Who We Are",
+    "positioningDesc": "6AM Advisory is a one-stop professional firm tailored for high-net-worth clients and family enterprises across Hong Kong and international markets. Our team of enterprise advisors, chartered secretaries and accountants brings extensive cross-industry and cross-regional experience — combining strategic insight with execution capability to achieve sustainable growth for our clients.",
+    "teamPhone2": "+86 1554 686 8835",
+    "valuesTitle": "Our Core Values",
+    "values": {
+      "integrity": { "title": "Integrity", "desc": "We operate with complete transparency and hold ourselves to the highest professional standards." },
+      "expertise": { "title": "Expertise", "desc": "Deep knowledge of HK company law, TCSP regulations and cross-border compliance." },
+      "partnership": { "title": "Partnership", "desc": "We build long-term relationships, growing alongside our clients." }
+    },
+    "coresEyebrow": "Our Approach",
+    "coresTitle": "Three Pillars of Advisory Excellence",
+    "cores": {
+      "formation": {
+        "title": "Company Formation & Compliance",
+        "desc": "From incorporation to ongoing statutory filings, we streamline processes and standardise document management to ensure efficient legal establishment and sound corporate governance."
+      },
+      "financial": {
+        "title": "Financial & Tax Management",
+        "desc": "Financial transparency and tax compliance are the cornerstones of sustainable growth. We provide strategic tax planning, systematic bookkeeping and full audit coordination."
+      },
+      "secretarial": {
+        "title": "Corporate Secretary & Governance",
+        "desc": "A statutory requirement in Hong Kong — we manage annual filings, board documentation, compliance reminders and shareholding changes through systematised mechanisms."
+      }
+    },
+    "officeTitle": "Our Office",
+    "address": "Address",
+    "addressValue": "Unit 7, 20/F, Boss Commercial Centre, 28 Ferry Street, Jordan, Kowloon, Hong Kong",
+    "phone": "Phone",
+    "phoneValue": "+852 6560 0073",
+    "email": "Email",
+    "emailValue": "kennywong@6amadvise.com",
+    "hours": "Business Hours",
+    "hoursValue": "Mon–Fri 09:00–18:00 | Sat by appointment",
+    "contactUs": "Contact Us"
+  },
+  "contact": {
+    "title": "Contact Us",
+    "subtitle": "Get in touch with our team for any enquiry or service request.",
+    "formTitle": "Send Us a Message",
+    "name": "Full Name",
+    "email": "Email Address",
+    "phone": "Phone (optional)",
+    "subject": "Subject",
+    "message": "Message",
+    "send": "Send Message",
+    "sending": "Sending...",
+    "sentSuccess": "Message sent! We'll get back to you within 1 business day.",
+    "sentDesc": "Thank you for reaching out. Our team will respond shortly.",
+    "sentError": "Failed to send. Please try again or email us directly.",
+    "officeTitle": "Office Details",
+    "address": "Address",
+    "addressValue": "Unit 7, 20/F, Boss Commercial Centre, 28 Ferry Street, Jordan, Kowloon, Hong Kong",
+    "phoneValue": "+852 6560 0073",
+    "emailLabel": "Email",
+    "emailValue": "kennywong@6amadvise.com",
+    "hours": "Business Hours",
+    "hoursValue": "Mon–Fri 09:00–18:00 | Sat by appointment"
+  },
+  "faq": {
+    "title": "Frequently Asked Questions",
+    "subtitle": "Everything you need to know about Hong Kong company formation and TCSP services.",
+    "groupIncorporation": "Company Formation",
+    "groupCompliance": "Compliance & KYC",
+    "groupServices": "Services & Operations",
+    "items": {
+      "incorporation": {
+        "q": "How long does it take to incorporate a Hong Kong company?",
+        "a": "Standard incorporation takes 1–2 working days online. We provide a fast-track service that can complete within the same business day."
+      },
+      "kyc": {
+        "q": "What documents are required for KYC?",
+        "a": "We require a government-issued photo ID (HKID or passport), proof of residential address (utility bill or bank statement within 3 months), and a completed KYC form."
+      },
+      "annualFiling": {
+        "q": "When is the Annual Return due?",
+        "a": "The Annual Return must be filed within 42 days after the anniversary of the company's incorporation date each year."
+      },
+      "fees": {
+        "q": "What is the minimum share capital for a HK company?",
+        "a": "There is no minimum share capital requirement. Most companies are formed with HK$10,000 divided into 10,000 ordinary shares of HK$1 each."
+      },
+      "timeline": {
+        "q": "Do I need a local director?",
+        "a": "No. HK companies can have 100% foreign directors and shareholders. However, the company secretary must be a Hong Kong resident or a corporation with a registered office in HK."
+      },
+      "address": {
+        "q": "Can I use a virtual office address?",
+        "a": "Yes. Our Premium tier includes a registered address service at our Jordan office for statutory purposes."
+      },
+      "aml": {
+        "q": "What is AML screening and why is it required?",
+        "a": "As a licensed TCSP, we are required under AMLO Cap. 615 to screen all clients and related parties against international sanctions lists and maintain ongoing due diligence records."
+      },
+      "documents": {
+        "q": "Where can I download my statutory documents (ROD, ROM, ROSC)?",
+        "a": "After login, go to Documents in your client portal. All generated statutory registers and filings are available for download as DOCX or PDF."
+      },
+      "director": {
+        "q": "What are the disclosure requirements for directors and shareholders?",
+        "a": "Under the Companies Ordinance, Hong Kong companies must maintain a Register of Directors and a Register of Significant Controllers (ROSC). All directors and beneficial owners holding significant control must disclose their identities to the company and keep information updated."
+      },
+      "foreign": {
+        "q": "Can a Hong Kong company be 100% foreign-owned?",
+        "a": "Yes. Hong Kong imposes no restrictions on foreign ownership. A company can be 100% owned by foreign individuals or entities — there is no requirement for a local shareholder or director."
+      },
+      "financialStmt": {
+        "q": "Is a private company required to prepare annual financial statements?",
+        "a": "Yes. All Hong Kong private companies must prepare annual financial statements compliant with HKFRS. Small companies meeting certain criteria may qualify for simplified reporting exemptions."
+      },
+      "dormant": {
+        "q": "Can I keep a company registered without conducting active business?",
+        "a": "Yes. A dormant or holding company can remain registered as long as annual fees and statutory filings are maintained. This is common for companies holding intellectual property, assets, or reserved for future use."
+      },
+      "wfoe": {
+        "q": "What is a WFOE and when do I need one?",
+        "a": "A Wholly Foreign-Owned Enterprise (WFOE) is the most common structure for foreign businesses operating directly in mainland China. It is required when you wish to conduct business, hire local staff, or receive RMB revenue in China. We provide full support from consultation through government approval."
+      },
+      "secretary": {
+        "q": "What are the requirements for a company secretary in Hong Kong?",
+        "a": "Every Hong Kong company must appoint a company secretary. If an individual, they must be a Hong Kong resident. If a corporate body, it must have its registered office or principal place of business in Hong Kong. The company secretary cannot be the sole director of the company."
+      }
+    }
+  },
+  "auth": {
+    "loginTitle": "Sign In",
+    "loginDesc": "Enter your email and password to access your account.",
+    "registerTitle": "Create Account",
+    "registerDesc": "Register to get started with 6AM Advisory services.",
+    "verifyTitle": "Verify Your Email",
+    "verifyDesc": "Enter the 6-digit code we sent to your email address.",
+    "forgotPasswordTitle": "Forgot Password",
+    "forgotPasswordDesc": "Enter your email and we'll send a reset link.",
+    "resetPasswordTitle": "Reset Password",
+    "resetPasswordDesc": "Enter your new password below.",
+    "email": "Email Address",
+    "password": "Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "fullName": "Full Name (English)",
+    "nameEn": "Full Name (English)",
+    "nameZh": "Full Name (Chinese)",
+    "phone": "Mobile Phone",
+    "otp": "Verification Code",
+    "otpCode": "Verification Code",
+    "forgotPassword": "Forgot Password?",
+    "login": "Sign In",
+    "loginBtn": "Sign In",
+    "register": "Create Account",
+    "registerBtn": "Create Account",
+    "verify": "Verify",
+    "verifyBtn": "Verify",
+    "sendResetLink": "Send Reset Link",
+    "resetPassword": "Reset Password",
+    "resetBtn": "Reset Password",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "hasAccount": "Already have an account?",
+    "backToLogin": "Back to Sign In",
+    "otpSent": "Verification code sent! Check your email.",
+    "emailVerified": "Email verified! You can now sign in.",
+    "resetEmailSent": "If that email exists, a reset link has been sent. Check your inbox.",
+    "passwordReset": "Password reset successfully! Please sign in.",
+    "loginFailed": "Invalid email or password.",
+    "registerFailed": "Registration failed. Please try again.",
+    "verifyFailed": "Invalid or expired verification code.",
+    "resetFailed": "Invalid or expired reset link.",
+    "invalidToken": "Invalid reset link. Please request a new one.",
+    "errorGeneric": "Something went wrong. Please try again.",
+    "sending": "Sending...",
+    "loggingIn": "Signing in...",
+    "verifying": "Verifying...",
+    "resetting": "Resetting...",
+    "resendOtp": "Resend Code",
+    "terms": "I agree to the Terms of Service and Privacy Policy"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome, {name}",
+    "companies": "Your Companies",
+    "pendingActions": "Pending Actions",
+    "noCompanies": "No companies yet. Place a service order to get started.",
+    "nextAR": "Next Annual Return",
+    "kycStatus": "KYC Status",
+    "notifications": "Unread Notifications",
+    "quickLinksTitle": "Quick Actions",
+    "quickLinks": {
+      "newOrder": "New Service Order",
+      "uploadDoc": "Upload Document",
+      "downloadDocs": "Download Documents"
+    }
+  },
+  "kyc": {
+    "title": "Know Your Client (KYC)",
+    "multiSubtitle": "You may add multiple persons for KYC declaration",
+    "addPerson": "Add Person",
+    "minOnePerson": "At least one person is required",
+    "personIndex": "Person",
+    "kycIdHint": "Please upload a valid identity document",
+    "saveBeforeUpload": "Please save a draft before uploading documents",
+    "uploaded": "Uploaded",
+    "downloadKycDoc": "Download KYC Document",
+    "signatureName": "Signatory Name",
+    "declarationDate": "Declaration Date",
+    "status": {
+      "draft": "Draft",
+      "submitted": "Submitted",
+      "pending": "Pending Additional Info",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "sectionA": "Basic Information",
+    "sectionB": "Occupation Information",
+    "sectionC": "Financial Profile",
+    "sectionD": "Declaration",
+    "fields": {
+      "title": "Title",
+      "nameEn": "English Name",
+      "nameZh": "Chinese Name",
+      "idType": "ID Type",
+      "idNumber": "ID / Passport Number",
+      "placeOfIssue": "Place of Issue",
+      "placeOfBirth": "Place of Birth",
+      "expiryDate": "Expiry Date",
+      "dob": "Date of Birth",
+      "nationality": "Nationality",
+      "homeAddress": "Home Address",
+      "contactAddress": "Contact Address",
+      "homePhone": "Home Phone",
+      "workPhone": "Work Phone",
+      "mobile": "Mobile Phone",
+      "wechat": "WeChat ID",
+      "email": "Email",
+      "usCitizen": "US Citizen or US Tax Resident",
+      "emergencyContact": "Emergency Contact & Phone",
+      "employmentStatus": "Employment Status",
+      "employerName": "Employer / Company Name",
+      "companyAddress": "Company Address",
+      "businessNature": "Nature of Business",
+      "position": "Position",
+      "workingYears": "Working Years",
+      "sourceOfFunds": "Source of Funds",
+      "sourceOfWealth": "Source of Wealth",
+      "annualIncome": "Annual Income (USD)",
+      "netAssets": "Net Asset Value (USD)",
+      "assetItems": "Asset Items",
+      "isPep": "I am or have been a Politically Exposed Person (PEP)"
+    },
+    "employment": {
+      "employed": "Employed",
+      "selfEmployed": "Self-Employed",
+      "retired": "Retired",
+      "unemployed": "Unemployed"
+    },
+    "documents": "Supporting Documents",
+    "dropzoneHint": "Drag & drop files here, or click to select",
+    "dropzoneTypes": "PDF, JPG, PNG — max 10MB each",
+    "uploadIdHint": "Upload ID / Passport copy — PDF, JPG, PNG, max 10 MB",
+    "uploadAddressHint": "Upload proof of address — PDF, JPG, PNG, max 10 MB",
+    "uploadFinancialHint": "Upload financial proof documents — PDF, JPG, PNG, max 10 MB",
+    "uploadOtherHint": "Upload other certification files — PDF, JPG, PNG, max 10 MB",
+    "financialDocuments": "Financial Documents",
+    "otherCertifications": "Other Certification Files",
+    "otherCertificationsHint": "Upload any additional supporting certification files here.",
+    "declaration": "I confirm that the above information is true and accurate, and I am authorised to supply any or all of such information for due diligence purposes to the Regulators if so requested by them.",
+    "submit": "Submit KYC",
+    "submitting": "Submitting...",
+    "submitSuccess": "KYC submitted successfully! Our team will review shortly.",
+    "saveDraft": "Save Draft",
+    "saving": "Saving...",
+    "draftSaved": "Draft saved.",
+    "next": "Next",
+    "back": "Back"
+  },
+  "documents": {
+    "title": "Documents",
+    "subtitle": "Download your company statutory documents and filings.",
+    "all": "All Documents",
+    "download": "Download",
+    "downloading": "Downloading...",
+    "downloadFailed": "Download failed. Please try again.",
+    "loading": "Loading...",
+    "empty": "No documents available yet.",
+    "noDocuments": "No documents available yet.",
+    "name": "File Name",
+    "type": "Type",
+    "company": "Company",
+    "date": "Date",
+    "types": {
+      "CI": "Certificate of Incorporation",
+      "BR": "Business Registration Certificate",
+      "ROD": "Register of Directors",
+      "ROM": "Register of Members",
+      "ROSC": "Register of Significant Controllers",
+      "AR": "Annual Return",
+      "DDR": "Due Diligence Report",
+      "RESOLUTION": "Board Resolution",
+      "MINUTES": "Meeting Minutes",
+      "KYC": "KYC Document",
+      "OTHER": "Other"
+    }
+  },
+  "orders": {
+    "title": "Service Orders",
+    "subtitle": "Manage your service requests",
+    "newOrder": "New Order",
+    "orderType": "Service Type",
+    "description": "Additional Notes",
+    "descriptionPlaceholder": "Please describe your requirements...",
+    "submit": "Place Order",
+    "submitting": "Submitting...",
+    "cancel": "Cancel",
+    "created": "Order placed successfully!",
+    "failed": "Failed to place order.",
+    "empty": "No orders yet.",
+    "status": "Status",
+    "date": "Date",
+    "types": {
+      "incorporation": "Company Incorporation",
+      "registered_address": "Registered Address",
+      "annual_return": "Annual Return Filing",
+      "accounting": "Accounting Service",
+      "advisory": "Business Advisory"
+    },
+    "statuses": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    }
+  },
+  "admin": {
+    "nav": {
+      "main": "Main",
+      "operations": "Operations",
+      "system": "System"
+    },
+    "dashboard": {
+      "title": "Admin Dashboard",
+      "totalCompanies": "Active Companies",
+      "pendingKyc": "Pending KYC",
+      "amlAlerts": "Open AML Alerts",
+      "upcomingAR": "AR Due in 30 Days",
+      "recentActivity": "Recent Activity",
+      "noActivity": "No recent activity."
+    },
+    "companies": {
+      "title": "Companies",
+      "add": "Add Company",
+      "search": "Search companies...",
+      "exportCsv": "Export CSV",
+      "companyName": "Company Name",
+      "companyNumber": "Company No.",
+      "status": "Status",
+      "client": "Client",
+      "arDate": "AR Date",
+      "view": "View",
+      "empty": "No companies found.",
+      "newTitle": "New Company",
+      "clientOwner": "Client (portal account)",
+      "clientOwnerHint": "Use the same email the client will use (or already uses) on the portal. If they have not registered yet, the company is reserved until they sign up with that email.",
+      "clientModeVerified": "Verified signup — choose client",
+      "clientModeEmail": "Enter client email (not registered yet is OK)",
+      "clientSelectPlaceholder": "Select client email…",
+      "clientEmailLabel": "Client signup email",
+      "clientEmailPlaceholder": "same as client registration email",
+      "clientRequired": "Link a client by selecting an account or entering their signup email.",
+      "noVerifiedClients": "No verified client accounts yet.",
+      "createSuccess": "Company created.",
+      "createSuccessPending": "Company created. The client will see it after they register and verify with this email.",
+      "clientEmailNotFound": "No client account with this email. The client must register on the portal first.",
+      "invalidClientUser": "Invalid client selected.",
+      "clientEmailInvalid": "Please enter a valid email address.",
+      "back": "Back"
+    },
+    "kyc": {
+      "title": "KYC Review Queue",
+      "clientAccount": "Client account",
+      "clientEmail": "Client email",
+      "all": "All",
+      "empty": "No records found.",
+      "approve": "Approve",
+      "reject": "Reject",
+      "requestInfo": "Request Info",
+      "rejectReason": "Reason (required for rejection)",
+      "reasonPlaceholder": "Enter rejection reason...",
+      "reasonRequired": "A reason is required when rejecting.",
+      "actionFailed": "Action failed. Please try again.",
+      "actionSuccess": "Action completed successfully.",
+      "alreadyProcessed": "This KYC has already been processed."
+    },
+    "aml": {
+      "title": "AML Alerts",
+      "runScan": "Run AML Scan",
+      "ingest": "Ingest Sanctions Lists",
+      "extractLocal": "Extract from local files",
+      "extractingLocal": "Extracting from local…",
+      "skippedNoLocal": "No local file for today",
+      "severity": {
+        "strong": "Strong Hit",
+        "potential": "Potential Hit",
+        "weak": "Weak Hit"
+      },
+      "resolution": {
+        "falsePositive": "False Positive",
+        "confirmed": "Confirmed",
+        "escalated": "Escalated",
+        "pending": "Pending Review"
+      }
+    },
+    "directors": {
+      "add": "Add Director",
+      "cease": "Cease Director",
+      "title": "Register of Directors"
+    },
+    "members": {
+      "add": "Add Member",
+      "transfer": "Transfer Shares",
+      "title": "Register of Members"
+    },
+    "controllers": {
+      "add": "Add Controller",
+      "title": "Register of Significant Controllers"
+    },
+    "docgen": {
+      "generateROD": "Generate ROD",
+      "generateROM": "Generate ROM",
+      "generateROSC": "Generate ROSC",
+      "generateDDR": "Generate Due Diligence Report",
+      "generateAnnual": "Generate Annual Filing Package"
+    }
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "loading": "Loading...",
+    "error": "An error occurred. Please try again.",
+    "success": "Saved successfully.",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "export": "Export",
+    "upload": "Upload",
+    "download": "Download",
+    "yes": "Yes",
+    "no": "No",
+    "active": "Active",
+    "inactive": "Inactive",
+    "status": "Status",
+    "date": "Date",
+    "name": "Name",
+    "actions": "Actions",
+    "noData": "No data found.",
+    "required": "This field is required",
+    "invalidEmail": "Invalid email address",
+    "passwordMismatch": "Passwords do not match",
+    "hkd": "HKD",
+    "usd": "USD"
+  },
+  "footer": {
+    "tagline": "Build on HK, Grow to the World — licensed TCSP for company secretarial, accounting and advisory services.",
+    "tcspNote": "Licensed under AMLO Cap. 615 — Trust or Company Service Provider",
+    "quickLinks": "Quick Links",
+    "home": "Home",
+    "services": "Services",
+    "about": "About",
+    "contact": "Contact",
+    "faq": "FAQ",
+    "contact": "Contact",
+    "address": "Unit 7, 20/F, Boss Commercial Centre, 28 Ferry Street, Jordan, Kowloon, HK",
+    "phone": "+852 6560 0073",
+    "email": "kennywong@6amadvise.com",
+    "hours": "Mon–Fri 09:00–18:00",
+    "copyright": "© 2025 6AM Advisory Limited. All rights reserved.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service"
+  }
+}

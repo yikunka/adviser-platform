@@ -1,0 +1,55 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://adviser:${POSTGRES_PASSWORD}@db:5432/adviser_db
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - adviser_net
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: adviser
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_strong_password}
+      POSTGRES_DB: adviser_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    command: >
+      postgres
+        -c shared_buffers=128MB
+        -c max_connections=50
+        -c work_mem=4MB
+        -c effective_cache_size=512MB
+        -c maintenance_work_mem=32MB
+        -c checkpoint_completion_target=0.9
+        -c wal_buffers=4MB
+        -c default_statistics_target=100
+        -c random_page_cost=1.1
+        -c effective_io_concurrency=200
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U adviser -d adviser_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - adviser_net
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  adviser_net:
+    driver: bridge

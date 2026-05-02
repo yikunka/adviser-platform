@@ -1,26 +1,305 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --font-display: var(--font-display);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-gold: var(--gold);
+  --color-gold-muted: var(--gold-muted);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ── 6AM Advisory: Black × Gold × White theme ─────────────────────── */
+:root {
+  /* Gold palette — extracted from 6AM Advisory logo */
+  --gold: #C9A96E;
+  --gold-muted: #8A6E42;
+
+  /* Base (light mode kept for public pages) */
+  --background: #FAFAF8;
+  --foreground: #0C0C0C;
+  --card: #FFFFFF;
+  --card-foreground: #0C0C0C;
+  --popover: #FFFFFF;
+  --popover-foreground: #0C0C0C;
+  --primary: #C9A96E;
+  --primary-foreground: #0C0C0C;
+  --secondary: #F4F0E8;
+  --secondary-foreground: #3A3020;
+  --muted: #F4F0E8;
+  --muted-foreground: #7A7060;
+  --accent: #F4F0E8;
+  --accent-foreground: #3A3020;
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: #E8E0D0;
+  --input: #E8E0D0;
+  --ring: #C9A96E;
+  --chart-1: #C9A96E;
+  --chart-2: #8A6E42;
+  --chart-3: #5C4A2A;
+  --chart-4: #3A3020;
+  --chart-5: #1A1208;
+  --radius: 0.5rem;
+  --sidebar: #FAFAF8;
+  --sidebar-foreground: #0C0C0C;
+  --sidebar-primary: #C9A96E;
+  --sidebar-primary-foreground: #0C0C0C;
+  --sidebar-accent: #F4F0E8;
+  --sidebar-accent-foreground: #3A3020;
+  --sidebar-border: #E8E0D0;
+  --sidebar-ring: #C9A96E;
+}
+
+/* ── Client portal dark theme ──────────────────────────────────────── */
+.theme-dark {
+  --background: #0C0C0C;
+  --foreground: #F0EAD8;
+  --card: #141414;
+  --card-foreground: #F0EAD8;
+  --popover: #1A1A1A;
+  --popover-foreground: #F0EAD8;
+  --primary: #C9A96E;
+  --primary-foreground: #0C0C0C;
+  --secondary: #1E1E1E;
+  --secondary-foreground: #C9A96E;
+  --muted: #1A1A1A;
+  --muted-foreground: #7A7060;
+  --accent: #1E1A12;
+  --accent-foreground: #C9A96E;
+  --destructive: #C0392B;
+  --border: #2A2418;
+  --input: #1E1A12;
+  --ring: #C9A96E;
+  --radius: 0.5rem;
+  --sidebar: #0A0A0A;
+  --sidebar-foreground: #F0EAD8;
+  --sidebar-primary: #C9A96E;
+  --sidebar-primary-foreground: #0C0C0C;
+  --sidebar-accent: #1E1A12;
+  --sidebar-accent-foreground: #C9A96E;
+  --sidebar-border: #2A2418;
+  --sidebar-ring: #C9A96E;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ── Gold scrollbar for dark theme ────────────────────────────────── */
+.theme-dark ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.theme-dark ::-webkit-scrollbar-track {
+  background: #0C0C0C;
+}
+.theme-dark ::-webkit-scrollbar-thumb {
+  background: #2A2418;
+  border-radius: 3px;
+}
+.theme-dark ::-webkit-scrollbar-thumb:hover {
+  background: #C9A96E;
+}
+
+/* ── Portal hover utilities (CSS-only, safe in Server Components) ──── */
+.portal-card-hover {
+  transition: border-color 150ms, background 150ms;
+}
+.theme-dark .portal-card-hover:hover {
+  border-color: #C9A96E !important;
+  background: var(--accent) !important;
+}
+.portal-row-hover {
+  transition: background 120ms;
+}
+.theme-dark .portal-row-hover:hover {
+  background: var(--accent) !important;
+}
+.portal-btn-outline {
+  transition: border-color 150ms, color 150ms;
+}
+.theme-dark .portal-btn-outline:hover {
+  border-color: #C9A96E !important;
+  color: #C9A96E !important;
+}
+
+/* ── Gold shimmer utility ──────────────────────────────────────────── */
+@keyframes gold-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.gold-shimmer {
+  background: linear-gradient(90deg, #8A6E42 0%, #C9A96E 40%, #F0D090 50%, #C9A96E 60%, #8A6E42 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gold-shimmer 4s linear infinite;
+}
+
+/* ── Public hero: ambient motion (no logo) ───────────────────────── */
+@keyframes hero-orb-drift-a {
+  0%,
+  100% {
+    transform: translateX(-50%) translate(0, 0) scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateX(-50%) translate(1.5%, 3%) scale(1.04);
+    opacity: 1;
+  }
+}
+@keyframes hero-orb-drift-b {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-3%, 2%) scale(1.08);
+  }
+}
+@keyframes hero-orb-drift-c {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate(2%, -2%);
+    opacity: 0.65;
+  }
+}
+@keyframes hero-shimmer-line {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.hero-orb-a {
+  animation: hero-orb-drift-a 18s ease-in-out infinite;
+}
+.hero-orb-b {
+  animation: hero-orb-drift-b 22s ease-in-out infinite;
+}
+.hero-orb-c {
+  animation: hero-orb-drift-c 16s ease-in-out infinite 2s;
+}
+.hero-perspective-grid {
+  background-image:
+    linear-gradient(rgba(201, 169, 110, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201, 169, 110, 0.04) 1px, transparent 1px);
+  background-size: 56px 56px;
+  transform: perspective(800px) rotateX(12deg) scale(1.15);
+  transform-origin: 50% 0%;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 20%, transparent 75%);
+  opacity: 0.7;
+  animation: hero-grid-breathe 24s ease-in-out infinite;
+}
+@keyframes hero-grid-breathe {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+.hero-line-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    transparent 40%,
+    rgba(201, 169, 110, 0.45) 50%,
+    transparent 60%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: hero-shimmer-line 6s ease-in-out infinite;
+  opacity: 0.7;
+}
+
+/* Public site typography */
+.font-display { font-family: var(--font-display), 'Georgia', serif; }
+
+/* Public site hover utilities (CSS-only, safe in Server Components) */
+.public-card-hover {
+  transition: border-color 200ms, box-shadow 200ms;
+}
+.public-card-hover:hover {
+  border-color: #C9A96E !important;
+  box-shadow: 0 0 0 1px rgba(201,169,110,0.2), 0 4px 24px rgba(201,169,110,0.08);
+}
+.public-link-hover {
+  transition: color 150ms;
+}
+.public-link-hover:hover {
+  color: #C9A96E !important;
+}
+
+/* ── Hide browser date-format hint (dd/mm/yyyy) on empty date inputs ── */
+input[type="date"]:not(:valid)::-webkit-datetime-edit-day-field,
+input[type="date"]:not(:valid)::-webkit-datetime-edit-month-field,
+input[type="date"]:not(:valid)::-webkit-datetime-edit-year-field,
+input[type="date"]:not(:valid)::-webkit-datetime-edit-text {
+  color: transparent;
+}
+input[type="datetime-local"]:not(:valid)::-webkit-datetime-edit-day-field,
+input[type="datetime-local"]:not(:valid)::-webkit-datetime-edit-month-field,
+input[type="datetime-local"]:not(:valid)::-webkit-datetime-edit-year-field,
+input[type="datetime-local"]:not(:valid)::-webkit-datetime-edit-hour-field,
+input[type="datetime-local"]:not(:valid)::-webkit-datetime-edit-minute-field,
+input[type="datetime-local"]:not(:valid)::-webkit-datetime-edit-text {
+  color: transparent;
 }

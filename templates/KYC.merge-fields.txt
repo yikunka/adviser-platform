@@ -1,0 +1,17 @@
+Place your official "KYC.docx" in this folder (filename: KYC.docx, kyc.docx, or KYC.template.docx).
+
+Optional: use docxtemplater tags in Word so the app fills your layout instead of the built-in table:
+- Top level: {exportDate}
+- Repeat block for each person:
+  {#persons}
+  {index}  {nameEnRaw}  {kycStatus}
+  {titlePrefix} {nameEn} {nameZh} {idType} {idNumber} {placeOfIssue} {placeOfBirth}
+  {idExpiryDate} {dateOfBirth} {nationality}
+  {homeAddress} {contactAddress} {homePhone} {workPhone} {mobile} {wechat} {email}
+  {isUsCitizen} {isPep} {emergencyContact}
+  {employmentStatus} {employerName} {employerAddress} {businessNatures} {position} {workingYears}
+  {sourceOfFunds} {sourcesOfWealth} {annualIncome} {netAssetValue} {assetItems}
+  {declarationSigned} {signatureName} {declarationDate}
+  {/persons}
+
+If the file is missing or tags fail, the portal generates a structured Word file with the same data.

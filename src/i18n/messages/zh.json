@@ -1,0 +1,685 @@
+{
+  "nav": {
+    "home": "首頁",
+    "services": "服務",
+    "about": "關於我們",
+    "contact": "聯絡我們",
+    "faq": "常見問題",
+    "login": "登入",
+    "getStarted": "立即開始",
+    "dashboard": "工作台",
+    "kyc": "身份認證",
+    "documents": "文件",
+    "orders": "服務訂單",
+    "notifications": "通知",
+    "logout": "登出",
+    "companies": "公司管理",
+    "aml": "AML篩查",
+    "settings": "設定"
+  },
+  "home": {
+    "heroTitleHighlight": "6AM Advisory",
+    "heroTitleSub": "筑香港之基，成世界之业",
+    "heroTitle": "筑香港之基，成世界之业",
+    "heroSubtitle": "您信賴的香港持牌信託及公司服務提供商",
+    "heroCtaStart": "立即開始",
+    "heroCtaLearn": "了解更多",
+    "stat": {
+      "companies": "企業服務",
+      "years": "年行業經驗",
+      "license": "持牌機構"
+    },
+    "pillarsEyebrow": "核心服務",
+    "pillars": {
+      "secretarial": {
+        "title": "公司秘書",
+        "desc": "公司成立、法定申報、周年申報及法定冊維護。"
+      },
+      "accounting": {
+        "title": "會計及稅務",
+        "desc": "簿記、財務報告、報稅及策略性稅務規劃。"
+      },
+      "advisory": {
+        "title": "商業顧問",
+        "desc": "跨境市場進入、併購支援及企業重組。"
+      }
+    },
+    "whyEyebrow": "為何選擇我們",
+    "whyTitle": "專業、可信賴的夥伴",
+    "whyDesc": "作為香港持牌TCSP，我們結合深厚的法律合規知識與高效的客戶服務，為企業提供全面支援。",
+    "why": {
+      "compliance": "合規專注",
+      "responsive": "快速回應",
+      "team": "專業團隊",
+      "bilingual": "中英雙語服務"
+    },
+    "processEyebrow": "辦理流程",
+    "processTitle": "六步完成公司成立",
+    "processSub": "",
+    "process": {
+      "1": { "title": "確定架構", "desc": "選擇公司類型、股權結構及董事安排。" },
+      "2": { "title": "準備文件", "desc": "確定公司名稱並準備所有法定文件。" },
+      "3": { "title": "提交申請", "desc": "向公司註冊處提交申請，取得公司成立證書。" },
+      "4": { "title": "委任秘書", "desc": "委任合資格的香港居民擔任公司秘書。" },
+      "5": { "title": "登記地址", "desc": "設立法定辦事處地址以接收官方通訊。" },
+      "6": { "title": "建立帳務", "desc": "設置會計系統並開始履行稅務合規義務。" }
+    },
+    "testimonialsTitle": "客戶評價",
+    "newsTitle": "最新消息",
+    "pillarsTitle": "我們的服務",
+    "ctaTitle": "準備好開始了嗎？",
+    "ctaDesc": "立即聯絡我們的團隊"
+  },
+  "services": {
+    "title": "我們的服務",
+    "subtitle": "專為高淨值客戶打造的一站式專業機構——嚴謹的合規管理與策略性商業顧問的完美結合。",
+    "getStarted": "立即開始",
+    "secretarial": {
+      "title": "公司成立及秘書服務",
+      "intro": "有效企業管治與可持續增長的基石。我們提供針對不同業務規模及發展階段的客製化方案，結合嚴謹的合規管理與高效執行。",
+      "items": [
+        "香港公司快速成立（最快同日完成）",
+        "提供註冊辦事處地址",
+        "向公司註冊處提交法定文件",
+        "董事及股東變更",
+        "周年申報表準備及提交",
+        "董事會決議及股東大會紀錄",
+        "股份配發、回購及股權調整",
+        "公司名稱及業務性質變更"
+      ],
+      "tiersEyebrow": "按公司規模的解決方案",
+      "startup": {
+        "label": "初創企業",
+        "size": "10人以下",
+        "items": [
+          "委任公司秘書及周年申報",
+          "註冊地址及地址變更管理",
+          "董事更新及法定冊維護",
+          "董事會會議紀錄及決議",
+          "會計及稅務諮詢支援"
+        ]
+      },
+      "sme": {
+        "label": "中小企業",
+        "size": "10–20人",
+        "items": [
+          "全面合規提醒及截止日期追蹤",
+          "周年申報及法定文件提交",
+          "董事及股東變更",
+          "股份回購及股權調整支援",
+          "會議文件準備及提交",
+          "稅務及會計協調"
+        ]
+      },
+      "large": {
+        "label": "大型企業",
+        "size": "20人以上",
+        "items": [
+          "全面秘書及日常合規管理",
+          "董事會及股東大會支援",
+          "股份發行、回購及重組",
+          "股東名冊維護",
+          "董事職責及合規諮詢",
+          "公司名稱或業務性質變更申報"
+        ]
+      },
+      "virtualOfficeTitle": "虛擬辦公室",
+      "virtualOfficeDesc": "合法的香港註冊地址及郵件處理服務——無需實體辦公室，同樣建立專業企業形象。"
+    },
+    "accounting": {
+      "title": "會計及稅務",
+      "intro": "財務透明與稅務合規是企業可持續增長的核心基石。我們採用標準化流程及主流會計系統，為您量身定制財務解決方案。",
+      "items": [
+        "總帳及輔助帳戶維護",
+        "收入、支出、資產及負債分類",
+        "銀行對帳及現金流管理",
+        "月度、季度及年度財務報表",
+        "利得稅、薪俸稅及法定申報",
+        "審計協調及完整文件準備",
+        "財務預算及預測",
+        "跨境稅務諮詢及IFRS/HKFRS建議"
+      ],
+      "toolsNote": "我們使用Xero、QuickBooks及MYOB——採用雙重審核原則及加密數據保護，為每位客戶提供保障。"
+    },
+    "advisory": {
+      "title": "商業顧問及擴張",
+      "intro": "超越合規層面，我們提供戰略支援，助您跨越邊界發展業務，並靈活應對市場變化。",
+      "items": [
+        "跨境市場進入策略",
+        "併購整合及盡職審查支援",
+        "企業重組顧問",
+        "融資協調及籌資支援",
+        "財富管理合規顧問",
+        "商業諮詢及增長規劃"
+      ]
+    },
+    "otherEyebrow": "延伸服務",
+    "otherTitle": "超越基本需求",
+    "otherSubtitle": "為離岸架構、銀行開戶及合規管理提供全面支援。",
+    "other": {
+      "wfoe": {
+        "title": "外商獨資企業（WFOE）",
+        "subtitle": "中國市場進入",
+        "desc": "為在中國內地設立外商獨資企業提供全程支援——從諮詢、文件準備到政府審批。"
+      },
+      "bvi": {
+        "title": "BVI / 離岸公司",
+        "subtitle": "國際架構",
+        "desc": "快捷高效的英屬維爾京群島公司註冊，常用於國際貿易、財富管理及稅務規劃架構。"
+      },
+      "bank": {
+        "title": "銀行開戶",
+        "subtitle": "金融基礎設施",
+        "desc": "為選擇合適銀行及管理盡職審查和開戶全流程提供客製化解決方案。"
+      },
+      "compliance": {
+        "title": "合規及風險管理",
+        "subtitle": "AML及盡職審查",
+        "desc": "AML政策設計、客戶盡職審查程序，以及涵蓋財務、法律及聲譽風險的全面評估。"
+      }
+    },
+    "tiers": {
+      "eyebrow": "服務套餐",
+      "title": "選擇您的套餐",
+      "popular": "最受歡迎",
+      "basic": "基本",
+      "professional": "專業",
+      "premium": "高級",
+      "basicDesc": "僅香港公司成立",
+      "basicItems": ["公司名稱查冊", "公司章程", "公司成立證書", "商業登記證"],
+      "professionalDesc": "成立 + 1年秘書支援",
+      "professionalItems": ["包含基本方案所有服務", "1年公司秘書服務", "合規提醒及截止日期追蹤", "董事會決議及會議紀錄"],
+      "premiumDesc": "專業方案 + 虛擬辦公室及私隱保護",
+      "premiumItems": ["包含專業方案所有服務", "1年法定辦事處地址", "郵件處理及轉寄", "董事私隱保護申報"],
+      "customNote": "需要度身定制方案？歡迎與我們聯絡，我們將按您的業務需求提供專屬報價。"
+    }
+  },
+  "about": {
+    "title": "關於6AM Advisory",
+    "subtitle": "專為高淨值客戶及家族企業打造的一站式專業機構。",
+    "intro": "6AM Advisory Limited 是香港持牌信託及公司服務提供商（TCSP），致力為企業及高淨值人士提供全面的企業服務。",
+    "tcspLicence": "持牌TCSP，根據香港《打擊洗錢及恐怖分子資金籌集條例》（第615章）",
+    "positioningEyebrow": "我們是誰",
+    "positioningDesc": "6AM Advisory 是專為高淨值客戶及家族企業打造的一站式專業機構，服務範圍覆蓋香港及國際市場。我們的企業顧問、特許秘書及會計師團隊擁有豐富的跨行業、跨地區經驗——以策略洞察與執行能力相結合，助客戶實現可持續增長。",
+    "teamPhone2": "+86 1554 686 8835",
+    "valuesTitle": "我們的核心價值",
+    "values": {
+      "integrity": { "title": "誠信", "desc": "我們以完全透明的方式運營，堅守最高的職業標準。" },
+      "expertise": { "title": "專業", "desc": "深入了解香港公司法、TCSP法規及跨境合規要求。" },
+      "partnership": { "title": "夥伴關係", "desc": "我們建立長期合作關係，與客戶共同成長。" }
+    },
+    "coresEyebrow": "我們的方法",
+    "coresTitle": "三大顧問服務支柱",
+    "cores": {
+      "formation": {
+        "title": "公司成立及合規框架",
+        "desc": "從成立到持續法定申報，我們簡化流程、規範文件管理，確保高效的法律成立和健全的企業管治。"
+      },
+      "financial": {
+        "title": "財務及稅務管理",
+        "desc": "財務透明與稅務合規是企業可持續增長的核心基石。我們提供策略性稅務規劃、系統化簿記及全面審計協調。"
+      },
+      "secretarial": {
+        "title": "公司秘書及企業管治",
+        "desc": "香港的法定要求——我們通過系統化的合規管理機制，處理周年申報、董事會文件、合規提醒及股權變更。"
+      }
+    },
+    "officeTitle": "辦公室",
+    "address": "地址",
+    "addressValue": "香港九龍佐敦渡船街28號Boss Commercial Centre 20樓7室",
+    "phone": "電話",
+    "phoneValue": "+852 6560 0073",
+    "email": "電郵",
+    "emailValue": "kennywong@6amadvise.com",
+    "hours": "辦公時間",
+    "hoursValue": "星期一至五 09:00–18:00 | 星期六 預約",
+    "contactUs": "聯絡我們"
+  },
+  "contact": {
+    "title": "聯絡我們",
+    "subtitle": "如有任何查詢或服務需求，歡迎聯絡我們的團隊。",
+    "formTitle": "發送訊息",
+    "name": "全名",
+    "email": "電郵地址",
+    "phone": "電話（可選）",
+    "subject": "主題",
+    "message": "訊息內容",
+    "send": "發送訊息",
+    "sending": "發送中...",
+    "sentSuccess": "訊息已發送！我們將於1個工作日內回覆您。",
+    "sentDesc": "感謝您的查詢，我們的團隊將盡快回覆。",
+    "sentError": "發送失敗，請重試或直接發送電郵。",
+    "officeTitle": "辦公室詳情",
+    "address": "地址",
+    "addressValue": "香港九龍佐敦渡船街28號Boss Commercial Centre 20樓7室",
+    "phoneValue": "+852 6560 0073",
+    "emailLabel": "電郵",
+    "emailValue": "kennywong@6amadvise.com",
+    "hours": "辦公時間",
+    "hoursValue": "星期一至五 09:00–18:00 | 星期六 預約"
+  },
+  "faq": {
+    "title": "常見問題",
+    "subtitle": "有關香港公司成立及TCSP服務的一切問題。",
+    "groupIncorporation": "公司成立",
+    "groupCompliance": "合規及KYC",
+    "groupServices": "服務及運作",
+    "items": {
+      "incorporation": {
+        "q": "香港公司成立需要多長時間？",
+        "a": "標準網上成立需要1–2個工作天。我們提供快速服務，可在同一個工作日完成。"
+      },
+      "kyc": {
+        "q": "KYC需要哪些文件？",
+        "a": "我們需要政府發出的附照片身份證明文件（香港身份證或護照）、住址證明（3個月內的水電費單或銀行月結單）及填妥的KYC表格。"
+      },
+      "annualFiling": {
+        "q": "周年申報表何時到期？",
+        "a": "周年申報表必須在公司周年成立日後42天內提交。"
+      },
+      "fees": {
+        "q": "香港公司的最低股本是多少？",
+        "a": "香港沒有最低股本要求。大多數公司以港幣10,000元成立，分為10,000股，每股面值港幣1元。"
+      },
+      "timeline": {
+        "q": "我需要本地董事嗎？",
+        "a": "不需要。香港公司可以有100%外籍董事及股東。但公司秘書必須是香港居民或在香港設有辦事處的公司。"
+      },
+      "address": {
+        "q": "我可以使用虛擬辦公室地址嗎？",
+        "a": "可以。我們的高級方案包含在佐敦辦公室的註冊地址服務，用於法定用途。"
+      },
+      "aml": {
+        "q": "什麼是AML篩查，為什麼需要？",
+        "a": "作為持牌TCSP，我們根據《打擊洗錢及恐怖分子資金籌集條例》（第615章）的規定，需要對所有客戶及相關人士進行國際制裁名單篩查，並維護持續盡職審查記錄。"
+      },
+      "documents": {
+        "q": "我在哪裡可以下載法定文件（ROD、ROM、ROSC）？",
+        "a": "登入後，前往客戶門戶的「文件」頁面。所有生成的法定冊及申報文件均可以DOCX或PDF格式下載。"
+      },
+      "director": {
+        "q": "董事及股東有哪些披露要求？",
+        "a": "根據《公司條例》，香港公司須維護董事登記冊及重要控制人登記冊（ROSC）。所有董事及持有重要控制權的實益擁有人須向公司披露其身份，並保持資料更新。"
+      },
+      "foreign": {
+        "q": "香港公司可以100%外資擁有嗎？",
+        "a": "可以。香港對外資持股沒有任何限制。公司可以100%由外國個人或機構持有——沒有本地股東或董事的要求。"
+      },
+      "financialStmt": {
+        "q": "私人公司是否需要每年準備財務報表？",
+        "a": "是的。所有香港私人公司必須每年準備符合香港財務報告準則（HKFRS）的財務報表。符合特定條件的小型公司可申請簡化申報豁免。"
+      },
+      "dormant": {
+        "q": "可以在沒有實際業務的情況下保持公司登記嗎？",
+        "a": "可以。休眠或控股公司可以持續登記，只要維持繳交周年費用及法定申報即可。這常見於持有知識產權、資產或備用用途的公司。"
+      },
+      "wfoe": {
+        "q": "什麼是WFOE？我何時需要成立一家？",
+        "a": "外商獨資企業（WFOE）是外資企業在中國內地直接開展業務的最常見架構，適用於需在中國進行業務運作、聘用本地員工或收取人民幣收入的情況。我們提供從諮詢到政府審批的全程支援。"
+      },
+      "secretary": {
+        "q": "香港公司秘書有哪些要求？",
+        "a": "每家香港公司必須委任公司秘書。若為個人，須為香港居民；若為法人團體，須在香港設有辦事處或主要營業地點。公司秘書不得同時擔任公司的唯一董事。"
+      }
+    }
+  },
+  "auth": {
+    "loginTitle": "登入",
+    "loginDesc": "輸入您的電郵及密碼以登入帳戶。",
+    "registerTitle": "建立帳戶",
+    "registerDesc": "註冊以開始使用6AM Advisory的服務。",
+    "verifyTitle": "驗證電郵",
+    "verifyDesc": "請輸入發送至您電郵的6位數驗證碼。",
+    "forgotPasswordTitle": "忘記密碼",
+    "forgotPasswordDesc": "輸入您的電郵，我們將發送重設連結。",
+    "resetPasswordTitle": "重設密碼",
+    "resetPasswordDesc": "請在下方輸入您的新密碼。",
+    "email": "電郵地址",
+    "password": "密碼",
+    "newPassword": "新密碼",
+    "confirmPassword": "確認密碼",
+    "fullName": "英文全名",
+    "nameEn": "英文全名",
+    "nameZh": "中文全名",
+    "phone": "手機號碼",
+    "otp": "驗證碼",
+    "otpCode": "驗證碼",
+    "forgotPassword": "忘記密碼？",
+    "login": "登入",
+    "loginBtn": "登入",
+    "register": "建立帳戶",
+    "registerBtn": "建立帳戶",
+    "verify": "驗證",
+    "verifyBtn": "驗證",
+    "sendResetLink": "發送重設連結",
+    "resetPassword": "重設密碼",
+    "resetBtn": "重設密碼",
+    "noAccount": "還沒有帳戶？",
+    "haveAccount": "已有帳戶？",
+    "hasAccount": "已有帳戶？",
+    "backToLogin": "返回登入",
+    "otpSent": "驗證碼已發送！請查閱您的電郵。",
+    "emailVerified": "電郵已驗證！您現在可以登入。",
+    "resetEmailSent": "若電郵存在，重設連結已發送至您的收件箱。",
+    "passwordReset": "密碼重設成功！請重新登入。",
+    "loginFailed": "電郵或密碼不正確。",
+    "registerFailed": "註冊失敗，請重試。",
+    "verifyFailed": "驗證碼無效或已過期。",
+    "resetFailed": "重設連結無效或已過期。",
+    "invalidToken": "重設連結無效，請重新申請。",
+    "errorGeneric": "發生錯誤，請重試。",
+    "sending": "發送中...",
+    "loggingIn": "登入中...",
+    "verifying": "驗證中...",
+    "resetting": "重設中...",
+    "resendOtp": "重新發送驗證碼",
+    "terms": "我同意服務條款及私隱政策"
+  },
+  "dashboard": {
+    "title": "工作台",
+    "welcome": "歡迎，{name}",
+    "companies": "您的公司",
+    "pendingActions": "待處理事項",
+    "noCompanies": "尚無公司。請下訂單以開始使用。",
+    "nextAR": "下次周年申報日期",
+    "kycStatus": "KYC狀態",
+    "notifications": "未讀通知",
+    "quickLinksTitle": "快速操作",
+    "quickLinks": {
+      "newOrder": "新服務訂單",
+      "uploadDoc": "上傳文件",
+      "downloadDocs": "下載文件"
+    }
+  },
+  "kyc": {
+    "title": "認識您的客戶（KYC）",
+    "multiSubtitle": "您可新增多位人士進行KYC申報",
+    "addPerson": "新增人士",
+    "minOnePerson": "至少需要一位人士",
+    "personIndex": "人士",
+    "kycIdHint": "請上傳有效身份證明文件",
+    "saveBeforeUpload": "請先儲存草稿後再上傳文件",
+    "uploaded": "已上傳",
+    "downloadKycDoc": "下載KYC文件",
+    "signatureName": "簽署人姓名",
+    "declarationDate": "聲明日期",
+    "status": {
+      "draft": "草稿",
+      "submitted": "已提交",
+      "pending": "待補充資料",
+      "approved": "已批准",
+      "rejected": "已拒絕"
+    },
+    "sectionA": "基本資料",
+    "sectionB": "工作資料",
+    "sectionC": "財務狀況",
+    "sectionD": "聲明",
+    "fields": {
+      "title": "稱謂",
+      "nameEn": "英文姓名",
+      "nameZh": "中文姓名",
+      "idType": "證件類型",
+      "idNumber": "證件號碼",
+      "placeOfIssue": "簽發地",
+      "placeOfBirth": "出生地",
+      "expiryDate": "到期日",
+      "dob": "出生日期",
+      "nationality": "國籍",
+      "homeAddress": "住址",
+      "contactAddress": "通訊地址",
+      "homePhone": "住宅電話",
+      "workPhone": "辦公電話",
+      "mobile": "手機號碼",
+      "wechat": "微信號",
+      "email": "電郵",
+      "usCitizen": "美國公民或就稅務目的而言的居民",
+      "emergencyContact": "緊急聯絡人與電話",
+      "employmentStatus": "就業情況",
+      "employerName": "僱主/公司名稱",
+      "companyAddress": "公司地址",
+      "businessNature": "業務性質",
+      "position": "職位",
+      "workingYears": "任職年數",
+      "sourceOfFunds": "資金來源",
+      "sourceOfWealth": "財富來源",
+      "annualIncome": "年收入（美元）",
+      "netAssets": "總資產（美元）",
+      "assetItems": "資產項目",
+      "isPep": "本人現在或曾是政治敏感人士（PEP）"
+    },
+    "employment": {
+      "employed": "受僱",
+      "selfEmployed": "自僱",
+      "retired": "退休",
+      "unemployed": "待業"
+    },
+    "documents": "證明文件",
+    "dropzoneHint": "拖放文件至此，或點擊選擇",
+    "dropzoneTypes": "PDF、JPG、PNG — 每個最大 10MB",
+    "uploadIdHint": "上傳身份證／護照副本 — PDF、JPG、PNG，最大 10 MB",
+    "uploadAddressHint": "上傳地址證明 — PDF、JPG、PNG，最大 10 MB",
+    "uploadFinancialHint": "上傳財務證明文件 — PDF、JPG、PNG，最大 10 MB",
+    "uploadOtherHint": "上傳其他認證文件 — PDF、JPG、PNG，最大 10 MB",
+    "financialDocuments": "財務文件",
+    "otherCertifications": "其他認證文件",
+    "otherCertificationsHint": "在此上傳任何其他補充認證文件。",
+    "declaration": "本人確認以上資料真實無誤，如監管機構提出要求，我們有權向監管機構提供任何或所有資料以供審查。",
+    "submit": "提交KYC",
+    "submitting": "提交中...",
+    "submitSuccess": "KYC已成功提交！我們的團隊將盡快審查。",
+    "saveDraft": "儲存草稿",
+    "saving": "儲存中...",
+    "draftSaved": "草稿已儲存。",
+    "next": "下一步",
+    "back": "上一步"
+  },
+  "documents": {
+    "title": "文件",
+    "subtitle": "下載您的公司法定文件及申報表。",
+    "all": "全部文件",
+    "download": "下載",
+    "downloading": "下載中...",
+    "downloadFailed": "下載失敗，請重試。",
+    "loading": "載入中...",
+    "empty": "暫無文件。",
+    "noDocuments": "暫無文件。",
+    "name": "文件名稱",
+    "type": "類型",
+    "company": "公司",
+    "date": "日期",
+    "types": {
+      "CI": "公司註冊證明書",
+      "BR": "商業登記證",
+      "ROD": "董事登記冊",
+      "ROM": "成員登記冊",
+      "ROSC": "重要控制人登記冊",
+      "AR": "周年申報表",
+      "DDR": "盡職審查報告",
+      "RESOLUTION": "董事會決議",
+      "MINUTES": "會議紀錄",
+      "KYC": "KYC文件",
+      "OTHER": "其他"
+    }
+  },
+  "orders": {
+    "title": "服務訂單",
+    "subtitle": "管理您的服務申請",
+    "newOrder": "新訂單",
+    "orderType": "服務類型",
+    "description": "附加說明",
+    "descriptionPlaceholder": "請描述您的需求...",
+    "submit": "下訂單",
+    "submitting": "提交中...",
+    "cancel": "取消",
+    "created": "訂單已成功提交！",
+    "failed": "下訂單失敗。",
+    "empty": "暫無訂單。",
+    "status": "狀態",
+    "date": "日期",
+    "types": {
+      "incorporation": "公司成立",
+      "registered_address": "註冊辦事處地址",
+      "annual_return": "周年申報表申報",
+      "accounting": "會計服務",
+      "advisory": "商業顧問"
+    },
+    "statuses": {
+      "pending": "待處理",
+      "processing": "處理中",
+      "completed": "已完成",
+      "cancelled": "已取消"
+    }
+  },
+  "admin": {
+    "nav": {
+      "main": "主要",
+      "operations": "業務管理",
+      "system": "系統"
+    },
+    "dashboard": {
+      "title": "管理後台",
+      "totalCompanies": "活躍公司",
+      "pendingKyc": "待審KYC",
+      "amlAlerts": "待處理AML警報",
+      "upcomingAR": "30日內到期周年申報",
+      "recentActivity": "最近活動",
+      "noActivity": "暫無活動記錄。"
+    },
+    "companies": {
+      "title": "公司管理",
+      "add": "新增公司",
+      "search": "搜尋公司...",
+      "exportCsv": "匯出CSV",
+      "companyName": "公司名稱",
+      "companyNumber": "公司編號",
+      "status": "狀態",
+      "client": "客戶",
+      "arDate": "周年申報日",
+      "view": "查看",
+      "empty": "找不到公司。",
+      "newTitle": "新增公司",
+      "clientOwner": "所屬客戶（入口帳戶）",
+      "clientOwnerHint": "請填寫客戶將在入口使用（或已使用）的電郵。若尚未註冊，公司會預留給該電郵，待客戶用相同電郵註冊並驗證後即可看到。",
+      "clientModeVerified": "已完成驗證 — 從清單選擇",
+      "clientModeEmail": "填寫客戶電郵（尚未註冊亦可）",
+      "clientSelectPlaceholder": "選擇客戶電郵…",
+      "clientEmailLabel": "客戶註冊電郵",
+      "clientEmailPlaceholder": "與客戶註冊時相同",
+      "clientRequired": "請選擇已驗證客戶，或填寫其註冊電郵。",
+      "noVerifiedClients": "尚無已驗證的客戶帳戶。",
+      "createSuccess": "公司已建立。",
+      "createSuccessPending": "公司已建立。客戶使用此電郵註冊並驗證後，即可在入口看到該公司。",
+      "clientEmailNotFound": "此電郵沒有對應的客戶帳戶，請先讓客戶在入口完成註冊。",
+      "invalidClientUser": "所選客戶無效。",
+      "clientEmailInvalid": "請輸入有效的電郵地址。",
+      "back": "返回"
+    },
+    "kyc": {
+      "title": "KYC審查隊列",
+      "clientAccount": "客戶帳戶",
+      "clientEmail": "客戶 Email",
+      "all": "全部",
+      "empty": "找不到記錄。",
+      "approve": "批准",
+      "reject": "拒絕",
+      "requestInfo": "要求補充資料",
+      "rejectReason": "原因（拒絕時必填）",
+      "reasonPlaceholder": "請輸入拒絕原因...",
+      "reasonRequired": "拒絕時必須填寫原因。",
+      "actionFailed": "操作失敗，請重試。",
+      "actionSuccess": "操作已成功完成。",
+      "alreadyProcessed": "此KYC已被處理。"
+    },
+    "aml": {
+      "title": "AML警報",
+      "runScan": "執行AML掃描",
+      "ingest": "下載制裁名單",
+      "extractLocal": "提取制裁数据",
+      "extractingLocal": "正從本地提取…",
+      "skippedNoLocal": "今日本地無此檔案",
+      "severity": {
+        "strong": "強烈命中",
+        "potential": "疑似命中",
+        "weak": "輕微命中"
+      },
+      "resolution": {
+        "falsePositive": "誤報",
+        "confirmed": "已確認",
+        "escalated": "已升級",
+        "pending": "待審查"
+      }
+    },
+    "directors": {
+      "add": "新增董事",
+      "cease": "終止董事",
+      "title": "董事登記冊"
+    },
+    "members": {
+      "add": "新增成員",
+      "transfer": "股份轉讓",
+      "title": "成員登記冊"
+    },
+    "controllers": {
+      "add": "新增重要控制人",
+      "title": "重要控制人登記冊"
+    },
+    "docgen": {
+      "generateROD": "生成董事登記冊",
+      "generateROM": "生成成員登記冊",
+      "generateROSC": "生成重要控制人登記冊",
+      "generateDDR": "生成盡職審查報告",
+      "generateAnnual": "生成周年申報文件包"
+    }
+  },
+  "common": {
+    "save": "儲存",
+    "cancel": "取消",
+    "delete": "刪除",
+    "edit": "編輯",
+    "view": "查看",
+    "loading": "載入中...",
+    "error": "發生錯誤，請重試。",
+    "success": "儲存成功。",
+    "confirm": "確認",
+    "back": "返回",
+    "next": "下一步",
+    "submit": "提交",
+    "search": "搜尋",
+    "filter": "篩選",
+    "sort": "排序",
+    "export": "匯出",
+    "upload": "上傳",
+    "download": "下載",
+    "yes": "是",
+    "no": "否",
+    "active": "活躍",
+    "inactive": "不活躍",
+    "status": "狀態",
+    "date": "日期",
+    "name": "名稱",
+    "actions": "操作",
+    "noData": "暫無數據。",
+    "required": "此欄位為必填",
+    "invalidEmail": "電郵地址格式不正確",
+    "passwordMismatch": "兩次輸入的密碼不一致",
+    "hkd": "港幣",
+    "usd": "美元"
+  },
+  "footer": {
+    "tagline": "筑香港之基，成世界之业 — 持牌TCSP，專業提供公司秘書、會計及商業顧問服務。",
+    "tcspNote": "根據《打擊洗錢及恐怖分子資金籌集條例》（第615章）持牌",
+    "quickLinks": "快速連結",
+    "home": "首頁",
+    "services": "服務",
+    "about": "關於我們",
+    "contact": "聯絡我們",
+    "faq": "常見問題",
+    "address": "香港九龍佐敦渡船街28號Boss Commercial Centre 20樓7室",
+    "phone": "+852 6560 0073",
+    "email": "kennywong@6amadvise.com",
+    "hours": "星期一至五 09:00–18:00",
+    "copyright": "© 2025 6AM Advisory Limited。版權所有。",
+    "privacy": "私隱政策",
+    "terms": "服務條款"
+  }
+}
