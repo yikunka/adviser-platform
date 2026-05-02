@@ -24,7 +24,7 @@
 #   DEPLOY_SSH_KEY       SSH 私钥路径，例如 ~/.ssh/id_ed25519
 #   DEPLOY_DOMAIN        对外域名，用于 Nginx server_name（bootstrap 写站点配置时）
 #   CERTBOT_EMAIL        Let's Encrypt 邮箱；若与 DEPLOY_DOMAIN 同时设置，bootstrap 末尾尝试非交互式申请证书
-#   BOOTSTRAP_WITH_POSTGRES=1   在服务器本机安装 PostgreSQL 16：先卸载系统已有 PostgreSQL 包再装 PGDG 16（重要：旧数据目录请自行备份）
+#   BOOTSTRAP_WITH_POSTGRES=1   【需要本机 PG 时请必设】。未设为 1 时不会安装 PostgreSQL（仅 Node/Nginx/PM2）；设为 1 时先卸载系统旧 PG 再通过 PGDG 装 16（旧数据请先备份）
 #   身份与密码（与本地 DATABASE_URL 对齐，三选一组合）:
 #     • 推荐：BOOTSTRAP_DATABASE_URL="postgresql://用户:密码@主机:5432/库名"（主机可忽略，仅用于解析用户/库/密码）
 #     • 或显式：POSTGRES_APP_USER、POSTGRES_APP_DB（默认 adviser / adviser_db）+ POSTGRES_APP_PASSWORD
@@ -571,6 +571,19 @@ else
       fi
     fi
 
+    # 阿里云 Linux 的 VERSION_ID 常为 3/4，dnf 的 \$releasever 会误成 rhel-3；按 PLATFORM_ID 覆盖错误的 %{rhel}
+    if [[ -r /etc/os-release ]]; then
+      # shellcheck disable=SC1091
+      . /etc/os-release
+      if [[ "\${ID:-}" == "alinux" ]]; then
+        case "\${PLATFORM_ID:-}" in
+          platform:el9*|platform:al9*) RPM_EL=9 ;;
+          platform:el8*|platform:al8*) RPM_EL=8 ;;
+          platform:el7*|platform:al7*) RPM_EL=7 ;;
+        esac
+      fi
+    fi
+
     if [[ -z "\$RPM_EL" ]]; then
       echo "无法推断用于 PGDG 的 EL 主版本（请查看 /etc/os-release；阿里云 Linux 3 常为 EL8）。请改用托管数据库或手动安装 PostgreSQL 16。"
       exit 1
@@ -582,6 +595,23 @@ else
     command -v dnf >/dev/null 2>&1 && { dnf -qy module disable postgresql 2>/dev/null || true; }
 
     "\${PM[@]}" install -y "\$PGDG_REPORPM"
+
+    echo "--> 将 PGDG 仓库里的 \\\$releasever 固定为 \${RPM_EL}（避免阿里云 Linux VERSION_ID=3 被当成 rhel-3 而 404）..."
+    export RPM_EL
+    python3 <<'PGDG_REPOFIX'
+import pathlib, os
+el = os.environ.get("RPM_EL", "").strip()
+if not el.isdigit():
+    raise SystemExit(f"RPM_EL 无效: {el!r}")
+for p in sorted(pathlib.Path("/etc/yum.repos.d").glob("pgdg*.repo")):
+    t = p.read_text(encoding="utf-8", errors="replace")
+    if "$releasever" not in t:
+        continue
+    p.write_text(t.replace("$releasever", el), encoding="utf-8")
+PGDG_REPOFIX
+
+    if command -v dnf >/dev/null 2>&1; then dnf clean all || true; else yum clean all || true; fi
+
     "\${PM[@]}" install -y postgresql16-server postgresql16 || \\
       { echo "安装 postgresql16-server / postgresql16 失败"; exit 1; }
 
@@ -618,6 +648,15 @@ systemctl reload nginx 2>/dev/null || systemctl restart nginx
 systemctl enable nginx
 
 echo ""
+if [[ "\$WITH_PG" != "1" ]]; then
+  echo "[!] 未安装 PostgreSQL：当前未设置 BOOTSTRAP_WITH_POSTGRES=1，Prisma/deploy-local 无法在 127.0.0.1:5432 连上数据库。"
+  echo "    需要本机库时请执行（与 /opt/adviser-app/.env 中 DATABASE_URL 一致）:"
+  echo "      export BOOTSTRAP_WITH_POSTGRES=1"
+  echo "      export BOOTSTRAP_DATABASE_URL='postgresql://用户:密码@127.0.0.1:5432/库名'"
+  echo "    或: POSTGRES_APP_USER / POSTGRES_APP_DB / POSTGRES_APP_PASSWORD"
+  echo "      sudo ./deploy.sh bootstrap-local"
+  echo ""
+fi
 echo "===== Bootstrap 完成 ====="
 echo "1. 在 \$REMOTE_DIR 创建 .env（参考仓库 .env.example）"
 echo "2. 在笔记本: DEPLOY_HOST=... ./deploy.sh deploy — 或在服务器仓库目录: ./deploy.sh deploy-local"
