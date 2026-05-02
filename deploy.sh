@@ -571,7 +571,7 @@ else
       fi
     fi
 
-    # 阿里云 Linux 的 VERSION_ID 常为 3/4，dnf 的 \$releasever 会误成 rhel-3；按 PLATFORM_ID 覆盖错误的 %{rhel}
+    # 阿里云 Linux 的 VERSION_ID 常为 3/4；dnf yum 占位符字面量易被当成 rhel-3 URL。下同按 PLATFORM_ID 覆盖 EL 代号。
     if [[ -r /etc/os-release ]]; then
       # shellcheck disable=SC1091
       . /etc/os-release
@@ -596,12 +596,13 @@ else
 
     "\${PM[@]}" install -y "\$PGDG_REPORPM"
 
-    echo "--> 将 PGDG 仓库里的 \\\$releasever 固定为 \${RPM_EL}（避免阿里云 Linux VERSION_ID=3 被当成 rhel-3 而 404）..."
+    echo "--> 将 PGDG 仓库 yum 里「美元符 + releasever」占位符重写为 EL\${RPM_EL}（避免阿里云等误用 rhel-3 仓库 404）..."
     export RPM_EL
+    _dyn_rel=\$'\044releasever'
     for _pgdg_repo in /etc/yum.repos.d/pgdg*.repo; do
       [[ -e "\${_pgdg_repo}" ]] || continue
-      grep -Fq '$releasever' "\${_pgdg_repo}" 2>/dev/null || continue
-      sed -i "s/\$releasever/\${RPM_EL}/g" "\${_pgdg_repo}"
+      grep -Fq "\${_dyn_rel}" "\${_pgdg_repo}" 2>/dev/null || continue
+      sed -i "s|\${_dyn_rel}|\${RPM_EL}|g" "\${_pgdg_repo}"
     done
 
     if command -v dnf >/dev/null 2>&1; then dnf clean all || true; else yum clean all || true; fi
