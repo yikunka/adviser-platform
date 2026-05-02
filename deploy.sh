@@ -3,18 +3,20 @@
 # Adviser Platform — 生产部署（deploy 用 SSH；deploy-local 仅在目标机本机发布）
 #
 # 用法概览
-#   ./deploy.sh bootstrap     # 仅在「全新」服务器执行一次：系统依赖、Node、PM2、Nginx、可选 PostgreSQL
-#   ./deploy.sh deploy        # 在「当前电脑」构建 → SSH/rsync 到 DEPLOY_HOST → 迁移 → PM2（适合笔记本/CI）
-#   ./deploy.sh deploy-local  # 在「生产服务器本机」构建 → 拷贝到本机目录 → 迁移 → PM2（不发起 SSH，不会二次要密码）
-#   ./deploy.sh check         # 仅检查构建环境与仓库
+#   ./deploy.sh bootstrap        # 在「控制机（笔记本）」运行：SSH 登录 DEPLOY_HOST 后在远端执行与本机 bootstrap-local 相同的初始化
+#   ./deploy.sh bootstrap-local  # 在「全新服务器」上直接运行（root/sudo）；勿设 DEPLOY_HOST — 装好系统栈后再配 .env 与 deploy-local
+#   ./deploy.sh deploy             # 在「当前电脑」构建 → SSH/rsync 到 DEPLOY_HOST → 迁移 → PM2（适合笔记本/CI）
+#   ./deploy.sh deploy-local         # 在「生产服务器本机」构建 → 拷贝到本机目录 → 迁移 → PM2（不发起 SSH，不会二次要密码）
+#   ./deploy.sh check            # 仅检查构建环境与仓库
 #
 # 必设环境变量
-#   deploy / bootstrap:
+#   deploy、bootstrap（经 SSH）：DEPLOY_HOST
 #   DEPLOY_HOST          目标 SSH 地址，例如 203.0.113.10
 #   DEPLOY_USER          默认 root（建议专用账号 + SSH 公钥，避免反复输入密码）
 #   REMOTE_DIR           默认 /opt/adviser-app（运行目录，需事先放好 .env）
 #
-#   deploy-local：勿填 DEPLOY_HOST；可选 DEPLOY_TARGET_DIR（默认与 REMOTE_DIR 相同，常为 /opt/adviser-app）
+#   deploy-local、bootstrap-local：勿填 DEPLOY_HOST；bootstrap-local 需在本机用 root/sudo 执行
+#   deploy-local 可选 DEPLOY_TARGET_DIR（默认与 REMOTE_DIR 相同，常为 /opt/adviser-app）
 #
 #   bootstrap 支持的系统：Ubuntu/Debian（apt）、Alibaba Cloud Linux / RHEL / CentOS / Amazon Linux（dnf 或 yum）
 #
@@ -230,26 +232,9 @@ EOS
   echo "✓ 本机部署完成 → $APP_DIR（Nginx 应反代到 127.0.0.1:3000）"
 }
 
-# 在全新服务器上安装运行栈（需 root；支持 apt / dnf / yum）
-cmd_bootstrap() {
-  require_deploy_host
-
-  local with_postgres="${BOOTSTRAP_WITH_POSTGRES:-0}"
-  local pg_password="${POSTGRES_APP_PASSWORD:-}"
-
-  if [[ "${with_postgres}" == "1" ]]; then
-    [[ -n "${pg_password}" ]] || die "设置 BOOTSTRAP_WITH_POSTGRES=1 时必须设置 POSTGRES_APP_PASSWORD"
-  fi
-
-  echo "▶ 在 ${REMOTE} 上执行系统初始化（自动识别 apt / dnf / yum）..."
-
-  REMOTE_DIR_ESC="${REMOTE_DIR}"
-  DEPLOY_DOMAIN_ESC="${DEPLOY_DOMAIN:-}"
-  CERTBOT_EMAIL_ESC="${CERTBOT_EMAIL:-}"
-  WITH_PG="${with_postgres}"
-  PG_PASS="${pg_password}"
-
-  ssh_remote "bash -s" <<END_BOOTSTRAP
+# 初始化脚本本体：由 bootstrap（SSH 管道）与 bootstrap-local（本机 bash）共用
+_emit_bootstrap_payload() {
+  cat <<END_BOOTSTRAP
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 REMOTE_DIR='${REMOTE_DIR_ESC}'
@@ -437,12 +422,41 @@ echo "===== Bootstrap 完成 ====="
 echo "1. 在 \$REMOTE_DIR 创建 .env（参考仓库 .env.example）"
 echo "2. 在笔记本: DEPLOY_HOST=... ./deploy.sh deploy — 或在服务器仓库目录: ./deploy.sh deploy-local"
 END_BOOTSTRAP
+}
 
-  echo "✓ 远端系统依赖与 Nginx 已就绪"
+_bootstrap_prepare_env() {
+  local with_postgres="${BOOTSTRAP_WITH_POSTGRES:-0}"
+  local pg_password="${POSTGRES_APP_PASSWORD:-}"
+  if [[ "${with_postgres}" == "1" ]]; then
+    [[ -n "${pg_password}" ]] || die "设置 BOOTSTRAP_WITH_POSTGRES=1 时必须设置 POSTGRES_APP_PASSWORD"
+  fi
+  REMOTE_DIR_ESC="${REMOTE_DIR}"
+  DEPLOY_DOMAIN_ESC="${DEPLOY_DOMAIN:-}"
+  CERTBOT_EMAIL_ESC="${CERTBOT_EMAIL:-}"
+  WITH_PG="${with_postgres}"
+  PG_PASS="${pg_password}"
+}
+
+# 全新服务器「本机」执行：系统栈与 Nginx；勿设 DEPLOY_HOST（与 deploy-local 同属本机闭环）
+cmd_bootstrap_local() {
+  _bootstrap_prepare_env
+  [[ "$(id -u)" -eq 0 ]] || die "bootstrap-local 需在服务器上以 root 执行（例如 sudo ./deploy.sh bootstrap-local）"
+  echo "▶ 在本机执行系统初始化（自动识别 apt / dnf / yum）..."
+  _emit_bootstrap_payload | bash
+  echo "✓ 本机系统依赖与 Nginx 已就绪（勿忘在 ${REMOTE_DIR} 放置 .env）"
+}
+
+# 在笔记本/CI 运行：SSH 登录 DEPLOY_HOST 后管道执行与同 bootstrap-local 相同的脚本
+cmd_bootstrap() {
+  require_deploy_host
+  _bootstrap_prepare_env
+  echo "▶ 经 SSH 在 ${REMOTE} 上执行系统初始化..."
+  _emit_bootstrap_payload | ssh_remote "bash -s"
+  echo "✓ ${REMOTE} 系统依赖与 Nginx 已就绪"
 }
 
 usage() {
-  sed -n '2,42p' "$0" | tail -n +2
+  sed -n '2,50p' "$0" | tail -n +2
 }
 
 main() {
@@ -452,9 +466,10 @@ main() {
     build)   cmd_build ;;
     deploy)       cmd_deploy ;;
     deploy-local) cmd_deploy_local ;;
-    bootstrap)    cmd_bootstrap ;;
+    bootstrap-local) cmd_bootstrap_local ;;
+    bootstrap)       cmd_bootstrap ;;
     -h|--help|help) usage ;;
-    *) die "未知命令: $sub。使用: $0 check | build | deploy | deploy-local | bootstrap | help" ;;
+    *) die "未知命令: $sub。使用: $0 check | build | deploy | deploy-local | bootstrap-local | bootstrap | help" ;;
   esac
 }
 
