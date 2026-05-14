@@ -71,8 +71,8 @@ export default function SFSHeader() {
           {isLoggedIn ? (
             <Link
               href="/sfsdiamond/dashboard"
-              className="text-sm hover:opacity-70 transition-opacity"
-              style={{ color: '#C9A96E' }}
+              className="text-sm font-medium px-4 py-1.5 rounded-full border transition-opacity duration-150 hover:opacity-70"
+              style={{ border: '1px solid rgba(201,169,110,0.60)', color: '#C9A96E' }}
             >
               {session?.user?.name ?? session?.user?.email}
             </Link>
