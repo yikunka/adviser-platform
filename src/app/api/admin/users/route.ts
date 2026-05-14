@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
       nameEn: true,
       platform: true,
       role: true,
+      isActive: true,
       emailVerified: true,
       createdAt: true,
     },

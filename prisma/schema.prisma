@@ -198,6 +198,7 @@ model User {
   phone         String?
   role          UserRole  @default(CLIENT)
   platform      Platform  @default(ADVISER)
+  isActive      Boolean   @default(true)
   emailVerified DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
