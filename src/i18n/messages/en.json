@@ -15,7 +15,9 @@
     "logout": "Logout",
     "companies": "Companies",
     "aml": "AML Screening",
-    "settings": "Settings"
+    "settings": "Settings",
+    "users": "Users",
+    "sfsOrders": "SFS Orders"
   },
   "home": {
     "heroTitleHighlight": "6AM Advisory",
@@ -533,8 +535,32 @@
   "admin": {
     "nav": {
       "main": "Main",
-      "operations": "Operations",
+      "adviser": "Adviser",
+      "sfsDiamond": "SFS Diamond",
       "system": "System"
+    },
+    "users": {
+      "title": "Users",
+      "addUser": "Add User",
+      "all": "All",
+      "adviser": "Adviser",
+      "sfsDiamond": "SFS Diamond",
+      "email": "Email",
+      "name": "Name",
+      "platform": "Platform",
+      "status": "Status",
+      "joined": "Joined",
+      "verified": "Verified",
+      "pending": "Pending",
+      "empty": "No users found.",
+      "emailLabel": "Email Address",
+      "nameLabel": "Full Name",
+      "passwordLabel": "Password",
+      "platformLabel": "Platform",
+      "creating": "Creating...",
+      "createSuccess": "User created successfully.",
+      "createFailed": "Failed to create user.",
+      "emailExists": "This email is already registered."
     },
     "dashboard": {
       "title": "Admin Dashboard",

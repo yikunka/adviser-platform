@@ -18,10 +18,11 @@ import { readLocalFile } from '@/lib/storage/r2'
 import { prisma } from '@/lib/db/prisma'
 
 const MIME_MAP: Record<string, string> = {
-  pdf: 'application/pdf',
-  jpg: 'image/jpeg',
+  pdf:  'application/pdf',
+  jpg:  'image/jpeg',
   jpeg: 'image/jpeg',
-  png: 'image/png',
+  png:  'image/png',
+  webp: 'image/webp',
 }
 
 const STAFF_ROLES = ['STAFF', 'COMPLIANCE', 'SUPER_ADMIN']
@@ -35,13 +36,16 @@ export async function GET(req: NextRequest) {
 
   // Access control for non-staff users
   if (!STAFF_ROLES.includes(session.user.role)) {
-    const [doc, kycDoc] = await Promise.all([
+    const [doc, kycDoc, sfsStep] = await Promise.all([
       prisma.document.findFirst({ where: { storageKey: key, uploadedById: session.user.id } }),
       prisma.kYCDocument.findFirst({
         where: { storageKey: key, keyPerson: { submittedByUserId: session.user.id } },
       }),
+      prisma.sfsOrderStep.findFirst({
+        where: { fileKeys: { has: key }, order: { userId: session.user.id } },
+      }),
     ])
-    if (!doc && !kycDoc) {
+    if (!doc && !kycDoc && !sfsStep) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
   }

@@ -13,6 +13,7 @@ const schema = z.object({
   nameEn: z.string().min(1).max(100),
   phone: z.string().max(20).optional(),
   locale: z.enum(['zh', 'en']).default('zh'),
+  platform: z.enum(['ADVISER', 'SFS_DIAMOND']).default('ADVISER'),
 })
 
 export async function POST(req: NextRequest) {
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
   }
 
-  const { password, nameEn, phone, locale } = parsed.data
+  const { password, nameEn, phone, locale, platform } = parsed.data
   const email = normalizeSignupEmail(parsed.data.email)
 
   try {
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
 
     const passwordHash = await bcrypt.hash(password, 12)
     const user = await prisma.user.create({
-      data: { email, passwordHash, nameEn, phone },
+      data: { email, passwordHash, nameEn, phone, platform },
     })
 
     await claimPendingCompaniesForUser(user.id, user.email)

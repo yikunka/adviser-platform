@@ -18,6 +18,8 @@ import {
   ChevronRight,
   Bell,
   Lock,
+  Users,
+  Diamond,
 } from 'lucide-react'
 
 const NAV_GROUPS = [
@@ -28,11 +30,18 @@ const NAV_GROUPS = [
     ],
   },
   {
-    labelKey: 'operations',
+    labelKey: 'adviser',
     items: [
       { href: '/admin/companies',  key: 'companies',  Icon: Building2       },
       { href: '/admin/kyc',        key: 'kyc',        Icon: ClipboardCheck  },
       { href: '/admin/aml',        key: 'aml',        Icon: ShieldAlert     },
+    ],
+  },
+  {
+    labelKey: 'sfsDiamond',
+    items: [
+      { href: '/admin/users',      key: 'users',      Icon: Users           },
+      { href: '/admin/sfs-orders', key: 'sfsOrders',  Icon: Diamond         },
     ],
   },
   {
@@ -219,17 +228,6 @@ export default function AdminShell({
           >
             {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
-
-          {/* Desktop: wordmark */}
-          <div className="hidden md:flex items-center gap-2">
-            <Image src="/logo_text.avif" alt="6AM Advisory" width={100} height={24} className="object-contain" style={{ filter: 'brightness(1.08)' }} />
-            <span
-              className="ml-1 px-2 py-0.5 rounded text-xs font-semibold"
-              style={{ background: 'rgba(201,169,110,0.12)', color: '#C9A96E', border: '1px solid rgba(201,169,110,0.2)' }}
-            >
-              Admin
-            </span>
-          </div>
 
           {/* Mobile: wordmark */}
           <div className="md:hidden flex items-center gap-2">

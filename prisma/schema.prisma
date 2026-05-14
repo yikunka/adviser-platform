@@ -17,6 +17,11 @@ enum UserRole {
   SUPER_ADMIN
 }
 
+enum Platform {
+  ADVISER
+  SFS_DIAMOND
+}
+
 enum CompanyStatus {
   ACTIVE
   DORMANT
@@ -192,6 +197,7 @@ model User {
   nameZh        String?
   phone         String?
   role          UserRole  @default(CLIENT)
+  platform      Platform  @default(ADVISER)
   emailVerified DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -210,6 +216,7 @@ model User {
   processedAddress   AddressChange[]
   processedFilings   AnnualFiling[]
   orders             ServiceOrder[]
+  sfsOrders          SfsOrder[]
 
   @@map("users")
 }
@@ -837,4 +844,93 @@ model Notification {
 
   @@index([userId, isRead])
   @@map("notifications")
+}
+
+// ─────────────────────────────────────────────
+// SFS DIAMOND — ORDERS
+// ─────────────────────────────────────────────
+
+enum SfsOrderStatus {
+  PENDING
+  QUOTED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+model SfsOrder {
+  id        String         @id @default(cuid())
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  status    SfsOrderStatus @default(PENDING)
+
+  // Linked user
+  userId String?
+  user   User?  @relation(fields: [userId], references: [id])
+
+  // Part 1 — Client Information
+  date           String
+  sampleCode     String?
+  memorialName   String
+  relationship   String
+  clientName     String
+  contactNumber  String
+  email          String
+  mailingAddress String
+
+  // Part 2 — Source Material
+  sourceType     String
+  sourceOther    String?
+  remarks        String?
+  mailingPackage String
+
+  // Part 3 — Color
+  color String
+
+  // Part 4 & 5 — Diamond line items
+  diamonds Json
+
+  // Milestone dates (set by admin)
+  sampleReceivedAt      DateTime?
+  chemTransformStartAt  DateTime?
+  chemTransformEndAt    DateTime?
+  cvdStartAt            DateTime?
+  cvdExpectedEndAt      DateTime?
+  cvdEndAt              DateTime?
+  craftingStartAt       DateTime?
+  craftingEndAt         DateTime?
+  igiCertificationAt    DateTime?
+  jewelrySettingStartAt DateTime?
+  jewelrySettingEndAt   DateTime?
+  packagingAt           DateTime?
+  deliveryAt            DateTime?
+  deliveryDetails       String?
+
+  // Admin notes
+  adminNotes     String?
+  customerRemark String?
+
+  steps SfsOrderStep[]
+
+  @@index([userId])
+  @@index([email])
+  @@index([status, createdAt])
+  @@map("sfs_orders")
+}
+
+model SfsOrderStep {
+  id         String   @id @default(cuid())
+  orderId    String
+  phase      String   // CHEM_TRANSFORM | CVD | CRAFTING
+  stepNumber Int
+  recordedAt DateTime
+  particular String
+  notes      String?
+  fileKeys   String[]
+  createdAt  DateTime @default(now())
+
+  order SfsOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, phase])
+  @@map("sfs_order_steps")
 }

@@ -15,7 +15,9 @@
     "logout": "登出",
     "companies": "公司管理",
     "aml": "AML篩查",
-    "settings": "設定"
+    "settings": "設定",
+    "users": "用戶管理",
+    "sfsOrders": "SFS 訂單"
   },
   "home": {
     "heroTitleHighlight": "6AM Advisory",
@@ -533,8 +535,32 @@
   "admin": {
     "nav": {
       "main": "主要",
-      "operations": "業務管理",
+      "adviser": "Adviser",
+      "sfsDiamond": "SFS Diamond",
       "system": "系統"
+    },
+    "users": {
+      "title": "用戶管理",
+      "addUser": "新增用戶",
+      "all": "全部",
+      "adviser": "Adviser",
+      "sfsDiamond": "SFS Diamond",
+      "email": "電郵",
+      "name": "姓名",
+      "platform": "平台",
+      "status": "狀態",
+      "joined": "加入日期",
+      "verified": "已驗證",
+      "pending": "待驗證",
+      "empty": "未找到用戶。",
+      "emailLabel": "電郵地址",
+      "nameLabel": "全名",
+      "passwordLabel": "密碼",
+      "platformLabel": "平台",
+      "creating": "創建中...",
+      "createSuccess": "用戶創建成功。",
+      "createFailed": "創建用戶失敗。",
+      "emailExists": "此電郵已被註冊。"
     },
     "dashboard": {
       "title": "管理後台",
