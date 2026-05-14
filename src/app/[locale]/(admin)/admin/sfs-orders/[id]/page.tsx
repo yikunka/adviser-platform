@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams } from 'next/navigation'
-import { ArrowLeft, CheckCircle, RotateCcw, Upload, X } from 'lucide-react'
+import { ArrowLeft, CheckCircle, RotateCcw, Upload, X, Download } from 'lucide-react'
 import Link from 'next/link'
 import DiamondCards from '@/app/sfsdiamond/components/DiamondCards'
 
@@ -582,9 +582,22 @@ export default function AdminSfsOrderDetailPage() {
             </p>
           </div>
         </div>
-        <p className="text-xs flex-shrink-0" style={{ color: 'var(--muted-foreground)' }}>
-          {new Date(order.createdAt).toLocaleDateString('en-HK', { day: 'numeric', month: 'short', year: 'numeric' })}
-        </p>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+            {new Date(order.createdAt).toLocaleDateString('en-HK', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </p>
+          {order.status === 'COMPLETED' && (
+            <a
+              href={`/api/sfsdiamond/orders/${order.id}/report`}
+              download
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-80"
+              style={{ background: 'rgba(201,169,110,0.12)', color: '#C9A96E', border: '1px solid rgba(201,169,110,0.3)' }}
+            >
+              <Download size={12} />
+              Download Report
+            </a>
+          )}
+        </div>
       </div>
 
       {/* ── Client + Diamonds ── */}

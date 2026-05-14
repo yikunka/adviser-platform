@@ -74,7 +74,7 @@ export default function HomePage() {
         style={{ background: '#0C0C0C' }}
       >
         <PublicHeroBackground />
-        <div
+<div
           className="absolute inset-0 pointer-events-none"
           style={{
             background: 'radial-gradient(ellipse 60% 50% at 50% 18%, rgba(201,169,110,0.06) 0%, transparent 65%)',

@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { routing } from '@/i18n/routing'
 import { Toaster } from '@/components/ui/sonner'
 import { HtmlLang } from '@/components/HtmlLang'
+import Providers from './Providers'
 
 export default async function LocaleLayout({
   children,
@@ -22,9 +23,11 @@ export default async function LocaleLayout({
 
   return (
     <NextIntlClientProvider messages={messages}>
-      <HtmlLang lang={locale} />
-      {children}
-      <Toaster richColors position="top-right" />
+      <Providers>
+        <HtmlLang lang={locale} />
+        {children}
+        <Toaster richColors position="top-right" />
+      </Providers>
     </NextIntlClientProvider>
   )
 }

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 
 export type DiamondDetail = {
+  code?: string
   carat?: string
   shape?: string
   type?: string
@@ -46,13 +47,17 @@ function Modal({ diamond, index, onClose }: { diamond: DiamondDetail; index: num
         <div className="px-6 py-5 flex items-center justify-between" style={{ background: 'rgba(201,169,110,0.08)', borderBottom: `1px solid ${BORDER}` }}>
           <div className="flex items-center gap-3">
             <div
-              className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
               style={{ background: GOLD, color: '#0A0805' }}
             >
               {index + 1}
             </div>
             <div>
-              <p className="text-xs uppercase tracking-widest mb-0.5" style={{ color: GOLD }}>Diamond</p>
+              {diamond.code && (
+                <p className="text-xs font-mono font-semibold tracking-wider mb-0.5" style={{ color: GOLD }}>
+                  {diamond.code}
+                </p>
+              )}
               <p className="font-bold text-base" style={{ fontFamily: 'Georgia, serif', color: DARK }}>
                 {[diamond.carat && `${diamond.carat} ct`, diamond.shape].filter(Boolean).join(' · ') || `#${index + 1}`}
               </p>
@@ -96,7 +101,7 @@ function Modal({ diamond, index, onClose }: { diamond: DiamondDetail; index: num
 
 export default function DiamondCards({
   diamonds,
-  cardBg = '#FAFAF8',
+  cardBg = BG,
   textColor = DARK,
   mutedColor = MUTED,
   borderColor = BORDER,
@@ -133,9 +138,16 @@ export default function DiamondCards({
                 <p className="text-sm font-medium truncate" style={{ color: textColor }}>
                   {summary || `Diamond #${i + 1}`}
                 </p>
-                {detail && (
-                  <p className="text-xs mt-0.5 truncate" style={{ color: mutedColor }}>{detail}</p>
-                )}
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  {d.code && (
+                    <span className="text-xs font-mono font-semibold tracking-wide" style={{ color: GOLD }}>
+                      {d.code}
+                    </span>
+                  )}
+                  {detail && (
+                    <p className="text-xs truncate" style={{ color: mutedColor }}>{detail}</p>
+                  )}
+                </div>
               </div>
               <span className="text-xs flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: GOLD }}>
                 View ›

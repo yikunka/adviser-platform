@@ -13,8 +13,6 @@ const diamondItemSchema = z.object({
 })
 
 const schema = z.object({
-  date:          z.string().min(1),
-  sampleCode:    z.string().optional(),
   memorialName:  z.string().min(1),
   relationship:  z.string().min(1),
   clientName:    z.string().min(1),
@@ -29,6 +27,18 @@ const schema = z.object({
   diamonds:      z.array(diamondItemSchema).min(1).max(8),
 })
 
+// Generate next sequential sample code: SFSB000001, SFSB000002, …
+async function generateSampleCode(): Promise<string> {
+  const last = await prisma.sfsOrder.findFirst({
+    where: { sampleCode: { startsWith: 'SFSB' } },
+    orderBy: { sampleCode: 'desc' },
+    select: { sampleCode: true },
+  })
+  const lastNum = last?.sampleCode ? parseInt(last.sampleCode.slice(4), 10) : 0
+  const next = (isNaN(lastNum) ? 0 : lastNum) + 1
+  return `SFSB${String(next).padStart(6, '0')}`
+}
+
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session || session.user.platform !== 'SFS_DIAMOND') {
@@ -41,11 +51,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
   }
 
-  const order = await prisma.sfsOrder.create({
-    data: { ...parsed.data, userId: session.user.id },
-  })
+  const sampleCode = await generateSampleCode()
 
-  return NextResponse.json({ orderId: order.id }, { status: 201 })
+  // Attach a unique code to each diamond: SFSB000001D01, SFSB000001D02, …
+  const diamonds = parsed.data.diamonds.map((d, i) => ({
+    ...d,
+    code: `${sampleCode}D${String(i + 1).padStart(2, '0')}`,
+  }))
+
+  const { contactNumber, mailingAddress } = parsed.data
+
+  const [order] = await prisma.$transaction([
+    prisma.sfsOrder.create({
+      data: {
+        ...parsed.data,
+        date: new Date().toISOString().slice(0, 10),
+        sampleCode,
+        diamonds,
+        userId: session.user.id,
+      },
+    }),
+    // Save phone + address back to the user for future pre-fill
+    prisma.user.update({
+      where: { id: session.user.id },
+      data: { phone: contactNumber, mailingAddress },
+    }),
+  ])
+
+  return NextResponse.json({ orderId: order.id, sampleCode }, { status: 201 })
 }
 
 export async function GET(_req: NextRequest) {

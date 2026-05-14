@@ -193,15 +193,16 @@ model User {
   id            String    @id @default(cuid())
   email         String    @unique
   passwordHash  String
-  nameEn        String
-  nameZh        String?
-  phone         String?
-  role          UserRole  @default(CLIENT)
-  platform      Platform  @default(ADVISER)
-  isActive      Boolean   @default(true)
-  emailVerified DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  nameEn         String
+  nameZh         String?
+  phone          String?
+  mailingAddress String?
+  role           UserRole  @default(CLIENT)
+  platform       Platform  @default(ADVISER)
+  isActive       Boolean   @default(true)
+  emailVerified  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   verificationTokens VerificationToken[]
   clientCompanies    Company[]           @relation("ClientCompany")

@@ -53,7 +53,7 @@ export default async function SFSOrderDetailPage({
   const BORDER = '#EDE7D8'
 
   const badge = STATUS_STYLE[order.status] ?? STATUS_STYLE.PENDING
-  const diamonds = order.diamonds as { carat?: string; shape?: string; type?: string; size?: string; cut?: string; mountStyle?: string; metal?: string }[]
+  const diamonds = order.diamonds as { code?: string; carat?: string; shape?: string; type?: string; design?: string; metal?: string; ringSize?: string }[]
 
   const phaseGroups = PHASE_ORDER.map(phase => ({
     phase,
@@ -82,10 +82,39 @@ export default async function SFSOrderDetailPage({
             <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ background: badge.bg, color: badge.color }}>
               {order.status}
             </span>
+            {['PENDING', 'QUOTED', 'CANCELLED'].includes(order.status) && (
+              <Link
+                href={`/sfsdiamond/orders/${order.id}/edit`}
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-medium transition-all hover:opacity-80"
+                style={{ background: 'rgba(201,169,110,0.12)', color: GOLD, border: `1px solid rgba(201,169,110,0.3)` }}
+              >
+                ✎ Edit Order
+              </Link>
+            )}
           </div>
-          <p className="text-sm mt-1" style={{ color: MUTED }}>
-            Order placed {new Date(order.createdAt).toLocaleDateString('en-HK', { day: 'numeric', month: 'long', year: 'numeric' })}
-          </p>
+          <div className="flex flex-wrap items-center gap-3 mt-1">
+            <p className="text-sm" style={{ color: MUTED }}>
+              Order placed {new Date(order.createdAt).toLocaleDateString('en-HK', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
+            {order.sampleCode && (
+              <span
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-semibold tracking-wide"
+                style={{ background: 'rgba(201,169,110,0.12)', color: GOLD, border: `1px solid rgba(201,169,110,0.25)` }}
+              >
+                ✦ {order.sampleCode}
+              </span>
+            )}
+            {order.status === 'COMPLETED' && (
+              <a
+                href={`/api/sfsdiamond/orders/${order.id}/report`}
+                download
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-medium transition-all hover:opacity-80"
+                style={{ background: GOLD, color: '#0A0805' }}
+              >
+                ↓ Download Report
+              </a>
+            )}
+          </div>
         </div>
 
         {/* Admin remark to customer */}

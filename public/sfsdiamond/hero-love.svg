@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 800" fill="none">
+  <defs>
+    <radialGradient id="bg" cx="62%" cy="42%" r="80%">
+      <stop offset="0%" stop-color="#1C0F08"/>
+      <stop offset="55%" stop-color="#0D080A"/>
+      <stop offset="100%" stop-color="#050305"/>
+    </radialGradient>
+    <radialGradient id="glow-warm" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#C9A96E" stop-opacity="0.13"/>
+      <stop offset="100%" stop-color="#C9A96E" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow-rose" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#B06070" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#B06070" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur-xl"><feGaussianBlur stdDeviation="40"/></filter>
+  </defs>
+
+  <!-- Base background -->
+  <rect width="1440" height="800" fill="url(#bg)"/>
+
+  <!-- Atmospheric warm glow right-centre -->
+  <ellipse cx="980" cy="380" rx="560" ry="400" fill="url(#glow-warm)" filter="url(#blur-xl)"/>
+
+  <!-- Atmospheric rose bloom left -->
+  <ellipse cx="320" cy="440" rx="360" ry="300" fill="url(#glow-rose)" filter="url(#blur-xl)"/>
+
+  <!-- Starfield -->
+  <g opacity="0.55">
+    <circle cx="80"   cy="60"  r="1.1" fill="#F5ECD0" opacity="0.8"/>
+    <circle cx="210"  cy="130" r="0.7" fill="#C9A96E" opacity="0.6"/>
+    <circle cx="350"  cy="45"  r="1.3" fill="#F5ECD0" opacity="0.9"/>
+    <circle cx="490"  cy="90"  r="0.6" fill="#C9A96E" opacity="0.5"/>
+    <circle cx="620"  cy="30"  r="0.9" fill="#F5ECD0" opacity="0.7"/>
+    <circle cx="760"  cy="70"  r="1.2" fill="#D4A0B0" opacity="0.5"/>
+    <circle cx="900"  cy="25"  r="0.8" fill="#C9A96E" opacity="0.7"/>
+    <circle cx="1050" cy="75"  r="1.0" fill="#F5ECD0" opacity="0.7"/>
+    <circle cx="1180" cy="40"  r="0.7" fill="#C9A96E" opacity="0.5"/>
+    <circle cx="1320" cy="85"  r="1.4" fill="#F5ECD0" opacity="0.8"/>
+    <circle cx="1400" cy="50"  r="0.6" fill="#D4A0B0" opacity="0.5"/>
+    <circle cx="140"  cy="200" r="0.8" fill="#C9A96E" opacity="0.4"/>
+    <circle cx="50"   cy="420" r="0.7" fill="#C9A96E" opacity="0.35"/>
+    <circle cx="1250" cy="180" r="0.8" fill="#F5ECD0" opacity="0.55"/>
+    <circle cx="1380" cy="260" r="1.0" fill="#C9A96E" opacity="0.45"/>
+    <circle cx="1350" cy="600" r="1.2" fill="#F5ECD0" opacity="0.6"/>
+    <circle cx="440"  cy="720" r="0.9" fill="#F5ECD0" opacity="0.35"/>
+    <circle cx="850"  cy="750" r="1.0" fill="#D4A0B0" opacity="0.35"/>
+    <circle cx="1100" cy="710" r="0.8" fill="#F5ECD0" opacity="0.45"/>
+    <circle cx="600"  cy="760" r="0.7" fill="#C9A96E" opacity="0.3"/>
+    <circle cx="220"  cy="740" r="1.1" fill="#C9A96E" opacity="0.4"/>
+  </g>
+</svg>

@@ -1,5 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import VideoPlayer from './components/VideoPlayer'
+import EternityRing from './components/EternityRing'
 
 const PROCESS = [
   { step: '01', title: 'Confirm Order',    desc: 'Contact our team to begin. We guide you through every option and handle paperwork with care.',           img: '/sfsdiamond/process-1.jpg' },
@@ -27,17 +29,16 @@ export default function SFSHomePage() {
   return (
     <>
       {/* ── Hero ── */}
-      <section className="relative min-h-[88vh] flex items-center overflow-hidden">
-        <div className="absolute inset-0">
-          <Image
-            src="/sfsdiamond/hero-diamond.jpg"
-            alt="Memorial diamond"
-            fill
-            className="object-cover"
-            priority
-          />
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(10,8,5,0.72) 0%, rgba(10,8,5,0.45) 60%, rgba(10,8,5,0.1) 100%)' }} />
-        </div>
+      <section className="relative min-h-[88vh] flex items-center overflow-hidden" style={{ background: '#050305' }}>
+        {/* SVG atmospheric background */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/sfsdiamond/hero-love.svg" alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
+        <EternityRing />
+        {/* Radial vignette so left-side text stays legible */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse 55% 70% at 18% 55%, rgba(5,3,5,0.72) 0%, transparent 75%)' }}
+        />
 
         <div className="relative z-10 max-w-6xl mx-auto px-6 py-24">
           <p className="text-xs uppercase tracking-[0.3em] mb-5" style={{ color: '#C9A96E' }}>
@@ -146,18 +147,7 @@ export default function SFSHomePage() {
             </h2>
           </div>
           <div className="flex justify-center">
-            <div className="rounded-2xl overflow-hidden shadow-2xl" style={{ maxWidth: 420, width: '100%' }}>
-              <video
-                autoPlay
-                muted
-                loop
-                playsInline
-                poster="/sfsdiamond/hero-diamond.jpg"
-                className="w-full h-auto block"
-              >
-                <source src="/sfsdiamond/hero.mp4" type="video/mp4" />
-              </video>
-            </div>
+            <VideoPlayer src="/sfsdiamond/hero.mp4" poster="/sfsdiamond/hero-diamond.jpg" />
           </div>
         </div>
       </section>

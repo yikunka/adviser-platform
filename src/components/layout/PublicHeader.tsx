@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import { usePathname, useParams } from 'next/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
 import { Menu, X } from 'lucide-react'
+import { useSession } from 'next-auth/react'
 
 const NAV_LINKS = [
   { href: '/', key: 'home' },
@@ -23,6 +24,7 @@ export default function PublicHeader() {
   const [menuOpen, setMenuOpen] = useState(false)
   const locale = (params.locale as string) ?? 'zh'
   const otherLocale = locale === 'zh' ? 'en' : 'zh'
+  const { data: session, status } = useSession()
 
   function switchLocale() {
     const pathWithoutLocale = pathname.replace(/^\/(zh|en)/, '') || '/'
@@ -72,14 +74,20 @@ export default function PublicHeader() {
           {/* Desktop actions */}
           <div className="hidden md:flex items-center gap-3">
             <LocaleToggle label={otherLocale === 'zh' ? '中文' : 'EN'} onClick={switchLocale} />
-            <Link
-              href="/login"
-              style={{ color: '#C9A96E' }}
-              className="text-sm px-3 py-1.5 rounded transition-opacity hover:opacity-80"
-            >
-              {t('login')}
-            </Link>
-            <GetStartedButton href="/register" label={t('getStarted')} />
+            {status === 'authenticated' ? (
+              <GetStartedButton href="/dashboard" label={t('dashboard', { defaultValue: 'My Dashboard' })} />
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  style={{ color: '#C9A96E' }}
+                  className="text-sm px-3 py-1.5 rounded transition-opacity hover:opacity-80"
+                >
+                  {t('login')}
+                </Link>
+                <GetStartedButton href="/register" label={t('getStarted')} />
+              </>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -119,19 +127,29 @@ export default function PublicHeader() {
               className="flex items-center gap-3 pt-3 mt-2"
             >
               <LocaleToggle label={otherLocale === 'zh' ? '中文' : 'EN'} onClick={switchLocale} />
-              <Link
-                href="/login"
-                style={{ color: '#C9A96E' }}
-                className="text-sm"
-                onClick={() => setMenuOpen(false)}
-              >
-                {t('login')}
-              </Link>
-              <GetStartedButton
-                href="/register"
-                label={t('getStarted')}
-                onClick={() => setMenuOpen(false)}
-              />
+              {status === 'authenticated' ? (
+                <GetStartedButton
+                  href="/dashboard"
+                  label={t('dashboard', { defaultValue: 'My Dashboard' })}
+                  onClick={() => setMenuOpen(false)}
+                />
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    style={{ color: '#C9A96E' }}
+                    className="text-sm"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    {t('login')}
+                  </Link>
+                  <GetStartedButton
+                    href="/register"
+                    label={t('getStarted')}
+                    onClick={() => setMenuOpen(false)}
+                  />
+                </>
+              )}
             </div>
           </div>
         )}
