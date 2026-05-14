@@ -34,13 +34,23 @@ export default function SFSHomePage() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/sfsdiamond/hero-love.svg" alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
         <EternityRing />
-        {/* Radial vignette so left-side text stays legible */}
+        {/* Left panel — dark scrim for text legibility */}
         <div
           className="absolute inset-0 pointer-events-none"
-          style={{ background: 'radial-gradient(ellipse 55% 70% at 18% 55%, rgba(5,3,5,0.72) 0%, transparent 75%)' }}
+          style={{ background: 'linear-gradient(90deg, rgba(2,1,3,0.82) 0%, rgba(2,1,3,0.60) 28%, rgba(2,1,3,0.20) 52%, transparent 68%)' }}
+        />
+        {/* Ring side — very subtle inner glow so crystal reads against dark */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse 38% 55% at 70% 50%, rgba(201,169,110,0.07) 0%, transparent 100%)' }}
+        />
+        {/* Top + bottom edge fade for clean framing */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: 'linear-gradient(180deg, rgba(2,1,3,0.55) 0%, transparent 18%, transparent 80%, rgba(2,1,3,0.65) 100%)' }}
         />
 
-        <div className="relative z-10 max-w-6xl mx-auto px-6 py-24">
+        <div className="relative z-10 max-w-6xl mx-auto px-6 py-24" style={{ transform: 'translateX(-20%)' }}>
           <p className="text-xs uppercase tracking-[0.3em] mb-5" style={{ color: '#C9A96E' }}>
             Memorial Diamond · CVD Technology
           </p>
