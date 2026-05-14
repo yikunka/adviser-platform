@@ -4,22 +4,46 @@ import { useEffect, useRef } from 'react'
 
 type Vec3 = [number, number, number]
 
-function torusPoint(u: number, v: number, R: number, r: number): Vec3 {
+// ── Figure-8 spine (Lissajous 1:2) ──────────────────────────────────────────
+// x = Rx·sin(2t),  y = Ry·cos(t),  z = 0
+// Ry ≈ 1.8·Rx  →  each loop looks roughly circular like the digit "8"
+
+function spinePoint(t: number, Rx: number, Ry: number): Vec3 {
+  return [Rx * Math.sin(2 * t), Ry * Math.cos(t), 0]
+}
+
+// Analytical (unit) tangent
+function spineTangent(t: number, Rx: number, Ry: number): Vec3 {
+  const dx = 2 * Rx * Math.cos(2 * t)
+  const dy = -Ry * Math.sin(t)
+  const len = Math.sqrt(dx * dx + dy * dy) || 1
+  return [dx / len, dy / len, 0]
+}
+
+// Tube cross-section:  N = (–Ty, Tx, 0)  B = (0,0,1)
+function tubePoint(t: number, v: number, Rx: number, Ry: number, r: number): Vec3 {
+  const C = spinePoint(t, Rx, Ry)
+  const T = spineTangent(t, Rx, Ry)
   return [
-    (R + r * Math.cos(v)) * Math.cos(u),
-    (R + r * Math.cos(v)) * Math.sin(u),
+    C[0] + r * Math.cos(v) * (-T[1]),
+    C[1] + r * Math.cos(v) *   T[0],
     r * Math.sin(v),
   ]
 }
 
+// Outward surface normal (already unit length for planar spine)
+function tubeNormal(t: number, v: number, Rx: number, Ry: number): Vec3 {
+  const T = spineTangent(t, Rx, Ry)
+  return [-T[1] * Math.cos(v), T[0] * Math.cos(v), Math.sin(v)]
+}
+
+// ── Rotation helpers ─────────────────────────────────────────────────────────
 function rotX(p: Vec3, a: number): Vec3 {
   return [p[0], p[1] * Math.cos(a) - p[2] * Math.sin(a), p[1] * Math.sin(a) + p[2] * Math.cos(a)]
 }
-
 function rotY(p: Vec3, a: number): Vec3 {
   return [p[0] * Math.cos(a) + p[2] * Math.sin(a), p[1], -p[0] * Math.sin(a) + p[2] * Math.cos(a)]
 }
-
 function rotZ(p: Vec3, a: number): Vec3 {
   return [p[0] * Math.cos(a) - p[1] * Math.sin(a), p[0] * Math.sin(a) + p[1] * Math.cos(a), p[2]]
 }
@@ -30,20 +54,20 @@ function project(p: Vec3, fov: number, cx: number, cy: number): [number, number]
   return [cx + p[0] * s, cy - p[1] * s]
 }
 
-function normalize(v: Vec3): Vec3 {
-  const len = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]) || 1
-  return [v[0] / len, v[1] / len, v[2] / len]
-}
-
-function dot(a: Vec3, b: Vec3): number {
+function dot3(a: Vec3, b: Vec3): number {
   return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 }
 
-// Three light sources for crystal multi-reflection
-const LIGHTS: { dir: Vec3; strength: number; color: [number, number, number] }[] = [
-  { dir: normalize([0.5,  0.7,  0.9]), strength: 1.0,  color: [255, 252, 240] }, // main — warm white
-  { dir: normalize([-0.6, 0.2,  0.5]), strength: 0.45, color: [200, 220, 255] }, // fill — cool blue
-  { dir: normalize([0.1, -0.8,  0.4]), strength: 0.25, color: [255, 210, 180] }, // rim  — warm rose
+// ── Three-point crystal lighting ─────────────────────────────────────────────
+type Light = { dir: Vec3; rgb: [number, number, number]; s: number }
+function L(dx: number, dy: number, dz: number, rgb: [number, number, number], s: number): Light {
+  const len = Math.sqrt(dx * dx + dy * dy + dz * dz)
+  return { dir: [dx / len, dy / len, dz / len], rgb, s }
+}
+const LIGHTS: Light[] = [
+  L( 0.45,  0.65,  0.85, [255, 252, 242], 1.00), // main  — warm white
+  L(-0.55,  0.25,  0.55, [180, 210, 255], 0.45), // fill  — cool blue
+  L( 0.10, -0.75,  0.40, [255, 200, 175], 0.25), // rim   — warm rose
 ]
 
 export default function EternityRing() {
@@ -56,7 +80,7 @@ export default function EternityRing() {
     if (!ctx) return
 
     let animId: number
-    const startTime = performance.now()
+    const t0 = performance.now()
 
     function resize() {
       const dpr = window.devicePixelRatio || 1
@@ -76,127 +100,103 @@ export default function EternityRing() {
 
       ctx!.clearRect(0, 0, CW, CH)
 
-      const t = (performance.now() - startTime) * 0.001
+      const elapsed = (performance.now() - t0) * 0.001
 
-      // Irregular organic motion — incommensurate frequencies, small amplitudes
-      const aY = t * 0.22
-            + 0.18 * Math.sin(t * 0.47)
-            + 0.09 * Math.sin(t * 1.13 + 1.7)
-            + 0.04 * Math.sin(t * 2.31 + 0.5)
-      const aX = 0.50
-            + 0.22 * Math.sin(t * 0.38 + 0.9)
-            + 0.10 * Math.sin(t * 0.91 + 2.4)
-            + 0.04 * Math.sin(t * 1.77 + 1.2)
-      const aZ = 0.08 * Math.sin(t * 0.59 + 1.1)
-            + 0.04 * Math.sin(t * 0.83 + 3.0)
+      // Steady slow rotation around Y axis; fixed X tilt so both faces stay visible
+      const aY = elapsed * 0.25
+      const aX = 0.52
+      const aZ = 0
 
-      const minDim = Math.min(CW, CH)
-      const R   = minDim * 0.30
-      const r   = minDim * 0.088
-      const fov = minDim * 1.9
+      const min = Math.min(CW, CH)
+      const Rx  = min * 0.21   // half-width of each loop
+      const Ry  = min * 0.32   // half-height  (Ry/Rx ≈ 1.52  →  loops look like "8")
+      const r   = min * 0.072  // tube radius
+      const fov = min * 1.9
       const cx  = CW * 0.5
       const cy  = CH * 0.5
 
-      const U = 72  // facets around major circle
-      const V = 30  // facets around tube
+      const U = 96  // segments along the spine
+      const V = 32  // segments around the tube
 
-      type Face = {
-        pts: [number, number][]
-        z: number
-        normal: Vec3
-      }
+      type Face = { pts: [number, number][]; z: number; n: Vec3 }
       const faces: Face[] = []
 
       for (let i = 0; i < U; i++) {
         for (let j = 0; j < V; j++) {
-          const u0 = (i       / U) * 2 * Math.PI
-          const u1 = ((i + 1) / U) * 2 * Math.PI
-          const v0 = (j       / V) * 2 * Math.PI
-          const v1 = ((j + 1) / V) * 2 * Math.PI
+          const t1 = (i       / U) * 2 * Math.PI
+          const t2 = ((i + 1) / U) * 2 * Math.PI
+          const v1 = (j       / V) * 2 * Math.PI
+          const v2 = ((j + 1) / V) * 2 * Math.PI
 
-          const raw: Vec3[] = [
-            torusPoint(u0, v0, R, r),
-            torusPoint(u1, v0, R, r),
-            torusPoint(u1, v1, R, r),
-            torusPoint(u0, v1, R, r),
+          const rawPts: Vec3[] = [
+            tubePoint(t1, v1, Rx, Ry, r),
+            tubePoint(t2, v1, Rx, Ry, r),
+            tubePoint(t2, v2, Rx, Ry, r),
+            tubePoint(t1, v2, Rx, Ry, r),
           ]
-          const corners = raw.map(p => rotZ(rotX(rotY(p, aY), aX), aZ)) as Vec3[]
+          const rawN = tubeNormal((t1 + t2) * 0.5, (v1 + v2) * 0.5, Rx, Ry)
 
-          const e1: Vec3 = [corners[1][0]-corners[0][0], corners[1][1]-corners[0][1], corners[1][2]-corners[0][2]]
-          const e2: Vec3 = [corners[3][0]-corners[0][0], corners[3][1]-corners[0][1], corners[3][2]-corners[0][2]]
-          const nx = e1[1]*e2[2] - e1[2]*e2[1]
-          const ny = e1[2]*e2[0] - e1[0]*e2[2]
-          const nz = e1[0]*e2[1] - e1[1]*e2[0]
-          const normal: Vec3 = [nx, ny, nz]
+          const rot = (p: Vec3) => rotZ(rotX(rotY(p, aY), aX), aZ)
+          const corners = rawPts.map(rot) as Vec3[]
+          const n       = rot(rawN)
 
-          const avgZ = (corners[0][2]+corners[1][2]+corners[2][2]+corners[3][2]) / 4
-          const pts = corners.map(p => project(p, fov, cx, cy)) as [number, number][]
+          const avgZ = corners.reduce((s, p) => s + p[2], 0) / 4
+          const pts  = corners.map(p => project(p, fov, cx, cy)) as [number, number][]
 
-          faces.push({ pts, z: avgZ, normal })
+          faces.push({ pts, z: avgZ, n })
         }
       }
 
-      // Painter's algorithm — back to front so transparency layers correctly
+      // Painter's algorithm — back to front for correct transparency layering
       faces.sort((a, b) => a.z - b.z)
 
       for (const f of faces) {
-        const n = normalize(f.normal)
-
-        // Accumulate multi-light illumination
-        let illumR = 0, illumG = 0, illumB = 0
-        for (const light of LIGHTS) {
-          const d = Math.max(0, dot(n, light.dir))
-          // Crystal uses specular^4 to get sharp highlights
-          const spec = Math.pow(d, 4) * light.strength
-          const diff = d * light.strength * 0.3
-          illumR += (diff + spec) * light.color[0]
-          illumG += (diff + spec) * light.color[1]
-          illumB += (diff + spec) * light.color[2]
+        let iR = 0, iG = 0, iB = 0
+        for (const L of LIGHTS) {
+          const d    = Math.max(0, dot3(f.n, L.dir))
+          const spec = d ** 5 * L.s        // sharp specular flash
+          const diff = d      * L.s * 0.25 // soft diffuse
+          iR += (diff + spec) * L.rgb[0]
+          iG += (diff + spec) * L.rgb[1]
+          iB += (diff + spec) * L.rgb[2]
         }
 
-        // Primary dot with main light for alpha decisions
-        const primaryDot = Math.max(0, dot(n, LIGHTS[0].dir))
+        const pd = Math.max(0, dot3(f.n, LIGHTS[0].dir)) // primary dot
 
-        // Fill — crystal is mostly transparent; bright specular faces flash white
-        let fillA: number
-        let fR: number, fG: number, fB: number
+        let fR: number, fG: number, fB: number, fa: number
 
-        if (primaryDot > 0.82) {
-          // Specular flash — near opaque bright white/cream
-          fR = Math.min(255, illumR); fG = Math.min(255, illumG); fB = Math.min(255, illumB)
-          fillA = 0.55
-        } else if (primaryDot > 0.45) {
-          // Mid-range crystal — warm white with slight gold cast
-          fR = Math.min(255, illumR * 0.9 + 60)
-          fG = Math.min(255, illumG * 0.9 + 40)
-          fB = Math.min(255, illumB * 0.9 + 20)
-          fillA = 0.18 + primaryDot * 0.20
-        } else if (primaryDot > 0.1) {
-          // Shadow-side — cool dark crystal, slight indigo
-          fR = 45; fG = 38; fB = 65
-          fillA = 0.10 + primaryDot * 0.08
+        if (pd > 0.85) {
+          // Specular flash — near-white
+          fR = Math.min(255, iR); fG = Math.min(255, iG); fB = Math.min(255, iB)
+          fa = 0.60
+        } else if (pd > 0.50) {
+          // Crystal mid-tone — warm with slight gold
+          fR = Math.min(255, iR * 0.85 + 55)
+          fG = Math.min(255, iG * 0.85 + 38)
+          fB = Math.min(255, iB * 0.85 + 22)
+          fa = 0.18 + pd * 0.24
+        } else if (pd > 0.15) {
+          // Shadow side — cool indigo
+          fR = 48; fG = 40; fB = 70
+          fa = 0.09 + pd * 0.10
         } else {
-          // Back face — almost invisible
-          fR = 20; fG = 15; fB = 35
-          fillA = 0.05
+          // Back face — near invisible
+          fR = 16; fG = 12; fB = 28
+          fa = 0.04
         }
 
         ctx!.beginPath()
         ctx!.moveTo(f.pts[0][0], f.pts[0][1])
         for (let k = 1; k < f.pts.length; k++) ctx!.lineTo(f.pts[k][0], f.pts[k][1])
         ctx!.closePath()
-        ctx!.fillStyle = `rgba(${Math.round(fR)},${Math.round(fG)},${Math.round(fB)},${fillA})`
+        ctx!.fillStyle = `rgba(${Math.round(fR)},${Math.round(fG)},${Math.round(fB)},${fa})`
         ctx!.fill()
 
-        // Facet edge lines — brightest on lit faces, invisible on dark
-        const edgeA = primaryDot > 0.6
-          ? 0.55
-          : primaryDot > 0.2
-          ? 0.20
-          : 0.06
-        if (edgeA > 0.05) {
-          ctx!.strokeStyle = `rgba(245,238,215,${edgeA})`
-          ctx!.lineWidth = primaryDot > 0.6 ? 0.8 : 0.4
+        // Facet edge — only visible on lit surfaces
+        const ea = pd > 0.65 ? 0.58 : pd > 0.25 ? 0.20 : 0.04
+        if (ea > 0.04) {
+          ctx!.strokeStyle = `rgba(245,238,215,${ea})`
+          ctx!.lineWidth = pd > 0.65 ? 0.85 : 0.38
           ctx!.stroke()
         }
       }
