@@ -1,7 +1,13 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import SFSHeader from './components/SFSHeader'
 import SFSFooter from './components/SFSFooter'
 import SFSProviders from './components/SFSProviders'
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+}
 
 export const metadata: Metadata = {
   title: 'SFS Diamond — Memorial Diamonds Hong Kong',

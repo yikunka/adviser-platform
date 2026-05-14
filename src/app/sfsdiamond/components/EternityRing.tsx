@@ -109,11 +109,12 @@ export default function EternityRing() {
       ctx!.clearRect(0, 0, CW, CH)
 
       const elapsed = (performance.now() - t0) * 0.001
+      const speed = 0.7 // overall rotation 30% slower
 
       // Three-axis slow rotation — golden-ratio-spaced speeds so it never repeats
-      const aY = elapsed * 0.15
-      const aX = elapsed * 0.093
-      const aZ = elapsed * 0.058
+      const aY = elapsed * 0.15 * speed
+      const aX = elapsed * 0.093 * speed
+      const aZ = elapsed * 0.058 * speed
 
       const min = Math.min(CW, CH)
       // Lemniscate scale: min RoC = a/3; keep r < a/3 for no folding

@@ -34,10 +34,17 @@ export default function SFSHomePage() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/sfsdiamond/hero-love.svg" alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
         <EternityRing />
-        {/* Left panel — dark scrim for text legibility */}
+        {/* Desktop: readability panel on left. Mobile: keep left side readable — avoid strong shadow that eats narrow lines */}
         <div
-          className="absolute inset-0 pointer-events-none"
+          className="absolute inset-0 hidden md:block pointer-events-none"
           style={{ background: 'linear-gradient(90deg, rgba(2,1,3,0.82) 0%, rgba(2,1,3,0.60) 28%, rgba(2,1,3,0.20) 52%, transparent 68%)' }}
+        />
+        <div
+          className="absolute inset-0 md:hidden pointer-events-none"
+          style={{
+            background:
+              'linear-gradient(165deg, rgba(2,1,3,0.94) 0%, rgba(2,1,3,0.68) min(72vw, 18rem), rgba(2,1,3,0.28) max(82vw, 20rem), transparent 100%)',
+          }}
         />
         {/* Ring side — very subtle inner glow so crystal reads against dark */}
         <div
@@ -50,18 +57,32 @@ export default function SFSHomePage() {
           style={{ background: 'linear-gradient(180deg, rgba(2,1,3,0.55) 0%, transparent 18%, transparent 80%, rgba(2,1,3,0.65) 100%)' }}
         />
 
-        <div className="relative z-10 max-w-6xl mx-auto px-6 py-24" style={{ transform: 'translateX(-20%)' }}>
-          <p className="text-xs uppercase tracking-[0.3em] mb-5" style={{ color: '#C9A96E' }}>
+        <div
+          className={[
+            'relative z-10 box-border w-full py-24',
+            'max-md:mx-0 max-md:max-w-none max-md:pl-[max(1rem,calc(env(safe-area-inset-left,0px)+14px))]',
+            'max-md:pr-[max(1rem,calc(env(safe-area-inset-right,0px)+14px))]',
+            // 桌面：不要用 translate（窄屏笔记本会裁切）；用「随视口变」的左边距把文案放进渐变区
+            'md:mx-auto md:max-w-6xl md:pl-[clamp(2.5rem,min(14vw,8rem),8rem)] md:pr-[clamp(1.5rem,4vw,2.5rem)]',
+          ].join(' ')}
+        >
+          <p
+            className="mb-5 text-xs uppercase tracking-[0.3em] hyphens-none"
+            style={{ color: '#C9A96E', textWrap: 'balance' }}
+          >
             Memorial Diamond · CVD Technology
           </p>
           <h1
-            className="text-5xl md:text-7xl font-bold leading-tight mb-6 max-w-3xl"
+            className="mb-6 max-w-3xl font-bold leading-[1.1] text-[clamp(2.125rem,6.5vw+0.85rem,3.5rem)] md:text-7xl md:leading-tight"
             style={{ color: '#FFFFFF', fontFamily: 'Georgia, "Times New Roman", serif' }}
           >
             For Forever<br />
             <span style={{ color: '#C9A96E' }}>Love</span>
           </h1>
-          <p className="text-lg md:text-xl mb-10 max-w-xl leading-relaxed" style={{ color: 'rgba(245,240,232,0.85)' }}>
+          <p
+            className="mb-10 max-w-xl text-base leading-relaxed hyphens-none sm:text-lg md:text-xl"
+            style={{ color: 'rgba(245,240,232,0.85)', textWrap: 'pretty' }}
+          >
             Turning love into everlasting brilliance. We transform cremated ashes or hair into
             certified lab-grown diamonds — a luminous tribute that lasts forever.
           </p>
