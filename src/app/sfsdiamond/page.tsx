@@ -29,7 +29,7 @@ export default function SFSHomePage() {
   return (
     <>
       {/* ── Hero ── */}
-      <section className="relative min-h-[88vh] flex items-center overflow-hidden" style={{ background: '#050305' }}>
+      <section className="relative min-h-screen flex items-center overflow-hidden" style={{ background: '#050305' }}>
         {/* SVG atmospheric background */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/sfsdiamond/hero-love.svg" alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover pointer-events-none" />

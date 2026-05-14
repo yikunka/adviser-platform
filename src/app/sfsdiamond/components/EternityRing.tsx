@@ -4,26 +4,34 @@ import { useEffect, useRef } from 'react'
 
 type Vec3 = [number, number, number]
 
-// ── Figure-8 spine (Lissajous 1:2) ──────────────────────────────────────────
-// x = Rx·sin(2t),  y = Ry·cos(t),  z = 0
-// Ry ≈ 1.8·Rx  →  each loop looks roughly circular like the digit "8"
+// ── Lemniscate of Bernoulli spine ────────────────────────────────────────────
+// (x²+y²)² = a²(x²−y²)  →  parametric:
+//   x = a·cos(t) / (1+sin²t)
+//   y = a·sin(t)·cos(t) / (1+sin²t)
+//
+// Minimum radius of curvature = a/3 at the loop tips.
+// Keeping r < a/3 guarantees the tube never folds at any bend.
 
-function spinePoint(t: number, Rx: number, Ry: number): Vec3 {
-  return [Rx * Math.sin(2 * t), Ry * Math.cos(t), 0]
+function spinePoint(t: number, a: number): Vec3 {
+  const s = Math.sin(t), c = Math.cos(t)
+  const D = 1 + s * s
+  return [a * c / D, a * s * c / D, 0]
 }
 
-// Analytical (unit) tangent
-function spineTangent(t: number, Rx: number, Ry: number): Vec3 {
-  const dx = 2 * Rx * Math.cos(2 * t)
-  const dy = -Ry * Math.sin(t)
+// Numerical unit tangent (stable at all t including the crossing)
+function spineTangent(t: number, a: number): Vec3 {
+  const eps = 0.0004
+  const p0 = spinePoint(t - eps, a)
+  const p1 = spinePoint(t + eps, a)
+  const dx = p1[0] - p0[0], dy = p1[1] - p0[1]
   const len = Math.sqrt(dx * dx + dy * dy) || 1
   return [dx / len, dy / len, 0]
 }
 
 // Tube cross-section:  N = (–Ty, Tx, 0)  B = (0,0,1)
-function tubePoint(t: number, v: number, Rx: number, Ry: number, r: number): Vec3 {
-  const C = spinePoint(t, Rx, Ry)
-  const T = spineTangent(t, Rx, Ry)
+function tubePoint(t: number, v: number, a: number, r: number): Vec3 {
+  const C = spinePoint(t, a)
+  const T = spineTangent(t, a)
   return [
     C[0] + r * Math.cos(v) * (-T[1]),
     C[1] + r * Math.cos(v) *   T[0],
@@ -31,9 +39,9 @@ function tubePoint(t: number, v: number, Rx: number, Ry: number, r: number): Vec
   ]
 }
 
-// Outward surface normal (already unit length for planar spine)
-function tubeNormal(t: number, v: number, Rx: number, Ry: number): Vec3 {
-  const T = spineTangent(t, Rx, Ry)
+// Outward surface normal (unit length for planar spine)
+function tubeNormal(t: number, v: number, a: number): Vec3 {
+  const T = spineTangent(t, a)
   return [-T[1] * Math.cos(v), T[0] * Math.cos(v), Math.sin(v)]
 }
 
@@ -102,21 +110,23 @@ export default function EternityRing() {
 
       const elapsed = (performance.now() - t0) * 0.001
 
-      // Steady slow rotation around Y axis; fixed X tilt so both faces stay visible
+      // Three-axis slow rotation — golden-ratio-spaced speeds so it never repeats
       const aY = elapsed * 0.25
-      const aX = 0.52
-      const aZ = 0
+      const aX = elapsed * 0.155
+      const aZ = elapsed * 0.096
 
       const min = Math.min(CW, CH)
-      const Rx  = min * 0.21   // half-width of each loop
-      const Ry  = min * 0.32   // half-height  (Ry/Rx ≈ 1.52  →  loops look like "8")
-      const r   = min * 0.072  // tube radius
+      // Lemniscate scale: min RoC = a/3; keep r < a/3 for no folding
+      const a   = min * 0.50   // lemniscate scale  (width = 2a, height ≈ 0.77a)
+      const r   = min * 0.090  // tube radius  (r/a = 0.18;  a/3 = 0.167 > r ✓)
       const fov = min * 1.9
       const cx  = CW * 0.5
       const cy  = CH * 0.5
 
-      const U = 96  // segments along the spine
-      const V = 32  // segments around the tube
+      // Grid 20 % coarser than the previous dense sampling
+      // (shape was scaled +20 %, so reducing segments restores original cell size)
+      const U = 150
+      const V = 40
 
       type Face = { pts: [number, number][]; z: number; n: Vec3 }
       const faces: Face[] = []
@@ -129,12 +139,12 @@ export default function EternityRing() {
           const v2 = ((j + 1) / V) * 2 * Math.PI
 
           const rawPts: Vec3[] = [
-            tubePoint(t1, v1, Rx, Ry, r),
-            tubePoint(t2, v1, Rx, Ry, r),
-            tubePoint(t2, v2, Rx, Ry, r),
-            tubePoint(t1, v2, Rx, Ry, r),
+            tubePoint(t1, v1, a, r),
+            tubePoint(t2, v1, a, r),
+            tubePoint(t2, v2, a, r),
+            tubePoint(t1, v2, a, r),
           ]
-          const rawN = tubeNormal((t1 + t2) * 0.5, (v1 + v2) * 0.5, Rx, Ry)
+          const rawN = tubeNormal((t1 + t2) * 0.5, (v1 + v2) * 0.5, a)
 
           const rot = (p: Vec3) => rotZ(rotX(rotY(p, aY), aX), aZ)
           const corners = rawPts.map(rot) as Vec3[]
