@@ -4,14 +4,23 @@
  * need to change.  When you're ready to migrate to Cloudflare R2, replace
  * this file with the original S3-client version.
  *
- * Files are written to  <project-root>/uploads/<key>
+ * Files are written to  LOCAL_UPLOADS_DIR/<key>  (default: <cwd>/uploads)
  * Downloads are served via  GET /api/files?key=<key>
+ *
+ * Production: set LOCAL_UPLOADS_DIR to a path *outside* the deploy directory.
+ * deploy.sh uses rsync --delete into $APP_DIR, which removes /opt/adviser-app/uploads.
  */
 
 import fs from 'fs/promises'
 import path from 'path'
 
-const UPLOADS_DIR = path.join(process.cwd(), 'uploads')
+function uploadsRoot(): string {
+  const fromEnv = process.env.LOCAL_UPLOADS_DIR?.trim()
+  if (fromEnv) return path.resolve(fromEnv)
+  return path.join(process.cwd(), 'uploads')
+}
+
+const UPLOADS_DIR = uploadsRoot()
 
 export async function uploadToR2(key: string, body: Buffer, contentType: string): Promise<void> {
   const dest = path.join(UPLOADS_DIR, key)

@@ -196,6 +196,7 @@ if ! command -v prisma >/dev/null 2>&1; then
   exit 1
 fi
 prisma migrate deploy
+if [[ -n "\${LOCAL_UPLOADS_DIR:-}" ]]; then mkdir -p "\$LOCAL_UPLOADS_DIR"; fi
 END_SSH
 
   echo "▶ 写入启动脚本（加载 .env 后 exec node）..."
@@ -249,6 +250,16 @@ cmd_deploy_local() {
   rsync -a prisma/ "$APP_DIR/prisma/"
   rsync -a prisma.config.mjs "$APP_DIR/prisma.config.mjs"
   rm -f "$APP_DIR/prisma.config.ts"
+
+  if [[ -f "$APP_DIR/.env" ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "$APP_DIR/.env"
+    set +a
+    if [[ -n "${LOCAL_UPLOADS_DIR:-}" ]]; then
+      mkdir -p "$LOCAL_UPLOADS_DIR"
+    fi
+  fi
 
   echo "▶ 数据库迁移 (prisma migrate deploy)…"
   [[ -f "$APP_DIR/.env" ]] || die "缺少 $APP_DIR/.env（请先按 .env.example 创建）"
