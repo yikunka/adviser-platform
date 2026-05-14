@@ -6,7 +6,7 @@
 #   ./deploy.sh bootstrap        # 在「控制机（笔记本）」运行：SSH 登录 DEPLOY_HOST 后在远端执行与本机 bootstrap-local 相同的初始化
 #   ./deploy.sh bootstrap-local  # 在「全新服务器」上直接运行（root/sudo）；勿设 DEPLOY_HOST — 装好系统栈后再配 .env 与 deploy-local
 #   ./deploy.sh deploy             # 在「当前电脑」构建 → SSH/rsync 到 DEPLOY_HOST → 迁移 → PM2（适合笔记本/CI）
-#   ./deploy.sh deploy-local         # 在「生产服务器本机」构建 → 拷贝到本机目录 → 迁移 → PM2（不发起 SSH，不会二次要密码）
+#   ./deploy.sh deploy-local       # 本机 git pull（默认 --ff-only）→ 按提交差异增量构建/同步；见下方 deploy-local — 增量与 git
 #   ./deploy.sh check            # 仅检查构建环境与仓库
 #
 # 必设环境变量
@@ -17,6 +17,12 @@
 #
 #   deploy-local、bootstrap-local：勿填 DEPLOY_HOST；bootstrap-local 需在本机用 root/sudo 执行
 #   deploy-local 可选 DEPLOY_TARGET_DIR（默认与 REMOTE_DIR 相同，常为 /opt/adviser-app）
+#
+# deploy-local — 增量与 git（成功部署后在 $APP_DIR/.adviser-deploy-rev 写入当时 HEAD）：
+#   默认 git pull（--ff-only），再按「上次记录..当前 HEAD」变更只跑需要的步骤（无新同步内容则跳过 build / rsync / PM2）。
+#   DEPLOY_SKIP_GIT_PULL=1 — 跳过 pull，仍基于 .adviser-deploy-rev 与 HEAD 增量
+#   DEPLOY_FORCE_FULL=1 — 全流程（依赖 install、prisma generate、next build、同步、migrate、PM2）
+#   DEPLOY_FF_ONLY_GIT=0 — 使用普通 git pull（默认 1 = --ff-only）
 #
 #   bootstrap 支持的系统：Ubuntu/Debian（apt）、Alibaba Cloud Linux / RHEL / CentOS / Amazon Linux（dnf 或 yum）
 #
@@ -236,36 +242,148 @@ END_SSH
   echo "✓ 部署完成。请确认 Nginx / HTTPS 已指向本机 Node（默认 3000）。"
 }
 
-# 在生产服务器「本机」构建并发布（不向 SSH 回连自己，避免多次密码提示）
-cmd_deploy_local() {
-  local APP_DIR="${DEPLOY_TARGET_DIR:-$REMOTE_DIR}"
+# ── deploy-local：git pull + 按变更增量执行（$APP_DIR/.adviser-deploy-rev 记录上次成功部署的 commit）──
+_deploy_revision_file() {
+  printf '%s/.adviser-deploy-rev' "${1%/}"
+}
 
-  cmd_build
+_deploy_local_git_pull_maybe() {
+  if [[ "${DEPLOY_SKIP_GIT_PULL:-}" == "1" ]]; then
+    echo "▶ 跳过 git pull（DEPLOY_SKIP_GIT_PULL=1）"
+    return 0
+  fi
+  if ! git -C "$SCRIPT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "⚠️ 当前目录不是 git 工作树，跳过 git pull"
+    return 0
+  fi
+  echo "▶ git pull…"
+  if [[ "${DEPLOY_FF_ONLY_GIT:-1}" == "1" ]]; then
+    git -C "$SCRIPT_DIR" pull --ff-only
+  else
+    git -C "$SCRIPT_DIR" pull
+  fi
+}
 
-  echo "▶ 发布到本机目录: $APP_DIR（无 SSH）…"
-  mkdir -p "$APP_DIR/.next/static" "$APP_DIR/public" "$APP_DIR/prisma"
-  rsync -a --delete .next/standalone/ "$APP_DIR/"
-  rsync -a --delete .next/static/ "$APP_DIR/.next/static/"
-  rsync -a public/ "$APP_DIR/public/"
-  rsync -a prisma/ "$APP_DIR/prisma/"
-  rsync -a prisma.config.mjs "$APP_DIR/prisma.config.mjs"
-  rm -f "$APP_DIR/prisma.config.ts"
+_deploy_local_path_ignored_for_incremental() {
+  case "$1" in
+    README*|CHANGELOG*|CONTRIBUTING*|LICENSE*|CODEOWNERS|.git*|*.md|*.MD)
+      return 0
+      ;;
+    docs/*|PRD*|PRD_DOC/*|.github/*|.vscode/*|.cursor/*|.claude/*|AGENTS*|.agent*|Makefile|Makefile.*|.env.example|flake.nix)
+      return 0
+      ;;
+  esac
+  return 1
+}
 
-  if [[ -f "$APP_DIR/.env" ]]; then
-    set -a
-    # shellcheck disable=SC1091
-    source "$APP_DIR/.env"
-    set +a
-    if [[ -n "${LOCAL_UPLOADS_DIR:-}" ]]; then
-      mkdir -p "$LOCAL_UPLOADS_DIR"
+# 从 stdin 读取 git diff --name-only 行，设置 NEED_*（调用方作用域，勿用 local）
+_deploy_local_classify_diff_lines() {
+  NEED_DEPS=0
+  NEED_BUILD=0
+  NEED_PRISMA_GEN=0
+  NEED_MIGRATE=0
+  NEED_RSYNC_PUBLIC=0
+  local f
+  while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    _DL_N_ALL=$((_DL_N_ALL + 1))
+    if _deploy_local_path_ignored_for_incremental "$f"; then
+      continue
+    fi
+    _DL_N_REL=$((_DL_N_REL + 1))
+
+    if [[ "$f" =~ ^prisma/migrations/ ]]; then
+      NEED_MIGRATE=1
+      continue
+    fi
+
+    case "$f" in
+      package.json|package-lock.json|npm-shrinkwrap.json)
+        NEED_DEPS=1
+        NEED_BUILD=1
+        ;;
+      prisma/schema.prisma|prisma.config.mjs|prisma.config.ts)
+        NEED_PRISMA_GEN=1
+        NEED_BUILD=1
+        ;;
+      prisma/*)
+        NEED_PRISMA_GEN=1
+        NEED_BUILD=1
+        ;;
+      public/*)
+        NEED_RSYNC_PUBLIC=1
+        ;;
+      deploy.sh|*.wasm)
+        NEED_BUILD=1
+        ;;
+      src/*|next.config.ts|next.config.js|next.config.mjs|postcss.config.*|tailwind.config.*|eslint.config.*|instrumentation.ts|src/proxy.ts|tsconfig*.json|components.json|.env.production)
+        NEED_BUILD=1
+        ;;
+      *)
+        NEED_BUILD=1
+        ;;
+    esac
+  done
+}
+
+_deploy_local_maybe_npm_prisma_next() {
+  local need_deps="$1" need_gen="$2" need_build="$3"
+  if [[ "$need_deps" == 1 ]] || [[ "$need_gen" == 1 ]] || [[ "$need_build" == 1 ]]; then
+    cmd_check
+  fi
+
+  if [[ "$need_deps" == 1 ]]; then
+    echo "▶ npm 安装依赖…"
+    if ! npm ci --no-audit --no-fund; then
+      echo "⚠ npm ci 失败。改用 npm install …" >&2
+      npm install --no-audit --no-fund
     fi
   fi
 
+  if [[ "$need_gen" == 1 ]] || [[ "$need_build" == 1 ]]; then
+    echo "▶ prisma generate…"
+    npx prisma generate
+  fi
+
+  if [[ "$need_build" == 1 ]]; then
+    echo "▶ next build…"
+    npm run build
+    [[ -f .next/standalone/server.js ]] || die "未生成 .next/standalone/server.js，请确认 next.config 中 output: standalone"
+    echo "✓ 构建完成"
+  fi
+}
+
+_deploy_local_sync_to_app_dir() {
+  local APP_DIR="$1"
+  local need_build="$2" need_pub="$3" need_mig="$4"
+  echo "▶ 发布到本机目录: $APP_DIR（无 SSH）…"
+  mkdir -p "$APP_DIR/.next/static" "$APP_DIR/public" "$APP_DIR/prisma"
+
+  if [[ "$need_build" == 1 ]]; then
+    rsync -a --delete .next/standalone/ "$APP_DIR/"
+    rsync -a --delete .next/static/ "$APP_DIR/.next/static/"
+    rsync -a public/ "$APP_DIR/public/"
+    rsync -a prisma/ "$APP_DIR/prisma/"
+    rsync -a prisma.config.mjs "$APP_DIR/prisma.config.mjs"
+    rm -f "$APP_DIR/prisma.config.ts"
+    return 0
+  fi
+
+  if [[ "$need_pub" == 1 ]]; then
+    rsync -a public/ "$APP_DIR/public/"
+  fi
+  if [[ "$need_mig" == 1 ]]; then
+    rsync -a prisma/ "$APP_DIR/prisma/"
+    rsync -a prisma.config.mjs "$APP_DIR/prisma.config.mjs"
+    rm -f "$APP_DIR/prisma.config.ts"
+  fi
+}
+
+_deploy_local_migrate() {
+  local APP_DIR="$1"
   echo "▶ 数据库迁移 (prisma migrate deploy)…"
   [[ -f "$APP_DIR/.env" ]] || die "缺少 $APP_DIR/.env（请先按 .env.example 创建）"
 
-  # 全局 prisma 在部分环境下会起子进程，config 里 process.env 异常时会退回到「库名=用户名」即库 adviser，触发 P1010。
-  # 优先在已 npm install 的仓库内用 npx prisma，并从发布目录加载 .env（生产库连接串）。
   if [[ -x "$SCRIPT_DIR/node_modules/.bin/prisma" ]] || [[ -f "$SCRIPT_DIR/node_modules/prisma/package.json" ]]; then
     pushd "$SCRIPT_DIR" >/dev/null
     set -a
@@ -275,18 +393,22 @@ cmd_deploy_local() {
     [[ -n "${DATABASE_URL:-}" ]] || die ".env 中未设置 DATABASE_URL（检查 $APP_DIR/.env）"
     npx prisma migrate deploy
     popd >/dev/null
-  else
-    pushd "$APP_DIR" >/dev/null
-    set -a
-    # shellcheck disable=SC1091
-    source .env
-    set +a
-    [[ -n "${DATABASE_URL:-}" ]] || die ".env 中未设置 DATABASE_URL"
-    command -v prisma >/dev/null 2>&1 || die "未找到 prisma，请执行: npm install -g prisma，或在仓库内 npm ci"
-    prisma migrate deploy
-    popd >/dev/null
+    return 0
   fi
 
+  pushd "$APP_DIR" >/dev/null
+  set -a
+  # shellcheck disable=SC1091
+  source .env
+  set +a
+  [[ -n "${DATABASE_URL:-}" ]] || die ".env 中未设置 DATABASE_URL"
+  command -v prisma >/dev/null 2>&1 || die "未找到 prisma：请在仓库内 npm ci，或 npm install -g prisma"
+  prisma migrate deploy
+  popd >/dev/null
+}
+
+_deploy_local_install_start_pm2() {
+  local APP_DIR="$1"
   echo "▶ 写入 start-prod.sh…"
   cat > "$APP_DIR/start-prod.sh" << 'EOS'
 #!/usr/bin/env bash
@@ -298,7 +420,6 @@ set -a
 source .env
 set +a
 export NODE_ENV=production
-# Next standalone 用 HOSTNAME 作为 listen 地址；云主机常有不可解析的 ECS 实例名 → getaddrinfo ENOTFOUND
 export HOSTNAME="0.0.0.0"
 exec node server.js
 EOS
@@ -313,6 +434,111 @@ EOS
     pm2 save
   fi
   popd >/dev/null
+}
+
+# 在生产服务器「本机」：默认 git pull，再按 $APP_DIR/.adviser-deploy-rev ↔ HEAD 的差异增量构建/同步。
+cmd_deploy_local() {
+  local APP_DIR="${DEPLOY_TARGET_DIR:-$REMOTE_DIR}"
+  local REV_FILE HEAD_NOW DIFF_FROM _df_commit
+  local DID_ANY=0
+  NEED_DEPS=0
+  NEED_BUILD=0
+  NEED_PRISMA_GEN=0
+  NEED_MIGRATE=0
+  NEED_RSYNC_PUBLIC=0
+  _DL_N_ALL=0
+  _DL_N_REL=0
+
+  [[ -n "$APP_DIR" ]] || die "APP_DIR 为空，设置 REMOTE_DIR 或 DEPLOY_TARGET_DIR"
+
+  if ! git -C "$SCRIPT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "⚠️ 无法做 git 增量，将执行全量部署（请设 DEPLOY_FORCE_FULL=1 显式可控）"
+    DEPLOY_FORCE_FULL=1
+  fi
+
+  _deploy_local_git_pull_maybe
+
+  REV_FILE="$(_deploy_revision_file "$APP_DIR")"
+  HEAD_NOW="$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null || true)"
+
+  if [[ "${DEPLOY_FORCE_FULL:-}" == "1" ]]; then
+    echo "▶ 全量部署（DEPLOY_FORCE_FULL=1）"
+    NEED_DEPS=1 NEED_BUILD=1 NEED_PRISMA_GEN=1 NEED_MIGRATE=1 NEED_RSYNC_PUBLIC=1
+  elif [[ ! -f "$REV_FILE" ]]; then
+    echo "▶ 首次部署（无 $REV_FILE），全量"
+    NEED_DEPS=1 NEED_BUILD=1 NEED_PRISMA_GEN=1 NEED_MIGRATE=1 NEED_RSYNC_PUBLIC=1
+  elif [[ ! -f "$APP_DIR/server.js" ]]; then
+    echo "▶ 发布目录无 server.js，全量"
+    NEED_DEPS=1 NEED_BUILD=1 NEED_PRISMA_GEN=1 NEED_MIGRATE=1 NEED_RSYNC_PUBLIC=1
+  else
+    DIFF_FROM="$(head -n1 "$REV_FILE" | tr -d ' \t\r\n')"
+    _df_commit="${DIFF_FROM}^{commit}"
+    if [[ -z "$DIFF_FROM" ]] || ! git -C "$SCRIPT_DIR" rev-parse --verify -q "$_df_commit" >/dev/null 2>&1; then
+      echo "▶ .adviser-deploy-rev 无效，全量"
+      NEED_DEPS=1 NEED_BUILD=1 NEED_PRISMA_GEN=1 NEED_MIGRATE=1 NEED_RSYNC_PUBLIC=1
+    elif ! git -C "$SCRIPT_DIR" merge-base --is-ancestor "$DIFF_FROM" "$HEAD_NOW" 2>/dev/null; then
+      echo "▶ 部署记录与当前历史不一致（rebase/amend），全量"
+      NEED_DEPS=1 NEED_BUILD=1 NEED_PRISMA_GEN=1 NEED_MIGRATE=1 NEED_RSYNC_PUBLIC=1
+    elif [[ "$DIFF_FROM" == "$HEAD_NOW" ]]; then
+      echo "✓ 已与上次部署提交一致（${HEAD_NOW:0:12}），无需构建或同步。"
+      exit 0
+    else
+      NEED_DEPS=0 NEED_BUILD=0 NEED_PRISMA_GEN=0 NEED_MIGRATE=0 NEED_RSYNC_PUBLIC=0
+      _DL_N_ALL=0
+      _DL_N_REL=0
+      git -C "$SCRIPT_DIR" diff --name-only "${DIFF_FROM}..${HEAD_NOW}" | _deploy_local_classify_diff_lines
+
+      if [[ "$_DL_N_ALL" -gt 0 ]] && [[ "$_DL_N_REL" -eq 0 ]]; then
+        echo "✓ 有新提交但仅文档等非运行路径，跳过构建。"
+        printf '%s\n' "$HEAD_NOW" >"$REV_FILE"
+        exit 0
+      fi
+
+      if [[ "$NEED_DEPS$NEED_BUILD$NEED_PRISMA_GEN$NEED_MIGRATE$NEED_RSYNC_PUBLIC" == "00000" ]]; then
+        echo "✓ 无待发布变更。"
+        printf '%s\n' "$HEAD_NOW" >"$REV_FILE"
+        exit 0
+      fi
+
+      echo "▶ 增量 (${DIFF_FROM:0:7}…→${HEAD_NOW:0:7}…) deps=$NEED_DEPS build=$NEED_BUILD prisma_gen=$NEED_PRISMA_GEN migrate=$NEED_MIGRATE public=$NEED_RSYNC_PUBLIC"
+    fi
+  fi
+
+  [[ -f "$APP_DIR/.env" ]] || die "缺少 $APP_DIR/.env（请先按 .env.example 创建）"
+
+  if [[ "$NEED_DEPS" == 1 ]] || [[ "$NEED_PRISMA_GEN" == 1 ]] || [[ "$NEED_BUILD" == 1 ]]; then
+    _deploy_local_maybe_npm_prisma_next "$NEED_DEPS" "$NEED_PRISMA_GEN" "$NEED_BUILD"
+    DID_ANY=1
+  fi
+
+  if [[ "$NEED_BUILD" == 1 ]] || [[ "$NEED_RSYNC_PUBLIC" == 1 ]] || [[ "$NEED_MIGRATE" == 1 ]]; then
+    _deploy_local_sync_to_app_dir "$APP_DIR" "$NEED_BUILD" "$NEED_RSYNC_PUBLIC" "$NEED_MIGRATE"
+    DID_ANY=1
+    if [[ -f "$APP_DIR/.env" ]]; then
+      set -a
+      # shellcheck disable=SC1091
+      source "$APP_DIR/.env"
+      set +a
+      [[ -z "${LOCAL_UPLOADS_DIR:-}" ]] || mkdir -p "$LOCAL_UPLOADS_DIR"
+    fi
+  fi
+
+  if [[ "$NEED_MIGRATE" == 1 ]]; then
+    _deploy_local_migrate "$APP_DIR"
+    DID_ANY=1
+  fi
+
+  if [[ "$NEED_BUILD" == 1 ]] || [[ "$NEED_MIGRATE" == 1 ]] || [[ "$NEED_DEPS" == 1 ]] || [[ ! -x "${APP_DIR}/start-prod.sh" ]]; then
+    _deploy_local_install_start_pm2 "$APP_DIR"
+    DID_ANY=1
+  elif [[ "${DID_ANY:-0}" -eq 1 ]] && [[ "$NEED_RSYNC_PUBLIC" == 1 ]]; then
+    echo "ℹ️ 仅 public 已同步；按需执行: cd $(printf '%q' "$APP_DIR") && pm2 restart adviser --update-env"
+  fi
+
+  if git -C "$SCRIPT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    printf '%s\n' "$(git -C "$SCRIPT_DIR" rev-parse HEAD)" >"$REV_FILE"
+    echo "▶ 已写入 $REV_FILE ($(head -n1 "$REV_FILE" | cut -c1-12)…)"
+  fi
 
   echo "✓ 本机部署完成 → $APP_DIR（Nginx 应反代到 127.0.0.1:3000）"
 }

@@ -14,16 +14,18 @@
 import fs from 'fs/promises'
 import path from 'path'
 
-function uploadsRoot(): string {
-  const fromEnv = process.env.LOCAL_UPLOADS_DIR?.trim()
-  if (fromEnv) return path.resolve(fromEnv)
+/** Resolve on every call so production picks up `.env` from the shell (avoid stale module-init paths). Use bracket access so the bundler does not inline a build-time value. */
+function getUploadsRoot(): string {
+  let raw = process.env['LOCAL_UPLOADS_DIR']?.trim()
+  if (raw?.startsWith('"') && raw.endsWith('"')) raw = raw.slice(1, -1).trim()
+  if (raw?.startsWith("'") && raw.endsWith("'")) raw = raw.slice(1, -1).trim()
+  if (raw) return path.resolve(raw)
   return path.join(process.cwd(), 'uploads')
 }
 
-const UPLOADS_DIR = uploadsRoot()
-
 export async function uploadToR2(key: string, body: Buffer, contentType: string): Promise<void> {
-  const dest = path.join(UPLOADS_DIR, key)
+  const root = getUploadsRoot()
+  const dest = path.join(root, key)
   await fs.mkdir(path.dirname(dest), { recursive: true })
   await fs.writeFile(dest, body)
   void contentType // retained for interface compatibility
@@ -36,10 +38,11 @@ export async function getSignedDownloadUrl(key: string, _expiresIn = 900): Promi
 
 /** Internal helper used by the /api/files route. */
 export async function readLocalFile(key: string): Promise<{ buffer: Buffer; filePath: string }> {
-  const filePath = path.join(UPLOADS_DIR, key)
+  const root = path.resolve(getUploadsRoot())
+  const filePath = path.join(root, key)
   // Prevent path-traversal attacks
   const resolved = path.resolve(filePath)
-  if (!resolved.startsWith(path.resolve(UPLOADS_DIR))) {
+  if (!resolved.startsWith(root)) {
     throw new Error('Invalid file path')
   }
   const buffer = await fs.readFile(resolved)
