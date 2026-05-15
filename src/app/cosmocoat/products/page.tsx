@@ -76,7 +76,7 @@ export default async function CosmoProductsPage({ searchParams }: Props) {
         style={{ borderColor: '#111', background: '#09090a' }}
       >
         <div className="max-w-6xl mx-auto">
-          <p className="text-[9px] font-bold tracking-[0.4em] uppercase mb-3" style={{ color: CYAN, fontFamily: MONO }}>
+          <p className="text-[10px] font-bold tracking-[0.35em] uppercase mb-3" style={{ color: CYAN, fontFamily: MONO }}>
             {'// PRODUCTS'}
           </p>
           <h1 className="text-3xl sm:text-4xl font-black" style={{ color: '#f0f0f0', letterSpacing: '-0.01em' }}>
@@ -88,7 +88,7 @@ export default async function CosmoProductsPage({ searchParams }: Props) {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-14 flex flex-col md:flex-row gap-10">
         {/* Sidebar */}
         <aside className="md:w-52 shrink-0">
-          <p className="text-[9px] font-bold tracking-[0.35em] uppercase mb-4" style={{ color: CYAN, fontFamily: MONO }}>
+          <p className="text-[10px] font-bold tracking-[0.3em] uppercase mb-4" style={{ color: CYAN, fontFamily: MONO }}>
             {'// CATEGORIES'}
           </p>
           <div className="h-px mb-5" style={{ background: `linear-gradient(90deg, ${RED}, transparent)` }} />
@@ -102,12 +102,12 @@ export default async function CosmoProductsPage({ searchParams }: Props) {
                     href={item.href}
                     className="flex items-center gap-2 py-2.5 tracking-[0.12em] uppercase transition-colors hover:text-white"
                     style={{
-                      color: active ? '#f0f0f0' : item.indent ? '#333' : '#666',
+                      color: active ? '#f0f0f0' : item.indent ? '#9a9a9a' : '#b0b0b0',
                       paddingLeft: item.indent ? '1rem' : '0',
                       borderBottom: '1px solid #111',
                     }}
                   >
-                    {item.indent && <span style={{ color: active ? RED : '#222' }}>{'>'}</span>}
+                    {item.indent && <span style={{ color: active ? RED : '#5a5a5a' }}>{'>'}</span>}
                     {item.label}
                   </Link>
                 </li>
@@ -137,14 +137,14 @@ export default async function CosmoProductsPage({ searchParams }: Props) {
                     />
                   </div>
                   <div className="p-3 flex flex-col gap-1.5" style={{ borderTop: '1px solid #141414' }}>
-                    <p className="text-[8px] tracking-[0.2em] uppercase" style={{ color: '#252525', fontFamily: MONO }}>
+                    <p className="text-[9px] tracking-[0.18em] uppercase" style={{ color: '#6a6a6a', fontFamily: MONO }}>
                       PRODUCT
                     </p>
-                    <p className="text-xs font-bold leading-tight line-clamp-2" style={{ color: '#bbb' }}>
+                    <p className="text-[13px] font-bold leading-snug line-clamp-2" style={{ color: '#d8d8d8' }}>
                       {p.title}
                     </p>
                     {p.teaser && (
-                      <p className="text-[10px] leading-relaxed line-clamp-2" style={{ color: '#3a3a3a' }}>
+                      <p className="text-[11px] leading-relaxed line-clamp-2" style={{ color: '#8a8a8a' }}>
                         {p.teaser}
                       </p>
                     )}
@@ -171,9 +171,9 @@ export default async function CosmoProductsPage({ searchParams }: Props) {
                         <Link
                           key={item.label}
                           href={`/cosmocoat/products${productsListQuery(item.page, null)}`}
-                          className="text-[10px] tracking-[0.15em] px-3 py-2 transition-all"
+                          className="text-[11px] tracking-[0.12em] px-3 py-2 transition-all"
                           style={{
-                            color: isActive ? '#fff' : '#444',
+                            color: isActive ? '#fff' : '#9a9a9a',
                             background: isActive ? RED : 'transparent',
                             border: `1px solid ${isActive ? RED : '#1e1e1e'}`,
                             boxShadow: isActive ? `0 0 12px rgba(255,34,0,0.35)` : 'none',
@@ -191,9 +191,9 @@ export default async function CosmoProductsPage({ searchParams }: Props) {
                         <Link
                           key={num}
                           href={`/cosmocoat/products${productsListQuery(num, categoryFilter)}`}
-                          className="text-[10px] tracking-[0.15em] px-3 py-2 transition-all min-w-[2.25rem] text-center"
+                          className="text-[11px] tracking-[0.12em] px-3 py-2 transition-all min-w-[2.25rem] text-center"
                           style={{
-                            color: isActive ? '#fff' : '#444',
+                            color: isActive ? '#fff' : '#9a9a9a',
                             background: isActive ? RED : 'transparent',
                             border: `1px solid ${isActive ? RED : '#1e1e1e'}`,
                             boxShadow: isActive ? `0 0 12px rgba(255,34,0,0.35)` : 'none',

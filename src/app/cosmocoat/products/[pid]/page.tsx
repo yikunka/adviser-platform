@@ -19,12 +19,12 @@ export default async function CosmoProductDetailPage({ params }: Props) {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-14">
 
         {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 mb-10 text-[10px] tracking-[0.15em] uppercase" style={{ color: '#333', fontFamily: MONO }}>
+        <nav className="flex items-center gap-2 mb-10 text-[11px] tracking-[0.12em] uppercase" style={{ color: '#8a8a8a', fontFamily: MONO }}>
           <Link href="/cosmocoat" className="transition-colors hover:text-white">首页</Link>
-          <span style={{ color: '#222' }}>{'/'}</span>
+          <span style={{ color: '#5a5a5a' }}>{'/'}</span>
           <Link href="/cosmocoat/products" className="transition-colors hover:text-white">产品中心</Link>
-          <span style={{ color: '#222' }}>{'/'}</span>
-          <span style={{ color: '#666' }}>{p.title}</span>
+          <span style={{ color: '#5a5a5a' }}>{'/'}</span>
+          <span style={{ color: '#b8b8b8' }}>{p.title}</span>
         </nav>
 
         <div className="grid md:grid-cols-2 gap-10 items-start">
@@ -43,7 +43,7 @@ export default async function CosmoProductDetailPage({ params }: Props) {
 
           {/* Info */}
           <div>
-            <p className="text-[9px] font-bold tracking-[0.4em] uppercase mb-3" style={{ color: CYAN, fontFamily: MONO }}>
+            <p className="text-[10px] font-bold tracking-[0.35em] uppercase mb-3" style={{ color: CYAN, fontFamily: MONO }}>
               {'// PRODUCT DETAIL'}
             </p>
             <h1
@@ -57,15 +57,15 @@ export default async function CosmoProductDetailPage({ params }: Props) {
               style={{ background: `linear-gradient(90deg, ${RED}, transparent)`, boxShadow: `0 0 6px ${RED}` }}
             />
             <div
-              className="text-sm leading-relaxed whitespace-pre-line"
-              style={{ color: '#555', borderLeft: `2px solid #1a1a1a`, paddingLeft: '1rem' }}
+              className="text-[15px] sm:text-base leading-relaxed whitespace-pre-line"
+              style={{ color: '#b8b8b8', borderLeft: `2px solid #1a1a1a`, paddingLeft: '1rem' }}
             >
               {p.summary}
             </div>
             <div className="mt-10">
               <Link
                 href="/cosmocoat/products"
-                className="inline-block text-[10px] font-bold px-6 py-3 tracking-[0.2em] uppercase transition-all hover:brightness-110"
+                className="inline-block text-[11px] font-bold px-6 py-3 tracking-[0.2em] uppercase transition-all hover:brightness-110"
                 style={{
                   background: RED,
                   color: '#fff',

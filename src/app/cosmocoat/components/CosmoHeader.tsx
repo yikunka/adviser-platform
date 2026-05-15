@@ -31,7 +31,7 @@ export default function CosmoHeader() {
         boxShadow: '0 0 0 1px rgba(255,34,0,0.08), 0 4px 32px rgba(0,0,0,0.7)',
       }}
     >
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-[4.5rem] flex items-center justify-between gap-4">
+      <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-10 h-[4.5rem] flex items-center justify-between gap-4">
 
         {/* Logo */}
         <Link href="/cosmocoat" className="flex items-center gap-3 shrink-0 group">
@@ -49,8 +49,8 @@ export default function CosmoHeader() {
               COSMO.COAT
             </span>
             <span
-              className="text-[9px] tracking-[0.2em] uppercase mt-0.5"
-              style={{ color: '#3a3a3a', fontFamily: MONO }}
+              className="text-[9px] tracking-[0.18em] uppercase mt-0.5"
+              style={{ color: '#7a7a7a', fontFamily: MONO }}
             >
               INDUSTRIAL COATINGS
             </span>
@@ -67,11 +67,11 @@ export default function CosmoHeader() {
                 href={n.href}
                 className="relative text-[11px] tracking-[0.18em] uppercase transition-colors duration-150"
                 style={{
-                  color: active ? RED : '#777',
+                  color: active ? RED : '#9a9a9a',
                   fontFamily: MONO,
                 }}
-                onMouseEnter={e => { if (!active) (e.target as HTMLElement).style.color = '#eee' }}
-                onMouseLeave={e => { if (!active) (e.target as HTMLElement).style.color = '#777' }}
+                onMouseEnter={e => { if (!active) (e.target as HTMLElement).style.color = '#f0f0f0' }}
+                onMouseLeave={e => { if (!active) (e.target as HTMLElement).style.color = '#9a9a9a' }}
               >
                 {n.label}
                 {active && (
@@ -92,16 +92,16 @@ export default function CosmoHeader() {
         <div className="hidden md:flex items-center gap-4 shrink-0">
           <a
             href="tel:+8615546868835"
-            className="text-[10px] tracking-widest whitespace-nowrap transition-colors"
-            style={{ color: '#444', fontFamily: MONO }}
+            className="text-[11px] tracking-widest whitespace-nowrap transition-colors"
+            style={{ color: '#8a8a8a', fontFamily: MONO }}
             onMouseEnter={e => ((e.target as HTMLElement).style.color = CYAN)}
-            onMouseLeave={e => ((e.target as HTMLElement).style.color = '#444')}
+            onMouseLeave={e => ((e.target as HTMLElement).style.color = '#8a8a8a')}
           >
             +86 155 4686 8835
           </a>
           <a
             href="mailto:skaiwong@gmail.com"
-            className="text-[10px] font-bold px-5 py-2.5 tracking-[0.2em] uppercase transition-all"
+            className="text-[11px] font-bold px-5 py-2.5 tracking-[0.2em] uppercase transition-all"
             style={{
               background: RED,
               color: '#fff',
@@ -124,15 +124,15 @@ export default function CosmoHeader() {
         >
           <span
             className={`block w-5 h-px transition-all duration-300 ${open ? 'rotate-45 translate-y-[6px]' : ''}`}
-            style={{ background: open ? RED : '#777' }}
+            style={{ background: open ? RED : '#9a9a9a' }}
           />
           <span
             className={`block w-5 h-px transition-all duration-300 ${open ? 'opacity-0' : ''}`}
-            style={{ background: '#777' }}
+            style={{ background: '#9a9a9a' }}
           />
           <span
             className={`block w-5 h-px transition-all duration-300 ${open ? '-rotate-45 -translate-y-[6px]' : ''}`}
-            style={{ background: open ? RED : '#777' }}
+            style={{ background: open ? RED : '#9a9a9a' }}
           />
         </button>
       </div>
@@ -152,15 +152,15 @@ export default function CosmoHeader() {
               <Link
                 key={n.href}
                 href={n.href}
-                className="py-3.5 text-[11px] tracking-[0.2em] uppercase flex items-center gap-2"
+                className="py-3.5 text-[11px] tracking-[0.18em] uppercase flex items-center gap-2"
                 style={{
-                  color: active ? RED : '#888',
+                  color: active ? RED : '#b0b0b0',
                   fontFamily: MONO,
                   borderBottom: i < NAV.length - 1 ? '1px solid #141414' : 'none',
                 }}
                 onClick={() => setOpen(false)}
               >
-                <span style={{ color: active ? RED : '#2a2a2a' }}>{'>'}</span>
+                <span style={{ color: active ? RED : '#6a6a6a' }}>{'>'}</span>
                 {n.label}
               </Link>
             )
@@ -168,14 +168,14 @@ export default function CosmoHeader() {
           <div className="pt-5 flex flex-col gap-3">
             <a
               href="tel:+8615546868835"
-              className="text-[10px] tracking-widest text-center py-2"
-              style={{ color: '#444', fontFamily: MONO }}
+              className="text-[11px] tracking-widest text-center py-2"
+              style={{ color: '#8a8a8a', fontFamily: MONO }}
             >
               +86 155 4686 8835
             </a>
             <a
               href="mailto:skaiwong@gmail.com"
-              className="text-[10px] font-bold py-3 text-center tracking-[0.2em] uppercase"
+              className="text-[11px] font-bold py-3 text-center tracking-[0.2em] uppercase"
               style={{
                 background: RED,
                 color: '#fff',

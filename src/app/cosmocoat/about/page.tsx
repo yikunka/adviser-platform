@@ -5,7 +5,7 @@ const CYAN = '#00d4ff'
 
 function SectionLabel({ children, color = CYAN }: { children: React.ReactNode; color?: string }) {
   return (
-    <p className="text-[10px] font-bold tracking-[0.4em] uppercase mb-4" style={{ color, fontFamily: MONO }}>
+    <p className="text-[11px] font-bold tracking-[0.35em] uppercase mb-4" style={{ color, fontFamily: MONO }}>
       {'// '}{children}
     </p>
   )
@@ -36,7 +36,7 @@ export default function CosmoAboutPage() {
           <h1 className="text-3xl sm:text-5xl font-black" style={{ color: '#f0f0f0', letterSpacing: '-0.02em' }}>
             华兴<span style={{ color: RED }}>·</span>威栩
           </h1>
-          <p className="text-[11px] tracking-[0.25em] mt-3 uppercase" style={{ color: '#333', fontFamily: MONO }}>
+          <p className="text-[11px] tracking-[0.2em] mt-3 uppercase" style={{ color: '#8a8a8a', fontFamily: MONO }}>
             Chemistry is beautiful
           </p>
         </div>
@@ -45,8 +45,8 @@ export default function CosmoAboutPage() {
       {/* ── INTRO TEXT ── */}
       <div className="max-w-5xl mx-auto px-6 sm:px-10 py-14">
         <div
-          className="text-sm leading-[1.9] text-justify space-y-5"
-          style={{ color: '#555', borderLeft: `2px solid ${RED}`, paddingLeft: '1.5rem' }}
+          className="text-[15px] sm:text-base leading-[1.85] text-justify space-y-5"
+          style={{ color: '#b8b8b8', borderLeft: `2px solid ${RED}`, paddingLeft: '1.5rem' }}
         >
           <p>威栩（COSMO.COAT）业务遍布各个不同的国家和文化。</p>
           <p>
@@ -72,7 +72,7 @@ export default function CosmoAboutPage() {
             >
               <img src="/cosmocoat/about-map-china.png" alt="" className="w-full" style={{ filter: 'grayscale(20%) brightness(0.8)' }} />
             </div>
-            <div className="text-sm leading-[1.9] text-justify space-y-4" style={{ color: '#555' }}>
+            <div className="text-[15px] sm:text-base leading-[1.85] text-justify space-y-4" style={{ color: '#b8b8b8' }}>
               <p>
                 威栩（COSMO.COAT）是源自意大利的欧洲知名涂料企业，在欧洲设有专业的研发中心与实验室，专注于环保水性涂料和高性能工业涂料的研发与创新。公司致力于为全球客户提供专利技术与定制化解决方案，帮助用户解决工程与工业涂装中的实际问题。
               </p>
@@ -92,17 +92,17 @@ export default function CosmoAboutPage() {
               { sub: 'Dong guang in China', title: '中国东莞工厂', img: '/cosmocoat/about-factory-dongguan.jpg', caption: '威栩（COSMO.COAT）位於中國东莞省工廠' },
             ].map(f => (
               <div key={f.title} className="flex flex-col gap-3">
-                <p className="text-[9px] tracking-[0.3em] uppercase" style={{ color: '#333', fontFamily: MONO }}>{f.sub}</p>
+                <p className="text-[10px] tracking-[0.25em] uppercase" style={{ color: '#8a8a8a', fontFamily: MONO }}>{f.sub}</p>
                 <h3 className="text-xl font-black" style={{ color: '#f0f0f0' }}>{f.title}</h3>
                 <div className="overflow-hidden" style={{ border: '1px solid #181818' }}>
                   <img src={f.img} alt="" className="w-full" style={{ filter: 'grayscale(20%) brightness(0.75)' }} />
                 </div>
-                <p className="text-[10px] text-center tracking-wider" style={{ color: '#2e2e2e', fontFamily: MONO }}>{f.caption}</p>
+                <p className="text-[11px] text-center tracking-wider" style={{ color: '#7a7a7a', fontFamily: MONO }}>{f.caption}</p>
               </div>
             ))}
           </div>
 
-          <div className="text-sm leading-[1.9] text-justify space-y-4 mb-16 max-w-4xl mx-auto" style={{ color: '#555' }}>
+          <div className="text-[15px] sm:text-base leading-[1.85] text-justify space-y-4 mb-16 max-w-4xl mx-auto" style={{ color: '#b8b8b8' }}>
             <p>
               威栩（COSMO.COAT）的东莞工厂成立于1978年，拥有花园式厂房，总面积万余平方米，多功能的质检化验室及完善的管理系统，地处交通极为便捷的珠江三角洲中心地带。
             </p>
@@ -117,9 +117,9 @@ export default function CosmoAboutPage() {
             style={{ background: '#0d0d0d', border: '1px solid #181818', borderLeft: `3px solid ${CYAN}` }}
           >
             <div>
-              <p className="text-[9px] tracking-[0.3em] uppercase mb-3" style={{ color: CYAN, fontFamily: MONO }}>Italian factory</p>
+              <p className="text-[10px] tracking-[0.25em] uppercase mb-3" style={{ color: CYAN, fontFamily: MONO }}>Italian factory</p>
               <h3 className="text-2xl font-black mb-6" style={{ color: '#f0f0f0' }}>意大利工厂</h3>
-              <div className="text-sm leading-relaxed text-justify space-y-4" style={{ color: '#555' }}>
+              <div className="text-[15px] sm:text-base leading-[1.75] text-justify space-y-4" style={{ color: '#b8b8b8' }}>
                 <p>
                   意大利威栩于90年代创建于意大利洛迪省萨龙诺，创始人为Davide Rossi。威栩公司的业务重点在于应用化学。经多年发展，威栩本身于涂层高端市场盛名于其本身高度专业化与高技术含量的涂料产品研究与开发。
                 </p>

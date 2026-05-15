@@ -5,7 +5,7 @@ const CYAN = '#00d4ff'
 
 function SectionLabel({ children, color = CYAN }: { children: React.ReactNode; color?: string }) {
   return (
-    <p className="text-[9px] font-bold tracking-[0.4em] uppercase mb-4" style={{ color, fontFamily: MONO }}>
+    <p className="text-[11px] font-bold tracking-[0.35em] uppercase mb-4" style={{ color, fontFamily: MONO }}>
       {'// '}{children}
     </p>
   )
@@ -30,7 +30,7 @@ function ChemCard({
           </div>
         </div>
         <div className={`space-y-4 ${align === 'right' ? 'order-2 md:order-1 md:text-right' : ''}`}>
-          <p className="text-[9px] font-bold tracking-[0.35em] uppercase" style={{ color: accent, fontFamily: MONO }}>
+          <p className="text-[10px] font-bold tracking-[0.3em] uppercase" style={{ color: accent, fontFamily: MONO }}>
             {'// FORMULA'}
           </p>
           <h2
@@ -43,7 +43,7 @@ function ChemCard({
             className="w-12 h-px"
             style={{ background: `linear-gradient(90deg, ${accent}, transparent)`, marginLeft: align === 'right' ? 'auto' : '0' }}
           />
-          <p className="text-sm leading-relaxed" style={{ color: '#555' }}>
+          <p className="text-[15px] sm:text-base leading-relaxed" style={{ color: '#b8b8b8' }}>
             {desc}
           </p>
         </div>
@@ -68,7 +68,7 @@ export default function CosmoSupportingPage() {
 
       {/* ── AB SECTION HEADER ── */}
       <div className="max-w-6xl mx-auto px-6 sm:px-10 pt-14 pb-4">
-        <p className="text-[9px] tracking-[0.4em] uppercase font-bold mb-4" style={{ color: CYAN, fontFamily: MONO }}>
+        <p className="text-[10px] tracking-[0.35em] uppercase font-bold mb-4" style={{ color: CYAN, fontFamily: MONO }}>
           {'// SERIES 01'}
         </p>
         <h2 className="text-2xl sm:text-3xl font-black" style={{ color: '#f0f0f0' }}>
@@ -87,12 +87,12 @@ export default function CosmoSupportingPage() {
           />
         </div>
         <div className="space-y-5">
-          <p className="text-[9px] font-bold tracking-[0.35em] uppercase" style={{ color: RED, fontFamily: MONO }}>
+          <p className="text-[10px] font-bold tracking-[0.3em] uppercase" style={{ color: RED, fontFamily: MONO }}>
             {'// PROBLEM'}
           </p>
           <h2 className="text-2xl sm:text-3xl font-black" style={{ color: '#f0f0f0' }}>废油水混合物</h2>
           <div className="w-12 h-px" style={{ background: `linear-gradient(90deg, ${RED}, transparent)`, boxShadow: `0 0 6px ${RED}` }} />
-          <p className="text-sm leading-relaxed" style={{ color: '#555' }}>
+          <p className="text-[15px] sm:text-base leading-relaxed" style={{ color: '#b8b8b8' }}>
             平常我们在喷涂时水廉柜中的废油水混合物，需要做到处理。
           </p>
         </div>
@@ -131,7 +131,7 @@ export default function CosmoSupportingPage() {
 
       {/* ── PIGMENT SECTION ── */}
       <div className="max-w-6xl mx-auto px-6 sm:px-10 pt-14 pb-4" style={{ borderTop: '1px solid #111' }}>
-        <p className="text-[9px] tracking-[0.4em] uppercase font-bold mb-4" style={{ color: CYAN, fontFamily: MONO }}>
+        <p className="text-[10px] tracking-[0.35em] uppercase font-bold mb-4" style={{ color: CYAN, fontFamily: MONO }}>
           {'// SERIES 02'}
         </p>
         <h2 className="text-2xl sm:text-3xl font-black" style={{ color: '#f0f0f0' }}>
