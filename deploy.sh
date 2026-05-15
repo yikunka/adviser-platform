@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
 # ============================================================================
-# Adviser Platform — 生产部署（deploy 用 SSH；deploy-local 仅在目标机本机发布）
+# Adviser Platform — 生产部署（deploy：未设 DEPLOY_HOST 时在运行脚本的机器上发布；设了则用 SSH/rsync 到远端）
 #
 # 用法概览
 #   ./deploy.sh bootstrap        # 在「控制机（笔记本）」运行：SSH 登录 DEPLOY_HOST 后在远端执行与本机 bootstrap-local 相同的初始化
 #   ./deploy.sh bootstrap-local  # 在「全新服务器」上直接运行（root/sudo）；勿设 DEPLOY_HOST — 装好系统栈后再配 .env 与 deploy-local
-#   ./deploy.sh deploy             # 在「当前电脑」构建 → SSH/rsync 到 DEPLOY_HOST → 迁移 → PM2（适合笔记本/CI）
-#   ./deploy.sh deploy-local       # 本机 git pull（默认 --ff-only）→ 按提交差异增量构建/同步；见下方 deploy-local — 增量与 git
+#   ./deploy.sh deploy               # 未设 DEPLOY_HOST：与本机 ./deploy.sh deploy-local 相同（pull + 增量）；设 DEPLOY_HOST：本机构建后经 SSH/rsync 到远端
+#   ./deploy.sh deploy-local         # 与「未设 HOST 的 deploy」一致；可按习惯选用
 #   ./deploy.sh check            # 仅检查构建环境与仓库
 #
-# 必设环境变量
-#   deploy、bootstrap（经 SSH）：DEPLOY_HOST
-#   DEPLOY_HOST          目标 SSH 地址，例如 203.0.113.10
+# 必设环境变量（仅「经 SSH」的 bootstrap / deploy 需要）
+#   deploy、bootstrap（经 SSH）：需设置 DEPLOY_HOST
+#   DEPLOY_HOST          可选留空（本机发布）；远端部署时为 SSH 主机，例如 203.0.113.10
 #   DEPLOY_USER          默认 root（建议专用账号 + SSH 公钥，避免反复输入密码）
 #   REMOTE_DIR           默认 /opt/adviser-app（运行目录，需事先放好 .env）
 #
 #   deploy-local、bootstrap-local：勿填 DEPLOY_HOST；bootstrap-local 需在本机用 root/sudo 执行
 #   deploy-local 可选 DEPLOY_TARGET_DIR（默认与 REMOTE_DIR 相同，常为 /opt/adviser-app）
 #
-# deploy-local — 增量与 git（成功部署后在 $APP_DIR/.adviser-deploy-rev 写入当时 HEAD）：
+# deploy-local（与未设 HOST 时的 deploy）：增量与 git（成功部署后在 $APP_DIR/.adviser-deploy-rev 写入当时 HEAD）：
 #   默认 git pull（--ff-only），再按「上次记录..当前 HEAD」变更只跑需要的步骤（无新同步内容则跳过 build / rsync / PM2）。
 #   DEPLOY_SKIP_GIT_PULL=1 — 跳过 pull，仍基于 .adviser-deploy-rev 与 HEAD 增量
 #   DEPLOY_FORCE_FULL=1 — 全流程（依赖 install、prisma generate、next build、同步、migrate、PM2）
@@ -40,7 +40,7 @@
 # 远端生产环境变量：首次需在服务器 REMOTE_DIR 下放置 .env（可参考 .env.example），勿提交密钥到 Git。
 # prisma：全新 PostgreSQL 会跑 prisma/migrations（单一 init）；若库里曾半路失败可先备份后重置 public schema 再 migrate（见 init migration 头注释）。
 #
-# 安全提示：勿在脚本里写密码。已在服务器上 ssh 登录时再跑 deploy，仍会连 DEPLOY_HOST 做 rsync（常等于再连自己），未配公钥会多次要密码 — 请改用 deploy-local，或在笔记本上执行 deploy。
+# 安全提示：勿在脚本里写密码。笔记本向 VPS 发包时请设 DEPLOY_HOST；若在目标机直接发布，不设 DEPLOY_HOST 即可 ./deploy.sh deploy。
 # ============================================================================
 set -euo pipefail
 
@@ -169,8 +169,14 @@ cmd_build() {
   echo "✓ 构建完成"
 }
 
-# 同步产物 + 运行迁移 + PM2
+# 同步产物 + 运行迁移 + PM2（远端需 DEPLOY_HOST；未设 DEPLOY_HOST 时走 deploy-local）
 cmd_deploy() {
+  if [[ -z "${DEPLOY_HOST:-}" ]]; then
+    echo "▶ DEPLOY_HOST 未设置 → 在当前机器发布（等同 deploy-local，含 git pull / 增量）"
+    cmd_deploy_local
+    return 0
+  fi
+
   require_deploy_host
   cmd_build
 
