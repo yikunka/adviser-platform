@@ -194,6 +194,7 @@ cmd_deploy() {
   rsync -az --delete -e "$RSYNC_E" .next/standalone/ "${REMOTE}:${REMOTE_DIR}/"
   rsync -az --delete -e "$RSYNC_E" .next/static/ "${REMOTE}:${REMOTE_DIR}/.next/static/"
   rsync -az -e "$RSYNC_E" public/ "${REMOTE}:${REMOTE_DIR}/public/"
+  rsync -az -e "$RSYNC_E" scripts/ "${REMOTE}:${REMOTE_DIR}/scripts/"
   rsync -az -e "$RSYNC_E" prisma/ "${REMOTE}:${REMOTE_DIR}/prisma/"
   rsync -az -e "$RSYNC_E" prisma.config.mjs "${REMOTE}:${REMOTE_DIR}/prisma.config.mjs"
   ssh_remote "rm -f '${REMOTE_DIR}/prisma.config.ts'"
@@ -215,7 +216,6 @@ if ! command -v prisma >/dev/null 2>&1; then
   exit 1
 fi
 prisma migrate deploy
-if [[ -n "\${LOCAL_UPLOADS_DIR:-}" ]]; then mkdir -p "\$LOCAL_UPLOADS_DIR"; fi
 END_SSH
 
   echo "▶ 写入启动脚本（加载 .env 后 exec node）..."
@@ -270,10 +270,19 @@ _deploy_local_git_pull_maybe() {
     return 0
   fi
   echo "▶ git pull…"
+  local before
+  before="$(git -C "$SCRIPT_DIR" rev-parse HEAD)"
   if [[ "${DEPLOY_FF_ONLY_GIT:-1}" == "1" ]]; then
-    git -C "$SCRIPT_DIR" pull --ff-only
+    git -C "$SCRIPT_DIR" pull --ff-only || die "git pull --ff-only 失败（本地有分叉？试 DEPLOY_FF_ONLY_GIT=0 或 DEPLOY_FORCE_FULL=1）"
   else
-    git -C "$SCRIPT_DIR" pull
+    git -C "$SCRIPT_DIR" pull || die "git pull 失败"
+  fi
+  local after
+  after="$(git -C "$SCRIPT_DIR" rev-parse HEAD)"
+  if [[ "$before" != "$after" ]]; then
+    echo "✓ pull 后 HEAD: ${before:0:7} → ${after:0:7}"
+  else
+    echo "✓ 已是最新，HEAD 未变（${after:0:7}）"
   fi
 }
 
@@ -381,6 +390,7 @@ _deploy_local_sync_to_app_dir() {
     rsync -a --delete .next/standalone/ "$APP_DIR/"
     rsync -a --delete .next/static/ "$APP_DIR/.next/static/"
     rsync -a public/ "$APP_DIR/public/"
+    rsync -a scripts/ "$APP_DIR/scripts/"
     rsync -a prisma/ "$APP_DIR/prisma/"
     rsync -a prisma.config.mjs "$APP_DIR/prisma.config.mjs"
     rm -f "$APP_DIR/prisma.config.ts"
@@ -524,6 +534,13 @@ cmd_deploy_local() {
 
   [[ -f "$APP_DIR/.env" ]] || die "缺少 $APP_DIR/.env（请先按 .env.example 创建）"
 
+  # Load .env before building so OSS_BUCKET and other vars are available
+  # during `next build` and `sync-oss-static.mjs`.
+  set -a
+  # shellcheck disable=SC1091
+  source "$APP_DIR/.env"
+  set +a
+
   if [[ "$NEED_DEPS" == 1 ]] || [[ "$NEED_PRISMA_GEN" == 1 ]] || [[ "$NEED_BUILD" == 1 ]]; then
     _deploy_local_maybe_npm_prisma_next "$NEED_DEPS" "$NEED_PRISMA_GEN" "$NEED_BUILD"
     DID_ANY=1
@@ -537,7 +554,6 @@ cmd_deploy_local() {
       # shellcheck disable=SC1091
       source "$APP_DIR/.env"
       set +a
-      [[ -z "${LOCAL_UPLOADS_DIR:-}" ]] || mkdir -p "$LOCAL_UPLOADS_DIR"
     fi
   fi
 
