@@ -31,10 +31,14 @@ export type OssImgOpts = {
   raw?: boolean
 }
 
-const SKIP_EXTENSIONS = new Set(['.svg', '.gif', '.ico'])
+const SKIP_EXTENSIONS = new Set(['.svg', '.gif', '.ico', '.mp4', '.webm', '.mov', '.ogg'])
 
 function getCdnBase(): string {
-  const raw = typeof process !== 'undefined' ? (process.env['NEXT_PUBLIC_OSS_CDN_URL'] ?? '') : ''
+  if (typeof process === 'undefined') return ''
+  // NEXT_PUBLIC_ is baked into client bundles at build time.
+  // In Server Components it is read from runtime process.env — fall back to
+  // the server-only OSS_CDN_URL if the public variant is absent.
+  const raw = process.env['NEXT_PUBLIC_OSS_CDN_URL'] || process.env['OSS_CDN_URL'] || ''
   return raw.trim().replace(/\/$/, '')
 }
 

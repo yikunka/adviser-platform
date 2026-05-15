@@ -13,7 +13,9 @@ export default function SFSFooter() {
               alt="SFS Diamond"
               width={32}
               height={32}
+              quality={95}
               className="rounded-full object-cover"
+              style={{ filter: 'brightness(0) invert(1)' }}
             />
             <span className="font-semibold text-base" style={{ color: '#F5F0E8', fontFamily: 'Georgia, serif' }}>
               SFS Diamond

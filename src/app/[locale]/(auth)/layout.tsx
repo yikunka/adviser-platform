@@ -13,6 +13,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           alt=""
           width={52}
           height={52}
+          quality={95}
           style={{ objectFit: 'contain' }}
         />
         <Image
@@ -20,6 +21,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           alt="6AM Advisory"
           width={180}
           height={40}
+          quality={95}
           style={{ objectFit: 'contain', filter: 'brightness(1.08)' }}
         />
         <p className="text-xs tracking-widest uppercase" style={{ color: '#4A4030', letterSpacing: '0.22em' }}>

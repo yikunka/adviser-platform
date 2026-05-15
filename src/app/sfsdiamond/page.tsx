@@ -2,6 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import VideoPlayer from './components/VideoPlayer'
 import EternityRing from './components/EternityRing'
+import { ossImg } from '@/lib/oss-img'
 
 const PROCESS = [
   { step: '01', title: 'Confirm Order',    desc: 'Contact our team to begin. We guide you through every option and handle paperwork with care.',           img: '/sfsdiamond/process-1.jpg' },
@@ -32,7 +33,7 @@ export default function SFSHomePage() {
       <section className="relative min-h-screen flex items-center overflow-hidden" style={{ background: '#050305' }}>
         {/* SVG atmospheric background */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/sfsdiamond/hero-love.svg" alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
+        <img src={ossImg('/sfsdiamond/hero-love.svg')} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
         <EternityRing />
         {/* Desktop: readability panel on left. Mobile: keep left side readable — avoid strong shadow that eats narrow lines */}
         <div
@@ -136,7 +137,7 @@ export default function SFSHomePage() {
       <section className="py-24" style={{ background: '#F2EDE3' }}>
         <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-14 items-center">
           <div className="relative rounded-3xl overflow-hidden aspect-square max-w-md mx-auto md:mx-0 shadow-xl">
-            <Image src="/sfsdiamond/diamond-crystal.jpg" alt="Diamond crystal" fill className="object-cover" />
+            <Image src="/sfsdiamond/diamond-crystal.jpg" alt="Diamond crystal" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
           </div>
           <div>
             <p className="text-xs uppercase tracking-widest mb-4" style={{ color: '#C9A96E' }}>What We Do</p>
@@ -180,7 +181,7 @@ export default function SFSHomePage() {
             </h2>
           </div>
           <div className="flex justify-center">
-            <VideoPlayer src="/sfsdiamond/hero.mp4" poster="/sfsdiamond/hero-diamond.jpg" />
+            <VideoPlayer src={ossImg('/sfsdiamond/hero.mp4')} poster={ossImg('/sfsdiamond/hero-diamond.jpg', { w: 420 })} />
           </div>
         </div>
       </section>

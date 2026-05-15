@@ -49,7 +49,7 @@ export default function SFSLoginPage() {
       style={{ background: '#FAFAF8' }}
     >
       <Link href="/sfsdiamond" className="flex items-center gap-2 mb-10">
-        <Image src="/sfsdiamond/logo.png" alt="SFS Diamond" width={36} height={36} className="rounded-full" />
+        <Image src="/sfsdiamond/logo.png" alt="SFS Diamond" width={36} height={36} quality={95} className="rounded-full" />
         <span className="font-semibold text-lg" style={{ fontFamily: 'Georgia, serif', color: '#1A1A1A' }}>
           SFS Diamond
         </span>

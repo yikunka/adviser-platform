@@ -48,7 +48,9 @@ export default function SFSHeader() {
             alt="SFS Diamond"
             width={112}
             height={112}
+            quality={95}
             className="rounded-full object-cover"
+            style={isDark ? { filter: 'brightness(0) invert(1)' } : undefined}
           />
         </Link>
 
