@@ -76,7 +76,9 @@ export default function SFSHomePage() {
             className="mb-6 max-w-3xl font-bold leading-[1.1] text-[clamp(2.125rem,6.5vw+0.85rem,3.5rem)] md:text-7xl md:leading-tight"
             style={{ color: '#FFFFFF', fontFamily: 'Georgia, "Times New Roman", serif' }}
           >
-            For Forever<br />
+            For{' '}
+            <span data-sfs-hero-eternity-anchor>Forever</span>
+            <br />
             <span style={{ color: '#C9A96E' }}>Love</span>
           </h1>
           <p
