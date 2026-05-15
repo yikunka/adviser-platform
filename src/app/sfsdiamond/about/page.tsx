@@ -13,7 +13,7 @@ export default function AboutPage() {
       {/* ── Hero ── */}
       <section className="relative h-[60vh] flex items-end overflow-hidden">
         <div className="absolute inset-0">
-          <Image src="/sfsdiamond/company.jpg" alt="SFS Technology Group" fill className="object-cover" priority />
+          <Image src="/sfsdiamond/company.jpg" alt="SFS Technology Group" fill sizes="100vw" className="object-cover" priority />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(10,8,5,0.9) 0%, rgba(10,8,5,0.35) 60%, transparent 100%)' }} />
         </div>
         <div className="relative z-10 max-w-6xl mx-auto px-6 pb-16 w-full">
@@ -51,7 +51,7 @@ export default function AboutPage() {
             </div>
           </div>
           <div className="relative rounded-3xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/3' }}>
-            <Image src="/sfsdiamond/sfs-logo-alt.png" alt="SFS Diamond logo" fill className="object-contain p-10 bg-white" />
+            <Image src="/sfsdiamond/sfs-logo-alt.png" alt="SFS Diamond logo" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-contain p-10 bg-white" />
           </div>
         </div>
       </section>

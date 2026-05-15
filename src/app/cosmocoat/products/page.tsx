@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link'
+import { ossImg } from '@/lib/oss-img'
 import {
   getProduct,
   PRODUCTS_PAGE_1_PIDS,
@@ -130,7 +131,7 @@ export default async function CosmoProductsPage({ searchParams }: Props) {
                 >
                   <div className="aspect-square bg-neutral-900 overflow-hidden">
                     <img
-                      src={`/cosmocoat/${p.imageFile}`}
+                      src={ossImg(`/cosmocoat/${p.imageFile}`, { w: 500 })}
                       alt={p.title}
                       className="w-full h-full object-cover transition-transform duration-400 group-hover:scale-105"
                       style={{ filter: 'grayscale(15%)', opacity: 0.8 }}

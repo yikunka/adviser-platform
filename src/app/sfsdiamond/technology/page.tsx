@@ -43,7 +43,7 @@ function StepGrid({ steps }: { steps: typeof EXTRACTION_STEPS }) {
           style={{ background: '#FFFFFF', border: '1px solid #EDE7D8', boxShadow: '0 1px 12px rgba(0,0,0,0.04)' }}
         >
           <div className="relative h-44">
-            <Image src={s.img} alt={s.title} fill className="object-cover" />
+            <Image src={s.img} alt={s.title} fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" className="object-cover" />
             <div
               className="absolute top-3 left-3 rounded-full px-2.5 py-0.5 text-xs font-bold"
               style={{ background: '#C9A96E', color: '#0A0805' }}
@@ -67,7 +67,7 @@ export default function TechnologyPage() {
       {/* ── Hero ── */}
       <section className="relative h-[55vh] flex items-end overflow-hidden">
         <div className="absolute inset-0">
-          <Image src="/sfsdiamond/cvd-machine.jpeg" alt="CVD Technology" fill className="object-cover" priority />
+          <Image src="/sfsdiamond/cvd-machine.jpeg" alt="CVD Technology" fill sizes="100vw" className="object-cover" priority />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(10,8,5,0.9) 0%, rgba(10,8,5,0.4) 60%, transparent 100%)' }} />
         </div>
         <div className="relative z-10 max-w-6xl mx-auto px-6 pb-16 w-full">
@@ -100,7 +100,7 @@ export default function TechnologyPage() {
             </div>
           </div>
           <div className="relative rounded-3xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/3' }}>
-            <Image src="/sfsdiamond/carbon-source.webp" alt="Carbon source" fill className="object-cover" />
+            <Image src="/sfsdiamond/carbon-source.webp" alt="Carbon source" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
           </div>
         </div>
       </section>
@@ -109,7 +109,7 @@ export default function TechnologyPage() {
       <section className="py-20" style={{ background: '#111111' }}>
         <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-14 items-center">
           <div className="relative rounded-3xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/3' }}>
-            <Image src="/sfsdiamond/cvd-diagram.jpg" alt="CVD diagram" fill className="object-cover" />
+            <Image src="/sfsdiamond/cvd-diagram.jpg" alt="CVD diagram" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
           </div>
           <div>
             <p className="text-xs uppercase tracking-widest mb-4" style={{ color: '#C9A96E' }}>The Process</p>
@@ -191,7 +191,7 @@ export default function TechnologyPage() {
       <section className="py-20" style={{ background: '#111111' }}>
         <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-14 items-center">
           <div className="relative rounded-3xl overflow-hidden shadow-xl" style={{ aspectRatio: '1/1', maxWidth: 440 }}>
-            <Image src="/sfsdiamond/qc-diagram.png" alt="Quality Control" fill className="object-cover" />
+            <Image src="/sfsdiamond/qc-diagram.png" alt="Quality Control" fill sizes="(max-width: 768px) 100vw, 440px" className="object-cover" />
           </div>
           <div>
             <p className="text-xs uppercase tracking-widest mb-4" style={{ color: '#C9A96E' }}>Guarantee</p>

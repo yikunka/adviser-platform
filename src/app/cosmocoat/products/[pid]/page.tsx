@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getProduct } from '../../data/products'
+import { ossImg } from '@/lib/oss-img'
 
 const MONO = "'Courier New', Courier, monospace"
 const RED = '#ff2200'
@@ -34,7 +35,7 @@ export default async function CosmoProductDetailPage({ params }: Props) {
             style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderTop: `3px solid ${RED}` }}
           >
             <img
-              src={`/cosmocoat/${p.imageFile}`}
+              src={ossImg(`/cosmocoat/${p.imageFile}`, { w: 800 })}
               alt={p.title}
               className="w-full h-auto object-contain max-h-[520px] mx-auto"
               style={{ filter: 'grayscale(10%) brightness(0.85)' }}

@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
+import { ossImg } from '@/lib/oss-img'
 const MONO = "'Courier New', Courier, monospace"
 const RED = '#ff2200'
 const CYAN = '#00d4ff'
@@ -22,7 +23,7 @@ function ChemCard({
         <div className={align === 'right' ? 'order-1 md:order-2' : ''}>
           <div className="overflow-hidden" style={{ border: '1px solid #1a1a1a', borderTop: `3px solid ${accent}` }}>
             <img
-              src={img}
+              src={ossImg(img, { w: 700 })}
               alt={title}
               className="w-full"
               style={{ filter: 'grayscale(15%) brightness(0.8)' }}
@@ -80,7 +81,7 @@ export default function CosmoSupportingPage() {
       <section className="max-w-6xl mx-auto px-6 sm:px-10 py-10 grid md:grid-cols-2 gap-10 items-center">
         <div className="overflow-hidden" style={{ border: '1px solid #1a1a1a' }}>
           <img
-            src="/cosmocoat/support-ab-top.png"
+            src={ossImg('/cosmocoat/support-ab-top.png', { w: 700 })}
             alt="AB剂"
             className="w-full max-w-lg mx-auto"
             style={{ filter: 'grayscale(15%) brightness(0.8)' }}
@@ -156,7 +157,7 @@ export default function CosmoSupportingPage() {
               {item.label}
             </div>
             <img
-              src={item.img}
+              src={ossImg(item.img, { w: 800 })}
               alt={item.label}
               className="w-full transition-transform duration-500 group-hover:scale-[1.03]"
               style={{ filter: 'grayscale(10%) brightness(0.75)' }}

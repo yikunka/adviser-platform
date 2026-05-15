@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
+import { ossImg } from '@/lib/oss-img'
 const MONO = "'Courier New', Courier, monospace"
 const RED = '#ff2200'
 const CYAN = '#00d4ff'
@@ -20,7 +21,7 @@ export default function CosmoAboutPage() {
         <div
           className="absolute inset-0"
           style={{
-            backgroundImage: "url('/cosmocoat/about-hero.jpeg')",
+            backgroundImage: `url('${ossImg('/cosmocoat/about-hero.jpeg', { w: 1440, quality: 78 })}')`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             opacity: 0.25,
@@ -70,7 +71,7 @@ export default function CosmoAboutPage() {
               className="overflow-hidden"
               style={{ border: '1px solid #181818' }}
             >
-              <img src="/cosmocoat/about-map-china.png" alt="" className="w-full" style={{ filter: 'grayscale(20%) brightness(0.8)' }} />
+              <img src={ossImg('/cosmocoat/about-map-china.png', { w: 800 })} alt="" className="w-full" style={{ filter: 'grayscale(20%) brightness(0.8)' }} />
             </div>
             <div className="text-[15px] sm:text-base leading-[1.85] text-justify space-y-4" style={{ color: '#b8b8b8' }}>
               <p>
@@ -95,7 +96,7 @@ export default function CosmoAboutPage() {
                 <p className="text-[10px] tracking-[0.25em] uppercase" style={{ color: '#8a8a8a', fontFamily: MONO }}>{f.sub}</p>
                 <h3 className="text-xl font-black" style={{ color: '#f0f0f0' }}>{f.title}</h3>
                 <div className="overflow-hidden" style={{ border: '1px solid #181818' }}>
-                  <img src={f.img} alt="" className="w-full" style={{ filter: 'grayscale(20%) brightness(0.75)' }} />
+                  <img src={ossImg(f.img, { w: 900 })} alt="" className="w-full" style={{ filter: 'grayscale(20%) brightness(0.75)' }} />
                 </div>
                 <p className="text-[11px] text-center tracking-wider" style={{ color: '#7a7a7a', fontFamily: MONO }}>{f.caption}</p>
               </div>
@@ -129,14 +130,14 @@ export default function CosmoAboutPage() {
               </div>
             </div>
             <div style={{ border: '1px solid #1a1a1a' }}>
-              <img src="/cosmocoat/about-factory-italy.jpg" alt="" className="w-full" style={{ filter: 'grayscale(20%) brightness(0.75)' }} />
+              <img src={ossImg('/cosmocoat/about-factory-italy.jpg', { w: 900 })} alt="" className="w-full" style={{ filter: 'grayscale(20%) brightness(0.75)' }} />
             </div>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4 mt-10 max-w-4xl mx-auto">
             {['/cosmocoat/about-gallery-1.jpg', '/cosmocoat/about-gallery-2.jpg'].map((src, i) => (
               <div key={i} style={{ border: '1px solid #181818', overflow: 'hidden' }}>
-                <img src={src} alt="" className="w-full object-cover" style={{ filter: 'grayscale(25%) brightness(0.7)' }} />
+                <img src={ossImg(src, { w: 800 })} alt="" className="w-full object-cover" style={{ filter: 'grayscale(25%) brightness(0.7)' }} />
               </div>
             ))}
           </div>

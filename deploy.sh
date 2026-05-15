@@ -166,6 +166,13 @@ cmd_build() {
   echo "▶ next build..."
   npm run build
   [[ -f .next/standalone/server.js ]] || die "未生成 .next/standalone/server.js，请确认 next.config 中 output: standalone"
+  if [[ -n "${OSS_BUCKET:-}" ]]; then
+    echo "▶ 同步静态资源到 OSS..."
+    node scripts/sync-oss-static.mjs
+    echo "✓ OSS 静态资源同步完成"
+  else
+    echo "ℹ OSS_BUCKET 未设置，跳过 OSS 静态资源同步"
+  fi
   echo "✓ 构建完成"
 }
 
@@ -355,6 +362,11 @@ _deploy_local_maybe_npm_prisma_next() {
     echo "▶ next build…"
     npm run build
     [[ -f .next/standalone/server.js ]] || die "未生成 .next/standalone/server.js，请确认 next.config 中 output: standalone"
+    if [[ -n "${OSS_BUCKET:-}" ]]; then
+      echo "▶ 同步静态资源到 OSS..."
+      node scripts/sync-oss-static.mjs
+      echo "✓ OSS 静态资源同步完成"
+    fi
     echo "✓ 构建完成"
   fi
 }

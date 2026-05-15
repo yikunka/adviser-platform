@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link'
 import { getProduct, HOME_FEATURED_PIDS } from './data/products'
+import { ossImg } from '@/lib/oss-img'
 
 const MONO = "'Courier New', Courier, monospace"
 const RED = '#ff2200'
@@ -51,7 +52,7 @@ export default function CosmoHomePage() {
         <div
           className="absolute inset-0"
           style={{
-            backgroundImage: "url('/cosmocoat/hero-banner.jpeg')",
+            backgroundImage: `url('${ossImg('/cosmocoat/hero-banner.jpeg', { w: 1920, quality: 75 })}')`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             opacity: 0.48,
@@ -316,7 +317,7 @@ export default function CosmoHomePage() {
               >
                 <div className="overflow-hidden aspect-[4/3] bg-neutral-900">
                   <img
-                    src={card.img}
+                    src={ossImg(card.img, { w: 800 })}
                     alt={card.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     style={{ opacity: 0.7, filter: 'grayscale(25%)' }}
@@ -383,7 +384,7 @@ export default function CosmoHomePage() {
               >
                 <div className="aspect-square bg-neutral-900 overflow-hidden w-full">
                   <img
-                    src={`/cosmocoat/${p.imageFile}`}
+                    src={ossImg(`/cosmocoat/${p.imageFile}`, { w: 400 })}
                     alt={p.title}
                     className="w-full h-full object-cover transition-transform duration-400 group-hover:scale-105"
                     style={{ filter: 'grayscale(15%)', opacity: 0.8 }}

@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link'
+import { ossImg } from '@/lib/oss-img'
 
 const MONO = "'Courier New', Courier, monospace"
 const RED = '#ff2200'
@@ -30,7 +31,7 @@ export default function CosmoFooter() {
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3">
               <img
-                src="/cosmocoat/logo.png"
+                src={ossImg('/cosmocoat/logo.png', { w: 80, quality: 90 })}
                 alt="COSMOCOAT"
                 className="h-9 w-auto object-contain"
                 style={{ filter: 'drop-shadow(0 0 5px rgba(255,34,0,0.35)) brightness(1.1)' }}
@@ -101,7 +102,7 @@ export default function CosmoFooter() {
             </div>
             <div className="flex items-end gap-4 pt-2">
               <img
-                src="/cosmocoat/wechat-qr.jpg"
+                src={ossImg('/cosmocoat/wechat-qr.jpg', { w: 160, quality: 95 })}
                 alt="微信二维码"
                 className="w-20 h-20 object-cover rounded-sm"
                 style={{ border: '1px solid #1c1c1c', background: '#111' }}

@@ -4,6 +4,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { ossImg } from '@/lib/oss-img'
 
 const NAV = [
   { label: '首页', href: '/cosmocoat' },
@@ -36,7 +37,7 @@ export default function CosmoHeader() {
         {/* Logo */}
         <Link href="/cosmocoat" className="flex items-center gap-3 shrink-0 group">
           <img
-            src="/cosmocoat/logo.png"
+            src={ossImg('/cosmocoat/logo.png', { w: 80, quality: 90 })}
             alt="COSMOCOAT 威栩"
             className="h-9 w-auto object-contain"
             style={{ filter: 'drop-shadow(0 0 6px rgba(255,34,0,0.45)) brightness(1.1)' }}

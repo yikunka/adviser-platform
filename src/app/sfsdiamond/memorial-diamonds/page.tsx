@@ -29,7 +29,7 @@ export default function MemorialDiamondsPage() {
       {/* ── Hero ── */}
       <section className="relative h-[60vh] flex items-end overflow-hidden">
         <div className="absolute inset-0">
-          <Image src="/sfsdiamond/masonry.jpg" alt="Memorial diamonds" fill className="object-cover" priority />
+          <Image src="/sfsdiamond/masonry.jpg" alt="Memorial diamonds" fill sizes="100vw" className="object-cover" priority />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(10,8,5,0.85) 0%, rgba(10,8,5,0.3) 60%, transparent 100%)' }} />
         </div>
         <div className="relative z-10 max-w-6xl mx-auto px-6 pb-16 w-full">
@@ -44,7 +44,7 @@ export default function MemorialDiamondsPage() {
       <section className="py-24" style={{ background: '#FAFAF8' }}>
         <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-14 items-center">
           <div className="relative rounded-3xl overflow-hidden shadow-xl" style={{ aspectRatio: '1/1', maxWidth: 480 }}>
-            <Image src="/sfsdiamond/eternity-symbol.png" alt="Eternity Cut" fill className="object-cover" />
+            <Image src="/sfsdiamond/eternity-symbol.png" alt="Eternity Cut" fill sizes="(max-width: 768px) 100vw, 480px" className="object-cover" />
           </div>
           <div>
             <p className="text-xs uppercase tracking-widest mb-4" style={{ color: '#C9A96E' }}>Our Signature</p>
@@ -97,7 +97,7 @@ export default function MemorialDiamondsPage() {
                 style={{ background: '#1C1A16', border: '1px solid #2A2418' }}
               >
                 <div className="relative h-44">
-                  <Image src={m.img} alt={m.title} fill className="object-cover" />
+                  <Image src={m.img} alt={m.title} fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw" className="object-cover" />
                   <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(28,26,22,0.85) 0%, transparent 60%)' }} />
                 </div>
                 <div className="p-5 flex flex-col gap-2">
@@ -135,6 +135,7 @@ export default function MemorialDiamondsPage() {
                     src={p.img}
                     alt={p.name}
                     fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                 </div>
