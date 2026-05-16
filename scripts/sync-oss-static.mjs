@@ -8,6 +8,11 @@
  * Uploads:
  *   .next/static/  →  _next/static/   (hashed chunks; 1-year cache)
  *   public/        →  (root)          (images, fonts, icons; 7-day cache)
+ *                    Fast path: HEAD Content-Length vs local size — mismatch → PUT without MD5.
+ *                    Same size: read once; single-part ETag = MD5 → skip (multipart ETag → PUT).
+ *
+ * Optional:
+ *   OSS_SYNC_CONCURRENCY  Max parallel uploads per folder (default 24).
  *
  * Required env vars:
  *   OSS_REGION, OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET, OSS_BUCKET
@@ -18,6 +23,7 @@
  */
 
 import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
+import { createHash } from 'crypto'
 import { readFileSync, readdirSync, statSync } from 'fs'
 import { join, extname, relative } from 'path'
 import { fileURLToPath } from 'url'
@@ -63,6 +69,9 @@ const client = new S3Client({
   forcePathStyle: false,
 })
 
+/** Parallel PUT/HEAD cap per folder — unlimited Promise.all often slows OSS on large trees. */
+const SYNC_CONCURRENCY = Math.max(1, Number.parseInt(process.env.OSS_SYNC_CONCURRENCY ?? '24', 10) || 24)
+
 // ── MIME types ────────────────────────────────────────────────────────────────
 const MIME = {
   '.js':    'application/javascript; charset=utf-8',
@@ -104,6 +113,22 @@ function walkDir(dir, files = []) {
   return files
 }
 
+async function mapLimit(items, limit, fn) {
+  const results = new Array(items.length)
+  if (items.length === 0) return results
+  const cap = Math.min(Math.max(1, limit), items.length)
+  let next = 0
+  async function worker() {
+    for (;;) {
+      const i = next++
+      if (i >= items.length) break
+      results[i] = await fn(items[i], i)
+    }
+  }
+  await Promise.all(Array.from({ length: cap }, () => worker()))
+  return results
+}
+
 async function ossKeyExists(key) {
   try {
     await client.send(new HeadObjectCommand({ Bucket: BUCKET, Key: key }))
@@ -113,11 +138,23 @@ async function ossKeyExists(key) {
   }
 }
 
-async function upload(localPath, ossKey, cacheControl, { skipIfExists = false } = {}) {
-  if (skipIfExists && await ossKeyExists(ossKey)) {
-    return 'skipped'
-  }
-  const body = readFileSync(localPath)
+function md5Hex(buffer) {
+  return createHash('md5').update(buffer).digest('hex')
+}
+
+/**
+ * Single-part PutObject on S3-compatible OSS uses ETag = MD5 (quoted hex).
+ * Multipart/composite ETags contain "-" — we cannot equate them to file MD5, so no skip.
+ */
+function etagMatchesBody(etag, body) {
+  if (!etag) return false
+  const t = etag.replace(/^"|"$/g, '')
+  if (t.includes('-')) return false
+  if (!/^[0-9a-f]{32}$/i.test(t)) return false
+  return t.toLowerCase() === md5Hex(body).toLowerCase()
+}
+
+async function putObject(localPath, body, ossKey, cacheControl) {
   await client.send(new PutObjectCommand({
     Bucket: BUCKET,
     Key: ossKey,
@@ -125,29 +162,74 @@ async function upload(localPath, ossKey, cacheControl, { skipIfExists = false } 
     ContentType: mime(localPath),
     CacheControl: cacheControl,
   }))
+}
+
+/** Hashed chunks: HEAD-only skip — no disk read when already on OSS. */
+async function uploadNextStatic(localPath, ossKey, cacheControl) {
+  if (await ossKeyExists(ossKey)) return 'skipped'
+  const body = readFileSync(localPath)
+  await putObject(localPath, body, ossKey, cacheControl)
+  return 'uploaded'
+}
+
+/**
+ * Stable paths: HEAD first; size mismatch → upload without MD5;
+ * same size → read once, compare single-part ETag to MD5 or PUT.
+ */
+async function uploadPublic(localPath, ossKey, cacheControl) {
+  const localSize = statSync(localPath).size
+
+  let head = null
+  try {
+    head = await client.send(new HeadObjectCommand({ Bucket: BUCKET, Key: ossKey }))
+  } catch {
+    head = null
+  }
+
+  if (!head) {
+    const body = readFileSync(localPath)
+    await putObject(localPath, body, ossKey, cacheControl)
+    return 'uploaded'
+  }
+
+  const remoteSize = head.ContentLength
+  if (remoteSize !== undefined && remoteSize !== localSize) {
+    const body = readFileSync(localPath)
+    await putObject(localPath, body, ossKey, cacheControl)
+    return 'uploaded'
+  }
+
+  const body = readFileSync(localPath)
+  if (etagMatchesBody(head.ETag ?? '', body)) return 'skipped'
+
+  await putObject(localPath, body, ossKey, cacheControl)
   return 'uploaded'
 }
 
 // ── Upload jobs ───────────────────────────────────────────────────────────────
 async function syncNextStatic() {
   const dir = join(ROOT, '.next', 'static')
-  let ok = 0, skipped = 0, failed = 0
 
   const files = walkDir(dir)
   console.log(`\n📦  .next/static/  →  _next/static/   (${files.length} files, 1-year cache)`)
 
-  await Promise.all(files.map(async (f) => {
+  const results = await mapLimit(files, SYNC_CONCURRENCY, async (f) => {
     const rel = relative(dir, f)
     const ossKey = `_next/static/${rel}`
     try {
-      // Hashed filenames — skip if already on OSS to avoid redundant uploads
-      const result = await upload(f, ossKey, 'public, max-age=31536000, immutable', { skipIfExists: true })
-      result === 'skipped' ? skipped++ : ok++
+      return await uploadNextStatic(f, ossKey, 'public, max-age=31536000, immutable')
     } catch (e) {
       console.error(`  ✗ ${ossKey}:`, e.message)
-      failed++
+      return 'failed'
     }
-  }))
+  })
+
+  let ok = 0, skipped = 0, failed = 0
+  for (const r of results) {
+    if (r === 'skipped') skipped++
+    else if (r === 'failed') failed++
+    else ok++
+  }
 
   console.log(`  ✓ uploaded ${ok}  skipped ${skipped}  failed ${failed}`)
   return failed
@@ -155,24 +237,29 @@ async function syncNextStatic() {
 
 async function syncPublic() {
   const dir = join(ROOT, 'public')
-  let ok = 0, failed = 0
 
   const files = walkDir(dir)
   console.log(`\n🖼   public/  →  (root)   (${files.length} files, 7-day cache)`)
 
-  await Promise.all(files.map(async (f) => {
+  const results = await mapLimit(files, SYNC_CONCURRENCY, async (f) => {
     const rel = relative(dir, f)
     const ossKey = rel.replace(/\\/g, '/')
     try {
-      await upload(f, ossKey, 'public, max-age=604800')
-      ok++
+      return await uploadPublic(f, ossKey, 'public, max-age=604800')
     } catch (e) {
       console.error(`  ✗ ${ossKey}:`, e.message)
-      failed++
+      return 'failed'
     }
-  }))
+  })
 
-  console.log(`  ✓ uploaded ${ok}  failed ${failed}`)
+  let ok = 0, skipped = 0, failed = 0
+  for (const r of results) {
+    if (r === 'skipped') skipped++
+    else if (r === 'failed') failed++
+    else ok++
+  }
+
+  console.log(`  ✓ uploaded ${ok}  skipped ${skipped}  failed ${failed}`)
   return failed
 }
 
@@ -181,6 +268,7 @@ console.log(`🚀  Syncing static assets to OSS`)
 console.log(`    Bucket : ${BUCKET}`)
 console.log(`    Region : ${REGION}`)
 console.log(`    CDN    : ${process.env.OSS_CDN_URL ?? `https://${BUCKET}.oss-${REGION}.aliyuncs.com`}`)
+console.log(`    Concurrency / folder : ${SYNC_CONCURRENCY}`)
 
 const t0 = Date.now()
 const [f1, f2] = await Promise.all([syncNextStatic(), syncPublic()])

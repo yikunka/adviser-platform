@@ -14,7 +14,7 @@
  *                       or a custom CDN domain — used by next.config assetPrefix
  */
 
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 function makeClient(): S3Client {
@@ -34,14 +34,50 @@ function bucket(): string {
   return process.env['OSS_BUCKET'] ?? ''
 }
 
-export async function uploadToR2(key: string, body: Buffer, contentType: string): Promise<void> {
+export type UploadToR2Options = {
+  metadata?: Record<string, string>
+  contentDisposition?: string
+  cacheControl?: string
+}
+
+export async function uploadToR2(
+  key: string,
+  body: Buffer,
+  contentType: string,
+  opts?: UploadToR2Options,
+): Promise<void> {
   await makeClient().send(
-    new PutObjectCommand({ Bucket: bucket(), Key: key, Body: body, ContentType: contentType })
+    new PutObjectCommand({
+      Bucket: bucket(),
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+      Metadata: opts?.metadata,
+      ContentDisposition: opts?.contentDisposition,
+      CacheControl: opts?.cacheControl ?? undefined,
+    }),
   )
 }
 
-export async function getSignedDownloadUrl(key: string, expiresIn = 900): Promise<string> {
-  const command = new GetObjectCommand({ Bucket: bucket(), Key: key })
+export async function headObjectMeta(key: string): Promise<{ metadata: Record<string, string> } | null> {
+  try {
+    const out = await makeClient().send(new HeadObjectCommand({ Bucket: bucket(), Key: key }))
+    return { metadata: out.Metadata ?? {} }
+  } catch {
+    return null
+  }
+}
+
+export async function getSignedDownloadUrl(
+  key: string,
+  expiresIn = 900,
+  opts?: { responseContentDisposition?: string },
+): Promise<string> {
+  const command = new GetObjectCommand({
+    Bucket: bucket(),
+    Key: key,
+    ResponseContentDisposition: opts?.responseContentDisposition,
+  })
   return getSignedUrl(makeClient(), command, { expiresIn })
 }
 
