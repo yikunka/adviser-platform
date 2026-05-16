@@ -3,8 +3,8 @@ import CosmoHeader from './components/CosmoHeader'
 import CosmoFooter from './components/CosmoFooter'
 
 export const metadata: Metadata = {
-  title: 'COSMOCOAT 威栩 — 工业涂料',
-  description: '威栩（COSMO.COAT）专业工业涂料企业，UV水漆技术先驱，环保水性涂料解决方案。',
+  title: 'CosmoCoat — 工业涂料',
+  description: 'CosmoCoat 专业工业涂料企业，UV水漆技术先驱，环保水性涂料解决方案。',
 }
 
 export default function CosmoLayout({ children }: { children: React.ReactNode }) {

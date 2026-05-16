@@ -82,7 +82,7 @@ const METALS = [
   { label: 'White Gold',  code: 'White Gold' },
 ]
 
-const CARATS = ['1.0', '1.5', '2.0', '2.5', '3.0']
+const CARATS = ['0.5', '1.0', '1.5', '2.0', '2.5', '3.0']
 const STEPS = ['Client Info', 'Source Material', 'Color', 'Diamond Specs', 'Order Summary']
 
 // ─── Shared UI helpers ────────────────────────────────────────────────────────
@@ -299,18 +299,10 @@ function Step2({ data, update }: { data: WizardFormData; update: (p: Partial<Wiz
               {s}
             </CheckCard>
           ))}
-          <CheckCard checked={data.sourceType === 'Other'} onChange={() => update({ sourceType: 'Other' })}>
+          <CheckCard checked={data.sourceType === 'Other'} onChange={() => update({ sourceType: 'Other', sourceOther: '' })}>
             Other carbon source
           </CheckCard>
         </div>
-        {data.sourceType === 'Other' && (
-          <Input
-            className="mt-2"
-            value={data.sourceOther}
-            onChange={e => update({ sourceOther: e.target.value })}
-            placeholder="Describe your carbon source"
-          />
-        )}
       </Field>
 
       <Field label="Remarks">
@@ -546,7 +538,15 @@ function Step4({ data, update }: { data: WizardFormData; update: (p: Partial<Wiz
     update({ diamonds: data.diamonds.filter((_, idx) => idx !== i) })
   }
   const toggleCollapse = (i: number) => {
-    setCollapsedSet(prev => { const s = new Set(prev); s.has(i) ? s.delete(i) : s.add(i); return s })
+    setCollapsedSet(prev => {
+      const s = new Set(prev)
+      if (s.has(i)) {
+        s.delete(i)
+      } else {
+        s.add(i)
+      }
+      return s
+    })
   }
 
   return (
@@ -616,7 +616,7 @@ function Step5({ data }: { data: WizardFormData }) {
 
       <div className="rounded-2xl border p-6 space-y-1" style={{ borderColor: BORDER }}>
         <p className="font-semibold mb-3" style={{ color: DARK }}>Source Material</p>
-        <SummaryRow label="Source" value={data.sourceType === 'Other' ? `Other — ${data.sourceOther}` : data.sourceType} />
+        <SummaryRow label="Source" value={data.sourceType} />
         <SummaryRow label="Remarks" value={data.remarks} />
         <SummaryRow label="Package" value={data.mailingPackage} />
         <SummaryRow label="Color" value={data.color} />
@@ -666,6 +666,7 @@ export default function OrderWizard({
   // Pre-fill from session + saved profile (create mode only)
   useEffect(() => {
     if (!session?.user) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- session data arrives asynchronously and only fills empty defaults.
     setData(prev => ({
       ...prev,
       clientName: prev.clientName || session.user.name || '',
@@ -700,7 +701,6 @@ export default function OrderWizard({
     }
     if (step === 2) {
       if (!data.sourceType) return 'Please select a source type.'
-      if (data.sourceType === 'Other' && !data.sourceOther) return 'Please describe your carbon source.'
       if (!data.mailingPackage) return 'Please select a mailing package.'
     }
     if (step === 3) {
@@ -745,7 +745,7 @@ export default function OrderWizard({
       email: data.email,
       mailingAddress: data.mailingAddress,
       sourceType: data.sourceType,
-      sourceOther: data.sourceOther || undefined,
+      sourceOther: '',
       remarks: data.remarks || undefined,
       mailingPackage: data.mailingPackage,
       color: data.color,

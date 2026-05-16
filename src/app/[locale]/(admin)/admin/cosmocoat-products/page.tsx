@@ -154,7 +154,7 @@ function ProductModal({
       <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl p-6 space-y-5" style={{ background: '#111111', border: '1px solid #2A2418' }}>
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>
-            {isEditing ? 'Edit Cosmocoat Product' : 'Add Cosmocoat Product'}
+            {isEditing ? 'Edit CosmoCoat Product' : 'Add CosmoCoat Product'}
           </h2>
           <button onClick={onClose} className="px-3 py-1 rounded-md text-sm" style={{ color: 'var(--muted-foreground)' }}>Close</button>
         </div>
@@ -239,7 +239,7 @@ function ProductModal({
   )
 }
 
-export default function AdminCosmocoatProductsPage() {
+export default function AdminCosmoCoatProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -308,7 +308,7 @@ export default function AdminCosmocoatProductsPage() {
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>Cosmocoat Products</h1>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>CosmoCoat Products</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
             Manage product type, picture, homepage featuring, and detail pages.
           </p>
@@ -346,7 +346,7 @@ export default function AdminCosmocoatProductsPage() {
         {loading ? (
           <div className="py-16 text-center text-sm" style={{ color: 'var(--muted-foreground)' }}>Loading...</div>
         ) : products.length === 0 ? (
-          <div className="py-16 text-center text-sm" style={{ color: '#5A5040' }}>No Cosmocoat products found.</div>
+          <div className="py-16 text-center text-sm" style={{ color: '#5A5040' }}>No CosmoCoat products found.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">

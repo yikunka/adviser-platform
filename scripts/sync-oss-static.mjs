@@ -67,6 +67,9 @@ const client = new S3Client({
   endpoint: `https://oss-${REGION}.aliyuncs.com`,
   credentials: { accessKeyId: ACCESS_KEY_ID, secretAccessKey: ACCESS_KEY_SECRET },
   forcePathStyle: false,
+  // Aliyun OSS: disable optional S3 flexible checksum headers (SDK default breaks PutObject)
+  requestChecksumCalculation: 'WHEN_REQUIRED',
+  responseChecksumValidation: 'WHEN_REQUIRED',
 })
 
 /** Parallel PUT/HEAD cap per folder — unlimited Promise.all often slows OSS on large trees. */

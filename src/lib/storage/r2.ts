@@ -5,6 +5,10 @@
  * Endpoint: https://oss-<region>.aliyuncs.com
  * Bucket URL: https://<bucket>.oss-<region>.aliyuncs.com/<key>
  *
+ * Aliyun OSS does not fully implement newer S3 checksum headers. We set
+ * `requestChecksumCalculation` / `responseChecksumValidation` to WHEN_REQUIRED
+ * so PutObject/GetObject behave like classic SigV4 without extra checksum fields.
+ *
  * Required env vars (set in .env / .env.local):
  *   OSS_REGION          e.g. cn-hangzhou
  *   OSS_ACCESS_KEY_ID
@@ -17,21 +21,36 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
+function requireBucket(): string {
+  const b = (process.env['OSS_BUCKET'] ?? '').trim()
+  if (!b) {
+    throw new Error('OSS_BUCKET is not set — uploads and downloads require OSS configuration.')
+  }
+  return b
+}
+
 function makeClient(): S3Client {
   const region = (process.env['OSS_REGION'] ?? 'cn-hangzhou').trim()
+  const accessKeyId = (process.env['OSS_ACCESS_KEY_ID'] ?? '').trim()
+  const secretAccessKey = (process.env['OSS_ACCESS_KEY_SECRET'] ?? '').trim()
+  if (!accessKeyId || !secretAccessKey) {
+    throw new Error('OSS_ACCESS_KEY_ID / OSS_ACCESS_KEY_SECRET are not set.')
+  }
   return new S3Client({
     region,
     endpoint: `https://oss-${region}.aliyuncs.com`,
     credentials: {
-      accessKeyId: process.env['OSS_ACCESS_KEY_ID'] ?? '',
-      secretAccessKey: process.env['OSS_ACCESS_KEY_SECRET'] ?? '',
+      accessKeyId,
+      secretAccessKey,
     },
     forcePathStyle: false,
+    requestChecksumCalculation: 'WHEN_REQUIRED',
+    responseChecksumValidation: 'WHEN_REQUIRED',
   })
 }
 
 function bucket(): string {
-  return process.env['OSS_BUCKET'] ?? ''
+  return requireBucket()
 }
 
 export type UploadToR2Options = {

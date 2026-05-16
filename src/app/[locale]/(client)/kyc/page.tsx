@@ -9,10 +9,12 @@ import { toast } from 'sonner'
 import { useDropzone } from 'react-dropzone'
 import {
   User, Briefcase, BarChart2, FileCheck, CheckCircle2, XCircle, Clock, Upload, Loader2, ChevronRight,
-  Plus, Trash2, Download, Users,
+  Plus, Trash2, Download, Users, CalendarIcon,
 } from 'lucide-react'
 import type { KeyPerson } from '@prisma/client'
 import { kycPersonZod, type KycPersonInput, keyPersonToFormValues } from '@/lib/kyc/personZod'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 const formZod = z.object({ persons: z.array(kycPersonZod).min(1) })
 type FormValues = z.infer<typeof formZod> & { persons: (KycPersonInput & { kycStatus?: string })[] }
@@ -100,6 +102,64 @@ function Field({ label, error, children }: { label: string; error?: string; chil
       {children}
       {error && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>{error}</p>}
     </div>
+  )
+}
+
+function parseYmd(value?: string | null): Date | undefined {
+  if (!value) return undefined
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return undefined
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+}
+
+function formatYmd(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function DatePickerField({
+  value,
+  onChange,
+  disabled,
+  placeholder = 'YYYY-MM-DD',
+}: {
+  value?: string | null
+  onChange: (value: string) => void
+  disabled?: boolean
+  placeholder?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const selected = parseYmd(value)
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        type="button"
+        disabled={disabled}
+        className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm outline-none transition-colors disabled:opacity-50"
+        style={fieldStyle}
+      >
+        <span style={{ color: value ? '#F0EAD8' : '#7A7060' }}>{value || placeholder}</span>
+        <CalendarIcon size={14} style={{ color: '#C9A96E' }} />
+      </PopoverTrigger>
+      <PopoverContent align="start" sideOffset={6} className="w-auto p-2" style={{ background: '#111111', border: '1px solid #2A2418' }}>
+        <Calendar
+          mode="single"
+          selected={selected}
+          defaultMonth={selected}
+          captionLayout="dropdown"
+          startMonth={new Date(1900, 0)}
+          endMonth={new Date(2100, 11)}
+          onSelect={(date) => {
+            if (!date) return
+            onChange(formatYmd(date))
+            setOpen(false)
+          }}
+        />
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -247,12 +307,19 @@ export default function KYCPage() {
 
   function stripForApi(persons: FormValues['persons']): KycPersonInput[] {
     return persons.map((p) => {
-      const { kycStatus: _s, ...rest } = p as KycPersonInput & { kycStatus?: string }
+      const rest = { ...(p as KycPersonInput & { kycStatus?: string }) }
+      delete rest.kycStatus
       return kycPersonZod.parse(rest)
     })
   }
 
-  async function saveAll(action: 'SAVE_DRAFT' | 'SUBMIT') {
+  async function saveAll(action: 'SAVE_DRAFT' | 'SUBMIT', opts: { advance?: boolean } = {}) {
+    const currentPerson = form.getValues(`persons.${ap}` as 'persons.0')
+    if ((opts.advance || action === 'SUBMIT') && currentPerson?.isPep) {
+      toast.error(t('pepBlocked', { defaultValue: 'PEP selected as Yes. This KYC cannot continue online. Please contact our team.' }))
+      return
+    }
+
     const ok = await form.trigger()
     if (!ok) return
     setLoading(true)
@@ -275,7 +342,7 @@ export default function KYCPage() {
         })
       }
       if (action === 'SUBMIT') toast.success(t('submitSuccess'))
-      else if (step < 3) setStep((s) => s + 1)
+      else if (opts.advance && step < 3) setStep((s) => s + 1)
       else toast.success(t('draftSaved'))
     } finally {
       setLoading(false)
@@ -320,14 +387,17 @@ export default function KYCPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <a
-            href="/api/kyc/export"
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href = '/api/kyc/export'
+            }}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border"
             style={{ borderColor: '#2A2418', color: '#C9A96E' }}
           >
             <Download size={14} />
             {t('downloadKycDoc', { defaultValue: 'Download Word' })}
-          </a>
+          </button>
         </div>
       </div>
 
@@ -471,7 +541,7 @@ export default function KYCPage() {
               <Field label={t('fields.idType')}>
                 <select style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.idType` as const)}>
                   <option value="" style={{ background: '#141414' }}>—</option>
-                  <option value="CHINA_ID" style={{ background: '#141414' }}>Chinese ID Card 中國身份證</option>
+                  <option value="CHINA_ID" style={{ background: '#141414' }}>China Resident ID Card 中国居民身份证</option>
                   <option value="HKID" style={{ background: '#141414' }}>HK ID Card 香港身份證</option>
                   <option value="PASSPORT" style={{ background: '#141414' }}>Passport 護照</option>
                   <option value="OTHER" style={{ background: '#141414' }}>Other 其他</option>
@@ -486,7 +556,11 @@ export default function KYCPage() {
                 <input style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.placeOfIssue` as const)} />
               </Field>
               <Field label={t('fields.expiryDate')}>
-                <input type="date" style={{ ...fieldStyle, colorScheme: 'dark' }} disabled={isLocked} {...form.register(`persons.${ap}.idExpiry` as const)} />
+                <DatePickerField
+                  value={form.watch(`persons.${ap}.idExpiry` as const)}
+                  disabled={isLocked}
+                  onChange={(value) => form.setValue(`persons.${ap}.idExpiry` as const, value, { shouldDirty: true, shouldValidate: true })}
+                />
               </Field>
             </div>
             <UploadZone
@@ -503,7 +577,11 @@ export default function KYCPage() {
           {/* Personal details */}
           <div className="grid sm:grid-cols-2 gap-4">
             <Field label={t('fields.dob')}>
-              <input type="date" style={{ ...fieldStyle, colorScheme: 'dark' }} disabled={isLocked} {...form.register(`persons.${ap}.dateOfBirth` as const)} />
+              <DatePickerField
+                value={form.watch(`persons.${ap}.dateOfBirth` as const)}
+                disabled={isLocked}
+                onChange={(value) => form.setValue(`persons.${ap}.dateOfBirth` as const, value, { shouldDirty: true, shouldValidate: true })}
+              />
             </Field>
             <Field label={t('fields.placeOfBirth')}>
               <input style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.placeOfBirth` as const)} />
@@ -638,7 +716,6 @@ export default function KYCPage() {
                     disabled={isLocked}
                     placeholder="Other business type..."
                     onBlur={(e) => {
-                      const current = (form.watch(`persons.${ap}.businessNaturesText` as const) ?? '').split(',').map((s: string) => s.trim()).filter((s: string) => !['Property investment','Financial institution','Trading','Manufacturing','Agent/Consultancy','Investment holding','Financial service','Dormant','IT','Advertising','Restaurant','Medical service'].includes(s) && s !== '')
                       const val = e.target.value.trim()
                       if (val) form.setValue(`persons.${ap}.businessNaturesText` as const, [...(form.watch(`persons.${ap}.businessNaturesText` as const) ?? '').split(',').map((s: string) => s.trim()).filter((s: string) => ['Property investment','Financial institution','Trading','Manufacturing','Agent/Consultancy','Investment holding','Financial service','Dormant','IT','Advertising','Restaurant','Medical service'].includes(s)), val].join(', '))
                     }}
@@ -800,11 +877,10 @@ export default function KYCPage() {
             </Field>
             <div className="grid sm:grid-cols-2 gap-4">
               <Field label={t('declarationDate', { defaultValue: 'Date' })}>
-                <input
-                  type="date"
-                  style={{ ...fieldStyle, colorScheme: 'dark' }}
+                <DatePickerField
+                  value={form.watch(`persons.${ap}.declarationDate` as const)}
                   disabled={isLocked}
-                  {...form.register(`persons.${ap}.declarationDate` as const)}
+                  onChange={(value) => form.setValue(`persons.${ap}.declarationDate` as const, value, { shouldDirty: true, shouldValidate: true })}
                 />
               </Field>
             </div>
@@ -817,8 +893,8 @@ export default function KYCPage() {
                 type="button"
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-semibold"
                 style={{ background: loading ? '#8A6E42' : '#C9A96E', color: '#0C0C0C' }}
-                disabled={loading}
-                onClick={() => saveAll('SUBMIT')}
+              disabled={loading}
+              onClick={() => saveAll('SUBMIT')}
               >
                 {loading ? <Loader2 size={14} className="animate-spin" /> : null}
                 {loading ? t('submitting') : t('submit')}
@@ -852,7 +928,7 @@ export default function KYCPage() {
             <button
               type="button"
               disabled={loading}
-              onClick={() => saveAll('SAVE_DRAFT')}
+              onClick={() => saveAll('SAVE_DRAFT', { advance: true })}
               className="flex items-center gap-1.5 px-5 py-2 rounded-lg text-sm font-semibold"
               style={{ background: '#C9A96E', color: '#0C0C0C' }}
             >

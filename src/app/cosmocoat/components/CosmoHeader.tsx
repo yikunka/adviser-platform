@@ -38,7 +38,7 @@ export default function CosmoHeader() {
         <Link href="/cosmocoat" className="flex items-center gap-3 shrink-0 group">
           <img
             src={ossImg('/cosmocoat/logo.png', { w: 144, quality: 95 })}
-            alt="COSMOCOAT 威栩"
+            alt="CosmoCoat"
             className="h-9 w-auto object-contain"
             style={{ filter: 'drop-shadow(0 0 6px rgba(255,34,0,0.45)) brightness(1.1)' }}
           />
@@ -47,7 +47,7 @@ export default function CosmoHeader() {
               className="text-[11px] font-bold tracking-[0.35em] uppercase"
               style={{ color: RED, fontFamily: MONO }}
             >
-              COSMO.COAT
+              CosmoCoat
             </span>
             <span
               className="text-[9px] tracking-[0.18em] uppercase mt-0.5"

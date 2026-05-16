@@ -34,7 +34,7 @@ export default function AdminLoginLayout({ children }: { children: React.ReactNo
           />
           <Image
             src="/cosmocoat/logo.png"
-            alt="Cosmocoat"
+            alt="CosmoCoat"
             width={160}
             height={44}
             className="object-contain max-h-11 w-auto"

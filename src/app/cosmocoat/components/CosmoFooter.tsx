@@ -32,13 +32,13 @@ export default function CosmoFooter() {
             <div className="flex items-center gap-3">
               <img
                 src={ossImg('/cosmocoat/logo.png', { w: 144, quality: 95 })}
-                alt="COSMOCOAT"
+                alt="CosmoCoat"
                 className="h-9 w-auto object-contain"
                 style={{ filter: 'drop-shadow(0 0 5px rgba(255,34,0,0.35)) brightness(1.1)' }}
               />
               <div className="flex flex-col leading-none">
                 <span className="text-[11px] font-bold tracking-[0.3em] uppercase" style={{ color: RED, fontFamily: MONO }}>
-                  COSMO.COAT
+                  CosmoCoat
                 </span>
                 <span className="text-[10px] tracking-[0.18em] uppercase mt-0.5" style={{ color: '#7a7a7a', fontFamily: MONO }}>
                   INDUSTRIAL COATINGS
@@ -46,7 +46,7 @@ export default function CosmoFooter() {
               </div>
             </div>
             <p className="text-sm leading-relaxed" style={{ color: '#a3a3a3' }}>
-              威栩（COSMO.COAT）源自意大利，由紫外线水漆技术先驱 Davide Rossi 创立。
+              CosmoCoat 源自意大利，由紫外线水漆技术先驱 Davide Rossi 创立。
               专注环保水性涂料和高性能油漆研发、生产与技术服务。
             </p>
             <a
@@ -126,7 +126,7 @@ export default function CosmoFooter() {
         className="px-4 sm:px-6 py-4 text-center text-[10px] tracking-[0.2em] uppercase"
         style={{ color: '#5a5a5a', fontFamily: MONO, borderTop: '1px solid #0d0d0d' }}
       >
-        © {new Date().getFullYear()} COSMO.COAT · 威栩华兴 · ALL RIGHTS RESERVED
+        © {new Date().getFullYear()} CosmoCoat · ALL RIGHTS RESERVED
       </div>
     </footer>
   )

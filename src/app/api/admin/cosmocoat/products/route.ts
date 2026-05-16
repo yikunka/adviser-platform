@@ -18,7 +18,7 @@ const productSchema = z.object({
   isVisible: z.boolean().optional().default(true),
 })
 
-function revalidateCosmocoat() {
+function revalidateCosmoCoat() {
   revalidatePath('/cosmocoat')
   revalidatePath('/cosmocoat/products')
 }
@@ -47,7 +47,7 @@ async function seedExistingProductsIfEmpty() {
 function missingProductsTableResponse() {
   return NextResponse.json(
     {
-      error: 'Cosmocoat products table is missing. Run the Prisma migration to create cos_table_products.',
+      error: 'CosmoCoat products table is missing. Run the Prisma migration to create cos_table_products.',
       migration: '20260516090000_create_cos_table_products',
     },
     { status: 503 },
@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
     }
 
     const product = await prisma.cosTableProduct.create({ data: parsed.data })
-    revalidateCosmocoat()
+    revalidateCosmoCoat()
     return NextResponse.json({ product }, { status: 201 })
   } catch (error) {
     if (isMissingProductsTable(error)) return missingProductsTableResponse()

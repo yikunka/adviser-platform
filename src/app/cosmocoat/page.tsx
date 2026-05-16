@@ -169,7 +169,7 @@ export default async function CosmoHomePage() {
                 className="text-base sm:text-lg tracking-[0.22em] mt-6 max-w-xl text-center lg:text-left"
                 style={{ color: '#a3a3a3', fontFamily: MONO }}
               >
-                威栩 · 华兴 · 工业涂料
+                CosmoCoat · 工业涂料
               </p>
             </div>
 
@@ -183,18 +183,7 @@ export default async function CosmoHomePage() {
                   textShadow: '0 0 60px rgba(255,34,0,0.1)',
                 }}
               >
-                COSMO
-              </h1>
-              <h1
-                className="font-black leading-none"
-                style={{
-                  fontSize: 'clamp(4rem, 15vw, 9.5rem)',
-                  color: RED,
-                  letterSpacing: '-0.02em',
-                  textShadow: `0 0 40px rgba(255,34,0,0.55), 0 0 80px rgba(255,34,0,0.2)`,
-                }}
-              >
-                .COAT
+                CosmoCoat
               </h1>
 
               <RedLine align="right" />
@@ -263,14 +252,14 @@ export default async function CosmoHomePage() {
             style={{ color: '#b8b8b8', borderLeft: `2px solid ${RED}`, paddingLeft: '1.5rem' }}
           >
             <p className="mb-4">
-              威栩（COSMO.COAT）业务遍布各个不同的国家和文化。本公司从事不同工业建筑油漆与水漆开发、技术服务与生产。创始人是Davide
+              CosmoCoat 业务遍布各个不同的国家和文化。本公司从事不同工业建筑油漆与水漆开发、技术服务与生产。创始人是Davide
               Rossi，是紫外线水漆的起源技术人员之一。
             </p>
             <p className="mb-4">
-              COSMO.COAT 有别于其他的油漆企业，我们是一家创新和技术驱动型公司，每年投资大量资源与技术人员开发更新最为先进的油漆水漆技术。经过几年于中国的摸索发展，我们于市场上被认知为具有中国适应性的欧洲技术企业。
+              CosmoCoat 有别于其他的油漆企业，我们是一家创新和技术驱动型公司，每年投资大量资源与技术人员开发更新最为先进的油漆水漆技术。经过几年于中国的摸索发展，我们于市场上被认知为具有中国适应性的欧洲技术企业。
             </p>
             <p>
-              威栩（COSMO.COAT）自成立以来一直秉承认真专注的企业精神，努力打造企业各种竞争实力。公司的企业文化、愿景和价值观来自多个国家和地区的客户与员工团结一致。
+              CosmoCoat 自成立以来一直秉承认真专注的企业精神，努力打造企业各种竞争实力。公司的企业文化、愿景和价值观来自多个国家和地区的客户与员工团结一致。
             </p>
           </div>
         </div>
@@ -302,7 +291,7 @@ export default async function CosmoHomePage() {
                 title: '配套产品',
                 href: '/cosmocoat/supporting',
                 img: '/cosmocoat/home-supporting-visual.png',
-                desc: 'COSMO.COAT 推出全新的配套设施产品，为客户提供一站式高效服务解决方案。',
+                desc: 'CosmoCoat 推出全新的配套设施产品，为客户提供一站式高效服务解决方案。',
               },
             ].map(card => (
               <Link
@@ -439,7 +428,7 @@ export default async function CosmoHomePage() {
             关于我们
           </h2>
           <p className="text-sm mb-10 mx-auto max-w-md leading-relaxed" style={{ color: '#8a8a8a', fontFamily: MONO }}>
-            威栩（COSMO.COAT）自成立以来一直秉承认真专注的企业精神
+            CosmoCoat 自成立以来一直秉承认真专注的企业精神
           </p>
           <Link
             href="/cosmocoat/about"

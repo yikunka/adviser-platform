@@ -542,7 +542,7 @@
       "main": "Main",
       "adviser": "Advise",
       "sfsDiamond": "SFS Diamond",
-      "cosmocoat": "Cosmocoat",
+      "cosmocoat": "CosmoCoat",
       "system": "System"
     },
     "users": {
@@ -601,9 +601,9 @@
       "roleSuper": "Super Admin"
     },
     "cosmocoatHub": {
-      "title": "Cosmocoat",
+      "title": "CosmoCoat",
       "desc": "Browse the public product site. Grant access to this hub separately in Admin users.",
-      "openSite": "Open Cosmocoat site"
+      "openSite": "Open CosmoCoat site"
     },
     "dashboard": {
       "title": "Admin Dashboard",

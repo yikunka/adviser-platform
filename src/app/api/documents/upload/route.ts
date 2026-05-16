@@ -30,7 +30,15 @@ export async function POST(req: NextRequest) {
   const ext = file.type === 'application/pdf' ? 'pdf' : file.type === 'image/jpeg' ? 'jpg' : 'png'
   const key = `documents/${session.user.id}/${crypto.randomUUID()}.${ext}`
 
-  await uploadToR2(key, buffer, file.type)
+  try {
+    await uploadToR2(key, buffer, file.type)
+  } catch (err) {
+    console.error('[documents/upload] OSS PutObject failed:', err)
+    return NextResponse.json(
+      { error: 'Could not store file. Verify OSS credentials and bucket configuration.' },
+      { status: 503 },
+    )
+  }
 
   if (keyPersonId) {
     const kp = await prisma.keyPerson.findFirst({

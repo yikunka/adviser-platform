@@ -44,14 +44,14 @@ const td: React.CSSProperties = {
 const PLATFORM_BADGE: Record<'ADVISER' | 'SFS_DIAMOND' | 'COSMICOAT', { bg: string; text: string; label: string }> = {
   ADVISER:     { bg: 'rgba(201,169,110,0.15)', text: '#C9A96E', label: 'Adviser'    },
   SFS_DIAMOND: { bg: 'rgba(56,189,248,0.15)',  text: '#38bdf8', label: 'SFS Diamond' },
-  COSMICOAT:   { bg: 'rgba(255,34,0,0.12)',     text: '#ff6b4a', label: 'Cosmocoat' },
+  COSMICOAT:   { bg: 'rgba(255,34,0,0.12)',     text: '#ff6b4a', label: 'CosmoCoat' },
 }
 
 const TABS: { key: PlatformKey; label: string }[] = [
   { key: 'ALL',        label: 'All'        },
   { key: 'ADVISER',    label: 'Adviser'    },
   { key: 'SFS_DIAMOND',label: 'SFS Diamond'},
-  { key: 'COSMICOAT',  label: 'Cosmocoat' },
+  { key: 'COSMICOAT',  label: 'CosmoCoat' },
 ]
 
 function inputStyle(focused: boolean): React.CSSProperties {
@@ -100,9 +100,12 @@ function AddUserModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="w-full max-w-md rounded-2xl p-7 space-y-5" style={{ background: '#111111', border: '1px solid #2A2418' }}>
+      <div
+        className="w-full max-w-md rounded-2xl p-7 space-y-5"
+        style={{ background: '#111111', border: '1px solid #2A2418' }}
+        onClick={e => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>Add User</h2>
           <button onClick={onClose} className="text-sm px-3 py-1 rounded-md" style={{ color: 'var(--muted-foreground)' }}>✕</button>

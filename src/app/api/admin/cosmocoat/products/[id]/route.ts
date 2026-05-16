@@ -16,7 +16,7 @@ const patchSchema = z.object({
   isVisible: z.boolean().optional(),
 })
 
-function revalidateCosmocoat(pid?: string) {
+function revalidateCosmoCoat(pid?: string) {
   revalidatePath('/cosmocoat')
   revalidatePath('/cosmocoat/products')
   if (pid) revalidatePath(`/cosmocoat/products/${pid}`)
@@ -49,8 +49,8 @@ export async function PATCH(
     data: parsed.data,
   })
 
-  revalidateCosmocoat(current.pid)
-  revalidateCosmocoat(product.pid)
+  revalidateCosmoCoat(current.pid)
+  revalidateCosmoCoat(product.pid)
   return NextResponse.json({ product })
 }
 
@@ -66,6 +66,6 @@ export async function DELETE(
   if (!current) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
 
   await prisma.cosTableProduct.delete({ where: { id } })
-  revalidateCosmocoat(current.pid)
+  revalidateCosmoCoat(current.pid)
   return NextResponse.json({ success: true })
 }

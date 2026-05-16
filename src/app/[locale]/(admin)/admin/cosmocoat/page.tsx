@@ -1,7 +1,7 @@
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 
-export default async function AdminCosmocoatPage() {
+export default async function AdminCosmoCoatPage() {
   const t = await getTranslations('admin.cosmocoatHub')
 
   return (

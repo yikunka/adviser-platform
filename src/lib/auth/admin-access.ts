@@ -100,7 +100,7 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
 export const ADMIN_PLATFORM_OPTIONS: { value: Platform; label: string }[] = [
   { value: 'ADVISER', label: '6M Advise' },
   { value: 'SFS_DIAMOND', label: 'SFS Diamond' },
-  { value: 'COSMICOAT', label: 'Cosmocoat' },
+  { value: 'COSMICOAT', label: 'CosmoCoat' },
 ]
 
 export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: string }[] = [
@@ -110,7 +110,7 @@ export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: stri
   { key: 'aml', label: 'AML', group: 'Adviser' },
   { key: 'users', label: 'Customer account management', group: 'System' },
   { key: 'sfsOrders', label: 'SFS orders', group: 'SFS Diamond' },
-  { key: 'cosmocoatProducts', label: 'Product management', group: 'Cosmocoat' },
+  { key: 'cosmocoatProducts', label: 'Product management', group: 'CosmoCoat' },
   { key: 'settings', label: 'Settings', group: 'System' },
   { key: 'adminTeam', label: 'Admin users & access', group: 'System' },
 ]

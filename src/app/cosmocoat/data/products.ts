@@ -256,7 +256,7 @@ async function getDbProducts(): Promise<CosmoProduct[] | null> {
     if (rows.length === 0) return null
     return rows.map(fromDbProduct)
   } catch (error) {
-    console.warn('Cosmocoat products database fallback:', error)
+    console.warn('CosmoCoat products database fallback:', error)
     return null
   }
 }

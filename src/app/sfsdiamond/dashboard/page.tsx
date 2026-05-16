@@ -127,6 +127,11 @@ export default async function SFSDashboardPage() {
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate" style={{ color: DARK }}>{order.memorialName}</p>
+                      {order.sampleCode && (
+                        <p className="text-[11px] mt-0.5 font-mono truncate" style={{ color: GOLD }}>
+                          Order ID: {order.sampleCode}
+                        </p>
+                      )}
                       <p className="text-xs mt-0.5 truncate" style={{ color: MUTED }}>{summary}{extra}</p>
                       {stepsDone > 0 && (
                         <div className="flex items-center gap-2 mt-1.5">

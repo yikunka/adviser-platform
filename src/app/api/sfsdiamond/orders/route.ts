@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db/prisma'
 import { z } from 'zod'
 
 const diamondItemSchema = z.object({
-  carat:    z.enum(['1.0', '1.5', '2.0', '2.5', '3.0']),
+  carat:    z.enum(['0.5', '1.0', '1.5', '2.0', '2.5', '3.0']),
   shape:    z.enum(['Round', 'Oval', 'Heart', 'Octagon', 'Cushion Square', 'Princess']),
   type:     z.enum(['Ring', 'Necklace', 'Diamond only']),
   ringSize: z.string().optional(),
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ orderId: order.id, sampleCode }, { status: 201 })
 }
 
-export async function GET(_req: NextRequest) {
+export async function GET() {
   const session = await auth()
   if (!session || session.user.platform !== 'SFS_DIAMOND') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

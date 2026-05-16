@@ -542,7 +542,7 @@
       "main": "主要",
       "adviser": "Advise",
       "sfsDiamond": "SFS Diamond",
-      "cosmocoat": "Cosmocoat",
+      "cosmocoat": "CosmoCoat",
       "system": "系統"
     },
     "users": {
@@ -601,9 +601,9 @@
       "roleSuper": "超級管理員"
     },
     "cosmocoatHub": {
-      "title": "Cosmocoat",
+      "title": "CosmoCoat",
       "desc": "檢視公開產品站與品牌內容。此區塊權限可由後台帳號管理頁單獨授予。",
-      "openSite": "開啟 Cosmocoat 網站"
+      "openSite": "開啟 CosmoCoat 網站"
     },
     "dashboard": {
       "title": "管理後台",
