@@ -132,61 +132,58 @@ export default async function CosmoHomePage() {
           }}
         />
 
-        {/* Hero：大屏上 SectionLabel 独占右上第一行；第二行左侧按钮顶对齐右侧 COSMO 顶边 */}
+        {/* Hero: brand, tagline, and actions stacked on the left */}
         <div className="relative z-10 max-w-7xl w-full mx-auto px-4 sm:px-8 lg:px-12 py-20 sm:py-24">
-          <div className="grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-[auto,auto] gap-y-10 lg:gap-x-8 lg:gap-y-4 w-full items-start">
-            <div className="flex justify-end lg:col-start-2 lg:row-start-1">
+          <div className="max-w-5xl flex flex-col items-start text-left">
+            <div>
               <SectionLabel color={CYAN}>INDUSTRIAL COATING SOLUTIONS</SectionLabel>
             </div>
 
-            <div className="flex flex-col items-center lg:items-start lg:col-start-1 lg:row-start-2 order-3 lg:order-none">
-              <div className="flex flex-wrap justify-center lg:justify-start gap-3 sm:gap-4">
-                <Link
-                  href="/cosmocoat/products"
-                  className="text-[13px] sm:text-sm font-bold px-9 py-4 sm:px-11 sm:py-[1.15rem] tracking-[0.16em] uppercase transition-all hover:brightness-110"
-                  style={{
-                    background: RED,
-                    color: '#fff',
-                    fontFamily: MONO,
-                    boxShadow: `0 0 20px rgba(255,34,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)`,
-                  }}
-                >
-                  探索产品 ▶
-                </Link>
-                <Link
-                  href="/cosmocoat/about"
-                  className="text-[13px] sm:text-sm font-bold px-9 py-4 sm:px-11 sm:py-[1.15rem] tracking-[0.16em] uppercase transition-all hover:bg-white/5"
-                  style={{
-                    border: '1px solid rgba(255,255,255,0.18)',
-                    color: '#c8c8c8',
-                    fontFamily: MONO,
-                  }}
-                >
-                  关于我们
-                </Link>
-              </div>
-              <p
-                className="text-base sm:text-lg tracking-[0.22em] mt-6 max-w-xl text-center lg:text-left"
-                style={{ color: '#a3a3a3', fontFamily: MONO }}
-              >
-                CosmoCoat · 工业涂料
-              </p>
-            </div>
+            <h1
+              className="font-black leading-none select-none"
+              style={{
+                fontSize: 'clamp(4rem, 15vw, 9.5rem)',
+                color: '#f0f0f0',
+                letterSpacing: '-0.02em',
+                textShadow: '0 0 60px rgba(255,34,0,0.1)',
+              }}
+            >
+              CosmoCoat
+            </h1>
 
-            <div className="flex flex-col items-end text-right lg:col-start-2 lg:row-start-2 order-2 lg:order-none">
-              <h1
-                className="font-black leading-none mb-1 select-none"
+            <RedLine />
+
+            <p
+              className="text-base sm:text-lg tracking-[0.22em] max-w-xl"
+              style={{ color: '#a3a3a3', fontFamily: MONO }}
+            >
+              CosmoCoat · 工业涂料
+            </p>
+
+            <div className="flex flex-wrap justify-start gap-3 sm:gap-4 mt-8">
+              <Link
+                href="/cosmocoat/products"
+                className="text-[13px] sm:text-sm font-bold px-9 py-4 sm:px-11 sm:py-[1.15rem] tracking-[0.16em] uppercase transition-all hover:brightness-110"
                 style={{
-                  fontSize: 'clamp(4rem, 15vw, 9.5rem)',
-                  color: '#f0f0f0',
-                  letterSpacing: '-0.02em',
-                  textShadow: '0 0 60px rgba(255,34,0,0.1)',
+                  background: RED,
+                  color: '#fff',
+                  fontFamily: MONO,
+                  boxShadow: `0 0 20px rgba(255,34,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)`,
                 }}
               >
-                CosmoCoat
-              </h1>
-
-              <RedLine align="right" />
+                探索产品 ▶
+              </Link>
+              <Link
+                href="/cosmocoat/about"
+                className="text-[13px] sm:text-sm font-bold px-9 py-4 sm:px-11 sm:py-[1.15rem] tracking-[0.16em] uppercase transition-all hover:bg-white/5"
+                style={{
+                  border: '1px solid rgba(255,255,255,0.18)',
+                  color: '#c8c8c8',
+                  fontFamily: MONO,
+                }}
+              >
+                关于我们
+              </Link>
             </div>
           </div>
         </div>
