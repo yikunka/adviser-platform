@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db/prisma'
 
 /** Portal client accounts for linking companies (admin). */
 export async function GET(req: NextRequest) {
-  const { error } = await requireRole('STAFF')
+  const { error } = await requireRole('STAFF', { adminMenu: 'companies' })
   if (error) return error
 
   const signedUpOnly = req.nextUrl.searchParams.get('signedUpOnly') === 'true'

@@ -48,7 +48,21 @@ export default function LoginPage() {
 
       const callbackUrl = searchParams.get('callbackUrl')
       if (callbackUrl) {
-        go(callbackUrl)
+        const decoded = decodeURIComponent(callbackUrl)
+        // 曾误把 /admin-login 当作受保护路由 → callback 指回登录页；内网账号应进后台而非再问一次密码
+        try {
+          const sessionRes = await fetch('/api/auth/session')
+          const sessionData = await sessionRes.json()
+          const role = sessionData?.user?.role as string | undefined
+          const ADMIN_ROLES = ['STAFF', 'COMPLIANCE', 'SUPER_ADMIN']
+          if (role && ADMIN_ROLES.includes(role) && decoded.includes('admin-login')) {
+            go(`/${locale}/admin/dashboard`)
+            return
+          }
+        } catch {
+          /* fall through */
+        }
+        go(decoded.startsWith('http') ? decoded : decoded.startsWith('/') ? decoded : `/${locale}${decoded}`)
         return
       }
 
@@ -174,6 +188,11 @@ export default function LoginPage() {
             {t('noAccount')}{' '}
             <Link href="/register" className="font-medium transition-colors" style={{ color: '#C9A96E' }}>
               {t('register')}
+            </Link>
+          </p>
+          <p className="text-center text-sm pt-1" style={{ color: '#5A5040' }}>
+            <Link href="/admin-login" className="font-medium transition-colors" style={{ color: '#7A7060' }}>
+              {t('adminLoginTitle')}
             </Link>
           </p>
         </form>

@@ -3,7 +3,7 @@ import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 
 export async function GET() {
-  const { error } = await requireRole('STAFF')
+  const { error } = await requireRole('STAFF', { adminMenu: 'aml' })
   if (error) return error
 
   const sources = await prisma.aMLSource.findMany({

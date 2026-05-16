@@ -1,3 +1,5 @@
+import { prisma } from '@/lib/db/prisma'
+
 /** 产品数据摘自 http://cosmocoat.cn 产品列表与详情页 */
 
 /** 产品中心侧栏分类（与 UI 文案一致） */
@@ -23,6 +25,8 @@ export type CosmoProduct = {
   summary: string
   /** public/cosmocoat 下文件名 */
   imageFile: string
+  isFeatured?: boolean
+  sortOrder?: number
 }
 
 /** 首页「推荐产品」栅格顺序（照抄 index.php 表格行顺序） */
@@ -211,10 +215,80 @@ const PRODUCTS: CosmoProduct[] = [
 
 const byPid = new Map(PRODUCTS.map(p => [p.pid, p]))
 
+function normalizeDbImagePath(path: string): string {
+  const trimmed = path.trim()
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
+  if (trimmed.startsWith('/')) return trimmed
+  if (trimmed.startsWith('cosmocoat/')) return `/${trimmed}`
+  return `/cosmocoat/${trimmed}`
+}
+
+function fromDbProduct(p: {
+  pid: string
+  type: string
+  title: string
+  teaser: string
+  detail: string
+  imagePath: string
+  isFeatured: boolean
+  sortOrder: number
+}): CosmoProduct {
+  return {
+    pid: p.pid,
+    category: COSMO_CATEGORY_ORDER.includes(p.type as CosmoProductCategory)
+      ? p.type as CosmoProductCategory
+      : 'special',
+    title: p.title,
+    teaser: p.teaser,
+    summary: p.detail,
+    imageFile: normalizeDbImagePath(p.imagePath),
+    isFeatured: p.isFeatured,
+    sortOrder: p.sortOrder,
+  }
+}
+
+async function getDbProducts(): Promise<CosmoProduct[] | null> {
+  try {
+    const rows = await prisma.cosTableProduct.findMany({
+      where: { isVisible: true },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+    })
+    if (rows.length === 0) return null
+    return rows.map(fromDbProduct)
+  } catch (error) {
+    console.warn('Cosmocoat products database fallback:', error)
+    return null
+  }
+}
+
 export function getProduct(pid: string): CosmoProduct | undefined {
   return byPid.get(pid)
 }
 
 export function getAllProducts(): CosmoProduct[] {
   return PRODUCTS
+}
+
+export function cosmoProductImageSrc(product: CosmoProduct): string {
+  if (/^https?:\/\//i.test(product.imageFile) || product.imageFile.startsWith('/')) {
+    return product.imageFile
+  }
+  return `/cosmocoat/${product.imageFile}`
+}
+
+export async function getCosmoProduct(pid: string): Promise<CosmoProduct | undefined> {
+  const dbProducts = await getDbProducts()
+  return dbProducts?.find(p => p.pid === pid) ?? getProduct(pid)
+}
+
+export async function getCosmoProducts(): Promise<CosmoProduct[]> {
+  return await getDbProducts() ?? getAllProducts()
+}
+
+export async function getHomeFeaturedProducts(): Promise<CosmoProduct[]> {
+  const dbProducts = await getDbProducts()
+  if (!dbProducts) return HOME_FEATURED_PIDS.map(pid => getProduct(pid)).filter(Boolean) as CosmoProduct[]
+
+  const featured = dbProducts.filter(p => p.isFeatured)
+  return (featured.length > 0 ? featured : dbProducts).slice(0, 12)
 }

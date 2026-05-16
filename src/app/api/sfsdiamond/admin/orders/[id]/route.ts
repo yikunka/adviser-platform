@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth/auth'
+import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { z } from 'zod'
-
-const ADMIN_ROLES = new Set(['STAFF', 'COMPLIANCE', 'SUPER_ADMIN'])
 
 const updateSchema = z.object({
   status:               z.enum(['PENDING', 'QUOTED', 'CONFIRMED', 'COMPLETED', 'CANCELLED']).optional(),
@@ -34,10 +32,8 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth()
-  if (!session || !ADMIN_ROLES.has(session.user.role)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const { error } = await requireRole('STAFF', { adminMenu: 'sfsOrders' })
+  if (error) return error
 
   const { id } = await params
   const order = await prisma.sfsOrder.findUnique({
@@ -56,10 +52,8 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth()
-  if (!session || !ADMIN_ROLES.has(session.user.role)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const { error } = await requireRole('STAFF', { adminMenu: 'sfsOrders' })
+  if (error) return error
 
   const { id } = await params
   const body = await req.json().catch(() => null)

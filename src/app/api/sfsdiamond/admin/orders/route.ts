@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db/prisma'
 const PAGE_SIZE = 10
 
 export async function GET(req: NextRequest) {
-  const { error } = await requireRole('STAFF')
+  const { error } = await requireRole('STAFF', { adminMenu: 'sfsOrders' })
   if (error) return error
 
   const { searchParams } = req.nextUrl

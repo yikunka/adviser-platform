@@ -19,7 +19,7 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { error } = await requireRole('STAFF')
+  const { error } = await requireRole('STAFF', { adminMenu: 'companies' })
   if (error) return error
 
   const { id: companyId } = await params
@@ -35,7 +35,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { session, error } = await requireRole('STAFF')
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'companies' })
   if (error) return error
 
   const { id: companyId } = await params

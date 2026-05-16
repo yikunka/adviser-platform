@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link'
-import { getProduct, HOME_FEATURED_PIDS } from './data/products'
+import { cosmoProductImageSrc, getHomeFeaturedProducts } from './data/products'
 import { ossImg } from '@/lib/oss-img'
 
 const MONO = "'Courier New', Courier, monospace"
@@ -30,8 +30,8 @@ function RedLine({ align = 'left' }: { align?: 'left' | 'right' }) {
   )
 }
 
-export default function CosmoHomePage() {
-  const featured = HOME_FEATURED_PIDS.map(pid => getProduct(pid)).filter(Boolean)
+export default async function CosmoHomePage() {
+  const featured = await getHomeFeaturedProducts()
 
   return (
     <div style={{ background: '#080808' }}>
@@ -384,7 +384,7 @@ export default function CosmoHomePage() {
               >
                 <div className="aspect-square bg-neutral-900 overflow-hidden w-full">
                   <img
-                    src={ossImg(`/cosmocoat/${p.imageFile}`, { w: 400 })}
+                    src={ossImg(cosmoProductImageSrc(p), { w: 400 })}
                     alt={p.title}
                     className="w-full h-full object-cover transition-transform duration-400 group-hover:scale-105"
                     style={{ filter: 'grayscale(15%)', opacity: 0.8 }}

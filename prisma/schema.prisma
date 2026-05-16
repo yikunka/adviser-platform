@@ -20,6 +20,7 @@ enum UserRole {
 enum Platform {
   ADVISER
   SFS_DIAMOND
+  COSMICOAT
 }
 
 enum CompanyStatus {
@@ -199,6 +200,10 @@ model User {
   mailingAddress String?
   role           UserRole  @default(CLIENT)
   platform       Platform  @default(ADVISER)
+  /// Admin Console: which commercial platforms this staff user may operate.
+  adminPlatforms Platform[] @default([])
+  /// Admin Console: granular menu keys (see src/lib/auth/admin-access.ts).
+  adminMenuKeys  String[]  @default([])
   isActive       Boolean   @default(true)
   emailVerified  DateTime?
   createdAt      DateTime  @default(now())
@@ -935,4 +940,28 @@ model SfsOrderStep {
 
   @@index([orderId, phase])
   @@map("sfs_order_steps")
+}
+
+// ─────────────────────────────────────────────
+// COSMOCOAT — PRODUCTS
+// ─────────────────────────────────────────────
+
+model CosTableProduct {
+  id        String   @id @default(cuid())
+  pid       String   @unique
+  type      String
+  title     String
+  teaser    String   @default("")
+  detail    String   @db.Text
+  imagePath String
+  sortOrder Int      @default(0)
+  isFeatured Boolean @default(false)
+  isVisible  Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type, sortOrder])
+  @@index([isFeatured, sortOrder])
+  @@index([isVisible, sortOrder])
+  @@map("cos_table_products")
 }

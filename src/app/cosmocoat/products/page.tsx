@@ -2,10 +2,11 @@
 import Link from 'next/link'
 import { ossImg } from '@/lib/oss-img'
 import {
+  cosmoProductImageSrc,
   getProduct,
   PRODUCTS_PAGE_1_PIDS,
   PRODUCTS_PAGE_2_PIDS,
-  getAllProducts,
+  getCosmoProducts,
   COSMO_CATEGORY_ORDER,
   COSMO_CATEGORY_LABEL,
   type CosmoProduct,
@@ -33,10 +34,12 @@ function productsListQuery(pageNum: number, cat: CosmoProductCategory | null) {
 
 export default async function CosmoProductsPage({ searchParams }: Props) {
   const sp = await searchParams
+  const allProducts = await getCosmoProducts()
+  const usesDatabaseProducts = allProducts.length > 0 && allProducts.some(p => p.sortOrder !== undefined || p.isFeatured !== undefined)
   const categoryFilter = isCategoryParam(sp.category) ? sp.category : null
 
   let requestedPage =
-    categoryFilter === null
+    categoryFilter === null && !usesDatabaseProducts
       ? sp.page === '2'
         ? 2
         : 1
@@ -45,13 +48,15 @@ export default async function CosmoProductsPage({ searchParams }: Props) {
   let items: CosmoProduct[]
   let totalPages: number
 
-  if (categoryFilter === null) {
+  if (categoryFilter === null && !usesDatabaseProducts) {
     totalPages = 2
     requestedPage = Math.min(requestedPage, totalPages)
     const pids = requestedPage === 2 ? PRODUCTS_PAGE_2_PIDS : PRODUCTS_PAGE_1_PIDS
     items = pids.map(id => getProduct(id)).filter(Boolean) as CosmoProduct[]
   } else {
-    const filtered = getAllProducts().filter(p => p.category === categoryFilter)
+    const filtered = categoryFilter === null
+      ? allProducts
+      : allProducts.filter(p => p.category === categoryFilter)
     totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
     const page = Math.min(requestedPage, totalPages)
     const start = (page - 1) * PAGE_SIZE
@@ -131,7 +136,7 @@ export default async function CosmoProductsPage({ searchParams }: Props) {
                 >
                   <div className="aspect-square bg-neutral-900 overflow-hidden">
                     <img
-                      src={ossImg(`/cosmocoat/${p.imageFile}`, { w: 500 })}
+                      src={ossImg(cosmoProductImageSrc(p), { w: 500 })}
                       alt={p.title}
                       className="w-full h-full object-cover transition-transform duration-400 group-hover:scale-105"
                       style={{ filter: 'grayscale(15%)', opacity: 0.8 }}

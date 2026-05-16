@@ -234,6 +234,14 @@ set +a
 export NODE_ENV=production
 # Next standalone 用 HOSTNAME 作为 listen 地址；云主机常有不可解析的 ECS 实例名 → getaddrinfo ENOTFOUND
 export HOSTNAME="0.0.0.0"
+# 每次进程启动执行迁移，避免「代码已部署但 DB 未 migrate」（与上方 ssh migrate 重复但幂等）
+if [[ "${SKIP_PRISMA_MIGRATE:-}" == "1" ]]; then
+  echo "SKIP_PRISMA_MIGRATE=1 — 跳过 prisma migrate deploy"
+else
+  command -v prisma >/dev/null 2>&1 || { echo "错误：未找到 prisma CLI，无法执行 migrate deploy（见 DEPLOY.md）"; exit 1; }
+  echo "▶ start-prod.sh: prisma migrate deploy…"
+  prisma migrate deploy
+fi
 exec node server.js
 EOS
 chmod +x "\$APP_DIR/start-prod.sh"
@@ -449,6 +457,13 @@ source .env
 set +a
 export NODE_ENV=production
 export HOSTNAME="0.0.0.0"
+if [[ "${SKIP_PRISMA_MIGRATE:-}" == "1" ]]; then
+  echo "SKIP_PRISMA_MIGRATE=1 — 跳过 prisma migrate deploy"
+else
+  command -v prisma >/dev/null 2>&1 || { echo "错误：未找到 prisma CLI，无法执行 migrate deploy"; exit 1; }
+  echo "▶ start-prod.sh: prisma migrate deploy…"
+  prisma migrate deploy
+fi
 exec node server.js
 EOS
   chmod +x "$APP_DIR/start-prod.sh"

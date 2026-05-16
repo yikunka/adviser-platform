@@ -8,6 +8,7 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
+      # DATABASE_URL required; app entrypoint runs `prisma migrate deploy` before node (set SKIP_PRISMA_MIGRATE=1 to skip)
       - DATABASE_URL=postgresql://adviser:${POSTGRES_PASSWORD}@db:5432/adviser_db
     env_file:
       - .env

@@ -30,7 +30,7 @@ async function getAMLData(keyPersonId: string) {
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { error } = await requireRole('STAFF')
+  const { error } = await requireRole('STAFF', { adminMenu: 'kyc' })
   if (error) return error
 
   const { id } = await params
@@ -39,7 +39,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { session, error } = await requireRole('STAFF')
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'kyc' })
   if (error) return error
 
   const { id } = await params

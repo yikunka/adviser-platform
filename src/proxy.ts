@@ -8,7 +8,8 @@ const intlMiddleware = createMiddleware(routing)
 
 // Patterns that require authentication
 const clientRoutePattern = /^\/(zh|en)\/(dashboard|kyc|documents|orders)/
-const adminRoutePattern = /^\/(zh|en)\/(admin)/
+// Only the real Admin Console under /{locale}/admin/... (not /admin-login, which is public).
+const adminRoutePattern = /^\/(zh|en)\/admin\//
 
 const staffRoles = new Set(['STAFF', 'COMPLIANCE', 'SUPER_ADMIN'])
 
@@ -62,7 +63,7 @@ export default auth((req) => {
   if (adminRoutePattern.test(pathname)) {
     if (!session) {
       const locale = pathname.startsWith('/en') ? 'en' : 'zh'
-      return redirectToPath(req, `/${locale}/login`, { callbackUrl: pathname })
+      return redirectToPath(req, `/${locale}/admin-login`, { callbackUrl: pathname })
     }
     if (!staffRoles.has(session.user?.role)) {
       const locale = pathname.startsWith('/en') ? 'en' : 'zh'

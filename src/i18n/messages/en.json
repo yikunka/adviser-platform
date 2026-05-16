@@ -16,8 +16,10 @@
     "companies": "Companies",
     "aml": "AML Screening",
     "settings": "Settings",
-    "users": "Users",
-    "sfsOrders": "SFS Orders"
+    "users": "Customer Account Management",
+    "sfsOrders": "SFS Orders",
+    "cosmocoatProducts": "Products",
+    "adminTeam": "Admin users & access"
   },
   "home": {
     "heroTitleHighlight": "6AM Advisory",
@@ -365,6 +367,9 @@
     "resetEmailSent": "If that email exists, a reset link has been sent. Check your inbox.",
     "passwordReset": "Password reset successfully! Please sign in.",
     "loginFailed": "Invalid email or password.",
+    "adminPortalLogin": "Client portal login",
+    "adminLoginTitle": "Admin sign in",
+    "adminLoginDesc": "Internal accounts only. Your menu access is assigned by a Super Admin.",
     "registerFailed": "Registration failed. Please try again.",
     "verifyFailed": "Invalid or expired verification code.",
     "resetFailed": "Invalid or expired reset link.",
@@ -535,15 +540,16 @@
   "admin": {
     "nav": {
       "main": "Main",
-      "adviser": "Adviser",
+      "adviser": "Advise",
       "sfsDiamond": "SFS Diamond",
+      "cosmocoat": "Cosmocoat",
       "system": "System"
     },
     "users": {
       "title": "Users",
       "addUser": "Add User",
       "all": "All",
-      "adviser": "Adviser",
+      "adviser": "Advise",
       "sfsDiamond": "SFS Diamond",
       "email": "Email",
       "name": "Name",
@@ -561,6 +567,43 @@
       "createSuccess": "User created successfully.",
       "createFailed": "Failed to create user.",
       "emailExists": "This email is already registered."
+    },
+    "team": {
+      "title": "Admin users & access",
+      "subtitle": "Internal accounts that can sign in to the Admin Console. Assign commercial platforms and sidebar menus.",
+      "add": "Add admin user",
+      "email": "Email",
+      "name": "Name",
+      "role": "Role",
+      "platforms": "Platforms",
+      "menus": "Menus",
+      "status": "Status",
+      "actions": "Actions",
+      "active": "Active",
+      "disabled": "Disabled",
+      "save": "Save",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "edit": "Edit",
+      "createTitle": "New admin user",
+      "editTitle": "Edit admin user",
+      "passwordOptional": "Leave blank to keep current password",
+      "loadFailed": "Failed to load users.",
+      "saved": "Saved.",
+      "created": "User created.",
+      "deleted": "Deleted.",
+      "confirmDelete": "Delete this account permanently?",
+      "legacyAccess": "Not set (full access — legacy)",
+      "password": "Password",
+      "passwordNew": "New password (optional, min 8)",
+      "roleStaff": "Staff",
+      "roleCompliance": "Compliance",
+      "roleSuper": "Super Admin"
+    },
+    "cosmocoatHub": {
+      "title": "Cosmocoat",
+      "desc": "Browse the public product site. Grant access to this hub separately in Admin users.",
+      "openSite": "Open Cosmocoat site"
     },
     "dashboard": {
       "title": "Admin Dashboard",

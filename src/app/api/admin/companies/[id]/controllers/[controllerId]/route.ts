@@ -25,7 +25,7 @@ const updateSchema = z.object({
 type Params = { params: Promise<{ id: string; controllerId: string }> }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
-  const { session, error } = await requireRole('STAFF')
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'companies' })
   if (error) return error
 
   const { id: companyId, controllerId } = await params
@@ -75,7 +75,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 }
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
-  const { session, error } = await requireRole('STAFF')
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'companies' })
   if (error) return error
 
   const { id: companyId, controllerId } = await params

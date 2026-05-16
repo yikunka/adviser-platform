@@ -379,18 +379,22 @@ openssl rand -hex 32     # CRON_SECRET（若啟用）
 ```bash
 cd /opt/adviser
 
-# 建置 image 並啟動
+# 建置 image 並啟動（app 容器 ENTRYPOINT 會自動執行 `prisma migrate deploy`，無需再手動 migrate）
 docker compose up -d --build
 
-# 跟蹤日誌，等待 db 進入 healthy 狀態（約 15–30 秒）
+# 跟蹤日誌，等待 db 進入 healthy 後 app 完成遷移並監聽 3000
 docker compose logs -f
-
-# db healthy 後初始化（僅首次執行；套用 migration + seed）
-docker compose exec app npx prisma migrate deploy
-docker compose exec app npx tsx prisma/seed.ts
 ```
 
-> 若 `npx prisma` 在運行映像中失敗（minimal standalone），可在**已 `git pull` 的專案目錄**執行 `npm ci` 後，使用與容器相同庫帳密、且能連上資料庫的 `DATABASE_URL` 於宿主執行 `npx prisma migrate deploy`，或使用 CI/「一次性」Node 容器並加入同一 Docker network（進階）。
+可選：仅首次需要 seed（映像内若无 `tsx`，请在宿主机專案目錄執行 `npm run db:seed` 並使用相同 `DATABASE_URL`）：
+
+```bash
+# docker compose exec app npx tsx prisma/seed.ts   # 若映像已含 tsx / node_modules
+```
+
+若由平臺單獨跑遷移、不希望容器啟動時執行，可設定環境變數 **`SKIP_PRISMA_MIGRATE=1`**（一般不建議）。
+
+> 舊版文檔曾寫「minimal standalone 無法執行 migrate」：當前 `Dockerfile` 已內建全域 `prisma` CLI，並複製 `prisma.config.mjs`，與上述 entrypoint 一致。
 
 ### 5.4 確認服務運行
 
@@ -456,6 +460,8 @@ docker compose logs --tail=50 app
 
 ## 6. 裸機 PM2 部署方式（無 Docker）
 
+> **資料庫遷移**：`deploy.sh` 寫入的 **`start-prod.sh`** 會在每次啟動 Node 前執行 **`prisma migrate deploy`**（與 SSH 部署階段的遷移重複但冪等）。若需關閉可設定 **`SKIP_PRISMA_MIGRATE=1`**（寫入 `.env` 或由 PM2 注入）。伺服器須已安裝 **`prisma` CLI**（`npm i -g prisma` 或部署文檔所述方式）。
+>
 > **路徑**：下文以 `/opt/adviser` 為例；`deploy.sh` 默認 **`REMOTE_DIR=/opt/adviser-app`** 時，請將路徑替換為實際發布目錄。以下 **`ecosystem.config.js` 中的 `cwd`** 必須與 `npm run build` 及 `standalone` 產物所在目錄一致。
 
 ### 6.1 安裝並設定 PostgreSQL 16

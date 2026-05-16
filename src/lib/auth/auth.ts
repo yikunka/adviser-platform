@@ -41,6 +41,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: 'Password', type: 'password' },
         // Which platform is this login coming from — defaults to ADVISER
         platform: { label: 'Platform', type: 'text'     },
+        adminLogin: { label: 'Admin login', type: 'text' },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
@@ -61,6 +62,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           user.passwordHash,
         )
         if (!valid) return null
+
+        const adminLogin = credentials.adminLogin === '1' || credentials.adminLogin === 'true'
+        if (adminLogin && user.role === 'CLIENT') return null
 
         // Staff / admin accounts always log in via the Adviser panel — skip platform check
         const isStaff = user.role !== 'CLIENT'

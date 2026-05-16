@@ -10,7 +10,7 @@ const resolveSchema = z.object({
 })
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { error } = await requireRole('STAFF')
+  const { error } = await requireRole('STAFF', { adminMenu: 'aml' })
   if (error) return error
 
   const { id } = await params
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { session, error } = await requireRole('COMPLIANCE')
+  const { session, error } = await requireRole('COMPLIANCE', { adminMenu: 'aml' })
   if (error) return error
 
   const { id } = await params

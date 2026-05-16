@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { getProduct } from '../../data/products'
+import { cosmoProductImageSrc, getCosmoProduct } from '../../data/products'
 import { ossImg } from '@/lib/oss-img'
 
 const MONO = "'Courier New', Courier, monospace"
@@ -12,7 +12,7 @@ type Props = { params: Promise<{ pid: string }> }
 
 export default async function CosmoProductDetailPage({ params }: Props) {
   const { pid } = await params
-  const p = getProduct(pid)
+  const p = await getCosmoProduct(pid)
   if (!p) notFound()
 
   return (
@@ -35,7 +35,7 @@ export default async function CosmoProductDetailPage({ params }: Props) {
             style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderTop: `3px solid ${RED}` }}
           >
             <img
-              src={ossImg(`/cosmocoat/${p.imageFile}`, { w: 800 })}
+              src={ossImg(cosmoProductImageSrc(p), { w: 800 })}
               alt={p.title}
               className="w-full h-auto object-contain max-h-[520px] mx-auto"
               style={{ filter: 'grayscale(10%) brightness(0.85)' }}

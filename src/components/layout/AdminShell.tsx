@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
-import { usePathname, useParams } from 'next/navigation'
+import { usePathname, useParams, useRouter } from 'next/navigation'
 import { Link } from '@/i18n/navigation'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -20,62 +20,109 @@ import {
   Lock,
   Users,
   Diamond,
+  Package,
+  UserCog,
 } from 'lucide-react'
+import type { AdminMenuKey } from '@/lib/auth/admin-access'
+import { pathnameToAdminMenuKey, adminMenusAllow } from '@/lib/auth/admin-access'
 
-const NAV_GROUPS = [
+type MenuAccess = ReadonlySet<AdminMenuKey> | 'all'
+
+const NAV_GROUPS: {
+  labelKey: string
+  items: readonly { href: string; key: AdminMenuKey; Icon: typeof LayoutDashboard }[]
+}[] = [
   {
     labelKey: 'main',
-    items: [
-      { href: '/admin/dashboard',  key: 'dashboard',  Icon: LayoutDashboard },
-    ],
+    items: [{ href: '/admin/dashboard', key: 'dashboard', Icon: LayoutDashboard }],
   },
   {
     labelKey: 'adviser',
     items: [
-      { href: '/admin/companies',  key: 'companies',  Icon: Building2       },
-      { href: '/admin/kyc',        key: 'kyc',        Icon: ClipboardCheck  },
-      { href: '/admin/aml',        key: 'aml',        Icon: ShieldAlert     },
+      { href: '/admin/companies', key: 'companies', Icon: Building2 },
+      { href: '/admin/kyc', key: 'kyc', Icon: ClipboardCheck },
+      { href: '/admin/aml', key: 'aml', Icon: ShieldAlert },
     ],
   },
   {
     labelKey: 'sfsDiamond',
     items: [
-      { href: '/admin/users',      key: 'users',      Icon: Users           },
-      { href: '/admin/sfs-orders', key: 'sfsOrders',  Icon: Diamond         },
+      { href: '/admin/sfs-orders', key: 'sfsOrders', Icon: Diamond },
+    ],
+  },
+  {
+    labelKey: 'cosmocoat',
+    items: [
+      { href: '/admin/cosmocoat-products', key: 'cosmocoatProducts', Icon: Package },
     ],
   },
   {
     labelKey: 'system',
     items: [
-      { href: '/admin/settings',   key: 'settings',   Icon: Settings        },
+      { href: '/admin/users', key: 'users', Icon: Users },
+      { href: '/admin/team', key: 'adminTeam', Icon: UserCog },
+      { href: '/admin/settings', key: 'settings', Icon: Settings },
     ],
   },
 ] as const
 
 const ROLE_BADGE: Record<string, { label: string; bg: string; text: string }> = {
   SUPER_ADMIN: { label: 'Super Admin', bg: 'rgba(201,169,110,0.18)', text: '#C9A96E' },
-  COMPLIANCE:  { label: 'Compliance',  bg: 'rgba(99,102,241,0.18)',  text: '#818cf8' },
-  STAFF:       { label: 'Staff',       bg: 'rgba(16,185,129,0.15)', text: '#10b981' },
+  COMPLIANCE: { label: 'Compliance', bg: 'rgba(99,102,241,0.18)', text: '#818cf8' },
+  STAFF: { label: 'Staff', bg: 'rgba(16,185,129,0.15)', text: '#10b981' },
+}
+
+function canSeeMenu(access: MenuAccess, key: AdminMenuKey, userRole: string): boolean {
+  if (key === 'adminTeam' && userRole !== 'SUPER_ADMIN') return false
+  return adminMenusAllow(access, key)
+}
+
+function AdminRouteGuard({
+  children,
+  menuAccess,
+  userRole,
+  locale,
+}: {
+  children: React.ReactNode
+  menuAccess: MenuAccess
+  userRole: string
+  locale: string
+}) {
+  const pathname = usePathname()
+  const router = useRouter()
+
+  useEffect(() => {
+    const key = pathnameToAdminMenuKey(pathname)
+    if (!key) return
+    if (!canSeeMenu(menuAccess, key, userRole)) {
+      router.replace(`/${locale}/admin/dashboard`)
+    }
+  }, [pathname, menuAccess, userRole, locale, router])
+
+  return <>{children}</>
 }
 
 export default function AdminShell({
   children,
   userName,
   userRole,
+  menuAccess,
+  locale,
 }: {
   children: React.ReactNode
   userName: string
   userRole: string
+  menuAccess: MenuAccess
+  locale: string
 }) {
   const t = useTranslations('nav')
   const tAdmin = useTranslations('admin')
   const pathname = usePathname()
   const params = useParams()
-  const locale = (params.locale as string) ?? 'zh'
+  const navLocale = (params.locale as string) ?? locale
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   function isActive(href: string) {
-    // match on the path segment after /admin/
     return pathname.includes(href)
   }
 
@@ -86,7 +133,6 @@ export default function AdminShell({
       className="theme-dark min-h-screen flex"
       style={{ background: 'var(--background)', color: 'var(--foreground)' }}
     >
-      {/* ── Sidebar ── */}
       <aside
         className={`
           fixed inset-y-0 left-0 z-50 w-64 flex flex-col
@@ -96,19 +142,26 @@ export default function AdminShell({
         `}
         style={{ background: '#080808', borderRight: '1px solid var(--sidebar-border)' }}
       >
-        {/* Logo + admin tag */}
         <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--sidebar-border)' }}>
           <Link href="/" className="flex items-center gap-3" onClick={() => setSidebarOpen(false)}>
             <Image src="/logo.png" alt="" width={26} height={26} className="object-contain flex-shrink-0" />
-            <Image src="/logo_text.avif" alt="6AM Advisory" width={100} height={26} className="object-contain" style={{ filter: 'brightness(1.08)' }} />
+            <Image
+              src="/logo_text.avif"
+              alt="6AM Advisory"
+              width={100}
+              height={26}
+              className="object-contain"
+              style={{ filter: 'brightness(1.08)' }}
+            />
           </Link>
           <div className="mt-3 flex items-center gap-2">
             <Lock size={10} style={{ color: '#7A7060' }} />
-            <span className="text-xs" style={{ color: '#7A7060' }}>Admin Console</span>
+            <span className="text-xs" style={{ color: '#7A7060' }}>
+              Admin Console
+            </span>
           </div>
         </div>
 
-        {/* Role badge */}
         <div className="px-5 pt-4 pb-2">
           <span
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
@@ -119,54 +172,55 @@ export default function AdminShell({
           </span>
         </div>
 
-        {/* Nav */}
         <nav className="flex-1 px-3 py-3 space-y-5 overflow-y-auto">
-          {NAV_GROUPS.map(group => (
-            <div key={group.labelKey}>
-              <p
-                className="px-3 mb-1.5 text-xs font-medium uppercase tracking-widest"
-                style={{ color: '#6A5A40' }}
-              >
-                {tAdmin(`nav.${group.labelKey}`)}
-              </p>
-              {group.items.map(({ href, key, Icon }) => {
-                const active = isActive(href)
-                return (
-                  <Link
-                    key={key}
-                    href={href}
-                    onClick={() => setSidebarOpen(false)}
-                    className="group flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-150 relative mb-0.5"
-                    style={{
-                      background: active ? 'var(--sidebar-accent)' : 'transparent',
-                      color: active ? '#C9A96E' : 'var(--sidebar-foreground)',
-                      opacity: active ? 1 : 0.7,
-                    }}
-                  >
-                    {active && (
-                      <span
-                        className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full"
-                        style={{ background: '#C9A96E' }}
+          {NAV_GROUPS.map(group => {
+            const visibleItems = group.items.filter(it => canSeeMenu(menuAccess, it.key, userRole))
+            if (visibleItems.length === 0) return null
+            return (
+              <div key={group.labelKey}>
+                <p
+                  className="px-3 mb-1.5 text-xs font-medium uppercase tracking-widest"
+                  style={{ color: '#6A5A40' }}
+                >
+                  {tAdmin(`nav.${group.labelKey}` as Parameters<typeof tAdmin>[0])}
+                </p>
+                {visibleItems.map(({ href, key, Icon }) => {
+                  const active = isActive(href)
+                  return (
+                    <Link
+                      key={key}
+                      href={href}
+                      onClick={() => setSidebarOpen(false)}
+                      className="group flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-150 relative mb-0.5"
+                      style={{
+                        background: active ? 'var(--sidebar-accent)' : 'transparent',
+                        color: active ? '#C9A96E' : 'var(--sidebar-foreground)',
+                        opacity: active ? 1 : 0.7,
+                      }}
+                    >
+                      {active && (
+                        <span
+                          className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full"
+                          style={{ background: '#C9A96E' }}
+                        />
+                      )}
+                      <Icon
+                        size={15}
+                        strokeWidth={active ? 2 : 1.5}
+                        style={{ color: active ? '#C9A96E' : 'inherit', flexShrink: 0 }}
                       />
-                    )}
-                    <Icon
-                      size={15}
-                      strokeWidth={active ? 2 : 1.5}
-                      style={{ color: active ? '#C9A96E' : 'inherit', flexShrink: 0 }}
-                    />
-                    <span className="flex-1">{t(key as 'dashboard')}</span>
-                    {active && <ChevronRight size={12} style={{ color: '#C9A96E', opacity: 0.6 }} />}
-                  </Link>
-                )
-              })}
-            </div>
-          ))}
+                      <span className="flex-1">{t(key as 'dashboard')}</span>
+                      {active && <ChevronRight size={12} style={{ color: '#C9A96E', opacity: 0.6 }} />}
+                    </Link>
+                  )
+                })}
+              </div>
+            )
+          })}
         </nav>
 
-        {/* Divider */}
         <div className="mx-4" style={{ height: '1px', background: 'var(--sidebar-border)' }} />
 
-        {/* User area */}
         <div className="px-3 py-4 space-y-1">
           <div
             className="flex items-center gap-3 px-3 py-2 rounded-md"
@@ -174,26 +228,34 @@ export default function AdminShell({
           >
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-              style={{ background: roleBadge.text + '22', color: roleBadge.text, border: `1px solid ${roleBadge.text}44` }}
+              style={{
+                background: roleBadge.text + '22',
+                color: roleBadge.text,
+                border: `1px solid ${roleBadge.text}44`,
+              }}
             >
               {userName.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold truncate" style={{ color: 'var(--foreground)' }}>{userName}</p>
-              <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{roleBadge.label}</p>
+              <p className="text-xs font-semibold truncate" style={{ color: 'var(--foreground)' }}>
+                {userName}
+              </p>
+              <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                {roleBadge.label}
+              </p>
             </div>
           </div>
 
           <button
-            onClick={() => signOut({ callbackUrl: `/${locale}/login` })}
+            onClick={() => signOut({ callbackUrl: `/${navLocale}/admin-login` })}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all duration-150"
             style={{ color: 'var(--muted-foreground)' }}
             onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.color = '#ef4444'
+              ;(e.currentTarget as HTMLElement).style.color = '#ef4444'
               ;(e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.08)'
             }}
             onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.color = 'var(--muted-foreground)'
+              ;(e.currentTarget as HTMLElement).style.color = 'var(--muted-foreground)'
               ;(e.currentTarget as HTMLElement).style.background = 'transparent'
             }}
           >
@@ -203,7 +265,6 @@ export default function AdminShell({
         </div>
       </aside>
 
-      {/* Mobile overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 md:hidden"
@@ -212,14 +273,11 @@ export default function AdminShell({
         />
       )}
 
-      {/* ── Main area ── */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar */}
         <header
           className="h-14 flex items-center justify-between px-4 flex-shrink-0"
           style={{ background: '#080808', borderBottom: '1px solid var(--sidebar-border)' }}
         >
-          {/* Mobile hamburger */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="p-2 rounded-md md:hidden"
@@ -229,13 +287,13 @@ export default function AdminShell({
             {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
 
-          {/* Mobile: wordmark */}
           <div className="md:hidden flex items-center gap-2">
             <Image src="/logo.png" alt="" width={20} height={20} className="object-contain" />
-            <span className="text-sm font-semibold" style={{ color: '#C9A96E' }}>Admin Console</span>
+            <span className="text-sm font-semibold" style={{ color: '#C9A96E' }}>
+              Admin Console
+            </span>
           </div>
 
-          {/* Right actions */}
           <div className="flex items-center gap-2">
             <button
               className="p-2 rounded-md transition-colors"
@@ -253,9 +311,10 @@ export default function AdminShell({
           </div>
         </header>
 
-        {/* Page content */}
         <main className="flex-1 overflow-auto p-6" style={{ background: 'var(--background)' }}>
-          {children}
+          <AdminRouteGuard menuAccess={menuAccess} userRole={userRole} locale={navLocale}>
+            {children}
+          </AdminRouteGuard>
         </main>
       </div>
     </div>

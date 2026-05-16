@@ -16,8 +16,10 @@
     "companies": "公司管理",
     "aml": "AML篩查",
     "settings": "設定",
-    "users": "用戶管理",
-    "sfsOrders": "SFS 訂單"
+    "users": "客戶帳號管理",
+    "sfsOrders": "SFS 訂單",
+    "cosmocoatProducts": "產品管理",
+    "adminTeam": "後台帳號與權限"
   },
   "home": {
     "heroTitleHighlight": "6AM Advisory",
@@ -365,6 +367,9 @@
     "resetEmailSent": "若電郵存在，重設連結已發送至您的收件箱。",
     "passwordReset": "密碼重設成功！請重新登入。",
     "loginFailed": "電郵或密碼不正確。",
+    "adminPortalLogin": "前往客戶入口登入",
+    "adminLoginTitle": "管理後台登入",
+    "adminLoginDesc": "僅限內部帳號。請使用由超級管理員授予的後台權限登入。",
     "registerFailed": "註冊失敗，請重試。",
     "verifyFailed": "驗證碼無效或已過期。",
     "resetFailed": "重設連結無效或已過期。",
@@ -535,15 +540,16 @@
   "admin": {
     "nav": {
       "main": "主要",
-      "adviser": "Adviser",
+      "adviser": "Advise",
       "sfsDiamond": "SFS Diamond",
+      "cosmocoat": "Cosmocoat",
       "system": "系統"
     },
     "users": {
       "title": "用戶管理",
       "addUser": "新增用戶",
       "all": "全部",
-      "adviser": "Adviser",
+      "adviser": "Advise",
       "sfsDiamond": "SFS Diamond",
       "email": "電郵",
       "name": "姓名",
@@ -561,6 +567,43 @@
       "createSuccess": "用戶創建成功。",
       "createFailed": "創建用戶失敗。",
       "emailExists": "此電郵已被註冊。"
+    },
+    "team": {
+      "title": "後台帳號與權限",
+      "subtitle": "可登入管理後台的內部帳號；請設定可使用之商業平台與側欄選單。",
+      "add": "新增後台帳號",
+      "email": "電郵",
+      "name": "姓名",
+      "role": "角色",
+      "platforms": "可用平台",
+      "menus": "可用選單",
+      "status": "狀態",
+      "actions": "操作",
+      "active": "啟用",
+      "disabled": "停用",
+      "save": "儲存",
+      "cancel": "取消",
+      "delete": "刪除",
+      "edit": "編輯",
+      "createTitle": "新增後台使用者",
+      "editTitle": "編輯後台使用者",
+      "passwordOptional": "留空則不修改密碼",
+      "loadFailed": "無法載入帳號列表。",
+      "saved": "已儲存。",
+      "created": "帳號已建立。",
+      "deleted": "已刪除。",
+      "confirmDelete": "確定刪除此帳號？",
+      "legacyAccess": "未設定（沿用完整權限）",
+      "password": "密碼",
+      "passwordNew": "新密碼（選填，至少8位）",
+      "roleStaff": "職員",
+      "roleCompliance": "合規",
+      "roleSuper": "超級管理員"
+    },
+    "cosmocoatHub": {
+      "title": "Cosmocoat",
+      "desc": "檢視公開產品站與品牌內容。此區塊權限可由後台帳號管理頁單獨授予。",
+      "openSite": "開啟 Cosmocoat 網站"
     },
     "dashboard": {
       "title": "管理後台",

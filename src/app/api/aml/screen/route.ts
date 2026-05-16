@@ -9,7 +9,7 @@ const schema = z.union([
 ])
 
 export async function POST(req: NextRequest) {
-  const { session, error } = await requireRole('STAFF')
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'aml' })
   if (error) return error
 
   const body = await req.json()
