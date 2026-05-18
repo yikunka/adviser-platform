@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
 
-export async function GET(_req: NextRequest) {
+export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -14,6 +14,7 @@ export async function GET(_req: NextRequest) {
       OR: [
         { uploadedById: session.user.id },
         { company: { clientUserId: session.user.id } },
+        { company: { pendingClientEmail: session.user.email.toLowerCase() } },
       ],
       deletedAt: null,
     },

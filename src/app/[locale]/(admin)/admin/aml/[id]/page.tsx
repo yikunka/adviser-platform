@@ -22,7 +22,14 @@ type AlertDetail = {
     aliases: string[]
     dateOfBirth: string | null
     nationality: string | null
+    gender: string | null
+    placeOfBirth: string | null
+    addresses: unknown
+    idNumbers: unknown
     listingReason: string | null
+    listingDate: string | null
+    listVersionDate: string
+    rawData: unknown
     entityType: string
     source: { nameEn: string; sourceUrl: string }
   }
@@ -32,6 +39,22 @@ const RESULT_COLOR: Record<string, { banner: string; text: string }> = {
   STRONG_HIT:   { banner: 'bg-[rgba(239,68,68,0.1)] border-[rgba(239,68,68,0.3)]',  text: 'text-[#ef4444]' },
   POTENTIAL_HIT: { banner: 'bg-[rgba(245,158,11,0.1)] border-[rgba(245,158,11,0.3)]', text: 'text-[#f59e0b]' },
   WEAK_HIT:     { banner: 'bg-[rgba(234,179,8,0.1)] border-[rgba(234,179,8,0.3)]',   text: 'text-[#eab308]' },
+}
+
+function JsonBlock({ label, value }: { label: string; value: unknown }) {
+  if (value == null) return null
+  const isEmptyObject = typeof value === 'object' && !Array.isArray(value) && Object.keys(value as Record<string, unknown>).length === 0
+  const isEmptyArray = Array.isArray(value) && value.length === 0
+  if (isEmptyObject || isEmptyArray) return null
+
+  return (
+    <div className="space-y-1 text-sm">
+      <p className="font-medium" style={{ color: 'var(--muted-foreground)' }}>{label}</p>
+      <pre className="max-h-72 overflow-auto rounded-md border border-[#2A2418] p-3 whitespace-pre-wrap" style={{ background: '#0A0A0A', color: 'var(--foreground)' }}>
+        {typeof value === 'string' ? value : JSON.stringify(value, null, 2)}
+      </pre>
+    </div>
+  )
 }
 
 export default function AMLAlertDetailPage() {
@@ -107,12 +130,26 @@ export default function AMLAlertDetailPage() {
           </div>
           <div>
             <span style={{ color: 'var(--muted-foreground)' }}>Source: </span>
-            <span style={{ color: 'var(--foreground)' }}>{alert.amlRecord.source.nameEn}</span>
+            <a
+              href={alert.amlRecord.source.sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="hover:underline"
+              style={{ color: '#C9A96E' }}
+            >
+              {alert.amlRecord.source.nameEn}
+            </a>
           </div>
           {alert.amlRecord.nationality && (
             <div>
               <span style={{ color: 'var(--muted-foreground)' }}>Nationality: </span>
               <span style={{ color: 'var(--foreground)' }}>{alert.amlRecord.nationality}</span>
+            </div>
+          )}
+          {alert.amlRecord.gender && (
+            <div>
+              <span style={{ color: 'var(--muted-foreground)' }}>Gender: </span>
+              <span style={{ color: 'var(--foreground)' }}>{alert.amlRecord.gender}</span>
             </div>
           )}
           {alert.amlRecord.dateOfBirth && (
@@ -121,6 +158,22 @@ export default function AMLAlertDetailPage() {
               <span style={{ color: 'var(--foreground)' }}>{new Date(alert.amlRecord.dateOfBirth).toLocaleDateString()}</span>
             </div>
           )}
+          {alert.amlRecord.placeOfBirth && (
+            <div>
+              <span style={{ color: 'var(--muted-foreground)' }}>Place of Birth: </span>
+              <span style={{ color: 'var(--foreground)' }}>{alert.amlRecord.placeOfBirth}</span>
+            </div>
+          )}
+          {alert.amlRecord.listingDate && (
+            <div>
+              <span style={{ color: 'var(--muted-foreground)' }}>Listing Date: </span>
+              <span style={{ color: 'var(--foreground)' }}>{new Date(alert.amlRecord.listingDate).toLocaleDateString()}</span>
+            </div>
+          )}
+          <div>
+            <span style={{ color: 'var(--muted-foreground)' }}>List Version Date: </span>
+            <span style={{ color: 'var(--foreground)' }}>{new Date(alert.amlRecord.listVersionDate).toLocaleDateString()}</span>
+          </div>
         </div>
         {alert.amlRecord.aliases.length > 0 && (
           <div className="text-sm">
@@ -134,6 +187,9 @@ export default function AMLAlertDetailPage() {
             <span style={{ color: 'var(--foreground)' }}>{alert.amlRecord.listingReason}</span>
           </div>
         )}
+        <JsonBlock label="ID Numbers" value={alert.amlRecord.idNumbers} />
+        <JsonBlock label="Addresses" value={alert.amlRecord.addresses} />
+        <JsonBlock label="Raw Source Record" value={alert.amlRecord.rawData} />
       </div>
 
       {!isResolved ? (

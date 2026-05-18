@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Link } from '@/i18n/navigation'
+import { useRouter } from '@/i18n/navigation'
 import { Diamond, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
@@ -45,6 +45,7 @@ type Order = {
 }
 
 export default function AdminSfsOrdersPage() {
+  const router = useRouter()
   const [orders, setOrders]     = useState<Order[]>([])
   const [total, setTotal]       = useState(0)
   const [page, setPage]         = useState(1)
@@ -85,7 +86,7 @@ export default function AdminSfsOrdersPage() {
   const totalPages = Math.ceil(total / pageSize)
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -142,8 +143,13 @@ export default function AdminSfsOrdersPage() {
                   return (
                     <tr
                       key={order.id}
-                      className="transition-colors hover:bg-[#111108]"
+                      className="cursor-pointer transition-colors hover:bg-[#111108]"
                       style={{ borderBottom: i < orders.length - 1 ? '1px solid var(--border)' : 'none' }}
+                      tabIndex={0}
+                      onClick={() => router.push(`/admin/sfs-orders/${order.id}`)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' || e.key === ' ') router.push(`/admin/sfs-orders/${order.id}`)
+                      }}
                     >
                       <td style={{ ...td, color: '#C9A96E', fontFamily: 'monospace' }}>
                         {order.sampleCode ?? '—'}
@@ -172,13 +178,9 @@ export default function AdminSfsOrdersPage() {
                         {new Date(order.createdAt).toLocaleDateString('en-HK', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </td>
                       <td style={{ ...td, paddingRight: '1rem' }}>
-                        <Link
-                          href={`/admin/sfs-orders/${order.id}`}
-                          className="text-xs font-medium px-3 py-1.5 rounded-lg transition-all hover:opacity-80"
-                          style={{ background: 'rgba(201,169,110,0.1)', color: '#C9A96E', border: '1px solid rgba(201,169,110,0.2)', whiteSpace: 'nowrap' }}
-                        >
+                        <span className="text-xs font-medium px-3 py-1.5 rounded-lg" style={{ background: 'rgba(201,169,110,0.1)', color: '#C9A96E', border: '1px solid rgba(201,169,110,0.2)', whiteSpace: 'nowrap' }}>
                           Manage →
-                        </Link>
+                        </span>
                       </td>
                     </tr>
                   )

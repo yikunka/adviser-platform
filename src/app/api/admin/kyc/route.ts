@@ -20,7 +20,18 @@ export async function GET(req: NextRequest) {
       take: limit,
       orderBy: { updatedAt: 'desc' },
       include: {
-        kycDocuments: { select: { id: true, fileName: true, documentType: true, status: true } },
+        kycDocuments: {
+          select: {
+            id: true,
+            fileName: true,
+            documentType: true,
+            storageKey: true,
+            mimeType: true,
+            fileSize: true,
+            status: true,
+            uploadedAt: true,
+          },
+        },
         submittedByUser: { select: { email: true, nameEn: true } },
         companyLinks: {
           include: {

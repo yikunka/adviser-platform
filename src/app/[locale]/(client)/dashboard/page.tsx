@@ -5,7 +5,7 @@ import { Link } from '@/i18n/navigation'
 import {
   Building2, ShieldCheck, Bell,
   ArrowRight, CalendarClock, FilePlus,
-  FolderDown, ShoppingCart,
+  ShoppingCart,
 } from 'lucide-react'
 
 const KYC_COLOR: Record<string, { bg: string; text: string }> = {
@@ -27,7 +27,12 @@ export default async function DashboardPage({
 
   const [companies, notifications, kycRecord] = await Promise.all([
     prisma.company.findMany({
-      where: { clientUserId: session!.user.id },
+      where: {
+        OR: [
+          { clientUserId: session!.user.id },
+          { pendingClientEmail: session!.user.email.toLowerCase() },
+        ],
+      },
       select: { id: true, nameEn: true, nameZh: true, companyNumber: true, annualReturnDate: true },
       take: 5,
     }),
@@ -54,11 +59,10 @@ export default async function DashboardPage({
   const quickLinks = [
     { href: '/orders',    Icon: ShoppingCart, label: t('quickLinks.newOrder') },
     { href: '/kyc',       Icon: FilePlus,     label: t('quickLinks.uploadDoc') },
-    { href: '/documents', Icon: FolderDown,   label: t('quickLinks.downloadDocs') },
   ]
 
   return (
-    <div className="max-w-5xl mx-auto space-y-7">
+    <div className="p-6 space-y-7">
 
       {/* Page header */}
       <div>
@@ -140,7 +144,7 @@ export default async function DashboardPage({
         <h2 className="text-xs font-medium uppercase tracking-wider mb-3" style={{ color: 'var(--muted-foreground)' }}>
           {t('quickLinksTitle')}
         </h2>
-        <div className="grid sm:grid-cols-3 gap-3">
+        <div className="grid sm:grid-cols-2 gap-3">
           {quickLinks.map(({ href, Icon, label }) => (
             <Link
               key={href}
@@ -171,8 +175,9 @@ export default async function DashboardPage({
           </h2>
           <div className="rounded-xl overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
             {companies.map((c, i) => (
-              <div
+              <Link
                 key={c.id}
+                href={`/companies/${c.id}`}
                 className="portal-row-hover flex items-center justify-between px-5 py-4"
                 style={{ borderBottom: i < companies.length - 1 ? '1px solid var(--border)' : 'none' }}
               >
@@ -196,7 +201,7 @@ export default async function DashboardPage({
                     </span>
                   </div>
                 )}
-              </div>
+              </Link>
             ))}
           </div>
         </div>

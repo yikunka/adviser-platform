@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import Link from 'next/link'
+import { useRouter } from '@/i18n/navigation'
 
 type Alert = {
   id: string
@@ -66,6 +66,7 @@ const thStyle: React.CSSProperties = {
 
 export default function AMLPage() {
   const t = useTranslations('admin.aml')
+  const router = useRouter()
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -356,7 +357,15 @@ export default function AMLPage() {
             </thead>
             <tbody className="divide-y divide-[#2A2418]">
               {alerts.map(alert => (
-                <tr key={alert.id} className="hover:bg-[#1A1A12] transition-colors">
+                <tr
+                  key={alert.id}
+                  className="cursor-pointer hover:bg-[#1A1A12] transition-colors"
+                  tabIndex={0}
+                  onClick={() => router.push(`/admin/aml/${alert.id}`)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') router.push(`/admin/aml/${alert.id}`)
+                  }}
+                >
                   <td className="px-4 py-3 font-medium" style={{ color: 'var(--foreground)' }}>{alert.amlRecord.primaryName}</td>
                   <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>{alert.amlRecord.source.nameEn}</td>
                   <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
@@ -378,10 +387,8 @@ export default function AMLPage() {
                   <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
                     {new Date(alert.createdAt).toLocaleDateString()}
                   </td>
-                  <td className="px-4 py-3">
-                    <Link href={`aml/${alert.id}`} className="text-xs hover:underline transition-colors" style={{ color: '#C9A96E' }}>
-                      Review →
-                    </Link>
+                  <td className="px-4 py-3 text-xs font-medium" style={{ color: '#C9A96E' }}>
+                    Review →
                   </td>
                 </tr>
               ))}

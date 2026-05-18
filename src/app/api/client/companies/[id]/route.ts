@@ -16,11 +16,12 @@ export async function GET(
       directors: { orderBy: { dateOfAppointment: 'desc' } },
       members: { orderBy: { createdAt: 'desc' } },
       significantControllers: { orderBy: { becomingDate: 'desc' } },
+      documents: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' } },
     },
   })
 
   if (!company) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (company.clientUserId !== session!.user.id) {
+  if (company.clientUserId !== session!.user.id && company.pendingClientEmail !== session!.user.email.toLowerCase()) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

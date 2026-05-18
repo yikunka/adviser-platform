@@ -9,12 +9,10 @@ import { toast } from 'sonner'
 import { useDropzone } from 'react-dropzone'
 import {
   User, Briefcase, BarChart2, FileCheck, CheckCircle2, XCircle, Clock, Upload, Loader2, ChevronRight,
-  Plus, Trash2, Download, Users, CalendarIcon,
+  Plus, Trash2, Download, Users,
 } from 'lucide-react'
 import type { KeyPerson } from '@prisma/client'
 import { kycPersonZod, type KycPersonInput, keyPersonToFormValues } from '@/lib/kyc/personZod'
-import { Calendar } from '@/components/ui/calendar'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 const formZod = z.object({ persons: z.array(kycPersonZod).min(1) })
 type FormValues = z.infer<typeof formZod> & { persons: (KycPersonInput & { kycStatus?: string })[] }
@@ -105,20 +103,6 @@ function Field({ label, error, children }: { label: string; error?: string; chil
   )
 }
 
-function parseYmd(value?: string | null): Date | undefined {
-  if (!value) return undefined
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  if (!match) return undefined
-  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
-}
-
-function formatYmd(date: Date): string {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
-}
-
 function DatePickerField({
   value,
   onChange,
@@ -130,49 +114,18 @@ function DatePickerField({
   disabled?: boolean
   placeholder?: string
 }) {
-  const [open, setOpen] = useState(false)
-  const selected = parseYmd(value)
-
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        type="button"
-        disabled={disabled}
-        className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm outline-none transition-colors disabled:opacity-50"
-        style={fieldStyle}
-      >
-        <span style={{ color: value ? '#F0EAD8' : '#7A7060' }}>{value || placeholder}</span>
-        <CalendarIcon size={14} style={{ color: '#C9A96E' }} />
-      </PopoverTrigger>
-      <PopoverContent align="start" sideOffset={6} className="w-auto p-2" style={{ background: '#111111', border: '1px solid #2A2418' }}>
-        <Calendar
-          mode="single"
-          selected={selected}
-          defaultMonth={selected}
-          captionLayout="dropdown"
-          startMonth={new Date(1900, 0)}
-          endMonth={new Date(2100, 11)}
-          classNames={{
-            root: 'w-fit text-[#F0EAD8]',
-            caption_label: 'text-[#F0EAD8]',
-            dropdowns: 'text-[#F0EAD8]',
-            dropdown: 'absolute inset-0 bg-[#111111] text-[#F0EAD8] opacity-0',
-            button_previous: 'size-7 p-0 text-[#F0EAD8] hover:bg-[#2A2418] hover:text-[#F0EAD8]',
-            button_next: 'size-7 p-0 text-[#F0EAD8] hover:bg-[#2A2418] hover:text-[#F0EAD8]',
-            weekday: 'flex-1 rounded-md text-[0.8rem] font-normal text-[#C9A96E] select-none',
-            day: 'group/day relative aspect-square h-full w-full rounded-md p-0 text-center text-[#F0EAD8] select-none',
-            day_button: 'text-[#F0EAD8] hover:bg-[#2A2418] hover:text-[#F0EAD8] data-[selected-single=true]:bg-[#C9A96E] data-[selected-single=true]:text-[#0A0805]',
-            outside: 'text-[#7A7060] aria-selected:text-[#7A7060]',
-            today: 'rounded-md bg-[#2A2418] text-[#F0EAD8] data-[selected=true]:rounded-none',
-          }}
-          onSelect={(date) => {
-            if (!date) return
-            onChange(formatYmd(date))
-            setOpen(false)
-          }}
-        />
-      </PopoverContent>
-    </Popover>
+    <input
+      type="date"
+      value={value ?? ''}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      placeholder={placeholder}
+      min="1900-01-01"
+      max="2100-12-31"
+      style={{ ...fieldStyle, colorScheme: 'dark' }}
+      className="date-input"
+    />
   )
 }
 
@@ -340,7 +293,7 @@ function UploadZone({
                     removePending(row.uid)
                   }}
                   className="text-[10px] uppercase shrink-0"
-                  style={{ color: '#ef4444' }}
+                  style={{ color: '#f59e0b' }}
                 >
                   {t('removePending', { defaultValue: 'Remove' })}
                 </button>
@@ -491,6 +444,18 @@ export default function KYCPage() {
     if ((opts.advance || action === 'SUBMIT') && currentPerson?.isPep) {
       toast.error(t('pepBlocked', { defaultValue: 'PEP selected as Yes. This KYC cannot continue online. Please contact our team.' }))
       return
+    }
+    if (action === 'SUBMIT') {
+      const persons = form.getValues('persons')
+      const missingDeclarationIndex = persons.findIndex((p) =>
+        !p.signatureName?.trim() || !p.declarationDate || !p.declarationSigned
+      )
+      if (missingDeclarationIndex >= 0) {
+        setAp(missingDeclarationIndex)
+        setStep(3)
+        toast.error(t('declarationRequired', { defaultValue: 'Please enter signature name, declaration date, and check the declaration before submitting.' }))
+        return
+      }
     }
 
     const ok = await form.trigger()

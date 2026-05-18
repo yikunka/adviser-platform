@@ -2,9 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
-import { useParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { Link } from '@/i18n/navigation'
+import { Link, useRouter } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -30,8 +29,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default function CompaniesPage() {
   const t = useTranslations('admin.companies')
-  const params = useParams()
-  const locale = (params.locale as string) ?? 'zh'
+  const router = useRouter()
   const [companies, setCompanies] = useState<Company[]>([])
   const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
@@ -55,7 +53,7 @@ export default function CompaniesPage() {
   useEffect(() => { fetchCompanies() }, [fetchCompanies])
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4">
+    <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>{t('title')}</h1>
         <Link href="/admin/companies/new">
@@ -91,7 +89,15 @@ export default function CompaniesPage() {
               ) : companies.length === 0 ? (
                 <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>{t('empty')}</td></tr>
               ) : companies.map(c => (
-                <tr key={c.id} className="transition-colors hover:bg-[#1A1A12]">
+                <tr
+                  key={c.id}
+                  className="cursor-pointer transition-colors hover:bg-[#1A1A12]"
+                  tabIndex={0}
+                  onClick={() => router.push(`/admin/companies/${c.id}`)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') router.push(`/admin/companies/${c.id}`)
+                  }}
+                >
                   <td className="px-4 py-3">
                     <p className="font-medium" style={{ color: 'var(--foreground)' }}>{c.nameEn}</p>
                     {c.nameZh && <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{c.nameZh}</p>}
@@ -106,10 +112,8 @@ export default function CompaniesPage() {
                   <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
                     {c.annualReturnDate ? new Date(c.annualReturnDate).toLocaleDateString() : '—'}
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link href={`/admin/companies/${c.id}`}>
-                      <Button size="sm" variant="outline">{t('view')}</Button>
-                    </Link>
+                  <td className="px-4 py-3 text-right text-xs font-medium" style={{ color: '#C9A96E' }}>
+                    {t('view')} →
                   </td>
                 </tr>
               ))}

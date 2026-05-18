@@ -7,10 +7,18 @@ const amlRecordSelect = {
   select: {
     primaryName: true,
     aliases: true,
+    entityType: true,
     nationality: true,
+    gender: true,
     dateOfBirth: true,
+    placeOfBirth: true,
+    addresses: true,
+    idNumbers: true,
     listingReason: true,
-    source: { select: { nameEn: true } },
+    listingDate: true,
+    listVersionDate: true,
+    rawData: true,
+    source: { select: { nameEn: true, sourceUrl: true } },
   },
 }
 

@@ -36,7 +36,7 @@ export default async function AdminDashboardPage() {
   ]
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="p-6 space-y-6">
       <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>{t('title')}</h1>
 
       {/* Stats */}

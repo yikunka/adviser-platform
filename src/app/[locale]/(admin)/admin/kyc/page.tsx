@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
+import { Download, Eye, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
@@ -10,7 +11,11 @@ type KYCDocument = {
   id: string
   fileName: string
   documentType: string
+  storageKey: string
+  mimeType: string
+  fileSize: number
   status: string
+  uploadedAt: string
 }
 
 type AMLHitResult = 'STRONG_HIT' | 'POTENTIAL_HIT' | 'WEAK_HIT'
@@ -24,10 +29,18 @@ type AMLAlert = {
   amlRecord: {
     primaryName: string
     aliases: string[]
+    entityType: string
     nationality: string | null
+    gender: string | null
     dateOfBirth: string | null
+    placeOfBirth: string | null
+    addresses: unknown
+    idNumbers: unknown
     listingReason: string | null
-    source: { nameEn: string }
+    listingDate: string | null
+    listVersionDate: string
+    rawData: unknown
+    source: { nameEn: string; sourceUrl: string }
   }
 }
 
@@ -123,6 +136,38 @@ function DetailRow({ label, value }: { label: string; value: string | null | und
   )
 }
 
+function JsonBlock({ label, value }: { label: string; value: unknown }) {
+  if (value == null) return null
+  const isEmptyObject = typeof value === 'object' && !Array.isArray(value) && Object.keys(value as Record<string, unknown>).length === 0
+  const isEmptyArray = Array.isArray(value) && value.length === 0
+  if (isEmptyObject || isEmptyArray) return null
+
+  return (
+    <div className="space-y-1 text-xs">
+      <p className="font-medium" style={{ color: 'var(--muted-foreground)' }}>{label}</p>
+      <pre className="max-h-44 overflow-auto rounded-md border border-[#2A2418] p-2 whitespace-pre-wrap" style={{ background: '#0A0A0A', color: 'var(--foreground)' }}>
+        {typeof value === 'string' ? value : JSON.stringify(value, null, 2)}
+      </pre>
+    </div>
+  )
+}
+
+function fileHref(doc: KYCDocument, download = false) {
+  const params = new URLSearchParams({ key: doc.storageKey })
+  if (download) {
+    params.set('download', '1')
+    params.set('filename', doc.fileName)
+  }
+  return `/api/files?${params.toString()}`
+}
+
+function formatFileSize(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
 /** Portal client (submitter) or company-linked account holder. */
 function clientPortalAccount(r: KYCRecord): { email: string | null; name: string | null } {
   const s = r.submittedByUser
@@ -135,7 +180,7 @@ function clientPortalAccount(r: KYCRecord): { email: string | null; name: string
 export default function KYCQueuePage() {
   const t = useTranslations('admin.kyc')
   const [records, setRecords] = useState<KYCRecord[]>([])
-  const [filterStatus, setFilterStatus] = useState('SUBMITTED')
+  const [filterStatus, setFilterStatus] = useState('')
   const [selected, setSelected] = useState<KYCRecord | null>(null)
   const [reason, setReason] = useState('')
   const [loading, setLoading] = useState(false)
@@ -260,7 +305,7 @@ export default function KYCQueuePage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4">
+    <div className="p-6 space-y-4">
       <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>{t('title')}</h1>
 
       <Card>
@@ -337,17 +382,30 @@ export default function KYCQueuePage() {
         ))}
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        {/* Left: list */}
+      <div className="space-y-4">
         <Card>
           <CardContent className="p-0">
-            <ul className="divide-y divide-[#2A2418]">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[#2A2418] text-left" style={{ color: 'var(--muted-foreground)' }}>
+                    <th className="px-4 py-3 font-medium">Name</th>
+                    <th className="px-4 py-3 font-medium">Client Account</th>
+                    <th className="px-4 py-3 font-medium">Company</th>
+                    <th className="px-4 py-3 font-medium">Files</th>
+                    <th className="px-4 py-3 font-medium">Updated</th>
+                    <th className="px-4 py-3 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#2A2418]">
               {records.length === 0 ? (
-                <li className="px-4 py-8 text-center text-sm" style={{ color: 'var(--muted-foreground)' }}>{t('empty')}</li>
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>{t('empty')}</td>
+                </tr>
               ) : records.map((r) => {
                 const client = clientPortalAccount(r)
                 return (
-                <li
+                <tr
                   key={r.id}
                   onClick={() => { setSelected(r); setReason(''); fetchAML(r.id) }}
                   className="px-4 py-3 cursor-pointer transition-colors"
@@ -357,30 +415,46 @@ export default function KYCQueuePage() {
                   onMouseEnter={e => { if (selected?.id !== r.id) (e.currentTarget as HTMLElement).style.background = '#1A1A12' }}
                   onMouseLeave={e => { if (selected?.id !== r.id) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
                 >
-                  <div className="flex justify-between items-start">
-                    <div className="min-w-0">
-                      <p className="font-medium" style={{ color: 'var(--foreground)' }}>{r.nameEn}</p>
-                      <p className="text-xs truncate" style={{ color: '#C9A96E' }} title={client.email ?? undefined}>
-                        {client.email ?? '—'}
-                      </p>
-                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        {r.companyLinks[0]?.company.nameEn ?? '—'} · {new Date(r.updatedAt).toLocaleDateString()}
-                      </p>
-                    </div>
+                  <td className="px-4 py-3">
+                    <p className="font-medium" style={{ color: 'var(--foreground)' }}>
+                      {r.titlePrefix ? `${r.titlePrefix} ` : ''}{r.nameEn}
+                    </p>
+                    {r.nameZh ? <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.nameZh}</p> : null}
+                  </td>
+                  <td className="px-4 py-3">
+                    <p className="max-w-56 truncate" style={{ color: '#C9A96E' }} title={client.email ?? undefined}>{client.email ?? '—'}</p>
+                    {client.name ? <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{client.name}</p> : null}
+                  </td>
+                  <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
+                    {r.companyLinks[0]?.company.nameEn ?? '—'}
+                  </td>
+                  <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
+                    {r.kycDocuments.length}
+                  </td>
+                  <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
+                    {new Date(r.updatedAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[r.kycStatus] ?? ''}`}>
                       {r.kycStatus}
                     </span>
-                  </div>
-                </li>
+                  </td>
+                </tr>
                 )
               })}
-            </ul>
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Right: detail + action panel */}
+        {/* Right: collapsible detail + action panel */}
         {selected && (
-          <Card className="overflow-y-auto max-h-[80vh]">
+          <div className="fixed inset-0 z-50 flex justify-end bg-black/35" onClick={() => setSelected(null)}>
+            <Card
+              className="h-full w-full max-w-2xl overflow-y-auto rounded-none border-y-0 border-r-0 shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
             <CardContent className="pt-6 space-y-5">
               <div className="flex items-center gap-3 flex-wrap">
                 <h3 className="font-semibold text-lg" style={{ color: 'var(--foreground)' }}>
@@ -390,6 +464,14 @@ export default function KYCQueuePage() {
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[selected.kycStatus] ?? ''}`}>
                   {selected.kycStatus}
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setSelected(null)}
+                  className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#2A2418]"
+                  aria-label="Close KYC details"
+                >
+                  <X size={16} />
+                </button>
               </div>
 
               {(() => {
@@ -462,11 +544,40 @@ export default function KYCQueuePage() {
               {/* Documents */}
               {selected.kycDocuments?.length > 0 && (
                 <DetailSection title="Documents">
-                  <ul className="space-y-1">
+                  <ul className="space-y-2">
                     {selected.kycDocuments.map(doc => (
-                      <li key={doc.id} className="flex justify-between text-sm">
-                        <span style={{ color: 'var(--foreground)' }}>{doc.fileName}</span>
-                        <span style={{ color: 'var(--muted-foreground)' }}>{doc.documentType} · {doc.status}</span>
+                      <li
+                        key={doc.id}
+                        className="flex flex-col gap-2 rounded-md border border-[#2A2418] px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium" style={{ color: 'var(--foreground)' }} title={doc.fileName}>
+                            {doc.fileName}
+                          </p>
+                          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                            {[doc.documentType, doc.status, formatFileSize(doc.fileSize)].filter(Boolean).join(' · ')}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <a
+                            href={fileHref(doc)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[#2A2418] px-2.5 text-xs"
+                            style={{ color: '#C9A96E' }}
+                          >
+                            <Eye size={14} />
+                            Preview
+                          </a>
+                          <a
+                            href={fileHref(doc, true)}
+                            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[#2A2418] px-2.5 text-xs"
+                            style={{ color: '#C9A96E' }}
+                          >
+                            <Download size={14} />
+                            Download
+                          </a>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -521,9 +632,14 @@ export default function KYCQueuePage() {
                               style={{ background: color.bg, border: `1px solid ${color.text}33` }}
                             >
                               <div className="flex items-start justify-between gap-2">
-                                <span className="font-semibold" style={{ color: 'var(--foreground)' }}>
-                                  {alert.amlRecord.primaryName}
-                                </span>
+                                <div>
+                                  <span className="font-semibold" style={{ color: 'var(--foreground)' }}>
+                                    {alert.amlRecord.primaryName}
+                                  </span>
+                                  <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+                                    {alert.amlRecord.entityType.replace('_', ' ')} · {alert.amlRecord.source.nameEn}
+                                  </p>
+                                </div>
                                 <div className="flex items-center gap-1.5 shrink-0">
                                   <span
                                     className="px-1.5 py-0.5 rounded text-xs font-semibold"
@@ -541,16 +657,21 @@ export default function KYCQueuePage() {
 
                               {alert.amlRecord.aliases.length > 0 && (
                                 <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                                  <span className="font-medium">Aliases:</span> {alert.amlRecord.aliases.slice(0, 3).join(', ')}
-                                  {alert.amlRecord.aliases.length > 3 ? ` +${alert.amlRecord.aliases.length - 3} more` : ''}
+                                  <span className="font-medium">Aliases:</span> {alert.amlRecord.aliases.join(', ')}
                                 </p>
                               )}
 
-                              <div className="flex gap-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
                                 {alert.amlRecord.nationality && <span>Nationality: {alert.amlRecord.nationality}</span>}
+                                {alert.amlRecord.gender && <span>Gender: {alert.amlRecord.gender}</span>}
                                 {alert.amlRecord.dateOfBirth && (
                                   <span>DOB: {new Date(alert.amlRecord.dateOfBirth).toLocaleDateString()}</span>
                                 )}
+                                {alert.amlRecord.placeOfBirth && <span>Place of birth: {alert.amlRecord.placeOfBirth}</span>}
+                                {alert.amlRecord.listingDate && (
+                                  <span>Listed: {new Date(alert.amlRecord.listingDate).toLocaleDateString()}</span>
+                                )}
+                                <span>List version: {new Date(alert.amlRecord.listVersionDate).toLocaleDateString()}</span>
                               </div>
 
                               {alert.amlRecord.listingReason && (
@@ -559,10 +680,20 @@ export default function KYCQueuePage() {
                                 </p>
                               )}
 
+                              <JsonBlock label="ID numbers" value={alert.amlRecord.idNumbers} />
+                              <JsonBlock label="Addresses" value={alert.amlRecord.addresses} />
+                              <JsonBlock label="Raw source record" value={alert.amlRecord.rawData} />
+
                               <div className="flex items-center justify-between">
-                                <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                                  Source: {alert.amlRecord.source.nameEn}
-                                </span>
+                                <a
+                                  href={alert.amlRecord.source.sourceUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-xs hover:underline"
+                                  style={{ color: '#C9A96E' }}
+                                >
+                                  Source list
+                                </a>
                                 <span
                                   className="text-xs px-1.5 py-0.5 rounded"
                                   style={{
@@ -640,6 +771,7 @@ export default function KYCQueuePage() {
               </div>
             </CardContent>
           </Card>
+          </div>
         )}
       </div>
     </div>

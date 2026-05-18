@@ -55,7 +55,7 @@ export default function DocumentsPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold" style={{ color: 'var(--foreground)' }}>{t('title')}</h1>
@@ -107,11 +107,17 @@ export default function DocumentsPage() {
             return (
               <div
                 key={doc.id}
-                className="grid items-center px-5 py-3.5 transition-colors"
+                className="grid cursor-pointer items-center px-5 py-3.5 transition-colors"
                 style={{
                   gridTemplateColumns: '1fr 100px 160px 120px 80px',
                   borderBottom: i < docs.length - 1 ? '1px solid var(--border)' : 'none',
                   background: 'transparent',
+                }}
+                role="button"
+                tabIndex={0}
+                onClick={() => download(doc.id, doc.name)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') download(doc.id, doc.name)
                 }}
                 onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent)')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -136,7 +142,10 @@ export default function DocumentsPage() {
                 <span className="flex justify-end">
                   <button
                     disabled={downloading === doc.id}
-                    onClick={() => download(doc.id, doc.name)}
+                    onClick={e => {
+                      e.stopPropagation()
+                      download(doc.id, doc.name)
+                    }}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all"
                     style={{
                       background: downloading === doc.id ? 'rgba(201,169,110,0.1)' : 'transparent',

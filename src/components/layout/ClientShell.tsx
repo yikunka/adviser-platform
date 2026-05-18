@@ -9,7 +9,6 @@ import Image from 'next/image'
 import {
   LayoutDashboard,
   ClipboardList,
-  FolderOpen,
   ShoppingBag,
   Building2,
   LogOut,
@@ -23,7 +22,6 @@ const NAV_ITEMS = [
   { href: '/dashboard',  key: 'dashboard',  Icon: LayoutDashboard },
   { href: '/companies',  key: 'companies',  Icon: Building2       },
   { href: '/kyc',        key: 'kyc',        Icon: ClipboardList   },
-  { href: '/documents',  key: 'documents',  Icon: FolderOpen      },
   { href: '/orders',     key: 'orders',     Icon: ShoppingBag     },
 ] as const
 

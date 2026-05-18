@@ -8,10 +8,43 @@ type Props = { params: Promise<{ locale: string; id: string }> }
 const thStyle = 'text-left px-4 py-3 text-sm font-medium text-[#7A7060] bg-[#1A1A12] border-b border-[#2A2418]'
 const tdStyle = 'px-4 py-3 text-sm text-[#9A8060]'
 const tdPrimary = 'px-4 py-3 text-sm font-medium text-[#F0EAD8]'
+const cardStyle: React.CSSProperties = { background: 'var(--card)', border: '1px solid var(--border)' }
+
+const STATUTORY_DOCS = [
+  { type: 'CI', label: 'Certificate of Incorporation (CI)' },
+  { type: 'BR', label: 'Business Registration Certificate (BR)' },
+  { type: 'AA', label: 'Articles of Association (AA)' },
+] as const
+
+const REGISTER_DOCS = {
+  directors: { type: 'ROD', label: 'Register of Directors' },
+  members: { type: 'ROM', label: 'Register of Members' },
+  controllers: { type: 'ROSC', label: 'Register of Significant Controllers' },
+} as const
 
 function fmt(d: Date | null | undefined) {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('en-HK')
+}
+
+function docHref(id: string) {
+  return `/api/documents/${id}/download?redirect=1`
+}
+
+function DownloadLink({ id, children }: { id: string; children: React.ReactNode }) {
+  return (
+    <a
+      href={docHref(id)}
+      className="inline-flex items-center rounded-md border px-2.5 py-1.5 text-xs font-medium hover:underline"
+      style={{ borderColor: '#2A2418', color: '#C9A96E' }}
+    >
+      {children}
+    </a>
+  )
+}
+
+function EmptyDocRow({ children }: { children: React.ReactNode }) {
+  return <p className="px-4 py-3 text-sm" style={{ color: '#5A5040' }}>{children}</p>
 }
 
 export default async function ClientCompanyDetailPage({ params }: Props) {
@@ -26,10 +59,13 @@ export default async function ClientCompanyDetailPage({ params }: Props) {
       directors: { orderBy: { dateOfAppointment: 'desc' } },
       members: { orderBy: { createdAt: 'desc' } },
       significantControllers: { orderBy: { becomingDate: 'desc' } },
+      documents: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' } },
     },
   })
 
-  if (!company || company.clientUserId !== session.user.id) notFound()
+  const ownsCompany = company
+    && (company.clientUserId === session.user.id || company.pendingClientEmail === session.user.email.toLowerCase())
+  if (!company || !ownsCompany) notFound()
 
   const sections = [
     { label: 'Registered Address', value: company.registeredAddress ?? '—' },
@@ -37,6 +73,9 @@ export default async function ClientCompanyDetailPage({ params }: Props) {
     { label: 'Business Nature', value: company.businessNature ?? '—' },
     { label: 'Annual Return Date', value: company.annualReturnDate ? fmt(company.annualReturnDate) : '—' },
   ]
+  const isGeneratedDoc = (doc: typeof company.documents[number]) => doc.name.startsWith(`${doc.documentType} —`)
+  const latestGeneratedDoc = (docType: string) => company.documents.find(d => d.documentType === docType && isGeneratedDoc(d))
+  const annualReturnPrefill = latestGeneratedDoc('NAR1')
 
   return (
     <div className="p-6 space-y-6 max-w-4xl">
@@ -61,9 +100,77 @@ export default async function ClientCompanyDetailPage({ params }: Props) {
         </div>
       </section>
 
+      {/* Overview documents */}
+      <section className="space-y-4">
+        {STATUTORY_DOCS.map(({ type, label }) => {
+          const docs = company.documents.filter(d => d.documentType === type && !isGeneratedDoc(d))
+          return (
+            <div key={type} className="rounded-lg overflow-hidden" style={cardStyle}>
+              <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
+                <span className="text-sm font-semibold" style={{ color: '#F0EAD8' }}>{label}</span>
+              </div>
+              {docs.length === 0 ? (
+                <EmptyDocRow>No files uploaded yet.</EmptyDocRow>
+              ) : (
+                <ul className="divide-y divide-[#2A2418]">
+                  {docs.map(doc => (
+                    <li key={doc.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                      <span className="min-w-0 truncate text-sm" style={{ color: '#F0EAD8' }}>{doc.name}</span>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span className="text-xs" style={{ color: '#5A5040' }}>{fmt(doc.createdAt)}</span>
+                        <DownloadLink id={doc.id}>Download</DownloadLink>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )
+        })}
+
+        <div className="rounded-lg overflow-hidden" style={cardStyle}>
+          <div className="px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
+            <span className="text-sm font-semibold" style={{ color: '#F0EAD8' }}>Annual Return (NAR1)</span>
+          </div>
+          {company.documents.filter(d => d.documentType === 'NAR1' && !isGeneratedDoc(d)).length === 0 ? (
+            <EmptyDocRow>No NAR1 files uploaded yet.</EmptyDocRow>
+          ) : (
+            <ul className="divide-y divide-[#2A2418]">
+              {company.documents.filter(d => d.documentType === 'NAR1' && !isGeneratedDoc(d)).map(doc => (
+                <li key={doc.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                  <div className="min-w-0">
+                    <span className="block truncate text-sm" style={{ color: '#F0EAD8' }}>{doc.name}</span>
+                    <span className="text-xs" style={{ color: '#5A5040' }}>{doc.notes ?? (doc.effectiveDate ? `Year: ${new Date(doc.effectiveDate).getFullYear()}` : 'Year not set')}</span>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="text-xs" style={{ color: '#5A5040' }}>{fmt(doc.createdAt)}</span>
+                    <DownloadLink id={doc.id}>Download</DownloadLink>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="rounded-lg p-4 space-y-3" style={cardStyle}>
+          <div>
+            <h3 className="text-sm font-semibold" style={{ color: '#F0EAD8' }}>Annual Return Pre-fill</h3>
+            <p className="text-xs mt-1" style={{ color: '#5A5040' }}>
+              {annualReturnPrefill ? `Latest prepared ${fmt(annualReturnPrefill.createdAt)}` : 'The pre-fill document will appear when it is ready.'}
+            </p>
+          </div>
+          {annualReturnPrefill ? <DownloadLink id={annualReturnPrefill.id}>Download NAR1</DownloadLink> : <p className="text-sm" style={{ color: '#5A5040' }}>Not ready yet.</p>}
+        </div>
+      </section>
+
       {/* Directors */}
       <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: '#7A7060' }}>Directors ({company.directors.length})</h2>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: '#7A7060' }}>Directors ({company.directors.length})</h2>
+          {latestGeneratedDoc(REGISTER_DOCS.directors.type) ? (
+            <DownloadLink id={latestGeneratedDoc(REGISTER_DOCS.directors.type)!.id}>Download ROD</DownloadLink>
+          ) : null}
+        </div>
         <div className="rounded-lg overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
           <table className="w-full text-sm">
             <thead>
@@ -95,7 +202,12 @@ export default async function ClientCompanyDetailPage({ params }: Props) {
 
       {/* Members */}
       <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: '#7A7060' }}>Members ({company.members.length})</h2>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: '#7A7060' }}>Members ({company.members.length})</h2>
+          {latestGeneratedDoc(REGISTER_DOCS.members.type) ? (
+            <DownloadLink id={latestGeneratedDoc(REGISTER_DOCS.members.type)!.id}>Download ROM</DownloadLink>
+          ) : null}
+        </div>
         <div className="rounded-lg overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
           <table className="w-full text-sm">
             <thead>
@@ -127,7 +239,12 @@ export default async function ClientCompanyDetailPage({ params }: Props) {
 
       {/* Significant Controllers */}
       <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: '#7A7060' }}>Significant Controllers ({company.significantControllers.length})</h2>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: '#7A7060' }}>Significant Controllers ({company.significantControllers.length})</h2>
+          {latestGeneratedDoc(REGISTER_DOCS.controllers.type) ? (
+            <DownloadLink id={latestGeneratedDoc(REGISTER_DOCS.controllers.type)!.id}>Download ROSC</DownloadLink>
+          ) : null}
+        </div>
         <div className="rounded-lg overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
           <table className="w-full text-sm">
             <thead>

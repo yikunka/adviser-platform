@@ -23,6 +23,8 @@ export async function GET(req: NextRequest) {
 
   const key = req.nextUrl.searchParams.get('key')
   if (!key) return NextResponse.json({ error: 'Missing key' }, { status: 400 })
+  const download = req.nextUrl.searchParams.get('download') === '1'
+  const filename = req.nextUrl.searchParams.get('filename')?.replace(/["\r\n]/g, '')
 
   if (!STAFF_ROLES.includes(session.user.role)) {
     const [doc, kycDoc, sfsStep] = await Promise.all([
@@ -40,7 +42,13 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const url = await getSignedDownloadUrl(key, 900)
+    const url = await getSignedDownloadUrl(
+      key,
+      900,
+      download
+        ? { responseContentDisposition: `attachment${filename ? `; filename="${filename}"` : ''}` }
+        : undefined,
+    )
     return NextResponse.redirect(url, { status: 302 })
   } catch {
     return NextResponse.json({ error: 'File not found' }, { status: 404 })
