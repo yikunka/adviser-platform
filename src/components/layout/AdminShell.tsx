@@ -130,7 +130,7 @@ export default function AdminShell({
 
   return (
     <div
-      className="theme-dark min-h-screen flex"
+      className="theme-dark admin-console min-h-screen flex"
       style={{ background: 'var(--background)', color: 'var(--foreground)' }}
     >
       <aside
@@ -155,8 +155,8 @@ export default function AdminShell({
             />
           </Link>
           <div className="mt-3 flex items-center gap-2">
-            <Lock size={10} style={{ color: '#7A7060' }} />
-            <span className="text-xs" style={{ color: '#7A7060' }}>
+            <Lock size={10} style={{ color: '#A99A80' }} />
+            <span className="text-xs font-medium" style={{ color: '#A99A80' }}>
               Admin Console
             </span>
           </div>
@@ -179,8 +179,8 @@ export default function AdminShell({
             return (
               <div key={group.labelKey}>
                 <p
-                  className="px-3 mb-1.5 text-xs font-medium uppercase tracking-widest"
-                  style={{ color: '#6A5A40' }}
+                  className="px-3 mb-1.5 text-xs font-semibold uppercase tracking-widest"
+                  style={{ color: '#A99A80' }}
                 >
                   {tAdmin(`nav.${group.labelKey}` as Parameters<typeof tAdmin>[0])}
                 </p>
@@ -191,11 +191,11 @@ export default function AdminShell({
                       key={key}
                       href={href}
                       onClick={() => setSidebarOpen(false)}
-                      className="group flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-150 relative mb-0.5"
+                      className="group flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-semibold transition-all duration-150 relative mb-0.5"
                       style={{
                         background: active ? 'var(--sidebar-accent)' : 'transparent',
                         color: active ? '#C9A96E' : 'var(--sidebar-foreground)',
-                        opacity: active ? 1 : 0.7,
+                        opacity: active ? 1 : 0.92,
                       }}
                     >
                       {active && (
@@ -240,7 +240,7 @@ export default function AdminShell({
               <p className="text-xs font-semibold truncate" style={{ color: 'var(--foreground)' }}>
                 {userName}
               </p>
-              <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+              <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
                 {roleBadge.label}
               </p>
             </div>
@@ -248,7 +248,7 @@ export default function AdminShell({
 
           <button
             onClick={() => signOut({ callbackUrl: `/${navLocale}/admin-login` })}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all duration-150"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-150"
             style={{ color: 'var(--muted-foreground)' }}
             onMouseEnter={e => {
               ;(e.currentTarget as HTMLElement).style.color = '#ef4444'

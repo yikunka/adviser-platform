@@ -34,27 +34,12 @@ type VerifiedClient = {
   nameZh: string | null
 }
 
-type CompanyDocType = 'CI' | 'BR' | 'AA' | 'OTHER'
+type CompanyDocType = 'CI' | 'BR'
 
 type CompanyUpload = {
   id: string
   file: File
   docType: CompanyDocType
-}
-
-const companyDocTypes: Array<{ value: CompanyDocType; label: string }> = [
-  { value: 'CI', label: 'CI' },
-  { value: 'BR', label: 'BR' },
-  { value: 'AA', label: 'AA' },
-  { value: 'OTHER', label: 'Other' },
-]
-
-function inferDocType(fileName: string): CompanyDocType {
-  const lower = fileName.toLowerCase()
-  if (/\bci\b|certificate.*incorporation|incorporation.*certificate/.test(lower)) return 'CI'
-  if (/\bbr\b|business.*registration/.test(lower)) return 'BR'
-  if (/\baa\b|articles|association/.test(lower)) return 'AA'
-  return 'OTHER'
 }
 
 export default function NewCompanyPage() {
@@ -103,21 +88,21 @@ export default function NewCompanyPage() {
     setForm(f => ({ ...f, [field]: value }))
   }
 
-  function addCompanyFiles(fileList: FileList | null) {
+  function addCompanyFiles(docType: CompanyDocType, fileList: FileList | null) {
     const files = Array.from(fileList ?? [])
     if (files.length === 0) return
+    const imageFiles = files.filter(file => file.type === 'image/jpeg' || file.type === 'image/png')
+    if (imageFiles.length !== files.length) {
+      toast.error('Only JPG and PNG images are allowed here')
+    }
     setCompanyUploads(current => [
       ...current,
-      ...files.map(file => ({
+      ...imageFiles.map(file => ({
         id: `${file.name}-${file.size}-${file.lastModified}-${crypto.randomUUID()}`,
         file,
-        docType: inferDocType(file.name),
+        docType,
       })),
     ].slice(0, 6))
-  }
-
-  function updateUploadDocType(id: string, docType: CompanyDocType) {
-    setCompanyUploads(current => current.map(item => item.id === id ? { ...item, docType } : item))
   }
 
   function removeUpload(id: string) {
@@ -126,7 +111,7 @@ export default function NewCompanyPage() {
 
   async function analyzeDocuments() {
     if (companyUploads.length === 0) {
-      toast.error('Upload at least one CI, BR, or AA file first')
+      toast.error('Upload at least one CI or BR image first')
       return
     }
 
@@ -152,14 +137,6 @@ export default function NewCompanyPage() {
         businessNature: typeof fields.businessNature === 'string' && fields.businessNature ? fields.businessNature : current.businessNature,
       }))
 
-      const documents = Array.isArray(data?.documents) ? data.documents : []
-      setCompanyUploads(current => current.map(item => {
-        const analyzed = documents.find((doc: { fileName?: unknown }) => doc.fileName === item.file.name)
-        const analyzedType = analyzed?.documentType
-        return analyzedType === 'CI' || analyzedType === 'BR' || analyzedType === 'AA' || analyzedType === 'OTHER'
-          ? { ...item, docType: analyzedType }
-          : item
-      }))
       toast.success(data?.source === 'bailian' ? 'Documents analyzed by Bailian' : 'Document hints applied')
     } catch {
       toast.error('Document analysis failed')
@@ -336,25 +313,27 @@ export default function NewCompanyPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <label style={{ ...labelStyle, color: '#C9A96E' }}>Company documents</label>
-              <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Upload CI, BR, AA, PDF, JPG, or PNG files to pre-fill this company and attach them after creation.</p>
+              <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Upload CI and BR images to pre-fill this company and attach them after creation.</p>
             </div>
             <div className="flex items-center gap-2">
-              <label style={{ cursor: loading || analyzing ? 'not-allowed' : 'pointer' }}>
-                <input
-                  type="file"
-                  multiple
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  className="hidden"
-                  disabled={loading || analyzing}
-                  onChange={e => { addCompanyFiles(e.target.files); e.target.value = '' }}
-                />
-                <span
-                  className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
-                  style={{ borderColor: '#2A2418', color: 'var(--foreground)', background: 'transparent', cursor: 'inherit' }}
-                >
-                  Add files
-                </span>
-              </label>
+              {(['CI', 'BR'] as const).map(docType => (
+                <label key={docType} style={{ cursor: loading || analyzing ? 'not-allowed' : 'pointer' }}>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/jpeg,image/png"
+                    className="hidden"
+                    disabled={loading || analyzing}
+                    onChange={e => { addCompanyFiles(docType, e.target.files); e.target.value = '' }}
+                  />
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
+                    style={{ borderColor: '#2A2418', color: 'var(--foreground)', background: 'transparent', cursor: 'inherit' }}
+                  >
+                    Upload {docType}
+                  </span>
+                </label>
+              ))}
               <Button type="button" variant="outline" size="sm" onClick={analyzeDocuments} disabled={loading || analyzing || companyUploads.length === 0}>
                 {analyzing ? 'Analyzing…' : 'Analyze'}
               </Button>
@@ -369,18 +348,9 @@ export default function NewCompanyPage() {
                 <li key={item.id} className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="truncate text-sm" style={{ color: 'var(--foreground)' }}>{item.file.name}</p>
-                    <p className="text-xs" style={{ color: '#5A5040' }}>{Math.ceil(item.file.size / 1024)} KB</p>
+                    <p className="text-xs" style={{ color: '#5A5040' }}>{item.docType} · {Math.ceil(item.file.size / 1024)} KB</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <select
-                      value={item.docType}
-                      onChange={e => updateUploadDocType(item.id, e.target.value as CompanyDocType)}
-                      style={{ ...fieldStyle, width: 104, paddingTop: '0.35rem', paddingBottom: '0.35rem' }}
-                    >
-                      {companyDocTypes.map(option => (
-                        <option key={option.value} value={option.value} style={{ background: '#141414' }}>{option.label}</option>
-                      ))}
-                    </select>
                     <Button type="button" variant="outline" size="sm" onClick={() => removeUpload(item.id)} disabled={loading || analyzing}>
                       Remove
                     </Button>

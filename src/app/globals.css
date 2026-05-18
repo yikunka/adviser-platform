@@ -132,6 +132,81 @@ html {
   --sidebar-ring: #C9A96E;
 }
 
+/* ── Admin console: stronger contrast for dense operational screens ── */
+.admin-console {
+  --background: #0B0B0A;
+  --foreground: #FFF7E6;
+  --card-foreground: #FFF7E6;
+  --popover-foreground: #FFF7E6;
+  --muted-foreground: #B8AD98;
+  --secondary-foreground: #EADDC3;
+  --accent-foreground: #F0D090;
+  --sidebar-foreground: #F7EEDC;
+  color: var(--foreground);
+  font-weight: 450;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.admin-console main {
+  color: var(--foreground);
+}
+
+.admin-console h1,
+.admin-console h2,
+.admin-console h3,
+.admin-console h4 {
+  color: var(--foreground) !important;
+  font-weight: 750;
+}
+
+.admin-console label,
+.admin-console th,
+.admin-console button,
+.admin-console select,
+.admin-console input,
+.admin-console textarea {
+  font-weight: 550;
+}
+
+.admin-console td,
+.admin-console p,
+.admin-console li,
+.admin-console span {
+  font-weight: inherit;
+}
+
+.admin-console th {
+  color: #D7C9AE !important;
+}
+
+.admin-console td {
+  color: #D2C6B0 !important;
+}
+
+.admin-console input,
+.admin-console textarea,
+.admin-console select {
+  color: #FFF7E6 !important;
+}
+
+.admin-console input::placeholder,
+.admin-console textarea::placeholder {
+  color: #9F927B !important;
+}
+
+.admin-console [style*="var(--muted-foreground)"],
+.admin-console [style*="#7A7060"],
+.admin-console [style*="#5A5040"],
+.admin-console [style*="#6A5A40"],
+.admin-console [style*="#9A8060"] {
+  color: #B8AD98 !important;
+}
+
+.admin-console [style*="var(--foreground)"] {
+  color: #FFF7E6 !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

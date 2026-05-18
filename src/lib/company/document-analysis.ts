@@ -19,6 +19,7 @@ export type CompanyDocumentAnalysisFields = {
 export type CompanyDocumentAnalysisResult = {
   fields: CompanyDocumentAnalysisFields
   documents: Array<{
+    fileIndex: number
     fileName: string
     documentType: CompanyDocumentType
   }>
@@ -26,6 +27,7 @@ export type CompanyDocumentAnalysisResult = {
 }
 
 type PreparedFile = {
+  fileIndex: number
   fileName: string
   mimeType: string
   base64: string
@@ -36,6 +38,11 @@ type PreparedFile = {
     label: string
   }>
   documentType: CompanyDocumentType
+}
+
+type ParsedCompanyDocumentAnalysis = {
+  fields: CompanyDocumentAnalysisFields
+  documents: CompanyDocumentAnalysisResult['documents']
 }
 
 const ANALYSIS_MODEL = 'qwen3.5-flash'
@@ -59,20 +66,17 @@ export function inferCompanyDocumentType(fileName: string): CompanyDocumentType 
 }
 
 export async function analyzeCompanyDocuments(files: File[]): Promise<CompanyDocumentAnalysisResult> {
-  const prepared = await Promise.all(files.map(prepareFile))
+  const prepared = await Promise.all(files.map((file, index) => prepareFile(file, index)))
   const fallback = fallbackAnalyze(prepared)
   const apiKey = getBailianApiKey()
 
   if (!apiKey) return fallback
 
   try {
-    const fields = await analyzeWithBailian(prepared, apiKey)
+    const analyzed = await analyzeWithBailian(prepared, apiKey)
     return {
-      fields: mergeFields(fallback.fields, fields),
-      documents: prepared.map(file => ({
-        fileName: file.fileName,
-        documentType: fieldsToDocType(file.documentType),
-      })),
+      fields: mergeFields(fallback.fields, analyzed.fields),
+      documents: mergeDocumentTypes(fallback.documents, analyzed.documents),
       source: 'bailian',
     }
   } catch (error) {
@@ -81,7 +85,7 @@ export async function analyzeCompanyDocuments(files: File[]): Promise<CompanyDoc
   }
 }
 
-async function prepareFile(file: File): Promise<PreparedFile> {
+async function prepareFile(file: File, fileIndex: number): Promise<PreparedFile> {
   const bytes = Buffer.from(await file.arrayBuffer())
   const mimeType = file.type || guessMimeType(file.name)
   const text = mimeType === 'application/pdf'
@@ -92,6 +96,7 @@ async function prepareFile(file: File): Promise<PreparedFile> {
     : []
 
   return {
+    fileIndex,
     fileName: file.name,
     mimeType,
     base64: bytes.toString('base64'),
@@ -110,14 +115,16 @@ function getBailianApiKey() {
   ).trim()
 }
 
-async function analyzeWithBailian(files: PreparedFile[], apiKey: string): Promise<CompanyDocumentAnalysisFields> {
+async function analyzeWithBailian(files: PreparedFile[], apiKey: string): Promise<ParsedCompanyDocumentAnalysis> {
   const content: Array<Record<string, unknown>> = [
     {
       type: 'text',
       text: [
-        'Extract Hong Kong company profile fields from the attached company documents.',
+        'Extract Hong Kong company profile fields and classify each uploaded document.',
         'Return strict JSON only with this shape:',
-        '{"nameEn":"","nameZh":"","companyNumber":"","dateOfIncorporation":"YYYY-MM-DD","registeredAddress":"","businessNature":""}',
+        '{"fields":{"nameEn":"","nameZh":"","companyNumber":"","dateOfIncorporation":"YYYY-MM-DD","registeredAddress":"","businessNature":""},"documents":[{"fileIndex":0,"fileName":"exact uploaded file name","documentType":"CI|BR|AA|OTHER"}]}',
+        'Include exactly one documents item for each uploaded file. Use the exact fileIndex and fileName provided.',
+        'Classify documentType as CI for Certificate of Incorporation, BR for Business Registration Certificate, AA for Articles of Association, or OTHER.',
         'Leave unknown fields as empty strings. Prefer Certificate of Incorporation for company name, company number, and incorporation date. Prefer Business Registration for registered address and business nature.',
       ].join('\n'),
     },
@@ -127,6 +134,7 @@ async function analyzeWithBailian(files: PreparedFile[], apiKey: string): Promis
     content.push({
       type: 'text',
       text: [
+        `File index: ${file.fileIndex}`,
         `File: ${file.fileName}`,
         `Likely document type: ${file.documentType}`,
         file.images.length > 0 ? `PDF rendered pages: ${file.images.map(image => image.label).join(', ')}` : '',
@@ -168,9 +176,9 @@ async function analyzeWithBailian(files: PreparedFile[], apiKey: string): Promis
 
   const data = await res.json()
   const raw = data?.choices?.[0]?.message?.content
-  if (typeof raw !== 'string') return {}
+  if (typeof raw !== 'string') return { fields: {}, documents: [] }
 
-  return normalizeFields(parseJsonObject(raw))
+  return normalizeAnalysis(parseJsonObject(raw), files)
 }
 
 function fallbackAnalyze(files: PreparedFile[]): CompanyDocumentAnalysisResult {
@@ -192,10 +200,37 @@ function fallbackAnalyze(files: PreparedFile[]): CompanyDocumentAnalysisResult {
   return {
     fields,
     documents: files.map(file => ({
+      fileIndex: file.fileIndex,
       fileName: file.fileName,
-      documentType: fieldsToDocType(file.documentType),
+      documentType: inferCompanyDocumentType(`${file.fileName}\n${file.text}`),
     })),
     source: 'fallback',
+  }
+}
+
+function normalizeAnalysis(value: unknown, files: PreparedFile[]): ParsedCompanyDocumentAnalysis {
+  const record = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+  const fields = normalizeFields('fields' in record ? record['fields'] : record)
+  const rawDocuments = Array.isArray(record['documents']) ? record['documents'] : []
+  const documents = rawDocuments
+    .map(doc => normalizeDocument(doc, files))
+    .filter((doc): doc is CompanyDocumentAnalysisResult['documents'][number] => Boolean(doc))
+
+  return { fields, documents }
+}
+
+function normalizeDocument(value: unknown, files: PreparedFile[]) {
+  if (!value || typeof value !== 'object') return null
+  const record = value as Record<string, unknown>
+  const fileIndex = typeof record['fileIndex'] === 'number'
+    ? record['fileIndex']
+    : files.findIndex(file => file.fileName === record['fileName'])
+  const file = files[fileIndex]
+  if (!file) return null
+  return {
+    fileIndex,
+    fileName: file.fileName,
+    documentType: normalizeDocumentType(record['documentType']) ?? file.documentType,
   }
 }
 
@@ -211,14 +246,36 @@ function normalizeFields(value: unknown): CompanyDocumentAnalysisFields {
   }
 }
 
+function mergeDocumentTypes(
+  fallback: CompanyDocumentAnalysisResult['documents'],
+  incoming: CompanyDocumentAnalysisResult['documents'],
+) {
+  return fallback.map(doc => {
+    const analyzed = incoming.find(item => item.fileIndex === doc.fileIndex)
+      ?? incoming.find(item => item.fileName === doc.fileName)
+    return {
+      ...doc,
+      documentType: analyzed?.documentType && analyzed.documentType !== 'OTHER'
+        ? analyzed.documentType
+        : doc.documentType,
+    }
+  })
+}
+
 function mergeFields(base: CompanyDocumentAnalysisFields, incoming: CompanyDocumentAnalysisFields) {
   return Object.fromEntries(
     Object.entries({ ...base, ...incoming }).filter(([, value]) => typeof value === 'string' && value.trim()),
   ) as CompanyDocumentAnalysisFields
 }
 
-function fieldsToDocType(type: CompanyDocumentType): CompanyDocumentType {
-  return type === 'OTHER' ? 'OTHER' : type
+function normalizeDocumentType(value: unknown): CompanyDocumentType | undefined {
+  if (typeof value !== 'string') return undefined
+  const normalized = value.trim().toUpperCase()
+  if (normalized === 'CI' || normalized === 'BR' || normalized === 'AA' || normalized === 'OTHER') return normalized
+  if (/CERTIFICATE.*INCORPORATION|INCORPORATION.*CERTIFICATE|公司註冊證書|公司注册证书/.test(normalized)) return 'CI'
+  if (/BUSINESS.*REGISTRATION|商業登記|商业登记/.test(normalized)) return 'BR'
+  if (/ARTICLES|ASSOCIATION|章程/.test(normalized)) return 'AA'
+  return undefined
 }
 
 function clean(value: unknown) {

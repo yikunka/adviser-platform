@@ -36,6 +36,13 @@ type AMLData = {
   alerts: AMLAlert[]
 }
 
+type ClientAccount = {
+  id: string
+  email: string
+  nameEn: string
+  nameZh: string | null
+}
+
 type KYCRecord = {
   id: string
   titlePrefix: string | null
@@ -134,15 +141,76 @@ export default function KYCQueuePage() {
   const [loading, setLoading] = useState(false)
   const [amlData, setAmlData] = useState<AMLData | null>(null)
   const [amlLoading, setAmlLoading] = useState(false)
+  const [clients, setClients] = useState<ClientAccount[]>([])
+  const [createClientId, setCreateClientId] = useState('')
+  const [createImage, setCreateImage] = useState<File | null>(null)
+  const [creating, setCreating] = useState(false)
 
-  const fetchRecords = useCallback(async () => {
-    const res = await fetch(`/api/admin/kyc?status=${filterStatus}`)
+  const fetchRecords = useCallback(async (statusOverride?: string) => {
+    const status = statusOverride ?? filterStatus
+    const res = await fetch(`/api/admin/kyc?status=${status}`)
     const json = await res.json()
     setRecords(json.records ?? [])
   }, [filterStatus])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchRecords updates state after the async request resolves.
   useEffect(() => { fetchRecords() }, [fetchRecords])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadClients() {
+      const res = await fetch('/api/admin/kyc/clients')
+      if (!res.ok) return
+      const json = await res.json()
+      if (!cancelled) setClients(Array.isArray(json.clients) ? json.clients : [])
+    }
+
+    void loadClients()
+    return () => { cancelled = true }
+  }, [])
+
+  function chooseCreateImage(file: File | undefined) {
+    if (!file) return
+    if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
+      toast.error('Only JPG and PNG images are allowed')
+      return
+    }
+    setCreateImage(file)
+  }
+
+  async function createApprovedKyc() {
+    if (!createClientId) {
+      toast.error('Select a client account')
+      return
+    }
+    if (!createImage) {
+      toast.error('Upload a KYC image')
+      return
+    }
+
+    setCreating(true)
+    try {
+      const fd = new FormData()
+      fd.append('clientUserId', createClientId)
+      fd.append('file', createImage)
+      const res = await fetch('/api/admin/kyc/image-create', { method: 'POST', body: fd })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(typeof json?.error === 'string' ? json.error : 'Failed to create KYC person')
+        return
+      }
+
+      toast.success('Approved KYC person created')
+      setCreateImage(null)
+      setCreateClientId('')
+      setFilterStatus('APPROVED')
+      setSelected(json.record ?? null)
+      fetchRecords('APPROVED')
+    } finally {
+      setCreating(false)
+    }
+  }
 
   async function fetchAML(id: string) {
     setAmlData(null)
@@ -193,6 +261,56 @@ export default function KYCQueuePage() {
   return (
     <div className="max-w-6xl mx-auto space-y-4">
       <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>{t('title')}</h1>
+
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+            <div className="flex-1">
+              <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#C9A96E' }}>
+                Add approved KYC by image
+              </label>
+              <select
+                value={createClientId}
+                onChange={e => setCreateClientId(e.target.value)}
+                disabled={creating}
+                className="mt-2 w-full rounded-md px-3 py-2 text-sm"
+                style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: 'var(--foreground)', outline: 'none' }}
+              >
+                <option value="" style={{ background: '#141414' }}>Select client account</option>
+                {clients.map(client => (
+                  <option key={client.id} value={client.id} style={{ background: '#141414' }}>
+                    {client.email} — {client.nameEn}{client.nameZh ? ` (${client.nameZh})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <label style={{ cursor: creating ? 'not-allowed' : 'pointer' }}>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  className="hidden"
+                  disabled={creating}
+                  onChange={e => { chooseCreateImage(e.target.files?.[0]); e.target.value = '' }}
+                />
+                <span
+                  className="inline-flex min-w-36 items-center justify-center rounded-md border px-3 py-2 text-sm font-medium transition-colors"
+                  style={{ borderColor: '#2A2418', color: 'var(--foreground)', background: 'transparent', cursor: 'inherit' }}
+                >
+                  {createImage ? createImage.name : 'Upload image'}
+                </span>
+              </label>
+              <Button type="button" disabled={creating || !createClientId || !createImage} onClick={createApprovedKyc}>
+                {creating ? 'Analyzing…' : 'Create Approved KYC'}
+              </Button>
+            </div>
+          </div>
+          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+            JPG or PNG only. Bailian extracts identity fields, assigns the KYC to the selected account, and marks it approved.
+          </p>
+        </CardContent>
+      </Card>
 
       <div className="flex gap-2 flex-wrap">
         {STATUS_OPTIONS.map(s => (
