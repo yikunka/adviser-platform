@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -92,7 +92,7 @@ type Company = {
   members: Member[]
   significantControllers: Controller[]
   designatedReps: DesignatedRep[]
-  documents: { id: string; name: string; documentType: string; createdAt: string }[]
+  documents: { id: string; name: string; documentType: string; createdAt: string; notes: string | null; effectiveDate: string | null }[]
 }
 
 type ModalState =
@@ -109,13 +109,11 @@ type ModalState =
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 
-const DOC_TYPES = [
-  { type: 'ROD', label: 'Register of Directors', ext: 'DOCX' },
-  { type: 'ROM', label: 'Register of Members', ext: 'DOCX' },
-  { type: 'ROSC', label: 'Register of Significant Controllers', ext: 'DOCX' },
-  { type: 'NAR1', label: 'Annual Return Pre-fill', ext: 'DOCX' },
-  { type: 'DDR', label: 'Due Diligence Report', ext: 'PDF' },
-] as const
+const REGISTER_DOCS = {
+  directors: { type: 'ROD', label: 'Register of Directors', ext: 'DOCX' },
+  members: { type: 'ROM', label: 'Register of Members', ext: 'DOCX' },
+  controllers: { type: 'ROSC', label: 'Register of Significant Controllers', ext: 'DOCX' },
+} as const
 
 const STATUS_COLOR: Record<string, string> = {
   ACTIVE:       'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
@@ -967,11 +965,12 @@ export default function CompanyDetailPage() {
 
   const [company, setCompany] = useState<Company | null>(null)
   const [loading, setLoading] = useState(true)
-  const [generating, setGenerating] = useState<string | null>(null)
-  const [genError, setGenError] = useState<string | null>(null)
   const [modal, setModal] = useState<ModalState>(null)
   const [kycPersons, setKycPersons] = useState<KycPerson[]>([])
   const [uploading, setUploading] = useState<string | null>(null)
+  const [nar1Year, setNar1Year] = useState(String(new Date().getFullYear()))
+  const [generatingDdr, setGeneratingDdr] = useState(false)
+  const ensuredDocsForRef = useRef<string | null>(null)
 
   const reload = useCallback(() => {
     fetch(`/api/admin/companies/${id}`)
@@ -989,11 +988,19 @@ export default function CompanyDetailPage() {
       .catch(() => {})
   }, [])
 
-  async function generate(type: string) {
-    setGenerating(type); setGenError(null)
-    const res = await fetch('/api/docgen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type, companyId: id }) })
-    if (res.ok) { reload() } else { const err = await res.json(); setGenError(err.error ?? 'Generation failed') }
-    setGenerating(null)
+  async function regenerateRegister(type: 'ROD' | 'ROM' | 'ROSC') {
+    const res = await fetch('/api/docgen', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, companyId: id }),
+    })
+    if (res.ok) {
+      toast.success(`${type} generated`)
+      reload()
+    } else {
+      const err = await res.json().catch(() => ({}))
+      toast.error(err.error ?? `${type} generation failed`)
+    }
   }
 
   async function downloadDoc(docId: string) {
@@ -1001,10 +1008,35 @@ export default function CompanyDetailPage() {
     if (res.ok) { const { url } = await res.json(); window.open(url, '_blank') }
   }
 
+  async function generateDdrNow() {
+    setGeneratingDdr(true)
+    try {
+      const res = await fetch('/api/docgen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'DDR', companyId: id }),
+      })
+      if (res.ok) {
+        toast.success('Due diligence report generated')
+        reload()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        toast.error(err.error ?? 'Due diligence report generation failed')
+      }
+    } finally {
+      setGeneratingDdr(false)
+    }
+  }
+
   async function deleteItem(type: 'directors' | 'members' | 'controllers' | 'designated-reps', itemId: string) {
     if (!window.confirm('Delete this record? This cannot be undone.')) return
     const res = await fetch(`/api/admin/companies/${id}/${type}/${itemId}`, { method: 'DELETE' })
-    if (res.ok) { toast.success('Deleted'); reload() }
+    if (res.ok) {
+      toast.success('Deleted')
+      if (type === 'directors') await regenerateRegister('ROD')
+      else if (type === 'members') await regenerateRegister('ROM')
+      else await regenerateRegister('ROSC')
+    }
     else toast.error('Failed to delete')
   }
 
@@ -1018,13 +1050,17 @@ export default function CompanyDetailPage() {
     }
   }
 
-  async function uploadDoc(docType: string, file: File) {
+  async function uploadDoc(docType: string, file: File, opts: { year?: string } = {}) {
     setUploading(docType)
     try {
       const fd = new FormData()
       fd.append('file', file)
       fd.append('type', docType)
       fd.append('companyId', id)
+      if (opts.year) {
+        fd.append('notes', `Year: ${opts.year}`)
+        fd.append('effectiveDate', `${opts.year}-01-01`)
+      }
       const res = await fetch('/api/documents/upload', { method: 'POST', body: fd })
       if (res.ok) { toast.success('Uploaded'); reload() }
       else { const d = await res.json(); toast.error(d.error ?? 'Upload failed') }
@@ -1038,7 +1074,27 @@ export default function CompanyDetailPage() {
     else toast.error('Failed to delete')
   }
 
-  function closeModal() { setModal(null); reload() }
+  function closeModal() {
+    const completed = modal
+    setModal(null)
+    if (completed?.type === 'director') regenerateRegister('ROD')
+    else if (completed?.type === 'member') regenerateRegister('ROM')
+    else if (completed?.type === 'controller' || completed?.type === 'designatedRep') regenerateRegister('ROSC')
+    else {
+      ensuredDocsForRef.current = null
+      reload()
+    }
+  }
+
+  useEffect(() => {
+    if (!company || ensuredDocsForRef.current === company.id) return
+    ensuredDocsForRef.current = company.id
+    fetch(`/api/admin/companies/${company.id}/documents/ensure`, { method: 'POST' })
+      .then(r => {
+        if (r.ok) reload()
+      })
+      .catch(() => {})
+  }, [company, reload])
 
   const modalTitle = modal
     ? modal.type === 'company' ? 'Edit Company'
@@ -1048,6 +1104,13 @@ export default function CompanyDetailPage() {
 
   if (loading) return <div className="p-8" style={{ color: 'var(--muted-foreground)' }}>Loading...</div>
   if (!company) return <div className="p-8" style={{ color: '#ef4444' }}>Company not found</div>
+
+  const isGeneratedDoc = (doc: Company['documents'][number]) => doc.name.startsWith(`${doc.documentType} —`)
+  const latestDoc = (docType: string) => company.documents.find(d => d.documentType === docType && isGeneratedDoc(d))
+  const annualReturnPrefill = latestDoc('NAR1')
+  const ddrDocs = company.documents
+    .filter(d => d.documentType === 'DDR' && isGeneratedDoc(d))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
   return (
     <div className="p-6 space-y-4">
@@ -1080,7 +1143,6 @@ export default function CompanyDetailPage() {
           <TabsTrigger value="directors">Directors ({company.directors.length})</TabsTrigger>
           <TabsTrigger value="members">Members ({company.members.length})</TabsTrigger>
           <TabsTrigger value="controllers">Controllers ({company.significantControllers.length + company.designatedReps.length})</TabsTrigger>
-          <TabsTrigger value="documents">Documents ({company.documents.length})</TabsTrigger>
         </TabsList>
 
         {/* Overview */}
@@ -1099,10 +1161,15 @@ export default function CompanyDetailPage() {
             ))}
           </div>
 
-          {/* CI and NAR1 upload sections */}
-          {(['CI', 'NAR1'] as const).map(docType => {
-            const label = docType === 'CI' ? 'Certificate of Incorporation (CI)' : 'Annual Return (NAR1)'
-            const docs = company.documents.filter(d => d.documentType === docType)
+          {/* Company statutory uploads */}
+          {(['CI', 'BR', 'AA'] as const).map(docType => {
+            const labels = {
+              CI: 'Certificate of Incorporation (CI)',
+              BR: 'Business Registration Certificate (BR)',
+              AA: 'Articles of Association (AA)',
+            }
+            const label = labels[docType]
+            const docs = company.documents.filter(d => d.documentType === docType && !isGeneratedDoc(d))
             return (
               <div key={docType} style={cardStyle}>
                 <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
@@ -1145,11 +1212,119 @@ export default function CompanyDetailPage() {
               </div>
             )
           })}
+
+          <div style={cardStyle}>
+            <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderBottom: '1px solid #2A2418' }}>
+              <div>
+                <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Annual Return (NAR1)</span>
+                <p className="text-xs mt-1" style={{ color: '#5A5040' }}>Choose the filing year before uploading the yearly NAR1 document.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <select value={nar1Year} onChange={e => setNar1Year(e.target.value)} style={{ ...fieldStyle, width: 120 }}>
+                  {Array.from({ length: 12 }, (_, i) => String(new Date().getFullYear() + 2 - i)).map(year => (
+                    <option key={year} value={year} style={{ background: '#141414' }}>{year}</option>
+                  ))}
+                </select>
+                <label style={{ cursor: uploading === 'NAR1' ? 'not-allowed' : 'pointer' }}>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    className="hidden"
+                    disabled={uploading === 'NAR1'}
+                    onChange={e => {
+                      const file = e.target.files?.[0]
+                      if (file) { uploadDoc('NAR1', file, { year: nar1Year }); e.target.value = '' }
+                    }}
+                  />
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-medium transition-colors"
+                    style={{ borderColor: '#2A2418', color: uploading === 'NAR1' ? '#5A5040' : 'var(--foreground)', background: 'transparent', cursor: 'inherit' }}
+                  >
+                    {uploading === 'NAR1' ? 'Uploading…' : `Upload NAR1 ${nar1Year}`}
+                  </span>
+                </label>
+              </div>
+            </div>
+            {company.documents.filter(d => d.documentType === 'NAR1' && !isGeneratedDoc(d)).length === 0 ? (
+              <p className="px-4 py-3 text-sm" style={{ color: '#5A5040' }}>No NAR1 files uploaded yet.</p>
+            ) : (
+              <ul className="divide-y divide-[#2A2418]">
+                {company.documents.filter(d => d.documentType === 'NAR1' && !isGeneratedDoc(d)).map(doc => (
+                  <li key={doc.id} className="flex items-center justify-between px-4 py-2.5">
+                    <div className="min-w-0">
+                      <span className="block text-sm truncate max-w-xs" style={{ color: 'var(--foreground)' }}>{doc.name}</span>
+                      <span className="text-xs" style={{ color: '#5A5040' }}>{doc.notes ?? (doc.effectiveDate ? `Year: ${new Date(doc.effectiveDate).getFullYear()}` : 'Year not set')}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-3">
+                      <span className="text-xs" style={{ color: '#5A5040' }}>{new Date(doc.createdAt).toLocaleDateString('en-HK')}</span>
+                      <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => downloadDoc(doc.id)}>Preview</Button>
+                      <Button size="sm" variant="outline" className="h-7 px-2 text-xs" style={{ color: '#ef4444', borderColor: '#ef4444' }} onClick={() => deleteDoc(doc.id)}>Delete</Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div style={cardStyle} className="p-4 space-y-3">
+            <div>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Annual Return Pre-fill</h3>
+              <p className="text-xs mt-1" style={{ color: '#5A5040' }}>
+                {annualReturnPrefill ? `Latest prepared ${new Date(annualReturnPrefill.createdAt).toLocaleDateString('en-HK')}` : 'The pre-fill document will appear automatically when the annual return date is ready.'}
+              </p>
+            </div>
+            {annualReturnPrefill ? (
+              <Button size="sm" variant="outline" onClick={() => downloadDoc(annualReturnPrefill.id)}>
+                Download
+              </Button>
+            ) : (
+              <p className="text-sm" style={{ color: '#5A5040' }}>Not ready yet.</p>
+            )}
+          </div>
+
+          <div style={cardStyle}>
+            <div className="px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Due Diligence Report</h3>
+              <p className="text-xs mt-1" style={{ color: '#5A5040' }}>Monthly reports are generated automatically on the first day of each month.</p>
+            </div>
+            {ddrDocs.length === 0 ? (
+              <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm" style={{ color: '#5A5040' }}>No due diligence reports yet.</p>
+                <Button size="sm" variant="outline" disabled={generatingDdr} onClick={generateDdrNow}>
+                  {generatingDdr ? 'Generating...' : 'Generate now'}
+                </Button>
+              </div>
+            ) : (
+              <ul className="divide-y divide-[#2A2418]">
+                {ddrDocs.map(doc => (
+                  <li key={doc.id} className="flex items-center justify-between px-4 py-2.5">
+                    <div className="min-w-0">
+                      <span className="block text-sm truncate max-w-xs" style={{ color: 'var(--foreground)' }}>{doc.notes ?? 'Monthly report'}</span>
+                      <span className="text-xs" style={{ color: '#5A5040' }}>{new Date(doc.createdAt).toLocaleDateString('en-HK')}</span>
+                    </div>
+                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => downloadDoc(doc.id)}>Download</Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </TabsContent>
 
         {/* Directors */}
         <TabsContent value="directors" className="mt-4 space-y-3">
-          <div className="flex justify-end">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div style={cardStyle} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
+              <div>
+                <p className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{REGISTER_DOCS.directors.label}</p>
+                <p className="text-xs" style={{ color: '#5A5040' }}>
+                  {latestDoc('ROD') ? `Latest generated ${new Date(latestDoc('ROD')!.createdAt).toLocaleDateString('en-HK')}` : 'Generated automatically after director changes.'}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                {latestDoc('ROD') && <Button size="sm" variant="outline" onClick={() => downloadDoc(latestDoc('ROD')!.id)}>Download ROD</Button>}
+                {!latestDoc('ROD') && <span className="text-xs" style={{ color: '#5A5040' }}>Will be generated after the next director change.</span>}
+              </div>
+            </div>
             <Button size="sm" onClick={() => setModal({ type: 'director', mode: 'add' })}>+ Add Director</Button>
           </div>
           <div style={cardStyle}>
@@ -1188,7 +1363,19 @@ export default function CompanyDetailPage() {
 
         {/* Members */}
         <TabsContent value="members" className="mt-4 space-y-3">
-          <div className="flex justify-end">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div style={cardStyle} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
+              <div>
+                <p className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{REGISTER_DOCS.members.label}</p>
+                <p className="text-xs" style={{ color: '#5A5040' }}>
+                  {latestDoc('ROM') ? `Latest generated ${new Date(latestDoc('ROM')!.createdAt).toLocaleDateString('en-HK')}` : 'Generated automatically after member changes.'}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                {latestDoc('ROM') && <Button size="sm" variant="outline" onClick={() => downloadDoc(latestDoc('ROM')!.id)}>Download ROM</Button>}
+                {!latestDoc('ROM') && <span className="text-xs" style={{ color: '#5A5040' }}>Will be generated after the next member change.</span>}
+              </div>
+            </div>
             <Button size="sm" onClick={() => setModal({ type: 'member', mode: 'add' })}>+ Add Member</Button>
           </div>
           <div style={cardStyle}>
@@ -1227,6 +1414,18 @@ export default function CompanyDetailPage() {
 
         {/* Controllers */}
         <TabsContent value="controllers" className="mt-4 space-y-4">
+          <div style={cardStyle} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{REGISTER_DOCS.controllers.label}</p>
+              <p className="text-xs" style={{ color: '#5A5040' }}>
+                {latestDoc('ROSC') ? `Latest generated ${new Date(latestDoc('ROSC')!.createdAt).toLocaleDateString('en-HK')}` : 'Generated automatically after controller or designated representative changes.'}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              {latestDoc('ROSC') && <Button size="sm" variant="outline" onClick={() => downloadDoc(latestDoc('ROSC')!.id)}>Download ROSC</Button>}
+              {!latestDoc('ROSC') && <span className="text-xs" style={{ color: '#5A5040' }}>Will be generated after the next controller change.</span>}
+            </div>
+          </div>
 
           {/* Significant Controllers */}
           <div className="space-y-2">
@@ -1312,47 +1511,6 @@ export default function CompanyDetailPage() {
 
         </TabsContent>
 
-        {/* Documents */}
-        <TabsContent value="documents" className="mt-4 space-y-4">
-          <div className="rounded-lg p-4" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
-            <h3 className="font-semibold mb-3" style={{ color: 'var(--foreground)' }}>Generate Statutory Documents</h3>
-            {genError && <p className="text-sm mb-2" style={{ color: '#ef4444' }}>{genError}</p>}
-            <div className="flex flex-wrap gap-2">
-              {DOC_TYPES.map(({ type, label, ext }) => (
-                <Button key={type} variant="outline" size="sm" onClick={() => generate(type)} disabled={generating === type}>
-                  {generating === type ? 'Generating...' : `${label} (${ext})`}
-                </Button>
-              ))}
-            </div>
-          </div>
-          <div style={cardStyle}>
-            <table className="w-full text-sm">
-              <thead>
-                <tr>
-                  <th style={thStyle}>Document Name</th>
-                  <th style={thStyle}>Type</th>
-                  <th style={thStyle}>Created</th>
-                  <th style={thStyle} />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#2A2418]">
-                {company.documents.map(doc => (
-                  <tr key={doc.id} className="hover:bg-[#1A1A12] transition-colors">
-                    <td style={tdPrimaryStyle}>{doc.name}</td>
-                    <td style={tdStyle}><Badge variant="outline">{doc.documentType}</Badge></td>
-                    <td style={tdStyle}>{new Date(doc.createdAt).toLocaleDateString('en-HK')}</td>
-                    <td style={tdStyle}>
-                      <button onClick={() => downloadDoc(doc.id)} className="text-xs hover:underline transition-colors" style={{ color: '#C9A96E' }}>Download</button>
-                    </td>
-                  </tr>
-                ))}
-                {company.documents.length === 0 && (
-                  <tr><td colSpan={4} className="px-4 py-6 text-center" style={{ color: '#5A5040' }}>No documents yet</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </TabsContent>
       </Tabs>
 
       {/* Modal */}

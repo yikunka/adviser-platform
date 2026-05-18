@@ -14,6 +14,9 @@ type Doc = {
 }
 
 const DOC_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
+  CI:        { bg: 'rgba(59,130,246,0.12)',  text: '#60a5fa' },
+  BR:        { bg: 'rgba(59,130,246,0.12)',  text: '#60a5fa' },
+  AA:        { bg: 'rgba(59,130,246,0.12)',  text: '#60a5fa' },
   ROD:       { bg: 'rgba(201,169,110,0.15)', text: '#C9A96E' },
   ROM:       { bg: 'rgba(201,169,110,0.15)', text: '#C9A96E' },
   ROSC:      { bg: 'rgba(201,169,110,0.15)', text: '#C9A96E' },

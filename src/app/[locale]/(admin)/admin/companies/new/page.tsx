@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
@@ -34,6 +34,29 @@ type VerifiedClient = {
   nameZh: string | null
 }
 
+type CompanyDocType = 'CI' | 'BR' | 'AA' | 'OTHER'
+
+type CompanyUpload = {
+  id: string
+  file: File
+  docType: CompanyDocType
+}
+
+const companyDocTypes: Array<{ value: CompanyDocType; label: string }> = [
+  { value: 'CI', label: 'CI' },
+  { value: 'BR', label: 'BR' },
+  { value: 'AA', label: 'AA' },
+  { value: 'OTHER', label: 'Other' },
+]
+
+function inferDocType(fileName: string): CompanyDocType {
+  const lower = fileName.toLowerCase()
+  if (/\bci\b|certificate.*incorporation|incorporation.*certificate/.test(lower)) return 'CI'
+  if (/\bbr\b|business.*registration/.test(lower)) return 'BR'
+  if (/\baa\b|articles|association/.test(lower)) return 'AA'
+  return 'OTHER'
+}
+
 export default function NewCompanyPage() {
   const router = useRouter()
   const params = useParams()
@@ -43,6 +66,8 @@ export default function NewCompanyPage() {
   const [loading, setLoading] = useState(false)
   const [verifiedClients, setVerifiedClients] = useState<VerifiedClient[]>([])
   const [clientsLoading, setClientsLoading] = useState(true)
+  const [analyzing, setAnalyzing] = useState(false)
+  const [companyUploads, setCompanyUploads] = useState<CompanyUpload[]>([])
   const [clientMode, setClientMode] = useState<'verified' | 'email'>('verified')
   const [form, setForm] = useState({
     nameEn: '',
@@ -56,24 +81,105 @@ export default function NewCompanyPage() {
     clientUserEmail: '',
   })
 
-  const loadVerifiedClients = useCallback(async () => {
-    setClientsLoading(true)
-    try {
-      const res = await fetch('/api/admin/clients?signedUpOnly=true')
-      if (!res.ok) return
-      const data = await res.json()
-      setVerifiedClients(Array.isArray(data.clients) ? data.clients : [])
-    } finally {
-      setClientsLoading(false)
-    }
-  }, [])
-
   useEffect(() => {
-    loadVerifiedClients()
-  }, [loadVerifiedClients])
+    let cancelled = false
+
+    async function load() {
+      try {
+        const res = await fetch('/api/admin/clients?signedUpOnly=true')
+        if (!res.ok) return
+        const data = await res.json()
+        if (!cancelled) setVerifiedClients(Array.isArray(data.clients) ? data.clients : [])
+      } finally {
+        if (!cancelled) setClientsLoading(false)
+      }
+    }
+
+    void load()
+    return () => { cancelled = true }
+  }, [])
 
   function set(field: string, value: string) {
     setForm(f => ({ ...f, [field]: value }))
+  }
+
+  function addCompanyFiles(fileList: FileList | null) {
+    const files = Array.from(fileList ?? [])
+    if (files.length === 0) return
+    setCompanyUploads(current => [
+      ...current,
+      ...files.map(file => ({
+        id: `${file.name}-${file.size}-${file.lastModified}-${crypto.randomUUID()}`,
+        file,
+        docType: inferDocType(file.name),
+      })),
+    ].slice(0, 6))
+  }
+
+  function updateUploadDocType(id: string, docType: CompanyDocType) {
+    setCompanyUploads(current => current.map(item => item.id === id ? { ...item, docType } : item))
+  }
+
+  function removeUpload(id: string) {
+    setCompanyUploads(current => current.filter(item => item.id !== id))
+  }
+
+  async function analyzeDocuments() {
+    if (companyUploads.length === 0) {
+      toast.error('Upload at least one CI, BR, or AA file first')
+      return
+    }
+
+    setAnalyzing(true)
+    try {
+      const fd = new FormData()
+      for (const item of companyUploads) fd.append('files', item.file)
+      const res = await fetch('/api/admin/companies/analyze-documents', { method: 'POST', body: fd })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(typeof data?.error === 'string' ? data.error : 'Document analysis failed')
+        return
+      }
+
+      const fields = data?.fields && typeof data.fields === 'object' ? data.fields as Record<string, unknown> : {}
+      setForm(current => ({
+        ...current,
+        nameEn: typeof fields.nameEn === 'string' && fields.nameEn ? fields.nameEn : current.nameEn,
+        nameZh: typeof fields.nameZh === 'string' && fields.nameZh ? fields.nameZh : current.nameZh,
+        companyNumber: typeof fields.companyNumber === 'string' && fields.companyNumber ? fields.companyNumber : current.companyNumber,
+        dateOfIncorporation: typeof fields.dateOfIncorporation === 'string' && fields.dateOfIncorporation ? fields.dateOfIncorporation : current.dateOfIncorporation,
+        registeredAddress: typeof fields.registeredAddress === 'string' && fields.registeredAddress ? fields.registeredAddress : current.registeredAddress,
+        businessNature: typeof fields.businessNature === 'string' && fields.businessNature ? fields.businessNature : current.businessNature,
+      }))
+
+      const documents = Array.isArray(data?.documents) ? data.documents : []
+      setCompanyUploads(current => current.map(item => {
+        const analyzed = documents.find((doc: { fileName?: unknown }) => doc.fileName === item.file.name)
+        const analyzedType = analyzed?.documentType
+        return analyzedType === 'CI' || analyzedType === 'BR' || analyzedType === 'AA' || analyzedType === 'OTHER'
+          ? { ...item, docType: analyzedType }
+          : item
+      }))
+      toast.success(data?.source === 'bailian' ? 'Documents analyzed by Bailian' : 'Document hints applied')
+    } catch {
+      toast.error('Document analysis failed')
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
+  async function uploadCompanyDocuments(companyId: string) {
+    for (const item of companyUploads) {
+      const fd = new FormData()
+      fd.append('file', item.file)
+      fd.append('type', item.docType)
+      fd.append('companyId', companyId)
+      const res = await fetch('/api/documents/upload', { method: 'POST', body: fd })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(typeof data?.error === 'string' ? data.error : `Failed to upload ${item.file.name}`)
+      }
+    }
   }
 
   async function submit(e: React.FormEvent) {
@@ -119,11 +225,17 @@ export default function NewCompanyPage() {
         toast.error(byCode[code] ?? (typeof data?.error === 'string' ? data.error : 'Failed to create company'))
         return
       }
-      if (data?.pendingClientEmail) {
-        toast.success(t('createSuccessPending'))
-      } else {
-        toast.success(t('createSuccess'))
+      if (companyUploads.length > 0) {
+        try {
+          await uploadCompanyDocuments(data.id)
+        } catch (uploadError) {
+          toast.warning(uploadError instanceof Error ? uploadError.message : 'Company created, but document upload failed')
+          router.push(`/${locale}/admin/companies/${data.id}`)
+          return
+        }
       }
+      const suffix = companyUploads.length > 0 ? ` ${companyUploads.length} document${companyUploads.length === 1 ? '' : 's'} attached.` : ''
+      toast.success(`${data?.pendingClientEmail ? t('createSuccessPending') : t('createSuccess')}${suffix}`)
       router.push(`/${locale}/admin/companies/${data.id}`)
     } catch {
       toast.error('Failed to create company')
@@ -214,6 +326,68 @@ export default function NewCompanyPage() {
                 placeholder={t('clientEmailPlaceholder')}
               />
             </div>
+          )}
+        </div>
+
+        <div
+          className="rounded-lg p-4 space-y-3"
+          style={{ background: '#0A0A0A', border: '1px solid #2A2418' }}
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <label style={{ ...labelStyle, color: '#C9A96E' }}>Company documents</label>
+              <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Upload CI, BR, AA, PDF, JPG, or PNG files to pre-fill this company and attach them after creation.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <label style={{ cursor: loading || analyzing ? 'not-allowed' : 'pointer' }}>
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  className="hidden"
+                  disabled={loading || analyzing}
+                  onChange={e => { addCompanyFiles(e.target.files); e.target.value = '' }}
+                />
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
+                  style={{ borderColor: '#2A2418', color: 'var(--foreground)', background: 'transparent', cursor: 'inherit' }}
+                >
+                  Add files
+                </span>
+              </label>
+              <Button type="button" variant="outline" size="sm" onClick={analyzeDocuments} disabled={loading || analyzing || companyUploads.length === 0}>
+                {analyzing ? 'Analyzing…' : 'Analyze'}
+              </Button>
+            </div>
+          </div>
+
+          {companyUploads.length === 0 ? (
+            <p className="text-sm" style={{ color: '#5A5040' }}>No company documents selected.</p>
+          ) : (
+            <ul className="divide-y divide-[#2A2418] rounded-md" style={{ border: '1px solid #2A2418' }}>
+              {companyUploads.map(item => (
+                <li key={item.id} className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm" style={{ color: 'var(--foreground)' }}>{item.file.name}</p>
+                    <p className="text-xs" style={{ color: '#5A5040' }}>{Math.ceil(item.file.size / 1024)} KB</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={item.docType}
+                      onChange={e => updateUploadDocType(item.id, e.target.value as CompanyDocType)}
+                      style={{ ...fieldStyle, width: 104, paddingTop: '0.35rem', paddingBottom: '0.35rem' }}
+                    >
+                      {companyDocTypes.map(option => (
+                        <option key={option.value} value={option.value} style={{ background: '#141414' }}>{option.label}</option>
+                      ))}
+                    </select>
+                    <Button type="button" variant="outline" size="sm" onClick={() => removeUpload(item.id)} disabled={loading || analyzing}>
+                      Remove
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
 

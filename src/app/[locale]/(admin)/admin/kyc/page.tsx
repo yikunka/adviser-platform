@@ -141,6 +141,7 @@ export default function KYCQueuePage() {
     setRecords(json.records ?? [])
   }, [filterStatus])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchRecords updates state after the async request resolves.
   useEffect(() => { fetchRecords() }, [fetchRecords])
 
   async function fetchAML(id: string) {
@@ -166,7 +167,7 @@ export default function KYCQueuePage() {
     }
   }
 
-  async function doAction(action: 'APPROVE' | 'REJECT' | 'REQUEST_INFO') {
+  async function doAction(action: 'APPROVE' | 'REJECT' | 'REQUEST_INFO' | 'CANCEL_APPROVAL') {
     if (!selected) return
     if (action === 'REJECT' && !reason.trim()) {
       toast.error(t('reasonRequired'))
@@ -492,6 +493,20 @@ export default function KYCQueuePage() {
                         {t('reject')}
                       </Button>
                     </div>
+                  </div>
+                ) : selected.kycStatus === 'APPROVED' ? (
+                  <div className="space-y-3">
+                    <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                      {t('approvedCanCancel', { defaultValue: 'This KYC is approved. You can cancel the approval and return it to the submitted queue.' })}
+                    </p>
+                    <Button
+                      variant="outline"
+                      disabled={loading}
+                      onClick={() => doAction('CANCEL_APPROVAL')}
+                      style={{ color: '#f59e0b', borderColor: 'rgba(245,158,11,0.35)' }}
+                    >
+                      {t('cancelApproval', { defaultValue: 'Cancel Approved' })}
+                    </Button>
                   </div>
                 ) : (
                   <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>{t('alreadyProcessed')}</p>

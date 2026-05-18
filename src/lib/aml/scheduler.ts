@@ -3,7 +3,7 @@ import { ingestAllSources } from './ingester'
 import { screenAll } from './screener'
 import { prisma } from '@/lib/db/prisma'
 import { createNotification } from '@/lib/notifications'
-import { sendOTPEmail } from '@/lib/email/resend'
+import { generateMonthlyDdrForActiveCompanies } from '@/lib/docgen/monthly-ddr'
 
 let started = false
 
@@ -56,5 +56,16 @@ export function startAMLScheduler() {
     }
   }, { timezone: 'UTC' })
 
-  console.log('[Scheduler] Scheduled daily job at 02:00 HKT (18:00 UTC)')
+  cron.schedule('0 0 1 * *', async () => {
+    console.log('[Scheduler] Starting monthly DDR generation')
+    try {
+      const result = await generateMonthlyDdrForActiveCompanies()
+      console.log(`[Scheduler] Monthly DDR complete. Generated: ${result.generated}. Skipped: ${result.skipped}. Errors: ${result.errors.length}`)
+      for (const error of result.errors) console.error('[Scheduler] Monthly DDR error:', error)
+    } catch (err) {
+      console.error('[Scheduler] Monthly DDR job failed:', err)
+    }
+  }, { timezone: 'Asia/Hong_Kong' })
+
+  console.log('[Scheduler] Scheduled daily job at 02:00 HKT and monthly DDR at 00:00 HKT on day 1')
 }

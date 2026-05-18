@@ -152,6 +152,19 @@ function DatePickerField({
           captionLayout="dropdown"
           startMonth={new Date(1900, 0)}
           endMonth={new Date(2100, 11)}
+          classNames={{
+            root: 'w-fit text-[#F0EAD8]',
+            caption_label: 'text-[#F0EAD8]',
+            dropdowns: 'text-[#F0EAD8]',
+            dropdown: 'absolute inset-0 bg-[#111111] text-[#F0EAD8] opacity-0',
+            button_previous: 'size-7 p-0 text-[#F0EAD8] hover:bg-[#2A2418] hover:text-[#F0EAD8]',
+            button_next: 'size-7 p-0 text-[#F0EAD8] hover:bg-[#2A2418] hover:text-[#F0EAD8]',
+            weekday: 'flex-1 rounded-md text-[0.8rem] font-normal text-[#C9A96E] select-none',
+            day: 'group/day relative aspect-square h-full w-full rounded-md p-0 text-center text-[#F0EAD8] select-none',
+            day_button: 'text-[#F0EAD8] hover:bg-[#2A2418] hover:text-[#F0EAD8] data-[selected-single=true]:bg-[#C9A96E] data-[selected-single=true]:text-[#0A0805]',
+            outside: 'text-[#7A7060] aria-selected:text-[#7A7060]',
+            today: 'rounded-md bg-[#2A2418] text-[#F0EAD8] data-[selected=true]:rounded-none',
+          }}
           onSelect={(date) => {
             if (!date) return
             onChange(formatYmd(date))
@@ -375,6 +388,7 @@ export default function KYCPage() {
   function addPerson() {
     append(emptyPerson())
     setAp(fields.length)
+    setStep(0)
   }
 
   return (
@@ -412,6 +426,7 @@ export default function KYCPage() {
           const nameEn = form.watch(`persons.${i}.nameEn` as 'persons.0.nameEn')
           const info = KYC_STATUS[st] ?? KYC_STATUS.DRAFT
           const label = nameEn?.trim() || `${t('personIndex', { defaultValue: 'Person' })} ${i + 1}`
+          const personLocked = st === 'APPROVED'
           return (
             <div key={f.id} className="flex items-center gap-1">
               <button
@@ -429,7 +444,7 @@ export default function KYCPage() {
                   ({info.label})
                 </span>
               </button>
-              {!isLocked && (
+              {!personLocked && (
                 <button
                   type="button"
                   onClick={() => removePerson(i)}
@@ -443,17 +458,15 @@ export default function KYCPage() {
             </div>
           )
         })}
-        {!isLocked && (
-          <button
-            type="button"
-            onClick={addPerson}
-            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-sm"
-            style={{ color: '#C9A96E', border: '1px dashed #2A2418' }}
-          >
-            <Plus size={16} />
-            {t('addPerson', { defaultValue: 'Add person' })}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={addPerson}
+          className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-sm"
+          style={{ color: '#C9A96E', border: '1px dashed #2A2418' }}
+        >
+          <Plus size={16} />
+          {t('addPerson', { defaultValue: 'Add person' })}
+        </button>
       </div>
 
       <div key={ap} className="space-y-6">
@@ -541,7 +554,6 @@ export default function KYCPage() {
               <Field label={t('fields.idType')}>
                 <select style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.idType` as const)}>
                   <option value="" style={{ background: '#141414' }}>—</option>
-                  <option value="CHINA_ID" style={{ background: '#141414' }}>China Resident ID Card 中国居民身份证</option>
                   <option value="HKID" style={{ background: '#141414' }}>HK ID Card 香港身份證</option>
                   <option value="PASSPORT" style={{ background: '#141414' }}>Passport 護照</option>
                   <option value="OTHER" style={{ background: '#141414' }}>Other 其他</option>

@@ -497,6 +497,7 @@
     "types": {
       "CI": "Certificate of Incorporation",
       "BR": "Business Registration Certificate",
+      "AA": "Articles of Association",
       "ROD": "Register of Directors",
       "ROM": "Register of Members",
       "ROSC": "Register of Significant Controllers",
@@ -657,7 +658,9 @@
       "reasonRequired": "A reason is required when rejecting.",
       "actionFailed": "Action failed. Please try again.",
       "actionSuccess": "Action completed successfully.",
-      "alreadyProcessed": "This KYC has already been processed."
+      "alreadyProcessed": "This KYC has already been processed.",
+      "approvedCanCancel": "This KYC is approved. You can cancel the approval and return it to the submitted queue.",
+      "cancelApproval": "Cancel Approved"
     },
     "aml": {
       "title": "AML Alerts",

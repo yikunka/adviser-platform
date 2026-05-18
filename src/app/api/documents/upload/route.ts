@@ -6,6 +6,7 @@ import crypto from 'crypto'
 
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
 const MAX_SIZE = 10 * 1024 * 1024 // 10MB
+const STAFF_ROLES = new Set(['STAFF', 'COMPLIANCE', 'SUPER_ADMIN'])
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -16,6 +17,8 @@ export async function POST(req: NextRequest) {
   const docType = (formData.get('type') as string) ?? 'KYC'
   const companyId = formData.get('companyId') as string | null
   const keyPersonId = formData.get('keyPersonId') as string | null
+  const notes = formData.get('notes') as string | null
+  const effectiveDate = formData.get('effectiveDate') as string | null
 
   if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
   if (!ALLOWED_TYPES.includes(file.type)) {
@@ -23,6 +26,16 @@ export async function POST(req: NextRequest) {
   }
   if (file.size > MAX_SIZE) {
     return NextResponse.json({ error: 'File too large. Max 10MB.' }, { status: 400 })
+  }
+  if (companyId) {
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+      select: { clientUserId: true },
+    })
+    if (!company) return NextResponse.json({ error: 'Invalid company' }, { status: 404 })
+    if (!STAFF_ROLES.has(session.user.role) && company.clientUserId !== session.user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
   }
 
   const bytes = await file.arrayBuffer()
@@ -72,6 +85,8 @@ export async function POST(req: NextRequest) {
       fileSize: file.size,
       uploadedById: session.user.id,
       companyId: companyId ?? undefined,
+      notes: notes?.trim() || undefined,
+      effectiveDate: effectiveDate ? new Date(effectiveDate) : undefined,
     },
   })
 

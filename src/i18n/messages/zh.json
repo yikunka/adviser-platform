@@ -497,6 +497,7 @@
     "types": {
       "CI": "公司註冊證明書",
       "BR": "商業登記證",
+      "AA": "公司章程",
       "ROD": "董事登記冊",
       "ROM": "成員登記冊",
       "ROSC": "重要控制人登記冊",
@@ -657,7 +658,9 @@
       "reasonRequired": "拒絕時必須填寫原因。",
       "actionFailed": "操作失敗，請重試。",
       "actionSuccess": "操作已成功完成。",
-      "alreadyProcessed": "此KYC已被處理。"
+      "alreadyProcessed": "此KYC已被處理。",
+      "approvedCanCancel": "此 KYC 已批准。你可以取消批准，並將其退回已提交隊列。",
+      "cancelApproval": "取消批准"
     },
     "aml": {
       "title": "AML警報",

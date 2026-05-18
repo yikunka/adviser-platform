@@ -25,7 +25,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat poppler-utils
 
 # Prisma CLI (global): `prisma migrate deploy` in entrypoint; version from package.json
 COPY --from=builder /app/package.json /tmp/package.json

@@ -33,8 +33,9 @@ export async function POST(req: NextRequest) {
       if (!own) {
         return NextResponse.json({ error: 'Invalid person id' }, { status: 403 })
       }
-      if (action === 'SAVE_DRAFT' && terminal.includes(own.kycStatus)) {
-        const { kycStatus: _k, ...rest } = data
+      if (own.kycStatus === 'APPROVED' || (action === 'SAVE_DRAFT' && terminal.includes(own.kycStatus))) {
+        const rest = { ...data }
+        delete rest.kycStatus
         data = rest
       }
       const updated = await prisma.keyPerson.update({
