@@ -83,11 +83,26 @@ export async function DELETE(
   const before = await prisma.company.findUnique({ where: { id } })
   if (!before) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  // Soft delete by setting status to DEREGISTERED
-  const company = await prisma.company.update({
-    where: { id },
-    data: { status: 'DEREGISTERED' },
+  await prisma.$transaction(async (tx) => {
+    await tx.shareholderChangeDocument.deleteMany({ where: { change: { companyId: id } } })
+    await tx.addressChangeDocument.deleteMany({ where: { change: { companyId: id } } })
+    await tx.annualFilingDocument.deleteMany({ where: { filing: { companyId: id } } })
+
+    await tx.riskAssessmentAnswer.deleteMany({ where: { companyId: id } })
+    await tx.dueDiligenceReport.deleteMany({ where: { companyId: id } })
+    await tx.shareholderChange.deleteMany({ where: { companyId: id } })
+    await tx.addressChange.deleteMany({ where: { companyId: id } })
+    await tx.annualFiling.deleteMany({ where: { companyId: id } })
+    await tx.document.deleteMany({ where: { companyId: id } })
+    await tx.aMLCheck.deleteMany({ where: { companyId: id } })
+    await tx.aMLAlert.deleteMany({ where: { companyId: id } })
+
+    await tx.serviceOrder.updateMany({ where: { companyId: id }, data: { companyId: null } })
+    await tx.auditLog.updateMany({ where: { companyId: id }, data: { companyId: null } })
+
+    await tx.company.delete({ where: { id } })
   })
-  await logAudit(session!.user.id, 'DELETE', 'Company', id, before, company)
+
+  await logAudit(session!.user.id, 'DELETE', 'Company', id, before, null)
   return NextResponse.json({ message: 'Deleted' })
 }

@@ -1041,7 +1041,7 @@ export default function CompanyDetailPage() {
   }
 
   async function deleteCompany() {
-    if (!window.confirm(`Delete "${company?.nameEn}"? This will mark the company as Deregistered.`)) return
+    if (!window.confirm(`Permanently delete "${company?.nameEn}" and its company records? This cannot be undone.`)) return
     const res = await fetch(`/api/admin/companies/${id}`, { method: 'DELETE' })
     if (res.ok) { toast.success('Company deleted'); router.push('../../companies') }
     else {

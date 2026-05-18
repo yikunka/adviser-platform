@@ -4,7 +4,6 @@ import { prisma } from '@/lib/db/prisma'
 const PRIMARY = rgb(0.18, 0.32, 0.52)  // 6AM Advisory blue
 const BLACK = rgb(0, 0, 0)
 const GRAY = rgb(0.4, 0.4, 0.4)
-const LIGHT_GRAY = rgb(0.92, 0.92, 0.92)
 const RED = rgb(0.8, 0.1, 0.1)
 const ORANGE = rgb(0.9, 0.5, 0.0)
 const GREEN = rgb(0.1, 0.6, 0.1)
@@ -25,8 +24,22 @@ function riskColor(level: string | null) {
   return GREEN
 }
 
+function pdfSafeText(value: string | null | undefined): string {
+  if (!value) return ''
+  return value
+    .replace(/[–—]/g, '-')
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/…/g, '...')
+    .replace(/[^\x20-\x7E]/g, '?')
+}
+
+function drawPageText(page: PDFPage, text: string, options: Parameters<PDFPage['drawText']>[1]) {
+  page.drawText(pdfSafeText(text), options)
+}
+
 function wrapText(text: string, font: PDFFont, fontSize: number, maxWidth: number): string[] {
-  const words = text.split(' ')
+  const words = pdfSafeText(text).split(' ')
   const lines: string[] = []
   let current = ''
   for (const word of words) {
@@ -40,11 +53,6 @@ function wrapText(text: string, font: PDFFont, fontSize: number, maxWidth: numbe
   }
   if (current) lines.push(current)
   return lines
-}
-
-function drawText(ps: PageState, text: string, x: number, fontSize: number, color = BLACK, bold = false) {
-  const font = bold ? ps.bold : ps.regular
-  ps.page.drawText(text, { x, y: ps.y, size: fontSize, font, color })
 }
 
 async function ensureSpace(ps: PageState, doc: PDFDocument, needed: number): Promise<void> {
@@ -81,30 +89,30 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
   const MARGIN = 50
   const CONTENT_WIDTH = WIDTH - MARGIN * 2
 
-  let page = doc.addPage([WIDTH, HEIGHT])
+  const page = doc.addPage([WIDTH, HEIGHT])
   const ps: PageState = { page, y: HEIGHT - MARGIN, bold: boldFont, regular: regularFont, width: WIDTH, height: HEIGHT, margin: MARGIN }
 
   // ── Title block ──────────────────────────────────────────────────
   ps.page.drawRectangle({ x: 0, y: HEIGHT - 80, width: WIDTH, height: 80, color: PRIMARY })
-  ps.page.drawText('6AM Advisory (Hong Kong) Limited', { x: MARGIN, y: HEIGHT - 30, size: 13, font: boldFont, color: rgb(1, 1, 1) })
-  ps.page.drawText('Due Diligence Report', { x: MARGIN, y: HEIGHT - 50, size: 18, font: boldFont, color: rgb(1, 1, 1) })
-  ps.page.drawText(`Generated: ${new Date().toLocaleDateString('en-HK')}`, { x: MARGIN, y: HEIGHT - 68, size: 9, font: regularFont, color: rgb(0.8, 0.8, 0.8) })
+  drawPageText(ps.page, '6AM Advisory (Hong Kong) Limited', { x: MARGIN, y: HEIGHT - 30, size: 13, font: boldFont, color: rgb(1, 1, 1) })
+  drawPageText(ps.page, 'Due Diligence Report', { x: MARGIN, y: HEIGHT - 50, size: 18, font: boldFont, color: rgb(1, 1, 1) })
+  drawPageText(ps.page, `Generated: ${new Date().toLocaleDateString('en-HK')}`, { x: MARGIN, y: HEIGHT - 68, size: 9, font: regularFont, color: rgb(0.8, 0.8, 0.8) })
   ps.y = HEIGHT - 100
 
   // ── Section helper ───────────────────────────────────────────────
   function sectionHeader(title: string) {
     ps.y -= 20
     ps.page.drawRectangle({ x: MARGIN, y: ps.y - 4, width: CONTENT_WIDTH, height: 18, color: PRIMARY })
-    ps.page.drawText(title, { x: MARGIN + 6, y: ps.y, size: 10, font: boldFont, color: rgb(1, 1, 1) })
+    drawPageText(ps.page, title, { x: MARGIN + 6, y: ps.y, size: 10, font: boldFont, color: rgb(1, 1, 1) })
     ps.y -= 16
   }
 
   function field(label: string, value: string) {
     ps.y -= 14
-    ps.page.drawText(label + ':', { x: MARGIN + 4, y: ps.y, size: 9, font: boldFont, color: GRAY })
+    drawPageText(ps.page, label + ':', { x: MARGIN + 4, y: ps.y, size: 9, font: boldFont, color: GRAY })
     const lines = wrapText(value || '—', regularFont, 9, CONTENT_WIDTH - 130)
     lines.forEach((line, idx) => {
-      ps.page.drawText(line, { x: MARGIN + 130, y: ps.y - idx * 12, size: 9, font: regularFont, color: BLACK })
+      drawPageText(ps.page, line, { x: MARGIN + 130, y: ps.y - idx * 12, size: 9, font: regularFont, color: BLACK })
     })
     if (lines.length > 1) ps.y -= (lines.length - 1) * 12
   }
@@ -124,7 +132,7 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
   sectionHeader('2. Directors')
   if (company.directors.length === 0) {
     ps.y -= 14
-    ps.page.drawText('No active directors recorded.', { x: MARGIN + 4, y: ps.y, size: 9, font: regularFont, color: GRAY })
+    drawPageText(ps.page, 'No active directors recorded.', { x: MARGIN + 4, y: ps.y, size: 9, font: regularFont, color: GRAY })
   }
   for (const d of company.directors) {
     await ensureSpace(ps, doc, 30)
@@ -136,7 +144,7 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
   sectionHeader('3. Shareholders')
   if (company.members.length === 0) {
     ps.y -= 14
-    ps.page.drawText('No active members recorded.', { x: MARGIN + 4, y: ps.y, size: 9, font: regularFont, color: GRAY })
+    drawPageText(ps.page, 'No active members recorded.', { x: MARGIN + 4, y: ps.y, size: 9, font: regularFont, color: GRAY })
   }
   for (const m of company.members) {
     await ensureSpace(ps, doc, 30)
@@ -148,7 +156,7 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
   sectionHeader('4. Significant Controllers')
   if (company.significantControllers.length === 0) {
     ps.y -= 14
-    ps.page.drawText('No significant controllers recorded.', { x: MARGIN + 4, y: ps.y, size: 9, font: regularFont, color: GRAY })
+    drawPageText(ps.page, 'No significant controllers recorded.', { x: MARGIN + 4, y: ps.y, size: 9, font: regularFont, color: GRAY })
   }
   for (const sc of company.significantControllers) {
     await ensureSpace(ps, doc, 30)
@@ -164,7 +172,7 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
       if (ra.category !== lastCategory) {
         await ensureSpace(ps, doc, 20)
         ps.y -= 14
-        ps.page.drawText(`Category: ${ra.category}`, { x: MARGIN + 4, y: ps.y, size: 9, font: boldFont, color: PRIMARY })
+        drawPageText(ps.page, `Category: ${ra.category}`, { x: MARGIN + 4, y: ps.y, size: 9, font: boldFont, color: PRIMARY })
         lastCategory = ra.category
       }
       await ensureSpace(ps, doc, 20)
@@ -172,7 +180,7 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
     }
   } else {
     ps.y -= 14
-    ps.page.drawText('No risk assessment answers recorded.', { x: MARGIN + 4, y: ps.y, size: 9, font: regularFont, color: GRAY })
+    drawPageText(ps.page, 'No risk assessment answers recorded.', { x: MARGIN + 4, y: ps.y, size: 9, font: regularFont, color: GRAY })
   }
 
   // ── 6. Overall Risk Level & Recommendation ────────────────────────
@@ -182,12 +190,12 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
   if (ddr) {
     ps.y -= 14
     const riskText = ddr.overallRiskLevel ?? 'NOT SET'
-    ps.page.drawText('Overall Risk Level:', { x: MARGIN + 4, y: ps.y, size: 10, font: boldFont, color: BLACK })
-    ps.page.drawText(riskText, { x: MARGIN + 130, y: ps.y, size: 10, font: boldFont, color: riskColor(ddr.overallRiskLevel ?? null) })
+    drawPageText(ps.page, 'Overall Risk Level:', { x: MARGIN + 4, y: ps.y, size: 10, font: boldFont, color: BLACK })
+    drawPageText(ps.page, riskText, { x: MARGIN + 130, y: ps.y, size: 10, font: boldFont, color: riskColor(ddr.overallRiskLevel ?? null) })
 
     ps.y -= 14
-    ps.page.drawText('Recommendation:', { x: MARGIN + 4, y: ps.y, size: 9, font: boldFont, color: GRAY })
-    ps.page.drawText(ddr.recommendation ?? '—', { x: MARGIN + 130, y: ps.y, size: 9, font: regularFont, color: BLACK })
+    drawPageText(ps.page, 'Recommendation:', { x: MARGIN + 4, y: ps.y, size: 9, font: boldFont, color: GRAY })
+    drawPageText(ps.page, ddr.recommendation ?? '-', { x: MARGIN + 130, y: ps.y, size: 9, font: regularFont, color: BLACK })
 
     if (ddr.recommendationNote) {
       field('Recommendation Note', ddr.recommendationNote)
@@ -200,7 +208,7 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
     }
   } else {
     ps.y -= 14
-    ps.page.drawText('Pending risk assessment completion.', { x: MARGIN + 4, y: ps.y, size: 9, font: regularFont, color: GRAY })
+    drawPageText(ps.page, 'Pending risk assessment completion.', { x: MARGIN + 4, y: ps.y, size: 9, font: regularFont, color: GRAY })
   }
 
   // ── 7. Disclaimer ─────────────────────────────────────────────────
@@ -210,7 +218,7 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
   const disclaimer = 'This report is prepared by 6AM Advisory (Hong Kong) Limited for internal compliance purposes only. The information contained herein is confidential and subject to applicable data protection laws including the Hong Kong Personal Data (Privacy) Ordinance. This report shall not be disclosed to any third party without prior written consent.'
   const disclaimerLines = wrapText(disclaimer, regularFont, 8, CONTENT_WIDTH - 8)
   for (const line of disclaimerLines) {
-    ps.page.drawText(line, { x: MARGIN + 4, y: ps.y, size: 8, font: regularFont, color: GRAY })
+    drawPageText(ps.page, line, { x: MARGIN + 4, y: ps.y, size: 8, font: regularFont, color: GRAY })
     ps.y -= 11
   }
 
