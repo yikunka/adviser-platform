@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { uploadToR2 } from '@/lib/storage/r2'
-import { analyzeKycImage } from '@/lib/kyc/image-analysis'
+import { analyzeKycDocument } from '@/lib/kyc/image-analysis'
 import { logAudit } from '@/lib/audit/logger'
 import crypto from 'crypto'
 
-const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png'])
+const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'application/pdf'])
 const MAX_SIZE = 10 * 1024 * 1024
 
 export async function POST(req: NextRequest) {
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   if (!clientUserId) return NextResponse.json({ error: 'clientRequired' }, { status: 400 })
   if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
   if (!ALLOWED_TYPES.has(file.type)) {
-    return NextResponse.json({ error: 'Only JPG and PNG images are allowed.' }, { status: 400 })
+    return NextResponse.json({ error: 'Only JPG, PNG, and PDF files are allowed.' }, { status: 400 })
   }
   if (file.size > MAX_SIZE) {
     return NextResponse.json({ error: 'File too large. Max 10MB.' }, { status: 400 })
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
 
   let fields
   try {
-    fields = await analyzeKycImage(file)
+    fields = await analyzeKycDocument(file)
   } catch (err) {
     console.error('[admin/kyc/image-create] Bailian analysis failed:', err)
     return NextResponse.json({ error: 'Image analysis failed' }, { status: 502 })
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   }
 
   const bytes = Buffer.from(await file.arrayBuffer())
-  const ext = file.type === 'image/png' ? 'png' : 'jpg'
+  const ext = file.type === 'application/pdf' ? 'pdf' : file.type === 'image/png' ? 'png' : 'jpg'
   const key = `kyc/${clientUserId}/${crypto.randomUUID()}.${ext}`
 
   try {

@@ -218,8 +218,8 @@ export default function KYCQueuePage() {
 
   function chooseCreateImage(file: File | undefined) {
     if (!file) return
-    if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
-      toast.error('Only JPG and PNG images are allowed')
+    if (file.type !== 'image/jpeg' && file.type !== 'image/png' && file.type !== 'application/pdf') {
+      toast.error('Only JPG, PNG, and PDF files are allowed')
       return
     }
     setCreateImage(file)
@@ -335,7 +335,7 @@ export default function KYCQueuePage() {
               <input
                 ref={createImageInputRef}
                 type="file"
-                accept="image/jpeg,image/png"
+                accept="image/jpeg,image/png,application/pdf"
                 className="sr-only"
                 disabled={creating}
                 onChange={e => { chooseCreateImage(e.target.files?.[0]); e.target.value = '' }}
@@ -347,7 +347,7 @@ export default function KYCQueuePage() {
                 onClick={() => createImageInputRef.current?.click()}
                 title={createImage?.name}
               >
-                {createImage ? 'Change image' : 'Upload image'}
+                {createImage ? 'Change file' : 'Upload image / PDF'}
               </Button>
               {createImage ? (
                 <span className="max-w-56 truncate text-sm" style={{ color: 'var(--muted-foreground)' }}>
@@ -360,7 +360,7 @@ export default function KYCQueuePage() {
             </div>
           </div>
           <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-            JPG or PNG only. Bailian extracts identity fields, assigns the KYC to the selected account, and marks it approved.
+            JPG, PNG, or PDF (including image-based scans). Bailian extracts identity fields, assigns the KYC to the selected account, and marks it approved.
           </p>
         </CardContent>
       </Card>

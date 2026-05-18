@@ -424,7 +424,16 @@ export default function AdminUsersPage() {
                   const verified = !!u.emailVerified
                   const disabled = !u.isActive
                   return (
-                    <tr key={u.id} className="transition-colors hover:bg-[#111108]" style={{ opacity: disabled ? 0.6 : 1 }}>
+                    <tr
+                      key={u.id}
+                      className="cursor-pointer transition-colors hover:bg-[#111108]"
+                      style={{ opacity: disabled ? 0.6 : 1 }}
+                      onClick={() => setEditTarget(u)}
+                      tabIndex={0}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' || e.key === ' ') setEditTarget(u)
+                      }}
+                    >
                       <td style={{ ...td, color: 'var(--foreground)', fontWeight: 500 }}>{u.email}</td>
                       <td style={td}>{u.nameEn}</td>
                       <td style={td}>
@@ -456,7 +465,7 @@ export default function AdminUsersPage() {
                         <div className="flex items-center justify-end gap-1">
                           {/* Edit */}
                           <button
-                            onClick={() => setEditTarget(u)}
+                            onClick={e => { e.stopPropagation(); setEditTarget(u) }}
                             title="Edit user"
                             className="p-1.5 rounded-md transition-colors"
                             style={{ color: 'var(--muted-foreground)' }}
@@ -467,7 +476,7 @@ export default function AdminUsersPage() {
                           </button>
                           {/* Disable / Enable */}
                           <button
-                            onClick={() => toggleActive(u)}
+                            onClick={e => { e.stopPropagation(); toggleActive(u) }}
                             disabled={togglingId === u.id}
                             title={disabled ? 'Enable user' : 'Disable user'}
                             className="p-1.5 rounded-md transition-colors disabled:opacity-40"
@@ -479,7 +488,7 @@ export default function AdminUsersPage() {
                           </button>
                           {/* Delete */}
                           <button
-                            onClick={() => setDeleteTarget(u)}
+                            onClick={e => { e.stopPropagation(); setDeleteTarget(u) }}
                             title="Delete user"
                             className="p-1.5 rounded-md transition-colors"
                             style={{ color: 'var(--muted-foreground)' }}

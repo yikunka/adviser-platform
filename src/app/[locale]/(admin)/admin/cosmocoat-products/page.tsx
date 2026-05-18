@@ -362,7 +362,16 @@ export default function AdminCosmoCoatProductsPage() {
               </thead>
               <tbody>
                 {products.map(product => (
-                  <tr key={product.id} className="transition-colors hover:bg-[#111108]" style={{ opacity: product.isVisible ? 1 : 0.55 }}>
+                  <tr
+                    key={product.id}
+                    className="cursor-pointer transition-colors hover:bg-[#111108]"
+                    style={{ opacity: product.isVisible ? 1 : 0.55 }}
+                    onClick={() => openEdit(product)}
+                    tabIndex={0}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' || e.key === ' ') openEdit(product)
+                    }}
+                  >
                     <td style={{ ...td, minWidth: '22rem' }}>
                       <div className="flex items-center gap-3">
                         <img src={previewSrc(product.imagePath)} alt="" className="w-12 h-12 object-cover rounded-md bg-[#0E0E0A]" style={{ border: '1px solid #2A2418' }} />
@@ -382,10 +391,10 @@ export default function AdminCosmoCoatProductsPage() {
                     <td style={td}>{product.sortOrder}</td>
                     <td style={{ ...td, textAlign: 'right' }}>
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => openEdit(product)} title="Edit product" className="p-1.5 rounded-md transition-colors" style={{ color: 'var(--muted-foreground)' }} onMouseEnter={e => (e.currentTarget.style.color = '#C9A96E')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted-foreground)')}>
+                        <button onClick={e => { e.stopPropagation(); openEdit(product) }} title="Edit product" className="p-1.5 rounded-md transition-colors" style={{ color: 'var(--muted-foreground)' }} onMouseEnter={e => (e.currentTarget.style.color = '#C9A96E')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted-foreground)')}>
                           <Pencil size={14} />
                         </button>
-                        <button onClick={() => deleteProduct(product)} disabled={deletingId === product.id} title="Delete product" className="p-1.5 rounded-md transition-colors disabled:opacity-40" style={{ color: 'var(--muted-foreground)' }} onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted-foreground)')}>
+                        <button onClick={e => { e.stopPropagation(); deleteProduct(product) }} disabled={deletingId === product.id} title="Delete product" className="p-1.5 rounded-md transition-colors disabled:opacity-40" style={{ color: 'var(--muted-foreground)' }} onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted-foreground)')}>
                           <Trash2 size={14} />
                         </button>
                       </div>

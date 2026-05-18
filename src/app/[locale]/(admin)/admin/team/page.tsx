@@ -430,7 +430,21 @@ export default function AdminTeamPage() {
                     u.role !== 'SUPER_ADMIN'
                   const superFull = u.role === 'SUPER_ADMIN'
                   return (
-                    <tr key={u.id}>
+                    <tr
+                      key={u.id}
+                      className="cursor-pointer transition-colors hover:bg-[#111108]"
+                      onClick={() => {
+                        setEditUser(u)
+                        setEditorMode('edit')
+                      }}
+                      tabIndex={0}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          setEditUser(u)
+                          setEditorMode('edit')
+                        }
+                      }}
+                    >
                       <td style={{ ...td, color: 'var(--foreground)', fontWeight: 500 }}>{u.email}</td>
                       <td style={td}>{u.nameEn}</td>
                       <td style={td}>
@@ -459,17 +473,18 @@ export default function AdminTeamPage() {
                         <button
                           type="button"
                           className="p-1.5 rounded-md inline-flex"
-                          onClick={() => {
+                          onClick={e => {
+                            e.stopPropagation()
                             setEditUser(u)
                             setEditorMode('edit')
                           }}
                         >
                           <Pencil size={14} />
                         </button>
-                        <button type="button" className="p-1.5 rounded-md inline-flex" onClick={() => toggleActive(u)}>
+                        <button type="button" className="p-1.5 rounded-md inline-flex" onClick={e => { e.stopPropagation(); toggleActive(u) }}>
                           {u.isActive ? <Ban size={14} /> : <CheckCircle size={14} />}
                         </button>
-                        <button type="button" className="p-1.5 rounded-md inline-flex" onClick={() => remove(u)}>
+                        <button type="button" className="p-1.5 rounded-md inline-flex" onClick={e => { e.stopPropagation(); remove(u) }}>
                           <Trash2 size={14} />
                         </button>
                       </td>

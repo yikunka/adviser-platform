@@ -91,9 +91,10 @@ export default function NewCompanyPage() {
   function addCompanyFiles(docType: CompanyDocType, fileList: FileList | null) {
     const files = Array.from(fileList ?? [])
     if (files.length === 0) return
-    const imageFiles = files.filter(file => file.type === 'image/jpeg' || file.type === 'image/png')
+    const ALLOWED = new Set(['image/jpeg', 'image/png', 'application/pdf'])
+    const imageFiles = files.filter(file => ALLOWED.has(file.type))
     if (imageFiles.length !== files.length) {
-      toast.error('Only JPG and PNG images are allowed here')
+      toast.error('Only JPG, PNG and PDF files are allowed here')
     }
     setCompanyUploads(current => [
       ...current,
@@ -313,7 +314,7 @@ export default function NewCompanyPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <label style={{ ...labelStyle, color: '#C9A96E' }}>Company documents</label>
-              <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Upload CI and BR images to pre-fill this company and attach them after creation.</p>
+              <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Upload CI and BR documents (images or PDF) to pre-fill this company and attach them after creation.</p>
             </div>
             <div className="flex items-center gap-2">
               {(['CI', 'BR'] as const).map(docType => (
@@ -321,7 +322,7 @@ export default function NewCompanyPage() {
                   <input
                     type="file"
                     multiple
-                    accept="image/jpeg,image/png"
+                    accept="image/jpeg,image/png,application/pdf"
                     className="hidden"
                     disabled={loading || analyzing}
                     onChange={e => { addCompanyFiles(docType, e.target.files); e.target.value = '' }}
@@ -379,7 +380,7 @@ export default function NewCompanyPage() {
           </div>
           <div>
             <label style={labelStyle}>Date of Incorporation</label>
-            <Input style={{ ...fieldStyle, colorScheme: 'dark' }} type="date" value={form.dateOfIncorporation} onChange={e => set('dateOfIncorporation', e.target.value)} />
+            <input type="date" value={form.dateOfIncorporation} onChange={e => set('dateOfIncorporation', e.target.value)} min="1900-01-01" max="2100-12-31" className="date-input" style={{ ...fieldStyle, colorScheme: 'dark' }} />
           </div>
         </div>
 

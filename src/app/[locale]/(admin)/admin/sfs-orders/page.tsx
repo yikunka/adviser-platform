@@ -81,7 +81,8 @@ export default function AdminSfsOrdersPage() {
   }, [search, fetchOrders])
 
   // Re-fetch when page changes
-  useEffect(() => { fetchOrders(search, page) }, [page]) // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- fetchOrders updates state after the async request resolves.
+  useEffect(() => { fetchOrders(search, page) }, [page])
 
   const totalPages = Math.ceil(total / pageSize)
 

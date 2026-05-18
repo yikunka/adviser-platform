@@ -135,6 +135,94 @@ function fmt(d: string | null | undefined) {
   return new Date(d).toLocaleDateString('en-HK')
 }
 
+function DateInput({ value, onChange, required, disabled }: {
+  value: string
+  onChange: (v: string) => void
+  required?: boolean
+  disabled?: boolean
+}) {
+  return (
+    <input
+      type="date"
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      required={required}
+      disabled={disabled}
+      min="1900-01-01"
+      max="2100-12-31"
+      className="date-input"
+      style={{ ...fieldStyle, colorScheme: 'dark' }}
+    />
+  )
+}
+
+type DocEntry = { id: string; name: string; createdAt: string; notes: string | null; effectiveDate: string | null }
+
+function YearGroupedDocs({
+  docs,
+  onPreview,
+  onDelete,
+}: {
+  docs: DocEntry[]
+  onPreview: (id: string) => void
+  onDelete: (id: string) => void
+}) {
+  const currentYear = String(new Date().getFullYear())
+  const [openYears, setOpenYears] = useState<Set<string>>(() => new Set([currentYear]))
+
+  const groups = docs.reduce<Record<string, DocEntry[]>>((acc, doc) => {
+    const year = doc.effectiveDate
+      ? String(new Date(doc.effectiveDate).getFullYear())
+      : doc.notes?.match(/\d{4}/)?.[0] ?? 'Unknown'
+    ;(acc[year] ??= []).push(doc)
+    return acc
+  }, {})
+
+  const years = Object.keys(groups).sort((a, b) => Number(b) - Number(a))
+
+  if (years.length === 0)
+    return <p className="px-4 py-3 text-sm" style={{ color: '#5A5040' }}>No files uploaded yet.</p>
+
+  return (
+    <>
+      {years.map(year => {
+        const open = openYears.has(year)
+        return (
+          <div key={year} style={{ borderTop: '1px solid #2A2418' }}>
+            <button
+              type="button"
+              className="flex w-full items-center justify-between px-4 py-2.5 text-sm"
+              style={{ color: 'var(--foreground)', background: 'transparent' }}
+              onClick={() => setOpenYears(prev => {
+                const next = new Set(prev)
+                open ? next.delete(year) : next.add(year)
+                return next
+              })}
+            >
+              <span className="font-medium">{year}</span>
+              <span style={{ color: '#5A5040', fontSize: '0.75rem' }}>{open ? '▲' : '▼'} {groups[year].length} file{groups[year].length !== 1 ? 's' : ''}</span>
+            </button>
+            {open && (
+              <ul className="divide-y divide-[#2A2418]">
+                {groups[year].map(doc => (
+                  <li key={doc.id} className="flex items-center justify-between px-4 py-2.5">
+                    <span className="text-sm truncate max-w-xs" style={{ color: 'var(--foreground)' }}>{doc.name}</span>
+                    <div className="flex items-center gap-2 shrink-0 ml-3">
+                      <span className="text-xs" style={{ color: '#5A5040' }}>{new Date(doc.createdAt).toLocaleDateString('en-HK')}</span>
+                      <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onPreview(doc.id)}>Preview</Button>
+                      <Button size="sm" variant="outline" className="h-7 px-2 text-xs" style={{ color: '#ef4444', borderColor: '#ef4444' }} onClick={() => onDelete(doc.id)}>Delete</Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )
+      })}
+    </>
+  )
+}
+
 // ── Company Edit Form ─────────────────────────────────────────────────────────
 
 function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => void }) {
@@ -194,7 +282,7 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
         </div>
         <div>
           <label style={labelStyle}>Date of Incorporation</label>
-          <Input style={{ ...fieldStyle, colorScheme: 'dark' }} type="date" value={form.dateOfIncorporation} onChange={e => set('dateOfIncorporation', e.target.value)} />
+          <DateInput value={form.dateOfIncorporation} onChange={v => set('dateOfIncorporation', v)} />
         </div>
       </div>
       <div>
@@ -342,11 +430,11 @@ function DirectorForm({ companyId, initial, kycPersons, onDone }: {
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label style={labelStyle}>Date of Appointment *</label>
-          <Input style={{ ...fieldStyle, colorScheme: 'dark' }} type="date" required value={form.dateOfAppointment} onChange={e => set('dateOfAppointment', e.target.value)} />
+          <DateInput value={form.dateOfAppointment} onChange={v => set('dateOfAppointment', v)} required />
         </div>
         <div>
           <label style={labelStyle}>Date of Cessation</label>
-          <Input style={{ ...fieldStyle, colorScheme: 'dark' }} type="date" value={form.dateOfCessation} onChange={e => set('dateOfCessation', e.target.value)} />
+          <DateInput value={form.dateOfCessation} onChange={v => set('dateOfCessation', v)} />
         </div>
       </div>
       <div>
@@ -557,7 +645,7 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
             </div>
             <div>
               <label style={labelStyle}>Date *</label>
-              <Input type="date" style={{ ...fieldStyle, colorScheme: 'dark' }} value={tx.transactionDate} onChange={e => setT('transactionDate', e.target.value)} />
+              <DateInput value={tx.transactionDate} onChange={v => setT('transactionDate', v)} />
             </div>
             <div>
               <label style={labelStyle}>Allotment / Transfer No.</label>
@@ -746,18 +834,18 @@ function ControllerForm({ companyId, initial, kycPersons, onDone }: {
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label style={labelStyle}>Entry Date *</label>
-          <Input style={{ ...fieldStyle, colorScheme: 'dark' }} type="date" required value={form.entryDate} onChange={e => set('entryDate', e.target.value)} />
+          <DateInput value={form.entryDate} onChange={v => set('entryDate', v)} required />
         </div>
         <div>
           <label style={labelStyle}>Becoming Date *</label>
-          <Input style={{ ...fieldStyle, colorScheme: 'dark' }} type="date" required value={form.becomingDate} onChange={e => set('becomingDate', e.target.value)} />
+          <DateInput value={form.becomingDate} onChange={v => set('becomingDate', v)} required />
         </div>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label style={labelStyle}>Cessation Date</label>
-          <Input style={{ ...fieldStyle, colorScheme: 'dark' }} type="date" value={form.cessationDate} onChange={e => set('cessationDate', e.target.value)} />
+          <DateInput value={form.cessationDate} onChange={v => set('cessationDate', v)} />
         </div>
         <div>
           <label style={labelStyle}>Nature of Control</label>
@@ -911,17 +999,17 @@ function DesignatedRepForm({ companyId, initial, kycPersons, onDone }: {
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label style={labelStyle}>Entry Date *</label>
-          <Input style={{ ...fieldStyle, colorScheme: 'dark' }} type="date" required value={form.entryDate} onChange={e => set('entryDate', e.target.value)} />
+          <DateInput value={form.entryDate} onChange={v => set('entryDate', v)} required />
         </div>
         <div>
           <label style={labelStyle}>Becoming Date *</label>
-          <Input style={{ ...fieldStyle, colorScheme: 'dark' }} type="date" required value={form.becomingDate} onChange={e => set('becomingDate', e.target.value)} />
+          <DateInput value={form.becomingDate} onChange={v => set('becomingDate', v)} required />
         </div>
       </div>
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label style={labelStyle}>Cessation Date</label>
-          <Input style={{ ...fieldStyle, colorScheme: 'dark' }} type="date" value={form.cessationDate} onChange={e => set('cessationDate', e.target.value)} />
+          <DateInput value={form.cessationDate} onChange={v => set('cessationDate', v)} />
         </div>
         <div>
           <label style={labelStyle}>Tel / Fax No.</label>
@@ -969,7 +1057,10 @@ export default function CompanyDetailPage() {
   const [kycPersons, setKycPersons] = useState<KycPerson[]>([])
   const [uploading, setUploading] = useState<string | null>(null)
   const [nar1Year, setNar1Year] = useState(String(new Date().getFullYear()))
+  const [brYear, setBrYear] = useState(String(new Date().getFullYear()))
   const [generatingDdr, setGeneratingDdr] = useState(false)
+  const [showOlderDdr, setShowOlderDdr] = useState(false)
+  const [otherRemark, setOtherRemark] = useState('')
   const ensuredDocsForRef = useRef<string | null>(null)
 
   const reload = useCallback(() => {
@@ -1050,7 +1141,7 @@ export default function CompanyDetailPage() {
     }
   }
 
-  async function uploadDoc(docType: string, file: File, opts: { year?: string } = {}) {
+  async function uploadDoc(docType: string, file: File, opts: { year?: string; notes?: string } = {}) {
     setUploading(docType)
     try {
       const fd = new FormData()
@@ -1060,6 +1151,8 @@ export default function CompanyDetailPage() {
       if (opts.year) {
         fd.append('notes', `Year: ${opts.year}`)
         fd.append('effectiveDate', `${opts.year}-01-01`)
+      } else if (opts.notes) {
+        fd.append('notes', opts.notes)
       }
       const res = await fetch('/api/documents/upload', { method: 'POST', body: fd })
       if (res.ok) { toast.success('Uploaded'); reload() }
@@ -1140,9 +1233,9 @@ export default function CompanyDetailPage() {
       <Tabs defaultValue="overview">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="directors">Directors ({company.directors.length})</TabsTrigger>
-          <TabsTrigger value="members">Members ({company.members.length})</TabsTrigger>
-          <TabsTrigger value="controllers">Controllers ({company.significantControllers.length + company.designatedReps.length})</TabsTrigger>
+          <TabsTrigger value="people">
+            People ({company.directors.length + company.members.length + company.significantControllers.length + company.designatedReps.length})
+          </TabsTrigger>
         </TabsList>
 
         {/* Overview */}
@@ -1162,12 +1255,8 @@ export default function CompanyDetailPage() {
           </div>
 
           {/* Company statutory uploads */}
-          {(['CI', 'BR', 'AA'] as const).map(docType => {
-            const labels = {
-              CI: 'Certificate of Incorporation (CI)',
-              BR: 'Business Registration Certificate (BR)',
-              AA: 'Articles of Association (AA)',
-            }
+          {(['CI', 'AA'] as const).map(docType => {
+            const labels = { CI: 'Certificate of Incorporation (CI)', AA: 'Articles of Association (AA)' }
             const label = labels[docType]
             const docs = company.documents.filter(d => d.documentType === docType && !isGeneratedDoc(d))
             return (
@@ -1213,6 +1302,47 @@ export default function CompanyDetailPage() {
             )
           })}
 
+          {/* BR — year-tagged upload */}
+          <div style={cardStyle}>
+            <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderBottom: '1px solid #2A2418' }}>
+              <div>
+                <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Business Registration Certificate (BR)</span>
+                <p className="text-xs mt-1" style={{ color: '#5A5040' }}>Choose the year before uploading the yearly BR document.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <select value={brYear} onChange={e => setBrYear(e.target.value)} style={{ ...fieldStyle, width: 120 }}>
+                  {Array.from({ length: 12 }, (_, i) => String(new Date().getFullYear() + 2 - i)).map(year => (
+                    <option key={year} value={year} style={{ background: '#141414' }}>{year}</option>
+                  ))}
+                </select>
+                <label style={{ cursor: uploading === 'BR' ? 'not-allowed' : 'pointer' }}>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    className="hidden"
+                    disabled={uploading === 'BR'}
+                    onChange={e => {
+                      const file = e.target.files?.[0]
+                      if (file) { uploadDoc('BR', file, { year: brYear }); e.target.value = '' }
+                    }}
+                  />
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-medium transition-colors"
+                    style={{ borderColor: '#2A2418', color: uploading === 'BR' ? '#5A5040' : 'var(--foreground)', background: 'transparent', cursor: 'inherit' }}
+                  >
+                    {uploading === 'BR' ? 'Uploading…' : `Upload BR ${brYear}`}
+                  </span>
+                </label>
+              </div>
+            </div>
+            <YearGroupedDocs
+              docs={company.documents.filter(d => d.documentType === 'BR' && !isGeneratedDoc(d))}
+              onPreview={downloadDoc}
+              onDelete={deleteDoc}
+            />
+          </div>
+
+          {/* NAR1 — year-tagged upload */}
           <div style={cardStyle}>
             <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderBottom: '1px solid #2A2418' }}>
               <div>
@@ -1245,25 +1375,11 @@ export default function CompanyDetailPage() {
                 </label>
               </div>
             </div>
-            {company.documents.filter(d => d.documentType === 'NAR1' && !isGeneratedDoc(d)).length === 0 ? (
-              <p className="px-4 py-3 text-sm" style={{ color: '#5A5040' }}>No NAR1 files uploaded yet.</p>
-            ) : (
-              <ul className="divide-y divide-[#2A2418]">
-                {company.documents.filter(d => d.documentType === 'NAR1' && !isGeneratedDoc(d)).map(doc => (
-                  <li key={doc.id} className="flex items-center justify-between px-4 py-2.5">
-                    <div className="min-w-0">
-                      <span className="block text-sm truncate max-w-xs" style={{ color: 'var(--foreground)' }}>{doc.name}</span>
-                      <span className="text-xs" style={{ color: '#5A5040' }}>{doc.notes ?? (doc.effectiveDate ? `Year: ${new Date(doc.effectiveDate).getFullYear()}` : 'Year not set')}</span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0 ml-3">
-                      <span className="text-xs" style={{ color: '#5A5040' }}>{new Date(doc.createdAt).toLocaleDateString('en-HK')}</span>
-                      <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => downloadDoc(doc.id)}>Preview</Button>
-                      <Button size="sm" variant="outline" className="h-7 px-2 text-xs" style={{ color: '#ef4444', borderColor: '#ef4444' }} onClick={() => deleteDoc(doc.id)}>Delete</Button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <YearGroupedDocs
+              docs={company.documents.filter(d => d.documentType === 'NAR1' && !isGeneratedDoc(d))}
+              onPreview={downloadDoc}
+              onDelete={deleteDoc}
+            />
           </div>
 
           <div style={cardStyle} className="p-4 space-y-3">
@@ -1296,7 +1412,7 @@ export default function CompanyDetailPage() {
               </div>
             ) : (
               <ul className="divide-y divide-[#2A2418]">
-                {ddrDocs.map(doc => (
+                {(showOlderDdr ? ddrDocs : ddrDocs.slice(0, 1)).map(doc => (
                   <li key={doc.id} className="flex items-center justify-between px-4 py-2.5">
                     <div className="min-w-0">
                       <span className="block text-sm truncate max-w-xs" style={{ color: 'var(--foreground)' }}>{doc.notes ?? 'Monthly report'}</span>
@@ -1305,207 +1421,283 @@ export default function CompanyDetailPage() {
                     <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => downloadDoc(doc.id)}>Download</Button>
                   </li>
                 ))}
+                {ddrDocs.length > 1 && (
+                  <li>
+                    <button
+                      type="button"
+                      className="w-full px-4 py-2 text-xs text-left transition-colors hover:bg-[#1A1A12]"
+                      style={{ color: '#5A5040' }}
+                      onClick={() => setShowOlderDdr(v => !v)}
+                    >
+                      {showOlderDdr ? '▲ Hide older reports' : `▼ Show ${ddrDocs.length - 1} older report${ddrDocs.length - 1 !== 1 ? 's' : ''}`}
+                    </button>
+                  </li>
+                )}
               </ul>
             )}
           </div>
-        </TabsContent>
-
-        {/* Directors */}
-        <TabsContent value="directors" className="mt-4 space-y-3">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div style={cardStyle} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
-              <div>
-                <p className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{REGISTER_DOCS.directors.label}</p>
-                <p className="text-xs" style={{ color: '#5A5040' }}>
-                  {latestDoc('ROD') ? `Latest generated ${new Date(latestDoc('ROD')!.createdAt).toLocaleDateString('en-HK')}` : 'Generated automatically after director changes.'}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                {latestDoc('ROD') && <Button size="sm" variant="outline" onClick={() => downloadDoc(latestDoc('ROD')!.id)}>Download ROD</Button>}
-                {!latestDoc('ROD') && <span className="text-xs" style={{ color: '#5A5040' }}>Will be generated after the next director change.</span>}
-              </div>
-            </div>
-            <Button size="sm" onClick={() => setModal({ type: 'director', mode: 'add' })}>+ Add Director</Button>
-          </div>
-          <div style={cardStyle}>
-            <table className="w-full text-sm">
-              <thead>
-                <tr>
-                  <th style={thStyle}>Name</th>
-                  <th style={thStyle}>Appointed</th>
-                  <th style={thStyle}>Ceased</th>
-                  <th style={thStyle}>Status</th>
-                  <th style={{ ...thStyle, width: '6rem' }} />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#2A2418]">
-                {company.directors.map(d => (
-                  <tr key={d.id} className="hover:bg-[#1A1A12] transition-colors">
-                    <td style={tdPrimaryStyle}>{d.nameEn}{d.nameZh ? ` (${d.nameZh})` : ''}</td>
-                    <td style={tdStyle}>{fmt(d.dateOfAppointment)}</td>
-                    <td style={tdStyle}>{fmt(d.dateOfCessation)}</td>
-                    <td style={tdStyle}><Badge variant={d.status === 'ACTIVE' ? 'default' : 'secondary'}>{d.status}</Badge></td>
-                    <td style={tdStyle}>
-                      <div className="flex gap-2">
-                        <button onClick={() => setModal({ type: 'director', mode: 'edit', data: d })} className="text-xs hover:underline" style={{ color: '#C9A96E' }}>Edit</button>
-                        <button onClick={() => deleteItem('directors', d.id)} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Delete</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {company.directors.length === 0 && (
-                  <tr><td colSpan={5} className="px-4 py-6 text-center" style={{ color: '#5A5040' }}>No directors — click Add Director to get started</td></tr>
+          {/* Other Files */}
+          {(() => {
+            const otherDocs = company.documents.filter(d => d.documentType === 'OTHER' && !isGeneratedDoc(d))
+            const byDate = otherDocs.reduce<Record<string, typeof otherDocs>>((acc, doc) => {
+              const key = new Date(doc.createdAt).toLocaleDateString('en-HK')
+              ;(acc[key] ??= []).push(doc)
+              return acc
+            }, {})
+            return (
+              <div style={cardStyle}>
+                <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderBottom: '1px solid #2A2418' }}>
+                  <div>
+                    <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Other Files</span>
+                    <p className="text-xs mt-0.5" style={{ color: '#5A5040' }}>Upload any supplementary files. Add a remark to describe each file.</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <input
+                      value={otherRemark}
+                      onChange={e => setOtherRemark(e.target.value)}
+                      placeholder="File remark (optional)"
+                      maxLength={200}
+                      style={{ ...fieldStyle, width: 220 }}
+                    />
+                    <label style={{ cursor: uploading === 'OTHER' ? 'not-allowed' : 'pointer' }}>
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        className="hidden"
+                        disabled={uploading === 'OTHER'}
+                        onChange={e => {
+                          const file = e.target.files?.[0]
+                          if (file) { uploadDoc('OTHER', file, { notes: otherRemark.trim() || undefined }); e.target.value = '' }
+                        }}
+                      />
+                      <span
+                        className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-medium transition-colors"
+                        style={{ borderColor: '#2A2418', color: uploading === 'OTHER' ? '#5A5040' : 'var(--foreground)', background: 'transparent', cursor: 'inherit' }}
+                      >
+                        {uploading === 'OTHER' ? 'Uploading…' : 'Upload File'}
+                      </span>
+                    </label>
+                  </div>
+                </div>
+                {otherDocs.length === 0 ? (
+                  <p className="px-4 py-3 text-sm" style={{ color: '#5A5040' }}>No other files uploaded yet.</p>
+                ) : (
+                  Object.entries(byDate).map(([date, docs]) => (
+                    <div key={date}>
+                      <p className="px-4 py-2 text-xs font-semibold uppercase tracking-wider" style={{ color: '#7A7060', borderBottom: '1px solid #2A2418' }}>{date}</p>
+                      <ul className="divide-y divide-[#2A2418]">
+                        {docs.map(doc => (
+                          <li key={doc.id} className="flex items-center justify-between px-4 py-2.5">
+                            <div className="min-w-0">
+                              <span className="block text-sm truncate max-w-xs" style={{ color: 'var(--foreground)' }}>{doc.name}</span>
+                              {doc.notes && <span className="text-xs" style={{ color: '#5A5040' }}>{doc.notes}</span>}
+                            </div>
+                            <div className="flex items-center gap-2 ml-2 shrink-0">
+                              <button onClick={() => downloadDoc(doc.id)} className="text-xs hover:underline" style={{ color: '#C9A96E' }}>Download</button>
+                              <button onClick={() => deleteDoc(doc.id)} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Delete</button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))
                 )}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            )
+          })()}
         </TabsContent>
 
-        {/* Members */}
-        <TabsContent value="members" className="mt-4 space-y-3">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div style={cardStyle} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
-              <div>
-                <p className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{REGISTER_DOCS.members.label}</p>
-                <p className="text-xs" style={{ color: '#5A5040' }}>
-                  {latestDoc('ROM') ? `Latest generated ${new Date(latestDoc('ROM')!.createdAt).toLocaleDateString('en-HK')}` : 'Generated automatically after member changes.'}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                {latestDoc('ROM') && <Button size="sm" variant="outline" onClick={() => downloadDoc(latestDoc('ROM')!.id)}>Download ROM</Button>}
-                {!latestDoc('ROM') && <span className="text-xs" style={{ color: '#5A5040' }}>Will be generated after the next member change.</span>}
-              </div>
-            </div>
-            <Button size="sm" onClick={() => setModal({ type: 'member', mode: 'add' })}>+ Add Member</Button>
-          </div>
-          <div style={cardStyle}>
-            <table className="w-full text-sm">
-              <thead>
-                <tr>
-                  <th style={thStyle}>Name</th>
-                  <th style={thStyle}>Share Class</th>
-                  <th style={thStyle}>Occupation</th>
-                  <th style={thStyle}>Status</th>
-                  <th style={{ ...thStyle, width: '6rem' }} />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#2A2418]">
-                {company.members.map(m => (
-                  <tr key={m.id} className="hover:bg-[#1A1A12] transition-colors">
-                    <td style={tdPrimaryStyle}>{m.nameEn}{m.nameZh ? ` (${m.nameZh})` : ''}</td>
-                    <td style={tdStyle}>{m.shareClass}</td>
-                    <td style={tdStyle}>{m.occupation ?? '—'}</td>
-                    <td style={tdStyle}><Badge variant={m.status === 'ACTIVE' ? 'default' : 'secondary'}>{m.status}</Badge></td>
-                    <td style={tdStyle}>
-                      <div className="flex gap-2">
-                        <button onClick={() => setModal({ type: 'member', mode: 'edit', data: m })} className="text-xs hover:underline" style={{ color: '#C9A96E' }}>Edit</button>
-                        <button onClick={() => deleteItem('members', m.id)} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Delete</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {company.members.length === 0 && (
-                  <tr><td colSpan={5} className="px-4 py-6 text-center" style={{ color: '#5A5040' }}>No members — click Add Member to get started</td></tr>
+        {/* People — Directors, Members, Controllers */}
+        <TabsContent value="people" className="mt-4 space-y-8">
+
+          {/* Directors group */}
+          <div className="space-y-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <h3 className="text-base font-semibold" style={{ color: 'var(--foreground)' }}>Directors</h3>
+                {latestDoc('ROD') && (
+                  <Button size="sm" variant="outline" onClick={() => downloadDoc(latestDoc('ROD')!.id)}>Download ROD</Button>
                 )}
-              </tbody>
-            </table>
-          </div>
-        </TabsContent>
-
-        {/* Controllers */}
-        <TabsContent value="controllers" className="mt-4 space-y-4">
-          <div style={cardStyle} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{REGISTER_DOCS.controllers.label}</p>
-              <p className="text-xs" style={{ color: '#5A5040' }}>
-                {latestDoc('ROSC') ? `Latest generated ${new Date(latestDoc('ROSC')!.createdAt).toLocaleDateString('en-HK')}` : 'Generated automatically after controller or designated representative changes.'}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              {latestDoc('ROSC') && <Button size="sm" variant="outline" onClick={() => downloadDoc(latestDoc('ROSC')!.id)}>Download ROSC</Button>}
-              {!latestDoc('ROSC') && <span className="text-xs" style={{ color: '#5A5040' }}>Will be generated after the next controller change.</span>}
-            </div>
-          </div>
-
-          {/* Significant Controllers */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Significant Controllers</h3>
-              <Button size="sm" onClick={() => setModal({ type: 'controller', mode: 'add' })}>+ Add Controller</Button>
+                {!latestDoc('ROD') && (
+                  <span className="text-xs" style={{ color: '#5A5040' }}>ROD generated after next change</span>
+                )}
+              </div>
+              <Button size="sm" onClick={() => setModal({ type: 'director', mode: 'add' })}>+ Add Director</Button>
             </div>
             <div style={cardStyle}>
               <table className="w-full text-sm">
                 <thead>
                   <tr>
                     <th style={thStyle}>Name</th>
-                    <th style={thStyle}>Nature of Control</th>
-                    <th style={thStyle}>Becoming</th>
+                    <th style={thStyle}>Appointed</th>
                     <th style={thStyle}>Ceased</th>
+                    <th style={thStyle}>Status</th>
                     <th style={{ ...thStyle, width: '6rem' }} />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#2A2418]">
-                  {company.significantControllers.map(sc => (
-                    <tr key={sc.id} className="hover:bg-[#1A1A12] transition-colors">
-                      <td style={tdPrimaryStyle}>{sc.nameEn}{sc.nameZh ? ` (${sc.nameZh})` : ''}</td>
-                      <td style={tdStyle}>{sc.natureOfControl ?? '—'}</td>
-                      <td style={tdStyle}>{fmt(sc.becomingDate)}</td>
-                      <td style={tdStyle}>{fmt(sc.cessationDate)}</td>
+                  {company.directors.map(d => (
+                    <tr key={d.id} className="hover:bg-[#1A1A12] transition-colors">
+                      <td style={tdPrimaryStyle}>{d.nameEn}{d.nameZh ? ` (${d.nameZh})` : ''}</td>
+                      <td style={tdStyle}>{fmt(d.dateOfAppointment)}</td>
+                      <td style={tdStyle}>{fmt(d.dateOfCessation)}</td>
+                      <td style={tdStyle}><Badge variant={d.status === 'ACTIVE' ? 'default' : 'secondary'}>{d.status}</Badge></td>
                       <td style={tdStyle}>
                         <div className="flex gap-2">
-                          <button onClick={() => setModal({ type: 'controller', mode: 'edit', data: sc })} className="text-xs hover:underline" style={{ color: '#C9A96E' }}>Edit</button>
-                          <button onClick={() => deleteItem('controllers', sc.id)} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Delete</button>
+                          <button onClick={() => setModal({ type: 'director', mode: 'edit', data: d })} className="text-xs hover:underline" style={{ color: '#C9A96E' }}>Edit</button>
+                          <button onClick={() => deleteItem('directors', d.id)} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Delete</button>
                         </div>
                       </td>
                     </tr>
                   ))}
-                  {company.significantControllers.length === 0 && (
-                    <tr><td colSpan={5} className="px-4 py-6 text-center" style={{ color: '#5A5040' }}>No significant controllers — click Add Controller to get started</td></tr>
+                  {company.directors.length === 0 && (
+                    <tr><td colSpan={5} className="px-4 py-6 text-center" style={{ color: '#5A5040' }}>No directors — click Add Director to get started</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
           </div>
 
-          {/* Designated Representatives */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Designated Representatives</h3>
-              <Button size="sm" onClick={() => setModal({ type: 'designatedRep', mode: 'add' })}>+ Add Rep</Button>
+          {/* Members group */}
+          <div className="space-y-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <h3 className="text-base font-semibold" style={{ color: 'var(--foreground)' }}>Members</h3>
+                {latestDoc('ROM') && (
+                  <Button size="sm" variant="outline" onClick={() => downloadDoc(latestDoc('ROM')!.id)}>Download ROM</Button>
+                )}
+                {!latestDoc('ROM') && (
+                  <span className="text-xs" style={{ color: '#5A5040' }}>ROM generated after next change</span>
+                )}
+              </div>
+              <Button size="sm" onClick={() => setModal({ type: 'member', mode: 'add' })}>+ Add Member</Button>
             </div>
             <div style={cardStyle}>
               <table className="w-full text-sm">
                 <thead>
                   <tr>
                     <th style={thStyle}>Name</th>
-                    <th style={thStyle}>Capacity</th>
-                    <th style={thStyle}>Tel / Fax</th>
-                    <th style={thStyle}>Becoming</th>
-                    <th style={thStyle}>Ceased</th>
+                    <th style={thStyle}>Share Class</th>
+                    <th style={thStyle}>Occupation</th>
+                    <th style={thStyle}>Status</th>
                     <th style={{ ...thStyle, width: '6rem' }} />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#2A2418]">
-                  {company.designatedReps.map(dr => (
-                    <tr key={dr.id} className="hover:bg-[#1A1A12] transition-colors">
-                      <td style={tdPrimaryStyle}>{dr.name}</td>
-                      <td style={tdStyle}>{dr.capacity ?? '—'}</td>
-                      <td style={tdStyle}>{dr.telFax ?? '—'}</td>
-                      <td style={tdStyle}>{fmt(dr.becomingDate)}</td>
-                      <td style={tdStyle}>{fmt(dr.cessationDate)}</td>
+                  {company.members.map(m => (
+                    <tr key={m.id} className="hover:bg-[#1A1A12] transition-colors">
+                      <td style={tdPrimaryStyle}>{m.nameEn}{m.nameZh ? ` (${m.nameZh})` : ''}</td>
+                      <td style={tdStyle}>{m.shareClass}</td>
+                      <td style={tdStyle}>{m.occupation ?? '—'}</td>
+                      <td style={tdStyle}><Badge variant={m.status === 'ACTIVE' ? 'default' : 'secondary'}>{m.status}</Badge></td>
                       <td style={tdStyle}>
                         <div className="flex gap-2">
-                          <button onClick={() => setModal({ type: 'designatedRep', mode: 'edit', data: dr })} className="text-xs hover:underline" style={{ color: '#C9A96E' }}>Edit</button>
-                          <button onClick={() => deleteItem('designated-reps', dr.id)} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Delete</button>
+                          <button onClick={() => setModal({ type: 'member', mode: 'edit', data: m })} className="text-xs hover:underline" style={{ color: '#C9A96E' }}>Edit</button>
+                          <button onClick={() => deleteItem('members', m.id)} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Delete</button>
                         </div>
                       </td>
                     </tr>
                   ))}
-                  {company.designatedReps.length === 0 && (
-                    <tr><td colSpan={6} className="px-4 py-6 text-center" style={{ color: '#5A5040' }}>No designated representatives — click Add Rep to get started</td></tr>
+                  {company.members.length === 0 && (
+                    <tr><td colSpan={5} className="px-4 py-6 text-center" style={{ color: '#5A5040' }}>No members — click Add Member to get started</td></tr>
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          {/* Controllers group */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <h3 className="text-base font-semibold" style={{ color: 'var(--foreground)' }}>Controllers</h3>
+              {latestDoc('ROSC') && (
+                <Button size="sm" variant="outline" onClick={() => downloadDoc(latestDoc('ROSC')!.id)}>Download ROSC</Button>
+              )}
+              {!latestDoc('ROSC') && (
+                <span className="text-xs" style={{ color: '#5A5040' }}>ROSC generated after next change</span>
+              )}
+            </div>
+
+            {/* Significant Controllers */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>Significant Controllers</h4>
+                <Button size="sm" onClick={() => setModal({ type: 'controller', mode: 'add' })}>+ Add Controller</Button>
+              </div>
+              <div style={cardStyle}>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr>
+                      <th style={thStyle}>Name</th>
+                      <th style={thStyle}>Nature of Control</th>
+                      <th style={thStyle}>Becoming</th>
+                      <th style={thStyle}>Ceased</th>
+                      <th style={{ ...thStyle, width: '6rem' }} />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#2A2418]">
+                    {company.significantControllers.map(sc => (
+                      <tr key={sc.id} className="hover:bg-[#1A1A12] transition-colors">
+                        <td style={tdPrimaryStyle}>{sc.nameEn}{sc.nameZh ? ` (${sc.nameZh})` : ''}</td>
+                        <td style={tdStyle}>{sc.natureOfControl ?? '—'}</td>
+                        <td style={tdStyle}>{fmt(sc.becomingDate)}</td>
+                        <td style={tdStyle}>{fmt(sc.cessationDate)}</td>
+                        <td style={tdStyle}>
+                          <div className="flex gap-2">
+                            <button onClick={() => setModal({ type: 'controller', mode: 'edit', data: sc })} className="text-xs hover:underline" style={{ color: '#C9A96E' }}>Edit</button>
+                            <button onClick={() => deleteItem('controllers', sc.id)} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {company.significantControllers.length === 0 && (
+                      <tr><td colSpan={5} className="px-4 py-6 text-center" style={{ color: '#5A5040' }}>No significant controllers — click Add Controller to get started</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Designated Representatives */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>Designated Representatives</h4>
+                <Button size="sm" onClick={() => setModal({ type: 'designatedRep', mode: 'add' })}>+ Add Rep</Button>
+              </div>
+              <div style={cardStyle}>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr>
+                      <th style={thStyle}>Name</th>
+                      <th style={thStyle}>Capacity</th>
+                      <th style={thStyle}>Tel / Fax</th>
+                      <th style={thStyle}>Becoming</th>
+                      <th style={thStyle}>Ceased</th>
+                      <th style={{ ...thStyle, width: '6rem' }} />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#2A2418]">
+                    {company.designatedReps.map(dr => (
+                      <tr key={dr.id} className="hover:bg-[#1A1A12] transition-colors">
+                        <td style={tdPrimaryStyle}>{dr.name}</td>
+                        <td style={tdStyle}>{dr.capacity ?? '—'}</td>
+                        <td style={tdStyle}>{dr.telFax ?? '—'}</td>
+                        <td style={tdStyle}>{fmt(dr.becomingDate)}</td>
+                        <td style={tdStyle}>{fmt(dr.cessationDate)}</td>
+                        <td style={tdStyle}>
+                          <div className="flex gap-2">
+                            <button onClick={() => setModal({ type: 'designatedRep', mode: 'edit', data: dr })} className="text-xs hover:underline" style={{ color: '#C9A96E' }}>Edit</button>
+                            <button onClick={() => deleteItem('designated-reps', dr.id)} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {company.designatedReps.length === 0 && (
+                      <tr><td colSpan={6} className="px-4 py-6 text-center" style={{ color: '#5A5040' }}>No designated representatives — click Add Rep to get started</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 

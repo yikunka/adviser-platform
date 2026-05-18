@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useRouter } from '@/i18n/navigation'
@@ -77,7 +76,7 @@ export default function AMLPage() {
   const [extractingLocal, setExtractingLocal] = useState(false)
   const [sources, setSources] = useState<AMLSource[]>([])
   const [ingestResults, setIngestResults] = useState<SourceIngestResult[] | null>(null)
-  const [showSources, setShowSources] = useState(true)
+  const [showSources, setShowSources] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -98,7 +97,9 @@ export default function AMLPage() {
     if (res.ok) setSources(await res.json())
   }, [])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- load updates state after the async request resolves.
   useEffect(() => { load() }, [load])
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- loadSources updates state after the async request resolves.
   useEffect(() => { loadSources() }, [loadSources])
 
   async function handleIngest() {

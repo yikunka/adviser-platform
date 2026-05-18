@@ -50,6 +50,7 @@ export default function CompaniesPage() {
     }
   }, [search, page])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchCompanies updates state after the async request resolves.
   useEffect(() => { fetchCompanies() }, [fetchCompanies])
 
   return (

@@ -628,8 +628,7 @@ export default function KYCPage() {
               <div key={key} className="flex items-center flex-1 last:flex-none">
                 <button
                   type="button"
-                  onClick={() => !isLocked && setStep(i)}
-                  disabled={isLocked}
+                  onClick={() => setStep(i)}
                   className="flex flex-col items-center gap-1.5 flex-shrink-0"
                 >
                   <div
