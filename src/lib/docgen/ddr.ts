@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { PDFDocument, rgb, StandardFonts, PDFFont, PDFPage } from 'pdf-lib'
+import type { Font, Fontkit } from 'pdf-lib/es/types/fontkit'
 import { prisma } from '@/lib/db/prisma'
 
 const PRIMARY = rgb(0.365, 0.306, 0.216)
@@ -28,8 +29,37 @@ interface ReportFonts {
   supportsUnicode: boolean
 }
 
-interface FontkitBridge {
-  create(data: Uint8Array): unknown
+function loadFontkitBridge(): { fontkit: Fontkit; subset: boolean } | null {
+  const dynamicRequire = eval('require') as NodeRequire
+
+  try {
+    const pdfLibFontkit = dynamicRequire('@pdf-lib/fontkit')
+    return {
+      fontkit: (pdfLibFontkit.default ?? pdfLibFontkit) as Fontkit,
+      subset: true,
+    }
+  } catch {
+    // Fall through to the font reader bundled with Next. It cannot subset fonts,
+    // but it lets generated PDFs preserve Chinese text without another runtime dependency.
+  }
+
+  try {
+    const nextFontkitModule = dynamicRequire('next/dist/compiled/@next/font/dist/fontkit')
+    const fontFromBuffer = nextFontkitModule.default?.default ?? nextFontkitModule.default ?? nextFontkitModule
+
+    if (typeof fontFromBuffer !== 'function') return null
+
+    const fontkit: Fontkit = {
+      create(data: Uint8Array) {
+        const font = fontFromBuffer(Buffer.from(data))
+        return (font.fonts?.[0] ?? font) as Font
+      },
+    }
+
+    return { fontkit, subset: false }
+  } catch {
+    return null
+  }
 }
 
 function riskColor(level: string | null) {
@@ -119,37 +149,6 @@ async function firstExistingFontPath(): Promise<string | null> {
   }
 
   return null
-}
-
-function loadFontkitBridge(): { fontkit: FontkitBridge; subset: boolean } | null {
-  const dynamicRequire = eval('require') as NodeRequire
-
-  try {
-    const pdfLibFontkit = dynamicRequire('@pdf-lib/fontkit')
-    return { fontkit: pdfLibFontkit.default ?? pdfLibFontkit, subset: true }
-  } catch {
-    // Fall through to the font reader bundled with Next. It cannot subset fonts,
-    // but it lets generated PDFs preserve Chinese text without another runtime dependency.
-  }
-
-  try {
-    const nextFontkitModule = dynamicRequire('next/dist/compiled/@next/font/dist/fontkit')
-    const fontFromBuffer = nextFontkitModule.default?.default ?? nextFontkitModule.default ?? nextFontkitModule
-
-    if (typeof fontFromBuffer !== 'function') return null
-
-    return {
-      fontkit: {
-        create(data: Uint8Array) {
-          const font = fontFromBuffer(Buffer.from(data))
-          return font.fonts?.[0] ?? font
-        },
-      },
-      subset: false,
-    }
-  } catch {
-    return null
-  }
 }
 
 async function loadReportFonts(doc: PDFDocument): Promise<ReportFonts> {
