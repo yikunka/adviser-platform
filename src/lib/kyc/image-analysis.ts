@@ -208,7 +208,10 @@ async function renderPdfPages(buffer: Buffer, fileName: string) {
       || await renderWithQuickLook(inputPath, dir)
 
     if (!rendered) {
-      console.warn(`[kyc/image-analysis] PDF image render skipped for ${fileName}: no PDF renderer found`)
+      console.warn(
+        `[kyc/image-analysis] PDF image render skipped for ${fileName}: no PDF renderer found. ` +
+        'Install poppler-utils (Linux: apt-get install -y poppler-utils) or set the PDFTOPPM_PATH env var.'
+      )
       return []
     }
 

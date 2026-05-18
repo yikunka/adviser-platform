@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { ArrowLeft, CheckCircle, RotateCcw, Upload, X, Download } from 'lucide-react'
 import Link from 'next/link'
 import DiamondCards from '@/app/sfsdiamond/components/DiamondCards'
+import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
 
 // ─── Predefined steps from NL00001 production workflow ────────────────────────
 
@@ -273,12 +274,23 @@ function StepRow({
             {/* Time picker */}
             {showTimeEdit ? (
               <div className="flex items-center gap-2">
-                <input
-                  type="datetime-local"
+                <DatetimeLocalPicker
                   value={customTime}
-                  onChange={e => setCustomTime(e.target.value)}
-                  className="flex-1 rounded-lg px-2 py-1.5 text-xs"
-                  style={{ background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
+                  onChange={setCustomTime}
+                  dateTriggerStyle={{
+                    flex: 1,
+                    background: 'var(--card)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--foreground)',
+                    borderRadius: '0.375rem',
+                    fontSize: '0.75rem',
+                  }}
+                  timeInputStyle={{
+                    background: 'var(--card)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--foreground)',
+                    borderRadius: '0.375rem',
+                  }}
                 />
                 <button
                   onClick={() => setShowTimeEdit(false)}

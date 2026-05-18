@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import type { KeyPerson } from '@prisma/client'
 import { kycPersonZod, type KycPersonInput, keyPersonToFormValues } from '@/lib/kyc/personZod'
+import { DatePickerPopover } from '@/components/ui/date-picker-popover'
 
 const formZod = z.object({ persons: z.array(kycPersonZod).min(1) })
 type FormValues = z.infer<typeof formZod> & { persons: (KycPersonInput & { kycStatus?: string })[] }
@@ -103,30 +104,8 @@ function Field({ label, error, children }: { label: string; error?: string; chil
   )
 }
 
-function DatePickerField({
-  value,
-  onChange,
-  disabled,
-  placeholder = 'YYYY-MM-DD',
-}: {
-  value?: string | null
-  onChange: (value: string) => void
-  disabled?: boolean
-  placeholder?: string
-}) {
-  return (
-    <input
-      type="date"
-      value={value ?? ''}
-      onChange={(e) => onChange(e.target.value)}
-      disabled={disabled}
-      placeholder={placeholder}
-      min="1900-01-01"
-      max="2100-12-31"
-      style={{ ...fieldStyle, colorScheme: 'dark' }}
-      className="date-input"
-    />
-  )
+function DatePickerField(props: React.ComponentProps<typeof DatePickerPopover>) {
+  return <DatePickerPopover {...props} style={{ ...fieldStyle, ...props.style }} />
 }
 
 const KYC_PENDING_FILE_CATEGORIES = ['id', 'address', 'financial', 'other'] as const

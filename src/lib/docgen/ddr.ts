@@ -195,9 +195,12 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
   const doc = await PDFDocument.create()
   const reportFonts = await loadReportFonts(doc)
 
-  if (!reportFonts.supportsUnicode && reportContainsCjk(company)) {
+  if (!reportFonts.supportsUnicode) {
     throw new Error(
-      'Due diligence report contains Chinese company information, but no Chinese PDF font is available. Set DDR_PDF_FONT_PATH to a .ttf/.otf/.ttc CJK font or install @pdf-lib/fontkit.'
+      'DDR generation requires a CJK font because the report template contains Chinese text. ' +
+      'On Linux: apt-get install fonts-noto-cjk. ' +
+      'Or place a .ttf/.otf/.ttc font at assets/fonts/NotoSansCJK-Regular.otf. ' +
+      'Or set the DDR_PDF_FONT_PATH environment variable to the font path.'
     )
   }
 

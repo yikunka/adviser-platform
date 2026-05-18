@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DatePickerPopover } from '@/components/ui/date-picker-popover'
 
 const fieldStyle: React.CSSProperties = {
   width: '100%',
@@ -380,7 +381,11 @@ export default function NewCompanyPage() {
           </div>
           <div>
             <label style={labelStyle}>Date of Incorporation</label>
-            <input type="date" value={form.dateOfIncorporation} onChange={e => set('dateOfIncorporation', e.target.value)} min="1900-01-01" max="2100-12-31" className="date-input" style={{ ...fieldStyle, colorScheme: 'dark' }} />
+            <DatePickerPopover
+              value={form.dateOfIncorporation}
+              onChange={(v) => set('dateOfIncorporation', v)}
+              style={{ ...fieldStyle, colorScheme: 'dark' }}
+            />
           </div>
         </div>
 

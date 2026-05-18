@@ -12,6 +12,25 @@ import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "lucide-react"
 
+const CALENDAR_SLOTS_MERGED_INTERNALLY = new Set<string>([
+  "root",
+  "caption_label",
+  "weekdays",
+  "weekday",
+  "week",
+  "day",
+  "today",
+  "outside",
+  "disabled",
+])
+
+function omitCalendarSlots<T extends object>(raw: T): Partial<T> {
+  const out = { ...raw } as Record<string, unknown>
+  for (const k of CALENDAR_SLOTS_MERGED_INTERNALLY)
+    delete out[k as string]
+  return out as Partial<T>
+}
+
 function Calendar({
   className,
   classNames,
@@ -26,6 +45,7 @@ function Calendar({
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
 }) {
   const defaultClassNames = getDefaultClassNames()
+  const rawClassNames = classNames ?? {}
 
   return (
     <DayPicker
@@ -44,7 +64,7 @@ function Calendar({
         ...formatters,
       }}
       classNames={{
-        root: cn("w-fit", defaultClassNames.root),
+        root: cn("w-fit", defaultClassNames.root, rawClassNames.root),
         months: cn(
           "relative flex flex-col gap-4 md:flex-row",
           defaultClassNames.months
@@ -85,15 +105,21 @@ function Calendar({
           captionLayout === "label"
             ? "text-sm"
             : "flex items-center gap-1 rounded-(--cell-radius) text-sm [&>svg]:size-3.5 [&>svg]:text-muted-foreground",
-          defaultClassNames.caption_label
+          defaultClassNames.caption_label,
+          rawClassNames.caption_label
         ),
         table: "w-full border-collapse",
-        weekdays: cn("flex", defaultClassNames.weekdays),
-        weekday: cn(
-          "flex-1 rounded-(--cell-radius) text-[0.8rem] font-normal text-muted-foreground select-none",
-          defaultClassNames.weekday
+        weekdays: cn(
+          "flex w-full",
+          defaultClassNames.weekdays,
+          rawClassNames.weekdays
         ),
-        week: cn("mt-2 flex w-full", defaultClassNames.week),
+        weekday: cn(
+          "flex min-h-(--cell-size) min-w-0 flex-1 basis-0 items-center justify-center rounded-(--cell-radius) text-center text-[0.8rem] font-normal text-muted-foreground select-none",
+          defaultClassNames.weekday,
+          rawClassNames.weekday
+        ),
+        week: cn("mt-2 flex w-full", defaultClassNames.week, rawClassNames.week),
         week_number_header: cn(
           "w-(--cell-size) select-none",
           defaultClassNames.week_number_header
@@ -107,7 +133,8 @@ function Calendar({
           props.showWeekNumber
             ? "[&:nth-child(2)[data-selected=true]_button]:rounded-l-(--cell-radius)"
             : "[&:first-child[data-selected=true]_button]:rounded-l-(--cell-radius)",
-          defaultClassNames.day
+          defaultClassNames.day,
+          rawClassNames.day
         ),
         range_start: cn(
           "relative isolate z-0 rounded-l-(--cell-radius) bg-muted after:absolute after:inset-y-0 after:right-0 after:w-4 after:bg-muted",
@@ -120,18 +147,21 @@ function Calendar({
         ),
         today: cn(
           "rounded-(--cell-radius) bg-muted text-foreground data-[selected=true]:rounded-none",
-          defaultClassNames.today
+          defaultClassNames.today,
+          rawClassNames.today
         ),
         outside: cn(
           "text-muted-foreground aria-selected:text-muted-foreground",
-          defaultClassNames.outside
+          defaultClassNames.outside,
+          rawClassNames.outside
         ),
         disabled: cn(
           "text-muted-foreground opacity-50",
-          defaultClassNames.disabled
+          defaultClassNames.disabled,
+          rawClassNames.disabled
         ),
         hidden: cn("invisible", defaultClassNames.hidden),
-        ...classNames,
+        ...omitCalendarSlots(rawClassNames),
       }}
       components={{
         Root: ({ className, rootRef, ...props }) => {

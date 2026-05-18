@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
+import { DatePickerPopover } from '@/components/ui/date-picker-popover'
 
 // ── KYC Person type (for pre-fill picker) ────────────────────────────────────
 
@@ -142,15 +143,11 @@ function DateInput({ value, onChange, required, disabled }: {
   disabled?: boolean
 }) {
   return (
-    <input
-      type="date"
+    <DatePickerPopover
       value={value}
-      onChange={e => onChange(e.target.value)}
+      onChange={onChange}
       required={required}
       disabled={disabled}
-      min="1900-01-01"
-      max="2100-12-31"
-      className="date-input"
       style={{ ...fieldStyle, colorScheme: 'dark' }}
     />
   )
