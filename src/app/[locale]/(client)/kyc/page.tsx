@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -176,67 +176,131 @@ function DatePickerField({
   )
 }
 
+const KYC_PENDING_FILE_CATEGORIES = ['id', 'address', 'financial', 'other'] as const
+type KycPendingCategory = (typeof KYC_PENDING_FILE_CATEGORIES)[number]
+
+const DOC_TYPE_FOR_CATEGORY: Record<KycPendingCategory, string> = {
+  id: 'KYC_ID',
+  address: 'KYC_ADDRESS',
+  financial: 'KYC_FINANCIAL',
+  other: 'KYC_OTHER',
+}
+
 function UploadZone({
+  slotId,
   personId,
   category,
   docType,
   isLocked,
   uploads,
   setUploads,
+  pendingFiles,
+  setPendingFiles,
   hint,
 }: {
+  slotId: string
   personId: string | undefined
-  category: string
+  category: KycPendingCategory
   docType: string
   isLocked: boolean
   uploads: Record<string, { name: string; status: string }[]>
   setUploads: React.Dispatch<React.SetStateAction<Record<string, { name: string; status: string }[]>>>
+  pendingFiles: Record<string, { uid: string; file: File }[]>
+  setPendingFiles: React.Dispatch<
+    React.SetStateAction<Record<string, { uid: string; file: File }[]>>
+  >
   hint: string
 }) {
   const t = useTranslations('kyc')
-  const uploadKey = personId ? `${personId}:${category}` : ''
+  const serverUploadKey = personId ? `${personId}:${category}` : ''
+  const pendingKey = `${slotId}:${category}`
 
-  const onDrop = useCallback(async (files: File[]) => {
-    if (!personId) {
-      toast.error(t('saveBeforeUpload', { defaultValue: 'Save draft for this person before uploading files.' }))
-      return
-    }
-    for (const file of files) {
-      setUploads((u) => ({
-        ...u,
-        [uploadKey]: [...(u[uploadKey] ?? []), { name: file.name, status: 'uploading' }],
-      }))
-      try {
-        const fd = new FormData()
-        fd.append('file', file)
-        fd.append('type', docType)
-        fd.append('keyPersonId', personId)
-        const res = await fetch('/api/documents/upload', { method: 'POST', body: fd })
-        if (!res.ok) throw new Error()
-        setUploads((u) => ({
-          ...u,
-          [uploadKey]: (u[uploadKey] ?? []).map((x) =>
-            x.name === file.name ? { ...x, status: 'done' } : x
-          ),
-        }))
-        toast.success(t('uploaded', { defaultValue: 'Uploaded' }))
-      } catch {
-        setUploads((u) => ({
-          ...u,
-          [uploadKey]: (u[uploadKey] ?? []).map((x) =>
-            x.name === file.name ? { ...x, status: 'error' } : x
-          ),
+  const onDrop = useCallback(
+    async (files: File[]) => {
+      if (!slotId) return
+      if (personId) {
+        const uploadKey = serverUploadKey
+        for (const file of files) {
+          setUploads((u) => ({
+            ...u,
+            [uploadKey]: [...(u[uploadKey] ?? []), { name: file.name, status: 'uploading' }],
+          }))
+          try {
+            const fd = new FormData()
+            fd.append('file', file)
+            fd.append('type', docType)
+            fd.append('keyPersonId', personId)
+            const res = await fetch('/api/documents/upload', { method: 'POST', body: fd })
+            if (!res.ok) throw new Error()
+            setUploads((u) => ({
+              ...u,
+              [uploadKey]: (u[uploadKey] ?? []).map((x) =>
+                x.name === file.name ? { ...x, status: 'done' } : x
+              ),
+            }))
+            toast.success(t('uploaded', { defaultValue: 'Uploaded' }))
+          } catch {
+            setUploads((u) => ({
+              ...u,
+              [uploadKey]: (u[uploadKey] ?? []).map((x) =>
+                x.name === file.name ? { ...x, status: 'error' } : x
+              ),
+            }))
+          }
+        }
+        return
+      }
+
+      for (const file of files) {
+        const uid =
+          typeof crypto !== 'undefined' && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random()}`
+        setPendingFiles((p) => ({
+          ...p,
+          [pendingKey]: [...(p[pendingKey] ?? []), { uid, file }],
         }))
       }
-    }
-  }, [personId, uploadKey, docType, setUploads, t])
+      toast.message(
+        t('pendingUploadQueued', {
+          defaultValue:
+            files.length === 1
+              ? 'File stored locally — it will upload when you save draft or submit.'
+              : 'Files stored locally — they will upload when you save draft or submit.',
+        })
+      )
+    },
+    [
+      slotId,
+      personId,
+      serverUploadKey,
+      pendingKey,
+      docType,
+      setUploads,
+      setPendingFiles,
+      t,
+    ]
+  )
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { 'application/pdf': [], 'image/jpeg': [], 'image/png': [] },
     maxSize: 10 * 1024 * 1024,
     onDrop,
-    disabled: isLocked || !personId,
+    disabled: isLocked || !slotId,
   })
+
+  const pendingList = pendingFiles[pendingKey] ?? []
+  const serverList = serverUploadKey ? uploads[serverUploadKey] ?? [] : []
+
+  function removePending(uid: string) {
+    setPendingFiles((p) => {
+      const next = { ...p }
+      const list = next[pendingKey]?.filter((x) => x.uid !== uid) ?? []
+      if (list.length) next[pendingKey] = list
+      else delete next[pendingKey]
+      return next
+    })
+  }
 
   return (
     <div className="space-y-2 pt-3">
@@ -246,17 +310,48 @@ function UploadZone({
         style={{
           border: `2px dashed ${isDragActive ? '#C9A96E' : '#2A2418'}`,
           background: isDragActive ? 'rgba(201,169,110,0.06)' : 'var(--background)',
-          opacity: isLocked || !personId ? 0.5 : 1,
-          pointerEvents: isLocked || !personId ? 'none' : 'auto',
+          opacity: isLocked || !slotId ? 0.5 : 1,
+          pointerEvents: isLocked || !slotId ? 'none' : 'auto',
         }}
       >
         <input {...getInputProps()} />
         <Upload size={16} style={{ color: '#C9A96E' }} />
         <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{hint}</p>
       </div>
-      {uploadKey && uploads[uploadKey]?.length ? (
+      {pendingList.length > 0 ? (
         <ul className="space-y-1 text-xs">
-          {uploads[uploadKey]!.map((f, i) => (
+          {pendingList.map((row) => (
+            <li
+              key={row.uid}
+              className="flex items-center justify-between gap-2"
+              style={{ color: 'var(--muted-foreground)' }}
+            >
+              <span>
+                {row.file.name}{' '}
+                <span style={{ opacity: 0.75 }}>
+                  — {t('pendingLocal', { defaultValue: 'pending (saved after draft)' })}
+                </span>
+              </span>
+              {!isLocked && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    removePending(row.uid)
+                  }}
+                  className="text-[10px] uppercase shrink-0"
+                  style={{ color: '#ef4444' }}
+                >
+                  {t('removePending', { defaultValue: 'Remove' })}
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {serverList.length > 0 ? (
+        <ul className="space-y-1 text-xs">
+          {serverList.map((f, i) => (
             <li
               key={i}
               style={{
@@ -278,6 +373,13 @@ export default function KYCPage() {
   const [ap, setAp] = useState(0)
   const [loading, setLoading] = useState(false)
   const [uploads, setUploads] = useState<Record<string, { name: string; status: string }[]>>({})
+  const [pendingKycUploads, setPendingKycUploads] = useState<
+    Record<string, { uid: string; file: File }[]>
+  >({})
+  const fieldSlotIdsRef = useRef<string[]>([])
+  const pendingUploadsRef = useRef(pendingKycUploads)
+
+  pendingUploadsRef.current = pendingKycUploads
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formZod) as never,
@@ -285,9 +387,14 @@ export default function KYCPage() {
   })
   const { reset } = form
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'persons' })
+
+  useEffect(() => {
+    fieldSlotIdsRef.current = fields.map((f) => f.id)
+  }, [fields])
   const employmentStatus = form.watch(`persons.${ap}.employmentStatus` as 'persons.0.employmentStatus')
   const personId = form.watch(`persons.${ap}.id` as 'persons.0.id')
   const kycStatus = form.watch(`persons.${ap}.kycStatus` as 'persons.0.kycStatus')
+  const slotIdForAp = fields[ap]?.id ?? ''
 
   const load = useCallback(() => {
     fetch('/api/kyc', { credentials: 'include' })
@@ -305,6 +412,8 @@ export default function KYCPage() {
               kycStatus: p.kycStatus,
             })),
           })
+          setUploads({})
+          setPendingKycUploads({})
         }
       })
       .catch(() => {
@@ -326,6 +435,57 @@ export default function KYCPage() {
     })
   }
 
+  async function flushPendingAfterSave(slotIdsSnapshot: string[], backPersons: { id: string }[]) {
+    const remaining = { ...pendingUploadsRef.current }
+    let failed = 0
+
+    for (let i = 0; i < backPersons.length; i++) {
+      const sid = slotIdsSnapshot[i]
+      const kpId = backPersons[i]?.id
+      if (!sid || !kpId) continue
+
+      for (const cat of KYC_PENDING_FILE_CATEGORIES) {
+        const key = `${sid}:${cat}`
+        const rows = remaining[key]
+        if (!rows?.length) continue
+        const stillPending: { uid: string; file: File }[] = []
+        const docType = DOC_TYPE_FOR_CATEGORY[cat]
+
+        for (const row of rows) {
+          try {
+            const fd = new FormData()
+            fd.append('file', row.file)
+            fd.append('type', docType)
+            fd.append('keyPersonId', kpId)
+            const res = await fetch('/api/documents/upload', { method: 'POST', body: fd })
+            if (!res.ok) {
+              const errJson = (await res.json().catch(() => ({}))) as { error?: string }
+              throw new Error(errJson?.error ?? res.status.toString())
+            }
+            const serverKey = `${kpId}:${cat}`
+            setUploads((u) => ({
+              ...u,
+              [serverKey]: [...(u[serverKey] ?? []), { name: row.file.name, status: 'done' }],
+            }))
+          } catch {
+            stillPending.push(row)
+            failed++
+          }
+        }
+        if (stillPending.length) remaining[key] = stillPending
+        else delete remaining[key]
+      }
+    }
+    setPendingKycUploads(remaining)
+    if (failed > 0) {
+      toast.error(
+        t('pendingUploadPartialFail', {
+          defaultValue: `${failed} file(s) could not upload. Save again after checking your connection.`,
+        })
+      )
+    }
+  }
+
   async function saveAll(action: 'SAVE_DRAFT' | 'SUBMIT', opts: { advance?: boolean } = {}) {
     const currentPerson = form.getValues(`persons.${ap}` as 'persons.0')
     if ((opts.advance || action === 'SUBMIT') && currentPerson?.isPep) {
@@ -335,6 +495,7 @@ export default function KYCPage() {
 
     const ok = await form.trigger()
     if (!ok) return
+    const slotIdsSnapshot = [...fieldSlotIdsRef.current]
     setLoading(true)
     try {
       const res = await fetch('/api/kyc', {
@@ -353,6 +514,7 @@ export default function KYCPage() {
           form.setValue(`persons.${i}.id` as 'persons.0.id', b.id)
           form.setValue(`persons.${i}.kycStatus` as 'persons.0.kycStatus', b.kycStatus)
         })
+        await flushPendingAfterSave(slotIdsSnapshot, back)
       }
       if (action === 'SUBMIT') toast.success(t('submitSuccess'))
       else if (opts.advance && step < 3) setStep((s) => s + 1)
@@ -367,6 +529,7 @@ export default function KYCPage() {
       toast.error(t('minOnePerson', { defaultValue: 'At least one person is required.' }))
       return
     }
+    const slotId = fields[i]?.id
     const id = form.getValues(`persons.${i}.id` as 'persons.0.id')
     if (id) {
       setLoading(true)
@@ -383,6 +546,24 @@ export default function KYCPage() {
     remove(i)
     if (ap >= fields.length - 1) setAp(Math.max(0, fields.length - 2))
     else if (i < ap) setAp((a) => a - 1)
+    if (slotId) {
+      setPendingKycUploads((p) => {
+        const n = { ...p }
+        for (const k of Object.keys(n)) {
+          if (k.startsWith(`${slotId}:`)) delete n[k]
+        }
+        return n
+      })
+    }
+    if (id) {
+      setUploads((u) => {
+        const n = { ...u }
+        for (const k of Object.keys(n)) {
+          if (k.startsWith(`${id}:`)) delete n[k]
+        }
+        return n
+      })
+    }
   }
 
   function addPerson() {
@@ -576,12 +757,15 @@ export default function KYCPage() {
               </Field>
             </div>
             <UploadZone
+              slotId={slotIdForAp}
               personId={personId}
               category="id"
               docType="KYC_ID"
               isLocked={isLocked}
               uploads={uploads}
               setUploads={setUploads}
+              pendingFiles={pendingKycUploads}
+              setPendingFiles={setPendingKycUploads}
               hint={t('uploadIdHint', { defaultValue: 'Upload ID / Passport copy — PDF, JPG, PNG, max 10 MB' })}
             />
           </fieldset>
@@ -612,12 +796,15 @@ export default function KYCPage() {
               <textarea rows={2} style={{ ...fieldStyle, resize: 'none' }} disabled={isLocked} {...form.register(`persons.${ap}.contactAddress` as const)} />
             </Field>
             <UploadZone
+              slotId={slotIdForAp}
               personId={personId}
               category="address"
               docType="KYC_ADDRESS"
               isLocked={isLocked}
               uploads={uploads}
               setUploads={setUploads}
+              pendingFiles={pendingKycUploads}
+              setPendingFiles={setPendingKycUploads}
               hint={t('uploadAddressHint', { defaultValue: 'Upload proof of address — PDF, JPG, PNG, max 10 MB' })}
             />
           </fieldset>
@@ -851,12 +1038,15 @@ export default function KYCPage() {
               {t('financialDocuments', { defaultValue: 'Financial Documents' })}
             </p>
             <UploadZone
+              slotId={slotIdForAp}
               personId={personId}
               category="financial"
               docType="KYC_FINANCIAL"
               isLocked={isLocked}
               uploads={uploads}
               setUploads={setUploads}
+              pendingFiles={pendingKycUploads}
+              setPendingFiles={setPendingKycUploads}
               hint={t('uploadFinancialHint', { defaultValue: 'Upload financial proof documents — PDF, JPG, PNG, max 10 MB' })}
             />
           </div>
@@ -873,12 +1063,15 @@ export default function KYCPage() {
               {t('otherCertificationsHint', { defaultValue: 'Upload any additional supporting certification files here.' })}
             </p>
             <UploadZone
+              slotId={slotIdForAp}
               personId={personId}
               category="other"
               docType="KYC_OTHER"
               isLocked={isLocked}
               uploads={uploads}
               setUploads={setUploads}
+              pendingFiles={pendingKycUploads}
+              setPendingFiles={setPendingKycUploads}
               hint={t('uploadOtherHint', { defaultValue: 'Upload other certification files — PDF, JPG, PNG, max 10 MB' })}
             />
           </div>

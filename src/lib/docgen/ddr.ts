@@ -1,7 +1,11 @@
+import fs from 'node:fs/promises'
+import path from 'node:path'
 import { PDFDocument, rgb, StandardFonts, PDFFont, PDFPage } from 'pdf-lib'
 import { prisma } from '@/lib/db/prisma'
 
-const PRIMARY = rgb(0.18, 0.32, 0.52)  // 6AM Advisory blue
+const PRIMARY = rgb(0.365, 0.306, 0.216)
+const ACCENT = rgb(0.824, 0.706, 0.549)
+const PANEL = rgb(0.973, 0.976, 0.98)
 const BLACK = rgb(0, 0, 0)
 const GRAY = rgb(0.4, 0.4, 0.4)
 const RED = rgb(0.8, 0.1, 0.1)
@@ -18,41 +22,150 @@ interface PageState {
   margin: number
 }
 
+interface ReportFonts {
+  bold: PDFFont
+  regular: PDFFont
+  supportsUnicode: boolean
+}
+
+interface FontkitBridge {
+  create(data: Uint8Array): unknown
+}
+
 function riskColor(level: string | null) {
   if (level === 'HIGH') return RED
   if (level === 'MEDIUM') return ORANGE
   return GREEN
 }
 
-function pdfSafeText(value: string | null | undefined): string {
+function normalizePdfText(value: string | null | undefined): string {
   if (!value) return ''
   return value
-    .replace(/[–—]/g, '-')
-    .replace(/[‘’]/g, "'")
-    .replace(/[“”]/g, '"')
-    .replace(/…/g, '...')
-    .replace(/[^\x20-\x7E]/g, '?')
+    .replace(/\r\n/g, '\n')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
 }
 
 function drawPageText(page: PDFPage, text: string, options: Parameters<PDFPage['drawText']>[1]) {
-  page.drawText(pdfSafeText(text), options)
+  page.drawText(normalizePdfText(text), options)
 }
 
 function wrapText(text: string, font: PDFFont, fontSize: number, maxWidth: number): string[] {
-  const words = pdfSafeText(text).split(' ')
+  const normalized = normalizePdfText(text)
+  const words = /[\s-]/.test(normalized) ? normalized.split(/(\s+)/) : Array.from(normalized)
   const lines: string[] = []
   let current = ''
   for (const word of words) {
-    const candidate = current ? `${current} ${word}` : word
+    const candidate = current ? `${current}${word}` : word
     if (font.widthOfTextAtSize(candidate, fontSize) <= maxWidth) {
       current = candidate
     } else {
       if (current) lines.push(current)
-      current = word
+      current = word.trimStart()
     }
   }
-  if (current) lines.push(current)
+  if (current.trim()) lines.push(current)
   return lines
+}
+
+function containsCjk(value: string | null | undefined): boolean {
+  return /[\u3400-\u9FFF\uF900-\uFAFF]/.test(value ?? '')
+}
+
+function reportContainsCjk(company: {
+  nameEn: string
+  nameZh: string | null
+  registeredAddress: string | null
+  businessNature: string | null
+  directors: Array<{ nameEn: string; nameZh: string | null }>
+  members: Array<{ nameEn: string; nameZh: string | null }>
+  significantControllers: Array<{ nameEn: string; nameZh: string | null; natureOfControl: string | null }>
+}): boolean {
+  return [
+    company.nameEn,
+    company.nameZh,
+    company.registeredAddress,
+    company.businessNature,
+    ...company.directors.flatMap((director) => [director.nameEn, director.nameZh]),
+    ...company.members.flatMap((member) => [member.nameEn, member.nameZh]),
+    ...company.significantControllers.flatMap((controller) => [
+      controller.nameEn,
+      controller.nameZh,
+      controller.natureOfControl,
+    ]),
+  ].some(containsCjk)
+}
+
+async function firstExistingFontPath(): Promise<string | null> {
+  const candidates = [
+    process.env.DDR_PDF_FONT_PATH,
+    path.join(process.cwd(), 'assets/fonts/NotoSansCJK-Regular.otf'),
+    path.join(process.cwd(), 'assets/fonts/NotoSansCJKsc-Regular.otf'),
+    '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
+    '/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf',
+    '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
+    '/usr/share/fonts/truetype/arphic/uming.ttc',
+    '/System/Library/Fonts/Supplemental/Arial Unicode.ttf',
+    '/System/Library/Fonts/Hiragino Sans GB.ttc',
+    '/System/Library/Fonts/STHeiti Medium.ttc',
+  ].filter(Boolean) as string[]
+
+  for (const candidate of candidates) {
+    try {
+      await fs.access(candidate)
+      return candidate
+    } catch {
+      // Try the next common CJK font location.
+    }
+  }
+
+  return null
+}
+
+function loadFontkitBridge(): { fontkit: FontkitBridge; subset: boolean } | null {
+  const dynamicRequire = eval('require') as NodeRequire
+
+  try {
+    const pdfLibFontkit = dynamicRequire('@pdf-lib/fontkit')
+    return { fontkit: pdfLibFontkit.default ?? pdfLibFontkit, subset: true }
+  } catch {
+    // Fall through to the font reader bundled with Next. It cannot subset fonts,
+    // but it lets generated PDFs preserve Chinese text without another runtime dependency.
+  }
+
+  try {
+    const nextFontkitModule = dynamicRequire('next/dist/compiled/@next/font/dist/fontkit')
+    const fontFromBuffer = nextFontkitModule.default?.default ?? nextFontkitModule.default ?? nextFontkitModule
+
+    if (typeof fontFromBuffer !== 'function') return null
+
+    return {
+      fontkit: {
+        create(data: Uint8Array) {
+          const font = fontFromBuffer(Buffer.from(data))
+          return font.fonts?.[0] ?? font
+        },
+      },
+      subset: false,
+    }
+  } catch {
+    return null
+  }
+}
+
+async function loadReportFonts(doc: PDFDocument): Promise<ReportFonts> {
+  const fontPath = await firstExistingFontPath()
+  const bridge = fontPath ? loadFontkitBridge() : null
+
+  if (fontPath && bridge) {
+    doc.registerFontkit(bridge.fontkit)
+    const fontBytes = await fs.readFile(fontPath)
+    const regular = await doc.embedFont(fontBytes, { subset: bridge.subset })
+    return { regular, bold: regular, supportsUnicode: true }
+  }
+
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold)
+  const regular = await doc.embedFont(StandardFonts.Helvetica)
+  return { regular, bold, supportsUnicode: false }
 }
 
 async function ensureSpace(ps: PageState, doc: PDFDocument, needed: number): Promise<void> {
@@ -81,8 +194,16 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
     : null
 
   const doc = await PDFDocument.create()
-  const boldFont = await doc.embedFont(StandardFonts.HelveticaBold)
-  const regularFont = await doc.embedFont(StandardFonts.Helvetica)
+  const reportFonts = await loadReportFonts(doc)
+
+  if (!reportFonts.supportsUnicode && reportContainsCjk(company)) {
+    throw new Error(
+      'Due diligence report contains Chinese company information, but no Chinese PDF font is available. Set DDR_PDF_FONT_PATH to a .ttf/.otf/.ttc CJK font or install @pdf-lib/fontkit.'
+    )
+  }
+
+  const boldFont = reportFonts.bold
+  const regularFont = reportFonts.regular
 
   const WIDTH = 595.28  // A4
   const HEIGHT = 841.89
@@ -92,18 +213,29 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
   const page = doc.addPage([WIDTH, HEIGHT])
   const ps: PageState = { page, y: HEIGHT - MARGIN, bold: boldFont, regular: regularFont, width: WIDTH, height: HEIGHT, margin: MARGIN }
 
-  // ── Title block ──────────────────────────────────────────────────
-  ps.page.drawRectangle({ x: 0, y: HEIGHT - 80, width: WIDTH, height: 80, color: PRIMARY })
-  drawPageText(ps.page, '6AM Advisory (Hong Kong) Limited', { x: MARGIN, y: HEIGHT - 30, size: 13, font: boldFont, color: rgb(1, 1, 1) })
-  drawPageText(ps.page, 'Due Diligence Report', { x: MARGIN, y: HEIGHT - 50, size: 18, font: boldFont, color: rgb(1, 1, 1) })
-  drawPageText(ps.page, `Generated: ${new Date().toLocaleDateString('en-HK')}`, { x: MARGIN, y: HEIGHT - 68, size: 9, font: regularFont, color: rgb(0.8, 0.8, 0.8) })
-  ps.y = HEIGHT - 100
+  // ── Reference-style cover block ──────────────────────────────────
+  ps.page.drawRectangle({ x: 0, y: 0, width: WIDTH, height: HEIGHT, color: rgb(1, 1, 1) })
+  ps.page.drawRectangle({ x: 42.52, y: 328.03, width: 510.24, height: 457.17, color: rgb(1, 1, 1), borderColor: ACCENT, borderWidth: 1.5 })
+  ps.page.drawRectangle({ x: 72.52, y: 566.8, width: 450.24, height: 70.5, color: rgb(1, 1, 1), borderColor: ACCENT, borderWidth: 0.75 })
+  drawPageText(ps.page, '盡職審查報告', { x: 216, y: 694, size: 26, font: boldFont, color: PRIMARY })
+  drawPageText(ps.page, 'Due Diligence Report', { x: 168, y: 661, size: 21.6, font: boldFont, color: PRIMARY })
+  drawPageText(ps.page, '盡職審查報告', { x: 252, y: 607, size: 15, font: boldFont, color: PRIMARY })
+  drawPageText(ps.page, 'Due Diligence Report', { x: 217, y: 586, size: 15, font: regularFont, color: PRIMARY })
+  ps.page.drawLine({ start: { x: 72.52, y: 542 }, end: { x: 522.76, y: 542 }, thickness: 1.5, color: ACCENT })
+  drawPageText(ps.page, company.nameEn, { x: 72.52, y: 512, size: 12, font: boldFont, color: BLACK })
+  if (company.nameZh) {
+    drawPageText(ps.page, company.nameZh, { x: 72.52, y: 492, size: 12, font: boldFont, color: BLACK })
+  }
+  drawPageText(ps.page, `Report date: ${new Date().toLocaleDateString('en-HK')}`, { x: 72.52, y: 460, size: 9, font: regularFont, color: GRAY })
+
+  ps.page = doc.addPage([WIDTH, HEIGHT])
+  ps.y = HEIGHT - MARGIN
 
   // ── Section helper ───────────────────────────────────────────────
   function sectionHeader(title: string) {
     ps.y -= 20
-    ps.page.drawRectangle({ x: MARGIN, y: ps.y - 4, width: CONTENT_WIDTH, height: 18, color: PRIMARY })
-    drawPageText(ps.page, title, { x: MARGIN + 6, y: ps.y, size: 10, font: boldFont, color: rgb(1, 1, 1) })
+    drawPageText(ps.page, title, { x: MARGIN + 6, y: ps.y, size: 10.5, font: boldFont, color: PRIMARY })
+    ps.page.drawLine({ start: { x: MARGIN, y: ps.y - 8 }, end: { x: MARGIN + CONTENT_WIDTH, y: ps.y - 8 }, thickness: 1.5, color: ACCENT })
     ps.y -= 16
   }
 
@@ -118,7 +250,7 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
   }
 
   // ── 1. Subject Information ────────────────────────────────────────
-  sectionHeader('1. Subject Information')
+  sectionHeader('1. 客戶資料 Client Information')
   field('Company Name (EN)', company.nameEn)
   field('Company Name (ZH)', company.nameZh ?? '')
   field('Company Number', company.companyNumber ?? '')
@@ -129,7 +261,7 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
 
   // ── 2. Directors ─────────────────────────────────────────────────
   await ensureSpace(ps, doc, 60)
-  sectionHeader('2. Directors')
+  sectionHeader('1.1 董事 Directors')
   if (company.directors.length === 0) {
     ps.y -= 14
     drawPageText(ps.page, 'No active directors recorded.', { x: MARGIN + 4, y: ps.y, size: 9, font: regularFont, color: GRAY })
@@ -141,7 +273,7 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
 
   // ── 3. Members (Shareholders) ─────────────────────────────────────
   await ensureSpace(ps, doc, 60)
-  sectionHeader('3. Shareholders')
+  sectionHeader('1.2 股東 Shareholders')
   if (company.members.length === 0) {
     ps.y -= 14
     drawPageText(ps.page, 'No active members recorded.', { x: MARGIN + 4, y: ps.y, size: 9, font: regularFont, color: GRAY })
@@ -153,7 +285,7 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
 
   // ── 4. Significant Controllers ────────────────────────────────────
   await ensureSpace(ps, doc, 60)
-  sectionHeader('4. Significant Controllers')
+  sectionHeader('1.3 重要控制人 Significant Controllers')
   if (company.significantControllers.length === 0) {
     ps.y -= 14
     drawPageText(ps.page, 'No significant controllers recorded.', { x: MARGIN + 4, y: ps.y, size: 9, font: regularFont, color: GRAY })
@@ -165,7 +297,7 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
 
   // ── 5. Risk Assessment ────────────────────────────────────────────
   await ensureSpace(ps, doc, 60)
-  sectionHeader('5. Risk Assessment')
+  sectionHeader('2. 風險評估項目詳情 Risk Assessment Items Details')
   if (ddr?.riskAssessments && ddr.riskAssessments.length > 0) {
     let lastCategory = ''
     for (const ra of ddr.riskAssessments) {
@@ -185,12 +317,13 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
 
   // ── 6. Overall Risk Level & Recommendation ────────────────────────
   await ensureSpace(ps, doc, 80)
-  sectionHeader('6. Overall Risk & Recommendation')
+  sectionHeader('3. 結論 Conclusion')
 
   if (ddr) {
     ps.y -= 14
     const riskText = ddr.overallRiskLevel ?? 'NOT SET'
-    drawPageText(ps.page, 'Overall Risk Level:', { x: MARGIN + 4, y: ps.y, size: 10, font: boldFont, color: BLACK })
+    ps.page.drawRectangle({ x: MARGIN + 4, y: ps.y - 6, width: CONTENT_WIDTH - 8, height: 20, color: PANEL })
+    drawPageText(ps.page, 'Overall Risk Level:', { x: MARGIN + 10, y: ps.y, size: 10, font: boldFont, color: BLACK })
     drawPageText(ps.page, riskText, { x: MARGIN + 130, y: ps.y, size: 10, font: boldFont, color: riskColor(ddr.overallRiskLevel ?? null) })
 
     ps.y -= 14
@@ -213,7 +346,7 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
 
   // ── 7. Disclaimer ─────────────────────────────────────────────────
   await ensureSpace(ps, doc, 80)
-  sectionHeader('7. Disclaimer')
+  sectionHeader('4. 免責聲明 Disclaimer')
   ps.y -= 14
   const disclaimer = 'This report is prepared by 6AM Advisory (Hong Kong) Limited for internal compliance purposes only. The information contained herein is confidential and subject to applicable data protection laws including the Hong Kong Personal Data (Privacy) Ordinance. This report shall not be disclosed to any third party without prior written consent.'
   const disclaimerLines = wrapText(disclaimer, regularFont, 8, CONTENT_WIDTH - 8)

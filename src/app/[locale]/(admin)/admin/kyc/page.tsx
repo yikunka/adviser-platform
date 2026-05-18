@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -145,6 +145,7 @@ export default function KYCQueuePage() {
   const [createClientId, setCreateClientId] = useState('')
   const [createImage, setCreateImage] = useState<File | null>(null)
   const [creating, setCreating] = useState(false)
+  const createImageInputRef = useRef<HTMLInputElement | null>(null)
 
   const fetchRecords = useCallback(async (statusOverride?: string) => {
     const status = statusOverride ?? filterStatus
@@ -286,21 +287,28 @@ export default function KYCQueuePage() {
             </div>
 
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <label style={{ cursor: creating ? 'not-allowed' : 'pointer' }}>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png"
-                  className="hidden"
-                  disabled={creating}
-                  onChange={e => { chooseCreateImage(e.target.files?.[0]); e.target.value = '' }}
-                />
-                <span
-                  className="inline-flex min-w-36 items-center justify-center rounded-md border px-3 py-2 text-sm font-medium transition-colors"
-                  style={{ borderColor: '#2A2418', color: 'var(--foreground)', background: 'transparent', cursor: 'inherit' }}
-                >
-                  {createImage ? createImage.name : 'Upload image'}
+              <input
+                ref={createImageInputRef}
+                type="file"
+                accept="image/jpeg,image/png"
+                className="sr-only"
+                disabled={creating}
+                onChange={e => { chooseCreateImage(e.target.files?.[0]); e.target.value = '' }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={creating}
+                onClick={() => createImageInputRef.current?.click()}
+                title={createImage?.name}
+              >
+                {createImage ? 'Change image' : 'Upload image'}
+              </Button>
+              {createImage ? (
+                <span className="max-w-56 truncate text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                  {createImage.name}
                 </span>
-              </label>
+              ) : null}
               <Button type="button" disabled={creating || !createClientId || !createImage} onClick={createApprovedKyc}>
                 {creating ? 'Analyzing…' : 'Create Approved KYC'}
               </Button>
