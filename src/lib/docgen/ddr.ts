@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { PDFDocument, rgb, StandardFonts, PDFFont, PDFPage } from 'pdf-lib'
 import type { Font, Fontkit } from 'pdf-lib/es/types/fontkit'
+import nextFontkit from 'next/dist/compiled/@next/font/dist/fontkit'
 import { prisma } from '@/lib/db/prisma'
 
 const PRIMARY = rgb(0.365, 0.306, 0.216)
@@ -32,22 +33,8 @@ interface ReportFonts {
 }
 
 function loadFontkitBridge(): { fontkit: Fontkit; subset: boolean } | null {
-  const dynamicRequire = eval('require') as NodeRequire
-
   try {
-    const pdfLibFontkit = dynamicRequire('@pdf-lib/fontkit')
-    return {
-      fontkit: (pdfLibFontkit.default ?? pdfLibFontkit) as Fontkit,
-      subset: true,
-    }
-  } catch {
-    // Fall through to the font reader bundled with Next. It cannot subset fonts,
-    // but it lets generated PDFs preserve Chinese text without another runtime dependency.
-  }
-
-  try {
-    const nextFontkitModule = dynamicRequire('next/dist/compiled/@next/font/dist/fontkit')
-    const fontFromBuffer = nextFontkitModule.default?.default ?? nextFontkitModule.default ?? nextFontkitModule
+    const fontFromBuffer = (nextFontkit as { default?: unknown }).default ?? nextFontkit
 
     if (typeof fontFromBuffer !== 'function') return null
 
@@ -156,6 +143,7 @@ async function loadReportFonts(doc: PDFDocument): Promise<ReportFonts> {
     regular,
     bold,
     supportsUnicode: false,
+    fontPath: fontPath ?? undefined,
     fontError: fontPath ? 'A CJK font was found, but no fontkit bridge was available.' : 'No CJK font path was found.',
   }
 }
