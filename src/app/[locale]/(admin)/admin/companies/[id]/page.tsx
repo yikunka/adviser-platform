@@ -1427,17 +1427,17 @@ export default function CompanyDetailPage() {
           </div>
 
           <div style={cardStyle}>
-            <div className="px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Due Diligence Report</h3>
-              <p className="text-xs mt-1" style={{ color: '#5A5040' }}>Monthly reports are generated automatically on the first day of each month.</p>
+            <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
+              <div>
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Due Diligence Report</h3>
+                <p className="text-xs mt-1" style={{ color: '#5A5040' }}>Monthly reports are generated automatically on the first day of each month.</p>
+              </div>
+              <Button size="sm" variant="outline" disabled={generatingDdr} onClick={generateDdrNow}>
+                {generatingDdr ? 'Generating...' : 'Generate now'}
+              </Button>
             </div>
             {ddrDocs.length === 0 ? (
-              <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm" style={{ color: '#5A5040' }}>No due diligence reports yet.</p>
-                <Button size="sm" variant="outline" disabled={generatingDdr} onClick={generateDdrNow}>
-                  {generatingDdr ? 'Generating...' : 'Generate now'}
-                </Button>
-              </div>
+              <p className="px-4 py-3 text-sm" style={{ color: '#5A5040' }}>No due diligence reports yet.</p>
             ) : (
               <ul className="divide-y divide-[#2A2418]">
                 {(showOlderDdr ? ddrDocs : ddrDocs.slice(0, 1)).map(doc => (
@@ -1446,7 +1446,10 @@ export default function CompanyDetailPage() {
                       <span className="block text-sm truncate max-w-xs" style={{ color: 'var(--foreground)' }}>{doc.notes ?? 'Monthly report'}</span>
                       <span className="text-xs" style={{ color: '#5A5040' }}>{new Date(doc.createdAt).toLocaleDateString('en-HK')}</span>
                     </div>
-                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => downloadDoc(doc.id)}>Download</Button>
+                    <div className="flex items-center gap-3">
+                      <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => downloadDoc(doc.id)}>Download</Button>
+                      <button onClick={() => deleteDoc(doc.id)} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Delete</button>
+                    </div>
                   </li>
                 ))}
                 {ddrDocs.length > 1 && (
