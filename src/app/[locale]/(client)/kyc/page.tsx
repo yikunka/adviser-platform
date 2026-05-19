@@ -802,76 +802,77 @@ export default function KYCPage() {
     return [p.firstName, p.otherName, p.lastName].map((part) => part?.trim()).filter(Boolean).join(' ')
   }
 
-  function validateSubmitRequirements() {
+  /** Validates one person for final SUBMIT (current tab only — does not submit other persons). */
+  function validateSubmitRequirements(personIndex: number) {
     const persons = form.getValues('persons')
-    for (let i = 0; i < persons.length; i++) {
-      const p = persons[i]
-      const missing = [
-        ['English first name', p.firstName],
-        ['En last name / surname', p.lastName],
-        ['ID type', p.idType],
-        ['ID/passport number', p.idNumber],
-        ['Place of issue', p.placeOfIssue],
-        ['ID/passport expiry date', p.idExpiry],
-        ['Date of birth', p.dateOfBirth],
-        ['Place of birth', p.placeOfBirth],
-        ['Nationality', p.nationality],
-        ['Home address', p.homeAddress],
-        ['Contact address', p.contactAddress],
-        ['Mobile phone', p.mobile],
-        ['Email', p.email],
-      ].filter(([, value]) => !String(value ?? '').trim())
+    const p = persons[personIndex]
+    if (!p) return false
 
-      if (missing.length > 0) {
-        setAp(i)
-        setStep(0)
-        toast.error(`Please fill required KYC fields: ${missing.map(([label]) => label).join(', ')}`)
-        return false
-      }
-      const unfilledOther = [
-        ['Place of issue', p.placeOfIssue],
-        ['Place of birth', p.placeOfBirth],
-        ['Nationality', p.nationality],
-        ['Home address', p.homeAddress],
-        ['Contact address', p.contactAddress],
-      ].find(([, value]) => hasUnfilledOther(value))
-      if (unfilledOther) {
-        setAp(i)
-        setStep(0)
-        toast.error(`Please fill the custom Other value for ${unfilledOther[0]}.`)
-        return false
-      }
-      if (!hasRequiredUpload(i, 'id')) {
-        setAp(i)
-        setStep(0)
-        toast.error('ID / passport upload is required. Please upload the file marked with *.')
-        return false
-      }
-      if (!hasRequiredUpload(i, 'address')) {
-        setAp(i)
-        setStep(0)
-        toast.error('Proof of address upload is required. Please upload the file marked with *.')
-        return false
-      }
-      // Section D — 聲明：簽署人、日期、勾選聲明皆必填
-      if (!String(p.signatureName ?? '').trim()) {
-        setAp(i)
-        setStep(3)
-        toast.error(t('declarationFieldMissingSignature', { defaultValue: 'Please enter signatory name (Declaration).' }))
-        return false
-      }
-      if (!String(p.declarationDate ?? '').trim()) {
-        setAp(i)
-        setStep(3)
-        toast.error(t('declarationFieldMissingDate', { defaultValue: 'Please select declaration date.' }))
-        return false
-      }
-      if (p.declarationSigned !== true) {
-        setAp(i)
-        setStep(3)
-        toast.error(t('declarationFieldMissingCheckbox', { defaultValue: 'Please check the declaration to confirm.' }))
-        return false
-      }
+    const missing = [
+      ['English first name', p.firstName],
+      ['En last name / surname', p.lastName],
+      ['ID type', p.idType],
+      ['ID/passport number', p.idNumber],
+      ['Place of issue', p.placeOfIssue],
+      ['ID/passport expiry date', p.idExpiry],
+      ['Date of birth', p.dateOfBirth],
+      ['Place of birth', p.placeOfBirth],
+      ['Nationality', p.nationality],
+      ['Home address', p.homeAddress],
+      ['Contact address', p.contactAddress],
+      ['Mobile phone', p.mobile],
+      ['Email', p.email],
+    ].filter(([, value]) => !String(value ?? '').trim())
+
+    if (missing.length > 0) {
+      setAp(personIndex)
+      setStep(0)
+      toast.error(`Please fill required KYC fields: ${missing.map(([label]) => label).join(', ')}`)
+      return false
+    }
+    const unfilledOther = [
+      ['Place of issue', p.placeOfIssue],
+      ['Place of birth', p.placeOfBirth],
+      ['Nationality', p.nationality],
+      ['Home address', p.homeAddress],
+      ['Contact address', p.contactAddress],
+    ].find(([, value]) => hasUnfilledOther(value))
+    if (unfilledOther) {
+      setAp(personIndex)
+      setStep(0)
+      toast.error(`Please fill the custom Other value for ${unfilledOther[0]}.`)
+      return false
+    }
+    if (!hasRequiredUpload(personIndex, 'id')) {
+      setAp(personIndex)
+      setStep(0)
+      toast.error('ID / passport upload is required. Please upload the file marked with *.')
+      return false
+    }
+    if (!hasRequiredUpload(personIndex, 'address')) {
+      setAp(personIndex)
+      setStep(0)
+      toast.error('Proof of address upload is required. Please upload the file marked with *.')
+      return false
+    }
+    // Section D — 聲明：簽署人、日期、勾選聲明皆必填
+    if (!String(p.signatureName ?? '').trim()) {
+      setAp(personIndex)
+      setStep(3)
+      toast.error(t('declarationFieldMissingSignature', { defaultValue: 'Please enter signatory name (Declaration).' }))
+      return false
+    }
+    if (!String(p.declarationDate ?? '').trim()) {
+      setAp(personIndex)
+      setStep(3)
+      toast.error(t('declarationFieldMissingDate', { defaultValue: 'Please select declaration date.' }))
+      return false
+    }
+    if (p.declarationSigned !== true) {
+      setAp(personIndex)
+      setStep(3)
+      toast.error(t('declarationFieldMissingCheckbox', { defaultValue: 'Please check the declaration to confirm.' }))
+      return false
     }
     return true
   }
@@ -934,23 +935,33 @@ export default function KYCPage() {
       return
     }
     if (action === 'SUBMIT') {
-      if (!validateSubmitRequirements()) return
+      if (!validateSubmitRequirements(ap)) return
     }
 
-    form.getValues('persons').forEach((_p, i) => {
-      form.setValue(`persons.${i}.nameEn` as 'persons.0.nameEn', composeNameForPerson(i), { shouldDirty: true })
-    })
+    // Compose English display name: full form on draft saves; current person only on submit
     if (action === 'SUBMIT') {
-      const ok = await form.trigger()
+      form.setValue(`persons.${ap}.nameEn` as 'persons.0.nameEn', composeNameForPerson(ap), { shouldDirty: true })
+    } else {
+      form.getValues('persons').forEach((_p, i) => {
+        form.setValue(`persons.${i}.nameEn` as 'persons.0.nameEn', composeNameForPerson(i), { shouldDirty: true })
+      })
+    }
+    if (action === 'SUBMIT') {
+      const ok = await form.trigger(`persons.${ap}` as `persons.${number}`)
       if (!ok) return
     }
     const slotIdsSnapshot = [...fieldSlotIdsRef.current]
     setLoading(true)
     try {
+      const personsPayload =
+        action === 'SUBMIT'
+          ? stripForApi([form.getValues(`persons.${ap}` as 'persons.0')], action)
+          : stripForApi(form.getValues('persons'), action)
+
       const res = await fetch('/api/kyc', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ persons: stripForApi(form.getValues('persons'), action), action }),
+        body: JSON.stringify({ persons: personsPayload, action }),
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -959,12 +970,22 @@ export default function KYCPage() {
       }
       const back = json.persons as { id: string; kycStatus: string; kycCode?: string | null }[]
       if (Array.isArray(back)) {
-        back.forEach((b, i) => {
-          form.setValue(`persons.${i}.id` as 'persons.0.id', b.id)
-          form.setValue(`persons.${i}.kycStatus` as 'persons.0.kycStatus', b.kycStatus)
-          form.setValue(`persons.${i}.kycCode` as 'persons.0.kycCode', b.kycCode ?? '')
-        })
-        await flushPendingAfterSave(slotIdsSnapshot, back)
+        if (action === 'SUBMIT') {
+          const b = back[0]
+          if (b) {
+            form.setValue(`persons.${ap}.id` as 'persons.0.id', b.id)
+            form.setValue(`persons.${ap}.kycStatus` as 'persons.0.kycStatus', b.kycStatus)
+            form.setValue(`persons.${ap}.kycCode` as 'persons.0.kycCode', b.kycCode ?? '')
+          }
+          await flushPendingAfterSave([slotIdsSnapshot[ap] ?? ''], back)
+        } else {
+          back.forEach((b, i) => {
+            form.setValue(`persons.${i}.id` as 'persons.0.id', b.id)
+            form.setValue(`persons.${i}.kycStatus` as 'persons.0.kycStatus', b.kycStatus)
+            form.setValue(`persons.${i}.kycCode` as 'persons.0.kycCode', b.kycCode ?? '')
+          })
+          await flushPendingAfterSave(slotIdsSnapshot, back)
+        }
       }
       if (action === 'SUBMIT') toast.success(t('submitSuccess'))
       else if (opts.advance && step < 3) setStep((s) => s + 1)
