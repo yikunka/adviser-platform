@@ -5,11 +5,30 @@ import { logAudit } from '@/lib/audit/logger'
 import { normalizeSignupEmail } from '@/lib/company/claim-pending-client'
 import { z } from 'zod'
 
+const COMPANY_TYPE_PREFIX: Record<string, string> = {
+  HONG_KONG: 'AA',
+  BVI:       'BV',
+  CAYMAN:    'CA',
+  MARSHALL:  'MS',
+}
+
+async function nextCompanyCode(companyType: string): Promise<string> {
+  const prefix = COMPANY_TYPE_PREFIX[companyType] ?? 'AA'
+  const rows = await prisma.$queryRaw<Array<{ max_no: number | null }>>`
+    SELECT MAX(CAST(SUBSTRING("companyCode" FROM 3) AS INTEGER)) AS max_no
+    FROM companies
+    WHERE "companyCode" ~ ${`^${prefix}[0-9]{5}$`}
+  `
+  const next = (rows[0]?.max_no ?? 0) + 1
+  return `${prefix}${String(next).padStart(5, '0')}`
+}
+
 const createSchema = z
   .object({
     nameEn: z.string().min(1).max(200),
     nameZh: z.string().max(200).optional(),
     companyNumber: z.string().max(20).optional(),
+    companyType: z.enum(['HONG_KONG', 'BVI', 'CAYMAN', 'MARSHALL']).optional(),
     dateOfIncorporation: z.string().optional(),
     registeredAddress: z.string().max(500).optional(),
     businessNature: z.string().max(500).optional(),
@@ -110,12 +129,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'clientRequired' }, { status: 400 })
   }
 
-  const { clientUserId: _drop, companyNumber, registeredAddress, ...companyFields } = rest
+  const { clientUserId: _drop, companyNumber, registeredAddress, companyType, ...companyFields } = rest
+
+  const companyCode = companyType ? await nextCompanyCode(companyType) : null
 
   const company = await prisma.company.create({
     data: {
       ...companyFields,
       companyNumber: companyNumber ?? null,
+      companyType: companyType ?? null,
+      companyCode,
       registeredAddress: registeredAddress ?? null,
       clientUserId: resolvedClientId ?? null,
       pendingClientEmail,

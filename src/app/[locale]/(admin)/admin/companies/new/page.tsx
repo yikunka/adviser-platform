@@ -59,6 +59,7 @@ export default function NewCompanyPage() {
     nameEn: '',
     nameZh: '',
     companyNumber: '',
+    companyType: '' as '' | 'HONG_KONG' | 'BVI' | 'CAYMAN' | 'MARSHALL',
     dateOfIncorporation: '',
     registeredAddress: '',
     businessNature: '',
@@ -177,6 +178,7 @@ export default function NewCompanyPage() {
       const body: Record<string, string> = { nameEn: form.nameEn }
       if (form.nameZh) body.nameZh = form.nameZh
       if (form.companyNumber) body.companyNumber = form.companyNumber
+      if (form.companyType) body.companyType = form.companyType
       if (form.dateOfIncorporation) body.dateOfIncorporation = form.dateOfIncorporation
       if (form.registeredAddress) body.registeredAddress = form.registeredAddress
       if (form.businessNature) body.businessNature = form.businessNature
@@ -372,6 +374,21 @@ export default function NewCompanyPage() {
             <label style={labelStyle}>Company Name (Chinese)</label>
             <Input style={fieldStyle} value={form.nameZh} onChange={e => set('nameZh', e.target.value)} maxLength={200} />
           </div>
+        </div>
+
+        <div>
+          <label style={labelStyle}>Company Type</label>
+          <select
+            value={form.companyType}
+            onChange={e => set('companyType', e.target.value)}
+            style={fieldStyle}
+          >
+            <option value="" style={{ background: '#141414' }}>— Select company type —</option>
+            <option value="HONG_KONG" style={{ background: '#141414' }}>Hong Kong Company</option>
+            <option value="CAYMAN" style={{ background: '#141414' }}>Cayman Company</option>
+            <option value="BVI" style={{ background: '#141414' }}>BVI Company</option>
+            <option value="MARSHALL" style={{ background: '#141414' }}>Marshall Company</option>
+          </select>
         </div>
 
         <div className="grid sm:grid-cols-2 gap-4">

@@ -251,6 +251,8 @@ model Company {
   nameEn                String
   nameZh                String?
   companyNumber         String?       @unique
+  companyType           String?
+  companyCode           String?       @unique
   dateOfIncorporation   DateTime?
   registeredAddress     String?
   businessNature        String?

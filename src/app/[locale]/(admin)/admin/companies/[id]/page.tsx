@@ -104,6 +104,8 @@ type Company = {
   nameEn: string
   nameZh: string | null
   companyNumber: string | null
+  companyCode: string | null
+  companyType: string | null
   dateOfIncorporation: string | null
   registeredAddress: string | null
   businessNature: string | null
@@ -1282,7 +1284,15 @@ export default function CompanyDetailPage() {
           </button>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>{company.nameEn}</h1>
           {company.nameZh && <p className="mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{company.nameZh}</p>}
-          {company.companyNumber && <p className="text-sm mt-1" style={{ color: '#5A5040' }}>Co. No. {company.companyNumber}</p>}
+          <div className="flex flex-wrap items-center gap-3 mt-1">
+            {company.companyCode && <span className="text-sm font-medium" style={{ color: '#C9A96E' }}>{company.companyCode}</span>}
+            {company.companyNumber && <span className="text-sm" style={{ color: '#5A5040' }}>Co. No. {company.companyNumber}</span>}
+            {company.companyType && (
+              <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(201,169,110,0.1)', color: '#C9A96E', border: '1px solid rgba(201,169,110,0.2)' }}>
+                {company.companyType === 'HONG_KONG' ? 'Hong Kong' : company.companyType === 'BVI' ? 'BVI' : company.companyType === 'CAYMAN' ? 'Cayman' : company.companyType === 'MARSHALL' ? 'Marshall' : company.companyType}
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <span className={`px-3 py-1 rounded-full text-sm font-medium ${STATUS_COLOR[company.status] ?? 'bg-[rgba(120,113,108,0.15)] text-[#9A8060]'}`}>
