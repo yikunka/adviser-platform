@@ -205,6 +205,7 @@ export default function KYCQueuePage() {
   const [createClientId, setCreateClientId] = useState('')
   const [createImage, setCreateImage] = useState<File | null>(null)
   const [creating, setCreating] = useState(false)
+  const [generatingDdr, setGeneratingDdr] = useState(false)
   const createImageInputRef = useRef<HTMLInputElement | null>(null)
 
   const fetchRecords = useCallback(async (statusOverride?: string) => {
@@ -316,6 +317,30 @@ export default function KYCQueuePage() {
       fetchRecords()
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function generatePersonDdr() {
+    if (!selected) return
+    setGeneratingDdr(true)
+    try {
+      const res = await fetch('/api/docgen/person', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keyPersonId: selected.id }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(typeof data?.error === 'string' ? data.error : 'DDR generation failed')
+        return
+      }
+      // Open the generated PDF via the /api/files signed URL
+      if (data.storageKey) {
+        window.open(`/api/files?key=${encodeURIComponent(data.storageKey)}&download=1&filename=DDR_${selected.nameEn.replace(/\s+/g, '_')}.pdf`, '_blank')
+        toast.success('Due diligence report generated')
+      }
+    } finally {
+      setGeneratingDdr(false)
     }
   }
 
@@ -609,6 +634,25 @@ export default function KYCQueuePage() {
                   </ul>
                 </DetailSection>
               )}
+
+              {/* Due Diligence Report */}
+              <div className="border-t pt-4" style={{ borderColor: '#2A2418' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#C9A96E' }}>Due Diligence Report</p>
+                  <Button
+                    variant="outline"
+                    disabled={generatingDdr}
+                    onClick={generatePersonDdr}
+                    className="text-xs h-7 px-3"
+                    style={{ borderColor: '#2A2418', color: generatingDdr ? 'var(--muted-foreground)' : '#C9A96E' }}
+                  >
+                    {generatingDdr ? 'Generating…' : 'Generate DDR'}
+                  </Button>
+                </div>
+                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                  Generate an Individual Due Diligence Report (PDF) for this person.
+                </p>
+              </div>
 
               {/* AML Screening */}
               <div className="border-t pt-4" style={{ borderColor: '#2A2418' }}>
