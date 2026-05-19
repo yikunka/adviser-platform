@@ -277,6 +277,7 @@ model Company {
   significantControllers SignificantController[]
   designatedReps         DesignatedRepresentative[]
   documents              Document[]
+  fileCases              CompanyFileCase[]
   amlChecks              AMLCheck[]                 @relation("CompanyAMLCheck")
   dueDiligenceReports    DueDiligenceReport[]
   riskAssessments        RiskAssessmentAnswer[]
@@ -530,7 +531,11 @@ model Document {
   mimeType      String
   fileSize      Int
   uploadedById  String
+  fileCaseId    String?
+  caseFileRole  String?
+  customDocumentType String?
   effectiveDate DateTime?
+  submissionDate DateTime?
   expiryDate    DateTime?
   version       Int          @default(1)
   notes         String?
@@ -540,12 +545,29 @@ model Document {
 
   company    Company? @relation(fields: [companyId], references: [id])
   uploadedBy User     @relation(fields: [uploadedById], references: [id])
+  fileCase   CompanyFileCase? @relation(fields: [fileCaseId], references: [id], onDelete: SetNull)
 
   shareholderChangeDocs ShareholderChangeDocument[]
   addressChangeDocs     AddressChangeDocument[]
   annualFilingDocs      AnnualFilingDocument[]
 
   @@map("documents")
+}
+
+model CompanyFileCase {
+  id        String    @id @default(cuid())
+  companyId String
+  name      String
+  caseDate  DateTime?
+  remark    String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  documents Document[]
+
+  @@index([companyId])
+  @@map("company_file_cases")
 }
 
 // ─────────────────────────────────────────────

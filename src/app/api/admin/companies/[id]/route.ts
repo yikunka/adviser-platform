@@ -33,6 +33,15 @@ export async function GET(
       significantControllers: true,
       designatedReps: { orderBy: { entryDate: 'asc' } },
       documents: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' } },
+      fileCases: {
+        orderBy: { updatedAt: 'desc' },
+        include: {
+          documents: {
+            where: { deletedAt: null },
+            orderBy: { createdAt: 'desc' },
+          },
+        },
+      },
       auditLogs: { orderBy: { createdAt: 'desc' }, take: 20 },
       assignedStaff: { select: { nameEn: true, email: true } },
       clientUser: { select: { nameEn: true, email: true } },

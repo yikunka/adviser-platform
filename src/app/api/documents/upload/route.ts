@@ -19,6 +19,10 @@ export async function POST(req: NextRequest) {
   const keyPersonId = formData.get('keyPersonId') as string | null
   const notes = formData.get('notes') as string | null
   const effectiveDate = formData.get('effectiveDate') as string | null
+  const fileCaseId = formData.get('fileCaseId') as string | null
+  const caseFileRole = formData.get('caseFileRole') as string | null
+  const customDocumentType = formData.get('customDocumentType') as string | null
+  const submissionDate = formData.get('submissionDate') as string | null
 
   if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
   if (!ALLOWED_TYPES.includes(file.type)) {
@@ -87,6 +91,10 @@ export async function POST(req: NextRequest) {
       companyId: companyId ?? undefined,
       notes: notes?.trim() || undefined,
       effectiveDate: effectiveDate ? new Date(effectiveDate) : undefined,
+      fileCaseId: fileCaseId ?? undefined,
+      caseFileRole: caseFileRole ?? undefined,
+      customDocumentType: customDocumentType?.trim() || undefined,
+      submissionDate: submissionDate ? new Date(submissionDate) : undefined,
     },
   })
 

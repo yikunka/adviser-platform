@@ -1,6 +1,6 @@
 import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-  AlignmentType, BorderStyle, WidthType, ShadingType, VerticalAlign,
+  AlignmentType, BorderStyle, WidthType, ShadingType, VerticalAlign, VerticalMergeType,
 } from 'docx'
 import { prisma } from '@/lib/db/prisma'
 
@@ -25,32 +25,40 @@ function hkd(amount: { toString(): string } | null) {
   return `HK$${n.toLocaleString('en-HK')}`
 }
 
-function lCell(text: string, width: number) {
+function lCell(text: string, width: number, colSpan?: number, verticalMerge?: (typeof VerticalMergeType)[keyof typeof VerticalMergeType]) {
   return new TableCell({
     borders, width: { size: width, type: WidthType.DXA }, margins: cellMargins,
     shading: labelShading,
     verticalAlign: VerticalAlign.CENTER,
+    ...(colSpan && colSpan > 1 ? { columnSpan: colSpan } : {}),
+    ...(verticalMerge ? { verticalMerge } : {}),
     children: [new Paragraph({ children: [new TextRun({ text, bold: true, size: 18 })] })],
   })
 }
 
-function vCell(text: string, width: number, colSpan?: number) {
+function vCell(text: string, width: number, colSpan?: number, verticalMerge?: (typeof VerticalMergeType)[keyof typeof VerticalMergeType]) {
   return new TableCell({
     borders, width: { size: width, type: WidthType.DXA }, margins: cellMargins,
     verticalAlign: VerticalAlign.CENTER,
     ...(colSpan && colSpan > 1 ? { columnSpan: colSpan } : {}),
+    ...(verticalMerge ? { verticalMerge } : {}),
     children: [new Paragraph({ children: [new TextRun({ text, size: 18 })] })],
   })
 }
 
 // Header cell: centered, bold, shaded. Supports rowSpan and colSpan.
-function hCell(text: string, width: number, rowSpan = 1, colSpan = 1) {
+function hCell(
+  text: string,
+  width: number,
+  colSpan = 1,
+  verticalMerge?: (typeof VerticalMergeType)[keyof typeof VerticalMergeType],
+) {
   return new TableCell({
     borders, width: { size: width, type: WidthType.DXA }, margins: cellMargins,
     shading: labelShading,
     verticalAlign: VerticalAlign.CENTER,
-    ...(rowSpan > 1 ? { rowSpan } : {}),
     ...(colSpan > 1 ? { columnSpan: colSpan } : {}),
+    ...(verticalMerge ? { verticalMerge } : {}),
     children: [new Paragraph({
       alignment: AlignmentType.CENTER,
       children: [new TextRun({ text, bold: true, size: 16 })],
@@ -58,92 +66,76 @@ function hCell(text: string, width: number, rowSpan = 1, colSpan = 1) {
   })
 }
 
+function hCont(width: number, colSpan = 1) {
+  return hCell('', width, colSpan, VerticalMergeType.CONTINUE)
+}
+
 function buildTxnHeader(): TableRow[] {
   const row1 = new TableRow({
     tableHeader: true,
     children: [
-      hCell('Date of Acquisition or Transfer ', W[0]),
-      hCell('Allotment no. or Transfer no.', W[1]),
-      hCell('Allotment no. or Transfer no.', W[2]),
-      hCell('Shares Acquired', W[3]),
-      hCell('Shares Acquired', W[4]),
-      hCell('Shares Acquired', W[5]),
-      hCell('Shares Acquired', W[6]),
-      hCell('Shares Acquired', W[7]),
-      hCell('Shares Transferred\n\n', W[8]),
-      hCell('Shares Transferred\n\n', W[9]),
-      hCell('Shares Transferred\n\n', W[10]),
-      hCell('Shares Transferred\n\n', W[11]),
-      hCell('Shares Transferred\n\n', W[12]),
-      hCell('Shares Transferred\n\n', W[13]),
-      hCell('Shares Transferred\n\n', W[14]),
-      hCell('Shares Held\n(Net Balance)', W[15]),
+      hCell('Date of\nAcquisition\nor Transfer', W[0], 1, VerticalMergeType.RESTART),
+      hCell('Allotment\nno. or\nTransfer\nno.', W[1] + W[2], 2, VerticalMergeType.RESTART),
+      hCell('Shares Acquired', W[3] + W[4] + W[5] + W[6] + W[7], 5),
+      hCell('Shares Transferred', W[8] + W[9] + W[10] + W[11] + W[12] + W[13] + W[14], 7),
+      hCell('Shares\nHeld\n(Net\nBalance)', W[15], 1, VerticalMergeType.RESTART),
     ],
   })
 
   const row2 = new TableRow({
     tableHeader: true,
     children: [
-      hCell('Date of Acquisition or Transfer ', W[0]),
-      hCell('Allotment no. or Transfer no.', W[1]),
-      hCell('Allotment no. or Transfer no.', W[2]),
-      hCell('Share Certificate no.', W[3]),
-      hCell('Number of shares acquired', W[4]),
-      hCell('Distinctive nos. of shares', W[5]),
-      hCell('Distinctive nos. of shares', W[6]),
-      hCell('Amount paid or agreed to be considered as paid', W[7]),
-      hCell('Number of shares transferred', W[8]),
-      hCell('Certificate surrendered', W[9]),
-      hCell('Certificate surrendered', W[10]),
-      hCell('Balance certificate', W[11]),
-      hCell('Balance certificate', W[12]),
-      hCell('Balance certificate', W[13]),
-      hCell('Balance certificate', W[14]),
-      hCell('Shares Held\n(Net Balance)', W[15]),
+      hCont(W[0]),
+      hCont(W[1] + W[2], 2),
+      hCell('Share\nCertificate\nno.', W[3], 1, VerticalMergeType.RESTART),
+      hCell('Number\nof shares\nacquired', W[4], 1, VerticalMergeType.RESTART),
+      hCell('Distinctive nos.\nof shares', W[5] + W[6], 2),
+      hCell('Amount\npaid or\nagreed to\nbe\nconsidered\nas paid', W[7], 1, VerticalMergeType.RESTART),
+      hCell('Number of\nshares\ntransferred', W[8], 1, VerticalMergeType.RESTART),
+      hCell('Certificate\nsurrendered', W[9] + W[10], 2),
+      hCell('Balance certificate', W[11] + W[12] + W[13] + W[14], 4),
+      hCont(W[15]),
     ],
   })
 
   const row3 = new TableRow({
     tableHeader: true,
     children: [
-      hCell('Date of Acquisition or Transfer ', W[0]),
-      hCell('Allotment no. or Transfer no.', W[1]),
-      hCell('Allotment no. or Transfer no.', W[2]),
-      hCell('Share Certificate no.', W[3]),
-      hCell('Number of shares acquired', W[4]),
+      hCont(W[0]),
+      hCont(W[1] + W[2], 2),
+      hCont(W[3]),
+      hCont(W[4]),
       hCell('from', W[5]),
       hCell('to', W[6]),
-      hCell('Amount paid or agreed to be considered as paid', W[7]),
-      hCell('Number of shares transferred', W[8]),
-      hCell('Cert No.', W[9]),
-      hCell('No. of shares', W[10]),
-      hCell('Cert. No. ', W[11]),
-      hCell('No. of shares', W[12]),
-      hCell('Distinctive nos. of shares\n', W[13]),
-      hCell('Distinctive nos. of shares\n', W[14]),
-      hCell('Shares Held\n(Net Balance)', W[15]),
+      hCont(W[7]),
+      hCont(W[8]),
+      hCell('Cert\nNo.', W[9], 1, VerticalMergeType.RESTART),
+      hCell('No. of\nshares', W[10], 1, VerticalMergeType.RESTART),
+      hCell('Cert.\nNo.', W[11], 1, VerticalMergeType.RESTART),
+      hCell('No. of\nshares', W[12], 1, VerticalMergeType.RESTART),
+      hCell('Distinctive\nnos. of\nshares', W[13] + W[14], 2),
+      hCont(W[15]),
     ],
   })
 
   const row4 = new TableRow({
     tableHeader: true,
     children: [
-      hCell('Date of Acquisition or Transfer ', W[0]),
-      hCell('Allotment no. or Transfer no.', W[1]),
-      hCell('Allotment no. or Transfer no.', W[2]),
-      hCell('Share Certificate no.', W[3]),
-      hCell('Number of shares acquired', W[4]),
+      hCont(W[0]),
+      hCont(W[1] + W[2], 2),
+      hCont(W[3]),
+      hCont(W[4]),
       hCell('from', W[5]),
       hCell('to', W[6]),
-      hCell('Amount paid or agreed to be considered as paid', W[7]),
-      hCell('Number of shares transferred', W[8]),
-      hCell('Cert No.', W[9]),
-      hCell('No. of shares', W[10]),
-      hCell('Cert. No. ', W[11]),
-      hCell('No. of shares', W[12]),
+      hCont(W[7]),
+      hCont(W[8]),
+      hCont(W[9]),
+      hCont(W[10]),
+      hCont(W[11]),
+      hCont(W[12]),
       hCell('from', W[13]),
       hCell('to', W[14]),
-      hCell('Shares Held\n(Net Balance)', W[15]),
+      hCont(W[15]),
     ],
   })
 
@@ -170,20 +162,20 @@ export async function generateROM(companyId: string): Promise<Buffer> {
       new TableRow({ children: [
         lCell('Full Name', W[0]),
         vCell(`${member.nameEn}${member.nameZh ? ' ' + member.nameZh : ''}`, W.slice(1, 8).reduce((a, b) => a + b, 0), 7),
-        lCell('Class of shares', W[8]),
-        vCell(member.shareClass === 'ORDINARY' ? 'Ordinary' : member.shareClass, W.slice(9, 16).reduce((a, b) => a + b, 0), 7),
+        lCell('Class of\nshares', W[8], undefined, VerticalMergeType.RESTART),
+        vCell(member.shareClass === 'ORDINARY' ? 'Ordinary' : member.shareClass, W.slice(9, 16).reduce((a, b) => a + b, 0), 7, VerticalMergeType.RESTART),
       ] }),
       new TableRow({ children: [
         lCell('Registered address', W[0]),
         vCell(member.registeredAddress, W.slice(1, 8).reduce((a, b) => a + b, 0), 7),
-        lCell('Class of shares', W[8]),
-        vCell(member.shareClass === 'ORDINARY' ? 'Ordinary' : member.shareClass, W.slice(9, 16).reduce((a, b) => a + b, 0), 7),
+        lCell('', W[8], undefined, VerticalMergeType.CONTINUE),
+        vCell('', W.slice(9, 16).reduce((a, b) => a + b, 0), 7, VerticalMergeType.CONTINUE),
       ] }),
       new TableRow({ children: [
         lCell('Occupation', W[0]),
         vCell(member.occupation ?? '', W.slice(1, 8).reduce((a, b) => a + b, 0), 7),
-        lCell('Class of shares', W[8]),
-        vCell(member.shareClass === 'ORDINARY' ? 'Ordinary' : member.shareClass, W.slice(9, 16).reduce((a, b) => a + b, 0), 7),
+        lCell('', W[8], undefined, VerticalMergeType.CONTINUE),
+        vCell('', W.slice(9, 16).reduce((a, b) => a + b, 0), 7, VerticalMergeType.CONTINUE),
       ] }),
     ]
 

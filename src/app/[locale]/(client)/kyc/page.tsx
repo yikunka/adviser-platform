@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { useDropzone } from 'react-dropzone'
 import {
@@ -103,8 +103,14 @@ function Field({ label, error, children }: { label: string; error?: string; chil
   const visibleLabel = required ? label.trimEnd().slice(0, -1).trimEnd() : label
 
   return (
-    <div>
-      <label style={labelStyle}>
+    <div
+      style={
+        error
+          ? { borderLeft: '3px solid #ef4444', paddingLeft: '0.5rem', borderRadius: '0.25rem' }
+          : undefined
+      }
+    >
+      <label style={{ ...labelStyle, color: error ? '#ef4444' : labelStyle.color }}>
         {visibleLabel}
         {required ? <span style={{ color: '#ef4444', fontWeight: 700 }}> *</span> : null}
       </label>
@@ -229,6 +235,178 @@ const LOCATION_COUNTRIES: CountryOption[] = [
 
 const selectOptionStyle = { background: '#141414' }
 
+const ZH_LOCATION_LABELS: Record<string, string> = {
+  'Mainland China': '中国内地',
+  'Hong Kong': '香港',
+  'Macau': '澳门',
+  'Taiwan': '台湾',
+  'Other': '其他',
+  'Hong Kong Island': '香港岛',
+  'Kowloon': '九龙',
+  'New Territories': '新界',
+  'Outlying Islands': '离岛',
+  'Central and Western': '中西区',
+  'Wan Chai': '湾仔',
+  'Eastern': '东区',
+  'Southern': '南区',
+  'Yau Tsim Mong': '油尖旺',
+  'Sham Shui Po': '深水埗',
+  'Kowloon City': '九龙城',
+  'Wong Tai Sin': '黄大仙',
+  'Kwun Tong': '观塘',
+  'Tsuen Wan': '荃湾',
+  'Tuen Mun': '屯门',
+  'Yuen Long': '元朗',
+  'North': '北区',
+  'Tai Po': '大埔',
+  'Sha Tin': '沙田',
+  'Sai Kung': '西贡',
+  'Kwai Tsing': '葵青',
+  'Islands': '离岛',
+  'Macau Peninsula / Islands': '澳门半岛/离岛',
+  'Taipa': '氹仔',
+  'Coloane': '路环',
+  'Cotai': '路氹',
+  'Taipei': '台北',
+  'New Taipei': '新北',
+  'Taoyuan': '桃园',
+  'Taichung': '台中',
+  'Tainan': '台南',
+  'Kaohsiung': '高雄',
+  'Hsinchu': '新竹',
+  'Keelung': '基隆',
+  'Anhui': '安徽',
+  'Beijing': '北京',
+  'Chongqing': '重庆',
+  'Fujian': '福建',
+  'Gansu': '甘肃',
+  'Guangdong': '广东',
+  'Guangxi': '广西',
+  'Guizhou': '贵州',
+  'Hainan': '海南',
+  'Hebei': '河北',
+  'Heilongjiang': '黑龙江',
+  'Henan': '河南',
+  'Hubei': '湖北',
+  'Hunan': '湖南',
+  'Inner Mongolia': '内蒙古',
+  'Jiangsu': '江苏',
+  'Jiangxi': '江西',
+  'Jilin': '吉林',
+  'Liaoning': '辽宁',
+  'Ningxia': '宁夏',
+  'Qinghai': '青海',
+  'Shaanxi': '陕西',
+  'Shandong': '山东',
+  'Shanghai': '上海',
+  'Shanxi': '山西',
+  'Sichuan': '四川',
+  'Tianjin': '天津',
+  'Tibet': '西藏',
+  'Xinjiang': '新疆',
+  'Yunnan': '云南',
+  'Zhejiang': '浙江',
+  'Hefei': '合肥',
+  'Wuhu': '芜湖',
+  'Bengbu': '蚌埠',
+  'Fuyang': '阜阳',
+  'Fuzhou': '福州',
+  'Xiamen': '厦门',
+  'Quanzhou': '泉州',
+  'Lanzhou': '兰州',
+  'Tianshui': '天水',
+  'Guangzhou': '广州',
+  'Shenzhen': '深圳',
+  'Dongguan': '东莞',
+  'Foshan': '佛山',
+  'Zhuhai': '珠海',
+  'Huizhou': '惠州',
+  'Zhongshan': '中山',
+  'Jiangmen': '江门',
+  'Shantou': '汕头',
+  'Nanning': '南宁',
+  'Guilin': '桂林',
+  'Liuzhou': '柳州',
+  'Guiyang': '贵阳',
+  'Zunyi': '遵义',
+  'Haikou': '海口',
+  'Sanya': '三亚',
+  'Shijiazhuang': '石家庄',
+  'Tangshan': '唐山',
+  'Baoding': '保定',
+  'Harbin': '哈尔滨',
+  'Qiqihar': '齐齐哈尔',
+  'Zhengzhou': '郑州',
+  'Luoyang': '洛阳',
+  'Kaifeng': '开封',
+  'Wuhan': '武汉',
+  'Yichang': '宜昌',
+  'Xiangyang': '襄阳',
+  'Changsha': '长沙',
+  'Zhuzhou': '株洲',
+  'Xiangtan': '湘潭',
+  'Hohhot': '呼和浩特',
+  'Baotou': '包头',
+  'Nanjing': '南京',
+  'Suzhou': '苏州',
+  'Wuxi': '无锡',
+  'Changzhou': '常州',
+  'Nantong': '南通',
+  'Nanchang': '南昌',
+  'Ganzhou': '赣州',
+  'Jiujiang': '九江',
+  'Changchun': '长春',
+  'Shenyang': '沈阳',
+  'Dalian': '大连',
+  'Anshan': '鞍山',
+  'Yinchuan': '银川',
+  'Xining': '西宁',
+  'Xi’an': '西安',
+  'Xianyang': '咸阳',
+  'Baoji': '宝鸡',
+  'Jinan': '济南',
+  'Qingdao': '青岛',
+  'Yantai': '烟台',
+  'Weifang': '潍坊',
+  'Taiyuan': '太原',
+  'Datong': '大同',
+  'Chengdu': '成都',
+  'Mianyang': '绵阳',
+  'Lhasa': '拉萨',
+  'Urumqi': '乌鲁木齐',
+  'Kashgar': '喀什',
+  'Kunming': '昆明',
+  'Dali': '大理',
+  'Lijiang': '丽江',
+  'Hangzhou': '杭州',
+  'Ningbo': '宁波',
+  'Wenzhou': '温州',
+  'Jinhua': '金华',
+}
+
+const ZH_UI_LABELS: Record<string, string> = {
+  'Country / Region': '国家/地区',
+  'Province / State': '省/州',
+  City: '城市',
+  'Other country': '其他国家/地区',
+  'Other province / state': '其他省/州',
+  'Other city': '其他城市',
+  'Other country / nationality': '其他国家/国籍',
+  'Detail address': '详细地址',
+}
+
+function isChineseLocale(locale: string) {
+  return locale.toLowerCase().startsWith('zh')
+}
+
+function localizeOption(value: string, zh: boolean) {
+  return zh ? ZH_LOCATION_LABELS[value] ?? value : value
+}
+
+function localizeUi(value: string, zh: boolean) {
+  return zh ? ZH_UI_LABELS[value] ?? value : value
+}
+
 function countryFor(value: string) {
   return LOCATION_COUNTRIES.find((country) => country.value === value)
 }
@@ -278,9 +456,9 @@ function splitAddressValue(value?: string) {
       countryOther,
       region: maybeRegion,
       regionOther: '',
-      city: hasCity ? maybeCity : '',
-      cityOther: '',
-      detail: parts.slice(hasCity ? 3 : 2).join(' / '),
+      city: hasCity ? maybeCity : maybeCity ? 'Other' : '',
+      cityOther: hasCity || !maybeCity ? '' : maybeCity,
+      detail: parts.slice(hasCity || maybeCity ? 3 : 2).join(' / '),
     }
   }
 
@@ -312,6 +490,7 @@ function CountrySelectField({
   onChange: (value: string) => void
   disabled: boolean
 }) {
+  const zh = isChineseLocale(useLocale())
   const selected = value && countryFor(value) ? value : value ? 'Other' : ''
   return (
     <div className="space-y-3">
@@ -324,7 +503,7 @@ function CountrySelectField({
         <option value="" style={selectOptionStyle}>—</option>
         {LOCATION_COUNTRIES.map((country) => (
           <option key={country.value} value={country.value} style={selectOptionStyle}>
-            {country.value}
+            {localizeOption(country.value, zh)}
           </option>
         ))}
       </select>
@@ -333,7 +512,7 @@ function CountrySelectField({
           style={fieldStyle}
           disabled={disabled}
           value={value && !countryFor(value) ? value : ''}
-          placeholder="Other country / nationality"
+          placeholder={localizeUi('Other country / nationality', zh)}
           onChange={(event) => onChange(event.target.value)}
         />
       ) : null}
@@ -350,6 +529,7 @@ function LocationSelectField({
   onChange: (value: string) => void
   disabled: boolean
 }) {
+  const zh = isChineseLocale(useLocale())
   const parts = splitLocationValue(value ?? undefined)
   const regions = countryFor(parts.country)?.regions ?? []
   const cities = regionFor(parts.country, parts.region)?.cities ?? []
@@ -368,10 +548,10 @@ function LocationSelectField({
           value={parts.country}
           onChange={(event) => commit({ country: event.target.value, countryOther: '', region: '', regionOther: '', city: '', cityOther: '' })}
         >
-          <option value="" style={selectOptionStyle}>Country / Region</option>
+          <option value="" style={selectOptionStyle}>{localizeUi('Country / Region', zh)}</option>
           {LOCATION_COUNTRIES.map((country) => (
             <option key={country.value} value={country.value} style={selectOptionStyle}>
-              {country.value}
+              {localizeOption(country.value, zh)}
             </option>
           ))}
         </select>
@@ -382,10 +562,10 @@ function LocationSelectField({
           value={parts.region}
           onChange={(event) => commit({ ...parts, region: event.target.value, regionOther: '', city: '', cityOther: '' })}
         >
-          <option value="" style={selectOptionStyle}>Province / State</option>
+          <option value="" style={selectOptionStyle}>{localizeUi('Province / State', zh)}</option>
           {regions.map((region) => (
             <option key={region.value} value={region.value} style={selectOptionStyle}>
-              {region.value}
+              {localizeOption(region.value, zh)}
             </option>
           ))}
         </select>
@@ -396,10 +576,10 @@ function LocationSelectField({
           value={parts.city}
           onChange={(event) => commit({ ...parts, city: event.target.value, cityOther: '' })}
         >
-          <option value="" style={selectOptionStyle}>City</option>
+          <option value="" style={selectOptionStyle}>{localizeUi('City', zh)}</option>
           {cities.map((city) => (
             <option key={city} value={city} style={selectOptionStyle}>
-              {city}
+              {localizeOption(city, zh)}
             </option>
           ))}
         </select>
@@ -407,13 +587,13 @@ function LocationSelectField({
       {(parts.country === 'Other' || parts.region === 'Other' || parts.city === 'Other') ? (
         <div className="grid sm:grid-cols-3 gap-3">
           {parts.country === 'Other' ? (
-            <input style={fieldStyle} disabled={disabled} value={parts.countryOther} placeholder="Other country" onChange={(event) => commit({ ...parts, countryOther: event.target.value })} />
+            <input style={fieldStyle} disabled={disabled} value={parts.countryOther} placeholder={localizeUi('Other country', zh)} onChange={(event) => commit({ ...parts, countryOther: event.target.value })} />
           ) : <div />}
           {parts.region === 'Other' ? (
-            <input style={fieldStyle} disabled={disabled} value={parts.regionOther} placeholder="Other province / state" onChange={(event) => commit({ ...parts, regionOther: event.target.value })} />
+            <input style={fieldStyle} disabled={disabled} value={parts.regionOther} placeholder={localizeUi('Other province / state', zh)} onChange={(event) => commit({ ...parts, regionOther: event.target.value })} />
           ) : <div />}
           {parts.city === 'Other' ? (
-            <input style={fieldStyle} disabled={disabled} value={parts.cityOther} placeholder="Other city" onChange={(event) => commit({ ...parts, cityOther: event.target.value })} />
+            <input style={fieldStyle} disabled={disabled} value={parts.cityOther} placeholder={localizeUi('Other city', zh)} onChange={(event) => commit({ ...parts, cityOther: event.target.value })} />
           ) : <div />}
         </div>
       ) : null}
@@ -430,6 +610,7 @@ function AddressSelectField({
   onChange: (value: string) => void
   disabled: boolean
 }) {
+  const zh = isChineseLocale(useLocale())
   const parts = splitAddressValue(value ?? undefined)
   const regions = countryFor(parts.country)?.regions ?? []
   const cities = regionFor(parts.country, parts.region)?.cities ?? []
@@ -448,10 +629,10 @@ function AddressSelectField({
           value={parts.country}
           onChange={(event) => commit({ country: event.target.value, countryOther: '', region: '', regionOther: '', city: '', cityOther: '', detail: parts.detail })}
         >
-          <option value="" style={selectOptionStyle}>Country / Region</option>
+          <option value="" style={selectOptionStyle}>{localizeUi('Country / Region', zh)}</option>
           {LOCATION_COUNTRIES.map((country) => (
             <option key={country.value} value={country.value} style={selectOptionStyle}>
-              {country.value}
+              {localizeOption(country.value, zh)}
             </option>
           ))}
         </select>
@@ -462,10 +643,10 @@ function AddressSelectField({
           value={parts.region}
           onChange={(event) => commit({ ...parts, region: event.target.value, regionOther: '', city: '', cityOther: '' })}
         >
-          <option value="" style={selectOptionStyle}>Province / State</option>
+          <option value="" style={selectOptionStyle}>{localizeUi('Province / State', zh)}</option>
           {regions.map((region) => (
             <option key={region.value} value={region.value} style={selectOptionStyle}>
-              {region.value}
+              {localizeOption(region.value, zh)}
             </option>
           ))}
         </select>
@@ -476,10 +657,10 @@ function AddressSelectField({
           value={parts.city}
           onChange={(event) => commit({ ...parts, city: event.target.value, cityOther: '' })}
         >
-          <option value="" style={selectOptionStyle}>City</option>
+          <option value="" style={selectOptionStyle}>{localizeUi('City', zh)}</option>
           {cities.map((city) => (
             <option key={city} value={city} style={selectOptionStyle}>
-              {city}
+              {localizeOption(city, zh)}
             </option>
           ))}
         </select>
@@ -487,20 +668,20 @@ function AddressSelectField({
       {(parts.country === 'Other' || parts.region === 'Other' || parts.city === 'Other') ? (
         <div className="grid sm:grid-cols-3 gap-3">
           {parts.country === 'Other' ? (
-            <input style={fieldStyle} disabled={disabled} value={parts.countryOther} placeholder="Other country" onChange={(event) => commit({ ...parts, countryOther: event.target.value })} />
+            <input style={fieldStyle} disabled={disabled} value={parts.countryOther} placeholder={localizeUi('Other country', zh)} onChange={(event) => commit({ ...parts, countryOther: event.target.value })} />
           ) : <div />}
           {parts.region === 'Other' ? (
-            <input style={fieldStyle} disabled={disabled} value={parts.regionOther} placeholder="Other province / state" onChange={(event) => commit({ ...parts, regionOther: event.target.value })} />
+            <input style={fieldStyle} disabled={disabled} value={parts.regionOther} placeholder={localizeUi('Other province / state', zh)} onChange={(event) => commit({ ...parts, regionOther: event.target.value })} />
           ) : <div />}
           {parts.city === 'Other' ? (
-            <input style={fieldStyle} disabled={disabled} value={parts.cityOther} placeholder="Other city" onChange={(event) => commit({ ...parts, cityOther: event.target.value })} />
+            <input style={fieldStyle} disabled={disabled} value={parts.cityOther} placeholder={localizeUi('Other city', zh)} onChange={(event) => commit({ ...parts, cityOther: event.target.value })} />
           ) : <div />}
         </div>
       ) : null}
       <textarea
         rows={2}
         aria-label="Detail address"
-        placeholder="Detail address 詳細地址"
+        placeholder={localizeUi('Detail address', zh)}
         style={{ ...fieldStyle, resize: 'none' }}
         disabled={disabled}
         value={parts.detail}
@@ -530,8 +711,11 @@ function UploadZone({
   setUploads,
   pendingFiles,
   setPendingFiles,
+  existingDocs,
   hint,
   required = false,
+  error,
+  onAcceptedFiles,
 }: {
   slotId: string
   personId: string | undefined
@@ -544,8 +728,11 @@ function UploadZone({
   setPendingFiles: React.Dispatch<
     React.SetStateAction<Record<string, { uid: string; file: File }[]>>
   >
+  existingDocs?: { id: string; documentType: string; fileName: string }[]
   hint: string
   required?: boolean
+  error?: string
+  onAcceptedFiles?: () => void
 }) {
   const t = useTranslations('kyc')
   const serverUploadKey = personId ? `${personId}:${category}` : ''
@@ -574,6 +761,7 @@ function UploadZone({
                 x.name === file.name ? { ...x, status: 'done' } : x
               ),
             }))
+            onAcceptedFiles?.()
             toast.success(t('uploaded', { defaultValue: 'Uploaded' }))
           } catch {
             setUploads((u) => ({
@@ -597,6 +785,7 @@ function UploadZone({
           [pendingKey]: [...(p[pendingKey] ?? []), { uid, file }],
         }))
       }
+      if (files.length > 0) onAcceptedFiles?.()
       toast.message(
         t('pendingUploadQueued', {
           defaultValue:
@@ -614,6 +803,7 @@ function UploadZone({
       docType,
       setUploads,
       setPendingFiles,
+      onAcceptedFiles,
       t,
     ]
   )
@@ -638,13 +828,28 @@ function UploadZone({
     })
   }
 
+  // Existing docs from previous sessions — filter to this category's docType
+  const alreadySaved = (existingDocs ?? []).filter(d => d.documentType === docType)
+
   return (
     <div className="space-y-2 pt-3">
+      {alreadySaved.length > 0 && (
+        <ul className="space-y-1 text-xs mb-1">
+          {alreadySaved.map((d) => (
+            <li key={d.id} className="flex items-center gap-2" style={{ color: '#10b981' }}>
+              <CheckCircle2 size={12} />
+              <span className="truncate">{d.fileName}</span>
+              <span style={{ opacity: 0.7 }}>— {t('alreadyUploaded', { defaultValue: 'already uploaded' })}</span>
+            </li>
+          ))}
+        </ul>
+      )}
       <div
         {...getRootProps()}
         className="rounded-lg p-4 flex flex-col items-center gap-2 text-center cursor-pointer transition-all"
         style={{
           border: `2px dashed ${isDragActive ? '#C9A96E' : '#2A2418'}`,
+          borderColor: error ? '#ef4444' : isDragActive ? '#C9A96E' : '#2A2418',
           background: isDragActive ? 'rgba(201,169,110,0.06)' : 'var(--background)',
           opacity: isLocked || !slotId ? 0.5 : 1,
           pointerEvents: isLocked || !slotId ? 'none' : 'auto',
@@ -662,6 +867,7 @@ function UploadZone({
           </p>
         ) : null}
       </div>
+      {error ? <p className="text-xs" style={{ color: '#ef4444' }}>{error}</p> : null}
       {pendingList.length > 0 ? (
         <ul className="space-y-1 text-xs">
           {pendingList.map((row) => (
@@ -720,7 +926,8 @@ export default function KYCPage() {
   const [pendingKycUploads, setPendingKycUploads] = useState<
     Record<string, { uid: string; file: File }[]>
   >({})
-  const [existingKycDocs, setExistingKycDocs] = useState<Record<string, string[]>>({})
+  const [existingKycDocs, setExistingKycDocs] = useState<Record<string, { id: string; documentType: string; fileName: string }[]>>({})
+  const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({})
   const contactAddressEditedRef = useRef<Record<string, boolean>>({})
   const fieldSlotIdsRef = useRef<string[]>([])
   const pendingUploadsRef = useRef(pendingKycUploads)
@@ -758,9 +965,9 @@ export default function KYCPage() {
               kycStatus: p.kycStatus,
             })),
           })
-          const docsByPerson: Record<string, string[]> = {}
-          for (const p of list as Array<KeyPerson & { kycDocuments?: { documentType: string }[] }>) {
-            docsByPerson[p.id] = (p.kycDocuments ?? []).map((doc) => doc.documentType)
+          const docsByPerson: Record<string, { id: string; documentType: string; fileName: string }[]> = {}
+          for (const p of list as Array<KeyPerson & { kycDocuments?: { id: string; documentType: string; fileName: string }[] }>) {
+            docsByPerson[p.id] = p.kycDocuments ?? []
           }
           setExistingKycDocs(docsByPerson)
           setUploads({})
@@ -792,9 +999,23 @@ export default function KYCPage() {
     const person = form.getValues(`persons.${personIndex}` as 'persons.0')
     const docType = DOC_TYPE_FOR_CATEGORY[category]
     if (slotId && (pendingUploadsRef.current[`${slotId}:${category}`]?.length ?? 0) > 0) return true
-    if (person?.id && existingKycDocs[person.id]?.includes(docType)) return true
+    if (person?.id && existingKycDocs[person.id]?.some(d => d.documentType === docType)) return true
     if (person?.id && (uploads[`${person.id}:${category}`] ?? []).some((doc) => doc.status === 'done')) return true
     return false
+  }
+
+  function uploadErrorKey(personIndex: number, category: KycPendingCategory) {
+    return `${fieldSlotIdsRef.current[personIndex] || `person-${personIndex}`}:${category}`
+  }
+
+  function clearUploadError(personIndex: number, category: KycPendingCategory) {
+    const key = uploadErrorKey(personIndex, category)
+    setUploadErrors((current) => {
+      if (!current[key]) return current
+      const next = { ...current }
+      delete next[key]
+      return next
+    })
   }
 
   function composeNameForPerson(personIndex: number) {
@@ -804,52 +1025,77 @@ export default function KYCPage() {
 
   /** Validates one person for final SUBMIT (current tab only — does not submit other persons). */
   function validateSubmitRequirements(personIndex: number) {
+    form.clearErrors(`persons.${personIndex}` as 'persons.0')
+    setUploadErrors((current) => {
+      const next = { ...current }
+      delete next[uploadErrorKey(personIndex, 'id')]
+      delete next[uploadErrorKey(personIndex, 'address')]
+      return next
+    })
     const persons = form.getValues('persons')
     const p = persons[personIndex]
     if (!p) return false
 
     const missing = [
-      ['English first name', p.firstName],
-      ['En last name / surname', p.lastName],
-      ['ID type', p.idType],
-      ['ID/passport number', p.idNumber],
-      ['Place of issue', p.placeOfIssue],
-      ['ID/passport expiry date', p.idExpiry],
-      ['Date of birth', p.dateOfBirth],
-      ['Place of birth', p.placeOfBirth],
-      ['Nationality', p.nationality],
-      ['Home address', p.homeAddress],
-      ['Contact address', p.contactAddress],
-      ['Mobile phone', p.mobile],
-      ['Email', p.email],
-    ].filter(([, value]) => !String(value ?? '').trim())
+      ['English first name', 'firstName', p.firstName],
+      ['En last name / surname', 'lastName', p.lastName],
+      ['ID type', 'idType', p.idType],
+      ['ID/passport number', 'idNumber', p.idNumber],
+      ['Place of issue', 'placeOfIssue', p.placeOfIssue],
+      ['ID/passport expiry date', 'idExpiry', p.idExpiry],
+      ['Date of birth', 'dateOfBirth', p.dateOfBirth],
+      ['Place of birth', 'placeOfBirth', p.placeOfBirth],
+      ['Nationality', 'nationality', p.nationality],
+      ['Home address', 'homeAddress', p.homeAddress],
+      ['Contact address', 'contactAddress', p.contactAddress],
+      ['Mobile phone', 'mobile', p.mobile],
+      ['Email', 'email', p.email],
+    ].filter(([, , value]) => !String(value ?? '').trim())
 
     if (missing.length > 0) {
+      missing.forEach(([label, field]) => {
+        form.setError(`persons.${personIndex}.${field}` as 'persons.0.nameEn', {
+          type: 'manual',
+          message: `${label} is required`,
+        })
+      })
       setAp(personIndex)
       setStep(0)
       toast.error(`Please fill required KYC fields: ${missing.map(([label]) => label).join(', ')}`)
       return false
     }
     const unfilledOther = [
-      ['Place of issue', p.placeOfIssue],
-      ['Place of birth', p.placeOfBirth],
-      ['Nationality', p.nationality],
-      ['Home address', p.homeAddress],
-      ['Contact address', p.contactAddress],
-    ].find(([, value]) => hasUnfilledOther(value))
+      ['Place of issue', 'placeOfIssue', p.placeOfIssue],
+      ['Place of birth', 'placeOfBirth', p.placeOfBirth],
+      ['Nationality', 'nationality', p.nationality],
+      ['Home address', 'homeAddress', p.homeAddress],
+      ['Contact address', 'contactAddress', p.contactAddress],
+    ].find(([, , value]) => hasUnfilledOther(value))
     if (unfilledOther) {
+      form.setError(`persons.${personIndex}.${unfilledOther[1]}` as 'persons.0.nameEn', {
+        type: 'manual',
+        message: 'Please fill the custom Other value',
+      })
       setAp(personIndex)
       setStep(0)
       toast.error(`Please fill the custom Other value for ${unfilledOther[0]}.`)
       return false
     }
     if (!hasRequiredUpload(personIndex, 'id')) {
+      setUploadErrors((current) => ({
+        ...current,
+        [uploadErrorKey(personIndex, 'id')]: 'ID / passport upload is required',
+      }))
       setAp(personIndex)
       setStep(0)
       toast.error('ID / passport upload is required. Please upload the file marked with *.')
       return false
     }
     if (!hasRequiredUpload(personIndex, 'address')) {
+      setUploadErrors((current) => ({
+        ...current,
+        [uploadErrorKey(personIndex, 'address')]: 'Proof of address upload is required',
+      }))
       setAp(personIndex)
       setStep(0)
       toast.error('Proof of address upload is required. Please upload the file marked with *.')
@@ -857,18 +1103,30 @@ export default function KYCPage() {
     }
     // Section D — 聲明：簽署人、日期、勾選聲明皆必填
     if (!String(p.signatureName ?? '').trim()) {
+      form.setError(`persons.${personIndex}.signatureName` as 'persons.0.nameEn', {
+        type: 'manual',
+        message: 'Signatory name is required',
+      })
       setAp(personIndex)
       setStep(3)
       toast.error(t('declarationFieldMissingSignature', { defaultValue: 'Please enter signatory name (Declaration).' }))
       return false
     }
     if (!String(p.declarationDate ?? '').trim()) {
+      form.setError(`persons.${personIndex}.declarationDate` as 'persons.0.nameEn', {
+        type: 'manual',
+        message: 'Declaration date is required',
+      })
       setAp(personIndex)
       setStep(3)
       toast.error(t('declarationFieldMissingDate', { defaultValue: 'Please select declaration date.' }))
       return false
     }
     if (p.declarationSigned !== true) {
+      form.setError(`persons.${personIndex}.declarationSigned` as 'persons.0.nameEn', {
+        type: 'manual',
+        message: 'Please check the declaration',
+      })
       setAp(personIndex)
       setStep(3)
       toast.error(t('declarationFieldMissingCheckbox', { defaultValue: 'Please check the declaration to confirm.' }))
@@ -1112,8 +1370,8 @@ export default function KYCPage() {
                 >
                   <Trash2 size={14} />
                 </button>
-              )}
-            </div>
+        )}
+              </div>
           )
         })}
         <button
@@ -1250,8 +1508,11 @@ export default function KYCPage() {
               setUploads={setUploads}
               pendingFiles={pendingKycUploads}
               setPendingFiles={setPendingKycUploads}
+              existingDocs={personId ? existingKycDocs[personId] : undefined}
               hint={t('uploadIdHint', { defaultValue: 'Upload ID / Passport copy — PDF, JPG, PNG, max 10 MB' })}
               required
+              error={uploadErrors[uploadErrorKey(ap, 'id')]}
+              onAcceptedFiles={() => clearUploadError(ap, 'id')}
             />
           </fieldset>
 
@@ -1316,8 +1577,11 @@ export default function KYCPage() {
               setUploads={setUploads}
               pendingFiles={pendingKycUploads}
               setPendingFiles={setPendingKycUploads}
+              existingDocs={personId ? existingKycDocs[personId] : undefined}
               hint={t('uploadAddressHint', { defaultValue: 'Upload proof of address — PDF, JPG, PNG, max 10 MB' })}
               required
+              error={uploadErrors[uploadErrorKey(ap, 'address')]}
+              onAcceptedFiles={() => clearUploadError(ap, 'address')}
             />
           </fieldset>
           <div className="grid sm:grid-cols-2 gap-4">
@@ -1593,11 +1857,11 @@ export default function KYCPage() {
           </div>
           <div className="rounded-xl p-6 space-y-4" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
             <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#C9A96E' }}>{t('sectionD')}</h2>
-            <Field label={`${t('signatureName')} *`}>
+            <Field label={`${t('signatureName')} *`} error={form.formState.errors.persons?.[ap]?.signatureName?.message}>
               <input style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.signatureName` as const)} />
             </Field>
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field label={`${t('declarationDate')} *`}>
+              <Field label={`${t('declarationDate')} *`} error={form.formState.errors.persons?.[ap]?.declarationDate?.message}>
                 <DatePickerField
                   value={form.watch(`persons.${ap}.declarationDate` as const)}
                   disabled={isLocked}
@@ -1605,13 +1869,21 @@ export default function KYCPage() {
                 />
               </Field>
             </div>
-            <label className="flex items-start gap-2 cursor-pointer">
+            <label
+              className="flex items-start gap-2 cursor-pointer"
+              style={form.formState.errors.persons?.[ap]?.declarationSigned ? { borderLeft: '3px solid #ef4444', paddingLeft: '0.5rem' } : undefined}
+            >
               <input type="checkbox" disabled={isLocked} {...form.register(`persons.${ap}.declarationSigned` as const)} className="mt-1 shrink-0" />
               <span className="text-sm" style={{ color: 'var(--foreground)' }}>
                 <span className="font-semibold text-red-500 mr-1">*</span>
                 {t('declaration')}
               </span>
             </label>
+            {form.formState.errors.persons?.[ap]?.declarationSigned ? (
+              <p className="text-xs" style={{ color: '#ef4444' }}>
+                {form.formState.errors.persons[ap]?.declarationSigned?.message}
+              </p>
+            ) : null}
             {!isLocked && (
               <button
                 type="button"

@@ -79,6 +79,26 @@ type Controller = {
   remarks: string | null
 }
 
+type CaseDocument = {
+  id: string
+  name: string
+  documentType: string
+  caseFileRole: string | null
+  customDocumentType: string | null
+  submissionDate: string | null
+  notes: string | null
+  createdAt: string
+}
+
+type FileCase = {
+  id: string
+  name: string
+  caseDate: string | null
+  remark: string | null
+  createdAt: string
+  documents: CaseDocument[]
+}
+
 type Company = {
   id: string
   nameEn: string
@@ -94,6 +114,7 @@ type Company = {
   significantControllers: Controller[]
   designatedReps: DesignatedRep[]
   documents: { id: string; name: string; documentType: string; createdAt: string; notes: string | null; effectiveDate: string | null }[]
+  fileCases: FileCase[]
 }
 
 type ModalState =
@@ -1088,8 +1109,26 @@ export default function CompanyDetailPage() {
   const [brYear, setBrYear] = useState(String(new Date().getFullYear()))
   const [generatingDdr, setGeneratingDdr] = useState(false)
   const [showOlderDdr, setShowOlderDdr] = useState(false)
-  const [otherRemark, setOtherRemark] = useState('')
   const ensuredDocsForRef = useRef<string | null>(null)
+
+  // ── File Cases state ──────────────────────────────────────────────────────
+  const [newCaseName, setNewCaseName] = useState('')
+  const [creatingCase, setCreatingCase] = useState(false)
+  const [caseEdits, setCaseEdits] = useState<Record<string, { name: string; caseDate: string; remark: string }>>({})
+  const [docEdits, setDocEdits] = useState<Record<string, { customDocumentType: string; submissionDate: string; notes: string }>>({})
+  const [uploadingCase, setUploadingCase] = useState<string | null>(null)
+  // Per-case form for adding a supporting file (before upload)
+  const [newSupForm, setNewSupForm] = useState<Record<string, {
+    customDocumentType: string; isCustomType: boolean; notes: string; submissionDate: string
+  }>>({})
+  function getSupForm(caseId: string, pastDocTypes: string[]) {
+    return newSupForm[caseId] ?? {
+      customDocumentType: pastDocTypes[0] ?? '',
+      isCustomType: pastDocTypes.length === 0,
+      notes: '',
+      submissionDate: '',
+    }
+  }
 
   const reload = useCallback(() => {
     fetch(`/api/admin/companies/${id}`)
@@ -1264,6 +1303,7 @@ export default function CompanyDetailPage() {
           <TabsTrigger value="people">
             People ({company.directors.length + company.members.length + company.significantControllers.length + company.designatedReps.length})
           </TabsTrigger>
+          <TabsTrigger value="files">Other Case Files</TabsTrigger>
         </TabsList>
 
         {/* Overview */}
@@ -1467,73 +1507,345 @@ export default function CompanyDetailPage() {
               </ul>
             )}
           </div>
-          {/* Other Files */}
+        </TabsContent>
+
+        {/* ── Files Tab ───────────────────────────────────────────────────── */}
+        <TabsContent value="files" className="mt-4 space-y-4">
           {(() => {
-            const otherDocs = company.documents.filter(d => d.documentType === 'OTHER' && !isGeneratedDoc(d))
-            const byDate = otherDocs.reduce<Record<string, typeof otherDocs>>((acc, doc) => {
-              const key = new Date(doc.createdAt).toLocaleDateString('en-HK')
-              ;(acc[key] ??= []).push(doc)
-              return acc
-            }, {})
+            // All past case types and doc types for selects
+            const pastCaseTypes = [...new Set((company.fileCases ?? []).map(c => c.name))]
+            const pastDocTypes  = [...new Set(
+              (company.fileCases ?? []).flatMap(c => c.documents.map(d => d.customDocumentType)).filter(Boolean) as string[]
+            )]
+
             return (
-              <div style={cardStyle}>
-                <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderBottom: '1px solid #2A2418' }}>
-                  <div>
-                    <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Other Files</span>
-                    <p className="text-xs mt-0.5" style={{ color: '#5A5040' }}>Upload any supplementary files. Add a remark to describe each file.</p>
+              <>
+                {/* ── Create new case ─────────────────────────────────────── */}
+                <div style={cardStyle}>
+                  <div className="px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
+                    <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>New Case</span>
+                    <p className="text-xs mt-0.5" style={{ color: '#5A5040' }}>Select an existing case type or enter a new one.</p>
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <input
-                      value={otherRemark}
-                      onChange={e => setOtherRemark(e.target.value)}
-                      placeholder="File remark (optional)"
-                      maxLength={200}
-                      style={{ ...fieldStyle, width: 220 }}
-                    />
-                    <label style={{ cursor: uploading === 'OTHER' ? 'not-allowed' : 'pointer' }}>
-                      <input
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        className="hidden"
-                        disabled={uploading === 'OTHER'}
+                  <div className="px-4 py-3 flex flex-wrap items-end gap-3">
+                    <div>
+                      <label className="text-xs block mb-1" style={{ color: '#5A5040' }}>Case Type *</label>
+                      <select
+                        value={pastCaseTypes.includes(newCaseName) ? newCaseName : (newCaseName ? '__new__' : '')}
                         onChange={e => {
-                          const file = e.target.files?.[0]
-                          if (file) { uploadDoc('OTHER', file, { notes: otherRemark.trim() || undefined }); e.target.value = '' }
+                          if (e.target.value === '__new__') setNewCaseName('')
+                          else setNewCaseName(e.target.value)
                         }}
-                      />
-                      <span
-                        className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-medium transition-colors"
-                        style={{ borderColor: '#2A2418', color: uploading === 'OTHER' ? '#5A5040' : 'var(--foreground)', background: 'transparent', cursor: 'inherit' }}
+                        style={{ ...fieldStyle, width: 240 }}
                       >
-                        {uploading === 'OTHER' ? 'Uploading…' : 'Upload File'}
-                      </span>
-                    </label>
+                        <option value="" style={{ background: '#141414' }}>— Select case type —</option>
+                        {pastCaseTypes.map(n => (
+                          <option key={n} value={n} style={{ background: '#141414' }}>{n}</option>
+                        ))}
+                        <option value="__new__" style={{ background: '#141414' }}>— Enter new type… —</option>
+                      </select>
+                    </div>
+                    {/* Show text input when "new type" chosen or no past types */}
+                    {(pastCaseTypes.length === 0 || !pastCaseTypes.includes(newCaseName)) && (
+                      <div>
+                        <label className="text-xs block mb-1" style={{ color: '#5A5040' }}>New Case Type</label>
+                        <input
+                          value={pastCaseTypes.includes(newCaseName) ? '' : newCaseName}
+                          onChange={e => setNewCaseName(e.target.value)}
+                          placeholder="Type case type…"
+                          maxLength={200}
+                          style={{ ...fieldStyle, width: 220 }}
+                        />
+                      </div>
+                    )}
+                    <Button
+                      size="sm"
+                      disabled={creatingCase || !newCaseName.trim()}
+                      onClick={async () => {
+                        setCreatingCase(true)
+                        try {
+                          const res = await fetch(`/api/admin/companies/${id}/file-cases`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: newCaseName.trim() }),
+                          })
+                          if (!res.ok) { toast.error('Failed to create case'); return }
+                          setNewCaseName('')
+                          reload()
+                        } finally {
+                          setCreatingCase(false)
+                        }
+                      }}
+                    >
+                      {creatingCase ? 'Creating…' : '+ Create Case'}
+                    </Button>
                   </div>
                 </div>
-                {otherDocs.length === 0 ? (
-                  <p className="px-4 py-3 text-sm" style={{ color: '#5A5040' }}>No other files uploaded yet.</p>
+
+                {/* ── Case list ────────────────────────────────────────────── */}
+                {(company.fileCases ?? []).length === 0 ? (
+                  <p className="px-1 text-sm" style={{ color: '#5A5040' }}>No file cases yet. Create one above.</p>
                 ) : (
-                  Object.entries(byDate).map(([date, docs]) => (
-                    <div key={date}>
-                      <p className="px-4 py-2 text-xs font-semibold uppercase tracking-wider" style={{ color: '#7A7060', borderBottom: '1px solid #2A2418' }}>{date}</p>
-                      <ul className="divide-y divide-[#2A2418]">
-                        {docs.map(doc => (
-                          <li key={doc.id} className="flex items-center justify-between px-4 py-2.5">
-                            <div className="min-w-0">
-                              <span className="block text-sm truncate max-w-xs" style={{ color: 'var(--foreground)' }}>{doc.name}</span>
-                              {doc.notes && <span className="text-xs" style={{ color: '#5A5040' }}>{doc.notes}</span>}
+                  (company.fileCases ?? []).map(fc => {
+                    const edit = caseEdits[fc.id] ?? {
+                      name: fc.name,
+                      caseDate: fc.caseDate ? fc.caseDate.slice(0, 10) : '',
+                      remark: fc.remark ?? '',
+                    }
+                    const mainFile  = fc.documents.find(d => d.caseFileRole === 'main')
+                    const supporting = fc.documents.filter(d => d.caseFileRole !== 'main')
+                    const sf = getSupForm(fc.id, pastDocTypes)
+
+                    async function saveCase() {
+                      const res = await fetch(`/api/admin/companies/${id}/file-cases/${fc.id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: edit.name, caseDate: edit.caseDate || null, remark: edit.remark || null }),
+                      })
+                      if (!res.ok) { toast.error('Failed to save'); return }
+                      toast.success('Case updated')
+                      setCaseEdits(p => { const n = { ...p }; delete n[fc.id]; return n })
+                      reload()
+                    }
+
+                    async function deleteCase() {
+                      if (!confirm(`Delete case "${fc.name}" and all its files?`)) return
+                      const res = await fetch(`/api/admin/companies/${id}/file-cases/${fc.id}`, { method: 'DELETE' })
+                      if (!res.ok) { toast.error('Failed to delete'); return }
+                      toast.success('Case deleted')
+                      reload()
+                    }
+
+                    async function uploadMainFile(file: File) {
+                      setUploadingCase(fc.id + ':main')
+                      try {
+                        const fd = new FormData()
+                        fd.append('file', file)
+                        fd.append('type', 'OTHER')
+                        fd.append('companyId', id)
+                        fd.append('fileCaseId', fc.id)
+                        fd.append('caseFileRole', 'main')
+                        const res = await fetch('/api/documents/upload', { method: 'POST', body: fd })
+                        if (!res.ok) { toast.error('Upload failed'); return }
+                        toast.success('Uploaded')
+                        reload()
+                      } finally { setUploadingCase(null) }
+                    }
+
+                    async function uploadSupportingFile(file: File) {
+                      if (!sf.customDocumentType.trim()) {
+                        toast.error('Please enter a document type before uploading.')
+                        return
+                      }
+                      setUploadingCase(fc.id + ':sup')
+                      try {
+                        const fd = new FormData()
+                        fd.append('file', file)
+                        fd.append('type', 'OTHER')
+                        fd.append('companyId', id)
+                        fd.append('fileCaseId', fc.id)
+                        fd.append('caseFileRole', 'supporting')
+                        fd.append('customDocumentType', sf.customDocumentType.trim())
+                        if (sf.submissionDate) fd.append('submissionDate', sf.submissionDate)
+                        if (sf.notes.trim()) fd.append('notes', sf.notes.trim())
+                        const res = await fetch('/api/documents/upload', { method: 'POST', body: fd })
+                        if (!res.ok) { toast.error('Upload failed'); return }
+                        toast.success('Uploaded')
+                        // Reset only the notes/date but keep doc type for convenience
+                        setNewSupForm(p => ({ ...p, [fc.id]: { ...sf, notes: '', submissionDate: '' } }))
+                        reload()
+                      } finally { setUploadingCase(null) }
+                    }
+
+                    const isDirty = !!caseEdits[fc.id]
+
+                    return (
+                      <div key={fc.id} style={cardStyle}>
+                        {/* Case header */}
+                        <div className="px-4 py-3 flex flex-wrap items-start gap-3" style={{ borderBottom: '1px solid #2A2418' }}>
+                          <div className="flex-1 min-w-0 space-y-3">
+                            <div className="flex flex-wrap items-end gap-3">
+                              {/* Case type select */}
+                              <div>
+                                <label className="text-xs block mb-1" style={{ color: '#5A5040' }}>Case Type</label>
+                                <select
+                                  value={pastCaseTypes.includes(edit.name) ? edit.name : '__new__'}
+                                  onChange={e => {
+                                    const v = e.target.value === '__new__' ? '' : e.target.value
+                                    setCaseEdits(p => ({ ...p, [fc.id]: { ...edit, name: v } }))
+                                  }}
+                                  style={{ ...fieldStyle, width: 200 }}
+                                >
+                                  {pastCaseTypes.map(n => (
+                                    <option key={n} value={n} style={{ background: '#141414' }}>{n}</option>
+                                  ))}
+                                  <option value="__new__" style={{ background: '#141414' }}>— Enter new type… —</option>
+                                </select>
+                              </div>
+                              {(!pastCaseTypes.includes(edit.name)) && (
+                                <div>
+                                  <label className="text-xs block mb-1" style={{ color: '#5A5040' }}>New Case Type</label>
+                                  <input
+                                    value={edit.name}
+                                    onChange={e => setCaseEdits(p => ({ ...p, [fc.id]: { ...edit, name: e.target.value } }))}
+                                    placeholder="Enter case type…"
+                                    maxLength={200}
+                                    style={{ ...fieldStyle, width: 200 }}
+                                  />
+                                </div>
+                              )}
+                              {/* Case date */}
+                              <div className="w-44">
+                                <label className="text-xs block mb-1" style={{ color: '#5A5040' }}>Date</label>
+                                <DatePickerPopover
+                                  value={edit.caseDate}
+                                  onChange={v => setCaseEdits(p => ({ ...p, [fc.id]: { ...edit, caseDate: v } }))}
+                                  style={{ ...fieldStyle }}
+                                />
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2 ml-2 shrink-0">
-                              <button onClick={() => downloadDoc(doc.id)} className="text-xs hover:underline" style={{ color: '#C9A96E' }}>Download</button>
-                              <button onClick={() => deleteDoc(doc.id)} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Delete</button>
+                            {/* Remark */}
+                            <div>
+                              <label className="text-xs block mb-1" style={{ color: '#5A5040' }}>Remark (optional)</label>
+                              <input
+                                value={edit.remark}
+                                onChange={e => setCaseEdits(p => ({ ...p, [fc.id]: { ...edit, remark: e.target.value } }))}
+                                placeholder="Remark…"
+                                maxLength={500}
+                                style={{ ...fieldStyle, width: '100%' }}
+                              />
                             </div>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0 pt-6">
+                            {isDirty && <Button size="sm" onClick={saveCase}>Save</Button>}
+                            <button onClick={deleteCase} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Delete</button>
+                          </div>
+                        </div>
+
+                        {/* Main file */}
+                        <div className="px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
+                          <p className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: '#7A7060' }}>Main File</p>
+                          {mainFile ? (
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm truncate max-w-xs" style={{ color: 'var(--foreground)' }}>{mainFile.name}</span>
+                              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => downloadDoc(mainFile.id)}>Download</Button>
+                              <button onClick={() => deleteDoc(mainFile.id)} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Remove</button>
+                            </div>
+                          ) : (
+                            <label style={{ cursor: uploadingCase === fc.id + ':main' ? 'not-allowed' : 'pointer' }}>
+                              <input type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" className="hidden" disabled={!!uploadingCase}
+                                onChange={e => { const f = e.target.files?.[0]; if (f) { uploadMainFile(f); e.target.value = '' } }} />
+                              <span className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-medium"
+                                style={{ borderColor: '#2A2418', color: uploadingCase === fc.id + ':main' ? '#5A5040' : 'var(--foreground)', cursor: 'inherit' }}>
+                                {uploadingCase === fc.id + ':main' ? 'Uploading…' : '↑ Upload Main File'}
+                              </span>
+                            </label>
+                          )}
+                        </div>
+
+                        {/* Supporting files */}
+                        <div className="px-4 py-3">
+                          <p className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: '#7A7060' }}>Supporting Files</p>
+
+                          {/* Add supporting file form */}
+                          <div className="rounded-md p-3 mb-4 space-y-3" style={{ border: '1px solid #2A2418', background: '#0D0D0D' }}>
+                            <p className="text-xs font-medium" style={{ color: '#C9A96E' }}>Add Supporting File</p>
+                            <div className="flex flex-wrap items-end gap-3">
+                              {/* Document type */}
+                              <div>
+                                <label className="text-xs block mb-1" style={{ color: '#5A5040' }}>Document Type *</label>
+                                <select
+                                  value={pastDocTypes.includes(sf.customDocumentType) ? sf.customDocumentType : (sf.isCustomType ? '__new__' : '')}
+                                  onChange={e => {
+                                    if (e.target.value === '__new__') {
+                                      setNewSupForm(p => ({ ...p, [fc.id]: { ...sf, customDocumentType: '', isCustomType: true } }))
+                                    } else {
+                                      setNewSupForm(p => ({ ...p, [fc.id]: { ...sf, customDocumentType: e.target.value, isCustomType: false } }))
+                                    }
+                                  }}
+                                  style={{ ...fieldStyle, width: 200 }}
+                                >
+                                  <option value="" style={{ background: '#141414' }}>— Select type —</option>
+                                  {pastDocTypes.map(t => (
+                                    <option key={t} value={t} style={{ background: '#141414' }}>{t}</option>
+                                  ))}
+                                  <option value="__new__" style={{ background: '#141414' }}>— Enter new type… —</option>
+                                </select>
+                              </div>
+                              {(sf.isCustomType || !pastDocTypes.includes(sf.customDocumentType)) && (
+                                <div>
+                                  <label className="text-xs block mb-1" style={{ color: '#5A5040' }}>New Doc Type</label>
+                                  <input
+                                    value={sf.isCustomType ? sf.customDocumentType : ''}
+                                    onChange={e => setNewSupForm(p => ({ ...p, [fc.id]: { ...sf, customDocumentType: e.target.value, isCustomType: true } }))}
+                                    placeholder="Enter document type…"
+                                    maxLength={100}
+                                    style={{ ...fieldStyle, width: 180 }}
+                                  />
+                                </div>
+                              )}
+                              {/* Submission date */}
+                              <div className="w-44">
+                                <label className="text-xs block mb-1" style={{ color: '#5A5040' }}>Submission Date</label>
+                                <DatePickerPopover
+                                  value={sf.submissionDate}
+                                  onChange={v => setNewSupForm(p => ({ ...p, [fc.id]: { ...sf, submissionDate: v } }))}
+                                  style={{ ...fieldStyle }}
+                                />
+                              </div>
+                              {/* Remarks */}
+                              <div className="flex-1 min-w-[180px]">
+                                <label className="text-xs block mb-1" style={{ color: '#5A5040' }}>Remarks (optional)</label>
+                                <input
+                                  value={sf.notes}
+                                  onChange={e => setNewSupForm(p => ({ ...p, [fc.id]: { ...sf, notes: e.target.value } }))}
+                                  placeholder="Remarks…"
+                                  maxLength={300}
+                                  style={{ ...fieldStyle }}
+                                />
+                              </div>
+                            </div>
+                            {/* Upload trigger */}
+                            <label style={{ cursor: uploadingCase === fc.id + ':sup' ? 'not-allowed' : 'pointer', display: 'inline-block' }}>
+                              <input type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" className="hidden" disabled={!!uploadingCase}
+                                onChange={e => { const f = e.target.files?.[0]; if (f) { uploadSupportingFile(f); e.target.value = '' } }} />
+                              <span className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium"
+                                style={{ borderColor: '#C9A96E', color: uploadingCase === fc.id + ':sup' ? '#5A5040' : '#C9A96E', cursor: 'inherit' }}>
+                                {uploadingCase === fc.id + ':sup' ? 'Uploading…' : '↑ Choose File & Upload'}
+                              </span>
+                            </label>
+                          </div>
+
+                          {/* Existing supporting files */}
+                          {supporting.length === 0 ? (
+                            <p className="text-xs" style={{ color: '#5A5040' }}>No supporting files yet.</p>
+                          ) : (
+                            <ul className="divide-y divide-[#2A2418]">
+                              {supporting.map(doc => (
+                                <li key={doc.id} className="py-3">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0 flex-1 space-y-0.5">
+                                      <p className="text-sm font-medium truncate" style={{ color: 'var(--foreground)' }}>{doc.name}</p>
+                                      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs" style={{ color: '#7A7060' }}>
+                                        {doc.customDocumentType && <span>Type: <span style={{ color: '#C9A96E' }}>{doc.customDocumentType}</span></span>}
+                                        {doc.submissionDate && <span>Submitted: {new Date(doc.submissionDate).toLocaleDateString('en-HK')}</span>}
+                                        {doc.notes && <span>— {doc.notes}</span>}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => downloadDoc(doc.id)}>Download</Button>
+                                      <button onClick={() => deleteDoc(doc.id)} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Delete</button>
+                                    </div>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })
                 )}
-              </div>
+              </>
             )
           })()}
         </TabsContent>
