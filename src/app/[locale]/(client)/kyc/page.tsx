@@ -1593,11 +1593,11 @@ export default function KYCPage() {
           </div>
           <div className="rounded-xl p-6 space-y-4" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
             <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#C9A96E' }}>{t('sectionD')}</h2>
-            <Field label={`${t('signatureName')}${t('fieldRequiredSuffix')}`}>
+            <Field label={`${t('signatureName')} *`}>
               <input style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.signatureName` as const)} />
             </Field>
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field label={`${t('declarationDate')}${t('fieldRequiredSuffix')}`}>
+              <Field label={`${t('declarationDate')} *`}>
                 <DatePickerField
                   value={form.watch(`persons.${ap}.declarationDate` as const)}
                   disabled={isLocked}
