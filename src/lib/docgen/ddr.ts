@@ -27,6 +27,8 @@ interface ReportFonts {
   bold: PDFFont
   regular: PDFFont
   supportsUnicode: boolean
+  fontPath?: string
+  fontError?: string
 }
 
 function loadFontkitBridge(): { fontkit: Fontkit; subset: boolean } | null {
@@ -97,35 +99,7 @@ function wrapText(text: string, font: PDFFont, fontSize: number, maxWidth: numbe
   return lines
 }
 
-function containsCjk(value: string | null | undefined): boolean {
-  return /[\u3400-\u9FFF\uF900-\uFAFF]/.test(value ?? '')
-}
-
-function reportContainsCjk(company: {
-  nameEn: string
-  nameZh: string | null
-  registeredAddress: string | null
-  businessNature: string | null
-  directors: Array<{ nameEn: string; nameZh: string | null }>
-  members: Array<{ nameEn: string; nameZh: string | null }>
-  significantControllers: Array<{ nameEn: string; nameZh: string | null; natureOfControl: string | null }>
-}): boolean {
-  return [
-    company.nameEn,
-    company.nameZh,
-    company.registeredAddress,
-    company.businessNature,
-    ...company.directors.flatMap((director) => [director.nameEn, director.nameZh]),
-    ...company.members.flatMap((member) => [member.nameEn, member.nameZh]),
-    ...company.significantControllers.flatMap((controller) => [
-      controller.nameEn,
-      controller.nameZh,
-      controller.natureOfControl,
-    ]),
-  ].some(containsCjk)
-}
-
-async function firstExistingFontPath(): Promise<string | null> {
+async function cjkFontCandidates(): Promise<string[]> {
   const candidates = [
     process.env.DDR_PDF_FONT_PATH,
     path.join(process.cwd(), 'assets/fonts/NotoSansCJK-Regular.otf'),
@@ -133,11 +107,18 @@ async function firstExistingFontPath(): Promise<string | null> {
     '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
     '/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf',
     '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
+    '/usr/share/fonts/google-noto-cjk/NotoSansCJK-Regular.ttc',
+    '/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc',
     '/usr/share/fonts/truetype/arphic/uming.ttc',
     '/System/Library/Fonts/Supplemental/Arial Unicode.ttf',
     '/System/Library/Fonts/Hiragino Sans GB.ttc',
     '/System/Library/Fonts/STHeiti Medium.ttc',
   ].filter(Boolean) as string[]
+  return Array.from(new Set(candidates))
+}
+
+async function firstExistingFontPath(): Promise<string | null> {
+  const candidates = await cjkFontCandidates()
 
   for (const candidate of candidates) {
     try {
@@ -156,15 +137,27 @@ async function loadReportFonts(doc: PDFDocument): Promise<ReportFonts> {
   const bridge = fontPath ? loadFontkitBridge() : null
 
   if (fontPath && bridge) {
-    doc.registerFontkit(bridge.fontkit)
-    const fontBytes = await fs.readFile(fontPath)
-    const regular = await doc.embedFont(fontBytes, { subset: bridge.subset })
-    return { regular, bold: regular, supportsUnicode: true }
+    try {
+      doc.registerFontkit(bridge.fontkit)
+      const fontBytes = await fs.readFile(fontPath)
+      const regular = await doc.embedFont(fontBytes, { subset: bridge.subset })
+      return { regular, bold: regular, supportsUnicode: true, fontPath }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      const bold = await doc.embedFont(StandardFonts.HelveticaBold)
+      const regular = await doc.embedFont(StandardFonts.Helvetica)
+      return { regular, bold, supportsUnicode: false, fontPath, fontError: message }
+    }
   }
 
   const bold = await doc.embedFont(StandardFonts.HelveticaBold)
   const regular = await doc.embedFont(StandardFonts.Helvetica)
-  return { regular, bold, supportsUnicode: false }
+  return {
+    regular,
+    bold,
+    supportsUnicode: false,
+    fontError: fontPath ? 'A CJK font was found, but no fontkit bridge was available.' : 'No CJK font path was found.',
+  }
 }
 
 async function ensureSpace(ps: PageState, doc: PDFDocument, needed: number): Promise<void> {
@@ -196,11 +189,16 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
   const reportFonts = await loadReportFonts(doc)
 
   if (!reportFonts.supportsUnicode) {
+    const tried = (await cjkFontCandidates()).join(', ')
     throw new Error(
       'DDR generation requires a CJK font because the report template contains Chinese text. ' +
       'On Linux: apt-get install fonts-noto-cjk. ' +
       'Or place a .ttf/.otf/.ttc font at assets/fonts/NotoSansCJK-Regular.otf. ' +
-      'Or set the DDR_PDF_FONT_PATH environment variable to the font path.'
+      'Or set the DDR_PDF_FONT_PATH environment variable to the font path. ' +
+      `Current DDR_PDF_FONT_PATH=${process.env.DDR_PDF_FONT_PATH || '(not set)'}. ` +
+      `Detected font path=${reportFonts.fontPath || '(none)'}. ` +
+      `Font load error=${reportFonts.fontError || '(none)'}. ` +
+      `Tried paths=${tried}.`
     )
   }
 
