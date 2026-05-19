@@ -206,7 +206,6 @@ export default function KYCQueuePage() {
   const [createImage, setCreateImage] = useState<File | null>(null)
   const [creating, setCreating] = useState(false)
   const [generatingDdr, setGeneratingDdr] = useState(false)
-  const [lastDdrKey, setLastDdrKey] = useState<{ personId: string; key: string } | null>(null)
   const createImageInputRef = useRef<HTMLInputElement | null>(null)
 
   const fetchRecords = useCallback(async (statusOverride?: string) => {
@@ -335,22 +334,38 @@ export default function KYCQueuePage() {
         toast.error(typeof data?.error === 'string' ? data.error : 'DDR generation failed')
         return
       }
-      if (data.storageKey) {
-        setLastDdrKey({ personId: selected.id, key: data.storageKey })
-        // Trigger download via a temporary anchor (avoids popup blocker)
-        const filename = `DDR_${selected.nameEn.replace(/\s+/g, '_')}.pdf`
-        const href = `/api/files?key=${encodeURIComponent(data.storageKey)}&download=1&filename=${encodeURIComponent(filename)}`
-        const a = document.createElement('a')
-        a.href = href
-        a.download = filename
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        toast.success('DDR generated — downloading now')
+      if (data.document) {
+        // Append new report to selected person's documents in local state
+        setSelected(prev => prev
+          ? { ...prev, kycDocuments: [data.document, ...prev.kycDocuments] }
+          : prev
+        )
+        toast.success('DDR generated')
       }
     } finally {
       setGeneratingDdr(false)
     }
+  }
+
+  async function deleteKycDocument(docId: string) {
+    if (!window.confirm('Delete this report? This cannot be undone.')) return
+    const res = await fetch(`/api/admin/kyc/documents/${docId}`, { method: 'DELETE' })
+    if (!res.ok) { toast.error('Failed to delete'); return }
+    setSelected(prev => prev
+      ? { ...prev, kycDocuments: prev.kycDocuments.filter(d => d.id !== docId) }
+      : prev
+    )
+    toast.success('Report deleted')
+  }
+
+  function downloadKycDoc(doc: KYCDocument) {
+    const href = `/api/files?key=${encodeURIComponent(doc.storageKey)}&download=1&filename=${encodeURIComponent(doc.fileName)}`
+    const a = document.createElement('a')
+    a.href = href
+    a.download = doc.fileName
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
   }
 
   return (
@@ -644,10 +659,10 @@ export default function KYCQueuePage() {
                 </DetailSection>
               )}
 
-              {/* Due Diligence Report */}
+              {/* Due Diligence Reports */}
               <div className="border-t pt-4" style={{ borderColor: '#2A2418' }}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#C9A96E' }}>Due Diligence Report</p>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#C9A96E' }}>Due Diligence Reports</p>
                   <Button
                     variant="outline"
                     disabled={generatingDdr}
@@ -658,20 +673,55 @@ export default function KYCQueuePage() {
                     {generatingDdr ? 'Generating…' : 'Generate DDR'}
                   </Button>
                 </div>
-                {lastDdrKey?.personId === selected.id ? (
-                  <a
-                    href={`/api/files?key=${encodeURIComponent(lastDdrKey.key)}&download=1&filename=${encodeURIComponent(`DDR_${selected.nameEn.replace(/\s+/g, '_')}.pdf`)}`}
-                    className="inline-flex items-center gap-1.5 text-xs"
-                    style={{ color: '#10b981' }}
-                  >
-                    <Download size={12} />
-                    Download last generated report
-                  </a>
-                ) : (
-                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                    Generate an Individual Due Diligence Report (PDF) for this person.
-                  </p>
-                )}
+                {(() => {
+                  const ddrDocs = selected.kycDocuments.filter(d => d.documentType === 'PERSON_DDR')
+                  if (ddrDocs.length === 0) {
+                    return (
+                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                        No reports generated yet.
+                      </p>
+                    )
+                  }
+                  return (
+                    <ul className="space-y-2">
+                      {ddrDocs.map(doc => (
+                        <li
+                          key={doc.id}
+                          className="flex items-center justify-between gap-2 rounded-md border border-[#2A2418] px-3 py-2"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium" style={{ color: 'var(--foreground)' }} title={doc.fileName}>
+                              {doc.fileName}
+                            </p>
+                            <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                              {new Date(doc.uploadedAt).toLocaleString()} · {formatFileSize(doc.fileSize)}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => downloadKycDoc(doc)}
+                              className="inline-flex h-7 items-center gap-1 rounded-md border border-[#2A2418] px-2 text-xs"
+                              style={{ color: '#C9A96E' }}
+                            >
+                              <Download size={12} />
+                              Download
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteKycDocument(doc.id)}
+                              className="inline-flex h-7 items-center gap-1 rounded-md border px-2 text-xs"
+                              style={{ color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)' }}
+                            >
+                              <X size={12} />
+                              Delete
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )
+                })()}
               </div>
 
               {/* AML Screening */}

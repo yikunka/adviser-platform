@@ -30,12 +30,26 @@ export async function POST(req: NextRequest) {
     const buffer = await generatePersonDDR(keyPersonId)
 
     const datestamp = new Date().toISOString().split('T')[0].replace(/-/g, '')
+    const fileName = `DDR_${(person.kycCode ?? person.nameEn).replace(/\s+/g, '_')}_${datestamp}.pdf`
     const storageKey = `docgen/persons/${keyPersonId}/DDR_${datestamp}_${Date.now()}.pdf`
+
     await uploadToR2(storageKey, buffer, 'application/pdf')
 
-    await logAudit(session!.user.id, 'GENERATE_PERSON_DDR', 'KeyPerson', keyPersonId, null, { keyPersonId })
+    const doc = await prisma.kYCDocument.create({
+      data: {
+        keyPersonId,
+        documentType: 'PERSON_DDR',
+        fileName,
+        storageKey,
+        mimeType: 'application/pdf',
+        fileSize: buffer.length,
+        status: 'APPROVED',
+      },
+    })
 
-    return NextResponse.json({ storageKey })
+    await logAudit(session!.user.id, 'GENERATE_PERSON_DDR', 'KeyPerson', keyPersonId, null, { keyPersonId, docId: doc.id })
+
+    return NextResponse.json({ document: doc }, { status: 201 })
   } catch (err) {
     console.error('[docgen/person]', err)
     const message = (err as Error).message
