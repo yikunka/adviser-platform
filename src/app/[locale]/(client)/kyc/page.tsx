@@ -99,9 +99,15 @@ const labelStyle: React.CSSProperties = {
 }
 
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+  const required = label.trimEnd().endsWith('*')
+  const visibleLabel = required ? label.trimEnd().slice(0, -1).trimEnd() : label
+
   return (
     <div>
-      <label style={labelStyle}>{label}</label>
+      <label style={labelStyle}>
+        {visibleLabel}
+        {required ? <span style={{ color: '#ef4444', fontWeight: 700 }}> *</span> : null}
+      </label>
       {children}
       {error && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>{error}</p>}
     </div>
