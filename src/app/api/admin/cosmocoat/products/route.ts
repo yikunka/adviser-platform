@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
+import { ossImg } from '@/lib/oss-img'
 import { getAllProducts, HOME_FEATURED_PIDS } from '@/app/cosmocoat/data/products'
 
 const productSchema = z.object({
@@ -21,6 +22,22 @@ const productSchema = z.object({
 function revalidateCosmoCoat() {
   revalidatePath('/cosmocoat')
   revalidatePath('/cosmocoat/products')
+}
+
+function normalizeProductImagePath(path: string): string {
+  const trimmed = path.trim()
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
+  if (trimmed.startsWith('/')) return trimmed
+  if (trimmed.startsWith('cosmocoat/')) return `/${trimmed}`
+  return `/cosmocoat/${trimmed}`
+}
+
+function productWithImageUrl<T extends { imagePath: string }>(product: T) {
+  const imagePath = normalizeProductImagePath(product.imagePath)
+  return {
+    ...product,
+    imageUrl: /^https?:\/\//i.test(imagePath) ? imagePath : ossImg(imagePath, { w: 500 }),
+  }
 }
 
 async function seedExistingProductsIfEmpty() {
@@ -95,7 +112,7 @@ export async function GET(req: NextRequest) {
     throw error
   }
 
-  return NextResponse.json({ products })
+  return NextResponse.json({ products: products.map(productWithImageUrl) })
 }
 
 export async function POST(req: NextRequest) {
@@ -117,7 +134,7 @@ export async function POST(req: NextRequest) {
 
     const product = await prisma.cosTableProduct.create({ data: parsed.data })
     revalidateCosmoCoat()
-    return NextResponse.json({ product }, { status: 201 })
+    return NextResponse.json({ product: productWithImageUrl(product) }, { status: 201 })
   } catch (error) {
     if (isMissingProductsTable(error)) return missingProductsTableResponse()
     throw error

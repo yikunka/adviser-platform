@@ -5,6 +5,16 @@ import { prisma } from '@/lib/db/prisma'
 import { kycBatchZod, inputToKeyPersonData } from '@/lib/kyc/personZod'
 import { screenKeyPerson } from '@/lib/aml/screener'
 
+async function nextKycCode() {
+  const rows = await prisma.$queryRaw<Array<{ max_no: number | null }>>`
+    SELECT MAX(CAST(SUBSTRING(kyc_code FROM 7) AS INTEGER)) AS max_no
+    FROM key_persons
+    WHERE kyc_code ~ '^KYC_P_[0-9]{5}$'
+  `
+  const next = (rows[0]?.max_no ?? 0) + 1
+  return `KYC_P_${String(next).padStart(5, '0')}`
+}
+
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -20,7 +30,7 @@ export async function POST(req: NextRequest) {
 
   const { action, persons } = parsed.data
   const userId = session.user.id
-  const results: { id: string; kycStatus: string }[] = []
+  const results: { id: string; kycStatus: string; kycCode: string | null }[] = []
 
   const terminal: KYCStatus[] = ['SUBMITTED', 'APPROVED', 'PENDING_INFO', 'REJECTED']
 
@@ -38,19 +48,25 @@ export async function POST(req: NextRequest) {
         delete rest.kycStatus
         data = rest
       }
+      if (action === 'SUBMIT' && !own.kycCode) {
+        data.kycCode = await nextKycCode()
+      }
       const updated = await prisma.keyPerson.update({
         where: { id: p.id },
         data: data as never,
       })
-      results.push({ id: updated.id, kycStatus: updated.kycStatus })
+      results.push({ id: updated.id, kycStatus: updated.kycStatus, kycCode: updated.kycCode })
     } else {
+      if (action === 'SUBMIT') {
+        data.kycCode = await nextKycCode()
+      }
       const created = await prisma.keyPerson.create({
         data: {
           ...(data as object),
           submittedByUserId: userId,
         } as never,
       })
-      results.push({ id: created.id, kycStatus: created.kycStatus })
+      results.push({ id: created.id, kycStatus: created.kycStatus, kycCode: created.kycCode })
     }
   }
 

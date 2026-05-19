@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { requireRole } from '@/lib/auth/rbac'
+import { ossImg } from '@/lib/oss-img'
 import { uploadToR2 } from '@/lib/storage/r2'
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -27,5 +28,6 @@ export async function POST(req: NextRequest) {
 
   await uploadToR2(key, buffer, file.type)
 
-  return NextResponse.json({ imagePath: `/${key}` }, { status: 201 })
+  const imagePath = `/${key}`
+  return NextResponse.json({ imagePath, imageUrl: ossImg(imagePath, { w: 800 }) }, { status: 201 })
 }

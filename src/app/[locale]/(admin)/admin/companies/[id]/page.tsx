@@ -357,6 +357,7 @@ function DirectorForm({ companyId, initial, kycPersons, onDone }: {
 }) {
   const isEdit = !!initial
   const [saving, setSaving] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const [form, setForm] = useState({
     nameEn: initial?.nameEn ?? '',
     nameZh: initial?.nameZh ?? '',
@@ -369,7 +370,24 @@ function DirectorForm({ companyId, initial, kycPersons, onDone }: {
     status: initial?.status ?? 'ACTIVE',
   })
 
-  function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })) }
+  function set(k: string, v: string) {
+    setForm(f => ({ ...f, [k]: v }))
+    setErrors(prev => {
+      if (!prev[k]) return prev
+      const next = { ...prev }
+      delete next[k]
+      return next
+    })
+  }
+
+  function validateRequiredFields() {
+    const nextErrors: Record<string, string> = {}
+    if (!form.nameEn.trim()) nextErrors.nameEn = 'Please enter the director English name.'
+    if (!form.dateOfAppointment.trim()) nextErrors.dateOfAppointment = 'Please select the appointment date.'
+    if (!form.addressForService.trim()) nextErrors.addressForService = 'Please enter the address for service.'
+    setErrors(nextErrors)
+    return nextErrors
+  }
 
   function prefillFromKyc(p: KycPerson) {
     setForm(f => ({
@@ -385,6 +403,12 @@ function DirectorForm({ companyId, initial, kycPersons, onDone }: {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+    const nextErrors = validateRequiredFields()
+    if (Object.keys(nextErrors).length > 0) {
+      toast.error(Object.values(nextErrors)[0])
+      return
+    }
+
     setSaving(true)
     try {
       const body: Record<string, unknown> = {
@@ -405,7 +429,11 @@ function DirectorForm({ companyId, initial, kycPersons, onDone }: {
         : `/api/admin/companies/${companyId}/directors`
       const method = isEdit ? 'PATCH' : 'POST'
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-      if (!res.ok) { toast.error('Failed to save director'); return }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        toast.error(typeof data?.error === 'string' && data.error !== 'Invalid input' ? data.error : 'Please check the required director fields.')
+        return
+      }
       toast.success(isEdit ? 'Director updated' : 'Director added')
       onDone()
     } finally { setSaving(false) }
@@ -418,6 +446,7 @@ function DirectorForm({ companyId, initial, kycPersons, onDone }: {
         <div>
           <label style={labelStyle}>Name (English) *</label>
           <Input style={fieldStyle} required value={form.nameEn} onChange={e => set('nameEn', e.target.value)} />
+          {errors.nameEn ? <p className="text-xs mt-1" style={{ color: '#f59e0b' }}>{errors.nameEn}</p> : null}
         </div>
         <div>
           <label style={labelStyle}>Name (Chinese)</label>
@@ -428,6 +457,7 @@ function DirectorForm({ companyId, initial, kycPersons, onDone }: {
         <div>
           <label style={labelStyle}>Date of Appointment *</label>
           <DateInput value={form.dateOfAppointment} onChange={v => set('dateOfAppointment', v)} required />
+          {errors.dateOfAppointment ? <p className="text-xs mt-1" style={{ color: '#f59e0b' }}>{errors.dateOfAppointment}</p> : null}
         </div>
         <div>
           <label style={labelStyle}>Date of Cessation</label>
@@ -437,6 +467,7 @@ function DirectorForm({ companyId, initial, kycPersons, onDone }: {
       <div>
         <label style={labelStyle}>Address for Service *</label>
         <Input style={fieldStyle} required value={form.addressForService} onChange={e => set('addressForService', e.target.value)} />
+        {errors.addressForService ? <p className="text-xs mt-1" style={{ color: '#f59e0b' }}>{errors.addressForService}</p> : null}
       </div>
       <div className="grid sm:grid-cols-3 gap-4">
         <div>

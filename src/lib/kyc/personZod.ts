@@ -3,18 +3,22 @@ import { z } from 'zod'
 /** Single natural-person KYC payload — fields align with `KeyPerson` + portal-only inputs */
 export const kycPersonZod = z.object({
   id: z.string().optional(),
+  kycCode: z.string().max(32).optional().nullable(),
   titlePrefix: z.string().max(20).optional().nullable(),
+  firstName: z.string().min(1).max(100),
+  lastName: z.string().min(1).max(100),
+  otherName: z.string().max(100).optional().nullable(),
   nameEn: z.string().min(1).max(100),
   nameZh: z.string().max(100).optional().nullable(),
-  idType: z.string().max(50).optional().nullable(),
-  idNumber: z.string().max(50).optional().nullable(),
-  placeOfIssue: z.string().max(100).optional().nullable(),
-  placeOfBirth: z.string().max(200).optional().nullable(),
-  idExpiry: z.string().optional().nullable(),
-  dateOfBirth: z.string().optional().nullable(),
-  nationality: z.string().max(100).optional().nullable(),
-  homeAddress: z.string().max(2000).optional().nullable(),
-  contactAddress: z.string().max(2000).optional().nullable(),
+  idType: z.string().min(1).max(50),
+  idNumber: z.string().min(1).max(50),
+  placeOfIssue: z.string().min(1).max(100),
+  placeOfBirth: z.string().min(1).max(200),
+  idExpiry: z.string().min(1),
+  dateOfBirth: z.string().min(1),
+  nationality: z.string().min(1).max(100),
+  homeAddress: z.string().min(1).max(2000),
+  contactAddress: z.string().min(1).max(2000),
   homePhone: z.string().max(30).optional().nullable(),
   workPhone: z.string().max(30).optional().nullable(),
   mobile: z.string().max(30).optional().nullable(),
@@ -79,6 +83,20 @@ function asStringArray(x: unknown): string[] {
   return []
 }
 
+function splitStoredEnglishName(name: string | null | undefined) {
+  const parts = (name ?? '').trim().split(/\s+/).filter(Boolean)
+  if (parts.length <= 1) return { firstName: parts[0] ?? '', lastName: '', otherName: '' }
+  return { firstName: parts.slice(0, -1).join(' '), lastName: parts.at(-1) ?? '', otherName: '' }
+}
+
+function composeEnglishName(data: Pick<KycPersonInput, 'firstName' | 'lastName' | 'otherName' | 'nameEn'>) {
+  const structured = [data.firstName, data.otherName, data.lastName]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(' ')
+  return structured || data.nameEn
+}
+
 export function inputToKeyPersonData(
   data: KycPersonInput,
   action: 'SAVE_DRAFT' | 'SUBMIT'
@@ -89,8 +107,11 @@ export function inputToKeyPersonData(
       ? undefined
       : rawEst
   return {
+    firstName: data.firstName,
+    lastName: data.lastName,
+    otherName: data.otherName ?? undefined,
     titlePrefix: data.titlePrefix ?? undefined,
-    nameEn: data.nameEn,
+    nameEn: composeEnglishName(data),
     nameZh: data.nameZh ?? undefined,
     idType: data.idType ?? undefined,
     idNumber: data.idNumber ?? undefined,
@@ -129,7 +150,11 @@ export function inputToKeyPersonData(
 
 export function keyPersonToFormValues(p: {
   id: string
+  kycCode?: string | null
   titlePrefix: string | null
+  firstName?: string | null
+  lastName?: string | null
+  otherName?: string | null
   nameEn: string
   nameZh: string | null
   idType: string | null
@@ -167,21 +192,26 @@ export function keyPersonToFormValues(p: {
   const businessNatures = asStringArray(p.businessNatures)
   const sourcesOfWealth = asStringArray(p.sourcesOfWealth)
   const assetItems = asStringArray(p.assetItems)
+  const splitName = splitStoredEnglishName(p.nameEn)
 
   return {
     id: p.id,
+    kycCode: p.kycCode,
     titlePrefix: p.titlePrefix,
+    firstName: p.firstName ?? splitName.firstName,
+    lastName: p.lastName ?? splitName.lastName,
+    otherName: p.otherName ?? splitName.otherName,
     nameEn: p.nameEn,
-    nameZh: p.nameZh,
-    idType: p.idType,
-    idNumber: p.idNumber,
-    placeOfIssue: p.placeOfIssue,
-    placeOfBirth: p.placeOfBirth,
+    nameZh: p.nameZh ?? '',
+    idType: p.idType ?? '',
+    idNumber: p.idNumber ?? '',
+    placeOfIssue: p.placeOfIssue ?? '',
+    placeOfBirth: p.placeOfBirth ?? '',
     idExpiry: dateToYmd(p.idExpiryDate),
     dateOfBirth: dateToYmd(p.dateOfBirth),
-    nationality: p.nationality,
-    homeAddress: p.homeAddress,
-    contactAddress: p.contactAddress,
+    nationality: p.nationality ?? '',
+    homeAddress: p.homeAddress ?? '',
+    contactAddress: p.contactAddress ?? '',
     homePhone: p.homePhone,
     workPhone: p.workPhone,
     mobile: p.mobile,

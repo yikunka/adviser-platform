@@ -424,9 +424,13 @@ model DesignatedRepresentative {
 
 model KeyPerson {
   id               String            @id @default(cuid())
+  kycCode          String?           @unique @map("kyc_code")
   /// Client who created this KYC (portal); distinct from company-linked key persons
   submittedByUserId String?
   titlePrefix      String?
+  firstName        String?
+  lastName         String?
+  otherName        String?
   nameEn           String
   nameZh           String?
   idType           String?

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
+import { ossImg } from '@/lib/oss-img'
 
 const patchSchema = z.object({
   pid: z.string().trim().min(1).max(64).optional(),
@@ -20,6 +21,22 @@ function revalidateCosmoCoat(pid?: string) {
   revalidatePath('/cosmocoat')
   revalidatePath('/cosmocoat/products')
   if (pid) revalidatePath(`/cosmocoat/products/${pid}`)
+}
+
+function normalizeProductImagePath(path: string): string {
+  const trimmed = path.trim()
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
+  if (trimmed.startsWith('/')) return trimmed
+  if (trimmed.startsWith('cosmocoat/')) return `/${trimmed}`
+  return `/cosmocoat/${trimmed}`
+}
+
+function productWithImageUrl<T extends { imagePath: string }>(product: T) {
+  const imagePath = normalizeProductImagePath(product.imagePath)
+  return {
+    ...product,
+    imageUrl: /^https?:\/\//i.test(imagePath) ? imagePath : ossImg(imagePath, { w: 500 }),
+  }
 }
 
 export async function PATCH(
@@ -51,7 +68,7 @@ export async function PATCH(
 
   revalidateCosmoCoat(current.pid)
   revalidateCosmoCoat(product.pid)
-  return NextResponse.json({ product })
+  return NextResponse.json({ product: productWithImageUrl(product) })
 }
 
 export async function DELETE(

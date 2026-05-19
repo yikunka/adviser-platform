@@ -20,7 +20,11 @@ type FormValues = z.infer<typeof formZod> & { persons: (KycPersonInput & { kycSt
 
 function emptyPerson(): KycPersonInput & { kycStatus?: string } {
   return {
+    kycCode: '',
     nameEn: '',
+    firstName: '',
+    lastName: '',
+    otherName: '',
     nameZh: '',
     titlePrefix: '',
     idType: '',
@@ -108,6 +112,398 @@ function DatePickerField(props: React.ComponentProps<typeof DatePickerPopover>) 
   return <DatePickerPopover {...props} style={{ ...fieldStyle, ...props.style }} />
 }
 
+type RegionOption = { value: string; cities: string[] }
+type CountryOption = { value: string; regions: RegionOption[] }
+
+const LOCATION_COUNTRIES: CountryOption[] = [
+  {
+    value: 'Mainland China',
+    regions: [
+      { value: 'Anhui', cities: ['Hefei', 'Wuhu', 'Bengbu', 'Fuyang', 'Other'] },
+      { value: 'Beijing', cities: ['Beijing', 'Other'] },
+      { value: 'Chongqing', cities: ['Chongqing', 'Other'] },
+      { value: 'Fujian', cities: ['Fuzhou', 'Xiamen', 'Quanzhou', 'Other'] },
+      { value: 'Gansu', cities: ['Lanzhou', 'Tianshui', 'Other'] },
+      { value: 'Guangdong', cities: ['Guangzhou', 'Shenzhen', 'Dongguan', 'Foshan', 'Zhuhai', 'Huizhou', 'Zhongshan', 'Jiangmen', 'Shantou', 'Other'] },
+      { value: 'Guangxi', cities: ['Nanning', 'Guilin', 'Liuzhou', 'Other'] },
+      { value: 'Guizhou', cities: ['Guiyang', 'Zunyi', 'Other'] },
+      { value: 'Hainan', cities: ['Haikou', 'Sanya', 'Other'] },
+      { value: 'Hebei', cities: ['Shijiazhuang', 'Tangshan', 'Baoding', 'Other'] },
+      { value: 'Heilongjiang', cities: ['Harbin', 'Qiqihar', 'Other'] },
+      { value: 'Henan', cities: ['Zhengzhou', 'Luoyang', 'Kaifeng', 'Other'] },
+      { value: 'Hubei', cities: ['Wuhan', 'Yichang', 'Xiangyang', 'Other'] },
+      { value: 'Hunan', cities: ['Changsha', 'Zhuzhou', 'Xiangtan', 'Other'] },
+      { value: 'Inner Mongolia', cities: ['Hohhot', 'Baotou', 'Other'] },
+      { value: 'Jiangsu', cities: ['Nanjing', 'Suzhou', 'Wuxi', 'Changzhou', 'Nantong', 'Other'] },
+      { value: 'Jiangxi', cities: ['Nanchang', 'Ganzhou', 'Jiujiang', 'Other'] },
+      { value: 'Jilin', cities: ['Changchun', 'Jilin', 'Other'] },
+      { value: 'Liaoning', cities: ['Shenyang', 'Dalian', 'Anshan', 'Other'] },
+      { value: 'Ningxia', cities: ['Yinchuan', 'Other'] },
+      { value: 'Qinghai', cities: ['Xining', 'Other'] },
+      { value: 'Shaanxi', cities: ['Xi’an', 'Xianyang', 'Baoji', 'Other'] },
+      { value: 'Shandong', cities: ['Jinan', 'Qingdao', 'Yantai', 'Weifang', 'Other'] },
+      { value: 'Shanghai', cities: ['Shanghai', 'Other'] },
+      { value: 'Shanxi', cities: ['Taiyuan', 'Datong', 'Other'] },
+      { value: 'Sichuan', cities: ['Chengdu', 'Mianyang', 'Other'] },
+      { value: 'Tianjin', cities: ['Tianjin', 'Other'] },
+      { value: 'Tibet', cities: ['Lhasa', 'Other'] },
+      { value: 'Xinjiang', cities: ['Urumqi', 'Kashgar', 'Other'] },
+      { value: 'Yunnan', cities: ['Kunming', 'Dali', 'Lijiang', 'Other'] },
+      { value: 'Zhejiang', cities: ['Hangzhou', 'Ningbo', 'Wenzhou', 'Jinhua', 'Other'] },
+      { value: 'Other', cities: ['Other'] },
+    ],
+  },
+  {
+    value: 'Hong Kong',
+    regions: [
+      { value: 'Hong Kong Island', cities: ['Central and Western', 'Wan Chai', 'Eastern', 'Southern', 'Other'] },
+      { value: 'Kowloon', cities: ['Yau Tsim Mong', 'Sham Shui Po', 'Kowloon City', 'Wong Tai Sin', 'Kwun Tong', 'Other'] },
+      { value: 'New Territories', cities: ['Tsuen Wan', 'Tuen Mun', 'Yuen Long', 'North', 'Tai Po', 'Sha Tin', 'Sai Kung', 'Kwai Tsing', 'Other'] },
+      { value: 'Outlying Islands', cities: ['Islands', 'Other'] },
+      { value: 'Other', cities: ['Other'] },
+    ],
+  },
+  { value: 'Macau', regions: [{ value: 'Macau Peninsula / Islands', cities: ['Nossa Senhora de Fatima', 'Santo Antonio', 'Sao Lazaro', 'Sao Lourenco', 'Se', 'Taipa', 'Coloane', 'Cotai', 'Other'] }, { value: 'Other', cities: ['Other'] }] },
+  { value: 'Taiwan', regions: [
+    { value: 'Taipei', cities: ['Taipei', 'Other'] },
+    { value: 'New Taipei', cities: ['New Taipei', 'Other'] },
+    { value: 'Taoyuan', cities: ['Taoyuan', 'Other'] },
+    { value: 'Taichung', cities: ['Taichung', 'Other'] },
+    { value: 'Tainan', cities: ['Tainan', 'Other'] },
+    { value: 'Kaohsiung', cities: ['Kaohsiung', 'Other'] },
+    { value: 'Hsinchu', cities: ['Hsinchu', 'Other'] },
+    { value: 'Keelung', cities: ['Keelung', 'Other'] },
+    { value: 'Other', cities: ['Other'] },
+  ] },
+  { value: 'Singapore', regions: [{ value: 'Singapore', cities: ['Singapore'] }] },
+  { value: 'Malaysia', regions: [{ value: 'Malaysia', cities: ['Kuala Lumpur', 'Johor Bahru', 'Penang', 'Other'] }] },
+  { value: 'United Kingdom', regions: [{ value: 'United Kingdom', cities: ['London', 'Manchester', 'Birmingham', 'Other'] }] },
+  { value: 'United States', regions: [{ value: 'United States', cities: ['New York', 'Los Angeles', 'San Francisco', 'Other'] }] },
+  { value: 'Canada', regions: [{ value: 'Canada', cities: ['Toronto', 'Vancouver', 'Montreal', 'Other'] }] },
+  { value: 'Australia', regions: [{ value: 'Australia', cities: ['Sydney', 'Melbourne', 'Brisbane', 'Other'] }] },
+  { value: 'Afghanistan', regions: [{ value: 'Afghanistan', cities: ['Kabul', 'Other'] }] },
+  { value: 'Argentina', regions: [{ value: 'Argentina', cities: ['Buenos Aires', 'Cordoba', 'Other'] }] },
+  { value: 'Austria', regions: [{ value: 'Austria', cities: ['Vienna', 'Other'] }] },
+  { value: 'Bangladesh', regions: [{ value: 'Bangladesh', cities: ['Dhaka', 'Chittagong', 'Other'] }] },
+  { value: 'Belgium', regions: [{ value: 'Belgium', cities: ['Brussels', 'Other'] }] },
+  { value: 'Brazil', regions: [{ value: 'Brazil', cities: ['Sao Paulo', 'Rio de Janeiro', 'Brasilia', 'Other'] }] },
+  { value: 'Cambodia', regions: [{ value: 'Cambodia', cities: ['Phnom Penh', 'Siem Reap', 'Other'] }] },
+  { value: 'Chile', regions: [{ value: 'Chile', cities: ['Santiago', 'Other'] }] },
+  { value: 'Denmark', regions: [{ value: 'Denmark', cities: ['Copenhagen', 'Other'] }] },
+  { value: 'Egypt', regions: [{ value: 'Egypt', cities: ['Cairo', 'Alexandria', 'Other'] }] },
+  { value: 'Finland', regions: [{ value: 'Finland', cities: ['Helsinki', 'Other'] }] },
+  { value: 'France', regions: [{ value: 'France', cities: ['Paris', 'Lyon', 'Marseille', 'Other'] }] },
+  { value: 'Germany', regions: [{ value: 'Germany', cities: ['Berlin', 'Frankfurt', 'Munich', 'Other'] }] },
+  { value: 'India', regions: [{ value: 'India', cities: ['Mumbai', 'Delhi', 'Bengaluru', 'Other'] }] },
+  { value: 'Indonesia', regions: [{ value: 'Indonesia', cities: ['Jakarta', 'Surabaya', 'Other'] }] },
+  { value: 'Ireland', regions: [{ value: 'Ireland', cities: ['Dublin', 'Cork', 'Other'] }] },
+  { value: 'Italy', regions: [{ value: 'Italy', cities: ['Rome', 'Milan', 'Other'] }] },
+  { value: 'Japan', regions: [{ value: 'Japan', cities: ['Tokyo', 'Osaka', 'Yokohama', 'Other'] }] },
+  { value: 'Mexico', regions: [{ value: 'Mexico', cities: ['Mexico City', 'Guadalajara', 'Other'] }] },
+  { value: 'Myanmar', regions: [{ value: 'Myanmar', cities: ['Yangon', 'Mandalay', 'Other'] }] },
+  { value: 'Netherlands', regions: [{ value: 'Netherlands', cities: ['Amsterdam', 'Rotterdam', 'Other'] }] },
+  { value: 'New Zealand', regions: [{ value: 'New Zealand', cities: ['Auckland', 'Wellington', 'Other'] }] },
+  { value: 'Norway', regions: [{ value: 'Norway', cities: ['Oslo', 'Other'] }] },
+  { value: 'Pakistan', regions: [{ value: 'Pakistan', cities: ['Karachi', 'Lahore', 'Islamabad', 'Other'] }] },
+  { value: 'Philippines', regions: [{ value: 'Philippines', cities: ['Manila', 'Cebu', 'Other'] }] },
+  { value: 'Poland', regions: [{ value: 'Poland', cities: ['Warsaw', 'Krakow', 'Other'] }] },
+  { value: 'Portugal', regions: [{ value: 'Portugal', cities: ['Lisbon', 'Porto', 'Other'] }] },
+  { value: 'Russia', regions: [{ value: 'Russia', cities: ['Moscow', 'Saint Petersburg', 'Other'] }] },
+  { value: 'Saudi Arabia', regions: [{ value: 'Saudi Arabia', cities: ['Riyadh', 'Jeddah', 'Other'] }] },
+  { value: 'South Korea', regions: [{ value: 'South Korea', cities: ['Seoul', 'Busan', 'Other'] }] },
+  { value: 'Spain', regions: [{ value: 'Spain', cities: ['Madrid', 'Barcelona', 'Other'] }] },
+  { value: 'Sweden', regions: [{ value: 'Sweden', cities: ['Stockholm', 'Gothenburg', 'Other'] }] },
+  { value: 'Switzerland', regions: [{ value: 'Switzerland', cities: ['Zurich', 'Geneva', 'Other'] }] },
+  { value: 'Thailand', regions: [{ value: 'Thailand', cities: ['Bangkok', 'Chiang Mai', 'Other'] }] },
+  { value: 'Turkey', regions: [{ value: 'Turkey', cities: ['Istanbul', 'Ankara', 'Other'] }] },
+  { value: 'United Arab Emirates', regions: [{ value: 'United Arab Emirates', cities: ['Dubai', 'Abu Dhabi', 'Other'] }] },
+  { value: 'Vietnam', regions: [{ value: 'Vietnam', cities: ['Ho Chi Minh City', 'Hanoi', 'Other'] }] },
+  { value: 'Other', regions: [{ value: 'Other', cities: ['Other'] }] },
+]
+
+const selectOptionStyle = { background: '#141414' }
+
+function countryFor(value: string) {
+  return LOCATION_COUNTRIES.find((country) => country.value === value)
+}
+
+function regionFor(country: string, region: string) {
+  return countryFor(country)?.regions.find((row) => row.value === region)
+}
+
+function joinParts(parts: string[]) {
+  return parts.map((part) => part.trim()).filter(Boolean).join(' / ')
+}
+
+function splitLocationValue(value?: string) {
+  const parts = (value ?? '').split(' / ').map((part) => part.trim()).filter(Boolean)
+  const rawCountry = parts[0] ?? ''
+  const country = rawCountry && countryFor(rawCountry) ? rawCountry : rawCountry ? 'Other' : ''
+  const countryOther = country === 'Other' && rawCountry !== 'Other' ? rawCountry : ''
+  const countryOption = countryFor(country)
+  const rawRegion = parts[1] ?? ''
+  const region = rawRegion && countryOption?.regions.some((row) => row.value === rawRegion) ? rawRegion : rawRegion ? 'Other' : ''
+  const regionOther = region === 'Other' && rawRegion !== 'Other' ? rawRegion : ''
+  const regionOption = countryOption?.regions.find((row) => row.value === region)
+  const rawCity = parts.slice(2).join(' / ')
+  const city = rawCity && regionOption?.cities.includes(rawCity) ? rawCity : rawCity ? 'Other' : ''
+  const cityOther = city === 'Other' && rawCity !== 'Other' ? rawCity : ''
+  return { country, countryOther, region, regionOther, city, cityOther }
+}
+
+function splitAddressValue(value?: string) {
+  const parts = (value ?? '').split(' / ').map((part) => part.trim()).filter(Boolean)
+  const rawCountry = parts[0] ?? ''
+  const country = rawCountry && countryFor(rawCountry) ? rawCountry : rawCountry ? 'Other' : ''
+  const countryOther = country === 'Other' && rawCountry !== 'Other' ? rawCountry : ''
+  const countryOption = countryFor(country)
+
+  if (countryOption) {
+    const maybeRegion = parts[1] ?? ''
+    const regionOption = countryOption.regions.find((row) => row.value === maybeRegion)
+    if (!regionOption) {
+      return { country, countryOther, region: maybeRegion ? 'Other' : '', regionOther: maybeRegion === 'Other' ? '' : maybeRegion, city: '', cityOther: '', detail: parts.slice(maybeRegion ? 2 : 1).join(' / ') }
+    }
+
+    const maybeCity = parts[2] ?? ''
+    const hasCity = regionOption.cities.includes(maybeCity)
+    return {
+      country,
+      countryOther,
+      region: maybeRegion,
+      regionOther: '',
+      city: hasCity ? maybeCity : '',
+      cityOther: '',
+      detail: parts.slice(hasCity ? 3 : 2).join(' / '),
+    }
+  }
+
+  return { country: '', countryOther: '', region: '', regionOther: '', city: '', cityOther: '', detail: value ?? '' }
+}
+
+function actualCountry(parts: { country: string; countryOther: string }) {
+  return parts.country === 'Other' ? parts.countryOther || 'Other' : parts.country
+}
+
+function actualRegion(parts: { region: string; regionOther: string }) {
+  return parts.region === 'Other' ? parts.regionOther || 'Other' : parts.region
+}
+
+function actualCity(parts: { city: string; cityOther: string }) {
+  return parts.city === 'Other' ? parts.cityOther || 'Other' : parts.city
+}
+
+function hasUnfilledOther(value: string | null | undefined) {
+  return (value ?? '').split(' / ').some((part) => part.trim() === 'Other')
+}
+
+function CountrySelectField({
+  value,
+  onChange,
+  disabled,
+}: {
+  value?: string | null
+  onChange: (value: string) => void
+  disabled: boolean
+}) {
+  const selected = value && countryFor(value) ? value : value ? 'Other' : ''
+  return (
+    <div className="space-y-3">
+      <select
+        style={fieldStyle}
+        disabled={disabled}
+        value={selected}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        <option value="" style={selectOptionStyle}>—</option>
+        {LOCATION_COUNTRIES.map((country) => (
+          <option key={country.value} value={country.value} style={selectOptionStyle}>
+            {country.value}
+          </option>
+        ))}
+      </select>
+      {selected === 'Other' ? (
+        <input
+          style={fieldStyle}
+          disabled={disabled}
+          value={value && !countryFor(value) ? value : ''}
+          placeholder="Other country / nationality"
+          onChange={(event) => onChange(event.target.value)}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function LocationSelectField({
+  value,
+  onChange,
+  disabled,
+}: {
+  value?: string | null
+  onChange: (value: string) => void
+  disabled: boolean
+}) {
+  const parts = splitLocationValue(value ?? undefined)
+  const regions = countryFor(parts.country)?.regions ?? []
+  const cities = regionFor(parts.country, parts.region)?.cities ?? []
+
+  function commit(next: typeof parts) {
+    onChange(joinParts([actualCountry(next), actualRegion(next), actualCity(next)]))
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="grid sm:grid-cols-3 gap-3">
+        <select
+          aria-label="Country / Region"
+          style={fieldStyle}
+          disabled={disabled}
+          value={parts.country}
+          onChange={(event) => commit({ country: event.target.value, countryOther: '', region: '', regionOther: '', city: '', cityOther: '' })}
+        >
+          <option value="" style={selectOptionStyle}>Country / Region</option>
+          {LOCATION_COUNTRIES.map((country) => (
+            <option key={country.value} value={country.value} style={selectOptionStyle}>
+              {country.value}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Province / State"
+          style={fieldStyle}
+          disabled={disabled || regions.length === 0}
+          value={parts.region}
+          onChange={(event) => commit({ ...parts, region: event.target.value, regionOther: '', city: '', cityOther: '' })}
+        >
+          <option value="" style={selectOptionStyle}>Province / State</option>
+          {regions.map((region) => (
+            <option key={region.value} value={region.value} style={selectOptionStyle}>
+              {region.value}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="City"
+          style={fieldStyle}
+          disabled={disabled || cities.length === 0}
+          value={parts.city}
+          onChange={(event) => commit({ ...parts, city: event.target.value, cityOther: '' })}
+        >
+          <option value="" style={selectOptionStyle}>City</option>
+          {cities.map((city) => (
+            <option key={city} value={city} style={selectOptionStyle}>
+              {city}
+            </option>
+          ))}
+        </select>
+      </div>
+      {(parts.country === 'Other' || parts.region === 'Other' || parts.city === 'Other') ? (
+        <div className="grid sm:grid-cols-3 gap-3">
+          {parts.country === 'Other' ? (
+            <input style={fieldStyle} disabled={disabled} value={parts.countryOther} placeholder="Other country" onChange={(event) => commit({ ...parts, countryOther: event.target.value })} />
+          ) : <div />}
+          {parts.region === 'Other' ? (
+            <input style={fieldStyle} disabled={disabled} value={parts.regionOther} placeholder="Other province / state" onChange={(event) => commit({ ...parts, regionOther: event.target.value })} />
+          ) : <div />}
+          {parts.city === 'Other' ? (
+            <input style={fieldStyle} disabled={disabled} value={parts.cityOther} placeholder="Other city" onChange={(event) => commit({ ...parts, cityOther: event.target.value })} />
+          ) : <div />}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function AddressSelectField({
+  value,
+  onChange,
+  disabled,
+}: {
+  value?: string | null
+  onChange: (value: string) => void
+  disabled: boolean
+}) {
+  const parts = splitAddressValue(value ?? undefined)
+  const regions = countryFor(parts.country)?.regions ?? []
+  const cities = regionFor(parts.country, parts.region)?.cities ?? []
+
+  function commit(next: typeof parts) {
+    onChange(joinParts([actualCountry(next), actualRegion(next), actualCity(next), next.detail]))
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="grid sm:grid-cols-3 gap-3">
+        <select
+          aria-label="Country / Region"
+          style={fieldStyle}
+          disabled={disabled}
+          value={parts.country}
+          onChange={(event) => commit({ country: event.target.value, countryOther: '', region: '', regionOther: '', city: '', cityOther: '', detail: parts.detail })}
+        >
+          <option value="" style={selectOptionStyle}>Country / Region</option>
+          {LOCATION_COUNTRIES.map((country) => (
+            <option key={country.value} value={country.value} style={selectOptionStyle}>
+              {country.value}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Province / State"
+          style={fieldStyle}
+          disabled={disabled || regions.length === 0}
+          value={parts.region}
+          onChange={(event) => commit({ ...parts, region: event.target.value, regionOther: '', city: '', cityOther: '' })}
+        >
+          <option value="" style={selectOptionStyle}>Province / State</option>
+          {regions.map((region) => (
+            <option key={region.value} value={region.value} style={selectOptionStyle}>
+              {region.value}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="City"
+          style={fieldStyle}
+          disabled={disabled || cities.length === 0}
+          value={parts.city}
+          onChange={(event) => commit({ ...parts, city: event.target.value, cityOther: '' })}
+        >
+          <option value="" style={selectOptionStyle}>City</option>
+          {cities.map((city) => (
+            <option key={city} value={city} style={selectOptionStyle}>
+              {city}
+            </option>
+          ))}
+        </select>
+      </div>
+      {(parts.country === 'Other' || parts.region === 'Other' || parts.city === 'Other') ? (
+        <div className="grid sm:grid-cols-3 gap-3">
+          {parts.country === 'Other' ? (
+            <input style={fieldStyle} disabled={disabled} value={parts.countryOther} placeholder="Other country" onChange={(event) => commit({ ...parts, countryOther: event.target.value })} />
+          ) : <div />}
+          {parts.region === 'Other' ? (
+            <input style={fieldStyle} disabled={disabled} value={parts.regionOther} placeholder="Other province / state" onChange={(event) => commit({ ...parts, regionOther: event.target.value })} />
+          ) : <div />}
+          {parts.city === 'Other' ? (
+            <input style={fieldStyle} disabled={disabled} value={parts.cityOther} placeholder="Other city" onChange={(event) => commit({ ...parts, cityOther: event.target.value })} />
+          ) : <div />}
+        </div>
+      ) : null}
+      <textarea
+        rows={2}
+        aria-label="Detail address"
+        placeholder="Detail address 詳細地址"
+        style={{ ...fieldStyle, resize: 'none' }}
+        disabled={disabled}
+        value={parts.detail}
+        onChange={(event) => commit({ ...parts, detail: event.target.value })}
+      />
+    </div>
+  )
+}
+
 const KYC_PENDING_FILE_CATEGORIES = ['id', 'address', 'financial', 'other'] as const
 type KycPendingCategory = (typeof KYC_PENDING_FILE_CATEGORIES)[number]
 
@@ -129,6 +525,7 @@ function UploadZone({
   pendingFiles,
   setPendingFiles,
   hint,
+  required = false,
 }: {
   slotId: string
   personId: string | undefined
@@ -142,6 +539,7 @@ function UploadZone({
     React.SetStateAction<Record<string, { uid: string; file: File }[]>>
   >
   hint: string
+  required?: boolean
 }) {
   const t = useTranslations('kyc')
   const serverUploadKey = personId ? `${personId}:${category}` : ''
@@ -248,7 +646,15 @@ function UploadZone({
       >
         <input {...getInputProps()} />
         <Upload size={16} style={{ color: '#C9A96E' }} />
-        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{hint}</p>
+        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+          {required ? <span style={{ color: '#ef4444', fontWeight: 700 }}>* </span> : null}
+          {hint}
+        </p>
+        {required ? (
+          <p className="text-[10px] font-medium uppercase tracking-wide" style={{ color: '#C9A96E' }}>
+            Required upload
+          </p>
+        ) : null}
       </div>
       {pendingList.length > 0 ? (
         <ul className="space-y-1 text-xs">
@@ -308,6 +714,8 @@ export default function KYCPage() {
   const [pendingKycUploads, setPendingKycUploads] = useState<
     Record<string, { uid: string; file: File }[]>
   >({})
+  const [existingKycDocs, setExistingKycDocs] = useState<Record<string, string[]>>({})
+  const contactAddressEditedRef = useRef<Record<string, boolean>>({})
   const fieldSlotIdsRef = useRef<string[]>([])
   const pendingUploadsRef = useRef(pendingKycUploads)
 
@@ -344,8 +752,14 @@ export default function KYCPage() {
               kycStatus: p.kycStatus,
             })),
           })
+          const docsByPerson: Record<string, string[]> = {}
+          for (const p of list as Array<KeyPerson & { kycDocuments?: { documentType: string }[] }>) {
+            docsByPerson[p.id] = (p.kycDocuments ?? []).map((doc) => doc.documentType)
+          }
+          setExistingKycDocs(docsByPerson)
           setUploads({})
           setPendingKycUploads({})
+          contactAddressEditedRef.current = {}
         }
       })
       .catch(() => {
@@ -365,6 +779,76 @@ export default function KYCPage() {
       delete rest.kycStatus
       return kycPersonZod.parse(rest)
     })
+  }
+
+  function hasRequiredUpload(personIndex: number, category: KycPendingCategory) {
+    const slotId = fieldSlotIdsRef.current[personIndex]
+    const person = form.getValues(`persons.${personIndex}` as 'persons.0')
+    const docType = DOC_TYPE_FOR_CATEGORY[category]
+    if (slotId && (pendingUploadsRef.current[`${slotId}:${category}`]?.length ?? 0) > 0) return true
+    if (person?.id && existingKycDocs[person.id]?.includes(docType)) return true
+    if (person?.id && (uploads[`${person.id}:${category}`] ?? []).some((doc) => doc.status === 'done')) return true
+    return false
+  }
+
+  function composeNameForPerson(personIndex: number) {
+    const p = form.getValues(`persons.${personIndex}` as 'persons.0')
+    return [p.firstName, p.otherName, p.lastName].map((part) => part?.trim()).filter(Boolean).join(' ')
+  }
+
+  function validateSubmitRequirements() {
+    const persons = form.getValues('persons')
+    for (let i = 0; i < persons.length; i++) {
+      const p = persons[i]
+      const missing = [
+        ['English first name', p.firstName],
+        ['En last name / surname', p.lastName],
+        ['ID type', p.idType],
+        ['ID/passport number', p.idNumber],
+        ['Place of issue', p.placeOfIssue],
+        ['ID/passport expiry date', p.idExpiry],
+        ['Date of birth', p.dateOfBirth],
+        ['Place of birth', p.placeOfBirth],
+        ['Nationality', p.nationality],
+        ['Home address', p.homeAddress],
+        ['Contact address', p.contactAddress],
+        ['Mobile phone', p.mobile],
+        ['Email', p.email],
+      ].filter(([, value]) => !String(value ?? '').trim())
+
+      if (missing.length > 0) {
+        setAp(i)
+        setStep(0)
+        toast.error(`Please fill required KYC fields: ${missing.map(([label]) => label).join(', ')}`)
+        return false
+      }
+      const unfilledOther = [
+        ['Place of issue', p.placeOfIssue],
+        ['Place of birth', p.placeOfBirth],
+        ['Nationality', p.nationality],
+        ['Home address', p.homeAddress],
+        ['Contact address', p.contactAddress],
+      ].find(([, value]) => hasUnfilledOther(value))
+      if (unfilledOther) {
+        setAp(i)
+        setStep(0)
+        toast.error(`Please fill the custom Other value for ${unfilledOther[0]}.`)
+        return false
+      }
+      if (!hasRequiredUpload(i, 'id')) {
+        setAp(i)
+        setStep(0)
+        toast.error('ID / passport upload is required. Please upload the file marked with *.')
+        return false
+      }
+      if (!hasRequiredUpload(i, 'address')) {
+        setAp(i)
+        setStep(0)
+        toast.error('Proof of address upload is required. Please upload the file marked with *.')
+        return false
+      }
+    }
+    return true
   }
 
   async function flushPendingAfterSave(slotIdsSnapshot: string[], backPersons: { id: string }[]) {
@@ -425,6 +909,7 @@ export default function KYCPage() {
       return
     }
     if (action === 'SUBMIT') {
+      if (!validateSubmitRequirements()) return
       const persons = form.getValues('persons')
       const missingDeclarationIndex = persons.findIndex((p) =>
         !p.signatureName?.trim() || !p.declarationDate || !p.declarationSigned
@@ -437,6 +922,9 @@ export default function KYCPage() {
       }
     }
 
+    form.getValues('persons').forEach((_p, i) => {
+      form.setValue(`persons.${i}.nameEn` as 'persons.0.nameEn', composeNameForPerson(i), { shouldDirty: true })
+    })
     const ok = await form.trigger()
     if (!ok) return
     const slotIdsSnapshot = [...fieldSlotIdsRef.current]
@@ -452,11 +940,12 @@ export default function KYCPage() {
         toast.error(json.error ?? 'Save failed')
         return
       }
-      const back = json.persons as { id: string; kycStatus: string }[]
+      const back = json.persons as { id: string; kycStatus: string; kycCode?: string | null }[]
       if (Array.isArray(back)) {
         back.forEach((b, i) => {
           form.setValue(`persons.${i}.id` as 'persons.0.id', b.id)
           form.setValue(`persons.${i}.kycStatus` as 'persons.0.kycStatus', b.kycStatus)
+          form.setValue(`persons.${i}.kycCode` as 'persons.0.kycCode', b.kycCode ?? '')
         })
         await flushPendingAfterSave(slotIdsSnapshot, back)
       }
@@ -549,6 +1038,7 @@ export default function KYCPage() {
         {fields.map((f, i) => {
           const st = form.watch(`persons.${i}.kycStatus` as 'persons.0.kycStatus') ?? 'DRAFT'
           const nameEn = form.watch(`persons.${i}.nameEn` as 'persons.0.nameEn')
+          const code = form.watch(`persons.${i}.kycCode` as 'persons.0.kycCode')
           const info = KYC_STATUS[st] ?? KYC_STATUS.DRAFT
           const label = nameEn?.trim() || `${t('personIndex', { defaultValue: 'Person' })} ${i + 1}`
           const personLocked = st === 'APPROVED'
@@ -565,6 +1055,11 @@ export default function KYCPage() {
                 }}
               >
                 {label}
+                {code ? (
+                  <span className="ml-1.5 text-[10px] opacity-90" style={{ color: '#F0EAD8' }}>
+                    {code}
+                  </span>
+                ) : null}
                 <span className="ml-1.5 text-[10px] opacity-80" style={{ color: info.text }}>
                   ({info.label})
                 </span>
@@ -652,7 +1147,7 @@ export default function KYCPage() {
 
           {/* Group 1: Title + Names */}
           <fieldset className="rounded-lg p-4 space-y-4" style={{ border: '1px solid var(--border)' }}>
-            <legend className="text-xs px-1" style={{ color: 'var(--muted-foreground)' }}>{t('fields.title')} &amp; {t('fields.nameEn')} / {t('fields.nameZh')}</legend>
+            <legend className="text-xs px-1" style={{ color: 'var(--muted-foreground)' }}>Name 姓名</legend>
             <div className="grid sm:grid-cols-3 gap-4">
               <Field label={t('fields.title')} error={form.formState.errors.persons?.[ap]?.titlePrefix?.message}>
                 <select style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.titlePrefix` as const)}>
@@ -662,11 +1157,17 @@ export default function KYCPage() {
                   <option value="Mrs." style={{ background: '#141414' }}>Mrs. 太太</option>
                 </select>
               </Field>
-              <Field label={`${t('fields.nameEn')} *`} error={form.formState.errors.persons?.[ap]?.nameEn?.message}>
-                <input style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.nameEn` as const)} />
+              <Field label="English first name *" error={form.formState.errors.persons?.[ap]?.firstName?.message}>
+                <input style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.firstName` as const)} />
+              </Field>
+              <Field label="En last name / surname *" error={form.formState.errors.persons?.[ap]?.lastName?.message}>
+                <input style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.lastName` as const)} />
               </Field>
               <Field label={t('fields.nameZh')} error={form.formState.errors.persons?.[ap]?.nameZh?.message}>
                 <input style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.nameZh` as const)} />
+              </Field>
+              <Field label="Other name">
+                <input style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.otherName` as const)} />
               </Field>
             </div>
           </fieldset>
@@ -675,7 +1176,7 @@ export default function KYCPage() {
           <fieldset className="rounded-lg p-4 space-y-4" style={{ border: '1px solid var(--border)' }}>
             <legend className="text-xs px-1" style={{ color: 'var(--muted-foreground)' }}>{t('fields.idType')} &amp; {t('fields.idNumber')}</legend>
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field label={t('fields.idType')}>
+              <Field label={`${t('fields.idType')} *`} error={form.formState.errors.persons?.[ap]?.idType?.message}>
                 <select style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.idType` as const)}>
                   <option value="" style={{ background: '#141414' }}>—</option>
                   <option value="HKID" style={{ background: '#141414' }}>HK ID Card 香港身份證</option>
@@ -683,22 +1184,24 @@ export default function KYCPage() {
                   <option value="OTHER" style={{ background: '#141414' }}>Other 其他</option>
                 </select>
               </Field>
-              <Field label={t('fields.idNumber')}>
+              <Field label={`${t('fields.idNumber')} *`} error={form.formState.errors.persons?.[ap]?.idNumber?.message}>
                 <input style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.idNumber` as const)} />
               </Field>
             </div>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <Field label={t('fields.placeOfIssue')}>
-                <input style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.placeOfIssue` as const)} />
-              </Field>
-              <Field label={t('fields.expiryDate')}>
-                <DatePickerField
-                  value={form.watch(`persons.${ap}.idExpiry` as const)}
-                  disabled={isLocked}
-                  onChange={(value) => form.setValue(`persons.${ap}.idExpiry` as const, value, { shouldDirty: true, shouldValidate: true })}
-                />
-              </Field>
-            </div>
+            <Field label={`${t('fields.placeOfIssue')} *`} error={form.formState.errors.persons?.[ap]?.placeOfIssue?.message}>
+              <LocationSelectField
+                value={form.watch(`persons.${ap}.placeOfIssue` as const)}
+                disabled={isLocked}
+                onChange={(value) => form.setValue(`persons.${ap}.placeOfIssue` as const, value, { shouldDirty: true, shouldValidate: true })}
+              />
+            </Field>
+            <Field label={`${t('fields.expiryDate')} *`} error={form.formState.errors.persons?.[ap]?.idExpiry?.message}>
+              <DatePickerField
+                value={form.watch(`persons.${ap}.idExpiry` as const)}
+                disabled={isLocked}
+                onChange={(value) => form.setValue(`persons.${ap}.idExpiry` as const, value, { shouldDirty: true, shouldValidate: true })}
+              />
+            </Field>
             <UploadZone
               slotId={slotIdForAp}
               personId={personId}
@@ -710,33 +1213,60 @@ export default function KYCPage() {
               pendingFiles={pendingKycUploads}
               setPendingFiles={setPendingKycUploads}
               hint={t('uploadIdHint', { defaultValue: 'Upload ID / Passport copy — PDF, JPG, PNG, max 10 MB' })}
+              required
             />
           </fieldset>
 
-          {/* Personal details */}
-          <div className="grid sm:grid-cols-2 gap-4">
-            <Field label={t('fields.dob')}>
+          <fieldset className="rounded-lg p-4 space-y-4" style={{ border: '1px solid var(--border)' }}>
+            <legend className="text-xs px-1" style={{ color: 'var(--muted-foreground)' }}>Birth and Nationality 出生及國籍</legend>
+            <Field label={`${t('fields.dob')} *`} error={form.formState.errors.persons?.[ap]?.dateOfBirth?.message}>
               <DatePickerField
                 value={form.watch(`persons.${ap}.dateOfBirth` as const)}
                 disabled={isLocked}
                 onChange={(value) => form.setValue(`persons.${ap}.dateOfBirth` as const, value, { shouldDirty: true, shouldValidate: true })}
               />
             </Field>
-            <Field label={t('fields.placeOfBirth')}>
-              <input style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.placeOfBirth` as const)} />
+            <Field label={`${t('fields.placeOfBirth')} *`} error={form.formState.errors.persons?.[ap]?.placeOfBirth?.message}>
+              <LocationSelectField
+                value={form.watch(`persons.${ap}.placeOfBirth` as const)}
+                disabled={isLocked}
+                onChange={(value) => form.setValue(`persons.${ap}.placeOfBirth` as const, value, { shouldDirty: true, shouldValidate: true })}
+              />
             </Field>
-          </div>
-          <Field label={t('fields.nationality')}>
-            <input style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.nationality` as const)} />
-          </Field>
+            <Field label={`${t('fields.nationality')} *`} error={form.formState.errors.persons?.[ap]?.nationality?.message}>
+              <CountrySelectField
+                value={form.watch(`persons.${ap}.nationality` as const)}
+                disabled={isLocked}
+                onChange={(value) => form.setValue(`persons.${ap}.nationality` as const, value, { shouldDirty: true, shouldValidate: true })}
+              />
+            </Field>
+          </fieldset>
           {/* Address group */}
           <fieldset className="rounded-lg p-4 space-y-4" style={{ border: '1px solid var(--border)' }}>
             <legend className="text-xs px-1" style={{ color: 'var(--muted-foreground)' }}>{t('fields.homeAddress')} &amp; {t('fields.contactAddress')}</legend>
-            <Field label={t('fields.homeAddress')}>
-              <textarea rows={2} style={{ ...fieldStyle, resize: 'none' }} disabled={isLocked} {...form.register(`persons.${ap}.homeAddress` as const)} />
+            <Field label={`${t('fields.homeAddress')} *`} error={form.formState.errors.persons?.[ap]?.homeAddress?.message}>
+              <AddressSelectField
+                value={form.watch(`persons.${ap}.homeAddress` as const)}
+                disabled={isLocked}
+                onChange={(value) => {
+                  form.setValue(`persons.${ap}.homeAddress` as const, value, { shouldDirty: true, shouldValidate: true })
+                  const contactPath = `persons.${ap}.contactAddress` as const
+                  const currentContact = form.getValues(contactPath)
+                  if (!contactAddressEditedRef.current[slotIdForAp] || !currentContact?.trim()) {
+                    form.setValue(contactPath, value, { shouldDirty: true, shouldValidate: true })
+                  }
+                }}
+              />
             </Field>
-            <Field label={t('fields.contactAddress')}>
-              <textarea rows={2} style={{ ...fieldStyle, resize: 'none' }} disabled={isLocked} {...form.register(`persons.${ap}.contactAddress` as const)} />
+            <Field label={`${t('fields.contactAddress')} *`} error={form.formState.errors.persons?.[ap]?.contactAddress?.message}>
+              <AddressSelectField
+                value={form.watch(`persons.${ap}.contactAddress` as const)}
+                disabled={isLocked}
+                onChange={(value) => {
+                  contactAddressEditedRef.current[slotIdForAp] = true
+                  form.setValue(`persons.${ap}.contactAddress` as const, value, { shouldDirty: true, shouldValidate: true })
+                }}
+              />
             </Field>
             <UploadZone
               slotId={slotIdForAp}
@@ -749,9 +1279,16 @@ export default function KYCPage() {
               pendingFiles={pendingKycUploads}
               setPendingFiles={setPendingKycUploads}
               hint={t('uploadAddressHint', { defaultValue: 'Upload proof of address — PDF, JPG, PNG, max 10 MB' })}
+              required
             />
           </fieldset>
           <div className="grid sm:grid-cols-2 gap-4">
+            <Field label={`${t('fields.email')} *`} error={form.formState.errors.persons?.[ap]?.email?.message}>
+              <input type="email" style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.email` as const)} />
+            </Field>
+            <Field label={`${t('fields.mobile')} *`} error={form.formState.errors.persons?.[ap]?.mobile?.message}>
+              <input style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.mobile` as const)} />
+            </Field>
             <Field label={t('fields.homePhone')}>
               <input style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.homePhone` as const)} />
             </Field>
@@ -760,19 +1297,13 @@ export default function KYCPage() {
             </Field>
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
-            <Field label={t('fields.mobile')}>
-              <input style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.mobile` as const)} />
-            </Field>
             <Field label={t('fields.wechat')}>
               <input style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.wechat` as const)} />
             </Field>
+            <Field label={t('fields.emergencyContact')}>
+              <input style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.emergencyContact` as const)} />
+            </Field>
           </div>
-          <Field label={t('fields.email')}>
-            <input type="email" style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.email` as const)} />
-          </Field>
-          <Field label={t('fields.emergencyContact')}>
-            <input style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.emergencyContact` as const)} />
-          </Field>
 
           {/* US Citizen — Yes / No radio */}
           <div className="space-y-2">
@@ -812,7 +1343,11 @@ export default function KYCPage() {
                 <input style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.employerName` as const)} />
               </Field>
               <Field label={t('fields.companyAddress')}>
-                <textarea rows={2} style={{ ...fieldStyle, resize: 'none' }} disabled={isLocked} {...form.register(`persons.${ap}.employerAddress` as const)} />
+                <AddressSelectField
+                  value={form.watch(`persons.${ap}.employerAddress` as const)}
+                  disabled={isLocked}
+                  onChange={(value) => form.setValue(`persons.${ap}.employerAddress` as const, value, { shouldDirty: true, shouldValidate: true })}
+                />
               </Field>
 
               {/* Nature of Business — multi-checkbox grid */}

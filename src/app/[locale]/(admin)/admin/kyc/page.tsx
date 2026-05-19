@@ -58,7 +58,11 @@ type ClientAccount = {
 
 type KYCRecord = {
   id: string
+  kycCode: string | null
   titlePrefix: string | null
+  firstName: string | null
+  lastName: string | null
+  otherName: string | null
   nameEn: string
   nameZh: string | null
   idType: string | null
@@ -389,7 +393,7 @@ export default function KYCQueuePage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[#2A2418] text-left" style={{ color: 'var(--muted-foreground)' }}>
-                    <th className="px-4 py-3 font-medium">Name</th>
+                    <th className="px-4 py-3 font-medium">KYC Code / Name</th>
                     <th className="px-4 py-3 font-medium">Client Account</th>
                     <th className="px-4 py-3 font-medium">Company</th>
                     <th className="px-4 py-3 font-medium">Files</th>
@@ -419,6 +423,7 @@ export default function KYCQueuePage() {
                     <p className="font-medium" style={{ color: 'var(--foreground)' }}>
                       {r.titlePrefix ? `${r.titlePrefix} ` : ''}{r.nameEn}
                     </p>
+                    {r.kycCode ? <p className="text-xs" style={{ color: '#C9A96E' }}>{r.kycCode}</p> : null}
                     {r.nameZh ? <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.nameZh}</p> : null}
                   </td>
                   <td className="px-4 py-3">
@@ -461,6 +466,11 @@ export default function KYCQueuePage() {
                   {selected.titlePrefix ? `${selected.titlePrefix} ` : ''}{selected.nameEn}
                   {selected.nameZh ? ` (${selected.nameZh})` : ''}
                 </h3>
+                {selected.kycCode ? (
+                  <span className="rounded-md border border-[#2A2418] px-2 py-0.5 text-xs font-semibold" style={{ color: '#C9A96E' }}>
+                    {selected.kycCode}
+                  </span>
+                ) : null}
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[selected.kycStatus] ?? ''}`}>
                   {selected.kycStatus}
                 </span>
@@ -499,6 +509,11 @@ export default function KYCQueuePage() {
 
               {/* Identity */}
               <DetailSection title="Identity">
+                <DetailRow label="KYC Code" value={selected.kycCode} />
+                <DetailRow label="First Name" value={selected.firstName} />
+                <DetailRow label="Last Name" value={selected.lastName} />
+                <DetailRow label="Other Name" value={selected.otherName} />
+                <DetailRow label="Chinese Name" value={selected.nameZh} />
                 <DetailRow label="ID Type" value={selected.idType} />
                 <DetailRow label="ID Number" value={selected.idNumber} />
                 <DetailRow label="Place of Issue" value={selected.placeOfIssue} />

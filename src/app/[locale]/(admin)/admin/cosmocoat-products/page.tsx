@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { ImagePlus, PackagePlus, Pencil, Search, Trash2, UploadCloud } from 'lucide-react'
+import { ossImg } from '@/lib/oss-img'
 
 type ProductType = 'feel' | 'lacquer' | 'uv' | 'special'
 
@@ -15,13 +16,14 @@ type Product = {
   teaser: string
   detail: string
   imagePath: string
+  imageUrl?: string
   sortOrder: number
   isFeatured: boolean
   isVisible: boolean
   createdAt: string
 }
 
-type ProductForm = Omit<Product, 'id' | 'createdAt'>
+type ProductForm = Omit<Product, 'id' | 'createdAt' | 'imageUrl'>
 
 const TYPE_OPTIONS: { key: ProductType; label: string }[] = [
   { key: 'feel', label: '手感漆' },
@@ -78,9 +80,9 @@ function previewSrc(path: string) {
   const trimmed = path.trim()
   if (!trimmed) return ''
   if (/^https?:\/\//i.test(trimmed)) return trimmed
-  if (trimmed.startsWith('/')) return trimmed
-  if (trimmed.startsWith('cosmocoat/')) return `/${trimmed}`
-  return `/cosmocoat/${trimmed}`
+  if (trimmed.startsWith('/')) return ossImg(trimmed, { w: 500 })
+  if (trimmed.startsWith('cosmocoat/')) return ossImg(`/${trimmed}`, { w: 500 })
+  return ossImg(`/cosmocoat/${trimmed}`, { w: 500 })
 }
 
 function ProductModal({
@@ -93,6 +95,7 @@ function ProductModal({
   onSaved: () => void
 }) {
   const [form, setForm] = useState<ProductForm>(product ?? emptyForm)
+  const [imagePreviewUrl, setImagePreviewUrl] = useState(product?.imageUrl ?? '')
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const isEditing = !!product
@@ -113,6 +116,7 @@ function ProductModal({
         return
       }
       patch('imagePath', data.imagePath)
+      setImagePreviewUrl(data.imageUrl ?? previewSrc(data.imagePath))
       toast.success('Image uploaded.')
     } catch {
       toast.error('Image upload failed.')
@@ -208,14 +212,14 @@ function ProductModal({
           <div className="space-y-4">
             <div className="aspect-square overflow-hidden rounded-lg flex items-center justify-center" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
               {form.imagePath ? (
-                <img src={previewSrc(form.imagePath)} alt="" className="w-full h-full object-cover" />
+                <img src={imagePreviewUrl || previewSrc(form.imagePath)} alt="" className="w-full h-full object-cover" />
               ) : (
                 <ImagePlus size={36} style={{ color: '#5A5040' }} />
               )}
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Picture Path</label>
-              <input required value={form.imagePath} onChange={e => patch('imagePath', e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} placeholder="prod-1791543.png" />
+              <input required value={form.imagePath} onChange={e => { patch('imagePath', e.target.value); setImagePreviewUrl('') }} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} placeholder="prod-1791543.png" />
             </div>
             <label className="flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-medium transition-opacity hover:opacity-85" style={{ background: 'rgba(201,169,110,0.12)', color: '#C9A96E', border: '1px solid rgba(201,169,110,0.25)', cursor: uploading ? 'wait' : 'pointer' }}>
               <UploadCloud size={15} />
@@ -374,7 +378,7 @@ export default function AdminCosmoCoatProductsPage() {
                   >
                     <td style={{ ...td, minWidth: '22rem' }}>
                       <div className="flex items-center gap-3">
-                        <img src={previewSrc(product.imagePath)} alt="" className="w-12 h-12 object-cover rounded-md bg-[#0E0E0A]" style={{ border: '1px solid #2A2418' }} />
+                        <img src={product.imageUrl || previewSrc(product.imagePath)} alt="" className="w-12 h-12 object-cover rounded-md bg-[#0E0E0A]" style={{ border: '1px solid #2A2418' }} />
                         <div className="min-w-0">
                           <p className="font-medium truncate" style={{ color: 'var(--foreground)' }}>{product.title}</p>
                           <p className="text-xs truncate" style={{ color: '#7A7060' }}>{product.pid}</p>
