@@ -1,24 +1,24 @@
 import { z } from 'zod'
 
 /** Single natural-person KYC payload — fields align with `KeyPerson` + portal-only inputs */
-export const kycPersonZod = z.object({
+const kycPersonDraftShape = {
   id: z.string().optional(),
   kycCode: z.string().max(32).optional().nullable(),
   titlePrefix: z.string().max(20).optional().nullable(),
-  firstName: z.string().min(1).max(100),
-  lastName: z.string().min(1).max(100),
+  firstName: z.string().max(100).optional().nullable(),
+  lastName: z.string().max(100).optional().nullable(),
   otherName: z.string().max(100).optional().nullable(),
-  nameEn: z.string().min(1).max(100),
+  nameEn: z.string().max(100).optional().nullable(),
   nameZh: z.string().max(100).optional().nullable(),
-  idType: z.string().min(1).max(50),
-  idNumber: z.string().min(1).max(50),
-  placeOfIssue: z.string().min(1).max(100),
-  placeOfBirth: z.string().min(1).max(200),
-  idExpiry: z.string().min(1),
-  dateOfBirth: z.string().min(1),
-  nationality: z.string().min(1).max(100),
-  homeAddress: z.string().min(1).max(2000),
-  contactAddress: z.string().min(1).max(2000),
+  idType: z.string().max(50).optional().nullable(),
+  idNumber: z.string().max(50).optional().nullable(),
+  placeOfIssue: z.string().max(100).optional().nullable(),
+  placeOfBirth: z.string().max(200).optional().nullable(),
+  idExpiry: z.string().optional().nullable(),
+  dateOfBirth: z.string().optional().nullable(),
+  nationality: z.string().max(100).optional().nullable(),
+  homeAddress: z.string().max(2000).optional().nullable(),
+  contactAddress: z.string().max(2000).optional().nullable(),
   homePhone: z.string().max(30).optional().nullable(),
   workPhone: z.string().max(30).optional().nullable(),
   mobile: z.string().max(30).optional().nullable(),
@@ -50,13 +50,50 @@ export const kycPersonZod = z.object({
   declarationSigned: z.boolean().optional().nullable(),
   signatureName: z.string().max(200).optional().nullable(),
   declarationDate: z.string().optional().nullable(),
+}
+
+export const kycPersonDraftZod = z.object(kycPersonDraftShape)
+
+export const kycPersonZod = z.object({
+  ...kycPersonDraftShape,
+  firstName: z.string().min(1).max(100),
+  lastName: z.string().min(1).max(100),
+  nameEn: z.string().min(1).max(100),
+  idType: z.string().min(1).max(50),
+  idNumber: z.string().min(1).max(50),
+  placeOfIssue: z.string().min(1).max(100),
+  placeOfBirth: z.string().min(1).max(200),
+  idExpiry: z.string().min(1),
+  dateOfBirth: z.string().min(1),
+  nationality: z.string().min(1).max(100),
+  homeAddress: z.string().min(1).max(2000),
+  contactAddress: z.string().min(1).max(2000),
+  /** Section D — all mandatory on SUBMIT */
+  signatureName: z.string().trim().min(1).max(200),
+  declarationDate: z.string().trim().min(1),
+  declarationSigned: z.union([z.boolean(), z.undefined(), z.null()]).refine(
+    (v) => v === true,
+    { message: 'Declaration confirmation is required' },
+  ),
 })
 
-export type KycPersonInput = z.infer<typeof kycPersonZod>
+export type KycPersonInput = z.infer<typeof kycPersonDraftZod>
 
 export const kycBatchZod = z.object({
-  persons: z.array(kycPersonZod).min(1, 'Add at least one person'),
+  persons: z.array(kycPersonDraftZod).min(1, 'Add at least one person'),
   action: z.enum(['SAVE_DRAFT', 'SUBMIT']).default('SAVE_DRAFT'),
+}).superRefine((data, ctx) => {
+  if (data.action !== 'SUBMIT') return
+  data.persons.forEach((person, index) => {
+    const parsed = kycPersonZod.safeParse(person)
+    if (parsed.success) return
+    for (const issue of parsed.error.issues) {
+      ctx.addIssue({
+        ...issue,
+        path: ['persons', index, ...issue.path],
+      })
+    }
+  })
 })
 
 function splitList(s: string | null | undefined): string[] {
@@ -89,12 +126,12 @@ function splitStoredEnglishName(name: string | null | undefined) {
   return { firstName: parts.slice(0, -1).join(' '), lastName: parts.at(-1) ?? '', otherName: '' }
 }
 
-function composeEnglishName(data: Pick<KycPersonInput, 'firstName' | 'lastName' | 'otherName' | 'nameEn'>) {
+function composeEnglishName(data: Pick<KycPersonInput, 'firstName' | 'lastName' | 'otherName' | 'nameEn' | 'nameZh'>) {
   const structured = [data.firstName, data.otherName, data.lastName]
     .map((part) => part?.trim())
     .filter(Boolean)
     .join(' ')
-  return structured || data.nameEn
+  return structured || data.nameEn || data.nameZh || 'Draft KYC'
 }
 
 export function inputToKeyPersonData(
@@ -107,9 +144,6 @@ export function inputToKeyPersonData(
       ? undefined
       : rawEst
   return {
-    firstName: data.firstName,
-    lastName: data.lastName,
-    otherName: data.otherName ?? undefined,
     titlePrefix: data.titlePrefix ?? undefined,
     nameEn: composeEnglishName(data),
     nameZh: data.nameZh ?? undefined,

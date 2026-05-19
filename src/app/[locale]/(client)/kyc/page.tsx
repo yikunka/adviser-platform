@@ -12,10 +12,10 @@ import {
   Plus, Trash2, Download, Users,
 } from 'lucide-react'
 import type { KeyPerson } from '@prisma/client'
-import { kycPersonZod, type KycPersonInput, keyPersonToFormValues } from '@/lib/kyc/personZod'
+import { kycPersonDraftZod, kycPersonZod, type KycPersonInput, keyPersonToFormValues } from '@/lib/kyc/personZod'
 import { DatePickerPopover } from '@/components/ui/date-picker-popover'
 
-const formZod = z.object({ persons: z.array(kycPersonZod).min(1) })
+const formZod = z.object({ persons: z.array(kycPersonDraftZod).min(1) })
 type FormValues = z.infer<typeof formZod> & { persons: (KycPersonInput & { kycStatus?: string })[] }
 
 function emptyPerson(): KycPersonInput & { kycStatus?: string } {
@@ -779,11 +779,11 @@ export default function KYCPage() {
 
   const isLocked = kycStatus === 'APPROVED'
 
-  function stripForApi(persons: FormValues['persons']): KycPersonInput[] {
+  function stripForApi(persons: FormValues['persons'], action: 'SAVE_DRAFT' | 'SUBMIT'): KycPersonInput[] {
     return persons.map((p) => {
       const rest = { ...(p as KycPersonInput & { kycStatus?: string }) }
       delete rest.kycStatus
-      return kycPersonZod.parse(rest)
+      return (action === 'SUBMIT' ? kycPersonZod : kycPersonDraftZod).parse(rest)
     })
   }
 
@@ -853,6 +853,25 @@ export default function KYCPage() {
         toast.error('Proof of address upload is required. Please upload the file marked with *.')
         return false
       }
+      // Section D — 聲明：簽署人、日期、勾選聲明皆必填
+      if (!String(p.signatureName ?? '').trim()) {
+        setAp(i)
+        setStep(3)
+        toast.error(t('declarationFieldMissingSignature', { defaultValue: 'Please enter signatory name (Declaration).' }))
+        return false
+      }
+      if (!String(p.declarationDate ?? '').trim()) {
+        setAp(i)
+        setStep(3)
+        toast.error(t('declarationFieldMissingDate', { defaultValue: 'Please select declaration date.' }))
+        return false
+      }
+      if (p.declarationSigned !== true) {
+        setAp(i)
+        setStep(3)
+        toast.error(t('declarationFieldMissingCheckbox', { defaultValue: 'Please check the declaration to confirm.' }))
+        return false
+      }
     }
     return true
   }
@@ -916,32 +935,24 @@ export default function KYCPage() {
     }
     if (action === 'SUBMIT') {
       if (!validateSubmitRequirements()) return
-      const persons = form.getValues('persons')
-      const missingDeclarationIndex = persons.findIndex((p) =>
-        !p.signatureName?.trim() || !p.declarationDate || !p.declarationSigned
-      )
-      if (missingDeclarationIndex >= 0) {
-        setAp(missingDeclarationIndex)
-        setStep(3)
-        toast.error(t('declarationRequired', { defaultValue: 'Please enter signature name, declaration date, and check the declaration before submitting.' }))
-        return
-      }
     }
 
     form.getValues('persons').forEach((_p, i) => {
       form.setValue(`persons.${i}.nameEn` as 'persons.0.nameEn', composeNameForPerson(i), { shouldDirty: true })
     })
-    const ok = await form.trigger()
-    if (!ok) return
+    if (action === 'SUBMIT') {
+      const ok = await form.trigger()
+      if (!ok) return
+    }
     const slotIdsSnapshot = [...fieldSlotIdsRef.current]
     setLoading(true)
     try {
       const res = await fetch('/api/kyc', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ persons: stripForApi(form.getValues('persons')), action }),
+        body: JSON.stringify({ persons: stripForApi(form.getValues('persons'), action), action }),
       })
-      const json = await res.json()
+      const json = await res.json().catch(() => ({}))
       if (!res.ok) {
         toast.error(json.error ?? 'Save failed')
         return
@@ -1561,11 +1572,11 @@ export default function KYCPage() {
           </div>
           <div className="rounded-xl p-6 space-y-4" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
             <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#C9A96E' }}>{t('sectionD')}</h2>
-            <Field label={t('signatureName', { defaultValue: 'Signatory (printed name)' })}>
+            <Field label={`${t('signatureName')}${t('fieldRequiredSuffix')}`}>
               <input style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.signatureName` as const)} />
             </Field>
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field label={t('declarationDate', { defaultValue: 'Date' })}>
+              <Field label={`${t('declarationDate')}${t('fieldRequiredSuffix')}`}>
                 <DatePickerField
                   value={form.watch(`persons.${ap}.declarationDate` as const)}
                   disabled={isLocked}
@@ -1573,9 +1584,12 @@ export default function KYCPage() {
                 />
               </Field>
             </div>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" disabled={isLocked} {...form.register(`persons.${ap}.declarationSigned` as const)} />
-              <span className="text-sm" style={{ color: 'var(--foreground)' }}>{t('declaration')}</span>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input type="checkbox" disabled={isLocked} {...form.register(`persons.${ap}.declarationSigned` as const)} className="mt-1 shrink-0" />
+              <span className="text-sm" style={{ color: 'var(--foreground)' }}>
+                <span className="font-semibold text-red-500 mr-1">*</span>
+                {t('declaration')}
+              </span>
             </label>
             {!isLocked && (
               <button

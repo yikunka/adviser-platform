@@ -408,8 +408,13 @@
     "saveBeforeUpload": "Please save a draft before uploading documents",
     "uploaded": "Uploaded",
     "downloadKycDoc": "Download KYC Document",
+    "pepBlocked": "PEP selected as Yes. This KYC cannot continue online. Please contact our team.",
     "signatureName": "Signatory Name",
     "declarationDate": "Declaration Date",
+    "fieldRequiredSuffix": " (required)",
+    "declarationFieldMissingSignature": "Please enter the signatory name in Declaration.",
+    "declarationFieldMissingDate": "Please select the declaration date.",
+    "declarationFieldMissingCheckbox": "Please check the declaration confirmation.",
     "status": {
       "draft": "Draft",
       "submitted": "Submitted",

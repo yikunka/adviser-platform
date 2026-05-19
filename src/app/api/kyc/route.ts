@@ -16,71 +16,79 @@ async function nextKycCode() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const session = await auth()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json().catch(() => null)
-  const parsed = kycBatchZod.safeParse(body)
-  if (!parsed.success) {
+    const body = await req.json().catch(() => null)
+    const parsed = kycBatchZod.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid input', details: parsed.error.flatten() },
+        { status: 400 }
+      )
+    }
+
+    const { action, persons } = parsed.data
+    const userId = session.user.id
+    const results: { id: string; kycStatus: string; kycCode: string | null }[] = []
+
+    const terminal: KYCStatus[] = ['SUBMITTED', 'APPROVED', 'PENDING_INFO', 'REJECTED']
+
+    for (const p of persons) {
+      let data = inputToKeyPersonData(p, action) as Record<string, unknown>
+      if (p.id) {
+        const own = await prisma.keyPerson.findFirst({
+          where: { id: p.id, submittedByUserId: userId },
+        })
+        if (!own) {
+          return NextResponse.json({ error: 'Invalid person id' }, { status: 403 })
+        }
+        if (own.kycStatus === 'APPROVED' || (action === 'SAVE_DRAFT' && terminal.includes(own.kycStatus))) {
+          const rest = { ...data }
+          delete rest.kycStatus
+          data = rest
+        }
+        if (action === 'SUBMIT' && !own.kycCode) {
+          data.kycCode = await nextKycCode()
+        }
+        const updated = await prisma.keyPerson.update({
+          where: { id: p.id },
+          data: data as never,
+        })
+        results.push({ id: updated.id, kycStatus: updated.kycStatus, kycCode: updated.kycCode })
+      } else {
+        if (action === 'SUBMIT') {
+          data.kycCode = await nextKycCode()
+        }
+        const created = await prisma.keyPerson.create({
+          data: {
+            ...(data as object),
+            submittedByUserId: userId,
+          } as never,
+        })
+        results.push({ id: created.id, kycStatus: created.kycStatus, kycCode: created.kycCode })
+      }
+    }
+
+    if (action === 'SUBMIT') {
+      for (const r of results) {
+        try {
+          await screenKeyPerson(r.id, 'KYC_SUBMIT', userId)
+        } catch (e) {
+          console.error('[KYC] AML screen failed for', r.id, e)
+        }
+      }
+    }
+
+    return NextResponse.json({ persons: results })
+  } catch (error) {
+    console.error('[KYC] save failed', error)
     return NextResponse.json(
-      { error: 'Invalid input', details: parsed.error.flatten() },
-      { status: 400 }
+      { error: error instanceof Error ? error.message : 'Save failed' },
+      { status: 500 },
     )
   }
-
-  const { action, persons } = parsed.data
-  const userId = session.user.id
-  const results: { id: string; kycStatus: string; kycCode: string | null }[] = []
-
-  const terminal: KYCStatus[] = ['SUBMITTED', 'APPROVED', 'PENDING_INFO', 'REJECTED']
-
-  for (const p of persons) {
-    let data = inputToKeyPersonData(p, action) as Record<string, unknown>
-    if (p.id) {
-      const own = await prisma.keyPerson.findFirst({
-        where: { id: p.id, submittedByUserId: userId },
-      })
-      if (!own) {
-        return NextResponse.json({ error: 'Invalid person id' }, { status: 403 })
-      }
-      if (own.kycStatus === 'APPROVED' || (action === 'SAVE_DRAFT' && terminal.includes(own.kycStatus))) {
-        const rest = { ...data }
-        delete rest.kycStatus
-        data = rest
-      }
-      if (action === 'SUBMIT' && !own.kycCode) {
-        data.kycCode = await nextKycCode()
-      }
-      const updated = await prisma.keyPerson.update({
-        where: { id: p.id },
-        data: data as never,
-      })
-      results.push({ id: updated.id, kycStatus: updated.kycStatus, kycCode: updated.kycCode })
-    } else {
-      if (action === 'SUBMIT') {
-        data.kycCode = await nextKycCode()
-      }
-      const created = await prisma.keyPerson.create({
-        data: {
-          ...(data as object),
-          submittedByUserId: userId,
-        } as never,
-      })
-      results.push({ id: created.id, kycStatus: created.kycStatus, kycCode: created.kycCode })
-    }
-  }
-
-  if (action === 'SUBMIT') {
-    for (const r of results) {
-      try {
-        await screenKeyPerson(r.id, 'KYC_SUBMIT', userId)
-      } catch (e) {
-        console.error('[KYC] AML screen failed for', r.id, e)
-      }
-    }
-  }
-
-  return NextResponse.json({ persons: results })
 }
 
 export async function GET() {

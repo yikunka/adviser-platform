@@ -408,8 +408,13 @@
     "saveBeforeUpload": "請先儲存草稿後再上傳文件",
     "uploaded": "已上傳",
     "downloadKycDoc": "下載KYC文件",
+    "pepBlocked": "PEP 已選擇「是」。此 KYC 不能在線繼續，請聯絡我們的團隊。",
     "signatureName": "簽署人姓名",
     "declarationDate": "聲明日期",
+    "fieldRequiredSuffix": "（必填）",
+    "declarationFieldMissingSignature": "請填寫「聲明」內的簽署人姓名。",
+    "declarationFieldMissingDate": "請選擇「聲明」內的聲明日期。",
+    "declarationFieldMissingCheckbox": "請勾選「聲明」內的確認聲明。",
     "status": {
       "draft": "草稿",
       "submitted": "已提交",
