@@ -1,13 +1,14 @@
 import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-  AlignmentType, BorderStyle, WidthType, ShadingType,
+  BorderStyle, WidthType, ShadingType, VerticalAlign,
 } from 'docx'
+import type { IRunOptions } from 'docx'
 import { prisma } from '@/lib/db/prisma'
 
 const thinBorder = { style: BorderStyle.SINGLE, size: 4, color: '000000' }
 const borders = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder }
 const headerShading = { fill: 'D9D9D9', type: ShadingType.CLEAR }
-const cellMargins = { top: 60, bottom: 60, left: 100, right: 100 }
+const cellMargins = { top: 80, bottom: 80, left: 80, right: 80 }
 
 function d(date: Date | null | undefined) {
   if (!date) return ''
@@ -37,13 +38,21 @@ function idWithCountry(
   return issuingCountry ? `${idPassportNo} (${issuingCountry})` : idPassportNo
 }
 
+function runs(text: string, opts: Partial<IRunOptions> = {}) {
+  return text.split('\n').flatMap((line, i) => [
+    ...(i > 0 ? [new TextRun({ break: 1, ...opts })] : []),
+    new TextRun({ text: line, ...opts }),
+  ])
+}
+
 function hCell(text: string, width: number) {
   return new TableCell({
     borders,
     width: { size: width, type: WidthType.DXA },
     margins: cellMargins,
     shading: headerShading,
-    children: [new Paragraph({ children: [new TextRun({ text, bold: true, size: 16 })] })],
+    verticalAlign: VerticalAlign.CENTER,
+    children: [new Paragraph({ children: runs(text, { bold: true, size: 16 }) })],
   })
 }
 
@@ -52,7 +61,8 @@ function dCell(text: string, width: number) {
     borders,
     width: { size: width, type: WidthType.DXA },
     margins: cellMargins,
-    children: [new Paragraph({ children: [new TextRun({ text, size: 18 })] })],
+    verticalAlign: VerticalAlign.CENTER,
+    children: [new Paragraph({ children: runs(text, { size: 18 }) })],
   })
 }
 
@@ -67,9 +77,8 @@ export async function generateROSC(companyId: string): Promise<Buffer> {
 
   const today = new Date().toLocaleDateString('en-HK', { day: 'numeric', month: 'long', year: 'numeric' })
 
-  // Significant Controllers table
-  // Entry Date | Name | Correspondence/Office Address | ID/PPT (Country) or Reg No. | Nature of Control | Becoming Date (Cessation Date) | Remarks
-  const CW = [1200, 2000, 2800, 2000, 2000, 1600, 1200] // sum = 12800
+  // Measured from PRD_DOC/A0118_Clawvard_ ROSC.docx.
+  const CW = [1433, 1899, 3176, 2624, 1581, 1657, 1580]
 
   const ctrlHeaderRow = new TableRow({
     tableHeader: true,
@@ -102,7 +111,7 @@ export async function generateROSC(companyId: string): Promise<Buffer> {
 
   // Designated Representatives table
   // Entry Date | Name | Address | Capacity | Tel/Fax No. | Becoming Date (Cessation Date) | Remarks
-  const DW = [1200, 2000, 2800, 1600, 1200, 1600, 1200] // sum = 11600
+  const DW = [1992, 1993, 1993, 1993, 1993, 1993, 1993]
 
   const drHeaderRow = new TableRow({
     tableHeader: true,
@@ -135,20 +144,18 @@ export async function generateROSC(companyId: string): Promise<Buffer> {
 
   const doc = new Document({
     sections: [{
-      properties: {
-        page: {
-          size: { width: 16838, height: 11906 }, // A4 landscape
-          margin: { top: 720, right: 720, bottom: 720, left: 720 },
-        },
-      },
+      properties: { page: { size: { width: 16838, height: 11906 }, margin: { top: 1800, right: 1440, bottom: 1800, left: 1440 } } },
       children: [
         new Paragraph({
-          alignment: AlignmentType.CENTER,
           children: [new TextRun({ text: `Register of Significant Controllers (as of ${today})`, bold: true, size: 26 })],
           spacing: { before: 0, after: 120 },
         }),
         new Paragraph({
-          children: [new TextRun({ text: `Name of Company: ${company.nameEn}${company.nameZh ? ' / ' + company.nameZh : ''}  Company Number: ${company.companyNumber ?? ''}`, size: 20 })],
+          children: [new TextRun({ text: `Name of Company: ${company.nameEn}${company.nameZh ? ' / ' + company.nameZh : ''}`, size: 20 })],
+          spacing: { after: 60 },
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: `Company Number: ${company.companyNumber ?? ''}`, size: 20 })],
           spacing: { after: 200 },
         }),
 
@@ -166,7 +173,7 @@ export async function generateROSC(companyId: string): Promise<Buffer> {
         new Table({
           width: { size: DW.reduce((a, b) => a + b, 0), type: WidthType.DXA },
           columnWidths: DW,
-          rows: [drHeaderRow, ...drRows, drBlank, drBlank],
+          rows: [drHeaderRow, ...drRows, drBlank],
         }),
       ],
     }],

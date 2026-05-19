@@ -1,24 +1,34 @@
 import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-  AlignmentType, BorderStyle, WidthType, ShadingType,
+  BorderStyle, WidthType, ShadingType, VerticalAlign,
 } from 'docx'
+import type { IRunOptions } from 'docx'
 import { prisma } from '@/lib/db/prisma'
 
 const thinBorder = { style: BorderStyle.SINGLE, size: 4, color: '000000' }
 const borders = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder }
 const headerShading = { fill: 'D9D9D9', type: ShadingType.CLEAR }
-const cellMargins = { top: 60, bottom: 60, left: 100, right: 100 }
+const cellMargins = { top: 80, bottom: 80, left: 80, right: 80 }
 
 function d(date: Date | null | undefined) {
   if (!date) return ''
   return date.toLocaleDateString('en-HK') // "10/4/2026"
 }
 
-function idStr(idType: string | null, idNumber: string | null, corpRegNumber: string | null) {
+function idStr(idType: string | null, idNumber: string | null, corpRegNumber: string | null, countryOfIssuance?: string | null) {
   if (corpRegNumber) return corpRegNumber
   if (!idType && !idNumber) return ''
+  if (idType === 'HKID') return idNumber ? `HKID:\n${idNumber}` : 'HKID'
+  if (idType === 'PASSPORT') return idNumber ? `${countryOfIssuance ?? ''} Passport:\n${idNumber}`.trim() : `${countryOfIssuance ?? ''} Passport`.trim()
   if (idType && idNumber) return `${idType}: ${idNumber}`
   return idNumber ?? idType ?? ''
+}
+
+function runs(text: string, opts: Partial<IRunOptions> = {}) {
+  return text.split('\n').flatMap((line, i) => [
+    ...(i > 0 ? [new TextRun({ break: 1, ...opts })] : []),
+    new TextRun({ text: line, ...opts }),
+  ])
 }
 
 function hCell(text: string, width: number) {
@@ -27,7 +37,8 @@ function hCell(text: string, width: number) {
     width: { size: width, type: WidthType.DXA },
     margins: cellMargins,
     shading: headerShading,
-    children: [new Paragraph({ children: [new TextRun({ text, bold: true, size: 16 })] })],
+    verticalAlign: VerticalAlign.CENTER,
+    children: [new Paragraph({ children: runs(text, { bold: true, size: 16 }) })],
   })
 }
 
@@ -36,14 +47,8 @@ function dCell(text: string, width: number) {
     borders,
     width: { size: width, type: WidthType.DXA },
     margins: cellMargins,
-    children: [new Paragraph({ children: [new TextRun({ text, size: 18 })] })],
-  })
-}
-
-function para(text: string, bold = false, size = 22) {
-  return new Paragraph({
-    children: [new TextRun({ text, bold, size })],
-    spacing: { before: 0, after: 60 },
+    verticalAlign: VerticalAlign.CENTER,
+    children: [new Paragraph({ children: runs(text, { size: 18 }) })],
   })
 }
 
@@ -55,9 +60,8 @@ export async function generateROD(companyId: string): Promise<Buffer> {
 
   const today = new Date().toLocaleDateString('en-HK')
 
-  // Column widths (landscape, sum ~14000 twips)
-  // Full Name | Appt Date | Reserve Date | Cessation Date | Address | DOB | Place of Birth | Nationality | ID/Passport+Corp Reg
-  const W = [1800, 1200, 1200, 1400, 2800, 1000, 1000, 1000, 1600]
+  // Measured from PRD_DOC/A0118_Clawvard_ ROD.docx.
+  const W = [1129, 1418, 1212, 1166, 2177, 1569, 1569, 1317, 2393]
 
   const headerRow = new TableRow({
     tableHeader: true,
@@ -85,27 +89,21 @@ export async function generateROD(companyId: string): Promise<Buffer> {
         dCell(d(dir.dateOfBirth), W[5]),
         dCell(dir.placeOfBirth ?? '', W[6]),
         dCell(dir.nationality ?? '', W[7]),
-        dCell(idStr(dir.idType, dir.idNumber, dir.corpRegNumber), W[8]),
+        dCell(idStr(dir.idType, dir.idNumber, dir.corpRegNumber, dir.countryOfIssuance), W[8]),
       ],
     })
   )
 
-  // Add 2 blank rows like template
+  // Add one blank continuation row like the reference template.
   const blankRow = new TableRow({
     children: W.map(w => dCell('', w)),
   })
 
   const doc = new Document({
     sections: [{
-      properties: {
-        page: {
-          size: { width: 16838, height: 11906 }, // A4 landscape
-          margin: { top: 720, right: 720, bottom: 720, left: 720 },
-        },
-      },
+      properties: { page: { size: { width: 16838, height: 11906 }, margin: { top: 1800, right: 1440, bottom: 1800, left: 1440 } } },
       children: [
         new Paragraph({
-          alignment: AlignmentType.CENTER,
           children: [new TextRun({ text: `Register of Directors (as of ${today})`, bold: true, size: 26 })],
           spacing: { before: 0, after: 120 },
         }),
@@ -120,7 +118,7 @@ export async function generateROD(companyId: string): Promise<Buffer> {
         new Table({
           width: { size: W.reduce((a, b) => a + b, 0), type: WidthType.DXA },
           columnWidths: W,
-          rows: [headerRow, ...dataRows, blankRow, blankRow],
+          rows: [headerRow, ...dataRows, blankRow],
         }),
       ],
     }],
