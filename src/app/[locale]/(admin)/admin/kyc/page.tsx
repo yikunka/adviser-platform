@@ -206,6 +206,7 @@ export default function KYCQueuePage() {
   const [createImage, setCreateImage] = useState<File | null>(null)
   const [creating, setCreating] = useState(false)
   const [generatingDdr, setGeneratingDdr] = useState(false)
+  const [lastDdrKey, setLastDdrKey] = useState<{ personId: string; key: string } | null>(null)
   const createImageInputRef = useRef<HTMLInputElement | null>(null)
 
   const fetchRecords = useCallback(async (statusOverride?: string) => {
@@ -334,10 +335,18 @@ export default function KYCQueuePage() {
         toast.error(typeof data?.error === 'string' ? data.error : 'DDR generation failed')
         return
       }
-      // Open the generated PDF via the /api/files signed URL
       if (data.storageKey) {
-        window.open(`/api/files?key=${encodeURIComponent(data.storageKey)}&download=1&filename=DDR_${selected.nameEn.replace(/\s+/g, '_')}.pdf`, '_blank')
-        toast.success('Due diligence report generated')
+        setLastDdrKey({ personId: selected.id, key: data.storageKey })
+        // Trigger download via a temporary anchor (avoids popup blocker)
+        const filename = `DDR_${selected.nameEn.replace(/\s+/g, '_')}.pdf`
+        const href = `/api/files?key=${encodeURIComponent(data.storageKey)}&download=1&filename=${encodeURIComponent(filename)}`
+        const a = document.createElement('a')
+        a.href = href
+        a.download = filename
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        toast.success('DDR generated — downloading now')
       }
     } finally {
       setGeneratingDdr(false)
@@ -649,9 +658,20 @@ export default function KYCQueuePage() {
                     {generatingDdr ? 'Generating…' : 'Generate DDR'}
                   </Button>
                 </div>
-                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                  Generate an Individual Due Diligence Report (PDF) for this person.
-                </p>
+                {lastDdrKey?.personId === selected.id ? (
+                  <a
+                    href={`/api/files?key=${encodeURIComponent(lastDdrKey.key)}&download=1&filename=${encodeURIComponent(`DDR_${selected.nameEn.replace(/\s+/g, '_')}.pdf`)}`}
+                    className="inline-flex items-center gap-1.5 text-xs"
+                    style={{ color: '#10b981' }}
+                  >
+                    <Download size={12} />
+                    Download last generated report
+                  </a>
+                ) : (
+                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                    Generate an Individual Due Diligence Report (PDF) for this person.
+                  </p>
+                )}
               </div>
 
               {/* AML Screening */}
