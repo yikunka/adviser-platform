@@ -121,6 +121,17 @@ const STATUS_COLOR: Record<string, string> = {
   REJECTED:     'bg-[rgba(239,68,68,0.12)] text-[#ef4444]',
 }
 
+const DOCUMENT_TYPE_LABEL: Record<string, string> = {
+  KYC_ID: 'ID',
+  KYC_ADDRESS: 'Address',
+  KYC_FINANCIAL: 'Financial',
+  KYC_OTHER: 'Other',
+}
+
+function documentTypeLabel(type: string) {
+  return DOCUMENT_TYPE_LABEL[type] ?? type.replace(/^KYC_/, '').replace(/_/g, ' ')
+}
+
 function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
@@ -420,10 +431,10 @@ export default function KYCQueuePage() {
                   onMouseLeave={e => { if (selected?.id !== r.id) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
                 >
                   <td className="px-4 py-3">
+                    {r.kycCode ? <p className="text-xs font-semibold" style={{ color: '#C9A96E' }}>{r.kycCode}</p> : null}
                     <p className="font-medium" style={{ color: 'var(--foreground)' }}>
                       {r.titlePrefix ? `${r.titlePrefix} ` : ''}{r.nameEn}
                     </p>
-                    {r.kycCode ? <p className="text-xs" style={{ color: '#C9A96E' }}>{r.kycCode}</p> : null}
                     {r.nameZh ? <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.nameZh}</p> : null}
                   </td>
                   <td className="px-4 py-3">
@@ -567,10 +578,10 @@ export default function KYCQueuePage() {
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium" style={{ color: 'var(--foreground)' }} title={doc.fileName}>
-                            {doc.fileName}
+                            {documentTypeLabel(doc.documentType)}
                           </p>
                           <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                            {[doc.documentType, doc.status, formatFileSize(doc.fileSize)].filter(Boolean).join(' · ')}
+                            {[doc.fileName, doc.status, formatFileSize(doc.fileSize)].filter(Boolean).join(' · ')}
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
