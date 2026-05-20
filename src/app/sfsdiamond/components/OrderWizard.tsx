@@ -65,6 +65,7 @@ const RING_DESIGNS = [
   { label: 'Solitaire', src: '/sfsdiamond/order/ring-solitaire.png' },
   { label: 'Pave',      src: '/sfsdiamond/order/ring-pave.png' },
   { label: 'Halo',      src: '/sfsdiamond/order/ring-halo.png' },
+  { label: 'R Classic', src: '/sfsdiamond/order/ring-R-Classic.jpg' },
 ]
 
 const NECKLACE_DESIGNS = [
@@ -493,7 +494,7 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
           <p className="text-sm font-medium mb-3" style={{ color: DARK }}>
             {item.type} Design<span style={{ color: GOLD }}> *</span>
           </p>
-          <div className={`grid gap-3 ${item.type === 'Ring' ? 'grid-cols-3' : 'grid-cols-3 sm:grid-cols-5'}`}>
+          <div className={`grid gap-3 ${item.type === 'Ring' ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3 sm:grid-cols-5'}`}>
             {designOptions.map(d => (
               <ImageCard key={d.label} label={d.label} src={d.src} selected={item.design === d.label} onClick={() => onChange({ design: d.label })} tall />
             ))}
