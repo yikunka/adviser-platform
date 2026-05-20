@@ -1,16 +1,17 @@
 import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-  AlignmentType, BorderStyle, WidthType, ShadingType, VerticalAlign, VerticalMergeType,
+  AlignmentType, BorderStyle, WidthType, ShadingType, VerticalAlign, VerticalMergeType, PageBreak,
 } from 'docx'
 import { prisma } from '@/lib/db/prisma'
 
 const thinBorder = { style: BorderStyle.SINGLE, size: 4, color: '000000' }
 const borders = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder }
 const labelShading = { fill: 'D9D9D9', type: ShadingType.CLEAR }
-const cellMargins = { top: 80, bottom: 80, left: 80, right: 80 }
+const cellMargins = { top: 50, bottom: 50, left: 50, right: 50 }
 
-// Measured from PRD_DOC/A0118_Clawvard_ ROM.docx.
-const W = [1376, 609, 609, 1221, 1180, 762, 1157, 1352, 1310, 914, 952, 859, 874, 888, 647, 1182]
+// Scaled from PRD_DOC/A0118_Clawvard_ ROM.docx to fit the A4 landscape
+// printable width with 1 inch side margins.
+const W = [1205, 533, 533, 1070, 1033, 667, 1013, 1184, 1147, 800, 834, 752, 766, 778, 567, 1035]
 const TXN_TOTAL = W.reduce((a, b) => a + b, 0)
 
 function d(date: Date | null | undefined) {
@@ -32,7 +33,7 @@ function lCell(text: string, width: number, colSpan?: number, verticalMerge?: (t
     verticalAlign: VerticalAlign.CENTER,
     ...(colSpan && colSpan > 1 ? { columnSpan: colSpan } : {}),
     ...(verticalMerge ? { verticalMerge } : {}),
-    children: [new Paragraph({ children: [new TextRun({ text, bold: true, size: 18 })] })],
+    children: [new Paragraph({ children: [new TextRun({ text, bold: true, size: 16 })] })],
   })
 }
 
@@ -42,7 +43,7 @@ function vCell(text: string, width: number, colSpan?: number, verticalMerge?: (t
     verticalAlign: VerticalAlign.CENTER,
     ...(colSpan && colSpan > 1 ? { columnSpan: colSpan } : {}),
     ...(verticalMerge ? { verticalMerge } : {}),
-    children: [new Paragraph({ children: [new TextRun({ text, size: 18 })] })],
+    children: [new Paragraph({ children: [new TextRun({ text, size: 16 })] })],
   })
 }
 
@@ -61,7 +62,7 @@ function hCell(
     ...(verticalMerge ? { verticalMerge } : {}),
     children: [new Paragraph({
       alignment: AlignmentType.CENTER,
-      children: [new TextRun({ text, bold: true, size: 16 })],
+      children: [new TextRun({ text, bold: true, size: 14 })],
     })],
   })
 }
@@ -157,7 +158,11 @@ export async function generateROM(companyId: string): Promise<Buffer> {
 
   const children: (Paragraph | Table)[] = []
 
-  for (const member of company.members) {
+  company.members.forEach((member, index) => {
+    if (index > 0) {
+      children.push(new Paragraph({ children: [new PageBreak()] }))
+    }
+
     const infoRows = [
       new TableRow({ children: [
         lCell('Full Name', W[0]),
@@ -214,7 +219,7 @@ export async function generateROM(companyId: string): Promise<Buffer> {
       registerTable,
       new Paragraph({ spacing: { before: 0, after: 240 } }),
     )
-  }
+  })
 
   const doc = new Document({
     sections: [{
