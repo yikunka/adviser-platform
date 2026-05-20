@@ -3,9 +3,11 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { Download, Eye, X } from 'lucide-react'
+import { Download, Eye, Pencil, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { KycPersonEditForm } from '@/components/admin/KycPersonEditForm'
+import { keyPersonToFormValues, type KycPersonInput } from '@/lib/kyc/personZod'
 
 type KYCDocument = {
   id: string
@@ -206,6 +208,9 @@ export default function KYCQueuePage() {
   const [createImage, setCreateImage] = useState<File | null>(null)
   const [creating, setCreating] = useState(false)
   const [generatingDdr, setGeneratingDdr] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editValues, setEditValues] = useState<KycPersonInput | null>(null)
+  const [savingEdit, setSavingEdit] = useState(false)
   const createImageInputRef = useRef<HTMLInputElement | null>(null)
 
   const fetchRecords = useCallback(async (statusOverride?: string) => {
@@ -294,6 +299,42 @@ export default function KYCQueuePage() {
       else toast.error('AML screening failed')
     } finally {
       setAmlLoading(false)
+    }
+  }
+
+  function startEdit() {
+    if (!selected) return
+    setEditValues(keyPersonToFormValues(selected))
+    setEditing(true)
+  }
+
+  function cancelEdit() {
+    setEditing(false)
+    setEditValues(null)
+  }
+
+  async function saveEdit() {
+    if (!selected || !editValues) return
+    setSavingEdit(true)
+    try {
+      const res = await fetch(`/api/admin/kyc/${selected.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editValues),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(typeof json?.error === 'string' ? json.error : 'Failed to save changes')
+        return
+      }
+      const updated = json as KYCRecord
+      setSelected(updated)
+      setRecords(prev => prev.map(r => (r.id === updated.id ? updated : r)))
+      setEditing(false)
+      setEditValues(null)
+      toast.success('KYC updated')
+    } finally {
+      setSavingEdit(false)
     }
   }
 
@@ -471,7 +512,7 @@ export default function KYCQueuePage() {
                 return (
                 <tr
                   key={r.id}
-                  onClick={() => { setSelected(r); setReason(''); fetchAML(r.id) }}
+                  onClick={() => { setSelected(r); setReason(''); setEditing(false); setEditValues(null); fetchAML(r.id) }}
                   className="px-4 py-3 cursor-pointer transition-colors"
                   style={{
                     background: selected?.id === r.id ? 'rgba(201,169,110,0.08)' : 'transparent',
@@ -515,7 +556,7 @@ export default function KYCQueuePage() {
 
         {/* Right: collapsible detail + action panel */}
         {selected && (
-          <div className="fixed inset-0 z-50 flex justify-end bg-black/35" onClick={() => setSelected(null)}>
+          <div className="fixed inset-0 z-50 flex justify-end bg-black/35" onClick={() => { setSelected(null); setEditing(false); setEditValues(null) }}>
             <Card
               className="h-full w-full max-w-2xl overflow-y-auto rounded-none border-y-0 border-r-0 shadow-2xl"
               onClick={e => e.stopPropagation()}
@@ -534,14 +575,28 @@ export default function KYCQueuePage() {
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[selected.kycStatus] ?? ''}`}>
                   {selected.kycStatus}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setSelected(null)}
-                  className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#2A2418]"
-                  aria-label="Close KYC details"
-                >
-                  <X size={16} />
-                </button>
+                <div className="ml-auto flex items-center gap-2">
+                  {!editing ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-8 gap-1.5 px-2.5 text-xs"
+                      style={{ borderColor: '#2A2418', color: '#C9A96E' }}
+                      onClick={startEdit}
+                    >
+                      <Pencil size={14} />
+                      Edit
+                    </Button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => { setSelected(null); setEditing(false); setEditValues(null) }}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#2A2418]"
+                    aria-label="Close KYC details"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
               </div>
 
               {(() => {
@@ -567,54 +622,82 @@ export default function KYCQueuePage() {
                 )
               })()}
 
-              {/* Identity */}
-              <DetailSection title="Identity">
-                <DetailRow label="KYC Code" value={selected.kycCode} />
-                <DetailRow label="First Name" value={selected.firstName} />
-                <DetailRow label="Last Name" value={selected.lastName} />
-                <DetailRow label="Other Name" value={selected.otherName} />
-                <DetailRow label="Chinese Name" value={selected.nameZh} />
-                <DetailRow label="ID Type" value={selected.idType} />
-                <DetailRow label="ID Number" value={selected.idNumber} />
-                <DetailRow label="Place of Issue" value={selected.placeOfIssue} />
-                <DetailRow label="ID Expiry" value={selected.idExpiryDate ? new Date(selected.idExpiryDate).toLocaleDateString() : null} />
-                <DetailRow label="Date of Birth" value={selected.dateOfBirth ? new Date(selected.dateOfBirth).toLocaleDateString() : null} />
-                <DetailRow label="Place of Birth" value={selected.placeOfBirth} />
-                <DetailRow label="Nationality" value={selected.nationality} />
-                <DetailRow label="US Citizen" value={selected.isUsCitizen == null ? null : selected.isUsCitizen ? 'Yes' : 'No'} />
-                <DetailRow label="PEP" value={selected.isPep == null ? null : selected.isPep ? 'Yes' : 'No'} />
-              </DetailSection>
+              {editing && editValues ? (
+                <>
+                  <KycPersonEditForm
+                    values={editValues}
+                    onChange={setEditValues}
+                    disabled={savingEdit}
+                  />
+                  <div className="flex gap-2 border-t pt-4" style={{ borderColor: '#2A2418' }}>
+                    <Button disabled={savingEdit} onClick={saveEdit}>
+                      {savingEdit ? 'Saving…' : 'Save changes'}
+                    </Button>
+                    <Button variant="outline" disabled={savingEdit} onClick={cancelEdit}>
+                      Cancel
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <DetailSection title="Identity">
+                    <DetailRow label="KYC Code" value={selected.kycCode} />
+                    <DetailRow label="First Name" value={selected.firstName} />
+                    <DetailRow label="Last Name" value={selected.lastName} />
+                    <DetailRow label="Other Name" value={selected.otherName} />
+                    <DetailRow label="Chinese Name" value={selected.nameZh} />
+                    <DetailRow label="ID Type" value={selected.idType} />
+                    <DetailRow label="ID Number" value={selected.idNumber} />
+                    <DetailRow label="Place of Issue" value={selected.placeOfIssue} />
+                    <DetailRow label="ID Expiry" value={selected.idExpiryDate ? new Date(selected.idExpiryDate).toLocaleDateString() : null} />
+                    <DetailRow label="Date of Birth" value={selected.dateOfBirth ? new Date(selected.dateOfBirth).toLocaleDateString() : null} />
+                    <DetailRow label="Place of Birth" value={selected.placeOfBirth} />
+                    <DetailRow label="Nationality" value={selected.nationality} />
+                    <DetailRow label="US Citizen" value={selected.isUsCitizen == null ? null : selected.isUsCitizen ? 'Yes' : 'No'} />
+                    <DetailRow label="PEP" value={selected.isPep == null ? null : selected.isPep ? 'Yes' : 'No'} />
+                  </DetailSection>
 
-              {/* Contact */}
-              <DetailSection title="Contact">
-                <DetailRow label="Email" value={selected.email} />
-                <DetailRow label="Mobile" value={selected.mobile} />
-                <DetailRow label="Home Phone" value={selected.homePhone} />
-                <DetailRow label="Work Phone" value={selected.workPhone} />
-                <DetailRow label="WeChat" value={selected.wechat} />
-                <DetailRow label="Home Address" value={selected.homeAddress} />
-                <DetailRow label="Contact Address" value={selected.contactAddress} />
-                <DetailRow label="Emergency Contact" value={selected.emergencyContact} />
-              </DetailSection>
+                  <DetailSection title="Contact">
+                    <DetailRow label="Email" value={selected.email} />
+                    <DetailRow label="Mobile" value={selected.mobile} />
+                    <DetailRow label="Home Phone" value={selected.homePhone} />
+                    <DetailRow label="Work Phone" value={selected.workPhone} />
+                    <DetailRow label="WeChat" value={selected.wechat} />
+                    <DetailRow label="Home Address" value={selected.homeAddress} />
+                    <DetailRow label="Contact Address" value={selected.contactAddress} />
+                    <DetailRow label="Emergency Contact" value={selected.emergencyContact} />
+                  </DetailSection>
 
-              {/* Employment */}
-              <DetailSection title="Employment">
-                <DetailRow label="Status" value={selected.employmentStatus} />
-                <DetailRow label="Employer" value={selected.employerName} />
-                <DetailRow label="Employer Address" value={selected.employerAddress} />
-                <DetailRow label="Position" value={selected.position} />
-                <DetailRow label="Working Years" value={selected.workingYears != null ? String(selected.workingYears) : null} />
-                <DetailRow label="Business Natures" value={selected.businessNatures?.join(', ') || null} />
-              </DetailSection>
+                  <DetailSection title="Employment">
+                    <DetailRow label="Status" value={selected.employmentStatus} />
+                    <DetailRow label="Employer" value={selected.employerName} />
+                    <DetailRow label="Employer Address" value={selected.employerAddress} />
+                    <DetailRow label="Position" value={selected.position} />
+                    <DetailRow label="Working Years" value={selected.workingYears != null ? String(selected.workingYears) : null} />
+                    <DetailRow label="Business Natures" value={selected.businessNatures?.join(', ') || null} />
+                  </DetailSection>
 
-              {/* Finance */}
-              <DetailSection title="Financial">
-                <DetailRow label="Source of Funds" value={selected.sourceOfFunds} />
-                <DetailRow label="Sources of Wealth" value={selected.sourcesOfWealth?.join(', ') || null} />
-                <DetailRow label="Annual Income" value={selected.annualIncome} />
-                <DetailRow label="Net Asset Value" value={selected.netAssetValue} />
-                <DetailRow label="Assets" value={selected.assetItems?.join(', ') || null} />
-              </DetailSection>
+                  <DetailSection title="Financial">
+                    <DetailRow label="Source of Funds" value={selected.sourceOfFunds} />
+                    <DetailRow label="Sources of Wealth" value={selected.sourcesOfWealth?.join(', ') || null} />
+                    <DetailRow label="Annual Income" value={selected.annualIncome} />
+                    <DetailRow label="Net Asset Value" value={selected.netAssetValue} />
+                    <DetailRow label="Assets" value={selected.assetItems?.join(', ') || null} />
+                  </DetailSection>
+
+                  <DetailSection title="Declaration">
+                    <DetailRow label="Signature Name" value={selected.signatureName} />
+                    <DetailRow
+                      label="Declaration Date"
+                      value={selected.declarationDate ? new Date(selected.declarationDate).toLocaleDateString() : null}
+                    />
+                    <DetailRow
+                      label="Declaration Signed"
+                      value={selected.declarationSigned ? 'Yes' : 'No'}
+                    />
+                  </DetailSection>
+                </>
+              )}
 
               {/* Documents */}
               {selected.kycDocuments?.length > 0 && (
@@ -860,6 +943,7 @@ export default function KYCQueuePage() {
               </div>
 
               {/* Actions */}
+              {!editing ? (
               <div className="border-t pt-4" style={{ borderColor: '#2A2418' }}>
                 {selected.kycStatus === 'SUBMITTED' || selected.kycStatus === 'PENDING_INFO' ? (
                   <div className="space-y-3">
@@ -909,6 +993,7 @@ export default function KYCQueuePage() {
                   <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>{t('alreadyProcessed')}</p>
                 )}
               </div>
+              ) : null}
             </CardContent>
           </Card>
           </div>

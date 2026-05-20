@@ -1,8 +1,6 @@
 import Link from 'next/link'
 import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
-import SignOutButton from './SignOutButton'
-
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   PENDING:   { bg: 'rgba(201,169,110,0.12)', color: '#C9A96E'  },
   QUOTED:    { bg: 'rgba(59,130,246,0.12)',  color: '#3b82f6'  },
@@ -42,16 +40,13 @@ export default async function SFSDashboardPage() {
               Welcome back, {session!.user.name ?? 'valued client'}
             </p>
           </div>
-          <div className="flex items-center gap-3 self-start sm:self-auto">
-            <SignOutButton />
-            <Link
-              href="/sfsdiamond/order"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm transition-all hover:opacity-90"
-              style={{ background: GOLD, color: '#0A0805' }}
-            >
-              ✦ Place New Order
-            </Link>
-          </div>
+          <Link
+            href="/sfsdiamond/order"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm transition-all hover:opacity-90 self-start sm:self-auto"
+            style={{ background: GOLD, color: '#0A0805' }}
+          >
+            ✦ Place New Order
+          </Link>
         </div>
 
         {/* Stats */}

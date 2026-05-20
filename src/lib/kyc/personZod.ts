@@ -134,6 +134,55 @@ function composeEnglishName(data: Pick<KycPersonInput, 'firstName' | 'lastName' 
   return structured || data.nameEn || data.nameZh || 'Draft KYC'
 }
 
+/** Admin field update — preserves workflow status; includes structured name fields. */
+export function inputToKeyPersonAdminUpdate(data: KycPersonInput) {
+  const rawEst = data.employmentStatus
+  const est =
+    rawEst == null || rawEst === ''
+      ? undefined
+      : rawEst
+  return {
+    kycCode: data.kycCode?.trim() || undefined,
+    titlePrefix: data.titlePrefix ?? undefined,
+    firstName: data.firstName?.trim() || undefined,
+    lastName: data.lastName?.trim() || undefined,
+    otherName: data.otherName?.trim() || undefined,
+    nameEn: composeEnglishName(data),
+    nameZh: data.nameZh ?? undefined,
+    idType: data.idType ?? undefined,
+    idNumber: data.idNumber ?? undefined,
+    placeOfIssue: data.placeOfIssue ?? undefined,
+    placeOfBirth: data.placeOfBirth ?? undefined,
+    idExpiryDate: data.idExpiry ? new Date(data.idExpiry) : undefined,
+    dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+    nationality: data.nationality ?? undefined,
+    homeAddress: data.homeAddress ?? undefined,
+    contactAddress: data.contactAddress ?? undefined,
+    homePhone: data.homePhone ?? undefined,
+    workPhone: data.workPhone ?? undefined,
+    mobile: data.mobile ?? undefined,
+    wechat: data.wechat ?? undefined,
+    email: data.email && data.email !== '' ? data.email : undefined,
+    isUsCitizen: data.isUsCitizen ?? undefined,
+    isPep: data.isPep ?? undefined,
+    emergencyContact: data.emergencyContact ?? undefined,
+    employmentStatus: est,
+    employerName: data.employerName ?? undefined,
+    employerAddress: data.employerAddress ?? undefined,
+    businessNatures: splitList(data.businessNaturesText),
+    position: data.position ?? undefined,
+    workingYears: data.workingYears ?? undefined,
+    sourceOfFunds: data.sourceOfFunds ?? undefined,
+    sourcesOfWealth: splitList(data.sourcesOfWealthText),
+    annualIncome: data.annualIncome ?? undefined,
+    netAssetValue: data.netAssetValue ?? undefined,
+    assetItems: splitList(data.assetItemsText),
+    declarationSigned: data.declarationSigned ?? false,
+    signatureName: data.signatureName ?? undefined,
+    declarationDate: data.declarationDate ? new Date(data.declarationDate) : undefined,
+  }
+}
+
 export function inputToKeyPersonData(
   data: KycPersonInput,
   action: 'SAVE_DRAFT' | 'SUBMIT'

@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import SignOutButton from './SignOutButton'
 
 const NAV = [
   { label: 'Home',              href: '/sfsdiamond' },
@@ -71,13 +72,16 @@ export default function SFSHeader() {
         {/* Desktop actions */}
         <div className="hidden md:flex items-center gap-3">
           {isLoggedIn ? (
-            <Link
-              href="/sfsdiamond/dashboard"
-              className="text-sm font-medium px-4 py-1.5 rounded-full border transition-opacity duration-150 hover:opacity-70"
-              style={{ border: '1px solid rgba(201,169,110,0.60)', color: '#C9A96E' }}
-            >
-              {session?.user?.name ?? session?.user?.email}
-            </Link>
+            <>
+              <Link
+                href="/sfsdiamond/dashboard"
+                className="text-sm font-medium px-4 py-1.5 rounded-full border transition-opacity duration-150 hover:opacity-70"
+                style={{ border: '1px solid rgba(201,169,110,0.60)', color: '#C9A96E' }}
+              >
+                {session?.user?.name ?? session?.user?.email}
+              </Link>
+              <SignOutButton dark={isDark} />
+            </>
           ) : (
             <>
               <Link
@@ -136,9 +140,14 @@ export default function SFSHeader() {
           ))}
           <div className="pt-2 flex flex-col gap-3">
             {isLoggedIn ? (
-              <Link href="/sfsdiamond/dashboard" className="text-sm" style={{ color: '#C9A96E' }} onClick={() => setOpen(false)}>
-                {session?.user?.name ?? session?.user?.email}
-              </Link>
+              <>
+                <Link href="/sfsdiamond/dashboard" className="text-sm" style={{ color: '#C9A96E' }} onClick={() => setOpen(false)}>
+                  {session?.user?.name ?? session?.user?.email}
+                </Link>
+                <div onClick={() => setOpen(false)}>
+                  <SignOutButton dark={isDark} />
+                </div>
+              </>
             ) : (
               <>
                 <Link
