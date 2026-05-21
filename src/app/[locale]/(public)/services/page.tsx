@@ -1,9 +1,35 @@
+import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import {
   Check, Building2, BarChart2, Globe, Landmark, Ship, CreditCard, ShieldCheck, ArrowRight
 } from 'lucide-react'
 import PublicPageHero from '@/components/public/PublicPageHero'
+import { absoluteUrl } from '@/lib/seo'
+
+type MetadataProps = { params: Promise<{ locale: string }> }
+
+export async function generateMetadata({ params }: MetadataProps): Promise<Metadata> {
+  const { locale } = await params
+  const path = `/${locale}/services`
+  const title = 'Hong Kong Corporate Services'
+  const description = 'Company formation, company secretary, accounting, compliance and business advisory services for Hong Kong and offshore companies.'
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: path,
+      languages: { en: '/en/services', zh: '/zh/services' },
+    },
+    openGraph: {
+      title: `${title} | 6AM Advisory`,
+      description,
+      url: absoluteUrl(path),
+      type: 'website',
+    },
+  }
+}
 
 function TickList({ items }: { items: string[] }) {
   return (
@@ -30,6 +56,14 @@ function SectionDivider() {
 export default async function ServicesPage() {
   const t = await getTranslations('services')
   const tHome = await getTranslations('home')
+  const processItems = [
+    { number: '01', title: tHome('process.1.title'), desc: tHome('process.1.desc') },
+    { number: '02', title: tHome('process.2.title'), desc: tHome('process.2.desc') },
+    { number: '03', title: tHome('process.3.title'), desc: tHome('process.3.desc') },
+    { number: '04', title: tHome('process.4.title'), desc: tHome('process.4.desc') },
+    { number: '05', title: tHome('process.5.title'), desc: tHome('process.5.desc') },
+    { number: '06', title: tHome('process.6.title'), desc: tHome('process.6.desc') },
+  ]
 
   const CORE_SERVICES = [
     { key: 'secretarial', Icon: Building2, num: '01' },
@@ -162,9 +196,9 @@ export default async function ServicesPage() {
               </h3>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {(['1','2','3','4','5','6'] as const).map((n) => (
+              {processItems.map((item) => (
                 <div
-                  key={n}
+                  key={item.number}
                   className="public-card-hover rounded-xl p-6 flex gap-4 items-start"
                   style={{ background: '#0C0C0C', border: '1px solid #2A2418' }}
                 >
@@ -172,14 +206,14 @@ export default async function ServicesPage() {
                     className="text-2xl font-display font-light shrink-0"
                     style={{ color: 'rgba(201,169,110,0.35)', lineHeight: 1 }}
                   >
-                    {n.padStart(2, '0')}
+                    {item.number}
                   </span>
                   <div>
                     <p className="text-sm font-semibold mb-1" style={{ color: '#F0EAD8' }}>
-                      {tHome(`process.${n}.title` as any)}
+                      {item.title}
                     </p>
                     <p className="text-xs leading-relaxed" style={{ color: '#7A7060' }}>
-                      {tHome(`process.${n}.desc` as any)}
+                      {item.desc}
                     </p>
                   </div>
                 </div>

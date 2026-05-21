@@ -3,8 +3,9 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'About SFS | SFS Diamond',
+  title: 'About SFS',
   description: 'SFS Technology Group — a global leader in memorial diamond creation headquartered in Hong Kong.',
+  alternates: { canonical: '/sfsdiamond/about' },
 }
 
 export default function AboutPage() {

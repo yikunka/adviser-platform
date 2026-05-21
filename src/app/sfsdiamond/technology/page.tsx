@@ -3,8 +3,9 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Technology | SFS Diamond',
+  title: 'Memorial Diamond Technology',
   description: 'How SFS Technology uses CVD — Chemical Vapor Deposition — to transform cremated ashes into real certified diamonds.',
+  alternates: { canonical: '/sfsdiamond/technology' },
 }
 
 const EXTRACTION_STEPS = [
@@ -94,7 +95,7 @@ export default function TechnologyPage() {
               </p>
               <p>
                 Diamonds are the purest form of carbon. By extracting and purifying the carbon from
-                your loved one's remains and growing it into a diamond crystal, we are not creating
+                your loved one&apos;s remains and growing it into a diamond crystal, we are not creating
                 something artificial. We are revealing the most perfect form that carbon can take.
               </p>
             </div>

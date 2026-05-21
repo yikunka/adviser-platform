@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ossImg } from '@/lib/oss-img'
 import {
@@ -12,6 +13,12 @@ import {
   type CosmoProduct,
   type CosmoProductCategory,
 } from '../data/products'
+
+export const metadata: Metadata = {
+  title: 'Industrial Coating Products',
+  description: 'Browse CosmoCoat industrial coating products, including UV coatings, colour paints, tactile coatings and special effect coating solutions.',
+  alternates: { canonical: '/cosmocoat/products' },
+}
 
 const MONO = "'Courier New', Courier, monospace"
 const RED = '#ff2200'

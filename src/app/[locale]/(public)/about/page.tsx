@@ -1,7 +1,33 @@
+import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { Scale, Target, Handshake, Building, PieChart, FileText, Phone, Mail, MapPin, Clock } from 'lucide-react'
 import PublicPageHero from '@/components/public/PublicPageHero'
+import { absoluteUrl } from '@/lib/seo'
+
+type MetadataProps = { params: Promise<{ locale: string }> }
+
+export async function generateMetadata({ params }: MetadataProps): Promise<Metadata> {
+  const { locale } = await params
+  const path = `/${locale}/about`
+  const title = 'About 6AM Advisory'
+  const description = 'Meet 6AM Advisory, a Hong Kong corporate services team supporting company formation, compliance, accounting and business advisory work.'
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: path,
+      languages: { en: '/en/about', zh: '/zh/about' },
+    },
+    openGraph: {
+      title,
+      description,
+      url: absoluteUrl(path),
+      type: 'website',
+    },
+  }
+}
 
 const valueIcons = {
   integrity: Scale,

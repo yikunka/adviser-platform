@@ -1,14 +1,44 @@
 /* eslint-disable @next/next/no-img-element */
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { cosmoProductImageSrc, getCosmoProduct } from '../../data/products'
 import { ossImg } from '@/lib/oss-img'
+import { absoluteUrl } from '@/lib/seo'
 
 const MONO = "'Courier New', Courier, monospace"
 const RED = '#ff2200'
 const CYAN = '#00d4ff'
 
 type Props = { params: Promise<{ pid: string }> }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { pid } = await params
+  const p = await getCosmoProduct(pid)
+  if (!p) return {}
+  const image = cosmoProductImageSrc(p)
+  const path = `/cosmocoat/products/${pid}`
+  const description = p.teaser || p.summary.replace(/\s+/g, ' ').slice(0, 150)
+
+  return {
+    title: p.title,
+    description,
+    alternates: { canonical: path },
+    openGraph: {
+      title: `${p.title} | CosmoCoat`,
+      description,
+      url: absoluteUrl(path),
+      type: 'website',
+      images: [{ url: absoluteUrl(image), width: 1200, height: 630, alt: p.title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: p.title,
+      description,
+      images: [absoluteUrl(image)],
+    },
+  }
+}
 
 export default async function CosmoProductDetailPage({ params }: Props) {
   const { pid } = await params

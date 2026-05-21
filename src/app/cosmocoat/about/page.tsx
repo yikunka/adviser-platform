@@ -1,5 +1,13 @@
 /* eslint-disable @next/next/no-img-element */
+import type { Metadata } from 'next'
 import { ossImg } from '@/lib/oss-img'
+
+export const metadata: Metadata = {
+  title: 'About CosmoCoat',
+  description: 'Learn about CosmoCoat industrial coating capabilities, factory footprint and coating technology for consumer electronics and industrial surfaces.',
+  alternates: { canonical: '/cosmocoat/about' },
+}
+
 const MONO = "'Courier New', Courier, monospace"
 const RED = '#ff2200'
 const CYAN = '#00d4ff'

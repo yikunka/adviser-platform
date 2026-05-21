@@ -1,10 +1,33 @@
 import type { Metadata } from 'next'
+import { absoluteUrl, cosmoSeo } from '@/lib/seo'
 import CosmoHeader from './components/CosmoHeader'
 import CosmoFooter from './components/CosmoFooter'
 
 export const metadata: Metadata = {
-  title: 'CosmoCoat — 工业涂料',
-  description: 'CosmoCoat 专业工业涂料企业，UV水漆技术先驱，环保水性涂料解决方案。',
+  title: {
+    default: cosmoSeo.title,
+    template: '%s | CosmoCoat',
+  },
+  description: cosmoSeo.description,
+  keywords: cosmoSeo.keywords,
+  alternates: {
+    canonical: '/cosmocoat',
+  },
+  openGraph: {
+    title: cosmoSeo.title,
+    description: cosmoSeo.description,
+    url: absoluteUrl('/cosmocoat'),
+    siteName: 'CosmoCoat',
+    type: 'website',
+    locale: 'zh_CN',
+    images: [{ url: absoluteUrl(cosmoSeo.image), width: 1200, height: 630, alt: 'CosmoCoat industrial coatings' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: cosmoSeo.title,
+    description: cosmoSeo.description,
+    images: [absoluteUrl(cosmoSeo.image)],
+  },
 }
 
 export default function CosmoLayout({ children }: { children: React.ReactNode }) {

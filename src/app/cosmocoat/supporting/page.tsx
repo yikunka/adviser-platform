@@ -1,5 +1,13 @@
 /* eslint-disable @next/next/no-img-element */
+import type { Metadata } from 'next'
 import { ossImg } from '@/lib/oss-img'
+
+export const metadata: Metadata = {
+  title: 'Supporting Coating Materials',
+  description: 'CosmoCoat supporting coating materials including pigment systems, alcohol-resistant additives, waste recycling solutions and coating process support.',
+  alternates: { canonical: '/cosmocoat/supporting' },
+}
+
 const MONO = "'Courier New', Courier, monospace"
 const RED = '#ff2200'
 const CYAN = '#00d4ff'

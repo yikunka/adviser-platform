@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import { absoluteUrl, sfsSeo } from '@/lib/seo'
 import SFSHeader from './components/SFSHeader'
 import SFSFooter from './components/SFSFooter'
 import SFSProviders from './components/SFSProviders'
@@ -10,9 +11,30 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'SFS Diamond — Memorial Diamonds Hong Kong',
-  description:
-    'SFS Technology transforms cremated ashes and hair into certified lab-grown memorial diamonds using advanced CVD technology. Headquartered in Hong Kong.',
+  title: {
+    default: sfsSeo.title,
+    template: '%s | SFS Diamond',
+  },
+  description: sfsSeo.description,
+  keywords: sfsSeo.keywords,
+  alternates: {
+    canonical: '/sfsdiamond',
+  },
+  openGraph: {
+    title: sfsSeo.title,
+    description: sfsSeo.description,
+    url: absoluteUrl('/sfsdiamond'),
+    siteName: 'SFS Diamond',
+    type: 'website',
+    locale: 'en_HK',
+    images: [{ url: absoluteUrl(sfsSeo.image), width: 1200, height: 630, alt: 'SFS Diamond memorial diamond' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: sfsSeo.title,
+    description: sfsSeo.description,
+    images: [absoluteUrl(sfsSeo.image)],
+  },
 }
 
 export default function SFSDiamondLayout({ children }: { children: React.ReactNode }) {

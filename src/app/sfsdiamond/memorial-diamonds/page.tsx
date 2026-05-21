@@ -3,8 +3,9 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Memorial Diamonds | SFS Diamond',
+  title: 'Memorial Diamonds',
   description: 'Discover our Eternity Cut memorial diamonds and bespoke jewellery crafted from cremated ashes.',
+  alternates: { canonical: '/sfsdiamond/memorial-diamonds' },
 }
 
 const MEANINGS = [
@@ -157,7 +158,7 @@ export default function MemorialDiamondsPage() {
             Ready to Begin?
           </h2>
           <p className="text-sm leading-relaxed mb-8" style={{ color: '#4A3E30' }}>
-            Contact our team to discuss your memorial diamond. We'll answer every question and
+            Contact our team to discuss your memorial diamond. We&apos;ll answer every question and
             guide you with warmth throughout the entire journey.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
