@@ -1123,7 +1123,7 @@ export default function KYCQueuePage() {
               {/* Actions */}
               {!editing ? (
               <div className="border-t pt-4" style={{ borderColor: '#2A2418' }}>
-                {selected.kycStatus === 'SUBMITTED' || selected.kycStatus === 'PENDING_INFO' ? (
+                {selected.kycStatus === 'DRAFT' || selected.kycStatus === 'SUBMITTED' || selected.kycStatus === 'PENDING_INFO' ? (
                   <div className="space-y-3">
                     <div className="space-y-1">
                       <label className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('rejectReason')}</label>

@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 
 type Company = {
   id: string
+  companyCode?: string | null
   nameEn: string
   nameZh?: string
   companyNumber: string
@@ -76,6 +77,7 @@ export default function CompaniesPage() {
           <table className="w-full text-sm">
             <thead style={{ background: '#1A1A12', borderBottom: '1px solid #2A2418' }}>
               <tr>
+                <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('companyCode')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('companyName')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('companyNumber')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('status')}</th>
@@ -86,9 +88,9 @@ export default function CompaniesPage() {
             </thead>
             <tbody className="divide-y divide-[#2A2418]">
               {loading ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>Loading...</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>Loading...</td></tr>
               ) : companies.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>{t('empty')}</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>{t('empty')}</td></tr>
               ) : companies.map(c => (
                 <tr
                   key={c.id}
@@ -99,6 +101,7 @@ export default function CompaniesPage() {
                     if (e.key === 'Enter' || e.key === ' ') router.push(`/admin/companies/${c.id}`)
                   }}
                 >
+                  <td className="px-4 py-3 font-semibold" style={{ color: '#C9A96E' }}>{c.companyCode ?? '—'}</td>
                   <td className="px-4 py-3">
                     <p className="font-medium" style={{ color: 'var(--foreground)' }}>{c.nameEn}</p>
                     {c.nameZh && <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{c.nameZh}</p>}

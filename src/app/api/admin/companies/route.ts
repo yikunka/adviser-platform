@@ -52,7 +52,7 @@ const createSchema = z
   })
 
 export async function GET(req: NextRequest) {
-  const { session, error } = await requireRole('STAFF', { adminMenu: 'companies' })
+  const { error } = await requireRole('STAFF', { adminMenu: 'companies' })
   if (error) return error
 
   const { searchParams } = req.nextUrl
@@ -64,6 +64,7 @@ export async function GET(req: NextRequest) {
   const where = search
     ? {
         OR: [
+          { companyCode: { contains: search, mode: 'insensitive' as const } },
           { nameEn: { contains: search, mode: 'insensitive' as const } },
           { nameZh: { contains: search, mode: 'insensitive' as const } },
           { companyNumber: { contains: search, mode: 'insensitive' as const } },
@@ -76,7 +77,10 @@ export async function GET(req: NextRequest) {
       where,
       skip,
       take: limit,
-      orderBy: { createdAt: 'desc' },
+      orderBy: [
+        { companyCode: { sort: 'asc', nulls: 'last' } },
+        { createdAt: 'desc' },
+      ],
       include: {
         assignedStaff: { select: { nameEn: true } },
         clientUser: { select: { nameEn: true, email: true } },
@@ -129,7 +133,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'clientRequired' }, { status: 400 })
   }
 
-  const { clientUserId: _drop, companyNumber, registeredAddress, companyType, ...companyFields } = rest
+  const { companyNumber, registeredAddress, companyType, ...companyFields } = rest
 
   const companyCode = companyType ? await nextCompanyCode(companyType) : null
 

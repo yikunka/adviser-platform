@@ -625,6 +625,7 @@
       "add": "新增公司",
       "search": "搜尋公司...",
       "exportCsv": "匯出CSV",
+      "companyCode": "公司代碼",
       "companyName": "公司名稱",
       "companyNumber": "公司編號",
       "status": "狀態",

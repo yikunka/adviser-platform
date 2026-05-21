@@ -625,6 +625,7 @@
       "add": "Add Company",
       "search": "Search companies...",
       "exportCsv": "Export CSV",
+      "companyCode": "Company Code",
       "companyName": "Company Name",
       "companyNumber": "Company No.",
       "status": "Status",
