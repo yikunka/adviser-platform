@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { Download, Eye, Pencil, X } from 'lucide-react'
+import { Download, Eye, Pencil, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { KycPersonEditForm } from '@/components/admin/KycPersonEditForm'
@@ -194,6 +194,49 @@ function clientPortalAccount(r: KYCRecord): { email: string | null; name: string
   return { email: null, name: null }
 }
 
+function emptyKycPerson(): KycPersonInput {
+  return {
+    kycCode: '',
+    titlePrefix: '',
+    firstName: '',
+    lastName: '',
+    otherName: '',
+    nameEn: '',
+    nameZh: '',
+    idType: '',
+    idNumber: '',
+    placeOfIssue: '',
+    placeOfBirth: '',
+    idExpiry: '',
+    dateOfBirth: '',
+    nationality: '',
+    homeAddress: '',
+    contactAddress: '',
+    homePhone: '',
+    workPhone: '',
+    mobile: '',
+    wechat: '',
+    email: '',
+    isUsCitizen: false,
+    isPep: false,
+    emergencyContact: '',
+    employmentStatus: '',
+    employerName: '',
+    employerAddress: '',
+    businessNaturesText: '',
+    position: '',
+    workingYears: undefined,
+    sourceOfFunds: '',
+    sourcesOfWealthText: '',
+    annualIncome: '',
+    netAssetValue: '',
+    assetItemsText: '',
+    declarationSigned: false,
+    signatureName: '',
+    declarationDate: '',
+  }
+}
+
 export default function KYCQueuePage() {
   const t = useTranslations('admin.kyc')
   const [records, setRecords] = useState<KYCRecord[]>([])
@@ -211,6 +254,10 @@ export default function KYCQueuePage() {
   const [editing, setEditing] = useState(false)
   const [editValues, setEditValues] = useState<KycPersonInput | null>(null)
   const [savingEdit, setSavingEdit] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const [createValues, setCreateValues] = useState<KycPersonInput>(() => emptyKycPerson())
+  const [manualClientId, setManualClientId] = useState('')
+  const [savingCreate, setSavingCreate] = useState(false)
   const createImageInputRef = useRef<HTMLInputElement | null>(null)
 
   const fetchRecords = useCallback(async (statusOverride?: string) => {
@@ -313,6 +360,60 @@ export default function KYCQueuePage() {
     setEditValues(null)
   }
 
+  function startAdd() {
+    setSelected(null)
+    setReason('')
+    setEditing(false)
+    setEditValues(null)
+    setCreateValues(emptyKycPerson())
+    setManualClientId('')
+    setAdding(true)
+  }
+
+  function cancelAdd() {
+    setAdding(false)
+    setCreateValues(emptyKycPerson())
+    setManualClientId('')
+  }
+
+  async function saveCreate(action: 'SAVE_DRAFT' | 'SUBMIT') {
+    if (!manualClientId) {
+      toast.error('Select a client account')
+      return
+    }
+
+    setSavingCreate(true)
+    try {
+      const res = await fetch('/api/admin/kyc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientUserId: manualClientId,
+          action,
+          person: createValues,
+        }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(typeof json?.error === 'string' ? json.error : 'Failed to create KYC')
+        return
+      }
+
+      const created = json as KYCRecord
+      setAdding(false)
+      setCreateValues(emptyKycPerson())
+      setManualClientId('')
+      setFilterStatus('')
+      setSelected(created)
+      setRecords(prev => [created, ...prev.filter(r => r.id !== created.id)])
+      fetchRecords('')
+      if (action === 'SUBMIT') void fetchAML(created.id)
+      toast.success(action === 'SUBMIT' ? 'KYC submitted' : 'KYC draft created')
+    } finally {
+      setSavingCreate(false)
+    }
+  }
+
   async function saveEdit() {
     if (!selected || !editValues) return
     setSavingEdit(true)
@@ -411,7 +512,13 @@ export default function KYCQueuePage() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>{t('title')}</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>{t('title')}</h1>
+        <Button type="button" className="gap-2" onClick={startAdd}>
+          <Plus size={16} />
+          Add KYC
+        </Button>
+      </div>
 
       <Card>
         <CardContent className="p-4 space-y-3">
@@ -553,6 +660,77 @@ export default function KYCQueuePage() {
             </div>
           </CardContent>
         </Card>
+
+        {adding && (
+          <div className="fixed inset-0 z-50 flex justify-end bg-black/35" onClick={cancelAdd}>
+            <Card
+              className="h-full w-full max-w-2xl overflow-y-auto rounded-none border-y-0 border-r-0 shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <CardContent className="pt-6 space-y-5">
+                <div className="flex items-center gap-3">
+                  <h3 className="font-semibold text-lg" style={{ color: 'var(--foreground)' }}>
+                    Add KYC
+                  </h3>
+                  <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-[rgba(120,113,108,0.15)] text-[#9A8060]">
+                    DRAFT
+                  </span>
+                  <button
+                    type="button"
+                    onClick={cancelAdd}
+                    className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#2A2418]"
+                    aria-label="Close add KYC"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                    Client Account <span style={{ color: '#ef4444', fontWeight: 700 }}>*</span>
+                  </label>
+                  <select
+                    value={manualClientId}
+                    onChange={e => setManualClientId(e.target.value)}
+                    disabled={savingCreate}
+                    className="w-full rounded-md px-3 py-2 text-sm"
+                    style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: 'var(--foreground)', outline: 'none' }}
+                  >
+                    <option value="" style={{ background: '#141414' }}>Select client account</option>
+                    {clients.map(client => (
+                      <option key={client.id} value={client.id} style={{ background: '#141414' }}>
+                        {client.email} — {client.nameEn}{client.nameZh ? ` (${client.nameZh})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <KycPersonEditForm
+                  values={createValues}
+                  onChange={setCreateValues}
+                  disabled={savingCreate}
+                />
+
+                <div className="flex flex-wrap gap-2 border-t pt-4" style={{ borderColor: '#2A2418' }}>
+                  <Button disabled={savingCreate} onClick={() => saveCreate('SAVE_DRAFT')}>
+                    {savingCreate ? 'Saving…' : 'Save draft'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={savingCreate}
+                    onClick={() => saveCreate('SUBMIT')}
+                    style={{ borderColor: '#2A2418', color: '#C9A96E' }}
+                  >
+                    Submit for review
+                  </Button>
+                  <Button variant="outline" disabled={savingCreate} onClick={cancelAdd}>
+                    Cancel
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Right: collapsible detail + action panel */}
         {selected && (
