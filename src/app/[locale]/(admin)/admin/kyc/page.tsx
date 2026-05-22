@@ -101,9 +101,9 @@ type KYCRecord = {
   kycStatus: string
   updatedAt: string
   kycDocuments: KYCDocument[]
-  submittedByUser: { email: string; nameEn: string } | null
+  submittedByUser: { id: string; email: string; nameEn: string } | null
   companyLinks: Array<{
-    company: { nameEn: string; clientUser: { email: string; nameEn: string } | null }
+    company: { nameEn: string; clientUser: { id: string; email: string; nameEn: string } | null }
   }>
 }
 
@@ -255,6 +255,7 @@ export default function KYCQueuePage() {
   const [editing, setEditing] = useState(false)
   const [editValues, setEditValues] = useState<KycPersonInput | null>(null)
   const [editStatus, setEditStatus] = useState<KYCRecord['kycStatus']>('DRAFT')
+  const [editClientId, setEditClientId] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
   const [adding, setAdding] = useState(false)
   const [createValues, setCreateValues] = useState<KycPersonInput>(() => emptyKycPerson())
@@ -355,6 +356,7 @@ export default function KYCQueuePage() {
     if (!selected) return
     setEditValues(keyPersonToFormValues(selected))
     setEditStatus(selected.kycStatus)
+    setEditClientId(selected.submittedByUser?.id ?? selected.companyLinks[0]?.company.clientUser?.id ?? '')
     setEditing(true)
   }
 
@@ -362,6 +364,7 @@ export default function KYCQueuePage() {
     setEditing(false)
     setEditValues(null)
     setEditStatus('DRAFT')
+    setEditClientId('')
   }
 
   function startAdd() {
@@ -370,6 +373,7 @@ export default function KYCQueuePage() {
     setEditing(false)
     setEditValues(null)
     setEditStatus('DRAFT')
+    setEditClientId('')
     setCreateValues(emptyKycPerson())
     setManualClientId('')
     setAdding(true)
@@ -426,7 +430,7 @@ export default function KYCQueuePage() {
       const res = await fetch(`/api/admin/kyc/${selected.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...editValues, kycStatus: editStatus }),
+        body: JSON.stringify({ ...editValues, kycStatus: editStatus, clientUserId: editClientId || null }),
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -439,6 +443,7 @@ export default function KYCQueuePage() {
       setEditing(false)
       setEditValues(null)
       setEditStatus('DRAFT')
+      setEditClientId('')
       toast.success('KYC updated')
     } finally {
       setSavingEdit(false)
@@ -463,6 +468,7 @@ export default function KYCQueuePage() {
       setEditing(false)
       setEditValues(null)
       setEditStatus('DRAFT')
+      setEditClientId('')
       toast.success('KYC deleted')
       fetchRecords()
     } finally {
@@ -765,7 +771,7 @@ export default function KYCQueuePage() {
 
         {/* Right: collapsible detail + action panel */}
         {selected && (
-          <div className="fixed inset-0 z-50 flex justify-end bg-black/35" onClick={() => { setSelected(null); setEditing(false); setEditValues(null); setEditStatus('DRAFT') }}>
+          <div className="fixed inset-0 z-50 flex justify-end bg-black/35" onClick={() => { setSelected(null); setEditing(false); setEditValues(null); setEditStatus('DRAFT'); setEditClientId('') }}>
             <Card
               className="h-full w-full max-w-2xl overflow-y-auto rounded-none border-y-0 border-r-0 shadow-2xl"
               onClick={e => e.stopPropagation()}
@@ -812,7 +818,7 @@ export default function KYCQueuePage() {
                   ) : null}
                   <button
                     type="button"
-                    onClick={() => { setSelected(null); setEditing(false); setEditValues(null); setEditStatus('DRAFT') }}
+                    onClick={() => { setSelected(null); setEditing(false); setEditValues(null); setEditStatus('DRAFT'); setEditClientId('') }}
                     className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#2A2418]"
                     aria-label="Close KYC details"
                   >
@@ -847,6 +853,23 @@ export default function KYCQueuePage() {
               {editing && editValues ? (
                 <>
                   <div className="rounded-lg border border-[#2A2418] p-3">
+                    <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                      Client Account
+                    </label>
+                    <select
+                      value={editClientId}
+                      onChange={e => setEditClientId(e.target.value)}
+                      disabled={savingEdit}
+                      className="mb-3 w-full rounded-md px-3 py-2 text-sm"
+                      style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: 'var(--foreground)', outline: 'none' }}
+                    >
+                      <option value="" style={{ background: '#141414' }}>No client account</option>
+                      {clients.map(client => (
+                        <option key={client.id} value={client.id} style={{ background: '#141414' }}>
+                          {client.email} — {client.nameEn}{client.nameZh ? ` (${client.nameZh})` : ''}
+                        </option>
+                      ))}
+                    </select>
                     <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
                       KYC Status
                     </label>

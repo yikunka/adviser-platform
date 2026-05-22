@@ -37,13 +37,13 @@ const kycRecordInclude = {
       uploadedAt: true,
     },
   },
-  submittedByUser: { select: { email: true, nameEn: true } },
+  submittedByUser: { select: { id: true, email: true, nameEn: true } },
   companyLinks: {
     include: {
       company: {
         select: {
           nameEn: true,
-          clientUser: { select: { email: true, nameEn: true } },
+          clientUser: { select: { id: true, email: true, nameEn: true } },
         },
       },
     },

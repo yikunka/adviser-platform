@@ -10,6 +10,7 @@ import { z } from 'zod'
 const statusSchema = z.enum(['DRAFT', 'SUBMITTED', 'PENDING_INFO', 'APPROVED', 'REJECTED'])
 const adminUpdateSchema = kycPersonDraftZod.extend({
   kycStatus: statusSchema.optional(),
+  clientUserId: z.string().optional().nullable(),
 })
 
 const reviewSchema = z.object({
@@ -99,6 +100,17 @@ export async function PATCH(
   }
 
   const updateData = inputToKeyPersonAdminUpdate(parsed.data) as Record<string, unknown>
+  const clientUserId = parsed.data.clientUserId?.trim() || null
+  if (parsed.data.clientUserId !== undefined) {
+    if (clientUserId) {
+      const client = await prisma.user.findFirst({
+        where: { id: clientUserId, role: 'CLIENT' },
+        select: { id: true },
+      })
+      if (!client) return NextResponse.json({ error: 'Invalid client account' }, { status: 400 })
+    }
+    updateData.submittedByUserId = clientUserId
+  }
   if (parsed.data.kycStatus) {
     updateData.kycStatus = parsed.data.kycStatus
     if ((parsed.data.kycStatus === 'SUBMITTED' || parsed.data.kycStatus === 'APPROVED') && !before.kycCode && !updateData.kycCode) {
@@ -132,13 +144,13 @@ export async function PATCH(
           uploadedAt: true,
         },
       },
-      submittedByUser: { select: { email: true, nameEn: true } },
+      submittedByUser: { select: { id: true, email: true, nameEn: true } },
       companyLinks: {
         include: {
           company: {
             select: {
               nameEn: true,
-              clientUser: { select: { email: true, nameEn: true } },
+              clientUser: { select: { id: true, email: true, nameEn: true } },
             },
           },
         },
