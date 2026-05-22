@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { Download, Eye, Pencil, Plus, X } from 'lucide-react'
+import { Download, Eye, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { KycPersonEditForm } from '@/components/admin/KycPersonEditForm'
@@ -107,7 +107,8 @@ type KYCRecord = {
   }>
 }
 
-const STATUS_OPTIONS = ['', 'SUBMITTED', 'PENDING_INFO', 'APPROVED', 'REJECTED']
+const KYC_STATUS_OPTIONS = ['DRAFT', 'SUBMITTED', 'PENDING_INFO', 'APPROVED', 'REJECTED'] as const
+const STATUS_OPTIONS = ['', ...KYC_STATUS_OPTIONS]
 
 const AML_HIT_COLOR: Record<AMLHitResult, { bg: string; text: string; label: string }> = {
   STRONG_HIT:    { bg: 'rgba(239,68,68,0.12)',   text: '#ef4444', label: 'Strong Hit' },
@@ -253,6 +254,7 @@ export default function KYCQueuePage() {
   const [generatingDdr, setGeneratingDdr] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editValues, setEditValues] = useState<KycPersonInput | null>(null)
+  const [editStatus, setEditStatus] = useState<KYCRecord['kycStatus']>('DRAFT')
   const [savingEdit, setSavingEdit] = useState(false)
   const [adding, setAdding] = useState(false)
   const [createValues, setCreateValues] = useState<KycPersonInput>(() => emptyKycPerson())
@@ -352,12 +354,14 @@ export default function KYCQueuePage() {
   function startEdit() {
     if (!selected) return
     setEditValues(keyPersonToFormValues(selected))
+    setEditStatus(selected.kycStatus)
     setEditing(true)
   }
 
   function cancelEdit() {
     setEditing(false)
     setEditValues(null)
+    setEditStatus('DRAFT')
   }
 
   function startAdd() {
@@ -365,6 +369,7 @@ export default function KYCQueuePage() {
     setReason('')
     setEditing(false)
     setEditValues(null)
+    setEditStatus('DRAFT')
     setCreateValues(emptyKycPerson())
     setManualClientId('')
     setAdding(true)
@@ -421,7 +426,7 @@ export default function KYCQueuePage() {
       const res = await fetch(`/api/admin/kyc/${selected.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editValues),
+        body: JSON.stringify({ ...editValues, kycStatus: editStatus }),
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -433,9 +438,35 @@ export default function KYCQueuePage() {
       setRecords(prev => prev.map(r => (r.id === updated.id ? updated : r)))
       setEditing(false)
       setEditValues(null)
+      setEditStatus('DRAFT')
       toast.success('KYC updated')
     } finally {
       setSavingEdit(false)
+    }
+  }
+
+  async function deleteKyc() {
+    if (!selected) return
+    const label = selected.kycCode ? `${selected.kycCode} / ${selected.nameEn}` : selected.nameEn
+    if (!window.confirm(`Delete KYC "${label}"? This cannot be undone.`)) return
+
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/admin/kyc/${selected.id}`, { method: 'DELETE' })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(typeof json?.error === 'string' ? json.error : 'Failed to delete KYC')
+        return
+      }
+      setRecords(prev => prev.filter(r => r.id !== selected.id))
+      setSelected(null)
+      setEditing(false)
+      setEditValues(null)
+      setEditStatus('DRAFT')
+      toast.success('KYC deleted')
+      fetchRecords()
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -734,7 +765,7 @@ export default function KYCQueuePage() {
 
         {/* Right: collapsible detail + action panel */}
         {selected && (
-          <div className="fixed inset-0 z-50 flex justify-end bg-black/35" onClick={() => { setSelected(null); setEditing(false); setEditValues(null) }}>
+          <div className="fixed inset-0 z-50 flex justify-end bg-black/35" onClick={() => { setSelected(null); setEditing(false); setEditValues(null); setEditStatus('DRAFT') }}>
             <Card
               className="h-full w-full max-w-2xl overflow-y-auto rounded-none border-y-0 border-r-0 shadow-2xl"
               onClick={e => e.stopPropagation()}
@@ -755,20 +786,33 @@ export default function KYCQueuePage() {
                 </span>
                 <div className="ml-auto flex items-center gap-2">
                   {!editing ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-8 gap-1.5 px-2.5 text-xs"
-                      style={{ borderColor: '#2A2418', color: '#C9A96E' }}
-                      onClick={startEdit}
-                    >
-                      <Pencil size={14} />
-                      Edit
-                    </Button>
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-8 gap-1.5 px-2.5 text-xs"
+                        style={{ borderColor: '#2A2418', color: '#C9A96E' }}
+                        onClick={startEdit}
+                      >
+                        <Pencil size={14} />
+                        Edit
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={loading}
+                        className="h-8 gap-1.5 px-2.5 text-xs"
+                        style={{ borderColor: 'rgba(239,68,68,0.3)', color: '#ef4444' }}
+                        onClick={deleteKyc}
+                      >
+                        <Trash2 size={14} />
+                        Delete
+                      </Button>
+                    </>
                   ) : null}
                   <button
                     type="button"
-                    onClick={() => { setSelected(null); setEditing(false); setEditValues(null) }}
+                    onClick={() => { setSelected(null); setEditing(false); setEditValues(null); setEditStatus('DRAFT') }}
                     className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#2A2418]"
                     aria-label="Close KYC details"
                   >
@@ -802,6 +846,25 @@ export default function KYCQueuePage() {
 
               {editing && editValues ? (
                 <>
+                  <div className="rounded-lg border border-[#2A2418] p-3">
+                    <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                      KYC Status
+                    </label>
+                    <select
+                      value={editStatus}
+                      onChange={e => setEditStatus(e.target.value)}
+                      disabled={savingEdit}
+                      className="w-full rounded-md px-3 py-2 text-sm"
+                      style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: 'var(--foreground)', outline: 'none' }}
+                    >
+                      {KYC_STATUS_OPTIONS.map(status => (
+                        <option key={status} value={status} style={{ background: '#141414' }}>{status}</option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                      If a submitted or approved KYC has no code, the next CL code will be generated automatically.
+                    </p>
+                  </div>
                   <KycPersonEditForm
                     values={editValues}
                     onChange={setEditValues}

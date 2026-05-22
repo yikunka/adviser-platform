@@ -2,18 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import type { KYCStatus } from '@prisma/client'
 import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
+import { nextKycCode } from '@/lib/kyc/kyc-code'
 import { kycBatchZod, inputToKeyPersonData } from '@/lib/kyc/personZod'
 import { screenKeyPerson } from '@/lib/aml/screener'
-
-async function nextKycCode() {
-  const rows = await prisma.$queryRaw<Array<{ max_no: number | null }>>`
-    SELECT MAX(CAST(SUBSTRING(kyc_code FROM 3) AS INTEGER)) AS max_no
-    FROM key_persons
-    WHERE kyc_code ~ '^CL[0-9]{5}$'
-  `
-  const next = (rows[0]?.max_no ?? 0) + 1
-  return `CL${String(next).padStart(5, '0')}`
-}
 
 export async function POST(req: NextRequest) {
   try {

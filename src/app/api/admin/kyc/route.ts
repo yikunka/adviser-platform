@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
 import { screenKeyPerson } from '@/lib/aml/screener'
+import { nextKycCode } from '@/lib/kyc/kyc-code'
 import { kycPersonDraftZod, kycPersonZod, inputToKeyPersonAdminUpdate } from '@/lib/kyc/personZod'
 import { z } from 'zod'
 
@@ -11,16 +12,6 @@ const createSchema = z.object({
   action: z.enum(['SAVE_DRAFT', 'SUBMIT']).default('SAVE_DRAFT'),
   person: kycPersonDraftZod,
 })
-
-async function nextKycCode() {
-  const rows = await prisma.$queryRaw<Array<{ max_no: number | null }>>`
-    SELECT MAX(CAST(SUBSTRING(kyc_code FROM 3) AS INTEGER)) AS max_no
-    FROM key_persons
-    WHERE kyc_code ~ '^CL[0-9]{5}$'
-  `
-  const next = (rows[0]?.max_no ?? 0) + 1
-  return `CL${String(next).padStart(5, '0')}`
-}
 
 function withComposedName(person: z.infer<typeof kycPersonDraftZod>) {
   const structured = [person.firstName, person.otherName, person.lastName]

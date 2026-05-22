@@ -3,8 +3,14 @@ import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
 import { createNotification } from '@/lib/notifications'
+import { nextKycCode } from '@/lib/kyc/kyc-code'
 import { kycPersonDraftZod, inputToKeyPersonAdminUpdate } from '@/lib/kyc/personZod'
 import { z } from 'zod'
+
+const statusSchema = z.enum(['DRAFT', 'SUBMITTED', 'PENDING_INFO', 'APPROVED', 'REJECTED'])
+const adminUpdateSchema = kycPersonDraftZod.extend({
+  kycStatus: statusSchema.optional(),
+})
 
 const reviewSchema = z.object({
   action: z.enum(['APPROVE', 'REJECT', 'REQUEST_INFO', 'CANCEL_APPROVAL']),
@@ -49,6 +55,7 @@ export async function PATCH(
       where: { id },
       data: {
         kycStatus: statusMap[action],
+        kycCode: action === 'APPROVE' && !before.kycCode ? await nextKycCode() : undefined,
         kycApprovedById: action === 'APPROVE' ? session!.user.id : undefined,
         kycApprovedAt: action === 'APPROVE' ? new Date() : undefined,
         kycRejectionReason: action === 'REJECT' ? reason : undefined,
@@ -83,7 +90,7 @@ export async function PATCH(
     return NextResponse.json(keyPerson)
   }
 
-  const parsed = kycPersonDraftZod.safeParse(body)
+  const parsed = adminUpdateSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
       { error: 'Invalid input', details: parsed.error.flatten() },
@@ -91,9 +98,27 @@ export async function PATCH(
     )
   }
 
+  const updateData = inputToKeyPersonAdminUpdate(parsed.data) as Record<string, unknown>
+  if (parsed.data.kycStatus) {
+    updateData.kycStatus = parsed.data.kycStatus
+    if ((parsed.data.kycStatus === 'SUBMITTED' || parsed.data.kycStatus === 'APPROVED') && !before.kycCode && !updateData.kycCode) {
+      updateData.kycCode = await nextKycCode()
+    }
+    if (parsed.data.kycStatus === 'APPROVED') {
+      updateData.kycApprovedById = before.kycApprovedById ?? session!.user.id
+      updateData.kycApprovedAt = before.kycApprovedAt ?? new Date()
+      updateData.kycRejectionReason = null
+    } else {
+      updateData.kycApprovedById = null
+      updateData.kycApprovedAt = null
+      updateData.kycExpiryDate = null
+      if (parsed.data.kycStatus !== 'REJECTED') updateData.kycRejectionReason = null
+    }
+  }
+
   const keyPerson = await prisma.keyPerson.update({
     where: { id },
-    data: inputToKeyPersonAdminUpdate(parsed.data) as never,
+    data: updateData as never,
     include: {
       kycDocuments: {
         select: {
@@ -124,4 +149,28 @@ export async function PATCH(
   await logAudit(session!.user.id, 'KYC_ADMIN_UPDATE', 'KeyPerson', id, before, keyPerson)
 
   return NextResponse.json(keyPerson)
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { session, error } = await requireRole('COMPLIANCE', { adminMenu: 'kyc' })
+  if (error) return error
+
+  const { id } = await params
+  const before = await prisma.keyPerson.findUnique({
+    where: { id },
+    include: {
+      kycDocuments: true,
+      companyLinks: true,
+      amlChecks: true,
+    },
+  })
+  if (!before) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  await prisma.keyPerson.delete({ where: { id } })
+  await logAudit(session!.user.id, 'KYC_ADMIN_DELETE', 'KeyPerson', id, before, null)
+
+  return NextResponse.json({ ok: true })
 }

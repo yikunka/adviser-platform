@@ -3,21 +3,12 @@ import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { uploadToR2 } from '@/lib/storage/r2'
 import { analyzeKycDocument } from '@/lib/kyc/image-analysis'
+import { nextKycCode } from '@/lib/kyc/kyc-code'
 import { logAudit } from '@/lib/audit/logger'
 import crypto from 'crypto'
 
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'application/pdf'])
 const MAX_SIZE = 10 * 1024 * 1024
-
-async function nextKycCode() {
-  const rows = await prisma.$queryRaw<Array<{ max_no: number | null }>>`
-    SELECT MAX(CAST(SUBSTRING(kyc_code FROM 7) AS INTEGER)) AS max_no
-    FROM key_persons
-    WHERE kyc_code ~ '^KYC_P_[0-9]{5}$'
-  `
-  const next = (rows[0]?.max_no ?? 0) + 1
-  return `KYC_P_${String(next).padStart(5, '0')}`
-}
 
 function splitEnglishName(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -108,7 +99,18 @@ export async function POST(req: NextRequest) {
       },
     },
     include: {
-      kycDocuments: { select: { id: true, fileName: true, documentType: true, status: true } },
+      kycDocuments: {
+        select: {
+          id: true,
+          fileName: true,
+          documentType: true,
+          storageKey: true,
+          mimeType: true,
+          fileSize: true,
+          status: true,
+          uploadedAt: true,
+        },
+      },
       submittedByUser: { select: { email: true, nameEn: true } },
       companyLinks: {
         include: {
