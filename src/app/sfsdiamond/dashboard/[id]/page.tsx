@@ -3,6 +3,12 @@ import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
 import DiamondCards from '@/app/sfsdiamond/components/DiamondCards'
+import {
+  groupSfsStepFilesByDiamond,
+  sfsStepFileDiamondLabel,
+  sfsStepRequiresDiamondImages,
+  splitSfsStepNotes,
+} from '@/lib/sfs/order-step-display'
 
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   PENDING:   { bg: 'rgba(201,169,110,0.12)', color: '#C9A96E'  },
@@ -27,6 +33,52 @@ function fileUrl(key: string) {
 
 function fileName(key: string) {
   return key.split('/').pop() ?? key
+}
+
+function StepFilePreview({
+  fileKey,
+  label,
+  borderColor,
+  gold,
+}: {
+  fileKey: string
+  label?: string | null
+  borderColor: string
+  gold: string
+}) {
+  const name = fileName(fileKey)
+  const isImage = /\.(jpg|jpeg|png|webp)$/i.test(name)
+
+  if (isImage) {
+    return (
+      <a href={fileUrl(fileKey)} target="_blank" rel="noreferrer" className="block">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={fileUrl(fileKey)}
+          alt={label ? `${label} ${name}` : name}
+          className="w-20 h-20 object-cover rounded-xl"
+          style={{ border: `1px solid ${borderColor}` }}
+        />
+        {label && (
+          <span className="mt-1 block max-w-20 truncate text-center text-[10px] font-mono font-semibold" style={{ color: gold }}>
+            {label}
+          </span>
+        )}
+      </a>
+    )
+  }
+
+  return (
+    <a
+      href={fileUrl(fileKey)}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg hover:opacity-80 transition-opacity"
+      style={{ background: 'rgba(201,169,110,0.08)', color: gold, border: `1px solid rgba(201,169,110,0.2)` }}
+    >
+      📄 {label ? `${label} · ` : ''}{name}
+    </a>
+  )
 }
 
 export default async function SFSOrderDetailPage({
@@ -189,60 +241,68 @@ export default async function SFSOrderDetailPage({
                   <p className="px-5 py-4 text-sm" style={{ color: MUTED }}>Not started yet</p>
                 ) : (
                   <div className="divide-y" style={{ ['--tw-divide-opacity' as string]: 1 }}>
-                    {group.steps.map(step => (
-                      <div key={step.id} className="px-5 py-4 flex items-start gap-3" style={{ borderColor: BORDER }}>
-                        <div
-                          className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5"
-                          style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981' }}
-                        >
-                          ✓
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                            <p className="text-sm font-medium" style={{ color: DARK }}>{step.particular}</p>
-                            <p className="text-xs" style={{ color: MUTED }}>
-                              {new Date(step.recordedAt).toLocaleString('en-HK', {
-                                day: 'numeric', month: 'short', year: 'numeric',
-                                hour: '2-digit', minute: '2-digit',
-                              })}
-                            </p>
-                          </div>
-                          {step.notes && (
-                            <p className="text-xs mt-1 italic" style={{ color: MUTED }}>{step.notes}</p>
-                          )}
-                          {step.fileKeys.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mt-2">
-                              {step.fileKeys.map((key, ki) => {
-                                const name = fileName(key)
-                                const isImage = /\.(jpg|jpeg|png|webp)$/i.test(name)
-                                return isImage ? (
-                                  <a key={ki} href={fileUrl(key)} target="_blank" rel="noreferrer">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img
-                                      src={fileUrl(key)}
-                                      alt={name}
-                                      className="w-20 h-20 object-cover rounded-xl"
-                                      style={{ border: `1px solid ${BORDER}` }}
-                                    />
-                                  </a>
-                                ) : (
-                                  <a
-                                    key={ki}
-                                    href={fileUrl(key)}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg hover:opacity-80 transition-opacity"
-                                    style={{ background: 'rgba(201,169,110,0.08)', color: GOLD, border: `1px solid rgba(201,169,110,0.2)` }}
-                                  >
-                                    📄 {name}
-                                  </a>
-                                )
-                              })}
+                    {group.steps.map(step => {
+                      const notes = splitSfsStepNotes(step.notes)
+                      const usesDiamondFiles = sfsStepRequiresDiamondImages(step.phase, step.stepNumber)
+                      const grouped = usesDiamondFiles ? groupSfsStepFilesByDiamond(step.fileKeys, diamonds) : null
+
+                      return (
+                        <div key={step.id} className="px-5 py-4 flex items-start gap-3" style={{ borderColor: BORDER }}>
+                            <div
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5"
+                              style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981' }}
+                            >
+                              ✓
                             </div>
-                          )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                                <p className="text-sm font-medium" style={{ color: DARK }}>{step.particular}</p>
+                                <p className="text-xs" style={{ color: MUTED }}>
+                                  {new Date(step.recordedAt).toLocaleString('en-HK', {
+                                    day: 'numeric', month: 'short', year: 'numeric',
+                                    hour: '2-digit', minute: '2-digit',
+                                  })}
+                                </p>
+                              </div>
+                              {notes.weight && (
+                                <p className="mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: 'rgba(201,169,110,0.1)', color: GOLD }}>
+                                  Weight: {notes.weight}
+                                </p>
+                              )}
+                              {notes.remark && (
+                                <p className="text-xs mt-1 italic whitespace-pre-wrap" style={{ color: MUTED }}>{notes.remark}</p>
+                              )}
+                              {grouped ? (
+                                <div className="mt-3 grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.max(1, diamonds.length)}, minmax(0, 1fr))` }}>
+                                  {grouped.groups.map(group => (
+                                    <div key={group.label} className="min-w-0 rounded-xl p-2" style={{ background: 'rgba(201,169,110,0.04)', border: `1px solid ${BORDER}` }}>
+                                      <p className="mb-2 truncate text-center text-[10px] font-mono font-semibold" style={{ color: GOLD }}>{group.label}</p>
+                                      <div className="flex flex-wrap justify-center gap-2">
+                                        {group.fileKeys.length > 0 ? (
+                                          group.fileKeys.map(key => (
+                                            <StepFilePreview key={key} fileKey={key} label={group.label} borderColor={BORDER} gold={GOLD} />
+                                          ))
+                                        ) : (
+                                          <span className="py-6 text-xs" style={{ color: MUTED }}>No image</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                  {grouped.unmatched.map(key => (
+                                    <StepFilePreview key={key} fileKey={key} label={sfsStepFileDiamondLabel(key)} borderColor={BORDER} gold={GOLD} />
+                                  ))}
+                                </div>
+                              ) : step.fileKeys.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  {step.fileKeys.map(key => (
+                                    <StepFilePreview key={key} fileKey={key} label={sfsStepFileDiamondLabel(key)} borderColor={BORDER} gold={GOLD} />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </div>

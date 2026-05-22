@@ -6,6 +6,7 @@ import { ArrowLeft, CheckCircle, RotateCcw, Upload, X, Download } from 'lucide-r
 import Link from 'next/link'
 import DiamondCards from '@/app/sfsdiamond/components/DiamondCards'
 import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
+import { sfsDiamondLabel, sfsStepFileDiamondLabel, sfsStepRequiresDiamondImages } from '@/lib/sfs/order-step-display'
 
 // ─── Predefined steps from NL00001 production workflow ────────────────────────
 
@@ -57,7 +58,7 @@ type Step = {
 }
 
 type DiamondItem = {
-  carat?: string; shape?: string; type?: string; size?: string; cut?: string
+  code?: string; carat?: string; shape?: string; type?: string; size?: string; cut?: string
 }
 
 type Order = {
@@ -117,6 +118,23 @@ function fileName(key: string) {
   return key.split('/').pop() ?? key
 }
 
+function diamondLabel(diamond: DiamondItem, index: number) {
+  return sfsDiamondLabel(diamond, index)
+}
+
+function fileDiamondLabel(key: string) {
+  return sfsStepFileDiamondLabel(key)
+}
+
+function requiresDiamondImages(phase: string, stepIndex: number) {
+  return sfsStepRequiresDiamondImages(phase, stepIndex + 1)
+}
+
+type PendingUploadFile = {
+  file: File
+  diamondLabel?: string
+}
+
 // ─── Single predefined step row ───────────────────────────────────────────────
 
 function StepRow({
@@ -125,6 +143,7 @@ function StepRow({
   stepIndex,    // 0-based
   description,
   doneStep,     // the saved Step record if completed, else undefined
+  diamonds,
   onRefresh,
 }: {
   orderId: string
@@ -132,11 +151,14 @@ function StepRow({
   stepIndex: number
   description: string
   doneStep?: Step
+  diamonds: DiamondItem[]
   onRefresh: () => void
 }) {
   const [uploading, setUploading] = useState(false)
   const [undoing, setUndoing] = useState(false)
-  const [files, setFiles] = useState<File[]>([])
+  const [files, setFiles] = useState<PendingUploadFile[]>([])
+  const [uploadTarget, setUploadTarget] = useState<string | null>(null)
+  const [weight, setWeight] = useState('')
   const [customTime, setCustomTime] = useState('')
   const [showTimeEdit, setShowTimeEdit] = useState(false)
   const [remarks, setRemarks] = useState('')
@@ -144,6 +166,22 @@ function StepRow({
   const fileRef = useRef<HTMLInputElement>(null)
 
   const isDone = !!doneStep
+  const isWeightStep = phase === 'CHEM_TRANSFORM' && stepIndex === 1
+  const isDiamondImageStep = requiresDiamondImages(phase, stepIndex)
+
+  function chooseGeneralFiles(fileList: FileList | null) {
+    setFiles(Array.from(fileList ?? []).map(file => ({ file })))
+  }
+
+  function chooseDiamondFile(label: string, fileList: FileList | null) {
+    const file = fileList?.[0]
+    if (!file) return
+    setFiles(prev => [...prev.filter(item => item.diamondLabel !== label), { file, diamondLabel: label }])
+  }
+
+  function pendingDiamondFile(label: string) {
+    return files.find(file => file.diamondLabel === label)
+  }
 
   const markDone = async () => {
     setUploading(true)
@@ -152,11 +190,19 @@ function StepRow({
     fd.append('stepNumber', String(stepIndex + 1))
     fd.append('recordedAt', customTime ? new Date(customTime).toISOString() : new Date().toISOString())
     fd.append('particular', description)
-    if (remarks.trim()) fd.append('notes', remarks.trim())
-    for (const f of files) fd.append('files', f)
+    const noteParts = [
+      isWeightStep && weight.trim() ? `Weight: ${weight.trim()} g` : '',
+      remarks.trim(),
+    ].filter(Boolean)
+    if (noteParts.length > 0) fd.append('notes', noteParts.join('\n'))
+    for (const item of files) {
+      fd.append('files', item.file)
+      fd.append('fileLabels', item.diamondLabel ?? '')
+    }
 
     await fetch(`/api/sfsdiamond/admin/orders/${orderId}/steps`, { method: 'POST', body: fd })
     setFiles([])
+    setWeight('')
     setCustomTime('')
     setShowTimeEdit(false)
     setRemarks('')
@@ -219,10 +265,15 @@ function StepRow({
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={fileUrl(key)}
-                        alt={name}
+                        alt={fileDiamondLabel(key) ? `${fileDiamondLabel(key)} ${name}` : name}
                         className="w-14 h-14 object-cover rounded-lg"
                         style={{ border: '1px solid rgba(16,185,129,0.2)' }}
                       />
+                      {fileDiamondLabel(key) && (
+                        <span className="mt-0.5 block max-w-14 truncate text-[10px] font-mono text-center" style={{ color: '#10b981' }}>
+                          {fileDiamondLabel(key)}
+                        </span>
+                      )}
                     </a>
                   ) : (
                     <a
@@ -243,32 +294,77 @@ function StepRow({
         ) : (
           /* Pending state — file upload */
           <div className="mt-2 space-y-2">
-            {/* File area */}
-            <div
-              className="rounded-lg p-2 flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
-              style={{ border: '1px dashed rgba(201,169,110,0.3)', background: 'var(--card)' }}
-              onClick={() => fileRef.current?.click()}
-            >
-              <Upload size={13} style={{ color: '#C9A96E', flexShrink: 0 }} />
-              <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                {files.length > 0 ? `${files.length} file(s)` : 'Upload photo or document (optional)'}
-              </span>
-              {files.length > 0 && (
-                <button
-                  onClick={e => { e.stopPropagation(); setFiles([]) }}
-                  className="ml-auto"
+            {isDiamondImageStep ? (
+              <div className="flex gap-2">
+                {diamonds.map((diamond, index) => {
+                  const label = diamondLabel(diamond, index)
+                  const selected = pendingDiamondFile(label)
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => { setUploadTarget(label); fileRef.current?.click() }}
+                      className="min-w-0 flex-1 rounded-lg px-2 py-2 text-xs font-semibold transition-all hover:opacity-80"
+                      title={selected ? selected.file.name : label}
+                      style={{
+                        border: selected ? '1px solid rgba(16,185,129,0.35)' : '1px dashed rgba(201,169,110,0.35)',
+                        background: selected ? 'rgba(16,185,129,0.08)' : 'var(--card)',
+                        color: selected ? '#10b981' : '#C9A96E',
+                      }}
+                    >
+                      <span className="block truncate">{label}</span>
+                      {selected && <span className="block truncate text-[10px] font-normal">{selected.file.name}</span>}
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className={isWeightStep ? 'flex flex-col gap-2 sm:flex-row sm:items-center' : ''}>
+                {isWeightStep && (
+                  <label className="flex items-center gap-2 text-xs sm:w-48" style={{ color: 'var(--muted-foreground)' }}>
+                    <span className="shrink-0">Weight</span>
+                    <input
+                      value={weight}
+                      onChange={e => setWeight(e.target.value)}
+                      inputMode="decimal"
+                      placeholder="g"
+                      className="min-w-0 flex-1 rounded-lg px-2 py-2 text-xs"
+                      style={{ background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
+                    />
+                  </label>
+                )}
+                {/* File area */}
+                <div
+                  className="rounded-lg p-2 flex flex-1 items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                  style={{ border: '1px dashed rgba(201,169,110,0.3)', background: 'var(--card)' }}
+                  onClick={() => { setUploadTarget(null); fileRef.current?.click() }}
                 >
-                  <X size={12} style={{ color: 'var(--muted-foreground)' }} />
-                </button>
+                  <Upload size={13} style={{ color: '#C9A96E', flexShrink: 0 }} />
+                  <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                    {files.length > 0 ? `${files.length} file(s)` : 'Upload photo or document (optional)'}
+                  </span>
+                  {files.length > 0 && (
+                    <button
+                      onClick={e => { e.stopPropagation(); setFiles([]) }}
+                      className="ml-auto"
+                    >
+                      <X size={12} style={{ color: 'var(--muted-foreground)' }} />
+                    </button>
+                  )}
+                </div>
+              </div>
               )}
-            </div>
             <input
               ref={fileRef}
               type="file"
-              multiple
-              accept="image/jpeg,image/png,image/webp,application/pdf"
+              multiple={!uploadTarget}
+              accept={uploadTarget ? 'image/jpeg,image/png,image/webp' : 'image/jpeg,image/png,image/webp,application/pdf'}
               className="hidden"
-              onChange={e => setFiles(Array.from(e.target.files ?? []))}
+              onChange={e => {
+                if (uploadTarget) chooseDiamondFile(uploadTarget, e.target.files)
+                else chooseGeneralFiles(e.target.files)
+                e.target.value = ''
+              }}
             />
 
             {/* Time picker */}
@@ -405,11 +501,13 @@ function PhasePanel({
   orderId,
   phase,
   steps,
+  diamonds,
   onRefresh,
 }: {
   orderId: string
   phase: string
   steps: Step[]
+  diamonds: DiamondItem[]
   onRefresh: () => void
 }) {
   const descriptions = PREDEFINED_STEPS[phase]
@@ -448,6 +546,7 @@ function PhasePanel({
             stepIndex={i}
             description={desc}
             doneStep={doneMap.get(i + 1)}
+            diamonds={diamonds}
             onRefresh={onRefresh}
           />
         ))}
@@ -501,6 +600,7 @@ export default function AdminSfsOrderDetailPage() {
     setLoading(false)
   }, [id])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- load fetches external order data, then updates local page state asynchronously.
   useEffect(() => { load() }, [load])
 
   const set = (key: string, value: string) => setForm(prev => ({ ...prev, [key]: value }))
@@ -696,6 +796,7 @@ export default function AdminSfsOrderDetailPage() {
           orderId={order.id}
           phase={phase}
           steps={order.steps.filter(s => s.phase === phase)}
+          diamonds={diamonds}
           onRefresh={() => load(true)}
         />
       ))}

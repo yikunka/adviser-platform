@@ -7,6 +7,10 @@ import crypto from 'crypto'
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
 const MAX_SIZE = 20 * 1024 * 1024
 
+function safeFileLabel(label: string | undefined) {
+  return label?.trim().replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48)
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -33,11 +37,13 @@ export async function POST(
   // Upload any attached files
   const fileKeys: string[] = []
   const files = formData.getAll('files') as File[]
-  for (const file of files) {
+  const fileLabels = formData.getAll('fileLabels').map(label => String(label ?? ''))
+  for (const [index, file] of files.entries()) {
     if (!ALLOWED_TYPES.includes(file.type)) continue
     if (file.size > MAX_SIZE) continue
     const ext = file.name.split('.').pop() ?? 'bin'
-    const key = `sfs-orders/${orderId}/steps/${crypto.randomUUID()}.${ext}`
+    const label = safeFileLabel(fileLabels[index])
+    const key = `sfs-orders/${orderId}/steps/${label ? `${label}-` : ''}${crypto.randomUUID()}.${ext}`
     const buf = Buffer.from(await file.arrayBuffer())
     await uploadToR2(key, buf, file.type)
     fileKeys.push(key)

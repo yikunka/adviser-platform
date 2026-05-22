@@ -3,6 +3,12 @@ import { createHash } from 'crypto'
 import { PDFDocument, PDFImage, StandardFonts, rgb } from 'pdf-lib'
 import type { Prisma } from '@prisma/client'
 import { readLocalFile } from '@/lib/storage/r2'
+import {
+  groupSfsStepFilesByDiamond,
+  sfsStepFileDiamondLabel,
+  sfsStepRequiresDiamondImages,
+  splitSfsStepNotes,
+} from '@/lib/sfs/order-step-display'
 
 export type SfsOrderReportPayload = Prisma.SfsOrderGetPayload<{ include: { steps: true } }>
 
@@ -232,6 +238,37 @@ export async function renderSfsOrderReportPdf(order: SfsOrderReportPayload): Pro
     y -= 13
   }
 
+  function drawStepFile(step: SfsOrderReportPayload['steps'][number], key: string, index: number, label?: string | null) {
+    const images   = stepImageMap.get(step.id) ?? []
+    const keyIndex = step.fileKeys.indexOf(key)
+    const img      = keyIndex >= 0 ? images[keyIndex] : null
+    const fileName = path.basename(key)
+
+    ensureSpace(14)
+    page.drawText(`[${index + 1}] ${safe(label ? `${label} - ${fileName}` : fileName)}`, {
+      x: ML + 16, y, size: 8, font: reg, color: GREY,
+    })
+    y -= 12
+
+    if (img) {
+      const dims  = img.scale(1)
+      const maxW  = CW - 24
+      const maxH  = 220
+      const scale = Math.min(maxW / dims.width, maxH / dims.height, 1)
+      const iw    = dims.width  * scale
+      const ih    = dims.height * scale
+
+      ensureSpace(ih + 10)
+      page.drawImage(img, {
+        x:      ML + 16,
+        y:      y - ih,
+        width:  iw,
+        height: ih,
+      })
+      y -= ih + 8
+    }
+  }
+
   function sectionHeader(title: string) {
     ensureSpace(30)
     y -= 8
@@ -331,38 +368,38 @@ export async function renderSfsOrderReportPdf(order: SfsOrderReportPayload): Pro
         })
         y -= 13
         drawText(safe(fmtDt(step.recordedAt)), { indent: 16, size: 8, color: GREY })
-        if (step.notes) drawText(safe(step.notes), { indent: 16, size: 8, color: GREY })
+        const notes = splitSfsStepNotes(step.notes)
+        if (notes.weight) drawText(`Weight: ${safe(notes.weight)}`, { indent: 16, size: 8, font: bold, color: GREY })
+        if (notes.remark) drawText(safe(notes.remark), { indent: 16, size: 8, color: GREY })
 
         if (step.fileKeys.length > 0) {
-          const images = stepImageMap.get(step.id) ?? []
+          if (sfsStepRequiresDiamondImages(step.phase, step.stepNumber)) {
+            const grouped = groupSfsStepFilesByDiamond(step.fileKeys, diamonds)
+            let fileNo = 0
 
-          for (let fi = 0; fi < step.fileKeys.length; fi++) {
-            const key      = step.fileKeys[fi]
-            const fileName = path.basename(key)
-            const img      = images[fi]
+            for (const group of grouped.groups) {
+              ensureSpace(18)
+              page.drawText(`Diamond ${safe(group.label)}`, { x: ML + 16, y, size: 8, font: bold, color: BLACK })
+              y -= 12
 
-            ensureSpace(14)
-            page.drawText(`[${fi + 1}] ${safe(fileName)}`, {
-              x: ML + 16, y, size: 8, font: reg, color: GREY,
-            })
-            y -= 12
+              if (group.fileKeys.length === 0) {
+                drawText('No image uploaded.', { indent: 24, size: 8, color: GREY })
+              } else {
+                for (const key of group.fileKeys) {
+                  drawStepFile(step, key, fileNo, group.label)
+                  fileNo += 1
+                }
+              }
+            }
 
-            if (img) {
-              const dims  = img.scale(1)
-              const maxW  = CW - 24
-              const maxH  = 220
-              const scale = Math.min(maxW / dims.width, maxH / dims.height, 1)
-              const iw    = dims.width  * scale
-              const ih    = dims.height * scale
-
-              ensureSpace(ih + 10)
-              page.drawImage(img, {
-                x:      ML + 16,
-                y:      y - ih,
-                width:  iw,
-                height: ih,
-              })
-              y -= ih + 8
+            for (const key of grouped.unmatched) {
+              drawStepFile(step, key, fileNo, sfsStepFileDiamondLabel(key))
+              fileNo += 1
+            }
+          } else {
+            for (let fi = 0; fi < step.fileKeys.length; fi++) {
+              const key = step.fileKeys[fi]
+              drawStepFile(step, key, fi, sfsStepFileDiamondLabel(key))
             }
           }
         }
