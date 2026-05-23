@@ -526,15 +526,29 @@ export default function KYCQueuePage() {
     }
   }
 
-  async function deleteKycDocument(docId: string) {
-    if (!window.confirm('Delete this report? This cannot be undone.')) return
-    const res = await fetch(`/api/admin/kyc/documents/${docId}`, { method: 'DELETE' })
-    if (!res.ok) { toast.error('Failed to delete'); return }
+  async function deleteKycDocument(doc: KYCDocument) {
+    const label = documentTypeLabel(doc.documentType)
+    const selectedId = selected?.id
+    if (!window.confirm(`Delete ${label} document "${doc.fileName}"? This cannot be undone.`)) return
+
+    const res = await fetch(`/api/admin/kyc/documents/${doc.id}`, { method: 'DELETE' })
+    const json = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      toast.error(typeof json?.error === 'string' ? json.error : 'Failed to delete document')
+      return
+    }
     setSelected(prev => prev
-      ? { ...prev, kycDocuments: prev.kycDocuments.filter(d => d.id !== docId) }
+      ? { ...prev, kycDocuments: prev.kycDocuments.filter(d => d.id !== doc.id) }
       : prev
     )
-    toast.success('Report deleted')
+    if (selectedId) {
+      setRecords(prev => prev.map(r => (
+        r.id === selectedId
+          ? { ...r, kycDocuments: r.kycDocuments.filter(d => d.id !== doc.id) }
+          : r
+      )))
+    }
+    toast.success('Document deleted')
   }
 
   function downloadKycDoc(doc: KYCDocument) {
@@ -999,6 +1013,15 @@ export default function KYCQueuePage() {
                             <Download size={14} />
                             Download
                           </a>
+                          <button
+                            type="button"
+                            onClick={() => deleteKycDocument(doc)}
+                            className="inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs"
+                            style={{ color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)' }}
+                          >
+                            <Trash2 size={14} />
+                            Delete
+                          </button>
                         </div>
                       </li>
                     ))}
@@ -1056,11 +1079,11 @@ export default function KYCQueuePage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => deleteKycDocument(doc.id)}
+                              onClick={() => deleteKycDocument(doc)}
                               className="inline-flex h-7 items-center gap-1 rounded-md border px-2 text-xs"
                               style={{ color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)' }}
                             >
-                              <X size={12} />
+                              <Trash2 size={12} />
                               Delete
                             </button>
                           </div>
