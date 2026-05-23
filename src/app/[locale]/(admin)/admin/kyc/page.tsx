@@ -129,9 +129,10 @@ const DOCUMENT_TYPE_LABEL: Record<string, string> = {
   KYC_ID: 'ID',
   KYC_ADDRESS: 'Address',
   KYC_DECLARATION: 'Declaration',
+  KYC_OTHER: 'Other document',
 }
 
-const VISIBLE_KYC_DOCUMENT_TYPES = ['KYC_ID', 'KYC_ADDRESS', 'KYC_DECLARATION'] as const
+const VISIBLE_KYC_DOCUMENT_TYPES = ['KYC_ID', 'KYC_ADDRESS', 'KYC_DECLARATION', 'KYC_OTHER'] as const
 
 function documentTypeLabel(type: string) {
   return DOCUMENT_TYPE_LABEL[type] ?? type.replace(/^KYC_/, '').replace(/_/g, ' ')
@@ -1038,7 +1039,7 @@ export default function KYCQueuePage() {
 
               {/* Documents */}
               <DetailSection title="Documents">
-                <div className="grid gap-2 sm:grid-cols-3">
+                <div className="grid gap-2 sm:grid-cols-4">
                   {VISIBLE_KYC_DOCUMENT_TYPES.map(docType => (
                     <label
                       key={docType}
@@ -1068,7 +1069,7 @@ export default function KYCQueuePage() {
                   if (visibleDocs.length === 0) {
                     return (
                       <p className="pt-2 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        No ID, address, or declaration documents uploaded yet.
+                        No ID, address, declaration, or other documents uploaded yet.
                       </p>
                     )
                   }
