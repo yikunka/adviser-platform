@@ -59,7 +59,9 @@ export async function POST(req: NextRequest) {
 
   if (keyPersonId) {
     const kp = await prisma.keyPerson.findFirst({
-      where: { id: keyPersonId, submittedByUserId: session.user.id },
+      where: STAFF_ROLES.has(session.user.role)
+        ? { id: keyPersonId }
+        : { id: keyPersonId, submittedByUserId: session.user.id },
     })
     if (!kp) {
       return NextResponse.json({ error: 'Invalid key person' }, { status: 403 })
@@ -75,7 +77,12 @@ export async function POST(req: NextRequest) {
       },
     })
     return NextResponse.json(
-      { documentId: kycDoc.id, name: file.name, kind: 'kyc' },
+      {
+        documentId: kycDoc.id,
+        name: file.name,
+        kind: 'kyc',
+        document: kycDoc,
+      },
       { status: 201 }
     )
   }

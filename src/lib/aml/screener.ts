@@ -1,6 +1,6 @@
 import { compareTwoStrings } from 'string-similarity'
 import { prisma } from '@/lib/db/prisma'
-import type { AMLCheckResult, AMLSubjectType } from '@prisma/client'
+import type { AMLEntityType, AMLCheckResult, AMLSubjectType } from '@prisma/client'
 
 const STRONG_HIT_THRESHOLD = 0.98
 const POTENTIAL_HIT_THRESHOLD = 0.92
@@ -34,26 +34,31 @@ function classify(score: number): AMLCheckResult | null {
   return null
 }
 
-interface MatchDetail {
+export interface MatchDetail {
   amlRecordId: string
   primaryName: string
   score: number
   result: AMLCheckResult
 }
 
-export async function screenKeyPerson(
-  keyPersonId: string,
-  trigger: 'SCHEDULED' | 'MANUAL' | 'KYC_SUBMIT',
-  triggeredById?: string
-): Promise<AMLCheckResult> {
-  const person = await prisma.keyPerson.findUnique({ where: { id: keyPersonId } })
-  if (!person) throw new Error(`KeyPerson ${keyPersonId} not found`)
-
-  const subjectNames = [person.nameEn, person.nameZh].filter(Boolean) as string[]
+export async function screenSubjectNames({
+  names,
+  dateOfBirth,
+  entityType,
+}: {
+  names: string[]
+  dateOfBirth?: Date | null
+  entityType?: AMLEntityType
+}): Promise<{ result: AMLCheckResult; matches: MatchDetail[] }> {
+  const subjectNames = names.filter(Boolean)
 
   const records = await prisma.aMLRecord.findMany({
+    ...(entityType ? { where: { entityType } } : {}),
     select: { id: true, primaryName: true, aliases: true, dateOfBirth: true },
   })
+  if (records.length === 0) {
+    throw new Error('AML screening cannot run because no sanctions records are loaded. Please ingest sanctions lists first.')
+  }
 
   const matches: MatchDetail[] = []
   let overallResult: AMLCheckResult = 'CLEAR'
@@ -69,13 +74,10 @@ export async function screenKeyPerson(
     const result = classify(bestScore)
     if (!result) continue
 
-    // Upgrade to STRONG_HIT if DOB also matches
     let finalResult = result
-    if (result === 'POTENTIAL_HIT' && person.dateOfBirth && record.dateOfBirth) {
-      const sameYear =
-        person.dateOfBirth.getFullYear() === record.dateOfBirth.getFullYear()
-      const sameMonth =
-        person.dateOfBirth.getMonth() === record.dateOfBirth.getMonth()
+    if (entityType !== 'ENTITY' && result === 'POTENTIAL_HIT' && dateOfBirth && record.dateOfBirth) {
+      const sameYear = dateOfBirth.getFullYear() === record.dateOfBirth.getFullYear()
+      const sameMonth = dateOfBirth.getMonth() === record.dateOfBirth.getMonth()
       if (sameYear && sameMonth) finalResult = 'STRONG_HIT'
     }
 
@@ -84,6 +86,25 @@ export async function screenKeyPerson(
     const rank: Record<AMLCheckResult, number> = { CLEAR: 0, WEAK_HIT: 1, POTENTIAL_HIT: 2, STRONG_HIT: 3 }
     if (rank[finalResult] > rank[overallResult]) overallResult = finalResult
   }
+
+  return { result: overallResult, matches }
+}
+
+export async function screenKeyPerson(
+  keyPersonId: string,
+  trigger: 'SCHEDULED' | 'MANUAL' | 'KYC_SUBMIT',
+  triggeredById?: string
+): Promise<AMLCheckResult> {
+  const person = await prisma.keyPerson.findUnique({ where: { id: keyPersonId } })
+  if (!person) throw new Error(`KeyPerson ${keyPersonId} not found`)
+
+  const subjectNames = [person.nameEn, person.nameZh].filter(Boolean) as string[]
+
+  const { result: overallResult, matches } = await screenSubjectNames({
+    names: subjectNames,
+    dateOfBirth: person.dateOfBirth,
+    entityType: 'INDIVIDUAL',
+  })
 
   await prisma.aMLCheck.create({
     data: {
@@ -124,30 +145,10 @@ export async function screenCompany(
 
   const subjectNames = [company.nameEn, company.nameZh].filter(Boolean) as string[]
 
-  const records = await prisma.aMLRecord.findMany({
-    where: { entityType: 'ENTITY' },
-    select: { id: true, primaryName: true, aliases: true },
+  const { result: overallResult, matches } = await screenSubjectNames({
+    names: subjectNames,
+    entityType: 'ENTITY',
   })
-
-  const matches: MatchDetail[] = []
-  let overallResult: AMLCheckResult = 'CLEAR'
-
-  for (const record of records) {
-    const targets = [record.primaryName, ...record.aliases]
-    let bestScore = 0
-    for (const subjectName of subjectNames) {
-      const score = scoreNames(subjectName, targets)
-      if (score > bestScore) bestScore = score
-    }
-
-    const result = classify(bestScore)
-    if (!result) continue
-
-    matches.push({ amlRecordId: record.id, primaryName: record.primaryName, score: bestScore, result })
-
-    const rank: Record<AMLCheckResult, number> = { CLEAR: 0, WEAK_HIT: 1, POTENTIAL_HIT: 2, STRONG_HIT: 3 }
-    if (rank[result] > rank[overallResult]) overallResult = result
-  }
 
   await prisma.aMLCheck.create({
     data: {

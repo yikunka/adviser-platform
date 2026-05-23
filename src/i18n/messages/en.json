@@ -472,6 +472,7 @@
     "uploadAddressHint": "Upload proof of address — PDF, JPG, PNG, max 10 MB",
     "uploadFinancialHint": "Upload financial proof documents — PDF, JPG, PNG, max 10 MB",
     "uploadOtherHint": "Upload other certification files — PDF, JPG, PNG, max 10 MB",
+    "uploadDeclarationHint": "Upload signed declaration — PDF, JPG, PNG, max 10 MB",
     "financialDocuments": "Financial Documents",
     "otherCertifications": "Other Certification Files",
     "otherCertificationsHint": "Upload any additional supporting certification files here.",

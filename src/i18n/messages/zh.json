@@ -472,6 +472,7 @@
     "uploadAddressHint": "上傳地址證明 — PDF、JPG、PNG，最大 10 MB",
     "uploadFinancialHint": "上傳財務證明文件 — PDF、JPG、PNG，最大 10 MB",
     "uploadOtherHint": "上傳其他認證文件 — PDF、JPG、PNG，最大 10 MB",
+    "uploadDeclarationHint": "上傳已簽署聲明 — PDF、JPG、PNG，最大 10 MB",
     "financialDocuments": "財務文件",
     "otherCertifications": "其他認證文件",
     "otherCertificationsHint": "在此上傳任何其他補充認證文件。",

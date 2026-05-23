@@ -15,6 +15,7 @@ const kycPersonDraftShape = {
   placeOfIssue: z.string().max(100).optional().nullable(),
   placeOfBirth: z.string().max(200).optional().nullable(),
   idExpiry: z.string().optional().nullable(),
+  idExpiryPermanent: z.boolean().optional().nullable(),
   dateOfBirth: z.string().optional().nullable(),
   nationality: z.string().max(100).optional().nullable(),
   homeAddress: z.string().max(2000).optional().nullable(),
@@ -63,10 +64,8 @@ export const kycPersonZod = z.object({
   idNumber: z.string().min(1).max(50),
   placeOfIssue: z.string().min(1).max(100),
   placeOfBirth: z.string().min(1).max(200),
-  idExpiry: z.string().min(1),
   dateOfBirth: z.string().min(1),
   nationality: z.string().min(1).max(100),
-  homeAddress: z.string().min(1).max(2000),
   contactAddress: z.string().min(1).max(2000),
   /** Section D — all mandatory on SUBMIT */
   signatureName: z.string().trim().min(1).max(200),
@@ -75,6 +74,14 @@ export const kycPersonZod = z.object({
     (v) => v === true,
     { message: 'Declaration confirmation is required' },
   ),
+}).superRefine((data, ctx) => {
+  if (!data.idExpiryPermanent && !String(data.idExpiry ?? '').trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['idExpiry'],
+      message: 'ID/passport expiry date or long-term checkbox is required',
+    })
+  }
 })
 
 export type KycPersonInput = z.infer<typeof kycPersonDraftZod>
@@ -153,10 +160,10 @@ export function inputToKeyPersonAdminUpdate(data: KycPersonInput) {
     idNumber: data.idNumber ?? undefined,
     placeOfIssue: data.placeOfIssue ?? undefined,
     placeOfBirth: data.placeOfBirth ?? undefined,
-    idExpiryDate: data.idExpiry ? new Date(data.idExpiry) : undefined,
+    idExpiryDate: data.idExpiryPermanent ? null : data.idExpiry ? new Date(data.idExpiry) : undefined,
     dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
     nationality: data.nationality ?? undefined,
-    homeAddress: data.homeAddress ?? undefined,
+    homeAddress: null,
     contactAddress: data.contactAddress ?? undefined,
     homePhone: data.homePhone ?? undefined,
     workPhone: data.workPhone ?? undefined,
@@ -200,10 +207,10 @@ export function inputToKeyPersonData(
     idNumber: data.idNumber ?? undefined,
     placeOfIssue: data.placeOfIssue ?? undefined,
     placeOfBirth: data.placeOfBirth ?? undefined,
-    idExpiryDate: data.idExpiry ? new Date(data.idExpiry) : undefined,
+    idExpiryDate: data.idExpiryPermanent ? null : data.idExpiry ? new Date(data.idExpiry) : undefined,
     dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
     nationality: data.nationality ?? undefined,
-    homeAddress: data.homeAddress ?? undefined,
+    homeAddress: null,
     contactAddress: data.contactAddress ?? undefined,
     homePhone: data.homePhone ?? undefined,
     workPhone: data.workPhone ?? undefined,
@@ -291,9 +298,10 @@ export function keyPersonToFormValues(p: {
     placeOfIssue: p.placeOfIssue ?? '',
     placeOfBirth: p.placeOfBirth ?? '',
     idExpiry: dateToYmd(p.idExpiryDate),
+    idExpiryPermanent: !dateToYmd(p.idExpiryDate),
     dateOfBirth: dateToYmd(p.dateOfBirth),
     nationality: p.nationality ?? '',
-    homeAddress: p.homeAddress ?? '',
+    homeAddress: '',
     contactAddress: p.contactAddress ?? '',
     homePhone: p.homePhone,
     workPhone: p.workPhone,

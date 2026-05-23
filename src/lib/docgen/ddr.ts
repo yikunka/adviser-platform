@@ -4,6 +4,7 @@ import { PDFDocument, rgb, StandardFonts, PDFFont, PDFPage } from 'pdf-lib'
 import type { Font, Fontkit } from 'pdf-lib/es/types/fontkit'
 import * as pdfLibFontkit from '@pdf-lib/fontkit'
 import { prisma } from '@/lib/db/prisma'
+import { screenSubjectNames } from '@/lib/aml/screener'
 
 // ── Colour palette ────────────────────────────────────────────────────────────
 const PRIMARY    = rgb(0.365, 0.306, 0.216)  // warm brown
@@ -254,6 +255,23 @@ function personDetailText(person: ReportPerson) {
     `電郵 Email: ${person.email || '—'}`,
     `資金來源 Source of funds: ${person.sourceOfFunds || '—'}`,
   ].join('\n')
+}
+
+function amlEntityType(person: ReportPerson) {
+  if (person.roles.includes('Company')) return 'ENTITY'
+  if (person.roles.includes('Member') && !person.idNumber) return 'ENTITY'
+  return 'INDIVIDUAL'
+}
+
+async function ensureReportAmlCheck(person: ReportPerson) {
+  if (person.amlChecks[0]) return
+
+  const { result, matches } = await screenSubjectNames({
+    names: [person.nameEn, person.nameZh].filter(Boolean) as string[],
+    dateOfBirth: person.dateOfBirth,
+    entityType: amlEntityType(person),
+  })
+  person.amlChecks = [{ result, matches }]
 }
 
 const DEFAULT_RISK_ITEMS: RiskTemplateItem[] = [
@@ -650,6 +668,12 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
       directors: { orderBy: { dateOfAppointment: 'asc' } },
       members: { orderBy: { createdAt: 'asc' } },
       significantControllers: { orderBy: { createdAt: 'asc' } },
+      amlChecks: {
+        where: { subjectType: 'COMPANY' },
+        orderBy: { checkedAt: 'desc' },
+        take: 1,
+        select: { result: true, matches: true },
+      },
     },
   })
 
@@ -825,6 +849,25 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
   }
 
   const keyPersons = [...personByKey.values()]
+  const companySubject: ReportPerson = {
+    nameEn: company.nameEn,
+    nameZh: company.nameZh,
+    idType: null,
+    idNumber: company.companyNumber,
+    nationality: null,
+    dateOfBirth: null,
+    placeOfBirth: null,
+    placeOfIssue: null,
+    homeAddress: null,
+    contactAddress: company.registeredAddress,
+    mobile: null,
+    email: null,
+    sourceOfFunds: null,
+    amlChecks: company.amlChecks,
+    roles: ['Company'],
+  }
+  const searchSubjects = [companySubject, ...keyPersons]
+  await Promise.all(searchSubjects.map(ensureReportAmlCheck))
 
   const ddr = ddrId
     ? await prisma.dueDiligenceReport.findUniqueOrThrow({ where: { id: ddrId } })
@@ -923,8 +966,8 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
     { label: '搜尋狀態\nSearch Status', width: COL_STATUS, center: true },
   ], 28)
 
-  for (let i = 0; i < keyPersons.length; i++) {
-    const kp = keyPersons[i]
+  for (let i = 0; i < searchSubjects.length; i++) {
+    const kp = searchSubjects[i]
     const nameDisplay = personDisplayName(kp)
     const latestCheck = kp.amlChecks[0]
     const isMonitored = Boolean(latestCheck)
@@ -940,7 +983,7 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
       },
     ])
   }
-  if (keyPersons.length === 0) {
+  if (searchSubjects.length === 0) {
     drawTableRow(ps, [
       { text: '—', width: CW, center: true, color: GRAY },
     ])
@@ -948,8 +991,8 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
   ps.y -= 8
 
   // ── 1.1.x Individual AML detail boxes ─────────────────────────────────────
-  for (let i = 0; i < keyPersons.length; i++) {
-    const kp = keyPersons[i]
+  for (let i = 0; i < searchSubjects.length; i++) {
+    const kp = searchSubjects[i]
     const latestCheck = kp.amlChecks[0]
     const matches = latestCheck?.matches as Array<{ amlRecordId: string; primaryName: string; score: number; result: string }> | null ?? []
     const hasMatch = matches.length > 0
@@ -983,14 +1026,14 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
   await ensureSpace(ps, doc, 60)
   subHeader(ps, '1.2  制裁名單匹配結果  Sanctions List Matching Results')
 
-  const anyHit = keyPersons.some(kp => {
+  const anyHit = searchSubjects.some(kp => {
     const check = kp.amlChecks[0]
     return check && check.result !== 'CLEAR'
   })
   if (anyHit) {
     drawBanner(ps, '發現制裁名單匹配項', 'Sanctions list matches found — please review alerts.', false)
     // list persons with hits
-    for (const kp of keyPersons) {
+    for (const kp of searchSubjects) {
       const check = kp.amlChecks[0]
       if (!check || check.result === 'CLEAR') continue
       await ensureSpace(ps, doc, 18)
@@ -1417,7 +1460,15 @@ export async function generatePersonDDR(keyPersonId: string): Promise<Buffer> {
     { label: '姓名\nName',         width: COL_NAME,   center: true },
     { label: '搜尋狀態\nSearch Status', width: COL_STATUS, center: true },
   ], 28)
-  const latestCheck = person.amlChecks[0] ?? null
+  let latestCheck: { result: string; matches: unknown; checkedAt?: Date } | null = person.amlChecks[0] ?? null
+  if (!latestCheck) {
+    const { result, matches } = await screenSubjectNames({
+      names: [person.nameEn, person.nameZh].filter(Boolean) as string[],
+      dateOfBirth: person.dateOfBirth,
+      entityType: 'INDIVIDUAL',
+    })
+    latestCheck = { result, matches, checkedAt: new Date() }
+  }
   drawTableRow(ps, [
     { text: '1', width: COL_NO, center: true },
     { text: [person.nameEn, person.nameZh].filter(Boolean).join(' / '), width: COL_NAME },

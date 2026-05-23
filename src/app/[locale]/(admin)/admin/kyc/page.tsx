@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { Download, Eye, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { Download, Eye, Pencil, Plus, Trash2, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { KycPersonEditForm } from '@/components/admin/KycPersonEditForm'
@@ -108,7 +108,8 @@ type KYCRecord = {
 }
 
 const KYC_STATUS_OPTIONS = ['DRAFT', 'SUBMITTED', 'PENDING_INFO', 'APPROVED', 'REJECTED'] as const
-const STATUS_OPTIONS = ['', ...KYC_STATUS_OPTIONS]
+const ID_EXPIRY_FILTER = 'ID_EXPIRY'
+const STATUS_OPTIONS = ['', ...KYC_STATUS_OPTIONS, ID_EXPIRY_FILTER] as const
 
 const AML_HIT_COLOR: Record<AMLHitResult, { bg: string; text: string; label: string }> = {
   STRONG_HIT:    { bg: 'rgba(239,68,68,0.12)',   text: '#ef4444', label: 'Strong Hit' },
@@ -127,9 +128,10 @@ const STATUS_COLOR: Record<string, string> = {
 const DOCUMENT_TYPE_LABEL: Record<string, string> = {
   KYC_ID: 'ID',
   KYC_ADDRESS: 'Address',
-  KYC_FINANCIAL: 'Financial',
-  KYC_OTHER: 'Other',
+  KYC_DECLARATION: 'Declaration',
 }
+
+const VISIBLE_KYC_DOCUMENT_TYPES = ['KYC_ID', 'KYC_ADDRESS', 'KYC_DECLARATION'] as const
 
 function documentTypeLabel(type: string) {
   return DOCUMENT_TYPE_LABEL[type] ?? type.replace(/^KYC_/, '').replace(/_/g, ' ')
@@ -186,6 +188,12 @@ function formatFileSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
+function filterLabel(filter: string, allLabel: string) {
+  if (!filter) return allLabel
+  if (filter === ID_EXPIRY_FILTER) return 'ID expiry'
+  return filter
+}
+
 /** Portal client (submitter) or company-linked account holder. */
 function clientPortalAccount(r: KYCRecord): { email: string | null; name: string | null } {
   const s = r.submittedByUser
@@ -209,6 +217,7 @@ function emptyKycPerson(): KycPersonInput {
     placeOfIssue: '',
     placeOfBirth: '',
     idExpiry: '',
+    idExpiryPermanent: false,
     dateOfBirth: '',
     nationality: '',
     homeAddress: '',
@@ -242,6 +251,7 @@ export default function KYCQueuePage() {
   const t = useTranslations('admin.kyc')
   const [records, setRecords] = useState<KYCRecord[]>([])
   const [filterStatus, setFilterStatus] = useState('')
+  const [idExpiryCount, setIdExpiryCount] = useState(0)
   const [selected, setSelected] = useState<KYCRecord | null>(null)
   const [reason, setReason] = useState('')
   const [loading, setLoading] = useState(false)
@@ -252,6 +262,7 @@ export default function KYCQueuePage() {
   const [createImage, setCreateImage] = useState<File | null>(null)
   const [creating, setCreating] = useState(false)
   const [generatingDdr, setGeneratingDdr] = useState(false)
+  const [uploadingDocType, setUploadingDocType] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
   const [editValues, setEditValues] = useState<KycPersonInput | null>(null)
   const [editStatus, setEditStatus] = useState<KYCRecord['kycStatus']>('DRAFT')
@@ -265,9 +276,17 @@ export default function KYCQueuePage() {
 
   const fetchRecords = useCallback(async (statusOverride?: string) => {
     const status = statusOverride ?? filterStatus
-    const res = await fetch(`/api/admin/kyc?status=${status}`)
+    const params = new URLSearchParams()
+    if (status === ID_EXPIRY_FILTER) {
+      params.set('category', ID_EXPIRY_FILTER)
+    } else if (status) {
+      params.set('status', status)
+    }
+    const query = params.toString()
+    const res = await fetch(`/api/admin/kyc${query ? `?${query}` : ''}`)
     const json = await res.json()
     setRecords(json.records ?? [])
+    setIdExpiryCount(Number(json.counts?.idExpiry ?? 0))
   }, [filterStatus])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchRecords updates state after the async request resolves.
@@ -440,6 +459,7 @@ export default function KYCQueuePage() {
       const updated = json as KYCRecord
       setSelected(updated)
       setRecords(prev => prev.map(r => (r.id === updated.id ? updated : r)))
+      fetchRecords()
       setEditing(false)
       setEditValues(null)
       setEditStatus('DRAFT')
@@ -551,6 +571,38 @@ export default function KYCQueuePage() {
     toast.success('Document deleted')
   }
 
+  async function uploadKycDocument(docType: string, file: File | null) {
+    if (!selected || !file) return
+    setUploadingDocType(docType)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('type', docType)
+      fd.append('keyPersonId', selected.id)
+      const res = await fetch('/api/documents/upload', { method: 'POST', body: fd })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(typeof json?.error === 'string' ? json.error : 'Failed to upload document')
+        return
+      }
+      const uploaded = json.document as KYCDocument | undefined
+      if (uploaded) {
+        setSelected(prev => prev
+          ? { ...prev, kycDocuments: [uploaded, ...prev.kycDocuments] }
+          : prev
+        )
+        setRecords(prev => prev.map(r => (
+          r.id === selected.id
+            ? { ...r, kycDocuments: [uploaded, ...r.kycDocuments] }
+            : r
+        )))
+      }
+      toast.success('Document uploaded')
+    } finally {
+      setUploadingDocType(null)
+    }
+  }
+
   function downloadKycDoc(doc: KYCDocument) {
     const href = `/api/files?key=${encodeURIComponent(doc.storageKey)}&download=1&filename=${encodeURIComponent(doc.fileName)}`
     const a = document.createElement('a')
@@ -633,14 +685,22 @@ export default function KYCQueuePage() {
           <button
             key={s}
             onClick={() => setFilterStatus(s)}
-            className="px-3 py-1.5 rounded-full text-sm font-medium transition-colors"
+            className="relative px-3 py-1.5 rounded-full text-sm font-medium transition-colors"
             style={
               filterStatus === s
                 ? { background: 'rgba(201,169,110,0.2)', color: '#C9A96E', border: '1px solid #C9A96E' }
                 : { background: '#1E1A12', color: '#7A7060', border: '1px solid #2A2418' }
             }
           >
-            {s || t('all')}
+            {filterLabel(s, t('all'))}
+            {s === ID_EXPIRY_FILTER ? (
+              <span
+                className="absolute -right-2 -top-2 min-w-5 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none"
+                style={{ background: '#ef4444', color: '#fff', boxShadow: '0 0 0 2px #050305' }}
+              >
+                {idExpiryCount > 99 ? '99+' : idExpiryCount}
+              </span>
+            ) : null}
           </button>
         ))}
       </div>
@@ -927,7 +987,7 @@ export default function KYCQueuePage() {
                     <DetailRow label="ID Type" value={selected.idType} />
                     <DetailRow label="ID Number" value={selected.idNumber} />
                     <DetailRow label="Place of Issue" value={selected.placeOfIssue} />
-                    <DetailRow label="ID Expiry" value={selected.idExpiryDate ? new Date(selected.idExpiryDate).toLocaleDateString() : null} />
+                    <DetailRow label="ID Expiry" value={selected.idExpiryDate ? new Date(selected.idExpiryDate).toLocaleDateString() : 'Long-term'} />
                     <DetailRow label="Date of Birth" value={selected.dateOfBirth ? new Date(selected.dateOfBirth).toLocaleDateString() : null} />
                     <DetailRow label="Place of Birth" value={selected.placeOfBirth} />
                     <DetailRow label="Nationality" value={selected.nationality} />
@@ -941,7 +1001,6 @@ export default function KYCQueuePage() {
                     <DetailRow label="Home Phone" value={selected.homePhone} />
                     <DetailRow label="Work Phone" value={selected.workPhone} />
                     <DetailRow label="WeChat" value={selected.wechat} />
-                    <DetailRow label="Home Address" value={selected.homeAddress} />
                     <DetailRow label="Contact Address" value={selected.contactAddress} />
                     <DetailRow label="Emergency Contact" value={selected.emergencyContact} />
                   </DetailSection>
@@ -978,56 +1037,91 @@ export default function KYCQueuePage() {
               )}
 
               {/* Documents */}
-              {selected.kycDocuments?.length > 0 && (
-                <DetailSection title="Documents">
-                  <ul className="space-y-2">
-                    {selected.kycDocuments.map(doc => (
-                      <li
-                        key={doc.id}
-                        className="flex flex-col gap-2 rounded-md border border-[#2A2418] px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium" style={{ color: 'var(--foreground)' }} title={doc.fileName}>
-                            {documentTypeLabel(doc.documentType)}
-                          </p>
-                          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                            {[doc.fileName, doc.status, formatFileSize(doc.fileSize)].filter(Boolean).join(' · ')}
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-2">
-                          <a
-                            href={fileHref(doc)}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[#2A2418] px-2.5 text-xs"
-                            style={{ color: '#C9A96E' }}
-                          >
-                            <Eye size={14} />
-                            Preview
-                          </a>
-                          <a
-                            href={fileHref(doc, true)}
-                            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[#2A2418] px-2.5 text-xs"
-                            style={{ color: '#C9A96E' }}
-                          >
-                            <Download size={14} />
-                            Download
-                          </a>
-                          <button
-                            type="button"
-                            onClick={() => deleteKycDocument(doc)}
-                            className="inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs"
-                            style={{ color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)' }}
-                          >
-                            <Trash2 size={14} />
-                            Delete
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </DetailSection>
-              )}
+              <DetailSection title="Documents">
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {VISIBLE_KYC_DOCUMENT_TYPES.map(docType => (
+                    <label
+                      key={docType}
+                      className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-[#2A2418] px-2.5 text-xs"
+                      style={{ color: uploadingDocType === docType ? 'var(--muted-foreground)' : '#C9A96E' }}
+                    >
+                      <Upload size={14} />
+                      {uploadingDocType === docType ? 'Uploading...' : `Upload ${documentTypeLabel(docType)}`}
+                      <input
+                        type="file"
+                        accept="application/pdf,image/jpeg,image/png"
+                        className="hidden"
+                        disabled={Boolean(uploadingDocType)}
+                        onChange={(event) => {
+                          const file = event.target.files?.[0] ?? null
+                          void uploadKycDocument(docType, file)
+                          event.currentTarget.value = ''
+                        }}
+                      />
+                    </label>
+                  ))}
+                </div>
+                {(() => {
+                  const visibleDocs = selected.kycDocuments.filter(doc => (
+                    VISIBLE_KYC_DOCUMENT_TYPES.includes(doc.documentType as (typeof VISIBLE_KYC_DOCUMENT_TYPES)[number])
+                  ))
+                  if (visibleDocs.length === 0) {
+                    return (
+                      <p className="pt-2 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                        No ID, address, or declaration documents uploaded yet.
+                      </p>
+                    )
+                  }
+                  return (
+                    <ul className="space-y-2 pt-2">
+                      {visibleDocs.map(doc => (
+                        <li
+                          key={doc.id}
+                          className="flex flex-col gap-2 rounded-md border border-[#2A2418] px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium" style={{ color: 'var(--foreground)' }} title={doc.fileName}>
+                              {documentTypeLabel(doc.documentType)}
+                            </p>
+                            <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                              {[doc.fileName, doc.status, formatFileSize(doc.fileSize)].filter(Boolean).join(' · ')}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <a
+                              href={fileHref(doc)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[#2A2418] px-2.5 text-xs"
+                              style={{ color: '#C9A96E' }}
+                            >
+                              <Eye size={14} />
+                              Preview
+                            </a>
+                            <a
+                              href={fileHref(doc, true)}
+                              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[#2A2418] px-2.5 text-xs"
+                              style={{ color: '#C9A96E' }}
+                            >
+                              <Download size={14} />
+                              Download
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => deleteKycDocument(doc)}
+                              className="inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs"
+                              style={{ color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)' }}
+                            >
+                              <Trash2 size={14} />
+                              Delete
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )
+                })()}
+              </DetailSection>
 
               {/* Due Diligence Reports */}
               <div className="border-t pt-4" style={{ borderColor: '#2A2418' }}>

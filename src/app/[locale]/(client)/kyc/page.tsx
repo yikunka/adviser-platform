@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useForm, useFieldArray } from 'react-hook-form'
+import { useForm, useFieldArray, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { useDropzone } from 'react-dropzone'
 import {
@@ -18,7 +18,7 @@ import {
   KycTitleSelect,
   KycIdTypeSelect,
   KycCountrySelectField,
-  KycLocationSelectField,
+  KycProvinceSelectField,
   KycAddressSelectField,
   KycEmploymentStatusSelect,
   KycUsCitizenRadios,
@@ -47,6 +47,7 @@ function emptyPerson(): KycPersonInput & { kycStatus?: string } {
     placeOfIssue: '',
     placeOfBirth: '',
     idExpiry: '',
+    idExpiryPermanent: false,
     dateOfBirth: '',
     nationality: '',
     homeAddress: '',
@@ -139,14 +140,13 @@ function DatePickerField(props: React.ComponentProps<typeof DatePickerPopover>) 
   return <DatePickerPopover {...props} style={{ ...fieldStyle, ...props.style }} />
 }
 
-const KYC_PENDING_FILE_CATEGORIES = ['id', 'address', 'financial', 'other'] as const
+const KYC_PENDING_FILE_CATEGORIES = ['id', 'address', 'declaration'] as const
 type KycPendingCategory = (typeof KYC_PENDING_FILE_CATEGORIES)[number]
 
 const DOC_TYPE_FOR_CATEGORY: Record<KycPendingCategory, string> = {
   id: 'KYC_ID',
   address: 'KYC_ADDRESS',
-  financial: 'KYC_FINANCIAL',
-  other: 'KYC_OTHER',
+  declaration: 'KYC_DECLARATION',
 }
 
 function UploadZone({
@@ -376,11 +376,8 @@ export default function KYCPage() {
   >({})
   const [existingKycDocs, setExistingKycDocs] = useState<Record<string, { id: string; documentType: string; fileName: string }[]>>({})
   const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({})
-  const contactAddressEditedRef = useRef<Record<string, boolean>>({})
   const fieldSlotIdsRef = useRef<string[]>([])
   const pendingUploadsRef = useRef(pendingKycUploads)
-
-  pendingUploadsRef.current = pendingKycUploads
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formZod) as never,
@@ -388,14 +385,21 @@ export default function KYCPage() {
   })
   const { reset } = form
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'persons' })
+  const watchedPersons = useWatch({ control: form.control, name: 'persons' }) as FormValues['persons']
 
   useEffect(() => {
     fieldSlotIdsRef.current = fields.map((f) => f.id)
   }, [fields])
-  const employmentStatus = form.watch(`persons.${ap}.employmentStatus` as 'persons.0.employmentStatus')
-  const personId = form.watch(`persons.${ap}.id` as 'persons.0.id')
-  const kycStatus = form.watch(`persons.${ap}.kycStatus` as 'persons.0.kycStatus')
+
+  useEffect(() => {
+    pendingUploadsRef.current = pendingKycUploads
+  }, [pendingKycUploads])
+  const employmentStatus = watchedPersons?.[ap]?.employmentStatus
+  const personId = watchedPersons?.[ap]?.id
+  const kycStatus = watchedPersons?.[ap]?.kycStatus
+  const activePerson = watchedPersons?.[ap]
   const slotIdForAp = fields[ap]?.id ?? ''
+  const uploadErrorKeyForActive = (category: KycPendingCategory) => `${slotIdForAp || `person-${ap}`}:${category}`
 
   const load = useCallback(() => {
     fetch('/api/kyc', { credentials: 'include' })
@@ -420,7 +424,6 @@ export default function KYCPage() {
           setExistingKycDocs(docsByPerson)
           setUploads({})
           setPendingKycUploads({})
-          contactAddressEditedRef.current = {}
         }
       })
       .catch(() => {
@@ -490,15 +493,17 @@ export default function KYCPage() {
       ['ID type', 'idType', p.idType],
       ['ID/passport number', 'idNumber', p.idNumber],
       ['Place of issue', 'placeOfIssue', p.placeOfIssue],
-      ['ID/passport expiry date', 'idExpiry', p.idExpiry],
       ['Date of birth', 'dateOfBirth', p.dateOfBirth],
       ['Place of birth', 'placeOfBirth', p.placeOfBirth],
       ['Nationality', 'nationality', p.nationality],
-      ['Home address', 'homeAddress', p.homeAddress],
       ['Contact address', 'contactAddress', p.contactAddress],
       ['Mobile phone', 'mobile', p.mobile],
       ['Email', 'email', p.email],
     ].filter(([, , value]) => !String(value ?? '').trim())
+
+    if (!p.idExpiryPermanent && !String(p.idExpiry ?? '').trim()) {
+      missing.push(['ID/passport expiry date or long-term', 'idExpiry', ''])
+    }
 
     if (missing.length > 0) {
       missing.forEach(([label, field]) => {
@@ -516,8 +521,6 @@ export default function KYCPage() {
       ['Place of issue', 'placeOfIssue', p.placeOfIssue],
       ['Place of birth', 'placeOfBirth', p.placeOfBirth],
       ['Nationality', 'nationality', p.nationality],
-      ['Home address', 'homeAddress', p.homeAddress],
-      ['Contact address', 'contactAddress', p.contactAddress],
     ].find(([, , value]) => hasUnfilledOther(value))
     if (unfilledOther) {
       form.setError(`persons.${personIndex}.${unfilledOther[1]}` as 'persons.0.nameEn', {
@@ -780,9 +783,10 @@ export default function KYCPage() {
       >
         <Users size={16} style={{ color: '#C9A96E' }} className="ml-1" />
         {fields.map((f, i) => {
-          const st = form.watch(`persons.${i}.kycStatus` as 'persons.0.kycStatus') ?? 'DRAFT'
-          const nameEn = form.watch(`persons.${i}.nameEn` as 'persons.0.nameEn')
-          const code = form.watch(`persons.${i}.kycCode` as 'persons.0.kycCode')
+          const watched = watchedPersons?.[i]
+          const st = watched?.kycStatus ?? 'DRAFT'
+          const nameEn = watched?.nameEn
+          const code = watched?.kycCode
           const info = KYC_STATUS[st] ?? KYC_STATUS.DRAFT
           const label = nameEn?.trim() || `${t('personIndex', { defaultValue: 'Person' })} ${i + 1}`
           const personLocked = st === 'APPROVED'
@@ -895,7 +899,7 @@ export default function KYCPage() {
             <div className="grid sm:grid-cols-3 gap-4">
               <Field label={t('fields.title')} error={form.formState.errors.persons?.[ap]?.titlePrefix?.message}>
                 <KycTitleSelect
-                  value={form.watch(`persons.${ap}.titlePrefix` as const)}
+                  value={activePerson?.titlePrefix}
                   disabled={isLocked}
                   fieldStyle={fieldStyle}
                   onChange={(value) => form.setValue(`persons.${ap}.titlePrefix` as const, value, { shouldDirty: true, shouldValidate: true })}
@@ -922,7 +926,7 @@ export default function KYCPage() {
             <div className="grid sm:grid-cols-2 gap-4">
               <Field label={`${t('fields.idType')} *`} error={form.formState.errors.persons?.[ap]?.idType?.message}>
                 <KycIdTypeSelect
-                  value={form.watch(`persons.${ap}.idType` as const)}
+                  value={activePerson?.idType}
                   disabled={isLocked}
                   fieldStyle={fieldStyle}
                   onChange={(value) => form.setValue(`persons.${ap}.idType` as const, value, { shouldDirty: true, shouldValidate: true })}
@@ -933,19 +937,35 @@ export default function KYCPage() {
               </Field>
             </div>
             <Field label={`${t('fields.placeOfIssue')} *`} error={form.formState.errors.persons?.[ap]?.placeOfIssue?.message}>
-              <KycLocationSelectField
-                value={form.watch(`persons.${ap}.placeOfIssue` as const)}
+              <KycProvinceSelectField
+                value={activePerson?.placeOfIssue}
                 disabled={isLocked}
                 fieldStyle={fieldStyle}
                 onChange={(value) => form.setValue(`persons.${ap}.placeOfIssue` as const, value, { shouldDirty: true, shouldValidate: true })}
               />
             </Field>
             <Field label={`${t('fields.expiryDate')} *`} error={form.formState.errors.persons?.[ap]?.idExpiry?.message}>
-              <DatePickerField
-                value={form.watch(`persons.${ap}.idExpiry` as const)}
-                disabled={isLocked}
-                onChange={(value) => form.setValue(`persons.${ap}.idExpiry` as const, value, { shouldDirty: true, shouldValidate: true })}
-              />
+              <div className="space-y-2">
+                <DatePickerField
+                  value={activePerson?.idExpiry}
+                  disabled={isLocked || Boolean(activePerson?.idExpiryPermanent)}
+                  onChange={(value) => form.setValue(`persons.${ap}.idExpiry` as const, value, { shouldDirty: true, shouldValidate: true })}
+                />
+                <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--foreground)' }}>
+                  <input
+                    type="checkbox"
+                    disabled={isLocked}
+                    checked={Boolean(activePerson?.idExpiryPermanent)}
+                    onChange={(event) => {
+                      form.setValue(`persons.${ap}.idExpiryPermanent` as const, event.target.checked, { shouldDirty: true, shouldValidate: true })
+                      if (event.target.checked) {
+                        form.setValue(`persons.${ap}.idExpiry` as const, '', { shouldDirty: true, shouldValidate: true })
+                      }
+                    }}
+                  />
+                  Long-term 長期
+                </label>
+              </div>
             </Field>
             <UploadZone
               slotId={slotIdForAp}
@@ -960,7 +980,7 @@ export default function KYCPage() {
               existingDocs={personId ? existingKycDocs[personId] : undefined}
               hint={t('uploadIdHint', { defaultValue: 'Upload ID / Passport copy — PDF, JPG, PNG, max 10 MB' })}
               required
-              error={uploadErrors[uploadErrorKey(ap, 'id')]}
+              error={uploadErrors[uploadErrorKeyForActive('id')]}
               onAcceptedFiles={() => clearUploadError(ap, 'id')}
             />
           </fieldset>
@@ -969,14 +989,14 @@ export default function KYCPage() {
             <legend className="text-xs px-1" style={{ color: 'var(--muted-foreground)' }}>Birth and Nationality 出生及國籍</legend>
             <Field label={`${t('fields.dob')} *`} error={form.formState.errors.persons?.[ap]?.dateOfBirth?.message}>
               <DatePickerField
-                value={form.watch(`persons.${ap}.dateOfBirth` as const)}
+                value={activePerson?.dateOfBirth}
                 disabled={isLocked}
                 onChange={(value) => form.setValue(`persons.${ap}.dateOfBirth` as const, value, { shouldDirty: true, shouldValidate: true })}
               />
             </Field>
             <Field label={`${t('fields.placeOfBirth')} *`} error={form.formState.errors.persons?.[ap]?.placeOfBirth?.message}>
-              <KycLocationSelectField
-                value={form.watch(`persons.${ap}.placeOfBirth` as const)}
+              <KycProvinceSelectField
+                value={activePerson?.placeOfBirth}
                 disabled={isLocked}
                 fieldStyle={fieldStyle}
                 onChange={(value) => form.setValue(`persons.${ap}.placeOfBirth` as const, value, { shouldDirty: true, shouldValidate: true })}
@@ -984,7 +1004,7 @@ export default function KYCPage() {
             </Field>
             <Field label={`${t('fields.nationality')} *`} error={form.formState.errors.persons?.[ap]?.nationality?.message}>
               <KycCountrySelectField
-                value={form.watch(`persons.${ap}.nationality` as const)}
+                value={activePerson?.nationality}
                 disabled={isLocked}
                 fieldStyle={fieldStyle}
                 onChange={(value) => form.setValue(`persons.${ap}.nationality` as const, value, { shouldDirty: true, shouldValidate: true })}
@@ -993,31 +1013,12 @@ export default function KYCPage() {
           </fieldset>
           {/* Address group */}
           <fieldset className="rounded-lg p-4 space-y-4" style={{ border: '1px solid var(--border)' }}>
-            <legend className="text-xs px-1" style={{ color: 'var(--muted-foreground)' }}>{t('fields.homeAddress')} &amp; {t('fields.contactAddress')}</legend>
-            <Field label={`${t('fields.homeAddress')} *`} error={form.formState.errors.persons?.[ap]?.homeAddress?.message}>
-              <KycAddressSelectField
-                value={form.watch(`persons.${ap}.homeAddress` as const)}
-                disabled={isLocked}
-                fieldStyle={fieldStyle}
-                onChange={(value) => {
-                  form.setValue(`persons.${ap}.homeAddress` as const, value, { shouldDirty: true, shouldValidate: true })
-                  const contactPath = `persons.${ap}.contactAddress` as const
-                  const currentContact = form.getValues(contactPath)
-                  if (!contactAddressEditedRef.current[slotIdForAp] || !currentContact?.trim()) {
-                    form.setValue(contactPath, value, { shouldDirty: true, shouldValidate: true })
-                  }
-                }}
-              />
-            </Field>
+            <legend className="text-xs px-1" style={{ color: 'var(--muted-foreground)' }}>{t('fields.contactAddress')}</legend>
             <Field label={`${t('fields.contactAddress')} *`} error={form.formState.errors.persons?.[ap]?.contactAddress?.message}>
-              <KycAddressSelectField
-                value={form.watch(`persons.${ap}.contactAddress` as const)}
+              <textarea
+                style={{ ...fieldStyle, minHeight: '6rem', resize: 'vertical' }}
                 disabled={isLocked}
-                fieldStyle={fieldStyle}
-                onChange={(value) => {
-                  contactAddressEditedRef.current[slotIdForAp] = true
-                  form.setValue(`persons.${ap}.contactAddress` as const, value, { shouldDirty: true, shouldValidate: true })
-                }}
+                {...form.register(`persons.${ap}.contactAddress` as const)}
               />
             </Field>
             <UploadZone
@@ -1033,7 +1034,7 @@ export default function KYCPage() {
               existingDocs={personId ? existingKycDocs[personId] : undefined}
               hint={t('uploadAddressHint', { defaultValue: 'Upload proof of address — PDF, JPG, PNG, max 10 MB' })}
               required
-              error={uploadErrors[uploadErrorKey(ap, 'address')]}
+              error={uploadErrors[uploadErrorKeyForActive('address')]}
               onAcceptedFiles={() => clearUploadError(ap, 'address')}
             />
           </fieldset>
@@ -1063,7 +1064,7 @@ export default function KYCPage() {
           <div className="space-y-2">
             <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('fields.usCitizen')}</p>
             <KycUsCitizenRadios
-              value={form.watch(`persons.${ap}.isUsCitizen` as const)}
+              value={activePerson?.isUsCitizen}
               disabled={isLocked}
               onChange={(val) => form.setValue(`persons.${ap}.isUsCitizen` as const, val, { shouldDirty: true })}
             />
@@ -1076,7 +1077,7 @@ export default function KYCPage() {
           <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#C9A96E' }}>{t('sectionB')}</h2>
           <Field label={t('fields.employmentStatus')}>
             <KycEmploymentStatusSelect
-              value={form.watch(`persons.${ap}.employmentStatus` as const)}
+              value={activePerson?.employmentStatus}
               disabled={isLocked}
               fieldStyle={fieldStyle}
               labels={{
@@ -1095,7 +1096,7 @@ export default function KYCPage() {
               </Field>
               <Field label={t('fields.companyAddress')}>
                 <KycAddressSelectField
-                  value={form.watch(`persons.${ap}.employerAddress` as const)}
+                  value={activePerson?.employerAddress}
                   disabled={isLocked}
                   fieldStyle={fieldStyle}
                   onChange={(value) => form.setValue(`persons.${ap}.employerAddress` as const, value, { shouldDirty: true, shouldValidate: true })}
@@ -1105,7 +1106,7 @@ export default function KYCPage() {
               <div className="space-y-2">
                 <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('fields.businessNature')}</p>
                 <KycBusinessNaturesField
-                  value={form.watch(`persons.${ap}.businessNaturesText` as const)}
+                  value={activePerson?.businessNaturesText}
                   disabled={isLocked}
                   fieldStyle={fieldStyle}
                   onChange={(value) => form.setValue(`persons.${ap}.businessNaturesText` as const, value, { shouldDirty: true })}
@@ -1132,7 +1133,7 @@ export default function KYCPage() {
           <div className="space-y-2">
             <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('fields.sourceOfWealth')} 財富來源</p>
             <KycSourcesOfWealthField
-              value={form.watch(`persons.${ap}.sourcesOfWealthText` as const)}
+              value={activePerson?.sourcesOfWealthText}
               disabled={isLocked}
               fieldStyle={fieldStyle}
               onChange={(value) => form.setValue(`persons.${ap}.sourcesOfWealthText` as const, value, { shouldDirty: true })}
@@ -1142,7 +1143,7 @@ export default function KYCPage() {
           <div className="space-y-2">
             <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('fields.annualIncome')} 年收入 (USD)</p>
             <KycAnnualIncomeRadios
-              value={form.watch(`persons.${ap}.annualIncome` as const)}
+              value={activePerson?.annualIncome}
               disabled={isLocked}
               onChange={(value) => form.setValue(`persons.${ap}.annualIncome` as const, value, { shouldDirty: true, shouldValidate: true })}
             />
@@ -1151,7 +1152,7 @@ export default function KYCPage() {
           <div className="space-y-2">
             <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('fields.netAssets')} 總資產 (USD)</p>
             <KycNetAssetRadios
-              value={form.watch(`persons.${ap}.netAssetValue` as const)}
+              value={activePerson?.netAssetValue}
               disabled={isLocked}
               onChange={(value) => form.setValue(`persons.${ap}.netAssetValue` as const, value, { shouldDirty: true, shouldValidate: true })}
             />
@@ -1160,7 +1161,7 @@ export default function KYCPage() {
           <div className="space-y-2">
             <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('fields.assetItems')} 資產項目</p>
             <KycAssetItemsField
-              value={form.watch(`persons.${ap}.assetItemsText` as const)}
+              value={activePerson?.assetItemsText}
               disabled={isLocked}
               onChange={(value) => form.setValue(`persons.${ap}.assetItemsText` as const, value, { shouldDirty: true })}
             />
@@ -1172,49 +1173,11 @@ export default function KYCPage() {
             <span className="text-sm" style={{ color: 'var(--foreground)' }}>{t('fields.isPep')}</span>
           </label>
 
-          {/* Financial documents upload */}
-          <div className="space-y-1">
-            <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--muted-foreground)' }}>
-              {t('financialDocuments', { defaultValue: 'Financial Documents' })}
-            </p>
-            <UploadZone
-              slotId={slotIdForAp}
-              personId={personId}
-              category="financial"
-              docType="KYC_FINANCIAL"
-              isLocked={isLocked}
-              uploads={uploads}
-              setUploads={setUploads}
-              pendingFiles={pendingKycUploads}
-              setPendingFiles={setPendingKycUploads}
-              hint={t('uploadFinancialHint', { defaultValue: 'Upload financial proof documents — PDF, JPG, PNG, max 10 MB' })}
-            />
-          </div>
         </div>
       )}
 
       {step === 3 && (
         <div className="space-y-4">
-          <div className="rounded-xl p-6 space-y-4" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
-            <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#C9A96E' }}>
-              {t('otherCertifications', { defaultValue: 'Other Certification Files' })}
-            </h2>
-            <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-              {t('otherCertificationsHint', { defaultValue: 'Upload any additional supporting certification files here.' })}
-            </p>
-            <UploadZone
-              slotId={slotIdForAp}
-              personId={personId}
-              category="other"
-              docType="KYC_OTHER"
-              isLocked={isLocked}
-              uploads={uploads}
-              setUploads={setUploads}
-              pendingFiles={pendingKycUploads}
-              setPendingFiles={setPendingKycUploads}
-              hint={t('uploadOtherHint', { defaultValue: 'Upload other certification files — PDF, JPG, PNG, max 10 MB' })}
-            />
-          </div>
           <div className="rounded-xl p-6 space-y-4" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
             <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#C9A96E' }}>{t('sectionD')}</h2>
             <Field label={`${t('signatureName')} *`} error={form.formState.errors.persons?.[ap]?.signatureName?.message}>
@@ -1223,7 +1186,7 @@ export default function KYCPage() {
             <div className="grid sm:grid-cols-2 gap-4">
               <Field label={`${t('declarationDate')} *`} error={form.formState.errors.persons?.[ap]?.declarationDate?.message}>
                 <DatePickerField
-                  value={form.watch(`persons.${ap}.declarationDate` as const)}
+                  value={activePerson?.declarationDate}
                   disabled={isLocked}
                   onChange={(value) => form.setValue(`persons.${ap}.declarationDate` as const, value, { shouldDirty: true, shouldValidate: true })}
                 />
@@ -1244,6 +1207,19 @@ export default function KYCPage() {
                 {form.formState.errors.persons[ap]?.declarationSigned?.message}
               </p>
             ) : null}
+            <UploadZone
+              slotId={slotIdForAp}
+              personId={personId}
+              category="declaration"
+              docType="KYC_DECLARATION"
+              isLocked={isLocked}
+              uploads={uploads}
+              setUploads={setUploads}
+              pendingFiles={pendingKycUploads}
+              setPendingFiles={setPendingKycUploads}
+              existingDocs={personId ? existingKycDocs[personId] : undefined}
+              hint={t('uploadDeclarationHint', { defaultValue: 'Upload signed declaration — PDF, JPG, PNG, max 10 MB' })}
+            />
             {!isLocked && (
               <button
                 type="button"

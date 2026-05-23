@@ -353,7 +353,8 @@ export default function EternityRing() {
 
         const ea = sparkle > 0.32 ? 0.7 : pd > 0.52 ? 0.5 : pd > 0.2 ? 0.2 : 0.038
         if (ea > 0.04) {
-          ctx!.strokeStyle = `rgba(255,250,242,${hot ? Math.min(0.88, ea + 0.14) : ea})`
+          const lineAlpha = (hot ? Math.min(0.88, ea + 0.14) : ea) * 0.6
+          ctx!.strokeStyle = `rgba(255,250,242,${lineAlpha})`
           ctx!.lineWidth = hot ? 1.1 : sparkle > 0.32 ? 1.0 : pd > 0.52 ? 0.54 : 0.34
           ctx!.stroke()
         }

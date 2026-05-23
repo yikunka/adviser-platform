@@ -1,8 +1,9 @@
 import { prisma } from '@/lib/db/prisma'
 import { uploadToR2 } from '@/lib/storage/r2'
-import type { DocumentType } from '@prisma/client'
+import type { AMLCheckTrigger, DocumentType } from '@prisma/client'
 
 type GeneratedDocType = Extract<DocumentType, 'ROD' | 'ROM' | 'ROSC' | 'DDR' | 'NAR1'>
+type DdrScreenTrigger = Extract<AMLCheckTrigger, 'SCHEDULED' | 'MANUAL' | 'KYC_SUBMIT'>
 
 function monthRange(date = new Date()) {
   const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1))
@@ -61,18 +62,25 @@ export async function generateAndStoreCompanyDocument({
   uploadedById,
   notes,
   effectiveDate,
+  ddrScreenTrigger = 'MANUAL',
 }: {
   type: GeneratedDocType
   companyId: string
   uploadedById: string
   notes?: string
   effectiveDate?: Date
+  ddrScreenTrigger?: DdrScreenTrigger
 }) {
   const company = await prisma.company.findUnique({
     where: { id: companyId },
     select: { id: true, nameEn: true },
   })
   if (!company) throw new Error('Company not found')
+
+  if (type === 'DDR') {
+    const { screenCompany } = await import('@/lib/aml/screener')
+    await screenCompany(companyId, ddrScreenTrigger, uploadedById)
+  }
 
   const rendered = await renderDocument(type, companyId)
   const datestamp = new Date().toISOString().split('T')[0].replace(/-/g, '')
@@ -136,6 +144,7 @@ export async function ensureMonthlyDdrDocument(companyId: string, uploadedById: 
     uploadedById,
     notes: `Month: ${key}`,
     effectiveDate: start,
+    ddrScreenTrigger: 'SCHEDULED',
   })
 }
 

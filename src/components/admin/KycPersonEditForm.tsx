@@ -9,7 +9,7 @@ import {
   KycTitleSelect,
   KycIdTypeSelect,
   KycCountrySelectField,
-  KycLocationSelectField,
+  KycProvinceSelectField,
   KycAddressSelectField,
   KycEmploymentStatusSelect,
   KycUsCitizenRadios,
@@ -58,6 +58,26 @@ function TextInput({
       type={type}
       className={inputClass}
       style={fieldStyle}
+      value={value ?? ''}
+      disabled={disabled}
+      onChange={e => onChange(e.target.value)}
+    />
+  )
+}
+
+function TextArea({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string | null | undefined
+  onChange: (v: string) => void
+  disabled?: boolean
+}) {
+  return (
+    <textarea
+      className={inputClass}
+      style={{ ...fieldStyle, resize: 'vertical', minHeight: '5rem' }}
       value={value ?? ''}
       disabled={disabled}
       onChange={e => onChange(e.target.value)}
@@ -123,7 +143,7 @@ export function KycPersonEditForm({ values, onChange, disabled }: Props) {
             <TextInput value={values.idNumber} onChange={v => set('idNumber', v)} disabled={disabled} />
           </Field>
           <Field label="Place of Issue" className="sm:col-span-2">
-            <KycLocationSelectField
+            <KycProvinceSelectField
               value={values.placeOfIssue}
               onChange={v => set('placeOfIssue', v)}
               disabled={disabled}
@@ -131,7 +151,7 @@ export function KycPersonEditForm({ values, onChange, disabled }: Props) {
             />
           </Field>
           <Field label="Place of Birth" className="sm:col-span-2">
-            <KycLocationSelectField
+            <KycProvinceSelectField
               value={values.placeOfBirth}
               onChange={v => set('placeOfBirth', v)}
               disabled={disabled}
@@ -139,12 +159,23 @@ export function KycPersonEditForm({ values, onChange, disabled }: Props) {
             />
           </Field>
           <Field label="ID Expiry">
-            <DatePickerPopover
-              value={values.idExpiry ?? ''}
-              onChange={v => set('idExpiry', v)}
-              disabled={disabled}
-              style={fieldStyle}
-            />
+            <div className="space-y-2">
+              <DatePickerPopover
+                value={values.idExpiry ?? ''}
+                onChange={v => set('idExpiry', v)}
+                disabled={disabled || Boolean(values.idExpiryPermanent)}
+                style={fieldStyle}
+              />
+              <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--foreground)' }}>
+                <input
+                  type="checkbox"
+                  checked={values.idExpiryPermanent ?? false}
+                  onChange={e => onChange({ ...values, idExpiryPermanent: e.target.checked, idExpiry: e.target.checked ? '' : values.idExpiry })}
+                  disabled={disabled}
+                />
+                Long-term
+              </label>
+            </div>
           </Field>
           <Field label="Date of Birth">
             <DatePickerPopover
@@ -206,21 +237,8 @@ export function KycPersonEditForm({ values, onChange, disabled }: Props) {
           <Field label="WeChat" className="sm:col-span-2">
             <TextInput value={values.wechat} onChange={v => set('wechat', v)} disabled={disabled} />
           </Field>
-          <Field label="Home Address" className="sm:col-span-2">
-            <KycAddressSelectField
-              value={values.homeAddress}
-              onChange={v => set('homeAddress', v)}
-              disabled={disabled}
-              fieldStyle={fieldStyle}
-            />
-          </Field>
           <Field label="Contact Address" className="sm:col-span-2">
-            <KycAddressSelectField
-              value={values.contactAddress}
-              onChange={v => set('contactAddress', v)}
-              disabled={disabled}
-              fieldStyle={fieldStyle}
-            />
+            <TextArea value={values.contactAddress} onChange={v => set('contactAddress', v)} disabled={disabled} />
           </Field>
           <Field label="Emergency Contact" className="sm:col-span-2">
             <TextInput value={values.emergencyContact} onChange={v => set('emergencyContact', v)} disabled={disabled} />

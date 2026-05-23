@@ -53,7 +53,7 @@ export function KycTitleSelect({ value, onChange, disabled, fieldStyle }: Select
       <option value="" style={kycSelectOptionStyle}>—</option>
       {KYC_TITLE_OPTIONS.map(opt => (
         <option key={opt} value={opt} style={kycSelectOptionStyle}>
-          {opt === 'Mr.' ? 'Mr. 先生' : opt === 'Ms.' ? 'Ms. 女士' : 'Mrs. 太太'}
+          {opt === 'Mr.' ? 'Mr. 先生' : 'Ms. 女士'}
         </option>
       ))}
     </select>
@@ -202,6 +202,62 @@ export function KycLocationSelectField({ value, onChange, disabled, fieldStyle }
           ) : <div />}
           {parts.city === 'Other' ? (
             <input style={style} disabled={disabled} value={parts.cityOther} placeholder={localizeUi('Other city', zh)} onChange={e => commit({ ...parts, cityOther: e.target.value })} />
+          ) : <div />}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+export function KycProvinceSelectField({ value, onChange, disabled, fieldStyle }: SelectProps) {
+  const zh = isChineseLocale(useLocale())
+  const style = mergeStyle(kycClientFieldStyle, fieldStyle)
+  const parts = splitLocationValue(value ?? undefined)
+  const regions = countryFor(parts.country)?.regions ?? []
+
+  function commit(next: typeof parts) {
+    onChange(joinParts([actualCountry(next), actualRegion(next)]))
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="grid sm:grid-cols-2 gap-3">
+        <select
+          aria-label="Country / Region"
+          style={style}
+          disabled={disabled}
+          value={parts.country}
+          onChange={e => commit({ country: e.target.value, countryOther: '', region: '', regionOther: '', city: '', cityOther: '' })}
+        >
+          <option value="" style={kycSelectOptionStyle}>{localizeUi('Country / Region', zh)}</option>
+          {LOCATION_COUNTRIES.map(country => (
+            <option key={country.value} value={country.value} style={kycSelectOptionStyle}>
+              {localizeOption(country.value, zh)}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Province / State"
+          style={style}
+          disabled={disabled || regions.length === 0}
+          value={parts.region}
+          onChange={e => commit({ ...parts, region: e.target.value, regionOther: '', city: '', cityOther: '' })}
+        >
+          <option value="" style={kycSelectOptionStyle}>{localizeUi('Province / State', zh)}</option>
+          {regions.map(region => (
+            <option key={region.value} value={region.value} style={kycSelectOptionStyle}>
+              {localizeOption(region.value, zh)}
+            </option>
+          ))}
+        </select>
+      </div>
+      {(parts.country === 'Other' || parts.region === 'Other') ? (
+        <div className="grid sm:grid-cols-2 gap-3">
+          {parts.country === 'Other' ? (
+            <input style={style} disabled={disabled} value={parts.countryOther} placeholder={localizeUi('Other country', zh)} onChange={e => commit({ ...parts, countryOther: e.target.value })} />
+          ) : <div />}
+          {parts.region === 'Other' ? (
+            <input style={style} disabled={disabled} value={parts.regionOther} placeholder={localizeUi('Other province / state', zh)} onChange={e => commit({ ...parts, regionOther: e.target.value })} />
           ) : <div />}
         </div>
       ) : null}

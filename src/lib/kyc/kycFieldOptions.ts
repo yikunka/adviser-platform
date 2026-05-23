@@ -1,6 +1,6 @@
 /** Fixed option sets — aligned with client KYC form selectors */
 
-export const KYC_TITLE_OPTIONS = ['Mr.', 'Ms.', 'Mrs.'] as const
+export const KYC_TITLE_OPTIONS = ['Mr.', 'Ms.'] as const
 
 export const KYC_ID_TYPE_OPTIONS = [
   { value: 'HKID', label: 'HK ID Card 香港身份證' },

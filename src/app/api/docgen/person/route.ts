@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/auth/rbac'
 import { logAudit } from '@/lib/audit/logger'
 import { uploadToR2 } from '@/lib/storage/r2'
 import { prisma } from '@/lib/db/prisma'
+import { screenKeyPerson } from '@/lib/aml/screener'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -26,6 +27,8 @@ export async function POST(req: NextRequest) {
   if (!person) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   try {
+    await screenKeyPerson(keyPersonId, 'MANUAL', session!.user.id)
+
     const { generatePersonDDR } = await import('@/lib/docgen/ddr')
     const buffer = await generatePersonDDR(keyPersonId)
 

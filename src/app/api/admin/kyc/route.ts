@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import type { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
@@ -12,6 +13,24 @@ const createSchema = z.object({
   action: z.enum(['SAVE_DRAFT', 'SUBMIT']).default('SAVE_DRAFT'),
   person: kycPersonDraftZod,
 })
+
+const ID_EXPIRY_CATEGORY = 'ID_EXPIRY'
+const KYC_STATUS_VALUES = new Set(['DRAFT', 'SUBMITTED', 'PENDING_INFO', 'APPROVED', 'REJECTED'])
+
+function oneMonthFrom(date: Date) {
+  const next = new Date(date)
+  next.setMonth(next.getMonth() + 1)
+  return next
+}
+
+function idExpiryWhere(now = new Date()): Prisma.KeyPersonWhereInput {
+  return {
+    idExpiryDate: {
+      not: null,
+      lt: oneMonthFrom(now),
+    },
+  }
+}
 
 function withComposedName(person: z.infer<typeof kycPersonDraftZod>) {
   const structured = [person.firstName, person.otherName, person.lastName]
@@ -56,12 +75,18 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = req.nextUrl
   const status = searchParams.get('status')
+  const category = searchParams.get('category')
   const page = parseInt(searchParams.get('page') ?? '1')
   const limit = 20
 
-  const where = status ? { kycStatus: status as never } : {}
+  let where: Prisma.KeyPersonWhereInput = {}
+  if (category === ID_EXPIRY_CATEGORY) {
+    where = idExpiryWhere()
+  } else if (status && KYC_STATUS_VALUES.has(status)) {
+    where = { kycStatus: status as never }
+  }
 
-  const [records, total] = await Promise.all([
+  const [records, total, idExpiryCount] = await Promise.all([
     prisma.keyPerson.findMany({
       where,
       skip: (page - 1) * limit,
@@ -70,9 +95,10 @@ export async function GET(req: NextRequest) {
       include: kycRecordInclude,
     }),
     prisma.keyPerson.count({ where }),
+    prisma.keyPerson.count({ where: idExpiryWhere() }),
   ])
 
-  return NextResponse.json({ records, total, page, limit })
+  return NextResponse.json({ records, total, page, limit, counts: { idExpiry: idExpiryCount } })
 }
 
 export async function POST(req: NextRequest) {
