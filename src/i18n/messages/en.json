@@ -19,7 +19,11 @@
     "users": "Customer Account Management",
     "sfsOrders": "SFS Orders",
     "cosmocoatProducts": "Products",
-    "adminTeam": "Admin users & access"
+    "adminTeam": "Admin users & access",
+    "cosmocoatRawMaterials": "Raw Materials",
+    "cosmocoatRecipes": "Recipes",
+    "cosmocoatFactoryProducts": "Factory Products",
+    "cosmocoatProductionOrders": "Production Orders"
   },
   "home": {
     "heroTitleHighlight": "6AM Advisory",
@@ -61,12 +65,30 @@
     "processTitle": "Setting Up in 6 Steps",
     "processSub": "From decision to fully operational — as fast as one business day.",
     "process": {
-      "1": { "title": "Determine Structure", "desc": "Choose company type, shareholding and directorship arrangement." },
-      "2": { "title": "Prepare Documents", "desc": "Finalise the company name and prepare all statutory documentation." },
-      "3": { "title": "Submit Application", "desc": "File with the Companies Registry and obtain your Certificate of Incorporation." },
-      "4": { "title": "Appoint Secretary", "desc": "Designate a qualified Hong Kong resident as company secretary." },
-      "5": { "title": "Register Address", "desc": "Establish a registered office address for official correspondence." },
-      "6": { "title": "Accounting Setup", "desc": "Implement accounting systems and commence tax compliance obligations." }
+      "1": {
+        "title": "Determine Structure",
+        "desc": "Choose company type, shareholding and directorship arrangement."
+      },
+      "2": {
+        "title": "Prepare Documents",
+        "desc": "Finalise the company name and prepare all statutory documentation."
+      },
+      "3": {
+        "title": "Submit Application",
+        "desc": "File with the Companies Registry and obtain your Certificate of Incorporation."
+      },
+      "4": {
+        "title": "Appoint Secretary",
+        "desc": "Designate a qualified Hong Kong resident as company secretary."
+      },
+      "5": {
+        "title": "Register Address",
+        "desc": "Establish a registered office address for official correspondence."
+      },
+      "6": {
+        "title": "Accounting Setup",
+        "desc": "Implement accounting systems and commence tax compliance obligations."
+      }
     },
     "testimonialsTitle": "What Our Clients Say",
     "newsTitle": "Latest News",
@@ -190,11 +212,26 @@
       "professional": "Professional",
       "premium": "Premium",
       "basicDesc": "Hong Kong company incorporation only",
-      "basicItems": ["Company name search", "Articles of association", "Certificate of Incorporation", "Business Registration Certificate"],
+      "basicItems": [
+        "Company name search",
+        "Articles of association",
+        "Certificate of Incorporation",
+        "Business Registration Certificate"
+      ],
       "professionalDesc": "Incorporation + 1-year secretarial support",
-      "professionalItems": ["Everything in Basic", "1-year company secretary service", "Compliance reminders & deadline tracking", "Board resolutions & meeting minutes"],
+      "professionalItems": [
+        "Everything in Basic",
+        "1-year company secretary service",
+        "Compliance reminders & deadline tracking",
+        "Board resolutions & meeting minutes"
+      ],
       "premiumDesc": "Professional + virtual office & privacy protection",
-      "premiumItems": ["Everything in Professional", "1-year registered office address", "Mail handling & forwarding", "Director privacy protection filing"],
+      "premiumItems": [
+        "Everything in Professional",
+        "1-year registered office address",
+        "Mail handling & forwarding",
+        "Director privacy protection filing"
+      ],
       "customNote": "Need a tailored solution? Contact us and we'll prepare a bespoke quote for your business."
     }
   },
@@ -208,9 +245,18 @@
     "teamPhone2": "+86 1554 686 8835",
     "valuesTitle": "Our Core Values",
     "values": {
-      "integrity": { "title": "Integrity", "desc": "We operate with complete transparency and hold ourselves to the highest professional standards." },
-      "expertise": { "title": "Expertise", "desc": "Deep knowledge of HK company law, TCSP regulations and cross-border compliance." },
-      "partnership": { "title": "Partnership", "desc": "We build long-term relationships, growing alongside our clients." }
+      "integrity": {
+        "title": "Integrity",
+        "desc": "We operate with complete transparency and hold ourselves to the highest professional standards."
+      },
+      "expertise": {
+        "title": "Expertise",
+        "desc": "Deep knowledge of HK company law, TCSP regulations and cross-border compliance."
+      },
+      "partnership": {
+        "title": "Partnership",
+        "desc": "We build long-term relationships, growing alongside our clients."
+      }
     },
     "coresEyebrow": "Our Approach",
     "coresTitle": "Three Pillars of Advisory Excellence",
@@ -753,7 +799,6 @@
     "about": "About",
     "contact": "Contact",
     "faq": "FAQ",
-    "contact": "Contact",
     "address": "Unit 7, 20/F, Boss Commercial Centre, 28 Ferry Street, Jordan, Kowloon, HK",
     "phone": "+852 6560 0073",
     "email": "kennywong@6amadvise.com",

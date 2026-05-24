@@ -994,3 +994,191 @@ model CosTableProduct {
   @@index([isVisible, sortOrder])
   @@map("cos_table_products")
 }
+
+// ─────────────────────────────────────────────
+// CosmoCoat — RAW MATERIALS (原料)
+// ─────────────────────────────────────────────
+
+model CosTableRawMaterial {
+  id        String   @id @default(cuid())
+  category  String
+  attributeCode String
+  productionCode String @unique
+  huaxingCode String @default("")
+  name      String
+
+  primarySupplierCode    String  @default("")
+  primarySupplierName    String  @default("")
+  primaryPackageKg       Decimal? @db.Decimal(12, 2)
+  primaryPricePerKg      Decimal? @db.Decimal(12, 4)
+  primaryTaxIncluded     String  @default("")
+  primaryFreightIncluded String  @default("")
+  primaryNotes           String  @default("")
+
+  secondarySupplierCode    String  @default("")
+  secondarySupplierName    String  @default("")
+  secondaryPackageKg       Decimal? @db.Decimal(12, 2)
+  secondaryPricePerKg      Decimal? @db.Decimal(12, 4)
+  secondaryTaxIncluded     String  @default("")
+  secondaryFreightIncluded String  @default("")
+  secondaryNotes           String  @default("")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([attributeCode])
+  @@index([name])
+  @@map("cos_table_raw_materials")
+
+  recipeItems CosTableRecipeItem[]
+  productionOrderItems CosTableProductionOrderItem[]
+}
+
+// ─────────────────────────────────────────────
+// CosmoCoat — RECIPES (配方)
+// ─────────────────────────────────────────────
+
+model CosTableRecipeCategory {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  recipes CosTableRecipe[]
+
+  @@index([sortOrder])
+  @@map("cos_table_recipe_categories")
+}
+
+model CosTableRecipe {
+  id            String   @id @default(cuid())
+  categoryId    String
+  code          String   @unique
+  name          String
+  batchQuantity Decimal  @default(100) @db.Decimal(12, 3)
+  unitCost      Decimal? @db.Decimal(12, 4)
+  notes         String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  category CosTableRecipeCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  items    CosTableRecipeItem[]
+  productLinks CosTableProductRecipe[]
+  currentForProducts CosTableFactoryProduct[] @relation("CurrentFactoryRecipe")
+  productionOrders CosTableProductionOrder[]
+
+  @@index([categoryId, name])
+  @@map("cos_table_recipes")
+}
+
+model CosTableRecipeItem {
+  id            String   @id @default(cuid())
+  recipeId      String
+  rawMaterialId String
+  sortOrder     Int      @default(0)
+  quantity      Decimal  @db.Decimal(12, 3)
+  unitPrice     Decimal? @db.Decimal(12, 4)
+  amount        Decimal? @db.Decimal(14, 4)
+  percentage    Decimal? @db.Decimal(8, 4)
+  notes         String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  recipe      CosTableRecipe      @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  rawMaterial CosTableRawMaterial @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+
+  @@index([recipeId, sortOrder])
+  @@map("cos_table_recipe_items")
+}
+
+// ─────────────────────────────────────────────
+// CosmoCoat — FACTORY PRODUCTS (工厂产品)
+// ─────────────────────────────────────────────
+
+model CosTableFactoryProduct {
+  id              String   @id @default(cuid())
+  productCode     String   @unique
+  name            String
+  unit            String   @default("kg")
+  unitPrice       Decimal? @db.Decimal(12, 4)
+  notes           String   @default("")
+  currentRecipeId String?
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  currentRecipe CosTableRecipe? @relation("CurrentFactoryRecipe", fields: [currentRecipeId], references: [id], onDelete: SetNull)
+  recipeLinks   CosTableProductRecipe[]
+  productionOrders CosTableProductionOrder[]
+
+  @@index([name])
+  @@index([sortOrder])
+  @@map("cos_table_factory_products")
+}
+
+model CosTableProductRecipe {
+  id        String   @id @default(cuid())
+  productId String
+  recipeId  String
+  createdAt DateTime @default(now())
+
+  product CosTableFactoryProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  recipe  CosTableRecipe         @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, recipeId])
+  @@index([recipeId])
+  @@map("cos_table_product_recipes")
+}
+
+// ─────────────────────────────────────────────
+// CosmoCoat — PRODUCTION ORDERS (生产单)
+// ─────────────────────────────────────────────
+
+model CosTableProductionOrder {
+  id               String    @id @default(cuid())
+  code             String    @unique
+  factoryProductId String
+  recipeId         String
+  totalWeight      Decimal   @db.Decimal(12, 3)
+  batchNo          String    @default("")
+  startedAt        DateTime?
+  finishedAt       DateTime?
+  productionNotes  String    @default("")
+  qualityNotes     String    @default("")
+  packagingNotes   String    @default("")
+  status           String    @default("draft")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  factoryProduct CosTableFactoryProduct @relation(fields: [factoryProductId], references: [id], onDelete: Restrict)
+  recipe         CosTableRecipe         @relation(fields: [recipeId], references: [id], onDelete: Restrict)
+  items          CosTableProductionOrderItem[]
+
+  @@index([factoryProductId])
+  @@index([createdAt])
+  @@map("cos_table_production_orders")
+}
+
+model CosTableProductionOrderItem {
+  id             String   @id @default(cuid())
+  orderId        String
+  rawMaterialId  String
+  sortOrder      Int      @default(0)
+  productionCode String
+  materialName   String
+  percentage     Decimal  @db.Decimal(8, 4)
+  requiredWeight Decimal  @db.Decimal(12, 3)
+  actualWeight   Decimal? @db.Decimal(12, 3)
+  notes          String   @default("")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  order       CosTableProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  rawMaterial CosTableRawMaterial     @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, sortOrder])
+  @@map("cos_table_production_order_items")
+}

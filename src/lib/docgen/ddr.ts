@@ -118,13 +118,14 @@ function loadFontkitBridge(): { fontkit: Fontkit; subset: boolean } | null {
   if (!rawFontkit || typeof rawFontkit.create !== 'function') return null
   // Wrap create() so TTC collections yield a single Chinese-capable font face
   // (which has layout()). Choosing the first face commonly selects JP glyphs.
+  // Keep subsetting enabled; embedding a full CJK font makes each DDR ~15MB+.
   const fontkit: Fontkit = {
     create(data: Uint8Array) {
       const result = rawFontkit.create(data) as Font & { fonts?: Font[] }
       return (result.fonts?.length ? preferredCollectionFont(result.fonts) : result) as Font
     },
   }
-  return { fontkit, subset: false }
+  return { fontkit, subset: true }
 }
 
 async function firstExistingFontPath(): Promise<string | null> {

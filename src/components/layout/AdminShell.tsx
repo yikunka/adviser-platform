@@ -22,6 +22,10 @@ import {
   Diamond,
   Package,
   UserCog,
+  FlaskConical,
+  Beaker,
+  ClipboardList,
+  Boxes,
 } from 'lucide-react'
 import type { AdminMenuKey } from '@/lib/auth/admin-access'
 import { pathnameToAdminMenuKey, adminMenusAllow } from '@/lib/auth/admin-access'
@@ -54,6 +58,10 @@ const NAV_GROUPS: {
     labelKey: 'cosmocoat',
     items: [
       { href: '/admin/cosmocoat-products', key: 'cosmocoatProducts', Icon: Package },
+      { href: '/admin/cosmocoat-raw-materials', key: 'cosmocoatRawMaterials', Icon: FlaskConical },
+      { href: '/admin/cosmocoat-recipes', key: 'cosmocoatRecipes', Icon: Beaker },
+      { href: '/admin/cosmocoat-factory-products', key: 'cosmocoatFactoryProducts', Icon: Boxes },
+      { href: '/admin/cosmocoat-production-orders', key: 'cosmocoatProductionOrders', Icon: ClipboardList },
     ],
   },
   {

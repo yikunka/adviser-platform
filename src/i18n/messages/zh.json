@@ -18,8 +18,12 @@
     "settings": "設定",
     "users": "客戶帳號管理",
     "sfsOrders": "SFS 訂單",
-    "cosmocoatProducts": "產品管理",
-    "adminTeam": "後台帳號與權限"
+    "cosmocoatProducts": "官网產品管理",
+    "adminTeam": "後台帳號與權限",
+    "cosmocoatRawMaterials": "原料管理",
+    "cosmocoatRecipes": "配方管理",
+    "cosmocoatFactoryProducts": "产品管理",
+    "cosmocoatProductionOrders": "生产单管理"
   },
   "home": {
     "heroTitleHighlight": "6AM Advisory",
@@ -61,12 +65,30 @@
     "processTitle": "六步完成公司成立",
     "processSub": "",
     "process": {
-      "1": { "title": "確定架構", "desc": "選擇公司類型、股權結構及董事安排。" },
-      "2": { "title": "準備文件", "desc": "確定公司名稱並準備所有法定文件。" },
-      "3": { "title": "提交申請", "desc": "向公司註冊處提交申請，取得公司成立證書。" },
-      "4": { "title": "委任秘書", "desc": "委任合資格的香港居民擔任公司秘書。" },
-      "5": { "title": "登記地址", "desc": "設立法定辦事處地址以接收官方通訊。" },
-      "6": { "title": "建立帳務", "desc": "設置會計系統並開始履行稅務合規義務。" }
+      "1": {
+        "title": "確定架構",
+        "desc": "選擇公司類型、股權結構及董事安排。"
+      },
+      "2": {
+        "title": "準備文件",
+        "desc": "確定公司名稱並準備所有法定文件。"
+      },
+      "3": {
+        "title": "提交申請",
+        "desc": "向公司註冊處提交申請，取得公司成立證書。"
+      },
+      "4": {
+        "title": "委任秘書",
+        "desc": "委任合資格的香港居民擔任公司秘書。"
+      },
+      "5": {
+        "title": "登記地址",
+        "desc": "設立法定辦事處地址以接收官方通訊。"
+      },
+      "6": {
+        "title": "建立帳務",
+        "desc": "設置會計系統並開始履行稅務合規義務。"
+      }
     },
     "testimonialsTitle": "客戶評價",
     "newsTitle": "最新消息",
@@ -190,11 +212,26 @@
       "professional": "專業",
       "premium": "高級",
       "basicDesc": "僅香港公司成立",
-      "basicItems": ["公司名稱查冊", "公司章程", "公司成立證書", "商業登記證"],
+      "basicItems": [
+        "公司名稱查冊",
+        "公司章程",
+        "公司成立證書",
+        "商業登記證"
+      ],
       "professionalDesc": "成立 + 1年秘書支援",
-      "professionalItems": ["包含基本方案所有服務", "1年公司秘書服務", "合規提醒及截止日期追蹤", "董事會決議及會議紀錄"],
+      "professionalItems": [
+        "包含基本方案所有服務",
+        "1年公司秘書服務",
+        "合規提醒及截止日期追蹤",
+        "董事會決議及會議紀錄"
+      ],
       "premiumDesc": "專業方案 + 虛擬辦公室及私隱保護",
-      "premiumItems": ["包含專業方案所有服務", "1年法定辦事處地址", "郵件處理及轉寄", "董事私隱保護申報"],
+      "premiumItems": [
+        "包含專業方案所有服務",
+        "1年法定辦事處地址",
+        "郵件處理及轉寄",
+        "董事私隱保護申報"
+      ],
       "customNote": "需要度身定制方案？歡迎與我們聯絡，我們將按您的業務需求提供專屬報價。"
     }
   },
@@ -208,9 +245,18 @@
     "teamPhone2": "+86 1554 686 8835",
     "valuesTitle": "我們的核心價值",
     "values": {
-      "integrity": { "title": "誠信", "desc": "我們以完全透明的方式運營，堅守最高的職業標準。" },
-      "expertise": { "title": "專業", "desc": "深入了解香港公司法、TCSP法規及跨境合規要求。" },
-      "partnership": { "title": "夥伴關係", "desc": "我們建立長期合作關係，與客戶共同成長。" }
+      "integrity": {
+        "title": "誠信",
+        "desc": "我們以完全透明的方式運營，堅守最高的職業標準。"
+      },
+      "expertise": {
+        "title": "專業",
+        "desc": "深入了解香港公司法、TCSP法規及跨境合規要求。"
+      },
+      "partnership": {
+        "title": "夥伴關係",
+        "desc": "我們建立長期合作關係，與客戶共同成長。"
+      }
     },
     "coresEyebrow": "我們的方法",
     "coresTitle": "三大顧問服務支柱",

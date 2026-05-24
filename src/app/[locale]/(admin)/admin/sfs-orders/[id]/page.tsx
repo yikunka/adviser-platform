@@ -130,6 +130,10 @@ function requiresDiamondImages(phase: string, stepIndex: number) {
   return sfsStepRequiresDiamondImages(phase, stepIndex + 1)
 }
 
+function requiresSinglePhoto(phase: string, stepIndex: number) {
+  return phase === 'CVD' && stepIndex === 4
+}
+
 type PendingUploadFile = {
   file: File
   diamondLabel?: string
@@ -168,9 +172,11 @@ function StepRow({
   const isDone = !!doneStep
   const isWeightStep = phase === 'CHEM_TRANSFORM' && stepIndex === 1
   const isDiamondImageStep = requiresDiamondImages(phase, stepIndex)
+  const isSinglePhotoStep = requiresSinglePhoto(phase, stepIndex)
 
   function chooseGeneralFiles(fileList: FileList | null) {
-    setFiles(Array.from(fileList ?? []).map(file => ({ file })))
+    const selectedFiles = Array.from(fileList ?? [])
+    setFiles(selectedFiles.slice(0, isSinglePhotoStep ? 1 : selectedFiles.length).map(file => ({ file })))
   }
 
   function chooseDiamondFile(label: string, fileList: FileList | null) {
@@ -341,7 +347,11 @@ function StepRow({
                 >
                   <Upload size={13} style={{ color: '#C9A96E', flexShrink: 0 }} />
                   <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                    {files.length > 0 ? `${files.length} file(s)` : 'Upload photo or document (optional)'}
+                    {files.length > 0
+                      ? isSinglePhotoStep ? files[0].file.name : `${files.length} file(s)`
+                      : isSinglePhotoStep
+                        ? 'Upload one photo (optional)'
+                        : 'Upload photo or document (optional)'}
                   </span>
                   {files.length > 0 && (
                     <button
@@ -357,8 +367,8 @@ function StepRow({
             <input
               ref={fileRef}
               type="file"
-              multiple={!uploadTarget}
-              accept={uploadTarget ? 'image/jpeg,image/png,image/webp' : 'image/jpeg,image/png,image/webp,application/pdf'}
+              multiple={!uploadTarget && !isSinglePhotoStep}
+              accept={uploadTarget || isSinglePhotoStep ? 'image/jpeg,image/png,image/webp' : 'image/jpeg,image/png,image/webp,application/pdf'}
               className="hidden"
               onChange={e => {
                 if (uploadTarget) chooseDiamondFile(uploadTarget, e.target.files)

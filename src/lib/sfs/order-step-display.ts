@@ -16,7 +16,7 @@ export function sfsStepFileDiamondLabel(key: string) {
 }
 
 export function sfsStepRequiresDiamondImages(phase: string, stepNumber: number) {
-  return (phase === 'CVD' && (stepNumber === 5 || stepNumber === 6)) || phase === 'CRAFTING'
+  return (phase === 'CVD' && stepNumber === 6) || phase === 'CRAFTING'
 }
 
 export function splitSfsStepNotes(notes: string | null | undefined) {

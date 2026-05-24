@@ -9,6 +9,10 @@ export const ADMIN_MENU_KEYS = [
   'sfsOrders',
   'settings',
   'cosmocoatProducts',
+  'cosmocoatRawMaterials',
+  'cosmocoatRecipes',
+  'cosmocoatFactoryProducts',
+  'cosmocoatProductionOrders',
   'adminTeam',
 ] as const
 
@@ -24,6 +28,10 @@ const MENU_PLATFORM: Record<AdminMenuKey, Platform | 'GLOBAL'> = {
   users: 'GLOBAL',
   sfsOrders: 'SFS_DIAMOND',
   cosmocoatProducts: 'COSMICOAT',
+  cosmocoatRawMaterials: 'COSMICOAT',
+  cosmocoatRecipes: 'COSMICOAT',
+  cosmocoatFactoryProducts: 'COSMICOAT',
+  cosmocoatProductionOrders: 'COSMICOAT',
 }
 
 export type AdminAccessUser = {
@@ -91,6 +99,14 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
       return 'adminTeam'
     case 'cosmocoat-products':
       return 'cosmocoatProducts'
+    case 'cosmocoat-raw-materials':
+      return 'cosmocoatRawMaterials'
+    case 'cosmocoat-recipes':
+      return 'cosmocoatRecipes'
+    case 'cosmocoat-factory-products':
+      return 'cosmocoatFactoryProducts'
+    case 'cosmocoat-production-orders':
+      return 'cosmocoatProductionOrders'
     default:
       return null
   }
@@ -111,6 +127,10 @@ export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: stri
   { key: 'users', label: 'Customer account management', group: 'System' },
   { key: 'sfsOrders', label: 'SFS orders', group: 'SFS Diamond' },
   { key: 'cosmocoatProducts', label: 'Product management', group: 'CosmoCoat' },
+  { key: 'cosmocoatRawMaterials', label: 'Raw material management', group: 'CosmoCoat' },
+  { key: 'cosmocoatRecipes', label: 'Recipe management', group: 'CosmoCoat' },
+  { key: 'cosmocoatFactoryProducts', label: 'Factory product management', group: 'CosmoCoat' },
+  { key: 'cosmocoatProductionOrders', label: 'Production orders', group: 'CosmoCoat' },
   { key: 'settings', label: 'Settings', group: 'System' },
   { key: 'adminTeam', label: 'Admin users & access', group: 'System' },
 ]
