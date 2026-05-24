@@ -45,6 +45,7 @@ function withComposedName(person: z.infer<typeof kycPersonDraftZod>) {
 
 const kycRecordInclude = {
   kycDocuments: {
+    orderBy: { uploadedAt: 'desc' as const },
     select: {
       id: true,
       fileName: true,
@@ -91,7 +92,7 @@ export async function GET(req: NextRequest) {
       where,
       skip: (page - 1) * limit,
       take: limit,
-      orderBy: { updatedAt: 'desc' },
+      orderBy: { kycCode: { sort: 'desc', nulls: 'last' } },
       include: kycRecordInclude,
     }),
     prisma.keyPerson.count({ where }),

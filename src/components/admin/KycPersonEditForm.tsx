@@ -337,16 +337,6 @@ export function KycPersonEditForm({ values, onChange, disabled }: Props) {
               disabled={disabled}
             />
           </Field>
-          <Field label="Source of Funds">
-            <textarea
-              className={inputClass}
-              style={{ ...fieldStyle, resize: 'none' }}
-              rows={2}
-              disabled={disabled}
-              value={values.sourceOfFunds ?? ''}
-              onChange={e => set('sourceOfFunds', e.target.value)}
-            />
-          </Field>
         </div>
       </div>
 

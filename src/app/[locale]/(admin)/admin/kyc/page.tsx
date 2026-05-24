@@ -360,6 +360,23 @@ export default function KYCQueuePage() {
     }
   }
 
+  async function selectRecord(r: KYCRecord) {
+    setReason('')
+    setEditing(false)
+    setEditValues(null)
+    setSelected(r)
+    void fetchAML(r.id)
+    try {
+      const res = await fetch(`/api/admin/kyc/${r.id}`)
+      if (!res.ok) return
+      const fresh = await res.json() as KYCRecord
+      setSelected(fresh)
+      setRecords(prev => prev.map(rec => (rec.id === fresh.id ? fresh : rec)))
+    } catch {
+      // keep list snapshot if refresh fails
+    }
+  }
+
   async function runAMLScreen() {
     if (!selected) return
     setAmlLoading(true)
@@ -535,11 +552,16 @@ export default function KYCQueuePage() {
         return
       }
       if (data.document) {
-        // Append new report to selected person's documents in local state
+        const doc = data.document as KYCDocument
         setSelected(prev => prev
-          ? { ...prev, kycDocuments: [data.document, ...prev.kycDocuments] }
+          ? { ...prev, kycDocuments: [doc, ...prev.kycDocuments] }
           : prev
         )
+        setRecords(prev => prev.map(r => (
+          r.id === selected.id
+            ? { ...r, kycDocuments: [doc, ...r.kycDocuments] }
+            : r
+        )))
         toast.success('DDR generated')
       }
     } finally {
@@ -731,7 +753,7 @@ export default function KYCQueuePage() {
                 return (
                 <tr
                   key={r.id}
-                  onClick={() => { setSelected(r); setReason(''); setEditing(false); setEditValues(null); fetchAML(r.id) }}
+                  onClick={() => { void selectRecord(r) }}
                   className="px-4 py-3 cursor-pointer transition-colors"
                   style={{
                     background: selected?.id === r.id ? 'rgba(201,169,110,0.08)' : 'transparent',
@@ -1016,7 +1038,6 @@ export default function KYCQueuePage() {
                   </DetailSection>
 
                   <DetailSection title="Financial">
-                    <DetailRow label="Source of Funds" value={selected.sourceOfFunds} />
                     <DetailRow label="Sources of Wealth" value={selected.sourcesOfWealth?.join(', ') || null} />
                     <DetailRow label="Annual Income" value={selected.annualIncome} />
                     <DetailRow label="Net Asset Value" value={selected.netAssetValue} />

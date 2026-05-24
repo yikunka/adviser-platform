@@ -20,6 +20,50 @@ const reviewSchema = z.object({
 
 const REVIEW_ACTIONS = new Set(['APPROVE', 'REJECT', 'REQUEST_INFO', 'CANCEL_APPROVAL'])
 
+const kycRecordInclude = {
+  kycDocuments: {
+    orderBy: { uploadedAt: 'desc' as const },
+    select: {
+      id: true,
+      fileName: true,
+      documentType: true,
+      storageKey: true,
+      mimeType: true,
+      fileSize: true,
+      status: true,
+      uploadedAt: true,
+    },
+  },
+  submittedByUser: { select: { id: true, email: true, nameEn: true } },
+  companyLinks: {
+    include: {
+      company: {
+        select: {
+          nameEn: true,
+          clientUser: { select: { id: true, email: true, nameEn: true } },
+        },
+      },
+    },
+  },
+} as const
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { error } = await requireRole('STAFF', { adminMenu: 'kyc' })
+  if (error) return error
+
+  const { id } = await params
+  const record = await prisma.keyPerson.findUnique({
+    where: { id },
+    include: kycRecordInclude,
+  })
+  if (!record) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  return NextResponse.json(record)
+}
+
 function isReviewBody(body: unknown): body is z.infer<typeof reviewSchema> {
   if (!body || typeof body !== 'object') return false
   const action = (body as { action?: unknown }).action
@@ -131,31 +175,7 @@ export async function PATCH(
   const keyPerson = await prisma.keyPerson.update({
     where: { id },
     data: updateData as never,
-    include: {
-      kycDocuments: {
-        select: {
-          id: true,
-          fileName: true,
-          documentType: true,
-          storageKey: true,
-          mimeType: true,
-          fileSize: true,
-          status: true,
-          uploadedAt: true,
-        },
-      },
-      submittedByUser: { select: { id: true, email: true, nameEn: true } },
-      companyLinks: {
-        include: {
-          company: {
-            select: {
-              nameEn: true,
-              clientUser: { select: { id: true, email: true, nameEn: true } },
-            },
-          },
-        },
-      },
-    },
+    include: kycRecordInclude,
   })
 
   await logAudit(session!.user.id, 'KYC_ADMIN_UPDATE', 'KeyPerson', id, before, keyPerson)
