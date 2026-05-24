@@ -10,7 +10,6 @@ import {
   KycIdTypeSelect,
   KycCountrySelectField,
   KycProvinceSelectField,
-  KycAddressSelectField,
   KycEmploymentStatusSelect,
   KycUsCitizenRadios,
   KycBusinessNaturesField,
@@ -271,12 +270,7 @@ export function KycPersonEditForm({ values, onChange, disabled }: Props) {
                 <TextInput value={values.employerName} onChange={v => set('employerName', v)} disabled={disabled} />
               </Field>
               <Field label="Employer Address" className="sm:col-span-2">
-                <KycAddressSelectField
-                  value={values.employerAddress}
-                  onChange={v => set('employerAddress', v)}
-                  disabled={disabled}
-                  fieldStyle={fieldStyle}
-                />
+                <TextArea value={values.employerAddress} onChange={v => set('employerAddress', v)} disabled={disabled} />
               </Field>
               <Field label="Position">
                 <TextInput value={values.position} onChange={v => set('position', v)} disabled={disabled} />

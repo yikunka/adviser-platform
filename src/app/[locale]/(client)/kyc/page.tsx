@@ -19,7 +19,6 @@ import {
   KycIdTypeSelect,
   KycCountrySelectField,
   KycProvinceSelectField,
-  KycAddressSelectField,
   KycEmploymentStatusSelect,
   KycUsCitizenRadios,
   KycBusinessNaturesField,
@@ -1095,11 +1094,10 @@ export default function KYCPage() {
                 <input style={fieldStyle} disabled={isLocked} {...form.register(`persons.${ap}.employerName` as const)} />
               </Field>
               <Field label={t('fields.companyAddress')}>
-                <KycAddressSelectField
-                  value={activePerson?.employerAddress}
+                <textarea
+                  style={{ ...fieldStyle, minHeight: '5rem', resize: 'vertical' }}
                   disabled={isLocked}
-                  fieldStyle={fieldStyle}
-                  onChange={(value) => form.setValue(`persons.${ap}.employerAddress` as const, value, { shouldDirty: true, shouldValidate: true })}
+                  {...form.register(`persons.${ap}.employerAddress` as const)}
                 />
               </Field>
 

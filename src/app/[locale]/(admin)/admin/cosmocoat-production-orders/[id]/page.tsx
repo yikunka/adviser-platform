@@ -10,6 +10,7 @@ import {
   formatPercent,
   formatWeight,
 } from '@/lib/cosmocoat/recipes'
+import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
 
 type FactoryProductOption = {
   id: string
@@ -27,9 +28,10 @@ type RecipeItem = {
   rawMaterial: { id: string; productionCode: string; name: string }
 }
 
-type PreviewItem = {
+type EditableItem = {
   key: string
   id?: string
+  rawMaterialId: string
   sortOrder: number
   productionCode: string
   materialName: string
@@ -71,6 +73,14 @@ function inputStyle(): React.CSSProperties {
   }
 }
 
+const dateTimePickerStyle: React.CSSProperties = {
+  background: '#0E0E0A',
+  border: '1px solid #2A2418',
+  color: 'var(--foreground)',
+  borderRadius: '0.5rem',
+  fontSize: '0.875rem',
+}
+
 function toDatetimeLocal(iso: string | null): string {
   if (!iso) return ''
   const d = new Date(iso)
@@ -110,42 +120,16 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
   const [qualityNotes, setQualityNotes] = useState('')
   const [packagingNotes, setPackagingNotes] = useState('')
   const [status, setStatus] = useState<'draft' | 'completed'>('draft')
-  const [items, setItems] = useState<PreviewItem[]>([])
+  const [items, setItems] = useState<EditableItem[]>([])
 
   const selectedProduct = useMemo(
     () => products.find(p => p.id === factoryProductId) ?? null,
     [products, factoryProductId],
   )
 
-  const previewItems = useMemo(() => {
-    if (isNew && recipeItems.length > 0 && totalWeight > 0) {
-      return buildProductionOrderItems(recipeItems, totalWeight).map((item, index) => ({
-        key: `preview-${index}`,
-        sortOrder: item.sortOrder,
-        productionCode: item.productionCode,
-        materialName: item.materialName,
-        percentage: item.percentage,
-        requiredWeight: item.requiredWeight,
-        actualWeight: null as number | null,
-        notes: item.notes,
-      }))
-    }
-    return items
-  }, [isNew, recipeItems, totalWeight, items])
-
-  const displayItems = useMemo(() => {
-    if (isNew) return previewItems
-    return items.map(item => ({
-      ...item,
-      requiredWeight: totalWeight > 0
-        ? (totalWeight * item.percentage) / 100
-        : 0,
-    }))
-  }, [isNew, previewItems, items, totalWeight])
-
   const requiredTotal = useMemo(
-    () => displayItems.reduce((sum, item) => sum + item.requiredWeight, 0),
-    [displayItems],
+    () => items.reduce((sum, item) => sum + item.requiredWeight, 0),
+    [items],
   )
 
   const loadProducts = useCallback(async () => {
@@ -230,9 +214,11 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
         requiredWeight: number
         actualWeight: number | null
         notes: string
+        rawMaterial: { id: string }
       }) => ({
         key: item.id,
         id: item.id,
+        rawMaterialId: item.rawMaterial.id,
         sortOrder: item.sortOrder,
         productionCode: item.productionCode,
         materialName: item.materialName,
@@ -274,6 +260,35 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
     loadRecipeItems(product.currentRecipe.id)
   }, [factoryProductId, products, isNew, loadRecipeItems])
 
+  useEffect(() => {
+    if (!isNew || recipeItems.length === 0 || totalWeight <= 0) {
+      if (isNew && recipeItems.length === 0) setItems([])
+      return
+    }
+    setItems(prev => {
+      const actualByMaterial = new Map(prev.map(item => [item.rawMaterialId, item.actualWeight]))
+      return buildProductionOrderItems(recipeItems, totalWeight).map(item => ({
+        key: item.rawMaterialId,
+        rawMaterialId: item.rawMaterialId,
+        sortOrder: item.sortOrder,
+        productionCode: item.productionCode,
+        materialName: item.materialName,
+        percentage: item.percentage,
+        requiredWeight: item.requiredWeight,
+        actualWeight: actualByMaterial.get(item.rawMaterialId) ?? null,
+        notes: item.notes,
+      }))
+    })
+  }, [isNew, recipeItems, totalWeight])
+
+  useEffect(() => {
+    if (isNew) return
+    setItems(prev => prev.map(item => ({
+      ...item,
+      requiredWeight: totalWeight > 0 ? (totalWeight * item.percentage) / 100 : 0,
+    })))
+  }, [isNew, totalWeight])
+
   function patchActualWeight(key: string, actualWeight: number | null) {
     setItems(prev => prev.map(item => (
       item.key === key ? { ...item, actualWeight } : item
@@ -289,12 +304,17 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       toast.error('请填写有效的生产重量')
       return
     }
-    if (isNew && previewItems.length === 0) {
+    if (isNew && items.length === 0) {
       toast.error('当前配方无原料明细，无法创建生产单')
       return
     }
 
     setSaving(true)
+    const itemPayload = items.map(item => ({
+      rawMaterialId: item.rawMaterialId,
+      actualWeight: item.actualWeight,
+      notes: item.notes,
+    }))
     const payload = isNew
       ? {
           code: code.trim() || undefined,
@@ -307,6 +327,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
           qualityNotes,
           packagingNotes,
           status,
+          items: itemPayload,
         }
       : {
           totalWeight,
@@ -367,7 +388,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
               {isNew ? '新建生产单' : '生产单详情'}
             </h1>
             <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-              {isNew ? '选择产品并填写生产总量，系统将按配方比例计算参考投料' : `${code} · ${productName}`}
+              {isNew ? '选择产品并填写生产总量与实投数量，保存后生效' : `${code} · ${productName}`}
             </p>
           </div>
         </div>
@@ -420,13 +441,27 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>生产批次</label>
             <input value={batchNo} onChange={e => setBatchNo(e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>开始时间</label>
-            <input type="datetime-local" value={startedAt} onChange={e => setStartedAt(e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
+            <DatetimeLocalPicker
+              value={startedAt}
+              onChange={setStartedAt}
+              datePlaceholder="选择日期"
+              dateTriggerStyle={{ ...dateTimePickerStyle, width: '100%', padding: '0.625rem 0.75rem' }}
+              timeInputStyle={dateTimePickerStyle}
+              timeInputClassName="outline-none"
+            />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>完成时间</label>
-            <input type="datetime-local" value={finishedAt} onChange={e => setFinishedAt(e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
+            <DatetimeLocalPicker
+              value={finishedAt}
+              onChange={setFinishedAt}
+              datePlaceholder="选择日期"
+              dateTriggerStyle={{ ...dateTimePickerStyle, width: '100%', padding: '0.625rem 0.75rem' }}
+              timeInputStyle={dateTimePickerStyle}
+              timeInputClassName="outline-none"
+            />
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>状态</label>
@@ -466,32 +501,28 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
               </tr>
             </thead>
             <tbody>
-              {displayItems.length === 0 ? (
+              {items.length === 0 ? (
                 <tr>
                   <td colSpan={5} style={{ ...td, textAlign: 'center', padding: '2rem' }}>
                     {isNew ? '请选择有当前配方的产品' : '暂无原料明细'}
                   </td>
                 </tr>
-              ) : displayItems.map((item, index) => (
+              ) : items.map((item, index) => (
                 <tr key={item.key}>
                   <td style={td}>{index + 1}</td>
                   <td style={td}>{item.productionCode}</td>
                   <td style={td}>{formatPercent(item.percentage)}</td>
                   <td style={td}>{formatWeight(item.requiredWeight)}</td>
                   <td style={td}>
-                    {isNew ? (
-                      '—'
-                    ) : (
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.001"
-                        value={item.actualWeight ?? ''}
-                        onChange={e => patchActualWeight(item.key, e.target.value === '' ? null : Number(e.target.value))}
-                        className="w-28 rounded px-2 py-1 text-sm outline-none"
-                        style={inputStyle()}
-                      />
-                    )}
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.001"
+                      value={item.actualWeight ?? ''}
+                      onChange={e => patchActualWeight(item.key, e.target.value === '' ? null : Number(e.target.value))}
+                      className="w-28 rounded px-2 py-1 text-sm outline-none"
+                      style={inputStyle()}
+                    />
                   </td>
                 </tr>
               ))}

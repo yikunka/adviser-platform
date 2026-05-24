@@ -43,6 +43,7 @@ export function DatetimeLocalPicker({
   dateTriggerStyle,
   timeInputClassName,
   timeInputStyle,
+  datePlaceholder,
 }: {
   value: string
   onChange: (v: string) => void
@@ -50,6 +51,7 @@ export function DatetimeLocalPicker({
   dateTriggerStyle?: React.CSSProperties
   timeInputClassName?: string
   timeInputStyle?: React.CSSProperties
+  datePlaceholder?: string
 }) {
   const { date: datePart, time: timePart } = splitDatetimeLocal(value)
 
@@ -60,7 +62,7 @@ export function DatetimeLocalPicker({
           value={datePart}
           onChange={(d) => onChange(mergeDatetimeLocal(d, timePart))}
           disabled={disabled}
-          placeholder="Date"
+          placeholder={datePlaceholder ?? 'Date'}
           style={dateTriggerStyle}
         />
       </div>
