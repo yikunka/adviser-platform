@@ -615,6 +615,48 @@ npm run db:seed
 
 ### 備份資料庫
 
+**推薦：每 3 天自動備份並上傳 OSS，OSS 保留最近 10 份（約 30 天）。**
+
+腳本：`scripts/backup-db.sh`（`pg_dump` → gzip → OSS → 刪除超出保留數的舊備份）
+
+```bash
+# 手動執行（需在項目根目錄，且 .env 已配置 OSS_*）
+chmod +x scripts/backup-db.sh
+npm run backup:db
+# 或
+./scripts/backup-db.sh
+```
+
+OSS 路徑：`backups/db/adviser_YYYYMMDD_HHMMSS.sql.gz`（可用 `BACKUP_OSS_PREFIX` 修改前綴）
+
+**伺服器 crontab（每 3 天 03:00，請按實際部署路徑修改）：**
+
+```bash
+sudo crontab -e
+# 加入：
+0 3 */3 * * cd /opt/adviser && ./scripts/backup-db.sh >> /var/log/adviser-backup.log 2>&1
+```
+
+前提：
+- 伺服器已安裝 `node`、`gzip`
+- Docker 部署：`docker compose` 可用且 `db` 服務在運行
+- 裸機部署：已安裝 `pg_dump`，且 `.env` 中 `DATABASE_URL` 正確
+- `.env` 已配置 `OSS_REGION`、`OSS_ACCESS_KEY_ID`、`OSS_ACCESS_KEY_SECRET`、`OSS_BUCKET`
+
+可選環境變量：
+- `BACKUP_OSS_PREFIX` — 默認 `backups/db`
+- `BACKUP_RETAIN_COUNT` — 默認 `10`
+
+僅測試 OSS 上傳（不實際 PUT/DELETE）：
+
+```bash
+node scripts/backup-db-to-oss.mjs --dry-run /path/to/dump.sql.gz
+```
+
+---
+
+**手動 pg_dump（僅本地文件，不上傳 OSS）：**
+
 ```bash
 # Docker 方式
 docker compose exec -T db pg_dump -U adviser adviser_db \
@@ -628,17 +670,6 @@ docker compose exec -T db pg_dump -U adviser adviser_db \
 # 裸機方式（Linux）
 pg_dump -U adviser -h localhost adviser_db \
   | gzip > /opt/backups/adviser_$(date +%Y%m%d_%H%M).sql.gz
-```
-
-每日自動備份（生產 Linux）：
-
-```bash
-sudo crontab -e
-# 加入（每天 03:00，保留 30 天）：
-# 0 3 * * * docker compose -f /opt/adviser/docker-compose.yml exec -T db \
-#   pg_dump -U adviser adviser_db \
-#   | gzip > /opt/backups/adviser_$(date +\%Y\%m\%d).sql.gz
-# 0 4 * * * find /opt/backups -name "*.sql.gz" -mtime +30 -delete
 ```
 
 ### 還原備份

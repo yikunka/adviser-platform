@@ -14,7 +14,8 @@
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
     "aml:download-ofac": "tsx scripts/download-ofac-sdn.ts",
-    "generate:business-nature": "node scripts/generate-business-nature-options.mjs"
+    "generate:business-nature": "node scripts/generate-business-nature-options.mjs",
+    "backup:db": "bash scripts/backup-db.sh"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
