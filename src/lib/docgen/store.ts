@@ -56,6 +56,20 @@ async function renderDocument(type: GeneratedDocType, companyId: string) {
   }
 }
 
+const REGISTER_DOC_TYPES = new Set<GeneratedDocType>(['ROD', 'ROM', 'ROSC'])
+
+function isGeneratedRegisterDocName(type: string, name: string) {
+  return name.startsWith(`${type} —`)
+}
+
+async function findGeneratedRegisterDoc(companyId: string, type: 'ROD' | 'ROM' | 'ROSC') {
+  const docs = await prisma.document.findMany({
+    where: { companyId, documentType: type, deletedAt: null },
+    orderBy: { createdAt: 'desc' },
+  })
+  return docs.find(d => isGeneratedRegisterDocName(type, d.name)) ?? null
+}
+
 export async function generateAndStoreCompanyDocument({
   type,
   companyId,
@@ -87,16 +101,49 @@ export async function generateAndStoreCompanyDocument({
   const storageKey = `docgen/${companyId}/${type}_${datestamp}_${Date.now()}.${rendered.extension}`
   await uploadToR2(storageKey, rendered.buffer, rendered.mimeType)
 
+  const docName = `${type} — ${company.nameEn} (${notes ?? datestamp})`
+  const docNotes = notes ?? datestamp
+
+  if (REGISTER_DOC_TYPES.has(type)) {
+    const registerType = type as 'ROD' | 'ROM' | 'ROSC'
+    const existing = await findGeneratedRegisterDoc(companyId, registerType)
+    if (existing) {
+      const updated = await prisma.document.update({
+        where: { id: existing.id },
+        data: {
+          name: docName,
+          storageKey,
+          mimeType: rendered.mimeType,
+          fileSize: rendered.buffer.length,
+          uploadedById,
+          notes: docNotes,
+          version: { increment: 1 },
+        },
+      })
+      await prisma.document.updateMany({
+        where: {
+          companyId,
+          documentType: registerType,
+          deletedAt: null,
+          id: { not: existing.id },
+          name: { startsWith: `${registerType} —` },
+        },
+        data: { deletedAt: new Date() },
+      })
+      return updated
+    }
+  }
+
   return prisma.document.create({
     data: {
       companyId,
       documentType: type,
-      name: `${type} — ${company.nameEn} (${notes ?? datestamp})`,
+      name: docName,
       storageKey,
       mimeType: rendered.mimeType,
       fileSize: rendered.buffer.length,
       uploadedById,
-      notes,
+      notes: docNotes,
       effectiveDate,
     },
   })

@@ -59,6 +59,7 @@ const CUTS = [
   { label: 'Octagon',       src: '/sfsdiamond/order/cut-octagon.jpeg' },
   { label: 'Cushion Square',src: '/sfsdiamond/order/cut-cushion.jpeg' },
   { label: 'Princess',      src: '/sfsdiamond/order/cut-princess.png' },
+  { label: 'Emerald',       src: '/sfsdiamond/order/cut-Emerald.png' },
 ]
 
 const RING_DESIGNS = [

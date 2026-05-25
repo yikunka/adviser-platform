@@ -1226,6 +1226,7 @@ export default function CompanyDetailPage() {
   const [nar1Year, setNar1Year] = useState(String(new Date().getFullYear()))
   const [brYear, setBrYear] = useState(String(new Date().getFullYear()))
   const [generatingDdr, setGeneratingDdr] = useState(false)
+  const [generatingRegister, setGeneratingRegister] = useState<'ROD' | 'ROM' | 'ROSC' | null>(null)
   const [showOlderDdr, setShowOlderDdr] = useState(false)
   const ensuredDocsForRef = useRef<string | null>(null)
 
@@ -1266,17 +1267,23 @@ export default function CompanyDetailPage() {
   }, [])
 
   async function regenerateRegister(type: 'ROD' | 'ROM' | 'ROSC') {
-    const res = await fetch('/api/docgen', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type, companyId: id }),
-    })
-    if (res.ok) {
-      toast.success(`${type} generated`)
-      reload()
-    } else {
-      const err = await res.json().catch(() => ({}))
-      toast.error(err.error ?? `${type} generation failed`)
+    const hadDoc = company?.documents.some(d => d.documentType === type && d.name.startsWith(`${type} —`))
+    setGeneratingRegister(type)
+    try {
+      const res = await fetch('/api/docgen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, companyId: id }),
+      })
+      if (res.ok) {
+        toast.success(hadDoc ? `${type} regenerated` : `${type} generated`)
+        reload()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        toast.error(err.error ?? `${type} generation failed`)
+      }
+    } finally {
+      setGeneratingRegister(null)
     }
   }
 
@@ -2014,9 +2021,14 @@ export default function CompanyDetailPage() {
                 {latestDoc('ROD') && (
                   <Button size="sm" variant="outline" onClick={() => downloadDoc(latestDoc('ROD')!.id)}>Download ROD</Button>
                 )}
-                {!latestDoc('ROD') && (
-                  <span className="text-xs" style={{ color: '#5A5040' }}>ROD generated after next change</span>
-                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={generatingRegister === 'ROD'}
+                  onClick={() => regenerateRegister('ROD')}
+                >
+                  {generatingRegister === 'ROD' ? 'Generating…' : latestDoc('ROD') ? 'Regenerate ROD' : 'Generate ROD'}
+                </Button>
               </div>
               <Button size="sm" onClick={() => setModal({ type: 'director', mode: 'add' })}>+ Add Director</Button>
             </div>
@@ -2062,9 +2074,14 @@ export default function CompanyDetailPage() {
                 {latestDoc('ROM') && (
                   <Button size="sm" variant="outline" onClick={() => downloadDoc(latestDoc('ROM')!.id)}>Download ROM</Button>
                 )}
-                {!latestDoc('ROM') && (
-                  <span className="text-xs" style={{ color: '#5A5040' }}>ROM generated after next change</span>
-                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={generatingRegister === 'ROM'}
+                  onClick={() => regenerateRegister('ROM')}
+                >
+                  {generatingRegister === 'ROM' ? 'Generating…' : latestDoc('ROM') ? 'Regenerate ROM' : 'Generate ROM'}
+                </Button>
               </div>
               <Button size="sm" onClick={() => setModal({ type: 'member', mode: 'add' })}>+ Add Member</Button>
             </div>
@@ -2109,9 +2126,14 @@ export default function CompanyDetailPage() {
               {latestDoc('ROSC') && (
                 <Button size="sm" variant="outline" onClick={() => downloadDoc(latestDoc('ROSC')!.id)}>Download ROSC</Button>
               )}
-              {!latestDoc('ROSC') && (
-                <span className="text-xs" style={{ color: '#5A5040' }}>ROSC generated after next change</span>
-              )}
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={generatingRegister === 'ROSC'}
+                onClick={() => regenerateRegister('ROSC')}
+              >
+                {generatingRegister === 'ROSC' ? 'Generating…' : latestDoc('ROSC') ? 'Regenerate ROSC' : 'Generate ROSC'}
+              </Button>
             </div>
 
             {/* Significant Controllers */}

@@ -5,7 +5,7 @@ import { z } from 'zod'
 
 const diamondItemSchema = z.object({
   carat:    z.enum(['0.5', '1.0', '1.5', '2.0', '2.5', '3.0']),
-  shape:    z.enum(['Round', 'Oval', 'Heart', 'Octagon', 'Cushion Square', 'Princess']),
+  shape:    z.enum(['Round', 'Oval', 'Heart', 'Octagon', 'Cushion Square', 'Princess', 'Emerald']),
   type:     z.enum(['Ring', 'Necklace', 'Diamond only']),
   ringSize: z.string().optional(),
   design:   z.string().optional(),
