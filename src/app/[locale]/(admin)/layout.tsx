@@ -6,6 +6,11 @@ import { computeEffectiveAdminMenus } from '@/lib/auth/admin-access'
 
 const STAFF_ROLES = new Set(['STAFF', 'COMPLIANCE', 'SUPER_ADMIN'])
 
+function redirectToInvalidateSession(locale: string): never {
+  const callbackUrl = encodeURIComponent(`/${locale}/admin-login`)
+  redirect(`/api/admin/invalidate-session?callbackUrl=${callbackUrl}`)
+}
+
 export default async function AdminLayout({
   children,
   params,
@@ -18,12 +23,13 @@ export default async function AdminLayout({
 
   if (!session) redirect(`/${locale}/admin-login`)
   if (!STAFF_ROLES.has(session.user.role)) redirect(`/${locale}/dashboard`)
+  if (!session.user.id) redirectToInvalidateSession(locale)
 
   const userRow = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { role: true, adminMenuKeys: true, adminPlatforms: true },
   })
-  if (!userRow) redirect(`/${locale}/admin-login`)
+  if (!userRow) redirectToInvalidateSession(locale)
 
   const menuAccess = computeEffectiveAdminMenus(userRow)
 

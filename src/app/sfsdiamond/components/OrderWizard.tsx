@@ -481,11 +481,13 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
       </div>
 
       {item.type === 'Ring' && (
-        <Field label="Ring Size (EU 40–70)" required>
+        <Field label="Ring Size (EU)" required>
           <Input
-            type="number" min={40} max={70} value={item.ringSize}
+            type="text"
+            value={item.ringSize}
             onChange={e => onChange({ ringSize: e.target.value })}
-            placeholder="e.g. 54" style={{ maxWidth: 160 }}
+            placeholder="e.g. EU35"
+            style={{ maxWidth: 160 }}
           />
         </Field>
       )}

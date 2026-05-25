@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { signIn, useSession } from 'next-auth/react'
+import { signIn, signOut, useSession } from 'next-auth/react'
 import { toast } from 'sonner'
 import { Link } from '@/i18n/navigation'
 import { Loader2 } from 'lucide-react'
@@ -32,8 +32,19 @@ export default function AdminLoginPage() {
   const form = useForm<LoginData>({ resolver: zodResolver(loginSchema) })
 
   useEffect(() => {
-    if (status !== 'authenticated' || !session?.user?.role) return
-    if (STAFF_ROLES.has(session.user.role)) {
+    if (status !== 'authenticated' || !session?.user?.id || !session?.user?.role) return
+    if (!STAFF_ROLES.has(session.user.role)) return
+
+    let cancelled = false
+
+    async function verifyAndRedirect() {
+      const res = await fetch('/api/admin/session-verify')
+      if (cancelled) return
+      if (!res.ok) {
+        await signOut({ callbackUrl: `/${locale}/admin-login` })
+        return
+      }
+
       const cb = searchParams.get('callbackUrl')
       if (cb) {
         const decoded = decodeURIComponent(cb)
@@ -46,7 +57,10 @@ export default function AdminLoginPage() {
       }
       router.replace(`/${locale}/admin/dashboard`)
     }
-  }, [status, session?.user?.role, locale, router, session, searchParams])
+
+    void verifyAndRedirect()
+    return () => { cancelled = true }
+  }, [status, session?.user?.id, session?.user?.role, locale, router, searchParams])
 
   async function onSubmit(data: LoginData) {
     setLoading(true)

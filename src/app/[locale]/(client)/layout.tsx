@@ -21,6 +21,7 @@ export default async function ClientLayout({
   if (ADMIN_ROLES.has(session.user.role)) redirect(`/${locale}/admin/dashboard`)
 
   if (session.user.role === 'CLIENT') {
+    if (!session.user.id) redirect(`/${locale}/login`)
     const email =
       session.user.email ||
       (await prisma.user.findUnique({

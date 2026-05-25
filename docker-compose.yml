@@ -21,6 +21,8 @@ services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
     environment:
       POSTGRES_USER: adviser
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_strong_password}

@@ -13,7 +13,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
-    "aml:download-ofac": "tsx scripts/download-ofac-sdn.ts"
+    "aml:download-ofac": "tsx scripts/download-ofac-sdn.ts",
+    "generate:business-nature": "node scripts/generate-business-nature-options.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -72,6 +73,7 @@
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "pdfjs-dist": "^5.4.296",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5"
