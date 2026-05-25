@@ -54,6 +54,7 @@ enum DocumentType {
   ROSC
   AR
   NAR1
+  AUDIT_TAX
   DDR
   RESOLUTION
   MINUTES

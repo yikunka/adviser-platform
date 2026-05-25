@@ -8,7 +8,8 @@ import { FolderOpen, Download, Loader2 } from 'lucide-react'
 type Doc = {
   id: string
   name: string
-  type: string
+  type?: string
+  documentType?: string
   createdAt: string
   company?: { nameEn: string } | null
 }
@@ -23,6 +24,7 @@ const DOC_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
   ROSC:      { bg: 'rgba(201,169,110,0.15)', text: '#C9A96E' },
   DDR:       { bg: 'rgba(99,102,241,0.15)',  text: '#818cf8' },
   NAR1:      { bg: 'rgba(16,185,129,0.12)',  text: '#10b981' },
+  AUDIT_TAX: { bg: 'rgba(168,85,247,0.12)',  text: '#c084fc' },
   KYC:       { bg: 'rgba(245,158,11,0.12)',  text: '#f59e0b' },
   CORPORATE: { bg: 'rgba(99,102,241,0.12)', text: '#818cf8' },
 }
@@ -104,7 +106,8 @@ export default function DocumentsPage() {
 
           {/* Rows */}
           {docs.map((doc, i) => {
-            const typeColor = DOC_TYPE_COLORS[doc.type] ?? { bg: 'rgba(120,113,108,0.15)', text: '#9A8060' }
+            const docType = doc.documentType ?? doc.type ?? 'OTHER'
+            const typeColor = DOC_TYPE_COLORS[docType] ?? { bg: 'rgba(120,113,108,0.15)', text: '#9A8060' }
             return (
               <div
                 key={doc.id}
@@ -131,7 +134,7 @@ export default function DocumentsPage() {
                     className="px-2 py-0.5 rounded text-xs font-semibold"
                     style={{ background: typeColor.bg, color: typeColor.text }}
                   >
-                    {doc.type}
+                    {docType}
                   </span>
                 </span>
                 <span className="text-sm truncate" style={{ color: 'var(--muted-foreground)' }}>

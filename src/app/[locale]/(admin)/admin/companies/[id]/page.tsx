@@ -1225,6 +1225,7 @@ export default function CompanyDetailPage() {
   const [uploading, setUploading] = useState<string | null>(null)
   const [nar1Year, setNar1Year] = useState(String(new Date().getFullYear()))
   const [brYear, setBrYear] = useState(String(new Date().getFullYear()))
+  const [auditTaxYear, setAuditTaxYear] = useState(String(new Date().getFullYear()))
   const [generatingDdr, setGeneratingDdr] = useState(false)
   const [generatingRegister, setGeneratingRegister] = useState<'ROD' | 'ROM' | 'ROSC' | null>(null)
   const [showOlderDdr, setShowOlderDdr] = useState(false)
@@ -1596,6 +1597,47 @@ export default function CompanyDetailPage() {
             </div>
             <YearGroupedDocs
               docs={company.documents.filter(d => d.documentType === 'NAR1' && !isGeneratedDoc(d))}
+              onPreview={downloadDoc}
+              onDelete={deleteDoc}
+            />
+          </div>
+
+          {/* Audit and Tax Computation — year-tagged, multiple files per year */}
+          <div style={cardStyle}>
+            <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderBottom: '1px solid #2A2418' }}>
+              <div>
+                <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Audit and Tax Computation</span>
+                <p className="text-xs mt-1" style={{ color: '#5A5040' }}>Choose the year before uploading. Multiple files per year are supported.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <select value={auditTaxYear} onChange={e => setAuditTaxYear(e.target.value)} style={{ ...fieldStyle, width: 120 }}>
+                  {Array.from({ length: 12 }, (_, i) => String(new Date().getFullYear() + 2 - i)).map(year => (
+                    <option key={year} value={year} style={{ background: '#141414' }}>{year}</option>
+                  ))}
+                </select>
+                <label style={{ cursor: uploading === 'AUDIT_TAX' ? 'not-allowed' : 'pointer' }}>
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    className="hidden"
+                    disabled={uploading === 'AUDIT_TAX'}
+                    onChange={e => {
+                      uploadDocFiles('AUDIT_TAX', e.target.files, { year: auditTaxYear })
+                      e.target.value = ''
+                    }}
+                  />
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-medium transition-colors"
+                    style={{ borderColor: '#2A2418', color: uploading === 'AUDIT_TAX' ? '#5A5040' : 'var(--foreground)', background: 'transparent', cursor: 'inherit' }}
+                  >
+                    {uploading === 'AUDIT_TAX' ? 'Uploading…' : `Upload ${auditTaxYear}`}
+                  </span>
+                </label>
+              </div>
+            </div>
+            <YearGroupedDocs
+              docs={company.documents.filter(d => d.documentType === 'AUDIT_TAX' && !isGeneratedDoc(d))}
               onPreview={downloadDoc}
               onDelete={deleteDoc}
             />

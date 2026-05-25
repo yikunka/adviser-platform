@@ -53,6 +53,52 @@ function EmptyDocRow({ children }: { children: React.ReactNode }) {
   return <p className="px-4 py-3 text-sm" style={{ color: '#5A5040' }}>{children}</p>
 }
 
+function docYear(doc: { effectiveDate: Date | null; notes: string | null }) {
+  if (doc.effectiveDate) return String(new Date(doc.effectiveDate).getFullYear())
+  return doc.notes?.match(/\d{4}/)?.[0] ?? 'Unknown'
+}
+
+function ClientYearGroupedDocList({
+  docs,
+}: {
+  docs: Array<{ id: string; name: string; createdAt: Date; notes: string | null; effectiveDate: Date | null }>
+}) {
+  const groups = docs.reduce<Record<string, typeof docs>>((acc, doc) => {
+    const year = docYear(doc)
+    ;(acc[year] ??= []).push(doc)
+    return acc
+  }, {})
+  const years = Object.keys(groups).sort((a, b) => Number(b) - Number(a))
+
+  if (years.length === 0) return <EmptyDocRow>No files uploaded yet.</EmptyDocRow>
+
+  return (
+    <>
+      {years.map(year => (
+        <div key={year} style={{ borderTop: '1px solid #2A2418' }}>
+          <div className="px-4 py-2.5 text-sm font-medium" style={{ color: '#F0EAD8' }}>
+            {year}
+            <span className="ml-2 text-xs font-normal" style={{ color: '#5A5040' }}>
+              {groups[year].length} file{groups[year].length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <ul className="divide-y divide-[#2A2418]">
+            {groups[year].map(doc => (
+              <li key={doc.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                <span className="min-w-0 truncate text-sm" style={{ color: '#F0EAD8' }}>{doc.name}</span>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="text-xs" style={{ color: '#5A5040' }}>{fmt(doc.createdAt)}</span>
+                  <DownloadLink id={doc.id}>Download</DownloadLink>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </>
+  )
+}
+
 export default async function ClientCompanyDetailPage({ params }: Props) {
   const session = await auth()
   const { locale, id } = await params
@@ -156,6 +202,16 @@ export default async function ClientCompanyDetailPage({ params }: Props) {
               ))}
             </ul>
           )}
+        </div>
+
+        <div className="rounded-lg overflow-hidden" style={cardStyle}>
+          <div className="px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
+            <span className="text-sm font-semibold" style={{ color: '#F0EAD8' }}>Audit and Tax Computation</span>
+            <p className="text-xs mt-1" style={{ color: '#5A5040' }}>Files are grouped by year. Multiple files per year may be available.</p>
+          </div>
+          <ClientYearGroupedDocList
+            docs={company.documents.filter(d => d.documentType === 'AUDIT_TAX' && !isGeneratedDoc(d))}
+          />
         </div>
 
         <div className="rounded-lg p-4 space-y-3" style={cardStyle}>
