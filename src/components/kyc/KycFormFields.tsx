@@ -386,46 +386,22 @@ export function KycBusinessNaturesField({
   fieldStyle?: FieldStyle
 }) {
   const style = mergeStyle(kycClientFieldStyle, fieldStyle)
-  const current = splitCommaList(value)
-  const fixed = new Set(KYC_BUSINESS_NATURE_FIXED)
-  const custom = current.filter(v => !fixed.has(v as (typeof KYC_BUSINESS_NATURE_FIXED)[number]))
-  const customText = custom.join(', ')
+  const current = splitCommaList(value)[0] ?? ''
+  const hasLegacyValue = current && !KYC_BUSINESS_NATURE_FIXED.includes(current as (typeof KYC_BUSINESS_NATURE_FIXED)[number])
 
   return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {KYC_BUSINESS_NATURE_OPTIONS.map(({ value: val, label }) => {
-          const checked = current.includes(val)
-          return (
-            <label key={val} className="flex items-start gap-2 cursor-pointer text-xs leading-snug" style={{ color: 'var(--foreground)' }}>
-              <input
-                type="checkbox"
-                disabled={disabled}
-                checked={checked}
-                onChange={() => {
-                  const next = checked ? current.filter(v => v !== val) : [...current, val]
-                  onChange(joinCommaList(next))
-                }}
-                className="mt-0.5 shrink-0"
-              />
-              {label}
-            </label>
-          )
-        })}
-      </div>
-      <input
-        style={style}
-        disabled={disabled}
-        placeholder="Other business type..."
-        defaultValue={customText}
-        key={customText}
-        onBlur={e => {
-          const val = e.target.value.trim()
-          const fromFixed = current.filter(v => fixed.has(v as (typeof KYC_BUSINESS_NATURE_FIXED)[number]))
-          onChange(joinCommaList(val ? [...fromFixed, val] : fromFixed))
-        }}
-      />
-    </div>
+    <select
+      style={style}
+      disabled={disabled}
+      value={current}
+      onChange={e => onChange(e.target.value)}
+    >
+      <option value="">Select business nature...</option>
+      {hasLegacyValue ? <option value={current}>{current}</option> : null}
+      {KYC_BUSINESS_NATURE_OPTIONS.map(({ value: val, label }) => (
+        <option key={val} value={val}>{label}</option>
+      ))}
+    </select>
   )
 }
 

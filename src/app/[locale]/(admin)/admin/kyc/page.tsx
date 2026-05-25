@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { Download, Eye, Pencil, Plus, Trash2, Upload, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Eye, Pencil, Plus, Search, Trash2, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { KycPersonEditForm } from '@/components/admin/KycPersonEditForm'
@@ -252,6 +252,11 @@ export default function KYCQueuePage() {
   const t = useTranslations('admin.kyc')
   const [records, setRecords] = useState<KYCRecord[]>([])
   const [filterStatus, setFilterStatus] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [limit, setLimit] = useState(20)
   const [idExpiryCount, setIdExpiryCount] = useState(0)
   const [selected, setSelected] = useState<KYCRecord | null>(null)
   const [reason, setReason] = useState('')
@@ -275,20 +280,27 @@ export default function KYCQueuePage() {
   const [savingCreate, setSavingCreate] = useState(false)
   const createImageInputRef = useRef<HTMLInputElement | null>(null)
 
-  const fetchRecords = useCallback(async (statusOverride?: string) => {
+  const fetchRecords = useCallback(async (statusOverride?: string, pageOverride?: number, searchOverride?: string) => {
     const status = statusOverride ?? filterStatus
+    const pageNo = pageOverride ?? page
+    const q = searchOverride ?? searchQuery
     const params = new URLSearchParams()
     if (status === ID_EXPIRY_FILTER) {
       params.set('category', ID_EXPIRY_FILTER)
     } else if (status) {
       params.set('status', status)
     }
+    if (q.trim()) params.set('q', q.trim())
+    params.set('page', String(pageNo))
     const query = params.toString()
     const res = await fetch(`/api/admin/kyc${query ? `?${query}` : ''}`)
     const json = await res.json()
     setRecords(json.records ?? [])
+    setTotal(Number(json.total ?? 0))
+    setPage(Number(json.page ?? pageNo))
+    setLimit(Number(json.limit ?? 20))
     setIdExpiryCount(Number(json.counts?.idExpiry ?? 0))
-  }, [filterStatus])
+  }, [filterStatus, page, searchQuery])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchRecords updates state after the async request resolves.
   useEffect(() => { fetchRecords() }, [fetchRecords])
@@ -342,8 +354,9 @@ export default function KYCQueuePage() {
       setCreateImage(null)
       setCreateClientId('')
       setFilterStatus('APPROVED')
+      setPage(1)
       setSelected(json.record ?? null)
-      fetchRecords('APPROVED')
+      fetchRecords('APPROVED', 1)
     } finally {
       setCreating(false)
     }
@@ -450,9 +463,10 @@ export default function KYCQueuePage() {
       setCreateValues(emptyKycPerson())
       setManualClientId('')
       setFilterStatus('')
+      setPage(1)
       setSelected(created)
       setRecords(prev => [created, ...prev.filter(r => r.id !== created.id)])
-      fetchRecords('')
+      fetchRecords('', 1)
       if (action === 'SUBMIT') void fetchAML(created.id)
       toast.success(action === 'SUBMIT' ? 'KYC submitted' : 'KYC draft created')
     } finally {
@@ -636,6 +650,10 @@ export default function KYCQueuePage() {
     document.body.removeChild(a)
   }
 
+  const totalPages = Math.max(1, Math.ceil(total / limit))
+  const startRow = total === 0 ? 0 : (page - 1) * limit + 1
+  const endRow = Math.min(total, page * limit)
+
   return (
     <div className="p-6 space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -703,29 +721,64 @@ export default function KYCQueuePage() {
         </CardContent>
       </Card>
 
-      <div className="flex gap-2 flex-wrap">
-        {STATUS_OPTIONS.map(s => (
-          <button
-            key={s}
-            onClick={() => setFilterStatus(s)}
-            className="relative px-3 py-1.5 rounded-full text-sm font-medium transition-colors"
-            style={
-              filterStatus === s
-                ? { background: 'rgba(201,169,110,0.2)', color: '#C9A96E', border: '1px solid #C9A96E' }
-                : { background: '#1E1A12', color: '#7A7060', border: '1px solid #2A2418' }
-            }
-          >
-            {filterLabel(s, t('all'))}
-            {s === ID_EXPIRY_FILTER ? (
-              <span
-                className="absolute -right-2 -top-2 min-w-5 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none"
-                style={{ background: '#ef4444', color: '#fff', boxShadow: '0 0 0 2px #050305' }}
-              >
-                {idExpiryCount > 99 ? '99+' : idExpiryCount}
-              </span>
-            ) : null}
-          </button>
-        ))}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex gap-2 flex-wrap">
+          {STATUS_OPTIONS.map(s => (
+            <button
+              key={s}
+              onClick={() => { setFilterStatus(s); setPage(1) }}
+              className="relative px-3 py-1.5 rounded-full text-sm font-medium transition-colors"
+              style={
+                filterStatus === s
+                  ? { background: 'rgba(201,169,110,0.2)', color: '#C9A96E', border: '1px solid #C9A96E' }
+                  : { background: '#1E1A12', color: '#7A7060', border: '1px solid #2A2418' }
+              }
+            >
+              {filterLabel(s, t('all'))}
+              {s === ID_EXPIRY_FILTER ? (
+                <span
+                  className="absolute -right-2 -top-2 min-w-5 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none"
+                  style={{ background: '#ef4444', color: '#fff', boxShadow: '0 0 0 2px #050305' }}
+                >
+                  {idExpiryCount > 99 ? '99+' : idExpiryCount}
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </div>
+        <form
+          className="flex w-full gap-2 sm:max-w-md"
+          onSubmit={e => {
+            e.preventDefault()
+            setSearchQuery(searchInput.trim())
+            setPage(1)
+          }}
+        >
+          <div className="relative flex-1">
+            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#7A7060' }} />
+            <input
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+              placeholder="Search KYC, name, ID, email, company..."
+              className="h-9 w-full rounded-md pl-9 pr-3 text-sm"
+              style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: 'var(--foreground)', outline: 'none' }}
+            />
+          </div>
+          <Button type="submit" variant="outline" className="h-9" style={{ borderColor: '#2A2418', color: '#C9A96E' }}>
+            Search
+          </Button>
+          {searchQuery ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9"
+              style={{ borderColor: '#2A2418' }}
+              onClick={() => { setSearchInput(''); setSearchQuery(''); setPage(1) }}
+            >
+              Clear
+            </Button>
+          ) : null}
+        </form>
       </div>
 
       <div className="space-y-4">
@@ -791,6 +844,38 @@ export default function KYCQueuePage() {
               })}
                 </tbody>
               </table>
+            </div>
+            <div className="flex flex-col gap-3 border-t border-[#2A2418] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                Showing {startRow}-{endRow} of {total}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-8 gap-1.5 px-2.5 text-xs"
+                  disabled={page <= 1}
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  style={{ borderColor: '#2A2418' }}
+                >
+                  <ChevronLeft size={14} />
+                  Prev
+                </Button>
+                <span className="min-w-20 text-center text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                  Page {page} / {totalPages}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-8 gap-1.5 px-2.5 text-xs"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  style={{ borderColor: '#2A2418' }}
+                >
+                  Next
+                  <ChevronRight size={14} />
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

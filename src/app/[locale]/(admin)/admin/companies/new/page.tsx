@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DatePickerPopover } from '@/components/ui/date-picker-popover'
+import { BUSINESS_NATURE_OPTIONS } from '@/lib/kyc/kycFieldOptions'
 
 const fieldStyle: React.CSSProperties = {
   width: '100%',
@@ -419,7 +420,19 @@ export default function NewCompanyPage() {
 
         <div>
           <label style={labelStyle}>Business Nature</label>
-          <Input style={fieldStyle} value={form.businessNature} onChange={e => set('businessNature', e.target.value)} maxLength={500} />
+          <select
+            value={form.businessNature}
+            onChange={e => set('businessNature', e.target.value)}
+            style={fieldStyle}
+          >
+            <option value="" style={{ background: '#141414' }}>— Select business nature —</option>
+            {form.businessNature && !BUSINESS_NATURE_OPTIONS.some(opt => opt.value === form.businessNature) ? (
+              <option value={form.businessNature} style={{ background: '#141414' }}>{form.businessNature}</option>
+            ) : null}
+            {BUSINESS_NATURE_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value} style={{ background: '#141414' }}>{opt.label}</option>
+            ))}
+          </select>
         </div>
 
         <div>

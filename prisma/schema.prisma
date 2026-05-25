@@ -48,6 +48,7 @@ enum DocumentType {
   CI
   BR
   AA
+  NNC1
   ROD
   ROM
   ROSC

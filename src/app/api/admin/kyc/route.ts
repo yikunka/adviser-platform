@@ -77,15 +77,36 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const status = searchParams.get('status')
   const category = searchParams.get('category')
-  const page = parseInt(searchParams.get('page') ?? '1')
+  const search = searchParams.get('q')?.trim() ?? ''
+  const requestedPage = parseInt(searchParams.get('page') ?? '1')
+  const page = Number.isFinite(requestedPage) ? Math.max(1, requestedPage) : 1
   const limit = 20
 
-  let where: Prisma.KeyPersonWhereInput = {}
+  const filters: Prisma.KeyPersonWhereInput[] = []
   if (category === ID_EXPIRY_CATEGORY) {
-    where = idExpiryWhere()
+    filters.push(idExpiryWhere())
   } else if (status && KYC_STATUS_VALUES.has(status)) {
-    where = { kycStatus: status as never }
+    filters.push({ kycStatus: status as never })
   }
+  if (search) {
+    filters.push({
+      OR: [
+        { kycCode: { contains: search, mode: 'insensitive' } },
+        { nameEn: { contains: search, mode: 'insensitive' } },
+        { nameZh: { contains: search, mode: 'insensitive' } },
+        { firstName: { contains: search, mode: 'insensitive' } },
+        { lastName: { contains: search, mode: 'insensitive' } },
+        { idNumber: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { mobile: { contains: search, mode: 'insensitive' } },
+        { submittedByUser: { is: { email: { contains: search, mode: 'insensitive' } } } },
+        { companyLinks: { some: { company: { nameEn: { contains: search, mode: 'insensitive' } } } } },
+        { companyLinks: { some: { company: { nameZh: { contains: search, mode: 'insensitive' } } } } },
+      ],
+    })
+  }
+
+  const where: Prisma.KeyPersonWhereInput = filters.length > 0 ? { AND: filters } : {}
 
   const [records, total, idExpiryCount] = await Promise.all([
     prisma.keyPerson.findMany({

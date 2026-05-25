@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { DatePickerPopover } from '@/components/ui/date-picker-popover'
+import { BUSINESS_NATURE_OPTIONS } from '@/lib/kyc/kycFieldOptions'
 
 // ── KYC Person type (for pre-fill picker) ────────────────────────────────────
 
@@ -24,6 +25,13 @@ type KycPerson = {
   homeAddress: string | null
   contactAddress: string | null
   kycStatus: string
+}
+
+type VerifiedClient = {
+  id: string
+  email: string
+  nameEn: string
+  nameZh: string | null
 }
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -106,6 +114,9 @@ type Company = {
   companyNumber: string | null
   companyCode: string | null
   companyType: string | null
+  clientUserId: string | null
+  pendingClientEmail: string | null
+  clientUser: { nameEn: string; email: string } | null
   dateOfIncorporation: string | null
   registeredAddress: string | null
   businessNature: string | null
@@ -157,6 +168,26 @@ const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.75rem',
 function fmt(d: string | null | undefined) {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('en-HK')
+}
+
+function fmtMonthDay(d: string | null | undefined) {
+  if (!d) return '—'
+  return new Date(d).toLocaleDateString('en-HK', { month: 'short', day: 'numeric' })
+}
+
+function monthDayParts(d: string | null | undefined) {
+  if (!d) return { month: '', day: '' }
+  const date = new Date(d)
+  return {
+    month: String(date.getUTCMonth() + 1).padStart(2, '0'),
+    day: String(date.getUTCDate()).padStart(2, '0'),
+  }
+}
+
+function annualReturnIso(month: string, day: string, existing: string | null | undefined) {
+  if (!month || !day) return null
+  const year = existing ? new Date(existing).getUTCFullYear() : new Date().getFullYear()
+  return new Date(Date.UTC(year, Number(month) - 1, Number(day))).toISOString()
 }
 
 function DateInput({ value, onChange, required, disabled }: {
@@ -247,11 +278,18 @@ function YearGroupedDocs({
 
 function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => void }) {
   const [saving, setSaving] = useState(false)
+  const [clients, setClients] = useState<VerifiedClient[]>([])
+  const [clientsLoading, setClientsLoading] = useState(true)
+  const annualParts = monthDayParts(company.annualReturnDate)
   const [form, setForm] = useState({
     nameEn: company.nameEn,
     nameZh: company.nameZh ?? '',
     companyNumber: company.companyNumber ?? '',
+    companyCode: company.companyCode ?? '',
+    clientUserId: company.clientUserId ?? '',
     dateOfIncorporation: company.dateOfIncorporation ? company.dateOfIncorporation.slice(0, 10) : '',
+    annualReturnMonth: annualParts.month,
+    annualReturnDay: annualParts.day,
     registeredAddress: company.registeredAddress ?? '',
     businessNature: company.businessNature ?? '',
     status: company.status,
@@ -259,6 +297,23 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
   })
 
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })) }
+  const annualDayCount = form.annualReturnMonth ? new Date(2000, Number(form.annualReturnMonth), 0).getDate() : 31
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadClients() {
+      try {
+        const res = await fetch('/api/admin/clients?signedUpOnly=true')
+        if (!res.ok) return
+        const data = await res.json()
+        if (!cancelled) setClients(Array.isArray(data.clients) ? data.clients : [])
+      } finally {
+        if (!cancelled) setClientsLoading(false)
+      }
+    }
+    void loadClients()
+    return () => { cancelled = true }
+  }, [])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -267,7 +322,10 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
       const body: Record<string, unknown> = { nameEn: form.nameEn, status: form.status }
       if (form.nameZh) body.nameZh = form.nameZh
       if (form.companyNumber) body.companyNumber = form.companyNumber
+      body.companyCode = form.companyCode.trim() || null
+      body.clientUserId = form.clientUserId || null
       if (form.dateOfIncorporation) body.dateOfIncorporation = new Date(form.dateOfIncorporation).toISOString()
+      body.annualReturnDate = annualReturnIso(form.annualReturnMonth, form.annualReturnDay, company.annualReturnDate)
       if (form.registeredAddress) body.registeredAddress = form.registeredAddress
       if (form.businessNature) body.businessNature = form.businessNature
       if (form.serviceTier) body.serviceTier = form.serviceTier
@@ -301,8 +359,58 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
           <Input style={fieldStyle} value={form.companyNumber} onChange={e => set('companyNumber', e.target.value)} placeholder="e.g. 1234567" />
         </div>
         <div>
+          <label style={labelStyle}>Company Code</label>
+          <Input style={fieldStyle} value={form.companyCode} onChange={e => set('companyCode', e.target.value)} placeholder="e.g. AA00001" />
+        </div>
+      </div>
+      <div>
+        <label style={labelStyle}>Client Account</label>
+        <select
+          value={form.clientUserId}
+          onChange={e => set('clientUserId', e.target.value)}
+          disabled={clientsLoading || saving}
+          style={fieldStyle}
+        >
+          <option value="" style={{ background: '#141414' }}>No client account</option>
+          {clients.map(client => (
+            <option key={client.id} value={client.id} style={{ background: '#141414' }}>
+              {client.email} — {client.nameEn}{client.nameZh ? ` (${client.nameZh})` : ''}
+            </option>
+          ))}
+        </select>
+        {company.pendingClientEmail ? (
+          <p className="mt-1 text-xs" style={{ color: '#7A7060' }}>Pending account: {company.pendingClientEmail}</p>
+        ) : null}
+      </div>
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
           <label style={labelStyle}>Date of Incorporation</label>
           <DateInput value={form.dateOfIncorporation} onChange={v => set('dateOfIncorporation', v)} />
+        </div>
+        <div>
+          <label style={labelStyle}>Annual Return Day</label>
+          <div className="grid grid-cols-2 gap-2">
+            <select
+              value={form.annualReturnMonth}
+              onChange={e => {
+                const month = e.target.value
+                const maxDay = month ? new Date(2000, Number(month), 0).getDate() : 31
+                setForm(f => ({ ...f, annualReturnMonth: month, annualReturnDay: Number(f.annualReturnDay) > maxDay ? String(maxDay).padStart(2, '0') : f.annualReturnDay }))
+              }}
+              style={fieldStyle}
+            >
+              <option value="" style={{ background: '#141414' }}>Month</option>
+              {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(month => (
+                <option key={month} value={month} style={{ background: '#141414' }}>{month}</option>
+              ))}
+            </select>
+            <select value={form.annualReturnDay} onChange={e => set('annualReturnDay', e.target.value)} style={fieldStyle}>
+              <option value="" style={{ background: '#141414' }}>Day</option>
+              {Array.from({ length: annualDayCount }, (_, i) => String(i + 1).padStart(2, '0')).map(day => (
+                <option key={day} value={day} style={{ background: '#141414' }}>{day}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
       <div>
@@ -311,7 +419,15 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
       </div>
       <div>
         <label style={labelStyle}>Business Nature</label>
-        <Input style={fieldStyle} value={form.businessNature} onChange={e => set('businessNature', e.target.value)} />
+        <select value={form.businessNature} onChange={e => set('businessNature', e.target.value)} style={fieldStyle}>
+          <option value="" style={{ background: '#141414' }}>— Select business nature —</option>
+          {form.businessNature && !BUSINESS_NATURE_OPTIONS.some(opt => opt.value === form.businessNature) ? (
+            <option value={form.businessNature} style={{ background: '#141414' }}>{form.businessNature}</option>
+          ) : null}
+          {BUSINESS_NATURE_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value} style={{ background: '#141414' }}>{opt.label}</option>
+          ))}
+        </select>
       </div>
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
@@ -1119,6 +1235,7 @@ export default function CompanyDetailPage() {
   const [caseEdits, setCaseEdits] = useState<Record<string, { name: string; caseDate: string; remark: string }>>({})
   const [docEdits, setDocEdits] = useState<Record<string, { customDocumentType: string; submissionDate: string; notes: string }>>({})
   const [uploadingCase, setUploadingCase] = useState<string | null>(null)
+  const [expandedCases, setExpandedCases] = useState<Record<string, boolean>>({})
   // Per-case form for adding a supporting file (before upload)
   const [newSupForm, setNewSupForm] = useState<Record<string, {
     customDocumentType: string; isCustomType: boolean; notes: string; submissionDate: string
@@ -1210,7 +1327,7 @@ export default function CompanyDetailPage() {
     }
   }
 
-  async function uploadDoc(docType: string, file: File, opts: { year?: string; notes?: string } = {}) {
+  async function uploadDoc(docType: string, file: File, opts: { year?: string; notes?: string; deferReload?: boolean } = {}) {
     setUploading(docType)
     try {
       const fd = new FormData()
@@ -1224,9 +1341,21 @@ export default function CompanyDetailPage() {
         fd.append('notes', opts.notes)
       }
       const res = await fetch('/api/documents/upload', { method: 'POST', body: fd })
-      if (res.ok) { toast.success('Uploaded'); reload() }
+      if (res.ok) {
+        toast.success('Uploaded')
+        if (!opts.deferReload) reload()
+      }
       else { const d = await res.json(); toast.error(d.error ?? 'Upload failed') }
     } finally { setUploading(null) }
+  }
+
+  async function uploadDocFiles(docType: string, fileList: FileList | null, opts: { year?: string; notes?: string } = {}) {
+    const files = Array.from(fileList ?? [])
+    if (files.length === 0) return
+    for (const file of files) {
+      await uploadDoc(docType, file, { ...opts, deferReload: true })
+    }
+    reload()
   }
 
   async function deleteDoc(docId: string) {
@@ -1323,7 +1452,7 @@ export default function CompanyDetailPage() {
               ['Registered Address', company.registeredAddress ?? '—'],
               ['Date of Incorporation', company.dateOfIncorporation ? new Date(company.dateOfIncorporation).toLocaleDateString('en-HK') : '—'],
               ['Business Nature', company.businessNature ?? '—'],
-              ['Annual Return Date', company.annualReturnDate ? new Date(company.annualReturnDate).toLocaleDateString('en-HK') : '—'],
+              ['Annual Return Day', fmtMonthDay(company.annualReturnDate)],
             ].map(([label, value]) => (
               <div key={label} className="flex px-4 py-3">
                 <span className="w-52 shrink-0 text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>{label}</span>
@@ -1333,8 +1462,12 @@ export default function CompanyDetailPage() {
           </div>
 
           {/* Company statutory uploads */}
-          {(['CI', 'AA'] as const).map(docType => {
-            const labels = { CI: 'Certificate of Incorporation (CI)', AA: 'Articles of Association (AA)' }
+          {(['CI', 'NNC1', 'AA'] as const).map(docType => {
+            const labels = {
+              CI: 'Certificate of Incorporation (CI)',
+              NNC1: 'Incorporation Form (NNC1)',
+              AA: 'Articles of Association (AA)',
+            }
             const label = labels[docType]
             const docs = company.documents.filter(d => d.documentType === docType && !isGeneratedDoc(d))
             return (
@@ -1344,19 +1477,20 @@ export default function CompanyDetailPage() {
                   <label style={{ cursor: uploading === docType ? 'not-allowed' : 'pointer' }}>
                     <input
                       type="file"
+                      multiple={docType === 'AA'}
                       accept=".pdf,.jpg,.jpeg,.png"
                       className="hidden"
                       disabled={uploading === docType}
                       onChange={e => {
-                        const file = e.target.files?.[0]
-                        if (file) { uploadDoc(docType, file); e.target.value = '' }
+                        uploadDocFiles(docType, e.target.files)
+                        e.target.value = ''
                       }}
                     />
                     <span
                       className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-medium transition-colors"
                       style={{ borderColor: '#2A2418', color: uploading === docType ? '#5A5040' : 'var(--foreground)', background: 'transparent', cursor: 'inherit' }}
                     >
-                      {uploading === docType ? 'Uploading…' : `Upload ${docType}`}
+                      {uploading === docType ? 'Uploading…' : docType === 'AA' ? 'Upload AA files' : `Upload ${docType}`}
                     </span>
                   </label>
                 </div>
@@ -1667,15 +1801,32 @@ export default function CompanyDetailPage() {
                     }
 
                     const isDirty = !!caseEdits[fc.id]
+                    const isExpanded = expandedCases[fc.id] ?? false
 
                     return (
                       <div key={fc.id} style={cardStyle}>
                         {/* Case header */}
-                        <div className="px-4 py-3 flex flex-wrap items-start gap-3" style={{ borderBottom: '1px solid #2A2418' }}>
-                          <div className="flex-1 min-w-0 space-y-3">
-                            <div className="flex flex-wrap items-end gap-3">
-                              {/* Case type select */}
+                        <div className="px-4 py-3 flex flex-wrap items-start gap-3" style={{ borderBottom: isExpanded ? '1px solid #2A2418' : undefined }}>
+                          <button
+                            type="button"
+                            className="mt-7 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border text-xs"
+                            style={{ borderColor: '#2A2418', color: '#C9A96E' }}
+                            onClick={() => setExpandedCases(p => ({ ...p, [fc.id]: !isExpanded }))}
+                            aria-label={isExpanded ? 'Collapse case' : 'Expand case'}
+                          >
+                            {isExpanded ? '-' : '+'}
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <div className="grid gap-3 lg:grid-cols-[11rem_minmax(12rem,16rem)_minmax(14rem,1fr)]">
                               <div>
+                                <label className="text-xs block mb-1" style={{ color: '#5A5040' }}>Date</label>
+                                <DatePickerPopover
+                                  value={edit.caseDate}
+                                  onChange={v => setCaseEdits(p => ({ ...p, [fc.id]: { ...edit, caseDate: v } }))}
+                                  style={{ ...fieldStyle }}
+                                />
+                              </div>
+                              <div className="min-w-0">
                                 <label className="text-xs block mb-1" style={{ color: '#5A5040' }}>Case Type</label>
                                 <select
                                   value={pastCaseTypes.includes(edit.name) ? edit.name : '__new__'}
@@ -1690,39 +1841,27 @@ export default function CompanyDetailPage() {
                                   ))}
                                   <option value="__new__" style={{ background: '#141414' }}>— Enter new type… —</option>
                                 </select>
-                              </div>
-                              {(!pastCaseTypes.includes(edit.name)) && (
-                                <div>
-                                  <label className="text-xs block mb-1" style={{ color: '#5A5040' }}>New Case Type</label>
+                                {(!pastCaseTypes.includes(edit.name)) && (
                                   <input
                                     value={edit.name}
                                     onChange={e => setCaseEdits(p => ({ ...p, [fc.id]: { ...edit, name: e.target.value } }))}
-                                    placeholder="Enter case type…"
+                                    placeholder="Enter case type..."
                                     maxLength={200}
-                                    style={{ ...fieldStyle, width: 200 }}
+                                    className="mt-2"
+                                    style={{ ...fieldStyle }}
                                   />
-                                </div>
-                              )}
-                              {/* Case date */}
-                              <div className="w-44">
-                                <label className="text-xs block mb-1" style={{ color: '#5A5040' }}>Date</label>
-                                <DatePickerPopover
-                                  value={edit.caseDate}
-                                  onChange={v => setCaseEdits(p => ({ ...p, [fc.id]: { ...edit, caseDate: v } }))}
-                                  style={{ ...fieldStyle }}
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <label className="text-xs block mb-1" style={{ color: '#5A5040' }}>Remark</label>
+                                <input
+                                  value={edit.remark}
+                                  onChange={e => setCaseEdits(p => ({ ...p, [fc.id]: { ...edit, remark: e.target.value } }))}
+                                  placeholder="Remark..."
+                                  maxLength={500}
+                                  style={{ ...fieldStyle, width: '100%' }}
                                 />
                               </div>
-                            </div>
-                            {/* Remark */}
-                            <div>
-                              <label className="text-xs block mb-1" style={{ color: '#5A5040' }}>Remark (optional)</label>
-                              <input
-                                value={edit.remark}
-                                onChange={e => setCaseEdits(p => ({ ...p, [fc.id]: { ...edit, remark: e.target.value } }))}
-                                placeholder="Remark…"
-                                maxLength={500}
-                                style={{ ...fieldStyle, width: '100%' }}
-                              />
                             </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0 pt-6">
@@ -1731,29 +1870,31 @@ export default function CompanyDetailPage() {
                           </div>
                         </div>
 
-                        {/* Main file */}
-                        <div className="px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
-                          <p className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: '#7A7060' }}>Main File</p>
-                          {mainFile ? (
-                            <div className="flex items-center gap-3">
-                              <span className="text-sm truncate max-w-xs" style={{ color: 'var(--foreground)' }}>{mainFile.name}</span>
-                              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => downloadDoc(mainFile.id)}>Download</Button>
-                              <button onClick={() => deleteDoc(mainFile.id)} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Remove</button>
+                        {isExpanded ? (
+                          <>
+                            {/* Main file */}
+                            <div className="px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
+                              <p className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: '#7A7060' }}>Main File</p>
+                              {mainFile ? (
+                                <div className="flex items-center gap-3">
+                                  <span className="text-sm truncate max-w-xs" style={{ color: 'var(--foreground)' }}>{mainFile.name}</span>
+                                  <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => downloadDoc(mainFile.id)}>Download</Button>
+                                  <button onClick={() => deleteDoc(mainFile.id)} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Remove</button>
+                                </div>
+                              ) : (
+                                <label style={{ cursor: uploadingCase === fc.id + ':main' ? 'not-allowed' : 'pointer' }}>
+                                  <input type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" className="hidden" disabled={!!uploadingCase}
+                                    onChange={e => { const f = e.target.files?.[0]; if (f) { uploadMainFile(f); e.target.value = '' } }} />
+                                  <span className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-medium"
+                                    style={{ borderColor: '#2A2418', color: uploadingCase === fc.id + ':main' ? '#5A5040' : 'var(--foreground)', cursor: 'inherit' }}>
+                                    {uploadingCase === fc.id + ':main' ? 'Uploading...' : 'Upload Main File'}
+                                  </span>
+                                </label>
+                              )}
                             </div>
-                          ) : (
-                            <label style={{ cursor: uploadingCase === fc.id + ':main' ? 'not-allowed' : 'pointer' }}>
-                              <input type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" className="hidden" disabled={!!uploadingCase}
-                                onChange={e => { const f = e.target.files?.[0]; if (f) { uploadMainFile(f); e.target.value = '' } }} />
-                              <span className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-medium"
-                                style={{ borderColor: '#2A2418', color: uploadingCase === fc.id + ':main' ? '#5A5040' : 'var(--foreground)', cursor: 'inherit' }}>
-                                {uploadingCase === fc.id + ':main' ? 'Uploading…' : '↑ Upload Main File'}
-                              </span>
-                            </label>
-                          )}
-                        </div>
 
-                        {/* Supporting files */}
-                        <div className="px-4 py-3">
+                            {/* Supporting files */}
+                            <div className="px-4 py-3">
                           <p className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: '#7A7060' }}>Supporting Files</p>
 
                           {/* Add supporting file form */}
@@ -1826,31 +1967,33 @@ export default function CompanyDetailPage() {
                           </div>
 
                           {/* Existing supporting files */}
-                          {supporting.length === 0 ? (
-                            <p className="text-xs" style={{ color: '#5A5040' }}>No supporting files yet.</p>
-                          ) : (
-                            <ul className="divide-y divide-[#2A2418]">
-                              {supporting.map(doc => (
-                                <li key={doc.id} className="py-3">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="min-w-0 flex-1 space-y-0.5">
-                                      <p className="text-sm font-medium truncate" style={{ color: 'var(--foreground)' }}>{doc.name}</p>
-                                      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs" style={{ color: '#7A7060' }}>
-                                        {doc.customDocumentType && <span>Type: <span style={{ color: '#C9A96E' }}>{doc.customDocumentType}</span></span>}
-                                        {doc.submissionDate && <span>Submitted: {new Date(doc.submissionDate).toLocaleDateString('en-HK')}</span>}
-                                        {doc.notes && <span>— {doc.notes}</span>}
+                              {supporting.length === 0 ? (
+                                <p className="text-xs" style={{ color: '#5A5040' }}>No supporting files yet.</p>
+                              ) : (
+                                <ul className="divide-y divide-[#2A2418]">
+                                  {supporting.map(doc => (
+                                    <li key={doc.id} className="py-3">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="min-w-0 flex-1 space-y-0.5">
+                                          <p className="text-sm font-medium truncate" style={{ color: 'var(--foreground)' }}>{doc.name}</p>
+                                          <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs" style={{ color: '#7A7060' }}>
+                                            {doc.customDocumentType && <span>Type: <span style={{ color: '#C9A96E' }}>{doc.customDocumentType}</span></span>}
+                                            {doc.submissionDate && <span>Submitted: {new Date(doc.submissionDate).toLocaleDateString('en-HK')}</span>}
+                                            {doc.notes && <span>- {doc.notes}</span>}
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                          <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => downloadDoc(doc.id)}>Download</Button>
+                                          <button onClick={() => deleteDoc(doc.id)} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Delete</button>
+                                        </div>
                                       </div>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                      <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => downloadDoc(doc.id)}>Download</Button>
-                                      <button onClick={() => deleteDoc(doc.id)} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Delete</button>
-                                    </div>
-                                  </div>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          </>
+                        ) : null}
                       </div>
                     )
                   })
