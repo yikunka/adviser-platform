@@ -492,6 +492,7 @@ export default function AdminCosmoCoatFactoryProductsPage() {
                   <th style={th}>产品名称</th>
                   <th style={th}>单位</th>
                   <th style={th}>单价</th>
+                  <th style={{ ...th, textAlign: 'right' }}>配方成本</th>
                   <th style={th}>当前配方</th>
                   <th style={th}>关联配方</th>
                   <th style={{ ...th, textAlign: 'right' }}>操作</th>
@@ -508,6 +509,11 @@ export default function AdminCosmoCoatFactoryProductsPage() {
                     <td style={td}>{product.name}</td>
                     <td style={td}>{product.unit}</td>
                     <td style={td}>{formatMoney(product.unitPrice, 2)}</td>
+                    <td style={{ ...td, fontFamily: 'monospace', textAlign: 'right' }}>
+                      {product.currentRecipe?.unitCost != null
+                        ? formatMoney(product.currentRecipe.unitCost, 2)
+                        : '-'}
+                    </td>
                     <td style={td}>
                       {product.currentRecipe ? (
                         <span className="inline-flex items-center gap-1">
