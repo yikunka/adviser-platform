@@ -72,15 +72,39 @@ export async function GET(req: NextRequest) {
       }
     : {}
 
-  const [companies, total] = await Promise.all([
+  // Sort by the numeric part of companyCode only (positions 3-7, e.g. "00001" from "AA00001"),
+  // so companies across all prefixes are ordered by their sequential number.
+  // Zero-padded 5-digit strings sort correctly as strings (no CAST needed).
+  const like = `%${search}%`
+  const orderedIds = search
+    ? await prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM companies
+        WHERE (
+          "companyCode" ILIKE ${like} OR
+          "nameEn"      ILIKE ${like} OR
+          "nameZh"      ILIKE ${like} OR
+          "companyNumber" ILIKE ${like}
+        )
+        ORDER BY
+          CASE WHEN "companyCode" IS NULL THEN 1 ELSE 0 END,
+          SUBSTRING("companyCode" FROM 3) ASC,
+          "createdAt" DESC
+        LIMIT ${limit} OFFSET ${skip}
+      `
+    : await prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM companies
+        ORDER BY
+          CASE WHEN "companyCode" IS NULL THEN 1 ELSE 0 END,
+          SUBSTRING("companyCode" FROM 3) ASC,
+          "createdAt" DESC
+        LIMIT ${limit} OFFSET ${skip}
+      `
+
+  const ids = orderedIds.map(r => r.id)
+
+  const [companiesRaw, total] = await Promise.all([
     prisma.company.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: [
-        { companyCode: { sort: 'asc', nulls: 'last' } },
-        { createdAt: 'desc' },
-      ],
+      where: { id: { in: ids } },
       include: {
         assignedStaff: { select: { nameEn: true } },
         clientUser: { select: { nameEn: true, email: true } },
@@ -88,6 +112,10 @@ export async function GET(req: NextRequest) {
     }),
     prisma.company.count({ where }),
   ])
+
+  // Re-apply the SQL-determined order (findMany with `in` doesn't preserve order)
+  const idIndex = new Map(ids.map((id, i) => [id, i]))
+  const companies = companiesRaw.sort((a, b) => (idIndex.get(a.id) ?? 0) - (idIndex.get(b.id) ?? 0))
 
   return NextResponse.json({ companies, total, page, limit })
 }
