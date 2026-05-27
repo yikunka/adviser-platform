@@ -38,20 +38,27 @@ function ossCredentialsMissing(): boolean {
   return !accessKeyId || !secretAccessKey || !bucket || !region
 }
 
+/** True when OSS credentials and bucket are configured. */
+export function isOssConfigured(): boolean {
+  return !ossCredentialsMissing()
+}
+
 /** True when uploads/downloads should use the local uploads directory. */
 export function isLocalStorageEnabled(): boolean {
-  if ((process.env['USE_LOCAL_STORAGE'] ?? '').trim() === '1'
-    || (process.env['USE_LOCAL_STORAGE'] ?? '').trim().toLowerCase() === 'true') {
-    return true
+  const forceLocal =
+    (process.env['USE_LOCAL_STORAGE'] ?? '').trim() === '1'
+    || (process.env['USE_LOCAL_STORAGE'] ?? '').trim().toLowerCase() === 'true'
+  if (forceLocal) return true
+
+  // Production: prefer OSS when configured (ignore stray LOCAL_UPLOADS_DIR in .env).
+  if (process.env.NODE_ENV === 'production') {
+    return !isOssConfigured()
   }
+
   if ((process.env['LOCAL_UPLOADS_DIR'] ?? '').trim()) {
     return true
   }
-  // Dev default: no OSS credentials → store under ./uploads
-  if (process.env.NODE_ENV !== 'production' && ossCredentialsMissing()) {
-    return true
-  }
-  return false
+  return ossCredentialsMissing()
 }
 
 function getAppBaseUrl(): string {
@@ -193,6 +200,14 @@ export async function getSignedDownloadUrl(
     return `${getAppBaseUrl()}/api/files?${params.toString()}`
   }
 
+  return signOssDownloadUrl(key, expiresIn, opts)
+}
+
+async function signOssDownloadUrl(
+  key: string,
+  expiresIn = 900,
+  opts?: { responseContentDisposition?: string },
+): Promise<string> {
   const command = new GetObjectCommand({
     Bucket: bucket(),
     Key: key,

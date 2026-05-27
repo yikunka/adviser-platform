@@ -3,12 +3,19 @@
  *
  * Local dev: streams the file from LOCAL_UPLOADS_DIR (default ./uploads).
  * Production: redirects to a short-lived OSS presigned URL.
+ * Falls back to the other backend when the primary miss (mixed migration).
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import path from 'path'
 import { auth } from '@/lib/auth/auth'
-import { getSignedDownloadUrl, isLocalStorageEnabled, readLocalFile } from '@/lib/storage/r2'
+import {
+  getSignedDownloadUrl,
+  headObjectMeta,
+  isLocalStorageEnabled,
+  isOssConfigured,
+  readLocalFile,
+} from '@/lib/storage/r2'
 import { prisma } from '@/lib/db/prisma'
 
 const MIME_MAP: Record<string, string> = {
@@ -47,6 +54,43 @@ async function authorizeKey(key: string, userId: string, role: string): Promise<
   return Boolean(doc || kycDoc || sfsStep)
 }
 
+function localFileResponse(
+  key: string,
+  buffer: Buffer,
+  download: boolean,
+  filename: string | undefined,
+) {
+  const ext = path.extname(key).slice(1).toLowerCase()
+  const contentType = MIME_MAP[ext] ?? 'application/octet-stream'
+  const fileName = filename || path.basename(key)
+  const disposition = download ? 'attachment' : 'inline'
+
+  return new NextResponse(new Uint8Array(buffer), {
+    status: 200,
+    headers: {
+      'Content-Type': contentType,
+      'Content-Disposition': `${disposition}; filename="${fileName}"`,
+      'Content-Length': String(buffer.byteLength),
+      'Cache-Control': 'private, no-store',
+    },
+  })
+}
+
+async function redirectToOss(
+  key: string,
+  download: boolean,
+  filename: string | undefined,
+) {
+  const url = await getSignedDownloadUrl(
+    key,
+    900,
+    download
+      ? { responseContentDisposition: `attachment${filename ? `; filename="${filename}"` : ''}` }
+      : undefined,
+  )
+  return NextResponse.redirect(url, { status: 302 })
+}
+
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -62,38 +106,38 @@ export async function GET(req: NextRequest) {
   const download = req.nextUrl.searchParams.get('download') === '1'
   const filename = req.nextUrl.searchParams.get('filename')?.replace(/["\r\n]/g, '')
 
-  if (isLocalStorageEnabled()) {
-    try {
-      const { buffer } = await readLocalFile(key)
-      const ext = path.extname(key).slice(1).toLowerCase()
-      const contentType = MIME_MAP[ext] ?? 'application/octet-stream'
-      const fileName = filename || path.basename(key)
-      const disposition = download ? 'attachment' : 'inline'
+  const tryLocal = async () => {
+    const { buffer } = await readLocalFile(key)
+    return localFileResponse(key, buffer, download, filename)
+  }
 
-      return new NextResponse(new Uint8Array(buffer), {
-        status: 200,
-        headers: {
-          'Content-Type': contentType,
-          'Content-Disposition': `${disposition}; filename="${fileName}"`,
-          'Content-Length': String(buffer.byteLength),
-          'Cache-Control': 'private, no-store',
-        },
-      })
-    } catch {
-      return NextResponse.json({ error: 'File not found' }, { status: 404 })
-    }
+  const tryOss = async () => {
+    if (!isOssConfigured()) return null
+    const meta = await headObjectMeta(key)
+    if (!meta) return null
+    return redirectToOss(key, download, filename)
   }
 
   try {
-    const url = await getSignedDownloadUrl(
-      key,
-      900,
-      download
-        ? { responseContentDisposition: `attachment${filename ? `; filename="${filename}"` : ''}` }
-        : undefined,
-    )
-    return NextResponse.redirect(url, { status: 302 })
-  } catch {
-    return NextResponse.json({ error: 'File not found' }, { status: 404 })
+    if (isLocalStorageEnabled()) {
+      try {
+        return await tryLocal()
+      } catch {
+        const ossRes = await tryOss()
+        if (ossRes) return ossRes
+      }
+    } else {
+      const ossRes = await tryOss()
+      if (ossRes) return ossRes
+      try {
+        return await tryLocal()
+      } catch {
+        // fall through
+      }
+    }
+  } catch (error) {
+    console.error('[api/files] fetch failed:', key, error)
   }
+
+  return NextResponse.json({ error: 'File not found' }, { status: 404 })
 }
