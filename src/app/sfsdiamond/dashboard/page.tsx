@@ -9,7 +9,37 @@ const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   CANCELLED: { bg: 'rgba(239,68,68,0.12)',   color: '#ef4444'  },
 }
 
-const TOTAL_STEPS = 10 + 6 + 4 // 20 total across all phases
+// ─── Predefined steps from NL00001 production workflow ────────────────────────
+const PREDEFINED_STEPS: Record<string, string[]> = {
+  CHEM_TRANSFORM: [
+    'Check Sample & Labeling',
+    'Observe Sample Status & Check Weigh',
+    'Rinse & Clean',
+    'Drying with Oven',
+    'Transform to dust',
+    'Grinding',
+    'Check Status',
+    'Chemical Transformation from dust to gas bag',
+    'Double Check Label of gas dust bag & gas bottle',
+    'Transfer sample from gas bag to gas bottle',
+  ],
+  CVD: [
+    'Gas bottle to connect with CVD machine',
+    '1st Check Status (Day 0)',
+    '2nd Check Status (Day 7)',
+    '3rd Check Status (Day 14)',
+    '4th Check Status (Day 21)',
+    'Labeling',
+  ],
+  CRAFTING: [
+    'Crafting Start',
+    'Crafting End',
+    'Certification',
+    'Packaging',
+  ],
+}
+
+const TOTAL_STEPS = Object.values(PREDEFINED_STEPS).reduce((sum, steps) => sum + steps.length, 0)
 
 export default async function SFSDashboardPage() {
   const session = await auth()

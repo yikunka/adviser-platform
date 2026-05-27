@@ -19,8 +19,8 @@ const PREDEFINED_STEPS: Record<string, string[]> = {
     'Transform to dust',
     'Grinding',
     'Check Status',
-    'Double Check Label of gas dust bag & gas bottle',
     'Chemical Transformation from dust to gas bag',
+    'Double Check Label of gas dust bag & gas bottle',
     'Transfer sample from gas bag to gas bottle',
   ],
   CVD: [

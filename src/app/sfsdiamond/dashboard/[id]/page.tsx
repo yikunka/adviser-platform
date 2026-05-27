@@ -24,8 +24,37 @@ const PHASE_LABELS: Record<string, string> = {
   CRAFTING:       'Crafting & Jewelry Setting',
 }
 
+// ─── Predefined steps from NL00001 production workflow ────────────────────────
+const PREDEFINED_STEPS: Record<string, string[]> = {
+  CHEM_TRANSFORM: [
+    'Check Sample & Labeling',
+    'Observe Sample Status & Check Weigh',
+    'Rinse & Clean',
+    'Drying with Oven',
+    'Transform to dust',
+    'Grinding',
+    'Check Status',
+    'Chemical Transformation from dust to gas bag',
+    'Double Check Label of gas dust bag & gas bottle',
+    'Transfer sample from gas bag to gas bottle',
+  ],
+  CVD: [
+    'Gas bottle to connect with CVD machine',
+    '1st Check Status (Day 0)',
+    '2nd Check Status (Day 7)',
+    '3rd Check Status (Day 14)',
+    '4th Check Status (Day 21)',
+    'Labeling',
+  ],
+  CRAFTING: [
+    'Crafting Start',
+    'Crafting End',
+    'Certification',
+    'Packaging',
+  ],
+}
+
 const PHASE_ORDER = ['CHEM_TRANSFORM', 'CVD', 'CRAFTING']
-const TOTAL_STEPS: Record<string, number> = { CHEM_TRANSFORM: 10, CVD: 6, CRAFTING: 4 }
 
 function fileUrl(key: string) {
   return `/api/files?key=${encodeURIComponent(key)}`
@@ -107,10 +136,13 @@ export default async function SFSOrderDetailPage({
   const badge = STATUS_STYLE[order.status] ?? STATUS_STYLE.PENDING
   const diamonds = order.diamonds as { code?: string; carat?: string; shape?: string; type?: string; design?: string; metal?: string; ringSize?: string }[]
 
+  // Use predefined step labels for consistent display across customer and admin
+  const getStepsForPhase = (phase: string) => PREDEFINED_STEPS[phase] || []
+
   const phaseGroups = PHASE_ORDER.map(phase => ({
     phase,
     label: PHASE_LABELS[phase],
-    total: TOTAL_STEPS[phase],
+    total: getStepsForPhase(phase).length,
     steps: order.steps.filter(s => s.phase === phase),
   }))
 
@@ -245,7 +277,11 @@ export default async function SFSOrderDetailPage({
                       const notes = splitSfsStepNotes(step.notes)
                       const usesDiamondFiles = sfsStepRequiresDiamondImages(step.phase, step.stepNumber)
                       const grouped = usesDiamondFiles ? groupSfsStepFilesByDiamond(step.fileKeys, diamonds) : null
-
+                      
+                      // Get standardized step name from predefined list for consistent display
+                      const predefinedSteps = getStepsForPhase(step.phase)
+                      const stepName = predefinedSteps[step.stepNumber - 1] || step.particular
+                      
                       return (
                         <div key={step.id} className="px-5 py-4 flex items-start gap-3" style={{ borderColor: BORDER }}>
                             <div
@@ -256,7 +292,7 @@ export default async function SFSOrderDetailPage({
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                                <p className="text-sm font-medium" style={{ color: DARK }}>{step.particular}</p>
+                                <p className="text-sm font-medium" style={{ color: DARK }}>{stepName}</p>
                                 <p className="text-xs" style={{ color: MUTED }}>
                                   {new Date(step.recordedAt).toLocaleString('en-HK', {
                                     day: 'numeric', month: 'short', year: 'numeric',
