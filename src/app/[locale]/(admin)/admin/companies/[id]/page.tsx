@@ -1268,9 +1268,10 @@ interface Nar1AnalysisPreviewProps {
   }
   onConfirm: () => void
   onClose: () => void
+  companyId: string
 }
 
-function Nar1AnalysisPreview({ result, onConfirm, onClose }: Nar1AnalysisPreviewProps) {
+function Nar1AnalysisPreview({ result, onConfirm, onClose, companyId }: Nar1AnalysisPreviewProps) {
   const [saving, setSaving] = useState(false)
 
   async function handleSave() {
@@ -1282,7 +1283,7 @@ function Nar1AnalysisPreview({ result, onConfirm, onClose }: Nar1AnalysisPreview
       await Promise.all([
         // Save/Update Directors (RODM)
         ...result.directors.map(async (director) => {
-          const res = await fetch(`/api/admin/companies/${id}/directors`, {
+          const res = await fetch(`/api/admin/companies/${companyId}/directors`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1300,7 +1301,7 @@ function Nar1AnalysisPreview({ result, onConfirm, onClose }: Nar1AnalysisPreview
         }),
         // Save/Update Members (RODM)
         ...result.members.map(async (member) => {
-          const res = await fetch(`/api/admin/companies/${id}/members`, {
+          const res = await fetch(`/api/admin/companies/${companyId}/members`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1317,7 +1318,7 @@ function Nar1AnalysisPreview({ result, onConfirm, onClose }: Nar1AnalysisPreview
         }),
         // Save/Update Significant Controllers (ROSC)
         ...result.significantControllers.map(async (sc) => {
-          const res = await fetch(`/api/admin/companies/${id}/significant-controllers`, {
+          const res = await fetch(`/api/admin/companies/${companyId}/significant-controllers`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2668,6 +2669,7 @@ export default function CompanyDetailPage() {
               <button onClick={() => setShowNar1AnalysisResult(false)} className="text-xl leading-none" style={{ color: 'var(--muted-foreground)' }}>✕</button>
             </div>
             <Nar1AnalysisPreview
+              companyId={id}
               result={nar1AnalysisResult}
               onConfirm={() => {
                 setShowNar1AnalysisResult(false)

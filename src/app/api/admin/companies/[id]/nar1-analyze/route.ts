@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/rbac'
-import { prisma } from '@/lib/db'
+import { prisma } from '@/lib/db/prisma'
 import { extractPdfText } from '@/lib/company/pdf-utils'
 
 const ALLOWED_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/png'])
@@ -233,9 +233,11 @@ Important notes:
   const parsed = extractJsonFromText(rawContent)
   
   return {
-    directors: Array.isArray(parsed.directors) ? parsed.directors : [],
-    members: Array.isArray(parsed.members) ? parsed.members : [],
-    significantControllers: Array.isArray(parsed.significantControllers) ? parsed.significantControllers : [],
+    directors: Array.isArray(parsed.directors) ? (parsed.directors as ExtractedInfo['directors']) : [],
+    members: Array.isArray(parsed.members) ? (parsed.members as ExtractedInfo['members']) : [],
+    significantControllers: Array.isArray(parsed.significantControllers)
+      ? (parsed.significantControllers as ExtractedInfo['significantControllers'])
+      : [],
   }
 }
 
