@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
-import { uploadToR2 } from '@/lib/storage/r2'
+import { uploadToR2, deleteFromR2, getOssConfigError } from '@/lib/storage/r2'
 
 // Allowed file types for TDS and MSDS documents
 const ALLOWED_TYPES = [
@@ -17,6 +17,24 @@ const MAX_SIZE = 10 * 1024 * 1024 // 10MB
 
 type FileType = 'tds' | 'msds'
 
+const EXT_MIME: Record<string, string> = {
+  pdf: 'application/pdf',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+}
+
+function resolveContentType(file: File): string | null {
+  if (ALLOWED_TYPES.includes(file.type)) return file.type
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
+  const fromExt = EXT_MIME[ext]
+  if (fromExt && ALLOWED_TYPES.includes(fromExt)) return fromExt
+  return null
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -25,6 +43,11 @@ export async function POST(
   if (error) return error
 
   const { id } = await params
+
+  const ossError = getOssConfigError()
+  if (ossError) {
+    return NextResponse.json({ error: ossError }, { status: 503 })
+  }
 
   // Check if raw material exists
   const rawMaterial = await prisma.cosTableRawMaterial.findUnique({ where: { id } })
@@ -44,7 +67,8 @@ export async function POST(
     return NextResponse.json({ error: '无效的文件类型，必须是 tds 或 msds' }, { status: 400 })
   }
 
-  if (!ALLOWED_TYPES.includes(file.type)) {
+  const contentType = resolveContentType(file)
+  if (!contentType) {
     return NextResponse.json(
       { error: '不支持的文件格式。支持 PDF、Word、JPG、PNG、WEBP' },
       { status: 400 },
@@ -57,22 +81,22 @@ export async function POST(
 
   // Determine file extension
   let ext = 'pdf'
-  if (file.type === 'image/jpeg') ext = 'jpg'
-  else if (file.type === 'image/png') ext = 'png'
-  else if (file.type === 'image/webp') ext = 'webp'
-  else if (file.type === 'application/msword') ext = 'doc'
-  else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') ext = 'docx'
+  if (contentType === 'image/jpeg') ext = 'jpg'
+  else if (contentType === 'image/png') ext = 'png'
+  else if (contentType === 'image/webp') ext = 'webp'
+  else if (contentType === 'application/msword') ext = 'doc'
+  else if (contentType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') ext = 'docx'
 
   // Generate unique key for storage
   const key = `cosmocoat/raw-materials/${id}/${fileType}/${crypto.randomUUID()}.${ext}`
   const buffer = Buffer.from(await file.arrayBuffer())
+  const previousKey = fileType === 'tds' ? rawMaterial.tdsFileKey : rawMaterial.msdsFileKey
 
   try {
-    await uploadToR2(key, buffer, file.type, {
+    await uploadToR2(key, buffer, contentType, {
       contentDisposition: `attachment; filename="${file.name}"`,
     })
 
-    // Update the raw material record with the file key
     const updateData =
       fileType === 'tds'
         ? { tdsFileKey: key }
@@ -83,6 +107,12 @@ export async function POST(
       data: updateData,
     })
 
+    if (previousKey && previousKey !== key) {
+      await deleteFromR2(previousKey).catch(err => {
+        console.warn(`OSS delete failed for replaced file ${previousKey}:`, err)
+      })
+    }
+
     return NextResponse.json({
       success: true,
       fileKey: key,
@@ -91,6 +121,7 @@ export async function POST(
     }, { status: 201 })
   } catch (err) {
     console.error('File upload error:', err)
-    return NextResponse.json({ error: '文件上传失败' }, { status: 500 })
+    const message = err instanceof Error ? err.message : '文件上传失败'
+    return NextResponse.json({ error: message.includes('OSS') ? message : '文件上传失败' }, { status: 500 })
   }
 }

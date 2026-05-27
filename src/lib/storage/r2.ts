@@ -18,8 +18,25 @@
  *                       or a custom CDN domain — used by next.config assetPrefix
  */
 
-import { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+
+export function getOssConfigError(): string | null {
+  const region = (process.env['OSS_REGION'] ?? '').trim()
+  const accessKeyId = (process.env['OSS_ACCESS_KEY_ID'] ?? '').trim()
+  const secretAccessKey = (process.env['OSS_ACCESS_KEY_SECRET'] ?? '').trim()
+  const bucket = (process.env['OSS_BUCKET'] ?? '').trim()
+  if (!accessKeyId || !secretAccessKey) {
+    return 'OSS 未配置：请在 .env.local 中设置 OSS_ACCESS_KEY_ID 和 OSS_ACCESS_KEY_SECRET'
+  }
+  if (!bucket) {
+    return 'OSS 未配置：请在 .env.local 中设置 OSS_BUCKET'
+  }
+  if (!region) {
+    return 'OSS 未配置：请在 .env.local 中设置 OSS_REGION（例如 cn-hangzhou）'
+  }
+  return null
+}
 
 function requireBucket(): string {
   const b = (process.env['OSS_BUCKET'] ?? '').trim()
@@ -85,6 +102,10 @@ export async function headObjectMeta(key: string): Promise<{ metadata: Record<st
   } catch {
     return null
   }
+}
+
+export async function deleteFromR2(key: string): Promise<void> {
+  await makeClient().send(new DeleteObjectCommand({ Bucket: bucket(), Key: key }))
 }
 
 export async function getSignedDownloadUrl(

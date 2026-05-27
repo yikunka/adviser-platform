@@ -1,8 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { FlaskConical, Pencil, Plus, Search, Trash2, UploadCloud, FileText, CheckCircle, XCircle } from 'lucide-react'
+import { FlaskConical, Pencil, Plus, Search, Trash2, UploadCloud, CheckCircle, XCircle } from 'lucide-react'
 import type { RawMaterialRow } from '@/lib/cosmocoat/raw-materials'
 
 type RawMaterialForm = Omit<RawMaterialRow, 'id' | 'createdAt' | 'updatedAt'>
@@ -132,75 +133,39 @@ function SupplierFields({
   )
 }
 
-function RawMaterialModal({
-  item,
+function RawMaterialCreateModal({
   categories,
   attributes,
   onClose,
   onSaved,
 }: {
-  item: RawMaterialRow | null
   categories: string[]
   attributes: string[]
   onClose: () => void
   onSaved: () => void
 }) {
-  const [form, setForm] = useState<RawMaterialForm>(item ?? emptyForm)
+  const [form, setForm] = useState<RawMaterialForm>(emptyForm)
   const [saving, setSaving] = useState(false)
-  const [uploading, setUploading] = useState<string | null>(null)
-  const isEditing = !!item
 
   function patch<K extends keyof RawMaterialForm>(key: K, value: RawMaterialForm[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
-  }
-
-  async function uploadFile(type: 'tds' | 'msds', file: File) {
-    if (!item?.id) return
-    setUploading(type)
-    try {
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('type', type)
-      
-      const res = await fetch(`/api/admin/cosmocoat/raw-materials/${item.id}/upload`, {
-        method: 'POST',
-        body: fd,
-      })
-      
-      const data = await res.json()
-      if (!res.ok) {
-        toast.error(data.error || `${type.toUpperCase()} 上传失败`)
-        return
-      }
-      
-      toast.success(`${type.toUpperCase()} 文件上传成功`)
-      // Refresh the list to show updated status
-      onSaved()
-    } catch {
-      toast.error(`${type.toUpperCase()} 上传失败`)
-    } finally {
-      setUploading(type)
-    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
     try {
-      const res = await fetch(
-        isEditing ? `/api/admin/cosmocoat/raw-materials/${item.id}` : '/api/admin/cosmocoat/raw-materials',
-        {
-          method: isEditing ? 'PATCH' : 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(form),
-        },
-      )
+      const res = await fetch('/api/admin/cosmocoat/raw-materials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
       const data = await res.json()
       if (!res.ok) {
         toast.error(data.error ?? '保存失败')
         return
       }
-      toast.success(isEditing ? '原料已更新' : '原料已添加')
+      toast.success('原料已添加')
       onSaved()
       onClose()
     } catch {
@@ -218,9 +183,7 @@ function RawMaterialModal({
     >
       <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl p-6 space-y-5" style={{ background: '#111111', border: '1px solid #2A2418' }}>
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>
-            {isEditing ? '编辑原料' : '添加原料'}
-          </h2>
+          <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>添加原料</h2>
           <button type="button" onClick={onClose} className="px-3 py-1 rounded-md text-sm" style={{ color: 'var(--muted-foreground)' }}>关闭</button>
         </div>
 
@@ -258,76 +221,6 @@ function RawMaterialModal({
             <SupplierFields prefix="secondary" form={form} patch={patch} />
           </div>
 
-          {/* TDS and MSDS file upload */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>技术文档</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* TDS upload */}
-              <div style={card} className="p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>TDS (技术数据表)</span>
-                  {form.tdsFileKey ? (
-                    <CheckCircle size={16} style={{ color: '#4A9F52' }} />
-                  ) : (
-                    <XCircle size={16} style={{ color: '#7A7060' }} />
-                  )}
-                </div>
-                <p className="text-xs mb-2" style={{ color: '#7A7060' }}>支持 PDF、Word、JPG、PNG，最大 10MB</p>
-                <label className="flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm cursor-pointer transition-opacity hover:opacity-85"
-                  style={{ background: form.tdsFileKey ? 'rgba(74,159,82,0.12)' : 'rgba(201,169,110,0.12)', color: form.tdsFileKey ? '#4A9F52' : '#C9A96E' }}>
-                  <UploadCloud size={14} />
-                  {form.tdsFileKey ? '重新上传' : '上传文件'}
-                  <input 
-                    type="file" 
-                    accept=".pdf,.doc,.docx,.jpg,.png,.webp" 
-                    disabled={!!uploading}
-                    className="hidden" 
-                    onChange={async e => {
-                      const file = e.target.files?.[0]
-                      if (file) {
-                        await uploadFile('tds', file)
-                        e.target.value = ''
-                      }
-                    }} 
-                  />
-                </label>
-                {uploading === 'tds' && <p className="text-xs mt-1" style={{ color: '#C9A96E' }}>上传中...</p>}
-              </div>
-
-              {/* MSDS upload */}
-              <div style={card} className="p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>MSDS (安全数据表)</span>
-                  {form.msdsFileKey ? (
-                    <CheckCircle size={16} style={{ color: '#4A9F52' }} />
-                  ) : (
-                    <XCircle size={16} style={{ color: '#7A7060' }} />
-                  )}
-                </div>
-                <p className="text-xs mb-2" style={{ color: '#7A7060' }}>支持 PDF、Word、JPG、PNG，最大 10MB</p>
-                <label className="flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm cursor-pointer transition-opacity hover:opacity-85"
-                  style={{ background: form.msdsFileKey ? 'rgba(74,159,82,0.12)' : 'rgba(201,169,110,0.12)', color: form.msdsFileKey ? '#4A9F52' : '#C9A96E' }}>
-                  <UploadCloud size={14} />
-                  {form.msdsFileKey ? '重新上传' : '上传文件'}
-                  <input 
-                    type="file" 
-                    accept=".pdf,.doc,.docx,.jpg,.png,.webp" 
-                    disabled={!!uploading}
-                    className="hidden" 
-                    onChange={async e => {
-                      const file = e.target.files?.[0]
-                      if (file) {
-                        await uploadFile('msds', file)
-                        e.target.value = ''
-                      }
-                    }} 
-                  />
-                </label>
-                {uploading === 'msds' && <p className="text-xs mt-1" style={{ color: '#C9A96E' }}>上传中...</p>}
-              </div>
-            </div>
-          </div>
-
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm font-medium" style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}>取消</button>
             <button type="submit" disabled={saving} className="flex-1 py-2.5 rounded-lg text-sm font-medium disabled:opacity-60" style={{ background: '#C9A96E', color: '#0A0805' }}>
@@ -341,6 +234,7 @@ function RawMaterialModal({
 }
 
 export default function AdminCosmoCoatRawMaterialsPage() {
+  const router = useRouter()
   const [items, setItems] = useState<RawMaterialRow[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -351,8 +245,7 @@ export default function AdminCosmoCoatRawMaterialsPage() {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('')
   const [attribute, setAttribute] = useState('')
-  const [modalItem, setModalItem] = useState<RawMaterialRow | null>(null)
-  const [showModal, setShowModal] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
 
@@ -391,13 +284,11 @@ export default function AdminCosmoCoatRawMaterialsPage() {
   }, [search, category, attribute])
 
   function openCreate() {
-    setModalItem(null)
-    setShowModal(true)
+    setShowCreateModal(true)
   }
 
-  function openEdit(item: RawMaterialRow) {
-    setModalItem(item)
-    setShowModal(true)
+  function openDetail(item: RawMaterialRow) {
+    router.push(`/admin/cosmocoat-raw-materials/${item.id}`)
   }
 
   async function deleteItem(item: RawMaterialRow) {
@@ -521,7 +412,7 @@ export default function AdminCosmoCoatRawMaterialsPage() {
               </thead>
               <tbody>
                 {items.map(item => (
-                  <tr key={item.id} className="cursor-pointer transition-colors hover:bg-[#111108]" onClick={() => openEdit(item)}>
+                  <tr key={item.id} className="cursor-pointer transition-colors hover:bg-[#111108]" onClick={() => openDetail(item)}>
                     <td style={{ ...td, color: 'var(--foreground)', fontWeight: 500 }}>{item.productionCode}</td>
                     <td style={td}>{item.category || '—'}</td>
                     <td style={td}>{item.attributeCode || '—'}</td>
@@ -548,7 +439,7 @@ export default function AdminCosmoCoatRawMaterialsPage() {
                     </td>
                     <td style={{ ...td, textAlign: 'right' }}>
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={e => { e.stopPropagation(); openEdit(item) }} className="p-1.5 rounded-md" style={{ color: 'var(--muted-foreground)' }}>
+                        <button onClick={e => { e.stopPropagation(); openDetail(item) }} className="p-1.5 rounded-md" style={{ color: 'var(--muted-foreground)' }}>
                           <Pencil size={14} />
                         </button>
                         <button onClick={e => { e.stopPropagation(); deleteItem(item) }} disabled={deletingId === item.id} className="p-1.5 rounded-md disabled:opacity-40" style={{ color: 'var(--muted-foreground)' }}>
@@ -575,12 +466,11 @@ export default function AdminCosmoCoatRawMaterialsPage() {
         </div>
       )}
 
-      {showModal && (
-        <RawMaterialModal
-          item={modalItem}
+      {showCreateModal && (
+        <RawMaterialCreateModal
           categories={categories}
           attributes={attributes}
-          onClose={() => setShowModal(false)}
+          onClose={() => setShowCreateModal(false)}
           onSaved={fetchItems}
         />
       )}

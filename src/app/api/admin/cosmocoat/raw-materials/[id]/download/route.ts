@@ -46,9 +46,11 @@ export async function GET(
   }
 
   try {
-    // Generate a signed download URL (valid for 15 minutes)
+    const ext = fileKey.includes('.') ? fileKey.slice(fileKey.lastIndexOf('.')) : ''
+    const safeName = `${rawMaterial.productionCode}_${rawMaterial.name}_${fileType.toUpperCase()}${ext}`
+      .replace(/[^\w\u4e00-\u9fff.-]+/g, '_')
     const downloadUrl = await getSignedDownloadUrl(fileKey, 900, {
-      responseContentDisposition: `attachment; filename="${rawMaterial.productionCode}_${rawMaterial.name}_${fileType.toUpperCase()}"`,
+      responseContentDisposition: `attachment; filename="${safeName}"`,
     })
 
     return NextResponse.json({

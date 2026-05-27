@@ -33,6 +33,22 @@ function isMissingTable(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021'
 }
 
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatRawMaterials' })
+  if (error) return error
+
+  const { id } = await params
+  const current = await prisma.cosTableRawMaterial.findUnique({ where: { id } })
+  if (!current) {
+    return NextResponse.json({ error: '原料不存在' }, { status: 404 })
+  }
+
+  return NextResponse.json({ item: serializeRawMaterial(current) })
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
