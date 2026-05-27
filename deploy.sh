@@ -23,6 +23,7 @@
 #   DEPLOY_SKIP_GIT_PULL=1 — 跳过 pull，仍基于 .adviser-deploy-rev 与 HEAD 增量
 #   DEPLOY_FORCE_FULL=1 — 全流程（依赖 install、prisma generate、next build、同步、migrate、PM2）
 #   DEPLOY_FF_ONLY_GIT=0 — 使用普通 git pull（默认 1 = --ff-only）
+#   DEPLOY_DISCARD_LOCKFILE=0 — 不自动丢弃服务器上 package-lock.json 本地改动（默认 1 = 丢弃后再 pull）
 #
 #   bootstrap 支持的系统：Ubuntu/Debian（apt）、Alibaba Cloud Linux / RHEL / CentOS / Amazon Linux（dnf 或 yum）
 #
@@ -311,6 +312,18 @@ _deploy_revision_file() {
   printf '%s/.adviser-deploy-rev' "${1%/}"
 }
 
+_deploy_discard_lockfile_drift() {
+  if [[ "${DEPLOY_DISCARD_LOCKFILE:-1}" != "1" ]]; then
+    return 0
+  fi
+  if ! git -C "$SCRIPT_DIR" diff --quiet -- package-lock.json 2>/dev/null; then
+    echo "▶ 丢弃服务器上 package-lock.json 的本地改动（多为误执行 npm install 导致）…"
+    git -C "$SCRIPT_DIR" checkout -- package-lock.json 2>/dev/null \
+      || git -C "$SCRIPT_DIR" restore package-lock.json 2>/dev/null \
+      || true
+  fi
+}
+
 _deploy_local_git_pull_maybe() {
   if [[ "${DEPLOY_SKIP_GIT_PULL:-}" == "1" ]]; then
     echo "▶ 跳过 git pull（DEPLOY_SKIP_GIT_PULL=1）"
@@ -320,6 +333,7 @@ _deploy_local_git_pull_maybe() {
     echo "⚠️ 当前目录不是 git 工作树，跳过 git pull"
     return 0
   fi
+  _deploy_discard_lockfile_drift
   echo "▶ git pull…"
   local before
   before="$(git -C "$SCRIPT_DIR" rev-parse HEAD)"
