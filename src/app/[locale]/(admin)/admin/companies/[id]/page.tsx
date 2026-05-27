@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { DatePickerPopover } from '@/components/ui/date-picker-popover'
 import { BUSINESS_NATURE_OPTIONS } from '@/lib/kyc/kycFieldOptions'
-import { analyzeNAR1Document, type NAR1AnalysisResult } from '@/lib/company/nar1-analysis'
+import { type NAR1UiAnalysisResult } from '@/lib/company/nar1-analysis'
 
 // ── KYC Person type (for pre-fill picker) ────────────────────────────────────
 
@@ -1231,41 +1231,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 // ── NAR1 Analysis Result Preview Component ────────────────────────────────
 
 interface Nar1AnalysisPreviewProps {
-  result: {
-    directors: Array<{
-      nameEn: string
-      nameZh?: string
-      dateOfAppointment?: string
-      addressForService: string
-      nationality?: string
-      idType?: string
-      idNumber?: string
-      status: 'appointed' | 'resigned' | 'active'
-      cessationDate?: string
-    }>
-    members: Array<{
-      nameEn: string
-      nameZh?: string
-      address: string
-      capacity: string
-      telFax?: string
-      becomingDate?: string
-      cessationDate?: string
-      status: 'active' | 'resigned'
-    }>
-    significantControllers: Array<{
-      nameEn: string
-      nameZh?: string
-      entryDate?: string
-      correspondenceAddress?: string
-      natureOfControl: string
-      becomingDate?: string
-      cessationDate?: string
-      isLegalEntity?: boolean
-      legalEntityRegNo?: string
-      issuingCountry?: string
-    }>
-  }
+  result: NAR1UiAnalysisResult
   onConfirm: () => void
   onClose: () => void
   companyId: string
@@ -1459,41 +1425,7 @@ export default function CompanyDetailPage() {
 
   // ── NAR1 Analysis state ──────────────────────────────────────────────────
   const [analyzingNar1, setAnalyzingNar1] = useState(false)
-  const [nar1AnalysisResult, setNar1AnalysisResult] = useState<{
-    directors: Array<{
-      nameEn: string
-      nameZh?: string
-      dateOfAppointment?: string
-      addressForService: string
-      nationality?: string
-      idType?: string
-      idNumber?: string
-      status: 'appointed' | 'resigned' | 'active'
-      cessationDate?: string
-    }>
-    members: Array<{
-      nameEn: string
-      nameZh?: string
-      address: string
-      capacity: string
-      telFax?: string
-      becomingDate?: string
-      cessationDate?: string
-      status: 'active' | 'resigned'
-    }>
-    significantControllers: Array<{
-      nameEn: string
-      nameZh?: string
-      entryDate?: string
-      correspondenceAddress?: string
-      natureOfControl: string
-      becomingDate?: string
-      cessationDate?: string
-      isLegalEntity?: boolean
-      legalEntityRegNo?: string
-      issuingCountry?: string
-    }>
-  } | null>(null)
+  const [nar1AnalysisResult, setNar1AnalysisResult] = useState<NAR1UiAnalysisResult | null>(null)
   const [showNar1AnalysisResult, setShowNar1AnalysisResult] = useState(false)
 
   // ── File Cases state ──────────────────────────────────────────────────────
@@ -1558,27 +1490,24 @@ export default function CompanyDetailPage() {
     if (res.ok) { const { url } = await res.json(); window.open(url, '_blank') }
   }
 
-  async function analyzeNar1Document(docId: string, fileName: string) {
+  async function runNar1Analysis(docId: string, fileName: string) {
     setAnalyzingNar1(true)
     try {
-      // First download the document to get the file
       const downloadRes = await fetch(`/api/documents/${docId}/download`)
       if (!downloadRes.ok) {
-        toast.error('Failed to download document for analysis')
+        toast.error('无法下载 NAR1 文件')
         return
       }
       const { url } = await downloadRes.json()
 
-      // Fetch the file from the URL
       const fileRes = await fetch(url)
       if (!fileRes.ok) {
-        toast.error('Failed to fetch document file')
+        toast.error('无法读取 NAR1 文件')
         return
       }
       const blob = await fileRes.blob()
       const file = new File([blob], fileName, { type: blob.type || 'application/pdf' })
 
-      // Upload for analysis
       const formData = new FormData()
       formData.append('file', file)
 
@@ -1587,18 +1516,21 @@ export default function CompanyDetailPage() {
         body: formData,
       })
 
-      if (res.ok) {
-        const data = await res.json()
-        setNar1AnalysisResult(data.result)
-        setShowNar1AnalysisResult(true)
-        toast.success('NAR1 analysis completed')
-        reload()
-      } else {
-        const err = await res.json().catch(() => ({}))
-        toast.error(err.error ?? 'NAR1 analysis failed')
+      const payload = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(payload.error ?? 'NAR1 分析失败')
+        return
       }
+
+      setNar1AnalysisResult(payload.data)
+      setShowNar1AnalysisResult(true)
+      toast.success(
+        payload.source === 'bailian'
+          ? 'NAR1 分析完成'
+          : 'NAR1 分析完成（未调用百炼，结果可能不完整）',
+      )
     } catch (e) {
-      toast.error('An error occurred during analysis')
+      toast.error('NAR1 分析出错')
       console.error(e)
     } finally {
       setAnalyzingNar1(false)
@@ -1911,47 +1843,7 @@ export default function CompanyDetailPage() {
               docs={company.documents.filter(d => d.documentType === 'NAR1' && !isGeneratedDoc(d))}
               onPreview={downloadDoc}
               onDelete={deleteDoc}
-              onAnalyze={async (docId, fileName) => {
-                setAnalyzingNar1(true)
-                try {
-                  const downloadRes = await fetch(`/api/documents/${docId}/download`)
-                  if (!downloadRes.ok) {
-                    toast.error('Failed to download document for analysis')
-                    return
-                  }
-                  const { url } = await downloadRes.json()
-                  const fileRes = await fetch(url)
-                  if (!fileRes.ok) {
-                    toast.error('Failed to fetch document file')
-                    return
-                  }
-                  const blob = await fileRes.blob()
-                  const file = new File([blob], fileName, { type: blob.type || 'application/pdf' })
-
-                  const formData = new FormData()
-                  formData.append('file', file)
-
-                  const res = await fetch(`/api/admin/companies/${id}/nar1-analyze`, {
-                    method: 'POST',
-                    body: formData,
-                  })
-
-                  if (res.ok) {
-                    const data = await res.json()
-                    setNar1AnalysisResult(data.data)
-                    setShowNar1AnalysisResult(true)
-                    toast.success('NAR1 analysis completed')
-                  } else {
-                    const err = await res.json().catch(() => ({ error: 'Analysis failed' }))
-                    toast.error(err.error ?? 'NAR1 analysis failed')
-                  }
-                } catch (e) {
-                  toast.error('An error occurred during analysis')
-                  console.error(e)
-                } finally {
-                  setAnalyzingNar1(false)
-                }
-              }}
+              onAnalyze={runNar1Analysis}
               analyzing={analyzingNar1}
             />
           </div>

@@ -542,3 +542,87 @@ function unescapePdfString(value: string) {
     })
     .replace(/\\([0-7]{1,3})/g, (_all, octal: string) => String.fromCharCode(parseInt(octal, 8)))
 }
+
+/** UI shape used by admin company detail NAR1 preview modal */
+export type NAR1UiAnalysisResult = {
+  directors: Array<{
+    nameEn: string
+    nameZh?: string
+    dateOfAppointment?: string
+    addressForService: string
+    nationality?: string
+    idType?: string
+    idNumber?: string
+    status: 'appointed' | 'resigned' | 'active'
+    cessationDate?: string
+  }>
+  members: Array<{
+    nameEn: string
+    nameZh?: string
+    address: string
+    capacity: string
+    telFax?: string
+    becomingDate?: string
+    cessationDate?: string
+    status: 'active' | 'resigned'
+  }>
+  significantControllers: Array<{
+    nameEn: string
+    nameZh?: string
+    entryDate?: string
+    correspondenceAddress?: string
+    natureOfControl: string
+    becomingDate?: string
+    cessationDate?: string
+    isLegalEntity?: boolean
+    legalEntityRegNo?: string
+    issuingCountry?: string
+  }>
+}
+
+export function mapNAR1AnalysisForUi(result: NAR1AnalysisResult): NAR1UiAnalysisResult {
+  return {
+    directors: result.directors.map(director => ({
+      nameEn: director.nameEn,
+      nameZh: director.nameZh,
+      dateOfAppointment: director.dateOfAppointment,
+      addressForService: director.addressForService ?? '',
+      nationality: director.nationality,
+      idType: director.idType,
+      idNumber: director.idNumber,
+      status: director.dateOfCessation ? 'resigned' : 'active',
+      cessationDate: director.dateOfCessation ?? '',
+    })),
+    members: result.members.map(member => ({
+      nameEn: member.nameEn,
+      nameZh: member.nameZh,
+      address: member.registeredAddress ?? '',
+      capacity: member.shareClass ?? (member.sharesHeld != null ? `${member.sharesHeld} shares` : ''),
+      becomingDate: '',
+      cessationDate: member.isTransferred ? '' : '',
+      status: member.isTransferred ? 'resigned' : 'active',
+    })),
+    significantControllers: result.significantControllers.map(controller => ({
+      nameEn: controller.nameEn,
+      nameZh: controller.nameZh,
+      entryDate: controller.becomingDate,
+      correspondenceAddress: controller.correspondenceAddress ?? '',
+      natureOfControl: controller.natureOfControl ?? '',
+      becomingDate: controller.becomingDate,
+      cessationDate: '',
+      isLegalEntity: controller.isLegalEntity,
+      legalEntityRegNo: controller.legalEntityRegNo,
+      issuingCountry: controller.issuingCountry,
+    })),
+  }
+}
+
+export async function analyzeNAR1FromBuffer(
+  buffer: Buffer,
+  fileName: string,
+  mimeType?: string,
+): Promise<NAR1AnalysisResult> {
+  const type = mimeType ?? guessMimeType(fileName)
+  const file = new File([new Uint8Array(buffer)], fileName, { type })
+  return analyzeNAR1Document(file)
+}
