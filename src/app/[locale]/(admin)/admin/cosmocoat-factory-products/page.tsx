@@ -34,6 +34,9 @@ type FactoryProduct = {
   unit: string
   unitPrice: number | null
   notes: string
+  productionRequirements: string
+  qualityCheckRequirements: string
+  packagingRequirements: string
   currentRecipeId: string | null
   sortOrder: number
   updatedAt: string
@@ -56,6 +59,9 @@ type ProductForm = {
   unit: string
   unitPrice: number | null
   notes: string
+  productionRequirements: string
+  qualityCheckRequirements: string
+  packagingRequirements: string
   sortOrder: number
   recipeIds: string[]
   currentRecipeId: string | null
@@ -67,6 +73,9 @@ const emptyForm: ProductForm = {
   unit: 'kg',
   unitPrice: null,
   notes: '',
+  productionRequirements: '',
+  qualityCheckRequirements: '',
+  packagingRequirements: '',
   sortOrder: 0,
   recipeIds: [],
   currentRecipeId: null,
@@ -111,6 +120,9 @@ function productToForm(product: FactoryProduct): ProductForm {
     unit: product.unit,
     unitPrice: product.unitPrice,
     notes: product.notes,
+    productionRequirements: product.productionRequirements,
+    qualityCheckRequirements: product.qualityCheckRequirements,
+    packagingRequirements: product.packagingRequirements,
     sortOrder: product.sortOrder,
     recipeIds: product.recipes.map(r => r.id),
     currentRecipeId: product.currentRecipeId,
@@ -255,6 +267,24 @@ function ProductEditor({
               <div className="space-y-1.5 sm:col-span-2">
                 <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>备注</label>
                 <textarea value={form.notes} onChange={e => patch('notes', e.target.value)} rows={2} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-y" style={inputStyle()} />
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>生产要求（创建生产单时自动带出）</h3>
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>生产要求</label>
+                <textarea value={form.productionRequirements} onChange={e => patch('productionRequirements', e.target.value)} rows={3} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-y" style={inputStyle()} placeholder="如：控制好粘度、调粘度..." />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>质检要求</label>
+                <textarea value={form.qualityCheckRequirements} onChange={e => patch('qualityCheckRequirements', e.target.value)} rows={3} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-y" style={inputStyle()} placeholder="如：粘度 9.7-9.8、密度..." />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>包装要求</label>
+                <textarea value={form.packagingRequirements} onChange={e => patch('packagingRequirements', e.target.value)} rows={3} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-y" style={inputStyle()} placeholder="如：18KG" />
               </div>
             </div>
           </section>

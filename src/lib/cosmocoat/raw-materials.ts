@@ -20,6 +20,8 @@ export type RawMaterialInput = {
   secondaryTaxIncluded: string
   secondaryFreightIncluded: string
   secondaryNotes: string
+  tdsFileKey?: string | null
+  msdsFileKey?: string | null
 }
 
 export type RawMaterialRow = RawMaterialInput & {
@@ -124,6 +126,8 @@ export function toPrismaCreateData(input: RawMaterialInput): Prisma.CosTableRawM
     secondaryTaxIncluded: input.secondaryTaxIncluded,
     secondaryFreightIncluded: input.secondaryFreightIncluded,
     secondaryNotes: input.secondaryNotes,
+    tdsFileKey: input.tdsFileKey,
+    msdsFileKey: input.msdsFileKey,
   }
 }
 
@@ -148,6 +152,8 @@ export function serializeRawMaterial(row: {
   secondaryTaxIncluded: string
   secondaryFreightIncluded: string
   secondaryNotes: string
+  tdsFileKey: string | null
+  msdsFileKey: string | null
   createdAt: Date
   updatedAt: Date
 }): RawMaterialRow {
@@ -172,6 +178,8 @@ export function serializeRawMaterial(row: {
     secondaryTaxIncluded: row.secondaryTaxIncluded,
     secondaryFreightIncluded: row.secondaryFreightIncluded,
     secondaryNotes: row.secondaryNotes,
+    tdsFileKey: row.tdsFileKey,
+    msdsFileKey: row.msdsFileKey,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   }

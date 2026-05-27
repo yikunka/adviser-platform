@@ -28,6 +28,9 @@ export async function serializeFactoryProduct(product: {
   unit: string
   unitPrice: unknown
   notes: string
+  productionRequirements: string
+  qualityCheckRequirements: string
+  packagingRequirements: string
   currentRecipeId: string | null
   sortOrder: number
   createdAt: Date
@@ -53,6 +56,9 @@ export async function serializeFactoryProduct(product: {
     unit: product.unit,
     unitPrice: product.unitPrice != null ? Number(product.unitPrice) : null,
     notes: product.notes,
+    productionRequirements: product.productionRequirements,
+    qualityCheckRequirements: product.qualityCheckRequirements,
+    packagingRequirements: product.packagingRequirements,
     currentRecipeId: product.currentRecipeId,
     sortOrder: product.sortOrder,
     createdAt: product.createdAt.toISOString(),

@@ -17,6 +17,9 @@ type ProductionOrderRow = {
   recipe: { code: string; name: string }
   items: Array<{ requiredWeight: number }>
   requiredTotal: number
+  productionRequirements?: string
+  qualityCheckRequirements?: string
+  packagingRequirements?: string
 }
 
 const card: React.CSSProperties = {

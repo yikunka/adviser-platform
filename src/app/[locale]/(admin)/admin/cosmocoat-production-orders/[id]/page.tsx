@@ -17,6 +17,9 @@ type FactoryProductOption = {
   productCode: string
   name: string
   unit: string
+  productionRequirements: string
+  qualityCheckRequirements: string
+  packagingRequirements: string
   currentRecipe: { id: string; code: string; name: string } | null
 }
 
@@ -142,6 +145,9 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
         productCode: p.productCode,
         name: p.name,
         unit: p.unit,
+        productionRequirements: p.productionRequirements,
+        qualityCheckRequirements: p.qualityCheckRequirements,
+        packagingRequirements: p.packagingRequirements,
         currentRecipe: p.currentRecipe,
       })))
     } catch {
@@ -201,9 +207,9 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       setBatchNo(order.batchNo)
       setStartedAt(toDatetimeLocal(order.startedAt))
       setFinishedAt(toDatetimeLocal(order.finishedAt))
-      setProductionNotes(order.productionNotes)
-      setQualityNotes(order.qualityNotes)
-      setPackagingNotes(order.packagingNotes)
+      setProductionNotes(order.productionNotes || order.productionRequirements)
+      setQualityNotes(order.qualityNotes || order.qualityCheckRequirements)
+      setPackagingNotes(order.packagingNotes || order.packagingRequirements)
       setStatus(order.status === 'completed' ? 'completed' : 'draft')
       setItems(order.items.map((item: {
         id: string
@@ -250,6 +256,9 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
     if (!product) return
     setProductName(product.name)
     setProductUnit(product.unit)
+    setProductionNotes(product.productionRequirements)
+    setQualityNotes(product.qualityCheckRequirements)
+    setPackagingNotes(product.packagingRequirements)
     if (!product.currentRecipe) {
       setRecipeCode('')
       setRecipeName('')
@@ -259,6 +268,12 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
     }
     loadRecipeItems(product.currentRecipe.id)
   }, [factoryProductId, products, isNew, loadRecipeItems])
+
+  useEffect(() => {
+    if (isNew) {
+      setBatchNo(code)
+    }
+  }, [code, isNew])
 
   useEffect(() => {
     if (!isNew || recipeItems.length === 0 || totalWeight <= 0) {
@@ -337,6 +352,9 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
           productionNotes,
           qualityNotes,
           packagingNotes,
+          productionRequirements: selectedProduct?.productionRequirements || '',
+          qualityCheckRequirements: selectedProduct?.qualityCheckRequirements || '',
+          packagingRequirements: selectedProduct?.packagingRequirements || '',
           status,
           items: items.map(item => ({
             id: item.id,

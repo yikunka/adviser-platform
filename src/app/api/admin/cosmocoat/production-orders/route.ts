@@ -28,6 +28,9 @@ const orderSchema = z.object({
   productionNotes: z.string().trim().max(2000).optional().default(''),
   qualityNotes: z.string().trim().max(2000).optional().default(''),
   packagingNotes: z.string().trim().max(2000).optional().default(''),
+  productionRequirements: z.string().trim().max(2000).optional().default(''),
+  qualityCheckRequirements: z.string().trim().max(2000).optional().default(''),
+  packagingRequirements: z.string().trim().max(2000).optional().default(''),
   status: z.enum(['draft', 'completed']).optional().default('draft'),
   items: z.array(itemInputSchema).optional(),
 })
@@ -144,6 +147,9 @@ export async function POST(req: NextRequest) {
         productionNotes: parsed.data.productionNotes,
         qualityNotes: parsed.data.qualityNotes,
         packagingNotes: parsed.data.packagingNotes,
+        productionRequirements: parsed.data.productionRequirements || product.productionRequirements,
+        qualityCheckRequirements: parsed.data.qualityCheckRequirements || product.qualityCheckRequirements,
+        packagingRequirements: parsed.data.packagingRequirements || product.packagingRequirements,
         status: parsed.data.status,
         items: {
           create: itemDrafts.map(item => {

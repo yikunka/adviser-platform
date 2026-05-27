@@ -10,7 +10,7 @@ export {
 
 export const orderInclude = {
   factoryProduct: {
-    select: { id: true, productCode: true, name: true, unit: true },
+    select: { id: true, productCode: true, name: true, unit: true, productionRequirements: true, qualityCheckRequirements: true, packagingRequirements: true },
   },
   recipe: {
     select: { id: true, code: true, name: true },
@@ -61,8 +61,30 @@ export async function resolveProductCurrentRecipe(factoryProductId: string) {
     },
   })
   if (!product) return { error: 'PRODUCT_NOT_FOUND' as const }
-  if (!product.currentRecipe) return { error: 'NO_CURRENT_RECIPE' as const, product }
-  return { product, recipe: product.currentRecipe }
+  if (!product.currentRecipe) return {
+    error: 'NO_CURRENT_RECIPE' as const,
+    product: {
+      id: product.id,
+      productCode: product.productCode,
+      name: product.name,
+      unit: product.unit,
+      productionRequirements: product.productionRequirements,
+      qualityCheckRequirements: product.qualityCheckRequirements,
+      packagingRequirements: product.packagingRequirements,
+    }
+  }
+  return {
+    product: {
+      id: product.id,
+      productCode: product.productCode,
+      name: product.name,
+      unit: product.unit,
+      productionRequirements: product.productionRequirements,
+      qualityCheckRequirements: product.qualityCheckRequirements,
+      packagingRequirements: product.packagingRequirements,
+    },
+    recipe: product.currentRecipe
+  }
 }
 
 function serializeOrderItem(item: {
@@ -101,6 +123,9 @@ export function serializeProductionOrder(order: {
   productionNotes: string
   qualityNotes: string
   packagingNotes: string
+  productionRequirements: string
+  qualityCheckRequirements: string
+  packagingRequirements: string
   status: string
   createdAt: Date
   updatedAt: Date
@@ -123,6 +148,9 @@ export function serializeProductionOrder(order: {
     productionNotes: order.productionNotes,
     qualityNotes: order.qualityNotes,
     packagingNotes: order.packagingNotes,
+    productionRequirements: order.productionRequirements,
+    qualityCheckRequirements: order.qualityCheckRequirements,
+    packagingRequirements: order.packagingRequirements,
     status: order.status,
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),

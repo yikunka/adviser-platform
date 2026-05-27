@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { DatePickerPopover } from '@/components/ui/date-picker-popover'
 import { BUSINESS_NATURE_OPTIONS } from '@/lib/kyc/kycFieldOptions'
+import { analyzeNAR1Document, type NAR1AnalysisResult } from '@/lib/company/nar1-analysis'
 
 // ── KYC Person type (for pre-fill picker) ────────────────────────────────────
 
@@ -213,10 +214,14 @@ function YearGroupedDocs({
   docs,
   onPreview,
   onDelete,
+  onAnalyze,
+  analyzing,
 }: {
   docs: DocEntry[]
   onPreview: (id: string) => void
   onDelete: (id: string) => void
+  onAnalyze?: (id: string, fileName: string) => void
+  analyzing?: boolean
 }) {
   const currentYear = String(new Date().getFullYear())
   const [openYears, setOpenYears] = useState<Set<string>>(() => new Set([currentYear]))
@@ -260,6 +265,18 @@ function YearGroupedDocs({
                     <span className="text-sm truncate max-w-xs" style={{ color: 'var(--foreground)' }}>{doc.name}</span>
                     <div className="flex items-center gap-2 shrink-0 ml-3">
                       <span className="text-xs" style={{ color: '#5A5040' }}>{new Date(doc.createdAt).toLocaleDateString('en-HK')}</span>
+                      {onAnalyze && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-xs"
+                          style={{ color: '#C9A96E', borderColor: '#C9A96E' }}
+                          disabled={analyzing}
+                          onClick={() => onAnalyze(doc.id, doc.name)}
+                        >
+                          {analyzing ? 'Analyzing…' : 'Analyze'}
+                        </Button>
+                      )}
                       <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onPreview(doc.id)}>Preview</Button>
                       <Button size="sm" variant="outline" className="h-7 px-2 text-xs" style={{ color: '#ef4444', borderColor: '#ef4444' }} onClick={() => onDelete(doc.id)}>Delete</Button>
                     </div>
@@ -1211,6 +1228,214 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   )
 }
 
+// ── NAR1 Analysis Result Preview Component ────────────────────────────────
+
+interface Nar1AnalysisPreviewProps {
+  result: {
+    directors: Array<{
+      nameEn: string
+      nameZh?: string
+      dateOfAppointment?: string
+      addressForService: string
+      nationality?: string
+      idType?: string
+      idNumber?: string
+      status: 'appointed' | 'resigned' | 'active'
+      cessationDate?: string
+    }>
+    members: Array<{
+      nameEn: string
+      nameZh?: string
+      address: string
+      capacity: string
+      telFax?: string
+      becomingDate?: string
+      cessationDate?: string
+      status: 'active' | 'resigned'
+    }>
+    significantControllers: Array<{
+      nameEn: string
+      nameZh?: string
+      entryDate?: string
+      correspondenceAddress?: string
+      natureOfControl: string
+      becomingDate?: string
+      cessationDate?: string
+      isLegalEntity?: boolean
+      legalEntityRegNo?: string
+      issuingCountry?: string
+    }>
+  }
+  onConfirm: () => void
+  onClose: () => void
+}
+
+function Nar1AnalysisPreview({ result, onConfirm, onClose }: Nar1AnalysisPreviewProps) {
+  const [saving, setSaving] = useState(false)
+
+  async function handleSave() {
+    if (!window.confirm('This will update RODM and ROSC records. Continue?')) return
+    
+    setSaving(true)
+    try {
+      // Send the extracted data to save/update API endpoints
+      await Promise.all([
+        // Save/Update Directors (RODM)
+        ...result.directors.map(async (director) => {
+          const res = await fetch(`/api/admin/companies/${id}/directors`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nameEn: director.nameEn,
+              nameZh: director.nameZh || '',
+              dateOfAppointment: director.dateOfAppointment,
+              addressForService: director.addressForService,
+              nationality: director.nationality || '',
+              idType: director.idType || '',
+              idNumber: director.idNumber || '',
+              cessationDate: director.cessationDate,
+            }),
+          })
+          if (!res.ok) throw new Error(`Failed to save director: ${director.nameEn}`)
+        }),
+        // Save/Update Members (RODM)
+        ...result.members.map(async (member) => {
+          const res = await fetch(`/api/admin/companies/${id}/members`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nameEn: member.nameEn,
+              nameZh: member.nameZh || '',
+              address: member.address,
+              capacity: member.capacity,
+              telFax: member.telFax || '',
+              becomingDate: member.becomingDate,
+              cessationDate: member.cessationDate,
+            }),
+          })
+          if (!res.ok) throw new Error(`Failed to save member: ${member.nameEn}`)
+        }),
+        // Save/Update Significant Controllers (ROSC)
+        ...result.significantControllers.map(async (sc) => {
+          const res = await fetch(`/api/admin/companies/${id}/significant-controllers`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nameEn: sc.nameEn,
+              nameZh: sc.nameZh || '',
+              entryDate: sc.entryDate,
+              correspondenceAddress: sc.correspondenceAddress || '',
+              natureOfControl: sc.natureOfControl,
+              becomingDate: sc.becomingDate,
+              cessationDate: sc.cessationDate,
+              isLegalEntity: sc.isLegalEntity || false,
+              legalEntityRegNo: sc.legalEntityRegNo || '',
+              issuingCountry: sc.issuingCountry || '',
+            }),
+          })
+          if (!res.ok) throw new Error(`Failed to save controller: ${sc.nameEn}`)
+        }),
+      ])
+      
+      toast.success('RODM and ROSC updated successfully!')
+      onConfirm()
+    } catch (error) {
+      console.error('[NAR1 Save] Error:', error)
+      toast.error('Failed to save changes')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function fmtDate(d?: string) {
+    if (!d) return '—'
+    try { return new Date(d).toLocaleDateString('en-HK') } catch { return d }
+  }
+
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto p-2">
+      {/* Directors Section */}
+      <div>
+        <h4 className="text-sm font-semibold mb-2" style={{ color: '#C9A96E' }}>Directors ({result.directors.length})</h4>
+        <div className="space-y-2">
+          {result.directors.map((d, i) => (
+            <div key={i} className="text-xs p-2 rounded bg-[#1A1A12]" style={{ border: '1px solid #2A2418' }}>
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--foreground)' }}>{d.nameEn}</span>
+                <span style={{ color: '#5A5040' }}>{fmtDate(d.dateOfAppointment)}</span>
+              </div>
+              {d.nameZh && <div style={{ color: '#5A5040' }}>{d.nameZh}</div>}
+              <div className="mt-1 text-[11px]" style={{ color: '#5A5040' }}>Address: {d.addressForService}</div>
+              {d.nationality && <div style={{ color: '#5A5040' }}>Nationality: {d.nationality}</div>}
+              {d.status === 'resigned' && d.cessationDate && (
+                <div style={{ color: '#ef4444' }}>Resigned: {fmtDate(d.cessationDate)}</div>
+              )}
+            </div>
+          ))}
+          {result.directors.length === 0 && <p className="text-xs text-center" style={{ color: '#5A5040' }}>No directors found</p>}
+        </div>
+      </div>
+
+      {/* Members Section */}
+      <div>
+        <h4 className="text-sm font-semibold mb-2" style={{ color: '#C9A96E' }}>Members ({result.members.length})</h4>
+        <div className="space-y-2">
+          {result.members.map((m, i) => (
+            <div key={i} className="text-xs p-2 rounded bg-[#1A1A12]" style={{ border: '1px solid #2A2418' }}>
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--foreground)' }}>{m.nameEn}</span>
+                <span style={{ color: '#5A5040' }}>{fmtDate(m.becomingDate)}</span>
+              </div>
+              {m.nameZh && <div style={{ color: '#5A5040' }}>{m.nameZh}</div>}
+              <div className="mt-1 text-[11px]" style={{ color: '#5A5040' }}>Address: {m.address}</div>
+              <div style={{ color: '#5A5040' }}>({m.capacity})</div>
+              {m.status === 'resigned' && m.cessationDate && (
+                <div style={{ color: '#ef4444' }}>Ceased: {fmtDate(m.cessationDate)}</div>
+              )}
+            </div>
+          ))}
+          {result.members.length === 0 && <p className="text-xs text-center" style={{ color: '#5A5040' }}>No members found</p>}
+        </div>
+      </div>
+
+      {/* Significant Controllers Section */}
+      <div>
+        <h4 className="text-sm font-semibold mb-2" style={{ color: '#C9A96E' }}>Significant Controllers ({result.significantControllers.length})</h4>
+        <div className="space-y-2">
+          {result.significantControllers.map((sc, i) => (
+            <div key={i} className="text-xs p-2 rounded bg-[#1A1A12]" style={{ border: '1px solid #2A2418' }}>
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--foreground)' }}>{sc.nameEn}</span>
+                <span style={{ color: '#5A5040' }}>{fmtDate(sc.becomingDate)}</span>
+              </div>
+              {sc.nameZh && <div style={{ color: '#5A5040' }}>{sc.nameZh}</div>}
+              <div className="mt-1 text-[11px]" style={{ color: '#5A5040' }}>Nature of Control: {sc.natureOfControl}</div>
+              {sc.isLegalEntity && sc.legalEntityRegNo && (
+                <div style={{ color: '#5A5040' }}>Reg No: {sc.legalEntityRegNo}</div>
+              )}
+              {!sc.isLegalEntity && sc.issuingCountry && (
+                <div style={{ color: '#5A5040' }}>Issuing Country: {sc.issuingCountry}</div>
+              )}
+              {sc.cessationDate && (
+                <div style={{ color: '#ef4444' }}>Ceased: {fmtDate(sc.cessationDate)}</div>
+              )}
+            </div>
+          ))}
+          {result.significantControllers.length === 0 && <p className="text-xs text-center" style={{ color: '#5A5040' }}>No significant controllers found</p>}
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-2 pt-2">
+        <Button type="button" variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+        <Button type="button" size="sm" disabled={saving} onClick={handleSave}>
+          {saving ? 'Saving…' : 'Save to RODM & ROSC'}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function CompanyDetailPage() {
@@ -1230,6 +1455,45 @@ export default function CompanyDetailPage() {
   const [generatingRegister, setGeneratingRegister] = useState<'ROD' | 'ROM' | 'ROSC' | null>(null)
   const [showOlderDdr, setShowOlderDdr] = useState(false)
   const ensuredDocsForRef = useRef<string | null>(null)
+
+  // ── NAR1 Analysis state ──────────────────────────────────────────────────
+  const [analyzingNar1, setAnalyzingNar1] = useState(false)
+  const [nar1AnalysisResult, setNar1AnalysisResult] = useState<{
+    directors: Array<{
+      nameEn: string
+      nameZh?: string
+      dateOfAppointment?: string
+      addressForService: string
+      nationality?: string
+      idType?: string
+      idNumber?: string
+      status: 'appointed' | 'resigned' | 'active'
+      cessationDate?: string
+    }>
+    members: Array<{
+      nameEn: string
+      nameZh?: string
+      address: string
+      capacity: string
+      telFax?: string
+      becomingDate?: string
+      cessationDate?: string
+      status: 'active' | 'resigned'
+    }>
+    significantControllers: Array<{
+      nameEn: string
+      nameZh?: string
+      entryDate?: string
+      correspondenceAddress?: string
+      natureOfControl: string
+      becomingDate?: string
+      cessationDate?: string
+      isLegalEntity?: boolean
+      legalEntityRegNo?: string
+      issuingCountry?: string
+    }>
+  } | null>(null)
+  const [showNar1AnalysisResult, setShowNar1AnalysisResult] = useState(false)
 
   // ── File Cases state ──────────────────────────────────────────────────────
   const [newCaseName, setNewCaseName] = useState('')
@@ -1291,6 +1555,53 @@ export default function CompanyDetailPage() {
   async function downloadDoc(docId: string) {
     const res = await fetch(`/api/documents/${docId}/download`)
     if (res.ok) { const { url } = await res.json(); window.open(url, '_blank') }
+  }
+
+  async function analyzeNar1Document(docId: string, fileName: string) {
+    setAnalyzingNar1(true)
+    try {
+      // First download the document to get the file
+      const downloadRes = await fetch(`/api/documents/${docId}/download`)
+      if (!downloadRes.ok) {
+        toast.error('Failed to download document for analysis')
+        return
+      }
+      const { url } = await downloadRes.json()
+
+      // Fetch the file from the URL
+      const fileRes = await fetch(url)
+      if (!fileRes.ok) {
+        toast.error('Failed to fetch document file')
+        return
+      }
+      const blob = await fileRes.blob()
+      const file = new File([blob], fileName, { type: blob.type || 'application/pdf' })
+
+      // Upload for analysis
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await fetch(`/api/admin/companies/${id}/nar1-analyze`, {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setNar1AnalysisResult(data.result)
+        setShowNar1AnalysisResult(true)
+        toast.success('NAR1 analysis completed')
+        reload()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        toast.error(err.error ?? 'NAR1 analysis failed')
+      }
+    } catch (e) {
+      toast.error('An error occurred during analysis')
+      console.error(e)
+    } finally {
+      setAnalyzingNar1(false)
+    }
   }
 
   async function generateDdrNow() {
@@ -1599,6 +1910,48 @@ export default function CompanyDetailPage() {
               docs={company.documents.filter(d => d.documentType === 'NAR1' && !isGeneratedDoc(d))}
               onPreview={downloadDoc}
               onDelete={deleteDoc}
+              onAnalyze={async (docId, fileName) => {
+                setAnalyzingNar1(true)
+                try {
+                  const downloadRes = await fetch(`/api/documents/${docId}/download`)
+                  if (!downloadRes.ok) {
+                    toast.error('Failed to download document for analysis')
+                    return
+                  }
+                  const { url } = await downloadRes.json()
+                  const fileRes = await fetch(url)
+                  if (!fileRes.ok) {
+                    toast.error('Failed to fetch document file')
+                    return
+                  }
+                  const blob = await fileRes.blob()
+                  const file = new File([blob], fileName, { type: blob.type || 'application/pdf' })
+
+                  const formData = new FormData()
+                  formData.append('file', file)
+
+                  const res = await fetch(`/api/admin/companies/${id}/nar1-analyze`, {
+                    method: 'POST',
+                    body: formData,
+                  })
+
+                  if (res.ok) {
+                    const data = await res.json()
+                    setNar1AnalysisResult(data.data)
+                    setShowNar1AnalysisResult(true)
+                    toast.success('NAR1 analysis completed')
+                  } else {
+                    const err = await res.json().catch(() => ({ error: 'Analysis failed' }))
+                    toast.error(err.error ?? 'NAR1 analysis failed')
+                  }
+                } catch (e) {
+                  toast.error('An error occurred during analysis')
+                  console.error(e)
+                } finally {
+                  setAnalyzingNar1(false)
+                }
+              }}
+              analyzing={analyzingNar1}
             />
           </div>
 
@@ -2304,6 +2657,27 @@ export default function CompanyDetailPage() {
             />
           )}
         </Modal>
+      )}
+
+      {/* NAR1 Analysis Result Preview Modal */}
+      {showNar1AnalysisResult && nar1AnalysisResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
+          <div className="w-full max-w-3xl bg-[#141414] rounded-lg shadow-xl border border-[#2A2418]" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[#2A2418]">
+              <h3 className="text-base font-semibold" style={{ color: 'var(--foreground)' }}>NAR1 Analysis Preview</h3>
+              <button onClick={() => setShowNar1AnalysisResult(false)} className="text-xl leading-none" style={{ color: 'var(--muted-foreground)' }}>✕</button>
+            </div>
+            <Nar1AnalysisPreview
+              result={nar1AnalysisResult}
+              onConfirm={() => {
+                setShowNar1AnalysisResult(false)
+                setNar1AnalysisResult(null)
+                reload()
+              }}
+              onClose={() => setShowNar1AnalysisResult(false)}
+            />
+          </div>
+        </div>
       )}
     </div>
   )
