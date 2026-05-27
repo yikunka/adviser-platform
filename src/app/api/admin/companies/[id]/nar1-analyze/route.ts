@@ -4,8 +4,12 @@ import { prisma } from '@/lib/db/prisma'
 import {
   analyzeNAR1FromBuffer,
   mapNAR1AnalysisForUi,
+  Nar1AnalysisError,
 } from '@/lib/company/nar1-analysis'
 import { readFileBuffer } from '@/lib/storage/r2'
+
+/** NAR1 PDF render + Bailian vision can take several minutes on multi-page forms. */
+export const maxDuration = 300
 
 const ALLOWED_TYPES = new Set([
   'application/pdf',
@@ -22,6 +26,29 @@ function resolveMimeType(fileName: string, mimeType?: string | null): string | n
   if (lower.endsWith('.png')) return 'image/png'
   if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg'
   return null
+}
+
+function mapRouteError(err: unknown): { status: number; error: string } {
+  if (err instanceof Nar1AnalysisError) {
+    return { status: 502, error: err.message }
+  }
+  const message = err instanceof Error ? err.message : 'Analysis failed'
+  if (message.includes('API key') || message.includes('DASHSCOPE')) {
+    return {
+      status: 503,
+      error: '未配置 DASHSCOPE_API_KEY，请在 .env 中设置阿里云百炼 API Key',
+    }
+  }
+  if (message.includes('Bailian API returned')) {
+    return { status: 502, error: `百炼 API 调用失败：${message}` }
+  }
+  if (message.includes('OSS fetch failed')) {
+    return { status: 502, error: '无法从 OSS 读取文件，请检查存储配置' }
+  }
+  if (message.includes('超时') || message.includes('timeout') || message.includes('AbortError')) {
+    return { status: 504, error: message.includes('百炼') ? message : `分析超时：${message}` }
+  }
+  return { status: 500, error: message || 'NAR1 分析失败，请稍后重试' }
 }
 
 export async function POST(
@@ -101,35 +128,25 @@ export async function POST(
       return NextResponse.json({ error: '未提供文件或 documentId' }, { status: 400 })
     }
 
-    const analysis = await analyzeNAR1FromBuffer(bytes, fileName, mimeType)
-    const data = mapNAR1AnalysisForUi(analysis)
+    const output = await analyzeNAR1FromBuffer(bytes, fileName, mimeType)
+    const data = mapNAR1AnalysisForUi(output.analysis)
 
     return NextResponse.json({
       success: true,
       data,
-      source: analysis.source,
-      companyNameEn: analysis.companyNameEn,
-      companyNameZh: analysis.companyNameZh,
-      companyNumber: analysis.companyNumber,
-      annualReturnDate: analysis.annualReturnDate,
+      source: output.analysis.source,
+      warning: output.warning,
+      pdfPagesRendered: output.pdfPagesRendered,
+      companyNameEn: output.analysis.companyNameEn,
+      companyNameZh: output.analysis.companyNameZh,
+      companyNumber: output.analysis.companyNumber,
+      annualReturnDate: output.analysis.annualReturnDate,
       existingDirectorsCount: company.directors.length,
       existingSccCount: company.significantControllers.length,
     })
   } catch (err) {
     console.error('[nar1-analyze] Error:', err)
-    const message = err instanceof Error ? err.message : 'Analysis failed'
-    if (message.includes('API key')) {
-      return NextResponse.json(
-        { error: '未配置 DASHSCOPE_API_KEY，请在 .env.local 中设置阿里云百炼 API Key' },
-        { status: 503 },
-      )
-    }
-    if (message.includes('Bailian API returned')) {
-      return NextResponse.json({ error: `百炼 API 调用失败：${message}` }, { status: 502 })
-    }
-    if (message.includes('OSS fetch failed')) {
-      return NextResponse.json({ error: '无法从 OSS 读取文件，请检查存储配置' }, { status: 502 })
-    }
-    return NextResponse.json({ error: 'NAR1 分析失败，请稍后重试' }, { status: 500 })
+    const mapped = mapRouteError(err)
+    return NextResponse.json({ success: false, error: mapped.error }, { status: mapped.status })
   }
 }

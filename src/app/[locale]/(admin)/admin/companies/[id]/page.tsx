@@ -1457,9 +1457,21 @@ interface Nar1AnalysisPreviewProps {
   onConfirm: () => void
   onClose: () => void
   companyId: string
+  warning?: string
+  source?: 'bailian' | 'fallback'
+  pdfPagesRendered?: number
 }
 
-function Nar1AnalysisPreview({ result, onConfirm, onClose, companyId, annualReturnDate }: Nar1AnalysisPreviewProps & { annualReturnDate?: string }) {
+function Nar1AnalysisPreview({
+  result,
+  onConfirm,
+  onClose,
+  companyId,
+  annualReturnDate,
+  warning,
+  source,
+  pdfPagesRendered,
+}: Nar1AnalysisPreviewProps & { annualReturnDate?: string }) {
   const [saving, setSaving] = useState(false)
 
   async function handleSave() {
@@ -1500,6 +1512,18 @@ function Nar1AnalysisPreview({ result, onConfirm, onClose, companyId, annualRetu
 
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto p-2">
+      {warning && (
+        <div className="rounded-lg p-3 text-sm" style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid #f59e0b', color: '#fbbf24' }}>
+          <p className="font-medium">分析提示</p>
+          <p className="mt-1 text-xs leading-relaxed">{warning}</p>
+          {source === 'fallback' && (
+            <p className="mt-1 text-[11px]" style={{ color: '#d97706' }}>当前结果为备用解析，建议核对后保存或重试。</p>
+          )}
+        </div>
+      )}
+      {pdfPagesRendered != null && pdfPagesRendered > 0 && (
+        <p className="text-[11px]" style={{ color: '#5A5040' }}>已渲染 PDF {pdfPagesRendered} 页用于视觉分析</p>
+      )}
       {/* Directors Section */}
       <div>
         <h4 className="text-sm font-semibold mb-2" style={{ color: '#C9A96E' }}>Directors ({result.directors.length})</h4>
@@ -1610,6 +1634,9 @@ export default function CompanyDetailPage() {
   // ── NAR1 Analysis state ──────────────────────────────────────────────────
   const [analyzingNar1, setAnalyzingNar1] = useState(false)
   const [nar1AnalysisResult, setNar1AnalysisResult] = useState<NAR1UiAnalysisResult | null>(null)
+  const [nar1AnalysisWarning, setNar1AnalysisWarning] = useState<string | undefined>()
+  const [nar1AnalysisSource, setNar1AnalysisSource] = useState<'bailian' | 'fallback' | undefined>()
+  const [nar1PdfPagesRendered, setNar1PdfPagesRendered] = useState<number | undefined>()
   const [nar1AnnualReturnDate, setNar1AnnualReturnDate] = useState<string | undefined>()
   const [showNar1AnalysisResult, setShowNar1AnalysisResult] = useState(false)
 
@@ -1677,6 +1704,9 @@ export default function CompanyDetailPage() {
 
   async function runNar1Analysis(docId: string) {
     setAnalyzingNar1(true)
+    const clientTimeoutMs = 300_000
+    const controller = new AbortController()
+    const timer = window.setTimeout(() => controller.abort(), clientTimeoutMs)
     try {
       const formData = new FormData()
       formData.append('documentId', docId)
@@ -1684,26 +1714,39 @@ export default function CompanyDetailPage() {
       const res = await fetch(`/api/admin/companies/${id}/nar1-analyze`, {
         method: 'POST',
         body: formData,
+        signal: controller.signal,
       })
 
       const payload = await res.json().catch(() => ({}))
       if (!res.ok) {
-        toast.error(payload.error ?? 'NAR1 分析失败')
+        toast.error(payload.error ?? `NAR1 分析失败（HTTP ${res.status}）`, { duration: 10000 })
         return
       }
 
       setNar1AnalysisResult(payload.data)
+      setNar1AnalysisWarning(payload.warning)
+      setNar1AnalysisSource(payload.source)
+      setNar1PdfPagesRendered(payload.pdfPagesRendered)
       setNar1AnnualReturnDate(payload.annualReturnDate ?? company?.annualReturnDate?.slice(0, 10))
       setShowNar1AnalysisResult(true)
-      toast.success(
-        payload.source === 'bailian'
-          ? 'NAR1 分析完成'
-          : 'NAR1 分析完成（未调用百炼，结果可能不完整）',
-      )
+
+      if (payload.warning) {
+        toast.warning(payload.warning, { duration: 10000 })
+      } else if (payload.source === 'bailian') {
+        toast.success('NAR1 分析完成')
+      } else {
+        toast.success('NAR1 分析完成（备用解析，请核对结果）')
+      }
     } catch (e) {
-      toast.error('NAR1 分析出错')
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        toast.error('分析请求超时（超过 5 分钟）。可能是 PDF 页数过多、百炼 API 较慢，或 Nginx 代理超时，请稍后重试。', { duration: 12000 })
+      } else {
+        const msg = e instanceof Error ? e.message : 'NAR1 分析出错'
+        toast.error(msg, { duration: 10000 })
+      }
       console.error(e)
     } finally {
+      window.clearTimeout(timer)
       setAnalyzingNar1(false)
     }
   }
@@ -2733,9 +2776,15 @@ export default function CompanyDetailPage() {
               companyId={id}
               result={nar1AnalysisResult}
               annualReturnDate={nar1AnnualReturnDate}
+              warning={nar1AnalysisWarning}
+              source={nar1AnalysisSource}
+              pdfPagesRendered={nar1PdfPagesRendered}
               onConfirm={() => {
                 setShowNar1AnalysisResult(false)
                 setNar1AnalysisResult(null)
+                setNar1AnalysisWarning(undefined)
+                setNar1AnalysisSource(undefined)
+                setNar1PdfPagesRendered(undefined)
                 setNar1AnnualReturnDate(undefined)
                 reload()
               }}

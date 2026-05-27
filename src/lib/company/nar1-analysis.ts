@@ -76,21 +76,101 @@ type PreparedFile = {
 const ANALYSIS_MODEL = 'qwen3.5-flash'
 const MAX_TEXT_CHARS = 15000
 const MAX_PDF_IMAGE_PAGES = 12
+const DEFAULT_BAILIAN_TIMEOUT_MS = 180_000
 
-export async function analyzeNAR1Document(file: File): Promise<NAR1AnalysisResult> {
+export class Nar1AnalysisError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'Nar1AnalysisError'
+  }
+}
+
+export type NAR1AnalysisOutput = {
+  analysis: NAR1AnalysisResult
+  warning?: string
+  pdfPagesRendered: number
+}
+
+function getBailianTimeoutMs(): number {
+  const raw = (
+    process.env['NAR1_BAILIAN_TIMEOUT_MS']
+    ?? process.env['BAILIAN_TIMEOUT_MS']
+    ?? ''
+  ).trim()
+  const parsed = Number(raw)
+  if (Number.isFinite(parsed) && parsed > 0) return parsed
+  return DEFAULT_BAILIAN_TIMEOUT_MS
+}
+
+function formatAnalysisError(error: unknown): string {
+  if (error instanceof Error) {
+    if (error.name === 'AbortError') {
+      const sec = Math.round(getBailianTimeoutMs() / 1000)
+      return `请求超时（${sec} 秒），PDF 页数较多时请稍后重试`
+    }
+    if (error.message.includes('fetch failed') || error.message.includes('ECONNRESET')) {
+      return `网络错误：${error.message}`
+    }
+    return error.message
+  }
+  return String(error)
+}
+
+function isMeaningfulResult(result: NAR1AnalysisResult): boolean {
+  return Boolean(
+    result.companyNameEn
+    || result.companyNameZh
+    || result.companyNumber
+    || result.directors.length > 0
+    || result.members.length > 0
+    || result.significantControllers.length > 0,
+  )
+}
+
+export async function analyzeNAR1Document(file: File): Promise<NAR1AnalysisOutput> {
   const prepared = await prepareFile(file)
-  const apiKey = getBailianApiKey()
+  const pdfPagesRendered = prepared.images.length
+  const warnings: string[] = []
 
+  if (prepared.mimeType === 'application/pdf' && prepared.images.length === 0) {
+    warnings.push('未能渲染 PDF 页面图像（生产环境需安装 poppler-utils），视觉分析可能失败')
+  }
+
+  const apiKey = getBailianApiKey()
   if (!apiKey) {
-    return fallbackAnalyze(prepared)
+    const analysis = fallbackAnalyze(prepared)
+    warnings.push('未配置 DASHSCOPE_API_KEY，仅使用本地文本解析')
+    if (!isMeaningfulResult(analysis)) {
+      throw new Nar1AnalysisError(warnings.join('；'))
+    }
+    return { analysis, warning: warnings.join('；'), pdfPagesRendered }
   }
 
   try {
     const analyzed = await analyzeWithBailian(prepared, apiKey)
-    return { ...analyzed, source: 'bailian' as const }
+    const analysis: NAR1AnalysisResult = { ...analyzed, source: 'bailian' }
+    if (!isMeaningfulResult(analysis)) {
+      throw new Error('百炼返回成功但未解析到有效董事/成员/控权人信息')
+    }
+    return {
+      analysis,
+      warning: warnings.length > 0 ? warnings.join('；') : undefined,
+      pdfPagesRendered,
+    }
   } catch (error) {
+    const detail = formatAnalysisError(error)
     console.error('[nar1-analysis] Bailian analysis failed:', error)
-    return fallbackAnalyze(prepared)
+    warnings.push(`百炼分析失败：${detail}`)
+
+    const analysis = fallbackAnalyze(prepared)
+    if (!isMeaningfulResult(analysis)) {
+      throw new Nar1AnalysisError(warnings.join('；'))
+    }
+    return {
+      analysis,
+      warning: warnings.join('；'),
+      pdfPagesRendered,
+    }
   }
 }
 
@@ -222,28 +302,45 @@ Important notes:
     })
   }
 
-  const res = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: ANALYSIS_MODEL,
-      messages: [{ role: 'user', content }],
-      response_format: { type: 'json_object' },
-      temperature: 0,
-    }),
-  })
+  const timeoutMs = getBailianTimeoutMs()
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+
+  let res: Response
+  try {
+    res = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: ANALYSIS_MODEL,
+        messages: [{ role: 'user', content }],
+        response_format: { type: 'json_object' },
+        temperature: 0,
+      }),
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`百炼 API 请求超时（${Math.round(timeoutMs / 1000)} 秒）`)
+    }
+    throw error
+  } finally {
+    clearTimeout(timer)
+  }
 
   if (!res.ok) {
-    throw new Error(`Bailian API returned ${res.status}: ${await res.text()}`)
+    const body = await res.text()
+    const snippet = body.slice(0, 300)
+    throw new Error(`Bailian API returned ${res.status}: ${snippet}`)
   }
 
   const data = await res.json()
   const raw = data?.choices?.[0]?.message?.content
-  if (typeof raw !== 'string') {
-    return { directors: [], members: [], significantControllers: [], source: 'bailian' }
+  if (typeof raw !== 'string' || !raw.trim()) {
+    throw new Error('百炼 API 返回格式异常（无 JSON 内容）')
   }
 
   return normalizeAnalysis(parseJsonObject(raw))
@@ -562,7 +659,7 @@ export async function analyzeNAR1FromBuffer(
   buffer: Buffer,
   fileName: string,
   mimeType?: string,
-): Promise<NAR1AnalysisResult> {
+): Promise<NAR1AnalysisOutput> {
   const type = mimeType ?? guessMimeType(fileName)
   const file = new File([new Uint8Array(buffer)], fileName, { type })
   return analyzeNAR1Document(file)
