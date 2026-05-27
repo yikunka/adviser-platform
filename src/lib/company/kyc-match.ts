@@ -87,8 +87,9 @@ export function matchKeyPersonByName(
   return null
 }
 
-export function parseFlexibleDate(value: string | null | undefined, fallback = new Date()): Date {
-  if (!value?.trim()) return fallback
+export function parseFlexibleDate(value: string | null | undefined, fallback?: Date | null): Date {
+  const fb = fallback ?? new Date()
+  if (!value?.trim()) return fb
   const raw = value.trim()
   const iso = new Date(raw)
   if (!Number.isNaN(iso.getTime())) return iso
@@ -103,7 +104,7 @@ export function parseFlexibleDate(value: string | null | undefined, fallback = n
     return new Date(Date.UTC(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1])))
   }
 
-  return fallback
+  return fb
 }
 
 export function mapShareClass(value: string | null | undefined): 'ORDINARY' | 'PREFERENCE' | 'OTHER' {
