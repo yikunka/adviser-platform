@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { FlaskConical, Pencil, Plus, Search, Trash2, UploadCloud } from 'lucide-react'
+import { FlaskConical, Pencil, Plus, Search, Trash2, UploadCloud, FileText, CheckCircle, XCircle } from 'lucide-react'
 import type { RawMaterialRow } from '@/lib/cosmocoat/raw-materials'
 
 type RawMaterialForm = Omit<RawMaterialRow, 'id' | 'createdAt' | 'updatedAt'>
@@ -147,10 +147,40 @@ function RawMaterialModal({
 }) {
   const [form, setForm] = useState<RawMaterialForm>(item ?? emptyForm)
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState<string | null>(null)
   const isEditing = !!item
 
   function patch<K extends keyof RawMaterialForm>(key: K, value: RawMaterialForm[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
+  }
+
+  async function uploadFile(type: 'tds' | 'msds', file: File) {
+    if (!item?.id) return
+    setUploading(type)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('type', type)
+      
+      const res = await fetch(`/api/admin/cosmocoat/raw-materials/${item.id}/upload`, {
+        method: 'POST',
+        body: fd,
+      })
+      
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || `${type.toUpperCase()} 上传失败`)
+        return
+      }
+      
+      toast.success(`${type.toUpperCase()} 文件上传成功`)
+      // Refresh the list to show updated status
+      onSaved()
+    } catch {
+      toast.error(`${type.toUpperCase()} 上传失败`)
+    } finally {
+      setUploading(type)
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -226,6 +256,76 @@ function RawMaterialModal({
           <div className="space-y-3">
             <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>备用供应商</h3>
             <SupplierFields prefix="secondary" form={form} patch={patch} />
+          </div>
+
+          {/* TDS and MSDS file upload */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>技术文档</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* TDS upload */}
+              <div style={card} className="p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>TDS (技术数据表)</span>
+                  {form.tdsFileKey ? (
+                    <CheckCircle size={16} style={{ color: '#4A9F52' }} />
+                  ) : (
+                    <XCircle size={16} style={{ color: '#7A7060' }} />
+                  )}
+                </div>
+                <p className="text-xs mb-2" style={{ color: '#7A7060' }}>支持 PDF、Word、JPG、PNG，最大 10MB</p>
+                <label className="flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm cursor-pointer transition-opacity hover:opacity-85"
+                  style={{ background: form.tdsFileKey ? 'rgba(74,159,82,0.12)' : 'rgba(201,169,110,0.12)', color: form.tdsFileKey ? '#4A9F52' : '#C9A96E' }}>
+                  <UploadCloud size={14} />
+                  {form.tdsFileKey ? '重新上传' : '上传文件'}
+                  <input 
+                    type="file" 
+                    accept=".pdf,.doc,.docx,.jpg,.png,.webp" 
+                    disabled={!!uploading}
+                    className="hidden" 
+                    onChange={async e => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        await uploadFile('tds', file)
+                        e.target.value = ''
+                      }
+                    }} 
+                  />
+                </label>
+                {uploading === 'tds' && <p className="text-xs mt-1" style={{ color: '#C9A96E' }}>上传中...</p>}
+              </div>
+
+              {/* MSDS upload */}
+              <div style={card} className="p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>MSDS (安全数据表)</span>
+                  {form.msdsFileKey ? (
+                    <CheckCircle size={16} style={{ color: '#4A9F52' }} />
+                  ) : (
+                    <XCircle size={16} style={{ color: '#7A7060' }} />
+                  )}
+                </div>
+                <p className="text-xs mb-2" style={{ color: '#7A7060' }}>支持 PDF、Word、JPG、PNG，最大 10MB</p>
+                <label className="flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm cursor-pointer transition-opacity hover:opacity-85"
+                  style={{ background: form.msdsFileKey ? 'rgba(74,159,82,0.12)' : 'rgba(201,169,110,0.12)', color: form.msdsFileKey ? '#4A9F52' : '#C9A96E' }}>
+                  <UploadCloud size={14} />
+                  {form.msdsFileKey ? '重新上传' : '上传文件'}
+                  <input 
+                    type="file" 
+                    accept=".pdf,.doc,.docx,.jpg,.png,.webp" 
+                    disabled={!!uploading}
+                    className="hidden" 
+                    onChange={async e => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        await uploadFile('msds', file)
+                        e.target.value = ''
+                      }
+                    }} 
+                  />
+                </label>
+                {uploading === 'msds' && <p className="text-xs mt-1" style={{ color: '#C9A96E' }}>上传中...</p>}
+              </div>
+            </div>
           </div>
 
           <div className="flex gap-3 pt-2">
@@ -414,8 +514,8 @@ export default function AdminCosmoCoatRawMaterialsPage() {
                   <th style={th}>主供应商</th>
                   <th style={th}>包装/KG</th>
                   <th style={th}>价格/KG</th>
-                  <th style={th}>含税</th>
-                  <th style={th}>运费</th>
+                  <th style={th}>TDS</th>
+                  <th style={th}>MSDS</th>
                   <th style={{ ...th, textAlign: 'right' }}>操作</th>
                 </tr>
               </thead>
@@ -427,13 +527,25 @@ export default function AdminCosmoCoatRawMaterialsPage() {
                     <td style={td}>{item.attributeCode || '—'}</td>
                     <td style={{ ...td, minWidth: '14rem', maxWidth: '20rem' }}>
                       <p className="truncate" title={item.name}>{item.name}</p>
-                      {item.huaxingCode && <p className="text-xs truncate" style={{ color: '#7A7060' }}>华兴号: {item.huaxingCode}</p>}
+                      {item.huaxingCode && <p className="text-xs truncate" style={{ color: '#7A7060' }}>华兴号：{item.huaxingCode}</p>}
                     </td>
                     <td style={td}>{item.primarySupplierName || '—'}</td>
                     <td style={td}>{numOrEmpty(item.primaryPackageKg)}</td>
                     <td style={td}>{numOrEmpty(item.primaryPricePerKg)}</td>
-                    <td style={td}>{ynLabel(item.primaryTaxIncluded)}</td>
-                    <td style={td}>{ynLabel(item.primaryFreightIncluded)}</td>
+                    <td style={td} className="text-center">
+                      {item.tdsFileKey ? (
+                        <span title="已上传 TDS"><CheckCircle size={16} style={{ color: '#4A9F52', margin: '0 auto' }} /></span>
+                      ) : (
+                        <span title="未上传"><XCircle size={16} style={{ color: '#7A7060', margin: '0 auto' }} /></span>
+                      )}
+                    </td>
+                    <td style={td} className="text-center">
+                      {item.msdsFileKey ? (
+                        <span title="已上传 MSDS"><CheckCircle size={16} style={{ color: '#4A9F52', margin: '0 auto' }} /></span>
+                      ) : (
+                        <span title="未上传"><XCircle size={16} style={{ color: '#7A7060', margin: '0 auto' }} /></span>
+                      )}
+                    </td>
                     <td style={{ ...td, textAlign: 'right' }}>
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={e => { e.stopPropagation(); openEdit(item) }} className="p-1.5 rounded-md" style={{ color: 'var(--muted-foreground)' }}>
