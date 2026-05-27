@@ -31,7 +31,7 @@ export async function GET(
     where: { id },
     include: {
       directors: { orderBy: { dateOfAppointment: 'desc' } },
-      members: { orderBy: { createdAt: 'desc' }, include: { shareTransactions: true } },
+      members: { orderBy: { createdAt: 'desc' }, include: { shareTransactions: { orderBy: { transactionDate: 'desc' } } } },
       significantControllers: true,
       designatedReps: { orderBy: { entryDate: 'asc' } },
       documents: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' } },

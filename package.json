@@ -45,6 +45,7 @@
     "node-cron": "^4.2.1",
     "papaparse": "^5.5.3",
     "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^5.7.284",
     "pg": "^8.20.0",
     "pizzip": "^3.1.1",
     "prisma": "^7.7.0",
@@ -74,7 +75,6 @@
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
-    "pdfjs-dist": "^5.4.296",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5"

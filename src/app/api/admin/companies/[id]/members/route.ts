@@ -31,6 +31,7 @@ const createSchema = z.object({
   occupation: z.string().max(200).optional(),
   status: z.enum(['ACTIVE', 'TRANSFERRED_OUT']).optional(),
   transaction: txSchema.optional(),
+  keyPersonId: z.string().cuid().nullable().optional(),
 })
 
 export async function POST(

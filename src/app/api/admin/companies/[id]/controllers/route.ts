@@ -19,6 +19,7 @@ const createSchema = z.object({
   legalEntityRegNo: z.string().max(100).optional(),
   legalEntityGovLaw: z.string().max(200).optional(),
   remarks: z.string().max(1000).optional(),
+  keyPersonId: z.string().cuid().nullable().optional(),
 })
 
 export async function POST(

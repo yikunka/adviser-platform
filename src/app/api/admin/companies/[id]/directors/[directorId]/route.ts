@@ -21,6 +21,7 @@ const updateSchema = z.object({
   corpRegNumber: z.string().max(100).optional(),
   corpRegPlace: z.string().max(200).optional(),
   status: z.enum(['ACTIVE', 'CEASED']).optional(),
+  keyPersonId: z.string().cuid().nullable().optional(),
 })
 
 type Params = { params: Promise<{ id: string; directorId: string }> }

@@ -1,9 +1,5 @@
-import { inflateSync, inflateRawSync } from 'zlib'
-import { execFile } from 'child_process'
-import { access, mkdtemp, readFile, readdir, rm, writeFile } from 'fs/promises'
-import { tmpdir } from 'os'
-import path from 'path'
-import { promisify } from 'util'
+import { extractPdfText } from '@/lib/pdf/extract-text'
+import { renderPdfPages } from '@/lib/pdf/render-pages'
 
 export type NAR1DirectorInfo = {
   nameEn: string
@@ -13,8 +9,15 @@ export type NAR1DirectorInfo = {
   nationality?: string
   addressForService?: string
   dateOfAppointment?: string
+  dateAsReserve?: string
   dateOfCessation?: string | null
+  dateOfBirth?: string
+  placeOfBirth?: string
+  countryOfIssuance?: string
   isReserveDirector?: boolean
+  isCorporation?: boolean
+  corpRegNumber?: string
+  corpRegPlace?: string
 }
 
 export type NAR1MemberInfo = {
@@ -23,7 +26,10 @@ export type NAR1MemberInfo = {
   registeredAddress?: string
   shareClass?: string
   sharesHeld?: number
+  occupation?: string
+  idNumber?: string
   isTransferred?: boolean
+  becomingDate?: string
 }
 
 export type NAR1ControllerInfo = {
@@ -31,13 +37,17 @@ export type NAR1ControllerInfo = {
   nameZh?: string
   idType?: 'HKID' | 'PASSPORT' | 'OTHER'
   idNumber?: string
+  idPassportNo?: string
   issuingCountry?: string
   correspondenceAddress?: string
   natureOfControl?: string
+  entryDate?: string
   becomingDate?: string
+  cessationDate?: string
   isLegalEntity?: boolean
   legalEntityRegNo?: string
   legalEntityGovLaw?: string
+  remarks?: string
 }
 
 export type NAR1AnalysisResult = {
@@ -65,15 +75,7 @@ type PreparedFile = {
 
 const ANALYSIS_MODEL = 'qwen3.5-flash'
 const MAX_TEXT_CHARS = 15000
-const MAX_PDF_IMAGE_PAGES = 5
-const execFileAsync = promisify(execFile)
-const PDFTOPPM_CANDIDATES = [
-  process.env['PDFTOPPM_PATH'] ?? '',
-  'pdftoppm',
-  '/opt/homebrew/bin/pdftoppm',
-  '/usr/local/bin/pdftoppm',
-  '/usr/bin/pdftoppm',
-].filter(Boolean)
+const MAX_PDF_IMAGE_PAGES = 12
 
 export async function analyzeNAR1Document(file: File): Promise<NAR1AnalysisResult> {
   const prepared = await prepareFile(file)
@@ -96,10 +98,13 @@ async function prepareFile(file: File): Promise<PreparedFile> {
   const bytes = Buffer.from(await file.arrayBuffer())
   const mimeType = file.type || guessMimeType(file.name)
   const text = mimeType === 'application/pdf'
-    ? extractPdfText(bytes)
+    ? await extractPdfText(bytes, MAX_TEXT_CHARS)
     : ''
   const images = mimeType === 'application/pdf'
-    ? await renderPdfPages(bytes, file.name)
+    ? await renderPdfPages(bytes, file.name, {
+        maxPages: MAX_PDF_IMAGE_PAGES,
+        logPrefix: '[nar1-analysis]',
+      })
     : []
 
   return {
@@ -124,62 +129,74 @@ async function analyzeWithBailian(file: PreparedFile, apiKey: string): Promise<N
   const content: Array<Record<string, unknown>> = [
     {
       type: 'text',
-      text: `You are analyzing a Hong Kong Annual Return (NAR1) document. Extract the following information and return strict JSON only.
+      text: `You are analyzing a Hong Kong Annual Return (NAR1) document. Extract filled-in data (not blank form labels) and return strict JSON only.
 
 Return JSON with this exact structure:
 {
   "companyNameEn": "Company Name in English",
-  "companyNameZh": "公司中文名稱 (if available)",
-  "companyNumber": "1234567",
+  "companyNameZh": "公司中文名稱",
+  "companyNumber": "Business Registration Number",
   "annualReturnDate": "YYYY-MM-DD",
   "directors": [
     {
-      "nameEn": "Director English Name",
-      "nameZh": "董事中文名 (if available)",
+      "nameEn": "Director English Name (Surname + Other Names)",
+      "nameZh": "董事中文姓名",
       "idType": "HKID|PASSPORT|OTHER",
-      "idNumber": "ID number",
+      "idNumber": "HKID/Passport partial or full number",
       "nationality": "Nationality",
-      "addressForService": "Service address",
+      "countryOfIssuance": "Issuing country for passport",
+      "addressForService": "Correspondence / service address",
       "dateOfAppointment": "YYYY-MM-DD",
+      "dateAsReserve": "YYYY-MM-DD or null",
       "dateOfCessation": "YYYY-MM-DD or null",
-      "isReserveDirector": false
+      "dateOfBirth": "YYYY-MM-DD",
+      "placeOfBirth": "Place of birth",
+      "isReserveDirector": false,
+      "isCorporation": false,
+      "corpRegNumber": "BR number if body corporate director",
+      "corpRegPlace": "Place of registration if body corporate"
     }
   ],
   "members": [
     {
       "nameEn": "Member English Name",
-      "nameZh": "成員中文名 (if available)",
-      "registeredAddress": "Address",
-      "shareClass": "Ordinary/Preference/etc",
+      "nameZh": "成員中文姓名",
+      "registeredAddress": "Registered / correspondence address",
+      "shareClass": "Ordinary|Preference|Other",
       "sharesHeld": 1000,
+      "occupation": "Occupation if shown",
+      "becomingDate": "YYYY-MM-DD",
       "isTransferred": false
     }
   ],
   "significantControllers": [
     {
       "nameEn": "Controller English Name",
-      "nameZh": "控制人中文名 (if available)",
+      "nameZh": "控权人中文姓名",
       "idType": "HKID|PASSPORT|OTHER",
-      "idNumber": "ID number",
-      "issuingCountry": "Country",
-      "correspondenceAddress": "Address",
-      "natureOfControl": "Direct/Indirect control description",
+      "idNumber": "ID/Passport number",
+      "issuingCountry": "Issuing country",
+      "correspondenceAddress": "Correspondence address",
+      "natureOfControl": "Nature of control (e.g. holds more than 25% shares)",
+      "entryDate": "YYYY-MM-DD",
       "becomingDate": "YYYY-MM-DD",
+      "cessationDate": "YYYY-MM-DD or null",
       "isLegalEntity": false,
       "legalEntityRegNo": "Registration number if legal entity",
-      "legalEntityGovLaw": "Governing law if legal entity"
+      "legalEntityGovLaw": "Governing law if legal entity",
+      "remarks": ""
     }
   ]
 }
 
 Important notes:
-1. For directors, identify both active directors and those who have ceased (dateOfCessation will be set)
-2. For members/shareholders, extract all shareholders from the share capital structure section
-3. For significant controllers, extract from Part II - Register of Significant Controllers section
-4. Use null for dateOfCessation if the director is still active
-5. ID types should be: HKID (Hong Kong ID), PASSPORT, or OTHER
-6. Dates must be in YYYY-MM-DD format
-7. If a field is not available, use empty string or null`,
+1. Section 13 (Directors): extract ALL natural person and body corporate directors with appointment/cessation dates and service addresses
+2. Section 14 / Schedule 1 (Members): extract shareholders with share class, number of shares held, and address
+3. Part II / Register of Significant Controllers: extract all significant controllers with nature of control
+4. Use null for empty dates of cessation when still active
+5. Dates must be YYYY-MM-DD
+6. Only include people/entities with filled names — skip empty template rows
+7. For partially redacted HKID, include visible digits (e.g. Z739)`,
     },
     {
       type: 'text',
@@ -271,9 +288,9 @@ function fallbackAnalyze(file: PreparedFile): NAR1AnalysisResult {
 function normalizeAnalysis(value: unknown): NAR1AnalysisResult {
   const record = value && typeof value === 'object' ? value as Record<string, unknown> : {}
 
-  const directors = normalizeArray(record['directors']).map(normalizeDirector)
-  const members = normalizeArray(record['members']).map(normalizeMember)
-  const controllers = normalizeArray(record['significantControllers']).map(normalizeController)
+  const directors = normalizeArray(record['directors']).map(normalizeDirector).filter(d => d.nameEn)
+  const members = normalizeArray(record['members']).map(normalizeMember).filter(m => m.nameEn)
+  const controllers = normalizeArray(record['significantControllers']).map(normalizeController).filter(c => c.nameEn)
 
   return {
     companyNameEn: cleanString(record['companyNameEn']),
@@ -300,14 +317,21 @@ function normalizeDirector(value: unknown): NAR1DirectorInfo {
 
   return {
     nameEn: cleanString(record['nameEn']) || '',
-    nameZh: cleanString(record['nameZh']) || undefined,
+    nameZh: cleanString(record['nameZh']) || cleanString(record['nameCn']) || undefined,
     idType: validIdType,
     idNumber: cleanString(record['idNumber']) || undefined,
     nationality: cleanString(record['nationality']) || undefined,
-    addressForService: cleanString(record['addressForService']) || undefined,
+    addressForService: cleanString(record['addressForService']) || cleanString(record['address']) || undefined,
     dateOfAppointment: normalizeDate(cleanString(record['dateOfAppointment'])) || undefined,
+    dateAsReserve: normalizeDate(cleanString(record['dateAsReserve'])) || undefined,
     dateOfCessation: normalizeDate(cleanString(record['dateOfCessation'])) || null,
+    dateOfBirth: normalizeDate(cleanString(record['dateOfBirth'])) || undefined,
+    placeOfBirth: cleanString(record['placeOfBirth']) || undefined,
+    countryOfIssuance: cleanString(record['countryOfIssuance']) || cleanString(record['issuingCountry']) || undefined,
     isReserveDirector: Boolean(record['isReserveDirector']),
+    isCorporation: Boolean(record['isCorporation']),
+    corpRegNumber: cleanString(record['corpRegNumber']) || cleanString(record['legalEntityRegNo']) || undefined,
+    corpRegPlace: cleanString(record['corpRegPlace']) || undefined,
   }
 }
 
@@ -319,10 +343,15 @@ function normalizeMember(value: unknown): NAR1MemberInfo {
 
   return {
     nameEn: cleanString(record['nameEn']) || '',
-    nameZh: cleanString(record['nameZh']) || undefined,
-    registeredAddress: cleanString(record['registeredAddress']) || undefined,
+    nameZh: cleanString(record['nameZh']) || cleanString(record['nameCn']) || undefined,
+    registeredAddress: cleanString(record['registeredAddress']) || cleanString(record['address']) || undefined,
     shareClass: cleanString(record['shareClass']) || undefined,
-    sharesHeld: typeof record['sharesHeld'] === 'number' ? record['sharesHeld'] : undefined,
+    sharesHeld: typeof record['sharesHeld'] === 'number'
+      ? record['sharesHeld']
+      : parseShareCount(cleanString(record['sharesHeld'])),
+    occupation: cleanString(record['occupation']) || undefined,
+    idNumber: cleanString(record['idNumber']) || undefined,
+    becomingDate: normalizeDate(cleanString(record['becomingDate'])) || undefined,
     isTransferred: Boolean(record['isTransferred']),
   }
 }
@@ -338,18 +367,24 @@ function normalizeController(value: unknown): NAR1ControllerInfo {
     ? idType
     : undefined
 
+  const idNumber = cleanString(record['idNumber']) || cleanString(record['idPassportNo'])
+
   return {
     nameEn: cleanString(record['nameEn']) || '',
-    nameZh: cleanString(record['nameZh']) || undefined,
+    nameZh: cleanString(record['nameZh']) || cleanString(record['nameCn']) || undefined,
     idType: validIdType,
-    idNumber: cleanString(record['idNumber']) || undefined,
+    idNumber,
+    idPassportNo: idNumber,
     issuingCountry: cleanString(record['issuingCountry']) || undefined,
     correspondenceAddress: cleanString(record['correspondenceAddress']) || undefined,
     natureOfControl: cleanString(record['natureOfControl']) || undefined,
+    entryDate: normalizeDate(cleanString(record['entryDate'])) || undefined,
     becomingDate: normalizeDate(cleanString(record['becomingDate'])) || undefined,
+    cessationDate: normalizeDate(cleanString(record['cessationDate'])) || undefined,
     isLegalEntity: Boolean(record['isLegalEntity']),
     legalEntityRegNo: cleanString(record['legalEntityRegNo']) || undefined,
     legalEntityGovLaw: cleanString(record['legalEntityGovLaw']) || undefined,
+    remarks: cleanString(record['remarks']) || undefined,
   }
 }
 
@@ -362,6 +397,14 @@ function cleanString(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined
   const cleaned = value.trim().replace(/\s+/g, ' ')
   return cleaned || undefined
+}
+
+function parseShareCount(value: string | undefined): number | undefined {
+  if (!value) return undefined
+  const match = value.match(/(\d[\d,]*)/)
+  if (!match) return undefined
+  const n = Number(match[1].replace(/,/g, ''))
+  return Number.isFinite(n) ? n : undefined
 }
 
 function normalizeDate(value: string | undefined): string | undefined {
@@ -411,160 +454,39 @@ function guessMimeType(fileName: string) {
   return 'application/octet-stream'
 }
 
-async function renderPdfPages(buffer: Buffer, fileName: string) {
-  const dir = await mkdtemp(path.join(tmpdir(), 'nar1-pdf-'))
-  const inputPath = path.join(dir, 'input.pdf')
-  const outputPrefix = path.join(dir, 'page')
-
-  try {
-    await writeFile(inputPath, buffer)
-    const rendered = await renderWithPdftoppm(inputPath, outputPrefix)
-      || await renderWithQuickLook(inputPath, dir)
-
-    if (!rendered) {
-      console.warn(
-        `[nar1-analysis] PDF image render skipped for ${fileName}: no PDF renderer found. ` +
-        'Install poppler-utils (Linux: apt-get install -y poppler-utils) or set the PDFTOPPM_PATH env var.'
-      )
-      return []
-    }
-
-    const names = (await readdir(dir))
-      .filter(name => /^page-\d+\.png$/.test(name) || /^input\.pdf\.png$/.test(name))
-      .sort((a, b) => pageNumber(a) - pageNumber(b))
-      .slice(0, MAX_PDF_IMAGE_PAGES)
-
-    return Promise.all(names.map(async (name, index) => ({
-      mimeType: 'image/png' as const,
-      base64: (await readFile(path.join(dir, name))).toString('base64'),
-      label: `page ${index + 1}`,
-    })))
-  } finally {
-    await rm(dir, { recursive: true, force: true })
-  }
-}
-
-async function renderWithPdftoppm(inputPath: string, outputPrefix: string) {
-  const args = [
-    '-png',
-    '-f', '1',
-    '-l', String(MAX_PDF_IMAGE_PAGES),
-    '-r', '160',
-    inputPath,
-    outputPrefix,
-  ]
-
-  for (const command of PDFTOPPM_CANDIDATES) {
-    try {
-      if (command.includes('/')) await access(command)
-      await execFileAsync(command, args, { timeout: 30000, maxBuffer: 10 * 1024 * 1024 })
-      return true
-    } catch (error) {
-      if (!isMissingCommandError(error)) {
-        console.warn(`[nar1-analysis] pdftoppm failed at ${command}:`, error)
-        return false
-      }
-    }
-  }
-
-  return false
-}
-
-async function renderWithQuickLook(inputPath: string, outputDir: string) {
-  try {
-    await access('/usr/bin/qlmanage')
-    await execFileAsync('/usr/bin/qlmanage', [
-      '-t',
-      '-s', '1800',
-      '-o', outputDir,
-      inputPath,
-    ], { timeout: 30000, maxBuffer: 10 * 1024 * 1024 })
-    return true
-  } catch (error) {
-    if (!isMissingCommandError(error)) {
-      console.warn('[nar1-analysis] qlmanage PDF render failed:', error)
-    }
-    return false
-  }
-}
-
-function isMissingCommandError(error: unknown) {
-  return typeof error === 'object'
-    && error !== null
-    && 'code' in error
-    && (error as { code?: unknown }).code === 'ENOENT'
-}
-
-function pageNumber(fileName: string) {
-  if (fileName === 'input.pdf.png') return 1
-  return Number(fileName.match(/page-(\d+)\.png$/)?.[1] ?? 0)
-}
-
-function extractPdfText(buffer: Buffer) {
-  const source = buffer.toString('latin1')
-  const chunks: string[] = []
-
-  for (const match of source.matchAll(/stream\r?\n([\s\S]*?)\r?\nendstream/g)) {
-    const raw = Buffer.from(match[1], 'latin1')
-    const variants = [raw]
-    try { variants.push(inflateSync(raw)) } catch {}
-    try { variants.push(inflateRawSync(raw)) } catch {}
-    for (const variant of variants) {
-      const text = decodePdfStrings(variant.toString('latin1'))
-      if (text) chunks.push(text)
-    }
-  }
-
-  const direct = decodePdfStrings(source)
-  if (direct) chunks.push(direct)
-
-  return chunks.join('\n').replace(/\s+/g, ' ').slice(0, MAX_TEXT_CHARS)
-}
-
-function decodePdfStrings(input: string) {
-  const values: string[] = []
-  for (const match of input.matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)) {
-    values.push(unescapePdfString(match[1]))
-  }
-  for (const arrayMatch of input.matchAll(/\[((?:\s*\((?:\\.|[^\\)])*\)\s*-?\d*)+)\]\s*TJ/g)) {
-    for (const stringMatch of arrayMatch[1].matchAll(/\((?:\\.|[^\\)])*\)/g)) {
-      values.push(unescapePdfString(stringMatch[0].slice(1, -1)))
-    }
-  }
-  return values.join(' ')
-}
-
-function unescapePdfString(value: string) {
-  return value
-    .replace(/\\([nrtbf()\\])/g, (_all, ch: string) => {
-      const map: Record<string, string> = { n: '\n', r: '\r', t: '\t', b: '\b', f: '\f', '(': '(', ')': ')', '\\': '\\' }
-      return map[ch] ?? ch
-    })
-    .replace(/\\([0-7]{1,3})/g, (_all, octal: string) => String.fromCharCode(parseInt(octal, 8)))
-}
-
 /** UI shape used by admin company detail NAR1 preview modal */
 export type NAR1UiAnalysisResult = {
   directors: Array<{
     nameEn: string
     nameZh?: string
     dateOfAppointment?: string
+    dateAsReserve?: string
     addressForService: string
     nationality?: string
     idType?: string
     idNumber?: string
+    dateOfBirth?: string
+    placeOfBirth?: string
+    countryOfIssuance?: string
+    isCorporation?: boolean
+    corpRegNumber?: string
+    corpRegPlace?: string
     status: 'appointed' | 'resigned' | 'active'
     cessationDate?: string
+    matchedKeyPersonId?: string
   }>
   members: Array<{
     nameEn: string
     nameZh?: string
     address: string
-    capacity: string
-    telFax?: string
+    shareClass?: string
+    sharesHeld?: number
+    occupation?: string
+    idNumber?: string
     becomingDate?: string
     cessationDate?: string
     status: 'active' | 'resigned'
+    matchedKeyPersonId?: string
   }>
   significantControllers: Array<{
     nameEn: string
@@ -574,9 +496,14 @@ export type NAR1UiAnalysisResult = {
     natureOfControl: string
     becomingDate?: string
     cessationDate?: string
+    idType?: string
+    idPassportNo?: string
+    issuingCountry?: string
     isLegalEntity?: boolean
     legalEntityRegNo?: string
-    issuingCountry?: string
+    legalEntityGovLaw?: string
+    remarks?: string
+    matchedKeyPersonId?: string
   }>
 }
 
@@ -586,10 +513,17 @@ export function mapNAR1AnalysisForUi(result: NAR1AnalysisResult): NAR1UiAnalysis
       nameEn: director.nameEn,
       nameZh: director.nameZh,
       dateOfAppointment: director.dateOfAppointment,
+      dateAsReserve: director.dateAsReserve,
       addressForService: director.addressForService ?? '',
       nationality: director.nationality,
       idType: director.idType,
       idNumber: director.idNumber,
+      dateOfBirth: director.dateOfBirth,
+      placeOfBirth: director.placeOfBirth,
+      countryOfIssuance: director.countryOfIssuance,
+      isCorporation: director.isCorporation,
+      corpRegNumber: director.corpRegNumber,
+      corpRegPlace: director.corpRegPlace,
       status: director.dateOfCessation ? 'resigned' : 'active',
       cessationDate: director.dateOfCessation ?? '',
     })),
@@ -597,22 +531,29 @@ export function mapNAR1AnalysisForUi(result: NAR1AnalysisResult): NAR1UiAnalysis
       nameEn: member.nameEn,
       nameZh: member.nameZh,
       address: member.registeredAddress ?? '',
-      capacity: member.shareClass ?? (member.sharesHeld != null ? `${member.sharesHeld} shares` : ''),
-      becomingDate: '',
+      shareClass: member.shareClass,
+      sharesHeld: member.sharesHeld,
+      occupation: member.occupation,
+      idNumber: member.idNumber,
+      becomingDate: member.becomingDate ?? '',
       cessationDate: member.isTransferred ? '' : '',
       status: member.isTransferred ? 'resigned' : 'active',
     })),
     significantControllers: result.significantControllers.map(controller => ({
       nameEn: controller.nameEn,
       nameZh: controller.nameZh,
-      entryDate: controller.becomingDate,
+      entryDate: controller.entryDate ?? controller.becomingDate,
       correspondenceAddress: controller.correspondenceAddress ?? '',
       natureOfControl: controller.natureOfControl ?? '',
       becomingDate: controller.becomingDate,
-      cessationDate: '',
+      cessationDate: controller.cessationDate ?? '',
+      idType: controller.idType,
+      idPassportNo: controller.idPassportNo ?? controller.idNumber,
+      issuingCountry: controller.issuingCountry,
       isLegalEntity: controller.isLegalEntity,
       legalEntityRegNo: controller.legalEntityRegNo,
-      issuingCountry: controller.issuingCountry,
+      legalEntityGovLaw: controller.legalEntityGovLaw,
+      remarks: controller.remarks,
     })),
   }
 }

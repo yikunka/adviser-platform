@@ -1,27 +1,71 @@
 /**
- * Alibaba Cloud OSS storage adapter.
+ * File storage adapter — Alibaba Cloud OSS in production, local disk in dev.
  *
- * OSS exposes an S3-compatible API, so we use the AWS SDK v3.
- * Endpoint: https://oss-<region>.aliyuncs.com
- * Bucket URL: https://<bucket>.oss-<region>.aliyuncs.com/<key>
+ * OSS (production):
+ *   OSS_REGION, OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET, OSS_BUCKET
  *
- * Aliyun OSS does not fully implement newer S3 checksum headers. We set
- * `requestChecksumCalculation` / `responseChecksumValidation` to WHEN_REQUIRED
- * so PutObject/GetObject behave like classic SigV4 without extra checksum fields.
- *
- * Required env vars (set in .env / .env.local):
- *   OSS_REGION          e.g. cn-hangzhou
- *   OSS_ACCESS_KEY_ID
- *   OSS_ACCESS_KEY_SECRET
- *   OSS_BUCKET
- *   OSS_CDN_URL         e.g. https://your-bucket.oss-cn-hangzhou.aliyuncs.com
- *                       or a custom CDN domain — used by next.config assetPrefix
+ * Local (development):
+ *   Set LOCAL_UPLOADS_DIR (default: <cwd>/uploads) or leave OSS unset in dev —
+ *   files are written to disk and served via GET /api/files?key=<storageKey>
  */
 
+import fs from 'fs/promises'
+import path from 'path'
+import { access } from 'fs/promises'
 import { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
+function uploadsRoot(): string {
+  const fromEnv = (process.env['LOCAL_UPLOADS_DIR'] ?? '').trim()
+  if (fromEnv) return path.resolve(fromEnv)
+  return path.join(process.cwd(), 'uploads')
+}
+
+function resolveLocalPath(key: string): string {
+  const filePath = path.join(uploadsRoot(), key)
+  const resolved = path.resolve(filePath)
+  if (!resolved.startsWith(path.resolve(uploadsRoot()))) {
+    throw new Error('Invalid file path')
+  }
+  return resolved
+}
+
+function ossCredentialsMissing(): boolean {
+  const accessKeyId = (process.env['OSS_ACCESS_KEY_ID'] ?? '').trim()
+  const secretAccessKey = (process.env['OSS_ACCESS_KEY_SECRET'] ?? '').trim()
+  const bucket = (process.env['OSS_BUCKET'] ?? '').trim()
+  const region = (process.env['OSS_REGION'] ?? '').trim()
+  return !accessKeyId || !secretAccessKey || !bucket || !region
+}
+
+/** True when uploads/downloads should use the local uploads directory. */
+export function isLocalStorageEnabled(): boolean {
+  if ((process.env['USE_LOCAL_STORAGE'] ?? '').trim() === '1'
+    || (process.env['USE_LOCAL_STORAGE'] ?? '').trim().toLowerCase() === 'true') {
+    return true
+  }
+  if ((process.env['LOCAL_UPLOADS_DIR'] ?? '').trim()) {
+    return true
+  }
+  // Dev default: no OSS credentials → store under ./uploads
+  if (process.env.NODE_ENV !== 'production' && ossCredentialsMissing()) {
+    return true
+  }
+  return false
+}
+
+function getAppBaseUrl(): string {
+  const url = (
+    process.env['NEXT_PUBLIC_APP_URL']
+    ?? process.env['AUTH_URL']
+    ?? process.env['NEXTAUTH_URL']
+    ?? 'http://localhost:3000'
+  ).trim()
+  return url.replace(/\/$/, '')
+}
+
 export function getOssConfigError(): string | null {
+  if (isLocalStorageEnabled()) return null
   const region = (process.env['OSS_REGION'] ?? '').trim()
   const accessKeyId = (process.env['OSS_ACCESS_KEY_ID'] ?? '').trim()
   const secretAccessKey = (process.env['OSS_ACCESS_KEY_SECRET'] ?? '').trim()
@@ -82,6 +126,15 @@ export async function uploadToR2(
   contentType: string,
   opts?: UploadToR2Options,
 ): Promise<void> {
+  if (isLocalStorageEnabled()) {
+    const dest = resolveLocalPath(key)
+    await fs.mkdir(path.dirname(dest), { recursive: true })
+    await fs.writeFile(dest, body)
+    void contentType
+    void opts
+    return
+  }
+
   await makeClient().send(
     new PutObjectCommand({
       Bucket: bucket(),
@@ -96,6 +149,15 @@ export async function uploadToR2(
 }
 
 export async function headObjectMeta(key: string): Promise<{ metadata: Record<string, string> } | null> {
+  if (isLocalStorageEnabled()) {
+    try {
+      await access(resolveLocalPath(key))
+      return { metadata: {} }
+    } catch {
+      return null
+    }
+  }
+
   try {
     const out = await makeClient().send(new HeadObjectCommand({ Bucket: bucket(), Key: key }))
     return { metadata: out.Metadata ?? {} }
@@ -105,6 +167,13 @@ export async function headObjectMeta(key: string): Promise<{ metadata: Record<st
 }
 
 export async function deleteFromR2(key: string): Promise<void> {
+  if (isLocalStorageEnabled()) {
+    await fs.unlink(resolveLocalPath(key)).catch(err => {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err
+    })
+    return
+  }
+
   await makeClient().send(new DeleteObjectCommand({ Bucket: bucket(), Key: key }))
 }
 
@@ -113,6 +182,17 @@ export async function getSignedDownloadUrl(
   expiresIn = 900,
   opts?: { responseContentDisposition?: string },
 ): Promise<string> {
+  if (isLocalStorageEnabled()) {
+    const params = new URLSearchParams({ key })
+    const disposition = opts?.responseContentDisposition ?? ''
+    if (disposition.includes('attachment')) {
+      params.set('download', '1')
+      const match = disposition.match(/filename="([^"]+)"/)
+      if (match?.[1]) params.set('filename', match[1])
+    }
+    return `${getAppBaseUrl()}/api/files?${params.toString()}`
+  }
+
   const command = new GetObjectCommand({
     Bucket: bucket(),
     Key: key,
@@ -122,21 +202,26 @@ export async function getSignedDownloadUrl(
 }
 
 /**
- * Fetch the raw bytes of a stored file.
- * Used server-side when we need the buffer directly (e.g. PDF report generation).
+ * Fetch the raw bytes of a stored file (server-side).
  */
 export async function readFileBuffer(key: string): Promise<Buffer> {
-  const url = await getSignedDownloadUrl(key, 300)
-  const resp = await fetch(url)
-  if (!resp.ok) throw new Error(`OSS fetch failed for key "${key}": ${resp.status} ${resp.statusText}`)
-  return Buffer.from(await resp.arrayBuffer())
+  if (isLocalStorageEnabled()) {
+    const { buffer } = await readLocalFile(key)
+    return buffer
+  }
+
+  const out = await makeClient().send(
+    new GetObjectCommand({ Bucket: bucket(), Key: key }),
+  )
+  if (!out.Body) {
+    throw new Error(`OSS fetch failed for key "${key}": empty response body`)
+  }
+  return Buffer.from(await out.Body.transformToByteArray())
 }
 
-/**
- * Backward-compat shim — callers that previously used readLocalFile still work.
- * filePath is the OSS key (not a real filesystem path in production).
- */
+/** Read a file from local disk (local storage mode only). */
 export async function readLocalFile(key: string): Promise<{ buffer: Buffer; filePath: string }> {
-  const buffer = await readFileBuffer(key)
-  return { buffer, filePath: key }
+  const filePath = resolveLocalPath(key)
+  const buffer = await fs.readFile(filePath)
+  return { buffer, filePath }
 }

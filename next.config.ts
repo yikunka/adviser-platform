@@ -25,7 +25,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: turbopackRoot,
   },
-  serverExternalPackages: ["node-cron", "@prisma/client", "@prisma/adapter-pg", "pg"],
+  serverExternalPackages: ["node-cron", "@prisma/client", "@prisma/adapter-pg", "pg", "pdfjs-dist"],
   images: {
     // Route all <Image> requests through OSS Image Processing when CDN is set.
     // The loader appends ?x-oss-process=image/resize,w_<w>/format,webp/quality,q_<q>

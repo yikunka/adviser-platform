@@ -303,6 +303,7 @@ model Company {
 model Director {
   id                String         @id @default(cuid())
   companyId         String
+  keyPersonId       String?
   nameEn            String
   nameZh            String?
   dateOfAppointment DateTime
@@ -322,8 +323,10 @@ model Director {
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  keyPerson KeyPerson? @relation(fields: [keyPersonId], references: [id], onDelete: SetNull)
 
+  @@index([keyPersonId])
   @@map("directors")
 }
 
@@ -334,6 +337,7 @@ model Director {
 model Member {
   id                String       @id @default(cuid())
   companyId         String
+  keyPersonId       String?
   nameEn            String
   nameZh            String?
   shareClass        ShareClass   @default(ORDINARY)
@@ -344,8 +348,10 @@ model Member {
   updatedAt         DateTime     @updatedAt
 
   company           Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  keyPerson         KeyPerson?         @relation(fields: [keyPersonId], references: [id], onDelete: SetNull)
   shareTransactions ShareTransaction[]
 
+  @@index([keyPersonId])
   @@map("members")
 }
 
@@ -382,6 +388,7 @@ model ShareTransaction {
 model SignificantController {
   id                    String    @id @default(cuid())
   companyId             String
+  keyPersonId           String?
   entryDate             DateTime
   nameEn                String
   nameZh                String?
@@ -399,8 +406,10 @@ model SignificantController {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  keyPerson KeyPerson? @relation(fields: [keyPersonId], references: [id], onDelete: SetNull)
 
+  @@index([keyPersonId])
   @@map("significant_controllers")
 }
 
@@ -485,6 +494,9 @@ model KeyPerson {
   kycDocuments  KYCDocument[]
   companyLinks  CompanyKeyPerson[]
   amlChecks     AMLCheck[]         @relation("KeyPersonAMLCheck")
+  directors     Director[]
+  members       Member[]
+  significantControllers SignificantController[]
 
   @@index([submittedByUserId])
   @@map("key_persons")

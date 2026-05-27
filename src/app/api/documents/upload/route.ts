@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error('[documents/upload] OSS PutObject failed:', err)
     return NextResponse.json(
-      { error: 'Could not store file. Verify OSS credentials and bucket configuration.' },
+      { error: 'Could not store file. Check storage configuration (OSS or LOCAL_UPLOADS_DIR).' },
       { status: 503 },
     )
   }

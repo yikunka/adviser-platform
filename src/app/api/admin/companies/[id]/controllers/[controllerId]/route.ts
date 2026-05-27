@@ -20,6 +20,7 @@ const updateSchema = z.object({
   legalEntityRegNo: z.string().max(100).optional(),
   legalEntityGovLaw: z.string().max(200).optional(),
   remarks: z.string().max(1000).optional(),
+  keyPersonId: z.string().cuid().nullable().optional(),
 })
 
 type Params = { params: Promise<{ id: string; controllerId: string }> }
@@ -51,11 +52,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     legalEntityRegNo,
     legalEntityGovLaw,
     remarks,
+    keyPersonId,
   } = parsed.data
 
   const data: Prisma.SignificantControllerUpdateInput = {}
   if (nameEn !== undefined) data.nameEn = nameEn
   if (nameZh !== undefined) data.nameZh = nameZh
+  if (keyPersonId !== undefined) {
+    data.keyPerson = keyPersonId ? { connect: { id: keyPersonId } } : { disconnect: true }
+  }
   if (correspondenceAddress !== undefined) data.correspondenceAddress = correspondenceAddress
   if (idType !== undefined) data.idType = idType
   if (idPassportNo !== undefined) data.idPassportNo = idPassportNo

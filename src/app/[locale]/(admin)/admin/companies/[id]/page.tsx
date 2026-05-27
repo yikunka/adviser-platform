@@ -39,6 +39,7 @@ type VerifiedClient = {
 
 type Director = {
   id: string
+  keyPersonId: string | null
   nameEn: string
   nameZh: string | null
   dateOfAppointment: string
@@ -50,14 +51,36 @@ type Director = {
   status: string
 }
 
+type ShareTransaction = {
+  id: string
+  transactionType: string
+  transactionDate: string
+  sharesHeld: number
+  sharesAcquired: number | null
+  sharesTransferred: number | null
+  allotmentTransferNo: string | null
+  certificateNo: string | null
+  distinctiveNosFrom: number | null
+  distinctiveNosTo: number | null
+  amountPaid: string | number | null
+  certificateSurrendered: string | null
+  certificateSurrenderedShares: number | null
+  balanceCertificateNo: string | null
+  balanceCertificateShares: number | null
+  balanceDistinctiveNosFrom: number | null
+  balanceDistinctiveNosTo: number | null
+}
+
 type Member = {
   id: string
+  keyPersonId: string | null
   nameEn: string
   nameZh: string | null
   shareClass: string
   registeredAddress: string
   occupation: string | null
   status: string
+  shareTransactions?: ShareTransaction[]
 }
 
 type DesignatedRep = {
@@ -74,6 +97,7 @@ type DesignatedRep = {
 
 type Controller = {
   id: string
+  keyPersonId: string | null
   nameEn: string
   nameZh: string | null
   entryDate: string
@@ -476,30 +500,126 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
 
 // ── KYC Picker ────────────────────────────────────────────────────────────────
 
-function KycPicker({ persons, onSelect }: { persons: KycPerson[]; onSelect: (p: KycPerson) => void }) {
-  const [value, setValue] = useState('')
+function KycLinkPicker({
+  persons,
+  value,
+  onSelect,
+  prefillOnSelect = true,
+}: {
+  persons: KycPerson[]
+  value: string
+  onSelect: (person: KycPerson | null) => void
+  prefillOnSelect?: boolean
+}) {
+  if (persons.length === 0) return null
 
   function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const id = e.target.value
-    setValue(id)
-    const person = persons.find(p => p.id === id)
-    if (person) onSelect(person)
+    const person = persons.find(p => p.id === id) ?? null
+    onSelect(person)
   }
-
-  if (persons.length === 0) return null
 
   return (
     <div className="rounded-lg p-3 mb-1" style={{ background: '#0D0D08', border: '1px solid #2A2418' }}>
-      <label style={{ ...labelStyle, color: '#C9A96E' }}>Pre-fill from KYC person</label>
+      <label style={{ ...labelStyle, color: '#C9A96E' }}>
+        {prefillOnSelect ? '关联 KYC 人员' : 'Linked KYC person'}
+      </label>
       <select value={value} onChange={handleChange} style={fieldStyle}>
-        <option value="" style={{ background: '#141414' }}>— Select a KYC person —</option>
+        <option value="" style={{ background: '#141414' }}>— 暂不关联 KYC —</option>
         {persons.map(p => (
           <option key={p.id} value={p.id} style={{ background: '#141414' }}>
             {p.nameEn}{p.nameZh ? ` (${p.nameZh})` : ''} · {p.kycStatus}
           </option>
         ))}
       </select>
+      <p className="text-[11px] mt-1" style={{ color: '#5A5040' }}>
+        保存后可随时更改关联；若 KYC 尚未建立，可先保存登记册资料。
+      </p>
     </div>
+  )
+}
+
+/** Edit mode: when linking KYC for the first time, ask before overwriting form fields. */
+function KycLinkWithConfirm({
+  persons,
+  value,
+  confirmWhenLinking,
+  onLinkOnly,
+  onPrefill,
+}: {
+  persons: KycPerson[]
+  value: string
+  confirmWhenLinking: boolean
+  onLinkOnly: (person: KycPerson | null) => void
+  onPrefill: (person: KycPerson) => void
+}) {
+  const [pending, setPending] = useState<KycPerson | null>(null)
+
+  function handleSelect(person: KycPerson | null) {
+    if (!person) {
+      setPending(null)
+      onLinkOnly(null)
+      return
+    }
+    if (confirmWhenLinking) {
+      setPending(person)
+      return
+    }
+    onPrefill(person)
+  }
+
+  return (
+    <>
+      <KycLinkPicker
+        persons={persons}
+        value={value}
+        onSelect={handleSelect}
+        prefillOnSelect={false}
+      />
+      {pending && (
+        <div
+          className="rounded-lg p-3 space-y-3 -mt-1"
+          style={{ background: '#1A1A12', border: '1px solid #C9A96E' }}
+        >
+          <p className="text-sm" style={{ color: 'var(--foreground)' }}>
+            已选择关联 <span className="font-medium">{pending.nameEn}</span>
+            {pending.nameZh ? `（${pending.nameZh}）` : ''}。
+            是否用该 KYC 资料覆盖当前表单中的姓名、地址等字段？
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                onPrefill(pending)
+                setPending(null)
+              }}
+            >
+              覆盖
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                onLinkOnly(pending)
+                setPending(null)
+              }}
+            >
+              仅关联
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setPending(null)}
+            >
+              取消
+            </Button>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -515,6 +635,7 @@ function DirectorForm({ companyId, initial, kycPersons, onDone }: {
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [form, setForm] = useState({
+    keyPersonId: initial?.keyPersonId ?? '',
     nameEn: initial?.nameEn ?? '',
     nameZh: initial?.nameZh ?? '',
     dateOfAppointment: initial?.dateOfAppointment ? initial.dateOfAppointment.slice(0, 10) : '',
@@ -545,9 +666,18 @@ function DirectorForm({ companyId, initial, kycPersons, onDone }: {
     return nextErrors
   }
 
+  function linkKycOnly(p: KycPerson | null) {
+    if (!p) {
+      setForm(f => ({ ...f, keyPersonId: '' }))
+      return
+    }
+    setForm(f => ({ ...f, keyPersonId: p.id }))
+  }
+
   function prefillFromKyc(p: KycPerson) {
     setForm(f => ({
       ...f,
+      keyPersonId: p.id,
       nameEn: p.nameEn,
       nameZh: p.nameZh ?? f.nameZh,
       nationality: p.nationality ?? f.nationality,
@@ -579,6 +709,7 @@ function DirectorForm({ companyId, initial, kycPersons, onDone }: {
       if (form.nationality) body.nationality = form.nationality
       if (form.idType) body.idType = form.idType
       if (form.idNumber) body.idNumber = form.idNumber
+      body.keyPersonId = form.keyPersonId || null
 
       const url = isEdit
         ? `/api/admin/companies/${companyId}/directors/${initial!.id}`
@@ -597,7 +728,13 @@ function DirectorForm({ companyId, initial, kycPersons, onDone }: {
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      {!isEdit && <KycPicker persons={kycPersons} onSelect={prefillFromKyc} />}
+      <KycLinkWithConfirm
+        persons={kycPersons}
+        value={form.keyPersonId}
+        confirmWhenLinking={isEdit && !initial?.keyPersonId}
+        onLinkOnly={linkKycOnly}
+        onPrefill={prefillFromKyc}
+      />
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label style={labelStyle}>Name (English) *</label>
@@ -662,6 +799,7 @@ function DirectorForm({ companyId, initial, kycPersons, onDone }: {
 // ── Member Form ───────────────────────────────────────────────────────────────
 
 const TX_EMPTY = {
+  id: '',
   transactionType: 'ALLOTMENT',
   transactionDate: new Date().toISOString().slice(0, 10),
   allotmentTransferNo: '',
@@ -680,6 +818,67 @@ const TX_EMPTY = {
   sharesHeld: '',
 }
 
+function numField(value: number | null | undefined) {
+  return value != null ? String(value) : ''
+}
+
+function decimalField(value: string | number | null | undefined) {
+  if (value == null || value === '') return ''
+  return String(value)
+}
+
+function getInitialShareTransaction(transactions?: ShareTransaction[]) {
+  if (!transactions?.length) return undefined
+  return [...transactions].sort(
+    (a, b) => new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime(),
+  )[0]
+}
+
+function shareTransactionToForm(stx: ShareTransaction) {
+  return {
+    id: stx.id,
+    transactionType: stx.transactionType,
+    transactionDate: stx.transactionDate.slice(0, 10),
+    allotmentTransferNo: stx.allotmentTransferNo ?? '',
+    certificateNo: stx.certificateNo ?? '',
+    sharesAcquired: numField(stx.sharesAcquired),
+    distinctiveNosFrom: numField(stx.distinctiveNosFrom),
+    distinctiveNosTo: numField(stx.distinctiveNosTo),
+    amountPaid: decimalField(stx.amountPaid),
+    sharesTransferred: numField(stx.sharesTransferred),
+    certificateSurrendered: stx.certificateSurrendered ?? '',
+    certificateSurrenderedShares: numField(stx.certificateSurrenderedShares),
+    balanceCertificateNo: stx.balanceCertificateNo ?? '',
+    balanceCertificateShares: numField(stx.balanceCertificateShares),
+    balanceDistinctiveNosFrom: numField(stx.balanceDistinctiveNosFrom),
+    balanceDistinctiveNosTo: numField(stx.balanceDistinctiveNosTo),
+    sharesHeld: numField(stx.sharesHeld),
+  }
+}
+
+function buildMemberTransactionBody(tx: typeof TX_EMPTY) {
+  const body: Record<string, unknown> = {
+    transactionType: tx.transactionType,
+    transactionDate: tx.transactionDate,
+    sharesHeld: Number(tx.sharesHeld),
+  }
+  if (tx.id) body.id = tx.id
+  if (tx.allotmentTransferNo) body.allotmentTransferNo = tx.allotmentTransferNo
+  if (tx.certificateNo) body.certificateNo = tx.certificateNo
+  if (tx.sharesAcquired !== '') body.sharesAcquired = Number(tx.sharesAcquired)
+  if (tx.distinctiveNosFrom !== '') body.distinctiveNosFrom = Number(tx.distinctiveNosFrom)
+  if (tx.distinctiveNosTo !== '') body.distinctiveNosTo = Number(tx.distinctiveNosTo)
+  if (tx.amountPaid) body.amountPaid = tx.amountPaid
+  if (tx.sharesTransferred !== '') body.sharesTransferred = Number(tx.sharesTransferred)
+  if (tx.certificateSurrendered) body.certificateSurrendered = tx.certificateSurrendered
+  if (tx.certificateSurrenderedShares !== '') body.certificateSurrenderedShares = Number(tx.certificateSurrenderedShares)
+  if (tx.balanceCertificateNo) body.balanceCertificateNo = tx.balanceCertificateNo
+  if (tx.balanceCertificateShares !== '') body.balanceCertificateShares = Number(tx.balanceCertificateShares)
+  if (tx.balanceDistinctiveNosFrom !== '') body.balanceDistinctiveNosFrom = Number(tx.balanceDistinctiveNosFrom)
+  if (tx.balanceDistinctiveNosTo !== '') body.balanceDistinctiveNosTo = Number(tx.balanceDistinctiveNosTo)
+  return body
+}
+
 function MemberForm({ companyId, initial, kycPersons, onDone }: {
   companyId: string
   initial?: Member
@@ -687,9 +886,11 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
   onDone: () => void
 }) {
   const isEdit = !!initial
+  const initialTx = getInitialShareTransaction(initial?.shareTransactions)
   const [saving, setSaving] = useState(false)
-  const [addTx, setAddTx] = useState(!isEdit)
+  const [addTx, setAddTx] = useState(!isEdit || !!initialTx)
   const [form, setForm] = useState({
+    keyPersonId: initial?.keyPersonId ?? '',
     nameEn: initial?.nameEn ?? '',
     nameZh: initial?.nameZh ?? '',
     shareClass: initial?.shareClass ?? 'ORDINARY',
@@ -697,14 +898,23 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
     occupation: initial?.occupation ?? '',
     status: initial?.status ?? 'ACTIVE',
   })
-  const [tx, setTx] = useState(TX_EMPTY)
+  const [tx, setTx] = useState(() => (initialTx ? shareTransactionToForm(initialTx) : TX_EMPTY))
 
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })) }
   function setT(k: string, v: string) { setTx(t => ({ ...t, [k]: v })) }
 
+  function linkKycOnly(p: KycPerson | null) {
+    if (!p) {
+      setForm(f => ({ ...f, keyPersonId: '' }))
+      return
+    }
+    setForm(f => ({ ...f, keyPersonId: p.id }))
+  }
+
   function prefillFromKyc(p: KycPerson) {
     setForm(f => ({
       ...f,
+      keyPersonId: p.id,
       nameEn: p.nameEn,
       nameZh: p.nameZh ?? f.nameZh,
       registeredAddress: p.homeAddress ?? p.contactAddress ?? f.registeredAddress,
@@ -723,27 +933,12 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
       }
       if (form.nameZh) body.nameZh = form.nameZh
       if (form.occupation) body.occupation = form.occupation
+      body.keyPersonId = form.keyPersonId || null
 
-      if (!isEdit && addTx && tx.sharesHeld !== '') {
-        const t: Record<string, unknown> = {
-          transactionType: tx.transactionType,
-          transactionDate: tx.transactionDate,
-          sharesHeld: Number(tx.sharesHeld),
-        }
-        if (tx.allotmentTransferNo) t.allotmentTransferNo = tx.allotmentTransferNo
-        if (tx.certificateNo) t.certificateNo = tx.certificateNo
-        if (tx.sharesAcquired !== '') t.sharesAcquired = Number(tx.sharesAcquired)
-        if (tx.distinctiveNosFrom !== '') t.distinctiveNosFrom = Number(tx.distinctiveNosFrom)
-        if (tx.distinctiveNosTo !== '') t.distinctiveNosTo = Number(tx.distinctiveNosTo)
-        if (tx.amountPaid) t.amountPaid = tx.amountPaid
-        if (tx.sharesTransferred !== '') t.sharesTransferred = Number(tx.sharesTransferred)
-        if (tx.certificateSurrendered) t.certificateSurrendered = tx.certificateSurrendered
-        if (tx.certificateSurrenderedShares !== '') t.certificateSurrenderedShares = Number(tx.certificateSurrenderedShares)
-        if (tx.balanceCertificateNo) t.balanceCertificateNo = tx.balanceCertificateNo
-        if (tx.balanceCertificateShares !== '') t.balanceCertificateShares = Number(tx.balanceCertificateShares)
-        if (tx.balanceDistinctiveNosFrom !== '') t.balanceDistinctiveNosFrom = Number(tx.balanceDistinctiveNosFrom)
-        if (tx.balanceDistinctiveNosTo !== '') t.balanceDistinctiveNosTo = Number(tx.balanceDistinctiveNosTo)
-        body.transaction = t
+      if (addTx && tx.sharesHeld !== '') {
+        body.transaction = buildMemberTransactionBody(tx)
+      } else if (isEdit && initialTx?.id) {
+        body.removeInitialTransaction = true
       }
 
       const url = isEdit
@@ -764,7 +959,13 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      {!isEdit && <KycPicker persons={kycPersons} onSelect={prefillFromKyc} />}
+      <KycLinkWithConfirm
+        persons={kycPersons}
+        value={form.keyPersonId}
+        confirmWhenLinking={isEdit && !initial?.keyPersonId}
+        onLinkOnly={linkKycOnly}
+        onPrefill={prefillFromKyc}
+      />
 
       {/* Member details */}
       <div className="grid sm:grid-cols-2 gap-4">
@@ -803,19 +1004,17 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
         </div>
       </div>
 
-      {/* Share transaction (add mode only) */}
-      {!isEdit && (
-        <>
-          {divider}
-          <div className="flex items-center gap-3">
-            <input type="checkbox" id="addTx" checked={addTx} onChange={e => setAddTx(e.target.checked)}
-              style={{ accentColor: '#C9A96E', width: 14, height: 14 }} />
-            <label htmlFor="addTx" style={{ ...labelStyle, marginBottom: 0, cursor: 'pointer' }}>Add initial share transaction</label>
-          </div>
-        </>
-      )}
+      {/* Initial share transaction */}
+      {divider}
+      <div className="flex items-center gap-3">
+        <input type="checkbox" id="addTx" checked={addTx} onChange={e => setAddTx(e.target.checked)}
+          style={{ accentColor: '#C9A96E', width: 14, height: 14 }} />
+        <label htmlFor="addTx" style={{ ...labelStyle, marginBottom: 0, cursor: 'pointer' }}>
+          {isEdit && initialTx ? 'Initial share transaction' : 'Add initial share transaction'}
+        </label>
+      </div>
 
-      {!isEdit && addTx && (
+      {addTx && (
         <div className="rounded-lg p-4 space-y-3" style={{ background: '#0A0A06', border: '1px solid #2A2418' }}>
           {sectionLabel('Transaction details')}
           <div className="grid sm:grid-cols-3 gap-3">
@@ -931,6 +1130,7 @@ function ControllerForm({ companyId, initial, kycPersons, onDone }: {
   const isEdit = !!initial
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
+    keyPersonId: initial?.keyPersonId ?? '',
     nameEn: initial?.nameEn ?? '',
     nameZh: initial?.nameZh ?? '',
     entryDate: initial?.entryDate ? initial.entryDate.slice(0, 10) : new Date().toISOString().slice(0, 10),
@@ -949,9 +1149,18 @@ function ControllerForm({ companyId, initial, kycPersons, onDone }: {
 
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })) }
 
+  function linkKycOnly(p: KycPerson | null) {
+    if (!p) {
+      setForm(f => ({ ...f, keyPersonId: '' }))
+      return
+    }
+    setForm(f => ({ ...f, keyPersonId: p.id }))
+  }
+
   function prefillFromKyc(p: KycPerson) {
     setForm(f => ({
       ...f,
+      keyPersonId: p.id,
       nameEn: p.nameEn,
       nameZh: p.nameZh ?? f.nameZh,
       idType: p.idType ? (p.idType === 'HKID' ? 'HKID' : p.idType === 'PASSPORT' ? 'PASSPORT' : 'OTHER') : f.idType,
@@ -986,6 +1195,7 @@ function ControllerForm({ companyId, initial, kycPersons, onDone }: {
         if (form.idPassportNo) body.idPassportNo = form.idPassportNo
         if (form.idType !== 'HKID' && form.issuingCountry) body.issuingCountry = form.issuingCountry
       }
+      body.keyPersonId = form.keyPersonId || null
 
       const url = isEdit
         ? `/api/admin/companies/${companyId}/controllers/${initial!.id}`
@@ -1002,7 +1212,13 @@ function ControllerForm({ companyId, initial, kycPersons, onDone }: {
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      {!isEdit && <KycPicker persons={kycPersons} onSelect={prefillFromKyc} />}
+      <KycLinkWithConfirm
+        persons={kycPersons}
+        value={form.keyPersonId}
+        confirmWhenLinking={isEdit && !initial?.keyPersonId}
+        onLinkOnly={linkKycOnly}
+        onPrefill={prefillFromKyc}
+      />
 
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
@@ -1165,7 +1381,13 @@ function DesignatedRepForm({ companyId, initial, kycPersons, onDone }: {
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      {!isEdit && <KycPicker persons={kycPersons} onSelect={prefillFromKyc} />}
+      {!isEdit && (
+        <KycLinkPicker
+          persons={kycPersons}
+          value=""
+          onSelect={p => { if (p) prefillFromKyc(p) }}
+        />
+      )}
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label style={labelStyle}>Name *</label>
@@ -1237,78 +1459,35 @@ interface Nar1AnalysisPreviewProps {
   companyId: string
 }
 
-function Nar1AnalysisPreview({ result, onConfirm, onClose, companyId }: Nar1AnalysisPreviewProps) {
+function Nar1AnalysisPreview({ result, onConfirm, onClose, companyId, annualReturnDate }: Nar1AnalysisPreviewProps & { annualReturnDate?: string }) {
   const [saving, setSaving] = useState(false)
 
   async function handleSave() {
-    if (!window.confirm('This will update RODM and ROSC records. Continue?')) return
-    
+    if (!window.confirm('将分析结果写入 ROD / ROM / ROSC（按姓名匹配已有 KYC，未匹配也会保存）。继续？')) return
+
     setSaving(true)
     try {
-      // Send the extracted data to save/update API endpoints
-      await Promise.all([
-        // Save/Update Directors (RODM)
-        ...result.directors.map(async (director) => {
-          const res = await fetch(`/api/admin/companies/${companyId}/directors`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              nameEn: director.nameEn,
-              nameZh: director.nameZh || '',
-              dateOfAppointment: director.dateOfAppointment,
-              addressForService: director.addressForService,
-              nationality: director.nationality || '',
-              idType: director.idType || '',
-              idNumber: director.idNumber || '',
-              cessationDate: director.cessationDate,
-            }),
-          })
-          if (!res.ok) throw new Error(`Failed to save director: ${director.nameEn}`)
-        }),
-        // Save/Update Members (RODM)
-        ...result.members.map(async (member) => {
-          const res = await fetch(`/api/admin/companies/${companyId}/members`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              nameEn: member.nameEn,
-              nameZh: member.nameZh || '',
-              address: member.address,
-              capacity: member.capacity,
-              telFax: member.telFax || '',
-              becomingDate: member.becomingDate,
-              cessationDate: member.cessationDate,
-            }),
-          })
-          if (!res.ok) throw new Error(`Failed to save member: ${member.nameEn}`)
-        }),
-        // Save/Update Significant Controllers (ROSC)
-        ...result.significantControllers.map(async (sc) => {
-          const res = await fetch(`/api/admin/companies/${companyId}/significant-controllers`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              nameEn: sc.nameEn,
-              nameZh: sc.nameZh || '',
-              entryDate: sc.entryDate,
-              correspondenceAddress: sc.correspondenceAddress || '',
-              natureOfControl: sc.natureOfControl,
-              becomingDate: sc.becomingDate,
-              cessationDate: sc.cessationDate,
-              isLegalEntity: sc.isLegalEntity || false,
-              legalEntityRegNo: sc.legalEntityRegNo || '',
-              issuingCountry: sc.issuingCountry || '',
-            }),
-          })
-          if (!res.ok) throw new Error(`Failed to save controller: ${sc.nameEn}`)
-        }),
-      ])
-      
-      toast.success('RODM and ROSC updated successfully!')
+      const res = await fetch(`/api/admin/companies/${companyId}/nar1-sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: result, annualReturnDate }),
+      })
+      const payload = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(payload.error ?? '保存失败')
+        return
+      }
+
+      const s = payload.summary
+      toast.success(
+        `已同步：董事 ${s.directors.created} 新增 / ${s.directors.updated} 更新（${s.directors.kycLinked} 已关联 KYC）；`
+        + `成员 ${s.members.created}/${s.members.updated}（${s.members.kycLinked} KYC）；`
+        + `控权人 ${s.controllers.created}/${s.controllers.updated}（${s.controllers.kycLinked} KYC）`,
+      )
       onConfirm()
     } catch (error) {
       console.error('[NAR1 Save] Error:', error)
-      toast.error('Failed to save changes')
+      toast.error('保存失败')
     } finally {
       setSaving(false)
     }
@@ -1334,6 +1513,7 @@ function Nar1AnalysisPreview({ result, onConfirm, onClose, companyId }: Nar1Anal
               {d.nameZh && <div style={{ color: '#5A5040' }}>{d.nameZh}</div>}
               <div className="mt-1 text-[11px]" style={{ color: '#5A5040' }}>Address: {d.addressForService}</div>
               {d.nationality && <div style={{ color: '#5A5040' }}>Nationality: {d.nationality}</div>}
+              {d.idNumber && <div style={{ color: '#5A5040' }}>ID: {d.idType ?? ''} {d.idNumber}</div>}
               {d.status === 'resigned' && d.cessationDate && (
                 <div style={{ color: '#ef4444' }}>Resigned: {fmtDate(d.cessationDate)}</div>
               )}
@@ -1355,7 +1535,11 @@ function Nar1AnalysisPreview({ result, onConfirm, onClose, companyId }: Nar1Anal
               </div>
               {m.nameZh && <div style={{ color: '#5A5040' }}>{m.nameZh}</div>}
               <div className="mt-1 text-[11px]" style={{ color: '#5A5040' }}>Address: {m.address}</div>
-              <div style={{ color: '#5A5040' }}>({m.capacity})</div>
+              <div style={{ color: '#5A5040' }}>
+                {m.shareClass ?? 'Ordinary'}
+                {m.sharesHeld != null ? ` · ${m.sharesHeld} 股` : ''}
+              </div>
+              {m.occupation && <div style={{ color: '#5A5040' }}>Occupation: {m.occupation}</div>}
               {m.status === 'resigned' && m.cessationDate && (
                 <div style={{ color: '#ef4444' }}>Ceased: {fmtDate(m.cessationDate)}</div>
               )}
@@ -1396,7 +1580,7 @@ function Nar1AnalysisPreview({ result, onConfirm, onClose, companyId }: Nar1Anal
       <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="outline" size="sm" onClick={onClose}>Cancel</Button>
         <Button type="button" size="sm" disabled={saving} onClick={handleSave}>
-          {saving ? 'Saving…' : 'Save to RODM & ROSC'}
+          {saving ? '保存中…' : '保存至 ROD / ROM / ROSC'}
         </Button>
       </div>
     </div>
@@ -1426,6 +1610,7 @@ export default function CompanyDetailPage() {
   // ── NAR1 Analysis state ──────────────────────────────────────────────────
   const [analyzingNar1, setAnalyzingNar1] = useState(false)
   const [nar1AnalysisResult, setNar1AnalysisResult] = useState<NAR1UiAnalysisResult | null>(null)
+  const [nar1AnnualReturnDate, setNar1AnnualReturnDate] = useState<string | undefined>()
   const [showNar1AnalysisResult, setShowNar1AnalysisResult] = useState(false)
 
   // ── File Cases state ──────────────────────────────────────────────────────
@@ -1490,26 +1675,11 @@ export default function CompanyDetailPage() {
     if (res.ok) { const { url } = await res.json(); window.open(url, '_blank') }
   }
 
-  async function runNar1Analysis(docId: string, fileName: string) {
+  async function runNar1Analysis(docId: string) {
     setAnalyzingNar1(true)
     try {
-      const downloadRes = await fetch(`/api/documents/${docId}/download`)
-      if (!downloadRes.ok) {
-        toast.error('无法下载 NAR1 文件')
-        return
-      }
-      const { url } = await downloadRes.json()
-
-      const fileRes = await fetch(url)
-      if (!fileRes.ok) {
-        toast.error('无法读取 NAR1 文件')
-        return
-      }
-      const blob = await fileRes.blob()
-      const file = new File([blob], fileName, { type: blob.type || 'application/pdf' })
-
       const formData = new FormData()
-      formData.append('file', file)
+      formData.append('documentId', docId)
 
       const res = await fetch(`/api/admin/companies/${id}/nar1-analyze`, {
         method: 'POST',
@@ -1523,6 +1693,7 @@ export default function CompanyDetailPage() {
       }
 
       setNar1AnalysisResult(payload.data)
+      setNar1AnnualReturnDate(payload.annualReturnDate ?? company?.annualReturnDate?.slice(0, 10))
       setShowNar1AnalysisResult(true)
       toast.success(
         payload.source === 'bailian'
@@ -1562,9 +1733,7 @@ export default function CompanyDetailPage() {
     const res = await fetch(`/api/admin/companies/${id}/${type}/${itemId}`, { method: 'DELETE' })
     if (res.ok) {
       toast.success('Deleted')
-      if (type === 'directors') await regenerateRegister('ROD')
-      else if (type === 'members') await regenerateRegister('ROM')
-      else await regenerateRegister('ROSC')
+      reload()
     }
     else toast.error('Failed to delete')
   }
@@ -1618,15 +1787,9 @@ export default function CompanyDetailPage() {
   }
 
   function closeModal() {
-    const completed = modal
     setModal(null)
-    if (completed?.type === 'director') regenerateRegister('ROD')
-    else if (completed?.type === 'member') regenerateRegister('ROM')
-    else if (completed?.type === 'controller' || completed?.type === 'designatedRep') regenerateRegister('ROSC')
-    else {
-      ensuredDocsForRef.current = null
-      reload()
-    }
+    ensuredDocsForRef.current = null
+    reload()
   }
 
   useEffect(() => {
@@ -2379,16 +2542,21 @@ export default function CompanyDetailPage() {
                   <tr>
                     <th style={thStyle}>Name</th>
                     <th style={thStyle}>Share Class</th>
+                    <th style={thStyle}>Shares Held</th>
                     <th style={thStyle}>Occupation</th>
                     <th style={thStyle}>Status</th>
                     <th style={{ ...thStyle, width: '6rem' }} />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#2A2418]">
-                  {company.members.map(m => (
+                  {company.members.map(m => {
+                    const latestTx = m.shareTransactions?.[0]
+                    const sharesHeld = latestTx?.sharesHeld
+                    return (
                     <tr key={m.id} className="hover:bg-[#1A1A12] transition-colors">
                       <td style={tdPrimaryStyle}>{m.nameEn}{m.nameZh ? ` (${m.nameZh})` : ''}</td>
                       <td style={tdStyle}>{m.shareClass}</td>
+                      <td style={tdStyle}>{sharesHeld != null ? sharesHeld.toLocaleString() : '—'}</td>
                       <td style={tdStyle}>{m.occupation ?? '—'}</td>
                       <td style={tdStyle}><Badge variant={m.status === 'ACTIVE' ? 'default' : 'secondary'}>{m.status}</Badge></td>
                       <td style={tdStyle}>
@@ -2398,9 +2566,10 @@ export default function CompanyDetailPage() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    )
+                  })}
                   {company.members.length === 0 && (
-                    <tr><td colSpan={5} className="px-4 py-6 text-center" style={{ color: '#5A5040' }}>No members — click Add Member to get started</td></tr>
+                    <tr><td colSpan={6} className="px-4 py-6 text-center" style={{ color: '#5A5040' }}>No members — click Add Member to get started</td></tr>
                   )}
                 </tbody>
               </table>
@@ -2563,9 +2732,11 @@ export default function CompanyDetailPage() {
             <Nar1AnalysisPreview
               companyId={id}
               result={nar1AnalysisResult}
+              annualReturnDate={nar1AnnualReturnDate}
               onConfirm={() => {
                 setShowNar1AnalysisResult(false)
                 setNar1AnalysisResult(null)
+                setNar1AnnualReturnDate(undefined)
                 reload()
               }}
               onClose={() => setShowNar1AnalysisResult(false)}

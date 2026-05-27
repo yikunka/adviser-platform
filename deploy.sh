@@ -37,6 +37,10 @@
 #   若 URL 中无密码，则仍用 POSTGRES_APP_PASSWORD。URL 中的密码可含特殊字符。
 #   BOOTSTRAP_PG_GROUP      可选；若设置则创建 NOLOGIN 组角色并 GRANT 给应用用户（含 schema / 默认权限）
 #
+# 运行时系统依赖（bootstrap / 每次 deploy 自动安装，见 scripts/ensure-system-packages.sh）:
+#   poppler-utils — pdftoppm / pdftotext（NAR1、KYC、文档分析多页 PDF）
+#   fonts-noto-cjk / google-noto-cjk-fonts — DDR 等含中文 PDF 生成
+#
 # 远端生产环境变量：首次需在服务器 REMOTE_DIR 下放置 .env（可参考 .env.example），勿提交密钥到 Git。
 # prisma：全新 PostgreSQL 会跑 prisma/migrations（单一 init）；若库里曾半路失败可先备份后重置 public schema 再 migrate（见 init migration 头注释）。
 #
@@ -176,6 +180,43 @@ cmd_build() {
   echo "✓ 构建完成"
 }
 
+_ensure_runtime_system_packages() {
+  local script="$SCRIPT_DIR/scripts/ensure-system-packages.sh"
+  [[ -f "$script" ]] || {
+    echo "⚠ 未找到 $script，跳过系统依赖安装"
+    return 0
+  }
+  chmod +x "$script" 2>/dev/null || true
+  echo "▶ 确认运行时系统依赖（poppler-utils、CJK 字体）…"
+  if [[ "$(id -u)" -eq 0 ]]; then
+    bash "$script"
+  elif command -v sudo >/dev/null 2>&1; then
+    sudo bash "$script"
+  else
+    echo "ℹ 跳过系统包安装（当前用户无 root/sudo）。新服务器请: sudo ./deploy.sh bootstrap-local"
+  fi
+}
+
+_ensure_runtime_system_packages_remote() {
+  local remote_dir="$1"
+  ssh_remote "bash -s" <<END_SSH
+set -euo pipefail
+SCRIPT='${remote_dir}/scripts/ensure-system-packages.sh'
+if [[ ! -f "\$SCRIPT" ]]; then
+  echo 'ℹ 远端尚无 ensure-system-packages.sh，跳过（请先 rsync scripts/）'
+  exit 0
+fi
+chmod +x "\$SCRIPT" 2>/dev/null || true
+if [[ \$(id -u) -eq 0 ]]; then
+  bash "\$SCRIPT"
+elif command -v sudo >/dev/null 2>&1; then
+  sudo bash "\$SCRIPT"
+else
+  echo 'ℹ 跳过系统包安装（远端无 root/sudo）'
+fi
+END_SSH
+}
+
 # 同步产物 + 运行迁移 + PM2（远端需 DEPLOY_HOST；未设 DEPLOY_HOST 时走 deploy-local）
 cmd_deploy() {
   if [[ -z "${DEPLOY_HOST:-}" ]]; then
@@ -198,6 +239,8 @@ cmd_deploy() {
   rsync -az -e "$RSYNC_E" prisma/ "${REMOTE}:${REMOTE_DIR}/prisma/"
   rsync -az -e "$RSYNC_E" prisma.config.mjs "${REMOTE}:${REMOTE_DIR}/prisma.config.mjs"
   ssh_remote "rm -f '${REMOTE_DIR}/prisma.config.ts'"
+
+  _ensure_runtime_system_packages_remote "${REMOTE_DIR}"
 
   echo "▶ 远端数据库迁移 (prisma migrate deploy)..."
   # 使用 bash source 加载 .env（与 .env.example 中带引号的值兼容）；APP_DIR 由本地 REMOTE_DIR 传入
@@ -549,6 +592,8 @@ cmd_deploy_local() {
 
   [[ -f "$APP_DIR/.env" ]] || die "缺少 $APP_DIR/.env（请先按 .env.example 创建）"
 
+  _ensure_runtime_system_packages
+
   # Load .env before building so OSS_BUCKET and other vars are available
   # during `next build` and `sync-oss-static.mjs`.
   set -a
@@ -725,7 +770,7 @@ if [[ "\$FAMILY" == deb ]]; then
   apt-get update -qq
   apt-get install -y --no-install-recommends \
     ca-certificates curl gnupg git rsync nginx openssl ufw \
-    build-essential python3
+    build-essential python3 poppler-utils fonts-noto-cjk
 
   echo "==> 防火墙 (ufw)..."
   ufw allow OpenSSH
@@ -790,8 +835,13 @@ if [[ "\$FAMILY" == deb ]]; then
   fi
 else
   echo "==> [RHEL 系] 安装基础包 (\"\${PM[*]}\")..."
-  "\${PM[@]}" install ca-certificates curl gnupg2 git rsync nginx openssl python3 gcc gcc-c++ make firewalld ||
-    "\${PM[@]}" install ca-certificates curl gnupg2 git rsync nginx openssl python3 gcc gcc-c++ make
+  "\${PM[@]}" install ca-certificates curl gnupg2 git rsync nginx openssl python3 gcc gcc-c++ make firewalld poppler-utils ||
+    "\${PM[@]}" install ca-certificates curl gnupg2 git rsync nginx openssl python3 gcc gcc-c++ make poppler-utils
+
+  if ! "\${PM[@]}" install google-noto-cjk-fonts 2>/dev/null; then
+    "\${PM[@]}" install google-noto-sans-cjk-ttc-fonts google-noto-serif-cjk-ttc-fonts 2>/dev/null || \\
+      echo "⚠ 未能安装 Noto CJK 字体 — DDR 含中文时可能失败"
+  fi
 
   echo "==> 防火墙 (firewalld)..."
   if systemctl list-unit-files 2>/dev/null | grep -q '^firewalld\.service'; then
@@ -928,6 +978,14 @@ fi
 
 echo "==> 全局 PM2 + Prisma CLI..."
 npm install -g pm2 prisma
+
+if [[ -f "\${REMOTE_DIR}/scripts/ensure-system-packages.sh" ]]; then
+  bash "\${REMOTE_DIR}/scripts/ensure-system-packages.sh" || true
+elif [[ -f "./scripts/ensure-system-packages.sh" ]]; then
+  bash "./scripts/ensure-system-packages.sh" || true
+else
+  echo "（未找到 ensure-system-packages.sh，已在上文 apt/dnf 中安装 poppler-utils / CJK 字体）"
+fi
 
 nginx -t
 systemctl reload nginx 2>/dev/null || systemctl restart nginx

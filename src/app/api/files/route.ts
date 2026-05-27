@@ -1,21 +1,51 @@
 /**
  * GET /api/files?key=<storageKey>
  *
- * Auth-gated proxy to OSS: verifies the caller owns the file, then redirects
- * to a short-lived OSS presigned URL.  The redirect approach avoids streaming
- * large files through Next.js and lets OSS serve bytes directly to the client.
- *
- * Access control:
- *   - Staff (STAFF / COMPLIANCE / SUPER_ADMIN) may fetch any key.
- *   - Clients may only fetch keys belonging to their own documents or orders.
+ * Local dev: streams the file from LOCAL_UPLOADS_DIR (default ./uploads).
+ * Production: redirects to a short-lived OSS presigned URL.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import path from 'path'
 import { auth } from '@/lib/auth/auth'
-import { getSignedDownloadUrl } from '@/lib/storage/r2'
+import { getSignedDownloadUrl, isLocalStorageEnabled, readLocalFile } from '@/lib/storage/r2'
 import { prisma } from '@/lib/db/prisma'
 
+const MIME_MAP: Record<string, string> = {
+  pdf: 'application/pdf',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+}
+
 const STAFF_ROLES = ['STAFF', 'COMPLIANCE', 'SUPER_ADMIN']
+
+async function authorizeKey(key: string, userId: string, role: string): Promise<boolean> {
+  if (STAFF_ROLES.includes(role)) return true
+
+  const [doc, kycDoc, sfsStep] = await Promise.all([
+    prisma.document.findFirst({
+      where: {
+        storageKey: key,
+        OR: [
+          { uploadedById: userId },
+          { company: { clientUserId: userId } },
+        ],
+      },
+    }),
+    prisma.kYCDocument.findFirst({
+      where: { storageKey: key, keyPerson: { submittedByUserId: userId } },
+    }),
+    prisma.sfsOrderStep.findFirst({
+      where: { fileKeys: { has: key }, order: { userId } },
+    }),
+  ])
+
+  return Boolean(doc || kycDoc || sfsStep)
+}
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -23,21 +53,34 @@ export async function GET(req: NextRequest) {
 
   const key = req.nextUrl.searchParams.get('key')
   if (!key) return NextResponse.json({ error: 'Missing key' }, { status: 400 })
+
+  const allowed = await authorizeKey(key, session.user.id, session.user.role)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const download = req.nextUrl.searchParams.get('download') === '1'
   const filename = req.nextUrl.searchParams.get('filename')?.replace(/["\r\n]/g, '')
 
-  if (!STAFF_ROLES.includes(session.user.role)) {
-    const [doc, kycDoc, sfsStep] = await Promise.all([
-      prisma.document.findFirst({ where: { storageKey: key, uploadedById: session.user.id } }),
-      prisma.kYCDocument.findFirst({
-        where: { storageKey: key, keyPerson: { submittedByUserId: session.user.id } },
-      }),
-      prisma.sfsOrderStep.findFirst({
-        where: { fileKeys: { has: key }, order: { userId: session.user.id } },
-      }),
-    ])
-    if (!doc && !kycDoc && !sfsStep) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (isLocalStorageEnabled()) {
+    try {
+      const { buffer } = await readLocalFile(key)
+      const ext = path.extname(key).slice(1).toLowerCase()
+      const contentType = MIME_MAP[ext] ?? 'application/octet-stream'
+      const fileName = filename || path.basename(key)
+      const disposition = download ? 'attachment' : 'inline'
+
+      return new NextResponse(new Uint8Array(buffer), {
+        status: 200,
+        headers: {
+          'Content-Type': contentType,
+          'Content-Disposition': `${disposition}; filename="${fileName}"`,
+          'Content-Length': String(buffer.byteLength),
+          'Cache-Control': 'private, no-store',
+        },
+      })
+    } catch {
+      return NextResponse.json({ error: 'File not found' }, { status: 404 })
     }
   }
 
