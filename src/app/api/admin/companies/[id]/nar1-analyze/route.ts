@@ -203,7 +203,7 @@ Important notes:
 - Nature of control must be specific about how they control the company
 - Extract ALL individuals/entities mentioned, not just those who changed
 - Empty fields should be empty strings, not null
-`,
+`
 
   const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
     method: 'POST',
