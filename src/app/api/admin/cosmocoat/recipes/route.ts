@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
+import { generateRecipeCode } from '@/lib/cosmocoat/recipe-code'
 import { computeRecipeTotals, normalizeRecipeItems, type RecipeItemInput } from '@/lib/cosmocoat/recipes'
 import { serializeFullRecipe } from '@/lib/cosmocoat/recipe-serializer'
 
@@ -16,7 +17,7 @@ const itemSchema = z.object({
 
 const recipeSchema = z.object({
   categoryId: z.string().trim().min(1),
-  code: z.string().trim().min(1).max(32),
+  code: z.string().trim().max(32).optional(),
   name: z.string().trim().min(1).max(160),
   batchQuantity: z.coerce.number().min(0.001).optional().default(100),
   notes: z.string().trim().max(1000).optional().default(''),
@@ -129,7 +130,9 @@ export async function POST(req: NextRequest) {
     const category = await prisma.cosTableRecipeCategory.findUnique({ where: { id: parsed.data.categoryId } })
     if (!category) return NextResponse.json({ error: '目录不存在' }, { status: 404 })
 
-    const existing = await prisma.cosTableRecipe.findUnique({ where: { code: parsed.data.code } })
+    const code = parsed.data.code?.trim() || await generateRecipeCode()
+
+    const existing = await prisma.cosTableRecipe.findUnique({ where: { code } })
     if (existing) return NextResponse.json({ error: '配方编号已存在' }, { status: 409 })
 
     const normalized = normalizeRecipeItems(parsed.data.items)
@@ -141,7 +144,7 @@ export async function POST(req: NextRequest) {
     const recipe = await prisma.cosTableRecipe.create({
       data: {
         categoryId: parsed.data.categoryId,
-        code: parsed.data.code,
+        code,
         name: parsed.data.name,
         batchQuantity: parsed.data.batchQuantity,
         unitCost: totals.unitCost,

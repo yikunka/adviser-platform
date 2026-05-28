@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import Link from 'next/link'
 
 type AlertDetail = {
   id: string
@@ -16,6 +17,7 @@ type AlertDetail = {
   subjectType: string
   keyPersonId: string | null
   companyId: string | null
+  subjectName: string | null
   createdAt: string
   amlRecord: {
     primaryName: string
@@ -113,7 +115,21 @@ export default function AMLAlertDetailPage() {
           )}
         </div>
         <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-          Subject: {alert.subjectType.replace('_', ' ')} · Created {new Date(alert.createdAt).toLocaleString()}
+          Subject:{' '}
+          {alert.subjectName ? (
+            <Link
+              href={alert.keyPersonId
+                ? `/admin/kyc?personId=${alert.keyPersonId}`
+                : `/admin/companies/${alert.companyId}`}
+              className="hover:underline font-medium"
+              style={{ color: '#C9A96E' }}
+            >
+              {alert.subjectName}
+            </Link>
+          ) : (
+            <span>{alert.subjectType.replace('_', ' ')}</span>
+          )}
+          {' '}· Created {new Date(alert.createdAt).toLocaleString()}
         </p>
       </div>
 

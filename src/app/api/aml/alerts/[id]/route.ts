@@ -24,7 +24,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   })
 
   if (!alert) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  return NextResponse.json(alert)
+
+  // Resolve subject name without schema relations
+  let subjectName: string | null = null
+  if (alert.keyPersonId) {
+    const p = await prisma.keyPerson.findUnique({ where: { id: alert.keyPersonId }, select: { nameEn: true } })
+    subjectName = p?.nameEn ?? null
+  } else if (alert.companyId) {
+    const c = await prisma.company.findUnique({ where: { id: alert.companyId }, select: { nameEn: true } })
+    subjectName = c?.nameEn ?? null
+  }
+
+  return NextResponse.json({ ...alert, subjectName })
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useRouter } from '@/i18n/navigation'
+import { useRouter, Link } from '@/i18n/navigation'
 
 type Alert = {
   id: string
@@ -14,6 +14,7 @@ type Alert = {
   subjectType: string
   keyPersonId: string | null
   companyId: string | null
+  subjectName: string | null
   createdAt: string
   amlRecord: {
     primaryName: string
@@ -369,8 +370,22 @@ export default function AMLPage() {
                 >
                   <td className="px-4 py-3 font-medium" style={{ color: 'var(--foreground)' }}>{alert.amlRecord.primaryName}</td>
                   <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>{alert.amlRecord.source.nameEn}</td>
-                  <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
-                    {alert.subjectType === 'KEY_PERSON' ? 'Key Person' : 'Company'}
+                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                    {alert.subjectName ? (
+                      <Link
+                        href={alert.keyPersonId
+                          ? `/admin/kyc?personId=${alert.keyPersonId}`
+                          : `/admin/companies/${alert.companyId}`}
+                        className="hover:underline font-medium"
+                        style={{ color: '#C9A96E' }}
+                      >
+                        {alert.subjectName}
+                      </Link>
+                    ) : (
+                      <span style={{ color: 'var(--muted-foreground)' }}>
+                        {alert.subjectType === 'KEY_PERSON' ? 'Key Person' : 'Company'}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
                     {alert.matchScore != null ? `${(alert.matchScore * 100).toFixed(1)}%` : '—'}

@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     ...(result && { result: result as never }),
   }
 
-  const [alerts, total] = await Promise.all([
+  const [alertsRaw, total] = await Promise.all([
     prisma.aMLAlert.findMany({
       where,
       orderBy: { createdAt: 'desc' },
@@ -29,6 +29,25 @@ export async function GET(req: NextRequest) {
     }),
     prisma.aMLAlert.count({ where }),
   ])
+
+  // Resolve subject names (KeyPerson / Company) without schema relations
+  const keyPersonIds = [...new Set(alertsRaw.map(a => a.keyPersonId).filter(Boolean))] as string[]
+  const companyIds   = [...new Set(alertsRaw.map(a => a.companyId).filter(Boolean))] as string[]
+  const [persons, companies] = await Promise.all([
+    keyPersonIds.length ? prisma.keyPerson.findMany({ where: { id: { in: keyPersonIds } }, select: { id: true, nameEn: true } }) : [],
+    companyIds.length   ? prisma.company.findMany({ where: { id: { in: companyIds } }, select: { id: true, nameEn: true } }) : [],
+  ])
+  const personMap  = new Map(persons.map(p => [p.id, p.nameEn]))
+  const companyMap = new Map(companies.map(c => [c.id, c.nameEn]))
+
+  const alerts = alertsRaw.map(a => ({
+    ...a,
+    subjectName: a.keyPersonId
+      ? (personMap.get(a.keyPersonId) ?? null)
+      : a.companyId
+        ? (companyMap.get(a.companyId) ?? null)
+        : null,
+  }))
 
   return NextResponse.json({ alerts, total, page, pages: Math.ceil(total / limit) })
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useCallback, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { ChevronLeft, ChevronRight, Download, Eye, Pencil, Plus, Search, Trash2, Upload, X } from 'lucide-react'
@@ -250,6 +251,7 @@ function emptyKycPerson(): KycPersonInput {
 
 export default function KYCQueuePage() {
   const t = useTranslations('admin.kyc')
+  const searchParams = useSearchParams()
   const [records, setRecords] = useState<KYCRecord[]>([])
   const [filterStatus, setFilterStatus] = useState('')
   const [searchInput, setSearchInput] = useState('')
@@ -304,6 +306,24 @@ export default function KYCQueuePage() {
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchRecords updates state after the async request resolves.
   useEffect(() => { fetchRecords() }, [fetchRecords])
+
+  // Auto-open a specific person when ?personId=xxx is in the URL (e.g. navigating from AML alerts)
+  useEffect(() => {
+    const personId = searchParams.get('personId')
+    if (!personId) return
+    let cancelled = false
+    fetch(`/api/admin/kyc/${personId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (cancelled || !data) return
+        setSelected(data)
+        // Also load AML data so the alerts section is populated (same as selectRecord)
+        void fetchAML(personId)
+      })
+    return () => { cancelled = true }
+  // fetchAML is stable (defined outside useCallback) so no dep needed
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   useEffect(() => {
     let cancelled = false

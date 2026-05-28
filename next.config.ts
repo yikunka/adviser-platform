@@ -19,11 +19,34 @@ try {
   if (cdnUrl) ossHostname = new URL(cdnUrl).hostname
 } catch { /* invalid URL — skip */ }
 
+const nodeBuiltinBrowserStub = "./src/lib/node-empty-module.ts";
+
+/** pg (via Prisma adapter) uses Node built-ins; stub them in client bundles when unavoidable. */
+const nodeBuiltinClientFallbacks = ["dns", "net", "tls"] as const;
+
 const nextConfig: NextConfig = {
   output: "standalone",
   assetPrefix: cdnUrl,
   turbopack: {
     root: turbopackRoot,
+    resolveAlias: Object.fromEntries(
+      nodeBuiltinClientFallbacks.map((name) => [
+        name,
+        { browser: nodeBuiltinBrowserStub },
+      ]),
+    ),
+  },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve ??= {};
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        ...Object.fromEntries(
+          nodeBuiltinClientFallbacks.map((name) => [name, false]),
+        ),
+      };
+    }
+    return config;
   },
   serverExternalPackages: ["node-cron", "@prisma/client", "@prisma/adapter-pg", "pg", "pdfjs-dist"],
   images: {

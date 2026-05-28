@@ -118,6 +118,15 @@ export async function screenKeyPerson(
   })
 
   for (const match of matches) {
+    // Skip if an alert already exists for this subject + sanctions record combination.
+    // This prevents re-alerting on the same information when the alert has already
+    // been confirmed, escalated, or is still pending review.
+    const existing = await prisma.aMLAlert.findFirst({
+      where: { keyPersonId, amlRecordId: match.amlRecordId },
+      select: { id: true },
+    })
+    if (existing) continue
+
     await prisma.aMLAlert.create({
       data: {
         amlRecordId: match.amlRecordId,
@@ -162,6 +171,13 @@ export async function screenCompany(
   })
 
   for (const match of matches) {
+    // Skip if an alert already exists for this subject + sanctions record combination.
+    const existing = await prisma.aMLAlert.findFirst({
+      where: { companyId, amlRecordId: match.amlRecordId },
+      select: { id: true },
+    })
+    if (existing) continue
+
     await prisma.aMLAlert.create({
       data: {
         amlRecordId: match.amlRecordId,

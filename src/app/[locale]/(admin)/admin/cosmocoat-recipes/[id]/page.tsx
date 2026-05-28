@@ -269,7 +269,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
       toast.error('请选择目录')
       return
     }
-    if (!code.trim() || !name.trim()) {
+    if ((!isNew && !code.trim()) || !name.trim()) {
       toast.error('请填写配方编号和名称')
       return
     }
@@ -381,7 +381,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>配方编号</label>
-            <input value={code} onChange={e => setCode(e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
+            <input value={code} onChange={e => setCode(e.target.value)} placeholder="系统自动生成，无需手动填写" className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>配方名称</label>
