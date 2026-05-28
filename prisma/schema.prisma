@@ -1084,6 +1084,7 @@ model CosTableRecipe {
 
   category CosTableRecipeCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   items    CosTableRecipeItem[]
+  componentInItems CosTableRecipeItem[] @relation("RecipeItemComponent")
   productLinks CosTableProductRecipe[]
   currentForProducts CosTableFactoryProduct[] @relation("CurrentFactoryRecipe")
   productionOrders CosTableProductionOrder[]
@@ -1093,22 +1094,25 @@ model CosTableRecipe {
 }
 
 model CosTableRecipeItem {
-  id            String   @id @default(cuid())
-  recipeId      String
-  rawMaterialId String
-  sortOrder     Int      @default(0)
-  quantity      Decimal  @db.Decimal(12, 3)
-  unitPrice     Decimal? @db.Decimal(12, 4)
-  amount        Decimal? @db.Decimal(14, 4)
-  percentage    Decimal? @db.Decimal(8, 4)
-  notes         String   @default("")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                String   @id @default(cuid())
+  recipeId          String
+  rawMaterialId     String?
+  componentRecipeId String?
+  sortOrder         Int      @default(0)
+  quantity          Decimal  @db.Decimal(12, 3)
+  unitPrice         Decimal? @db.Decimal(12, 4)
+  amount            Decimal? @db.Decimal(14, 4)
+  percentage        Decimal? @db.Decimal(8, 4)
+  notes             String   @default("")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  recipe      CosTableRecipe      @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  rawMaterial CosTableRawMaterial @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  recipe          CosTableRecipe       @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  rawMaterial     CosTableRawMaterial? @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  componentRecipe CosTableRecipe?      @relation("RecipeItemComponent", fields: [componentRecipeId], references: [id], onDelete: Restrict)
 
   @@index([recipeId, sortOrder])
+  @@index([componentRecipeId])
   @@map("cos_table_recipe_items")
 }
 

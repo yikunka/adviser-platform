@@ -22,15 +22,20 @@ export async function POST(
     const recipe = await prisma.cosTableRecipe.findUnique({
       where: { id },
       include: {
-        items: { include: { rawMaterial: true } },
+        items: {
+          include: {
+            rawMaterial: true,
+            componentRecipe: true,
+          },
+        },
       },
     })
     if (!recipe) return NextResponse.json({ error: '配方不存在' }, { status: 404 })
 
     for (const item of recipe.items) {
-      const unitPrice = item.rawMaterial.primaryPricePerKg != null
-        ? Number(item.rawMaterial.primaryPricePerKg)
-        : null
+      const unitPrice = item.componentRecipe
+        ? (item.componentRecipe.unitCost != null ? Number(item.componentRecipe.unitCost) : null)
+        : (item.rawMaterial?.primaryPricePerKg != null ? Number(item.rawMaterial.primaryPricePerKg) : null)
       const amount = computeItemAmount(Number(item.quantity), unitPrice)
       await prisma.cosTableRecipeItem.update({
         where: { id: item.id },

@@ -22,11 +22,17 @@ export const MATERIAL_ATTRIBUTE_GROUPS: { code: string; label: string }[] = [
 ]
 
 export type RecipeItemInput = {
-  rawMaterialId: string
+  rawMaterialId?: string
+  /** Semi-finished product (another recipe) used as a component */
+  recipeId?: string
   sortOrder: number
   quantity: number
   unitPrice: number | null
   notes: string
+}
+
+export function isRecipeItemInputValid(item: RecipeItemInput): boolean {
+  return Boolean(item.rawMaterialId) !== Boolean(item.recipeId)
 }
 
 export type RecipeTotals = {

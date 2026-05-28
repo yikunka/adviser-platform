@@ -4,15 +4,12 @@ import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { computeRecipeTotals, normalizeRecipeItems } from '@/lib/cosmocoat/recipes'
+import { recipeItemToPrismaCreate } from '@/lib/cosmocoat/recipe-items'
+import { RecipeItemValidationError, validateAndEnrichRecipeItems } from '@/lib/cosmocoat/recipe-item-validation'
+import { recipeItemSchema } from '@/lib/cosmocoat/recipe-api-schemas'
 import { serializeFullRecipe } from '@/lib/cosmocoat/recipe-serializer'
 
-const itemSchema = z.object({
-  rawMaterialId: z.string().trim().min(1),
-  sortOrder: z.coerce.number().int().min(0).optional().default(0),
-  quantity: z.coerce.number().min(0),
-  unitPrice: z.coerce.number().min(0).nullable().optional().default(null),
-  notes: z.string().trim().max(500).optional().default(''),
-})
+const itemSchema = recipeItemSchema
 
 const patchSchema = z.object({
   categoryId: z.string().trim().min(1).optional(),
@@ -76,20 +73,12 @@ export async function PATCH(
 
   try {
     if (parsed.data.items) {
-      const normalized = normalizeRecipeItems(parsed.data.items)
+      const enriched = await validateAndEnrichRecipeItems(parsed.data.items, id)
+      const normalized = normalizeRecipeItems(enriched)
       await prisma.cosTableRecipeItem.deleteMany({ where: { recipeId: id } })
       if (normalized.length > 0) {
         await prisma.cosTableRecipeItem.createMany({
-          data: normalized.map(item => ({
-            recipeId: id,
-            rawMaterialId: item.rawMaterialId,
-            sortOrder: item.sortOrder,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            amount: item.amount,
-            percentage: item.percentage,
-            notes: item.notes,
-          })),
+          data: normalized.map(item => recipeItemToPrismaCreate(id, item)),
         })
       }
     }
@@ -119,6 +108,9 @@ export async function PATCH(
     const recipe = await serializeFullRecipe(id)
     return NextResponse.json({ recipe })
   } catch (err) {
+    if (err instanceof RecipeItemValidationError) {
+      return NextResponse.json({ error: err.message }, { status: 400 })
+    }
     if (isMissingTable(err)) {
       return NextResponse.json({ error: '配方表不存在，请先运行数据库迁移' }, { status: 503 })
     }

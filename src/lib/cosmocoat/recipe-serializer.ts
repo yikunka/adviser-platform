@@ -18,9 +18,18 @@ function serializeRecipeItem(item: {
     primaryPackageKg: unknown
     primaryPricePerKg: unknown
     primaryNotes: string
-  }
+  } | null
+  componentRecipe: {
+    id: string
+    code: string
+    name: string
+    batchQuantity: unknown
+    unitCost: unknown
+    notes: string
+    category: { id: string; code: string; name: string }
+  } | null
 }) {
-  return {
+  const base = {
     id: item.id,
     sortOrder: item.sortOrder,
     quantity: Number(item.quantity),
@@ -28,6 +37,32 @@ function serializeRecipeItem(item: {
     amount: item.amount != null ? Number(item.amount) : null,
     percentage: item.percentage != null ? Number(item.percentage) : null,
     notes: item.notes,
+  }
+
+  if (item.componentRecipe) {
+    return {
+      ...base,
+      itemType: 'recipe' as const,
+      recipe: {
+        id: item.componentRecipe.id,
+        code: item.componentRecipe.code,
+        name: item.componentRecipe.name,
+        batchQuantity: Number(item.componentRecipe.batchQuantity),
+        unitCost: item.componentRecipe.unitCost != null ? Number(item.componentRecipe.unitCost) : null,
+        notes: item.componentRecipe.notes,
+        category: item.componentRecipe.category,
+      },
+      rawMaterial: null,
+    }
+  }
+
+  if (!item.rawMaterial) {
+    throw new Error(`Recipe item ${item.id} has no material or component recipe`)
+  }
+
+  return {
+    ...base,
+    itemType: 'raw_material' as const,
     rawMaterial: {
       id: item.rawMaterial.id,
       productionCode: item.rawMaterial.productionCode,
@@ -38,6 +73,7 @@ function serializeRecipeItem(item: {
       pricePerKg: item.rawMaterial.primaryPricePerKg != null ? Number(item.rawMaterial.primaryPricePerKg) : null,
       notes: item.rawMaterial.primaryNotes,
     },
+    recipe: null,
   }
 }
 
@@ -48,7 +84,10 @@ export async function serializeFullRecipe(recipeId: string) {
       category: true,
       items: {
         orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-        include: { rawMaterial: true },
+        include: {
+          rawMaterial: true,
+          componentRecipe: { include: { category: true } },
+        },
       },
     },
   })
