@@ -26,6 +26,7 @@ import {
   Beaker,
   ClipboardList,
   Boxes,
+  FolderTree,
 } from 'lucide-react'
 import type { AdminMenuKey } from '@/lib/auth/admin-access'
 import { pathnameToAdminMenuKey, adminMenusAllow } from '@/lib/auth/admin-access'
@@ -34,7 +35,7 @@ type MenuAccess = ReadonlySet<AdminMenuKey> | 'all'
 
 const NAV_GROUPS: {
   labelKey: string
-  items: readonly { href: string; key: AdminMenuKey; Icon: typeof LayoutDashboard }[]
+  items: readonly { href: string; key: AdminMenuKey; labelKey?: string; Icon: typeof LayoutDashboard }[]
 }[] = [
   {
     labelKey: 'main',
@@ -61,6 +62,7 @@ const NAV_GROUPS: {
       { href: '/admin/cosmocoat-raw-materials', key: 'cosmocoatRawMaterials', Icon: FlaskConical },
       { href: '/admin/cosmocoat-recipes', key: 'cosmocoatRecipes', Icon: Beaker },
       { href: '/admin/cosmocoat-factory-products', key: 'cosmocoatFactoryProducts', Icon: Boxes },
+      { href: '/admin/cosmocoat-product-categories', key: 'cosmocoatFactoryProducts', labelKey: 'cosmocoatFactoryProductCategories', Icon: FolderTree },
       { href: '/admin/cosmocoat-production-orders', key: 'cosmocoatProductionOrders', Icon: ClipboardList },
     ],
   },
@@ -192,11 +194,12 @@ export default function AdminShell({
                 >
                   {tAdmin(`nav.${group.labelKey}` as Parameters<typeof tAdmin>[0])}
                 </p>
-                {visibleItems.map(({ href, key, Icon }) => {
+                {visibleItems.map(({ href, key, labelKey, Icon }) => {
                   const active = isActive(href)
+                  const navLabelKey = (labelKey ?? key) as 'dashboard'
                   return (
                     <Link
-                      key={key}
+                      key={href}
                       href={href}
                       onClick={() => setSidebarOpen(false)}
                       className="group flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-semibold transition-all duration-150 relative mb-0.5"
@@ -217,7 +220,7 @@ export default function AdminShell({
                         strokeWidth={active ? 2 : 1.5}
                         style={{ color: active ? '#C9A96E' : 'inherit', flexShrink: 0 }}
                       />
-                      <span className="flex-1">{t(key as 'dashboard')}</span>
+                      <span className="flex-1">{t(navLabelKey)}</span>
                       {active && <ChevronRight size={12} style={{ color: '#C9A96E', opacity: 0.6 }} />}
                     </Link>
                   )

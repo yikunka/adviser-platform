@@ -99,6 +99,8 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
       return 'adminTeam'
     case 'cosmocoat-products':
       return 'cosmocoatProducts'
+    case 'cosmocoat-product-categories':
+      return 'cosmocoatFactoryProducts'
     case 'cosmocoat-raw-materials':
       return 'cosmocoatRawMaterials'
     case 'cosmocoat-recipes':

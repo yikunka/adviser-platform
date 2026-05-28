@@ -14,6 +14,16 @@ import {
   X,
 } from 'lucide-react'
 import { formatMoney } from '@/lib/cosmocoat/recipes'
+import {
+  flattenCategoryTree,
+  type CategoryTreeNode,
+} from '@/lib/cosmocoat/product-category-tree'
+
+type ProductCategoryRef = {
+  id: string
+  name: string
+  slug: string
+}
 
 type LinkedRecipe = {
   linkId: string
@@ -31,6 +41,8 @@ type FactoryProduct = {
   id: string
   productCode: string
   name: string
+  categoryId: string | null
+  category: ProductCategoryRef | null
   unit: string
   unitPrice: number | null
   notes: string
@@ -56,6 +68,7 @@ type RecipeOption = {
 type ProductForm = {
   productCode: string
   name: string
+  categoryId: string | null
   unit: string
   unitPrice: number | null
   notes: string
@@ -70,6 +83,7 @@ type ProductForm = {
 const emptyForm: ProductForm = {
   productCode: '',
   name: '',
+  categoryId: null,
   unit: 'kg',
   unitPrice: null,
   notes: '',
@@ -113,10 +127,60 @@ function inputStyle(): React.CSSProperties {
   }
 }
 
+function CategoryPicker({
+  value,
+  tree,
+  onChange,
+}: {
+  value: string | null
+  tree: CategoryTreeNode[]
+  onChange: (categoryId: string | null) => void
+}) {
+  const [query, setQuery] = useState('')
+  const flat = useMemo(() => flattenCategoryTree(tree), [tree])
+  const selected = flat.find(c => c.id === value) ?? null
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return flat
+    return flat.filter(
+      c => c.name.toLowerCase().includes(q) || c.pathLabel.toLowerCase().includes(q) || c.slug.includes(q),
+    )
+  }, [flat, query])
+
+  return (
+    <div className="space-y-1.5 sm:col-span-2">
+      <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>产品类别</label>
+      <input
+        value={query}
+        onChange={e => setQuery(e.target.value)}
+        placeholder={selected ? selected.pathLabel : '搜索或选择类别...'}
+        className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+        style={inputStyle()}
+      />
+      <select
+        value={value ?? ''}
+        onChange={e => onChange(e.target.value || null)}
+        className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+        style={inputStyle()}
+        size={Math.min(Math.max(filtered.length + 1, 4), 8)}
+      >
+        <option value="">无类别</option>
+        {filtered.map(option => (
+          <option key={option.id} value={option.id}>
+            {'—'.repeat(Math.max(0, option.depth - 1))} {option.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
 function productToForm(product: FactoryProduct): ProductForm {
   return {
     productCode: product.productCode,
     name: product.name,
+    categoryId: product.categoryId,
     unit: product.unit,
     unitPrice: product.unitPrice,
     notes: product.notes,
@@ -132,11 +196,13 @@ function productToForm(product: FactoryProduct): ProductForm {
 function ProductEditor({
   product,
   recipeOptions,
+  categoryTree,
   onClose,
   onSaved,
 }: {
   product: FactoryProduct | null
   recipeOptions: RecipeOption[]
+  categoryTree: CategoryTreeNode[]
   onClose: () => void
   onSaved: () => void
 }) {
@@ -256,6 +322,11 @@ function ProductEditor({
                 <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>产品名称</label>
                 <input required value={form.name} onChange={e => patch('name', e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
               </div>
+              <CategoryPicker
+                value={form.categoryId}
+                tree={categoryTree}
+                onChange={categoryId => patch('categoryId', categoryId)}
+              />
               <div className="space-y-1.5">
                 <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>单价 (元)</label>
                 <input type="number" min={0} step="0.0001" value={form.unitPrice ?? ''} onChange={e => patch('unitPrice', e.target.value === '' ? null : Number(e.target.value))} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
@@ -387,20 +458,35 @@ function ProductEditor({
 
 export default function AdminCosmoCoatFactoryProductsPage() {
   const [items, setItems] = useState<FactoryProduct[]>([])
+  const [categoryTree, setCategoryTree] = useState<CategoryTreeNode[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [categoryId, setCategoryId] = useState('ALL')
   const [recipeOptions, setRecipeOptions] = useState<RecipeOption[]>([])
   const [editorProduct, setEditorProduct] = useState<FactoryProduct | null | 'new'>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const flatCategories = useMemo(() => flattenCategoryTree(categoryTree), [categoryTree])
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/cosmocoat/product-categories?tree=1&activeOnly=1')
+      const data = await res.json()
+      if (res.ok) setCategoryTree(data.tree ?? [])
+    } catch {
+      // non-blocking
+    }
+  }, [])
 
   const fetchItems = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams({ page: String(page), limit: '50' })
       if (search.trim()) params.set('q', search.trim())
+      if (categoryId !== 'ALL') params.set('categoryId', categoryId)
       const res = await fetch(`/api/admin/cosmocoat/factory-products?${params}`)
       const data = await res.json()
       if (!res.ok) {
@@ -415,7 +501,11 @@ export default function AdminCosmoCoatFactoryProductsPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search])
+  }, [page, search, categoryId])
+
+  useEffect(() => {
+    fetchCategories()
+  }, [fetchCategories])
 
   const fetchRecipeOptions = useCallback(async () => {
     try {
@@ -452,7 +542,7 @@ export default function AdminCosmoCoatFactoryProductsPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [search])
+  }, [search, categoryId])
 
   async function deleteProduct(product: FactoryProduct) {
     if (!window.confirm(`确定删除产品「${product.name}」？`)) return
@@ -493,15 +583,30 @@ export default function AdminCosmoCoatFactoryProductsPage() {
       </div>
 
       <div style={card} className="p-4">
-        <div className="relative max-w-md">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="搜索产品编号、名称..."
-            className="w-full pl-8 pr-3 py-2 rounded-lg text-sm outline-none"
+        <div className="flex flex-wrap gap-3">
+          <div className="relative flex-1 min-w-[220px] max-w-md">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="搜索产品编号、名称..."
+              className="w-full pl-8 pr-3 py-2 rounded-lg text-sm outline-none"
+              style={inputStyle()}
+            />
+          </div>
+          <select
+            value={categoryId}
+            onChange={e => setCategoryId(e.target.value)}
+            className="rounded-lg px-3 py-2 text-sm outline-none min-w-[180px]"
             style={inputStyle()}
-          />
+          >
+            <option value="ALL">全部类别</option>
+            {flatCategories.map(option => (
+              <option key={option.id} value={option.id}>
+                {'—'.repeat(Math.max(0, option.depth - 1))} {option.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -520,6 +625,7 @@ export default function AdminCosmoCoatFactoryProductsPage() {
                 <tr>
                   <th style={th}>产品编号</th>
                   <th style={th}>产品名称</th>
+                  <th style={th}>类别</th>
                   <th style={th}>单位</th>
                   <th style={th}>单价</th>
                   <th style={{ ...th, textAlign: 'right' }}>配方成本</th>
@@ -537,6 +643,7 @@ export default function AdminCosmoCoatFactoryProductsPage() {
                   >
                     <td style={{ ...td, color: 'var(--foreground)', fontWeight: 500 }}>{product.productCode}</td>
                     <td style={td}>{product.name}</td>
+                    <td style={td}>{product.category?.name ?? '—'}</td>
                     <td style={td}>{product.unit}</td>
                     <td style={td}>{formatMoney(product.unitPrice, 2)}</td>
                     <td style={{ ...td, fontFamily: 'monospace', textAlign: 'right' }}>
@@ -586,6 +693,7 @@ export default function AdminCosmoCoatFactoryProductsPage() {
         <ProductEditor
           product={editorProduct === 'new' ? null : editorProduct}
           recipeOptions={recipeOptions}
+          categoryTree={categoryTree}
           onClose={() => setEditorProduct(null)}
           onSaved={fetchItems}
         />

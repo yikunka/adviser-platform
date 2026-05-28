@@ -8,6 +8,7 @@ import { getFactoryProductById, syncProductRecipes } from '@/lib/cosmocoat/facto
 const patchSchema = z.object({
   productCode: z.string().trim().min(1).max(32).optional(),
   name: z.string().trim().min(1).max(160).optional(),
+  categoryId: z.string().trim().min(1).nullable().optional(),
   unit: z.string().trim().min(1).max(16).optional(),
   unitPrice: z.coerce.number().min(0).nullable().optional(),
   notes: z.string().trim().max(1000).optional(),
@@ -68,6 +69,15 @@ export async function PATCH(
   }
 
   try {
+    if (parsed.data.categoryId) {
+      const category = await prisma.cosTableProductCategory.findUnique({
+        where: { id: parsed.data.categoryId },
+      })
+      if (!category) {
+        return NextResponse.json({ error: '产品类别不存在' }, { status: 400 })
+      }
+    }
+
     if (parsed.data.recipeIds !== undefined || parsed.data.currentRecipeId !== undefined) {
       const links = await prisma.cosTableProductRecipe.findMany({
         where: { productId: id },
@@ -92,6 +102,7 @@ export async function PATCH(
       data: {
         productCode: parsed.data.productCode,
         name: parsed.data.name,
+        categoryId: parsed.data.categoryId,
         unit: parsed.data.unit,
         unitPrice: parsed.data.unitPrice,
         notes: parsed.data.notes,

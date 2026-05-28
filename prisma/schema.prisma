@@ -989,6 +989,27 @@ model SfsOrderStep {
 // CosmoCoat — PRODUCTS
 // ─────────────────────────────────────────────
 
+/// Factory product categories — hierarchical taxonomy (max 3 levels)
+model CosTableProductCategory {
+  id               String   @id @default(cuid())
+  name             String
+  description      String   @default("")
+  parentCategoryId String?
+  slug             String   @unique
+  image            String?
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  parent   CosTableProductCategory?  @relation("ProductCategoryHierarchy", fields: [parentCategoryId], references: [id], onDelete: SetNull)
+  children CosTableProductCategory[] @relation("ProductCategoryHierarchy")
+  factoryProducts CosTableFactoryProduct[]
+
+  @@index([parentCategoryId])
+  @@index([isActive])
+  @@map("cos_table_product_categories")
+}
+
 model CosTableProduct {
   id        String   @id @default(cuid())
   pid       String   @unique
@@ -1124,6 +1145,7 @@ model CosTableFactoryProduct {
   id              String   @id @default(cuid())
   productCode     String   @unique
   name            String
+  categoryId      String?
   unit            String   @default("kg")
   unitPrice       Decimal? @db.Decimal(12, 4)
   notes           String   @default("")
@@ -1135,12 +1157,14 @@ model CosTableFactoryProduct {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  category      CosTableProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   currentRecipe CosTableRecipe? @relation("CurrentFactoryRecipe", fields: [currentRecipeId], references: [id], onDelete: SetNull)
   recipeLinks   CosTableProductRecipe[]
   productionOrders CosTableProductionOrder[]
 
   @@index([name])
   @@index([sortOrder])
+  @@index([categoryId])
   @@map("cos_table_factory_products")
 }
 

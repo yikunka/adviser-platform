@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db/prisma'
 
 const productInclude = {
+  category: { select: { id: true, name: true, slug: true } },
   currentRecipe: {
     select: { id: true, code: true, name: true, unitCost: true },
   },
@@ -25,6 +26,7 @@ export async function serializeFactoryProduct(product: {
   id: string
   productCode: string
   name: string
+  categoryId: string | null
   unit: string
   unitPrice: unknown
   notes: string
@@ -35,6 +37,7 @@ export async function serializeFactoryProduct(product: {
   sortOrder: number
   createdAt: Date
   updatedAt: Date
+  category: { id: string; name: string; slug: string } | null
   currentRecipe: { id: string; code: string; name: string; unitCost: unknown } | null
   recipeLinks: Array<{
     id: string
@@ -53,6 +56,8 @@ export async function serializeFactoryProduct(product: {
     id: product.id,
     productCode: product.productCode,
     name: product.name,
+    categoryId: product.categoryId,
+    category: product.category,
     unit: product.unit,
     unitPrice: product.unitPrice != null ? Number(product.unitPrice) : null,
     notes: product.notes,

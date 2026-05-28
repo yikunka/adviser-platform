@@ -8,6 +8,7 @@ import { getFactoryProductById, productInclude, serializeFactoryProduct, syncPro
 const productSchema = z.object({
   productCode: z.string().trim().min(1).max(32),
   name: z.string().trim().min(1).max(160),
+  categoryId: z.string().trim().min(1).nullable().optional(),
   unit: z.string().trim().min(1).max(16).optional().default('kg'),
   unitPrice: z.coerce.number().min(0).nullable().optional().default(null),
   notes: z.string().trim().max(1000).optional().default(''),
@@ -28,19 +29,23 @@ export async function GET(req: NextRequest) {
   if (error) return error
 
   const q = req.nextUrl.searchParams.get('q')?.trim() ?? ''
+  const categoryId = req.nextUrl.searchParams.get('categoryId')?.trim() ?? ''
   const page = Math.max(1, Number(req.nextUrl.searchParams.get('page') ?? '1') || 1)
   const limit = Math.min(200, Math.max(1, Number(req.nextUrl.searchParams.get('limit') ?? '50') || 50))
   const skip = (page - 1) * limit
 
-  const where: Prisma.CosTableFactoryProductWhereInput = q
-    ? {
-        OR: [
-          { productCode: { contains: q, mode: 'insensitive' } },
-          { name: { contains: q, mode: 'insensitive' } },
-          { notes: { contains: q, mode: 'insensitive' } },
-        ],
-      }
-    : {}
+  const where: Prisma.CosTableFactoryProductWhereInput = {
+    ...(categoryId ? { categoryId } : {}),
+    ...(q
+      ? {
+          OR: [
+            { productCode: { contains: q, mode: 'insensitive' } },
+            { name: { contains: q, mode: 'insensitive' } },
+            { notes: { contains: q, mode: 'insensitive' } },
+          ],
+        }
+      : {}),
+  }
 
   try {
     const [total, items] = await Promise.all([
@@ -85,10 +90,20 @@ export async function POST(req: NextRequest) {
     })
     if (existing) return NextResponse.json({ error: '产品编号已存在' }, { status: 409 })
 
+    if (parsed.data.categoryId) {
+      const category = await prisma.cosTableProductCategory.findUnique({
+        where: { id: parsed.data.categoryId },
+      })
+      if (!category) {
+        return NextResponse.json({ error: '产品类别不存在' }, { status: 400 })
+      }
+    }
+
     const product = await prisma.cosTableFactoryProduct.create({
       data: {
         productCode: parsed.data.productCode,
         name: parsed.data.name,
+        categoryId: parsed.data.categoryId ?? null,
         unit: parsed.data.unit,
         unitPrice: parsed.data.unitPrice,
         notes: parsed.data.notes,
