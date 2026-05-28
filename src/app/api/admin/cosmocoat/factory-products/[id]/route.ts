@@ -4,6 +4,11 @@ import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { getFactoryProductById, syncProductRecipes } from '@/lib/cosmocoat/factory-products'
+import {
+  mergeViscosityPatch,
+  type ProductViscosityRecord,
+  viscosityFieldsSchema,
+} from '@/lib/cosmocoat/product-viscosity'
 
 const patchSchema = z.object({
   productCode: z.string().trim().min(1).max(32).optional(),
@@ -12,12 +17,10 @@ const patchSchema = z.object({
   unit: z.string().trim().min(1).max(16).optional(),
   unitPrice: z.coerce.number().min(0).nullable().optional(),
   notes: z.string().trim().max(1000).optional(),
-  productionRequirements: z.string().trim().max(2000).optional(),
-  qualityCheckRequirements: z.string().trim().max(2000).optional(),
-  packagingRequirements: z.string().trim().max(2000).optional(),
   sortOrder: z.coerce.number().int().min(0).max(999999).optional(),
   recipeIds: z.array(z.string().trim().min(1)).optional(),
   currentRecipeId: z.string().trim().min(1).nullable().optional(),
+  ...viscosityFieldsSchema,
 })
 
 function isMissingTable(error: unknown) {
@@ -97,20 +100,30 @@ export async function PATCH(
       }
     }
 
+    const {
+      viscosity,
+      viscosityUnit,
+      recipeIds: _recipeIds,
+      currentRecipeId: _currentRecipeId,
+      ...patchRest
+    } = parsed.data
+    const viscosityKeys = ['viscosity', 'viscosityUnit'] as const
+    const hasViscosityUpdate =
+      body != null &&
+      typeof body === 'object' &&
+      viscosityKeys.some(key => key in body)
+
     await prisma.cosTableFactoryProduct.update({
       where: { id },
       data: {
-        productCode: parsed.data.productCode,
-        name: parsed.data.name,
-        categoryId: parsed.data.categoryId,
-        unit: parsed.data.unit,
-        unitPrice: parsed.data.unitPrice,
-        notes: parsed.data.notes,
-        productionRequirements: parsed.data.productionRequirements,
-        qualityCheckRequirements: parsed.data.qualityCheckRequirements,
-        packagingRequirements: parsed.data.packagingRequirements,
-        sortOrder: parsed.data.sortOrder,
-      },
+        ...patchRest,
+        ...(hasViscosityUpdate
+          ? mergeViscosityPatch(current as ProductViscosityRecord, {
+              viscosity,
+              viscosityUnit,
+            })
+          : {}),
+      } as Prisma.CosTableFactoryProductUncheckedUpdateInput,
     })
 
     const product = await getFactoryProductById(id)

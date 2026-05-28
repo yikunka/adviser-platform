@@ -14,6 +14,14 @@ export class RecipeItemValidationError extends Error {
   }
 }
 
+function countItemRefs(item: RecipeItemInput): number {
+  return [
+    Boolean(item.rawMaterialId),
+    Boolean(item.recipeId),
+    Boolean(item.productSemifinishedId),
+  ].filter(Boolean).length
+}
+
 /** Validates recipe line items and fills unitPrice from source records when omitted. */
 export async function validateAndEnrichRecipeItems(
   items: RecipeItemInput[],
@@ -25,12 +33,15 @@ export async function validateAndEnrichRecipeItems(
   const componentRecipeIds = items
     .map(item => item.recipeId)
     .filter((id): id is string => Boolean(id))
+  const productSemifinishedIds = items
+    .map(item => item.productSemifinishedId)
+    .filter((id): id is string => Boolean(id))
 
   if (parentRecipeId && componentRecipeIds.includes(parentRecipeId)) {
     throw new RecipeItemValidationError('配方不能引用自身作为半成品')
   }
 
-  const [rawMaterials, componentRecipes] = await Promise.all([
+  const [rawMaterials, componentRecipes, productSemifinished] = await Promise.all([
     rawMaterialIds.length > 0
       ? prisma.cosTableRawMaterial.findMany({
           where: { id: { in: rawMaterialIds } },
@@ -48,12 +59,23 @@ export async function validateAndEnrichRecipeItems(
           },
         })
       : Promise.resolve([]),
+    productSemifinishedIds.length > 0
+      ? prisma.cosTableProductSemifinished.findMany({
+          where: { id: { in: productSemifinishedIds } },
+          select: { id: true, code: true, unitPrice: true },
+        })
+      : Promise.resolve([]),
   ])
 
   const rawMap = new Map(rawMaterials.map(m => [m.id, m]))
   const recipeMap = new Map(componentRecipes.map(r => [r.id, r]))
+  const semifinishedMap = new Map(productSemifinished.map(s => [s.id, s]))
 
   return items.map(item => {
+    if (countItemRefs(item) !== 1) {
+      throw new RecipeItemValidationError('每条配料须指定原材料、半成品配方或库存半成品之一')
+    }
+
     if (item.rawMaterialId) {
       const material = rawMap.get(item.rawMaterialId)
       if (!material) {
@@ -81,6 +103,17 @@ export async function validateAndEnrichRecipeItems(
       return { ...item, unitPrice }
     }
 
-    throw new RecipeItemValidationError('每条配料须指定原材料或半成品配方')
+    if (item.productSemifinishedId) {
+      const semifinished = semifinishedMap.get(item.productSemifinishedId)
+      if (!semifinished) {
+        throw new RecipeItemValidationError(`库存半成品不存在: ${item.productSemifinishedId}`)
+      }
+      const unitPrice = item.unitPrice ?? (
+        semifinished.unitPrice != null ? Number(semifinished.unitPrice) : null
+      )
+      return { ...item, unitPrice }
+    }
+
+    throw new RecipeItemValidationError('每条配料须指定原材料、半成品配方或库存半成品之一')
   })
 }

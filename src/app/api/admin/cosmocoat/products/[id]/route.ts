@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { ossImg } from '@/lib/oss-img'
+import { curingFieldsSchema, serializeUvCuringIntensity, toCuringDbData } from '@/lib/cosmocoat/product-curing'
+import { compatibilityFieldsSchema, toCompatibilityDbData } from '@/lib/cosmocoat/product-compatibility'
+import {
+  type CosTableProductExtendedFields,
+  mergeViscosityPatch,
+  serializeViscosity,
+  viscosityFieldsSchema,
+} from '@/lib/cosmocoat/product-viscosity'
 
 const patchSchema = z.object({
   pid: z.string().trim().min(1).max(64).optional(),
@@ -15,6 +24,9 @@ const patchSchema = z.object({
   sortOrder: z.coerce.number().int().min(0).max(999999).optional(),
   isFeatured: z.boolean().optional(),
   isVisible: z.boolean().optional(),
+  ...curingFieldsSchema,
+  ...viscosityFieldsSchema,
+  ...compatibilityFieldsSchema,
 })
 
 function revalidateCosmoCoat(pid?: string) {
@@ -31,10 +43,16 @@ function normalizeProductImagePath(path: string): string {
   return `/cosmocoat/${trimmed}`
 }
 
-function productWithImageUrl<T extends { imagePath: string }>(product: T) {
+function productWithImageUrl<T extends { imagePath: string; uvCuringIntensity?: unknown; viscosity?: unknown }>(
+  product: T,
+) {
   const imagePath = normalizeProductImagePath(product.imagePath)
+  const { uvCuringIntensity, viscosity, ...rest } = product
   return {
-    ...product,
+    ...rest,
+    imagePath,
+    uvCuringIntensity: serializeUvCuringIntensity(uvCuringIntensity),
+    viscosity: serializeViscosity(viscosity),
     imageUrl: /^https?:\/\//i.test(imagePath) ? imagePath : ossImg(imagePath, { w: 500 }),
   }
 }
@@ -53,17 +71,80 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
   }
 
-  const current = await prisma.cosTableProduct.findUnique({ where: { id } })
-  if (!current) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+  const currentRaw = await prisma.cosTableProduct.findUnique({ where: { id } })
+  if (!currentRaw) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+  const current = currentRaw as typeof currentRaw & CosTableProductExtendedFields
 
   if (parsed.data.pid && parsed.data.pid !== current.pid) {
     const conflict = await prisma.cosTableProduct.findUnique({ where: { pid: parsed.data.pid } })
     if (conflict) return NextResponse.json({ error: 'Product ID already exists' }, { status: 409 })
   }
 
+  const {
+    irCuringTime,
+    irCuringTemp,
+    uvCuringIntensity,
+    uvCuringUnit,
+    viscosity,
+    viscosityUnit,
+    requiresCompatibility,
+    mixingRatio,
+    compatibleProducts,
+    ...rest
+  } = parsed.data
+  const curingKeys = ['irCuringTime', 'irCuringTemp', 'uvCuringIntensity', 'uvCuringUnit'] as const
+  const viscosityKeys = ['viscosity', 'viscosityUnit'] as const
+  const compatibilityKeys = ['requiresCompatibility', 'mixingRatio', 'compatibleProducts'] as const
+  const hasCuringUpdate =
+    body != null &&
+    typeof body === 'object' &&
+    curingKeys.some(key => key in body)
+  const hasViscosityUpdate =
+    body != null &&
+    typeof body === 'object' &&
+    viscosityKeys.some(key => key in body)
+  const hasCompatibilityUpdate =
+    body != null &&
+    typeof body === 'object' &&
+    compatibilityKeys.some(key => key in body)
+
   const product = await prisma.cosTableProduct.update({
     where: { id },
-    data: parsed.data,
+    data: {
+      ...rest,
+      ...(hasCuringUpdate
+        ? toCuringDbData({
+            irCuringTime: irCuringTime !== undefined ? irCuringTime : current.irCuringTime,
+            irCuringTemp: irCuringTemp !== undefined ? irCuringTemp : current.irCuringTemp,
+            uvCuringIntensity:
+              uvCuringIntensity !== undefined
+                ? uvCuringIntensity
+                : current.uvCuringIntensity != null
+                  ? Number(current.uvCuringIntensity)
+                  : null,
+            uvCuringUnit: uvCuringUnit !== undefined ? uvCuringUnit : current.uvCuringUnit,
+          })
+        : {}),
+      ...(hasViscosityUpdate
+        ? mergeViscosityPatch(current, {
+            viscosity,
+            viscosityUnit,
+          })
+        : {}),
+      ...(hasCompatibilityUpdate
+        ? toCompatibilityDbData({
+            requiresCompatibility:
+              requiresCompatibility !== undefined
+                ? requiresCompatibility
+                : current.requiresCompatibility,
+            mixingRatio: mixingRatio !== undefined ? mixingRatio : current.mixingRatio,
+            compatibleProducts:
+              compatibleProducts !== undefined
+                ? compatibleProducts
+                : current.compatibleProducts,
+          })
+        : {}),
+    } as Prisma.CosTableProductUncheckedUpdateInput,
   })
 
   revalidateCosmoCoat(current.pid)

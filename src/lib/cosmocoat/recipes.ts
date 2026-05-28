@@ -25,6 +25,8 @@ export type RecipeItemInput = {
   rawMaterialId?: string
   /** Semi-finished product (another recipe) used as a component */
   recipeId?: string
+  /** Sol. 半成品库存 */
+  productSemifinishedId?: string
   sortOrder: number
   quantity: number
   unitPrice: number | null
@@ -32,7 +34,11 @@ export type RecipeItemInput = {
 }
 
 export function isRecipeItemInputValid(item: RecipeItemInput): boolean {
-  return Boolean(item.rawMaterialId) !== Boolean(item.recipeId)
+  return [
+    Boolean(item.rawMaterialId),
+    Boolean(item.recipeId),
+    Boolean(item.productSemifinishedId),
+  ].filter(Boolean).length === 1
 }
 
 export type RecipeTotals = {
@@ -155,4 +161,20 @@ export function buildProductionOrderItems(
 
 export function attributeLabel(code: string): string {
   return MATERIAL_ATTRIBUTE_GROUPS.find(group => group.code === code)?.label ?? code
+}
+
+export type RecipeProductionFields = {
+  stirringRequirements: string
+  packagingRequirements: string
+  productionNotes: string
+}
+
+/** Maps recipe production fields to production-order snapshot columns. */
+export function recipeToOrderRequirements(recipe: RecipeProductionFields) {
+  return {
+    productionRequirements: recipe.stirringRequirements,
+    qualityCheckRequirements: '',
+    packagingRequirements: recipe.packagingRequirements,
+    productionNotes: recipe.productionNotes,
+  }
 }

@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { Link } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { ArrowLeft, Download, FileText, RefreshCw, Trash2, UploadCloud } from 'lucide-react'
+import { CategoryComboField } from '@/components/cosmocoat/category-combo-field'
 import type { RawMaterialRow } from '@/lib/cosmocoat/raw-materials'
 
 type FileType = 'tds' | 'msds'
@@ -136,6 +137,7 @@ export default function AdminCosmoCoatRawMaterialDetailPage() {
   const [saving, setSaving] = useState(false)
   const [fileBusy, setFileBusy] = useState<FileType | null>(null)
   const [item, setItem] = useState<RawMaterialRow | null>(null)
+  const [categories, setCategories] = useState<string[]>([])
   const [form, setForm] = useState<Omit<RawMaterialRow, 'id' | 'createdAt' | 'updatedAt'>>({
     category: '',
     attributeCode: '',
@@ -213,6 +215,17 @@ export default function AdminCosmoCoatRawMaterialDetailPage() {
   useEffect(() => {
     fetchItem()
   }, [fetchItem])
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/admin/cosmocoat/raw-materials?limit=1')
+      .then(res => res.json())
+      .then(data => {
+        if (!cancelled) setCategories(data.categories ?? [])
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   function patch<K extends keyof typeof form>(key: K, value: typeof form[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -387,7 +400,13 @@ export default function AdminCosmoCoatRawMaterialDetailPage() {
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <Field label="分类">
-              <input required value={form.category} onChange={e => patch('category', e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle} />
+              <CategoryComboField
+                required
+                value={form.category}
+                onChange={v => patch('category', v)}
+                categories={categories}
+                placeholder="输入或选择分类"
+              />
             </Field>
             <Field label="属性代码">
               <input required value={form.attributeCode} onChange={e => patch('attributeCode', e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle} />

@@ -18,6 +18,7 @@ import {
   flattenCategoryTree,
   type CategoryTreeNode,
 } from '@/lib/cosmocoat/product-category-tree'
+import { VISCOSITY_UNITS, type ViscosityUnit } from '@/lib/cosmocoat/product-viscosity'
 
 type ProductCategoryRef = {
   id: string
@@ -46,13 +47,20 @@ type FactoryProduct = {
   unit: string
   unitPrice: number | null
   notes: string
-  productionRequirements: string
-  qualityCheckRequirements: string
-  packagingRequirements: string
+  viscosity: number | null
+  viscosityUnit: ViscosityUnit | null
   currentRecipeId: string | null
   sortOrder: number
   updatedAt: string
-  currentRecipe: { id: string; code: string; name: string; unitCost: number | null } | null
+  currentRecipe: {
+    id: string
+    code: string
+    name: string
+    unitCost: number | null
+    stirringRequirements?: string
+    packagingRequirements?: string
+    productionNotes?: string
+  } | null
   recipes: LinkedRecipe[]
 }
 
@@ -72,9 +80,8 @@ type ProductForm = {
   unit: string
   unitPrice: number | null
   notes: string
-  productionRequirements: string
-  qualityCheckRequirements: string
-  packagingRequirements: string
+  viscosity: number | null
+  viscosityUnit: ViscosityUnit
   sortOrder: number
   recipeIds: string[]
   currentRecipeId: string | null
@@ -87,9 +94,8 @@ const emptyForm: ProductForm = {
   unit: 'kg',
   unitPrice: null,
   notes: '',
-  productionRequirements: '',
-  qualityCheckRequirements: '',
-  packagingRequirements: '',
+  viscosity: null,
+  viscosityUnit: 'S',
   sortOrder: 0,
   recipeIds: [],
   currentRecipeId: null,
@@ -184,12 +190,20 @@ function productToForm(product: FactoryProduct): ProductForm {
     unit: product.unit,
     unitPrice: product.unitPrice,
     notes: product.notes,
-    productionRequirements: product.productionRequirements,
-    qualityCheckRequirements: product.qualityCheckRequirements,
-    packagingRequirements: product.packagingRequirements,
+    viscosity: product.viscosity,
+    viscosityUnit: product.viscosityUnit ?? 'S',
     sortOrder: product.sortOrder,
     recipeIds: product.recipes.map(r => r.id),
     currentRecipeId: product.currentRecipeId,
+  }
+}
+
+function formPayload(form: ProductForm) {
+  const hasViscosity = form.viscosity != null && !Number.isNaN(form.viscosity)
+  return {
+    ...form,
+    viscosity: hasViscosity ? form.viscosity : null,
+    viscosityUnit: hasViscosity ? form.viscosityUnit : null,
   }
 }
 
@@ -263,7 +277,7 @@ function ProductEditor({
         {
           method: isEditing ? 'PATCH' : 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(form),
+          body: JSON.stringify(formPayload(form)),
         },
       )
       const data = await res.json()
@@ -336,6 +350,31 @@ function ProductEditor({
                 <input type="number" min={0} value={form.sortOrder} onChange={e => patch('sortOrder', Number(e.target.value) || 0)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
               </div>
               <div className="space-y-1.5 sm:col-span-2">
+                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>产品黏度（可选）</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min={0}
+                    step="any"
+                    value={form.viscosity ?? ''}
+                    onChange={e => patch('viscosity', e.target.value === '' ? null : Number(e.target.value))}
+                    className="flex-1 min-w-0 rounded-lg px-3 py-2.5 text-sm outline-none"
+                    style={inputStyle()}
+                    placeholder="数值"
+                  />
+                  <select
+                    value={form.viscosityUnit ?? 'S'}
+                    onChange={e => patch('viscosityUnit', e.target.value as ViscosityUnit)}
+                    className="w-24 shrink-0 rounded-lg px-3 py-2.5 text-sm outline-none"
+                    style={inputStyle()}
+                  >
+                    {VISCOSITY_UNITS.map(unit => (
+                      <option key={unit} value={unit}>{unit === 'S' ? 'S（秒）' : 'KU'}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
                 <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>备注</label>
                 <textarea value={form.notes} onChange={e => patch('notes', e.target.value)} rows={2} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-y" style={inputStyle()} />
               </div>
@@ -343,21 +382,23 @@ function ProductEditor({
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>生产要求（创建生产单时自动带出）</h3>
-            <div className="grid sm:grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>生产要求</label>
-                <textarea value={form.productionRequirements} onChange={e => patch('productionRequirements', e.target.value)} rows={3} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-y" style={inputStyle()} placeholder="如：控制好粘度、调粘度..." />
+            <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>关联配方说明</h3>
+            <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+              生产工艺、质检与包装要求请在配方管理中维护；创建生产单时将按当前配方自动带出。
+            </p>
+            {form.currentRecipeId ? (
+              <div className="rounded-lg px-3 py-2.5 text-sm" style={{ background: '#111108', border: '1px solid #2A2418' }}>
+                <span style={{ color: 'var(--foreground)' }}>
+                  当前配方：{linkedRecipes.find(r => r.id === form.currentRecipeId)?.name
+                    ?? product?.currentRecipe?.name
+                    ?? '—'}
+                </span>
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>质检要求</label>
-                <textarea value={form.qualityCheckRequirements} onChange={e => patch('qualityCheckRequirements', e.target.value)} rows={3} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-y" style={inputStyle()} placeholder="如：粘度 9.7-9.8、密度..." />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>包装要求</label>
-                <textarea value={form.packagingRequirements} onChange={e => patch('packagingRequirements', e.target.value)} rows={3} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-y" style={inputStyle()} placeholder="如：18KG" />
-              </div>
-            </div>
+            ) : (
+              <p className="text-sm rounded-lg px-3 py-2.5" style={{ color: '#5A5040', border: '1px dashed #2A2418' }}>
+                尚未指定当前配方
+              </p>
+            )}
           </section>
 
           <section className="space-y-3">

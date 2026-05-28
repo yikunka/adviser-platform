@@ -3,7 +3,12 @@ import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
-import { serializeRawMaterial, toPrismaCreateData } from '@/lib/cosmocoat/raw-materials'
+import {
+  getRecipeUsageCountsByRawMaterialIds,
+  serializeRawMaterial,
+  serializeRawMaterialListRow,
+  toPrismaCreateData,
+} from '@/lib/cosmocoat/raw-materials'
 
 const ynSchema = z.union([z.literal(''), z.literal('Y'), z.literal('N')])
 
@@ -50,6 +55,7 @@ export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q')?.trim() ?? ''
   const category = req.nextUrl.searchParams.get('category')?.trim() ?? ''
   const attribute = req.nextUrl.searchParams.get('attribute')?.trim() ?? ''
+  const usedInRecipe = req.nextUrl.searchParams.get('usedInRecipe')?.trim() ?? ''
   const page = Math.max(1, Number(req.nextUrl.searchParams.get('page') ?? '1') || 1)
   const limit = Math.min(200, Math.max(1, Number(req.nextUrl.searchParams.get('limit') ?? '50') || 50))
   const skip = (page - 1) * limit
@@ -57,6 +63,8 @@ export async function GET(req: NextRequest) {
   const where: Prisma.CosTableRawMaterialWhereInput = {
     ...(category ? { category } : {}),
     ...(attribute ? { attributeCode: attribute } : {}),
+    ...(usedInRecipe === 'true' ? { recipeItems: { some: {} } } : {}),
+    ...(usedInRecipe === 'false' ? { recipeItems: { none: {} } } : {}),
     ...(q
       ? {
           OR: [
@@ -91,8 +99,12 @@ export async function GET(req: NextRequest) {
       }),
     ])
 
+    const usageCounts = await getRecipeUsageCountsByRawMaterialIds(items.map(i => i.id))
+
     return NextResponse.json({
-      items: items.map(serializeRawMaterial),
+      items: items.map(item =>
+        serializeRawMaterialListRow(item, usageCounts.get(item.id) ?? 0),
+      ),
       total,
       page,
       limit,

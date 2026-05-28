@@ -1,9 +1,18 @@
 import { prisma } from '@/lib/db/prisma'
+import { serializeViscosity } from '@/lib/cosmocoat/product-viscosity'
 
 const productInclude = {
   category: { select: { id: true, name: true, slug: true } },
   currentRecipe: {
-    select: { id: true, code: true, name: true, unitCost: true },
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      unitCost: true,
+      stirringRequirements: true,
+      packagingRequirements: true,
+      productionNotes: true,
+    },
   },
   recipeLinks: {
     orderBy: { createdAt: 'asc' as const },
@@ -30,15 +39,22 @@ export async function serializeFactoryProduct(product: {
   unit: string
   unitPrice: unknown
   notes: string
-  productionRequirements: string
-  qualityCheckRequirements: string
-  packagingRequirements: string
+  viscosity?: unknown
+  viscosityUnit?: string | null
   currentRecipeId: string | null
   sortOrder: number
   createdAt: Date
   updatedAt: Date
   category: { id: string; name: string; slug: string } | null
-  currentRecipe: { id: string; code: string; name: string; unitCost: unknown } | null
+  currentRecipe: {
+    id: string
+    code: string
+    name: string
+    unitCost: unknown
+    stirringRequirements: string
+    packagingRequirements: string
+    productionNotes: string
+  } | null
   recipeLinks: Array<{
     id: string
     recipeId: string
@@ -61,9 +77,8 @@ export async function serializeFactoryProduct(product: {
     unit: product.unit,
     unitPrice: product.unitPrice != null ? Number(product.unitPrice) : null,
     notes: product.notes,
-    productionRequirements: product.productionRequirements,
-    qualityCheckRequirements: product.qualityCheckRequirements,
-    packagingRequirements: product.packagingRequirements,
+    viscosity: serializeViscosity(product.viscosity),
+    viscosityUnit: product.viscosityUnit ?? null,
     currentRecipeId: product.currentRecipeId,
     sortOrder: product.sortOrder,
     createdAt: product.createdAt.toISOString(),
@@ -74,6 +89,9 @@ export async function serializeFactoryProduct(product: {
           code: product.currentRecipe.code,
           name: product.currentRecipe.name,
           unitCost: product.currentRecipe.unitCost != null ? Number(product.currentRecipe.unitCost) : null,
+          stirringRequirements: product.currentRecipe.stirringRequirements,
+          packagingRequirements: product.currentRecipe.packagingRequirements,
+          productionNotes: product.currentRecipe.productionNotes,
         }
       : null,
     recipes: product.recipeLinks.map(link => ({

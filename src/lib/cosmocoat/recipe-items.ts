@@ -17,6 +17,18 @@ export function recipeItemToPrismaCreate(
       notes: item.notes,
     }
   }
+  if (item.productSemifinishedId) {
+    return {
+      recipeId,
+      productSemifinishedId: item.productSemifinishedId,
+      sortOrder: item.sortOrder,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      amount: item.amount,
+      percentage: item.percentage,
+      notes: item.notes,
+    }
+  }
   return {
     recipeId,
     rawMaterialId: item.rawMaterialId!,

@@ -1018,6 +1018,15 @@ model CosTableProduct {
   teaser    String   @default("")
   detail    String   @db.Text
   imagePath String
+  irCuringTime        Int?     @map("ir_curing_time")
+  irCuringTemp        Int?     @map("ir_curing_temp")
+  uvCuringIntensity   Decimal? @db.Decimal(8, 2) @map("uv_curing_intensity")
+  uvCuringUnit        String?  @map("uv_curing_unit")
+  viscosity           Decimal? @db.Decimal(10, 3) @map("viscosity")
+  viscosityUnit       String?  @map("viscosity_unit")
+  mixingRatio         String?  @map("mixing_ratio")
+  compatibleProducts  String?  @map("compatible_products")
+  requiresCompatibility Boolean @default(false) @map("requires_compatibility")
   sortOrder Int      @default(0)
   isFeatured Boolean @default(false)
   isVisible  Boolean @default(true)
@@ -1100,6 +1109,9 @@ model CosTableRecipe {
   batchQuantity Decimal  @default(100) @db.Decimal(12, 3)
   unitCost      Decimal? @db.Decimal(12, 4)
   notes         String   @default("")
+  stirringRequirements  String @default("") @map("stirring_requirements")
+  packagingRequirements String @default("") @map("packaging_requirements")
+  productionNotes       String @default("") @map("production_notes")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -1115,26 +1127,55 @@ model CosTableRecipe {
 }
 
 model CosTableRecipeItem {
-  id                String   @id @default(cuid())
-  recipeId          String
-  rawMaterialId     String?
-  componentRecipeId String?
-  sortOrder         Int      @default(0)
-  quantity          Decimal  @db.Decimal(12, 3)
-  unitPrice         Decimal? @db.Decimal(12, 4)
-  amount            Decimal? @db.Decimal(14, 4)
-  percentage        Decimal? @db.Decimal(8, 4)
-  notes             String   @default("")
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                     String   @id @default(cuid())
+  recipeId               String
+  rawMaterialId          String?
+  componentRecipeId      String?
+  productSemifinishedId  String?
+  sortOrder              Int      @default(0)
+  quantity               Decimal  @db.Decimal(12, 3)
+  unitPrice              Decimal? @db.Decimal(12, 4)
+  amount                 Decimal? @db.Decimal(14, 4)
+  percentage             Decimal? @db.Decimal(8, 4)
+  notes                  String   @default("")
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
-  recipe          CosTableRecipe       @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  rawMaterial     CosTableRawMaterial? @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
-  componentRecipe CosTableRecipe?      @relation("RecipeItemComponent", fields: [componentRecipeId], references: [id], onDelete: Restrict)
+  recipe              CosTableRecipe              @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  rawMaterial         CosTableRawMaterial?        @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  componentRecipe     CosTableRecipe?             @relation("RecipeItemComponent", fields: [componentRecipeId], references: [id], onDelete: Restrict)
+  productSemifinished CosTableProductSemifinished? @relation(fields: [productSemifinishedId], references: [id], onDelete: Restrict)
 
   @@index([recipeId, sortOrder])
   @@index([componentRecipeId])
+  @@index([productSemifinishedId])
   @@map("cos_table_recipe_items")
+}
+
+// ─────────────────────────────────────────────
+// CosmoCoat — PRODUCT SEMIFINISHED (Sol. 半成品库存)
+// ─────────────────────────────────────────────
+
+model CosTableProductSemifinished {
+  id                      String   @id @default(cuid())
+  code                    String   @unique
+  name                    String
+  description             String   @default("")
+  category                String   @default("Sol.")
+  stock                   Decimal  @default(0) @db.Decimal(12, 3)
+  unit                    String   @default("kg")
+  unitPrice               Decimal? @db.Decimal(12, 4)
+  sourceProductionOrderId String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  sourceProductionOrder CosTableProductionOrder? @relation(fields: [sourceProductionOrderId], references: [id], onDelete: SetNull)
+  recipeItems           CosTableRecipeItem[]
+
+  @@index([category])
+  @@index([name])
+  @@index([sourceProductionOrderId])
+  @@map("cos_table_product_semifinished")
 }
 
 // ─────────────────────────────────────────────
@@ -1149,9 +1190,8 @@ model CosTableFactoryProduct {
   unit            String   @default("kg")
   unitPrice       Decimal? @db.Decimal(12, 4)
   notes           String   @default("")
-  productionRequirements  String @default("") @map("production_requirements")
-  qualityCheckRequirements String @default("") @map("quality_check_requirements")
-  packagingRequirements   String @default("") @map("packaging_requirements")
+  viscosity           Decimal? @db.Decimal(10, 3) @map("viscosity")
+  viscosityUnit       String?  @map("viscosity_unit")
   currentRecipeId String?
   sortOrder       Int      @default(0)
   createdAt       DateTime @default(now())
@@ -1208,6 +1248,7 @@ model CosTableProductionOrder {
   factoryProduct CosTableFactoryProduct @relation(fields: [factoryProductId], references: [id], onDelete: Restrict)
   recipe         CosTableRecipe         @relation(fields: [recipeId], references: [id], onDelete: Restrict)
   items          CosTableProductionOrderItem[]
+  semifinishedProducts CosTableProductSemifinished[]
 
   @@index([factoryProductId])
   @@index([createdAt])

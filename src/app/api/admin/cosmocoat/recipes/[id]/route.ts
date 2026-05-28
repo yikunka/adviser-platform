@@ -17,6 +17,9 @@ const patchSchema = z.object({
   name: z.string().trim().min(1).max(160).optional(),
   batchQuantity: z.coerce.number().min(0.001).optional(),
   notes: z.string().trim().max(1000).optional(),
+  stirringRequirements: z.string().trim().max(2000).optional(),
+  packagingRequirements: z.string().trim().max(2000).optional(),
+  productionNotes: z.string().trim().max(2000).optional(),
   items: z.array(itemSchema).optional(),
 })
 
@@ -101,6 +104,9 @@ export async function PATCH(
         name: parsed.data.name,
         batchQuantity: parsed.data.batchQuantity,
         notes: parsed.data.notes,
+        stirringRequirements: parsed.data.stirringRequirements,
+        packagingRequirements: parsed.data.packagingRequirements,
+        productionNotes: parsed.data.productionNotes,
         unitCost: totals.unitCost,
       },
     })

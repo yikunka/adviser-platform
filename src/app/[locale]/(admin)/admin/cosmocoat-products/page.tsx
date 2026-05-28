@@ -5,6 +5,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { ImagePlus, PackagePlus, Pencil, Search, Trash2, UploadCloud } from 'lucide-react'
 import { ossImg } from '@/lib/oss-img'
+import { UV_CURING_UNITS, type UvCuringUnit } from '@/lib/cosmocoat/product-curing'
+import { VISCOSITY_UNITS, type ViscosityUnit } from '@/lib/cosmocoat/product-viscosity'
+import {
+  compatibleProductsToTextarea,
+  countCompatibleProducts,
+} from '@/lib/cosmocoat/product-compatibility'
 
 type ProductType = 'feel' | 'lacquer' | 'uv' | 'special'
 
@@ -17,13 +23,24 @@ type Product = {
   detail: string
   imagePath: string
   imageUrl?: string
+  irCuringTime: number | null
+  irCuringTemp: number | null
+  uvCuringIntensity: number | null
+  uvCuringUnit: UvCuringUnit | null
+  viscosity: number | null
+  viscosityUnit: ViscosityUnit | null
+  mixingRatio: string | null
+  compatibleProducts: string | null
+  requiresCompatibility: boolean
   sortOrder: number
   isFeatured: boolean
   isVisible: boolean
   createdAt: string
 }
 
-type ProductForm = Omit<Product, 'id' | 'createdAt' | 'imageUrl'>
+type ProductForm = Omit<Product, 'id' | 'createdAt' | 'imageUrl'> & {
+  compatibleProductsText: string
+}
 
 const TYPE_OPTIONS: { key: ProductType; label: string }[] = [
   { key: 'feel', label: '手感漆' },
@@ -39,9 +56,61 @@ const emptyForm: ProductForm = {
   teaser: '',
   detail: '',
   imagePath: '',
+  irCuringTime: null,
+  irCuringTemp: null,
+  uvCuringIntensity: null,
+  uvCuringUnit: 'mj/cm²',
+  viscosity: null,
+  viscosityUnit: 'S',
+  mixingRatio: null,
+  compatibleProducts: null,
+  compatibleProductsText: '',
+  requiresCompatibility: false,
   sortOrder: 0,
   isFeatured: false,
   isVisible: true,
+}
+
+function productToForm(product: Product): ProductForm {
+  return {
+    pid: product.pid,
+    type: product.type,
+    title: product.title,
+    teaser: product.teaser,
+    detail: product.detail,
+    imagePath: product.imagePath,
+    irCuringTime: product.irCuringTime,
+    irCuringTemp: product.irCuringTemp,
+    uvCuringIntensity: product.uvCuringIntensity,
+    uvCuringUnit: product.uvCuringUnit ?? 'mj/cm²',
+    viscosity: product.viscosity,
+    viscosityUnit: product.viscosityUnit ?? 'S',
+    mixingRatio: product.mixingRatio,
+    compatibleProducts: product.compatibleProducts,
+    compatibleProductsText: compatibleProductsToTextarea(product.compatibleProducts),
+    requiresCompatibility: product.requiresCompatibility,
+    sortOrder: product.sortOrder,
+    isFeatured: product.isFeatured,
+    isVisible: product.isVisible,
+  }
+}
+
+function formPayload(form: ProductForm) {
+  const hasUvIntensity = form.uvCuringIntensity != null && !Number.isNaN(form.uvCuringIntensity)
+  const hasViscosity = form.viscosity != null && !Number.isNaN(form.viscosity)
+  const { compatibleProductsText, ...rest } = form
+  return {
+    ...rest,
+    irCuringTime: form.irCuringTime,
+    irCuringTemp: form.irCuringTemp,
+    uvCuringIntensity: hasUvIntensity ? form.uvCuringIntensity : null,
+    uvCuringUnit: hasUvIntensity ? form.uvCuringUnit : null,
+    viscosity: hasViscosity ? form.viscosity : null,
+    viscosityUnit: hasViscosity ? form.viscosityUnit : null,
+    requiresCompatibility: form.requiresCompatibility,
+    mixingRatio: form.requiresCompatibility ? form.mixingRatio : null,
+    compatibleProducts: form.requiresCompatibility ? compatibleProductsText : null,
+  }
 }
 
 const card: React.CSSProperties = {
@@ -94,7 +163,7 @@ function ProductModal({
   onClose: () => void
   onSaved: () => void
 }) {
-  const [form, setForm] = useState<ProductForm>(product ?? emptyForm)
+  const [form, setForm] = useState<ProductForm>(product ? productToForm(product) : emptyForm)
   const [imagePreviewUrl, setImagePreviewUrl] = useState(product?.imageUrl ?? '')
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -132,7 +201,7 @@ function ProductModal({
       const res = await fetch(isEditing ? `/api/admin/cosmocoat/products/${product.id}` : '/api/admin/cosmocoat/products', {
         method: isEditing ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(formPayload(form)),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -183,6 +252,32 @@ function ProductModal({
             </div>
 
             <div className="space-y-1.5">
+              <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>产品黏度（可选）</label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={form.viscosity ?? ''}
+                  onChange={e => patch('viscosity', e.target.value === '' ? null : Number(e.target.value))}
+                  className="flex-1 min-w-0 rounded-lg px-3 py-2.5 text-sm outline-none"
+                  style={inputStyle()}
+                  placeholder="数值"
+                />
+                <select
+                  value={form.viscosityUnit ?? 'S'}
+                  onChange={e => patch('viscosityUnit', e.target.value as ViscosityUnit)}
+                  className="w-24 shrink-0 rounded-lg px-3 py-2.5 text-sm outline-none"
+                  style={inputStyle()}
+                >
+                  {VISCOSITY_UNITS.map(unit => (
+                    <option key={unit} value={unit}>{unit === 'S' ? 'S（秒）' : 'KU'}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
               <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Product Name</label>
               <input required value={form.title} onChange={e => patch('title', e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} placeholder="特殊效果 - 炫彩水滴" />
             </div>
@@ -195,6 +290,142 @@ function ProductModal({
             <div className="space-y-1.5">
               <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Product Detail</label>
               <textarea required value={form.detail} onChange={e => patch('detail', e.target.value)} className="w-full min-h-44 rounded-lg px-3 py-2.5 text-sm outline-none resize-y" style={inputStyle()} placeholder="Detailed product description shown on the product detail page" />
+            </div>
+
+            <div className="space-y-3 rounded-lg p-4" style={{ border: '1px solid #2A2418', background: '#0E0E0A' }}>
+              <div>
+                <h3 className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>固化参数</h3>
+                <p className="text-xs mt-0.5" style={{ color: '#7A7060' }}>可选。用于记录 IR 烘烤与 UV 固化的使用方法。</p>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>IR 烘烤时间（分钟）</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={form.irCuringTime ?? ''}
+                    onChange={e => patch('irCuringTime', e.target.value === '' ? null : Number(e.target.value))}
+                    className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+                    style={inputStyle()}
+                    placeholder="例如：60 分钟 × 180°C"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>IR 烘烤温度（°C）</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={form.irCuringTemp ?? ''}
+                    onChange={e => patch('irCuringTemp', e.target.value === '' ? null : Number(e.target.value))}
+                    className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+                    style={inputStyle()}
+                    placeholder="例如：60 分钟 × 180°C"
+                  />
+                </div>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>UV 固化强度</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={form.uvCuringIntensity ?? ''}
+                    onChange={e => patch('uvCuringIntensity', e.target.value === '' ? null : Number(e.target.value))}
+                    className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+                    style={inputStyle()}
+                    placeholder="例如：150.00 mj/cm²"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>UV 固化单位</label>
+                  <select
+                    value={form.uvCuringUnit ?? 'mj/cm²'}
+                    onChange={e => patch('uvCuringUnit', e.target.value as UvCuringUnit)}
+                    className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+                    style={inputStyle()}
+                  >
+                    {UV_CURING_UNITS.map(unit => (
+                      <option key={unit} value={unit}>{unit}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3 rounded-lg p-4" style={{ border: '1px solid #2A2418', background: '#0E0E0A' }}>
+              <div>
+                <h3 className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>产品配套</h3>
+                <p className="text-xs mt-0.5" style={{ color: '#7A7060' }}>可选。记录混合比例与需搭配使用的配套产品编码。</p>
+              </div>
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'var(--foreground)' }}>
+                  <input
+                    type="radio"
+                    name="requiresCompatibility"
+                    checked={!form.requiresCompatibility}
+                    onChange={() => {
+                      setForm(prev => ({
+                        ...prev,
+                        requiresCompatibility: false,
+                        mixingRatio: null,
+                        compatibleProducts: null,
+                        compatibleProductsText: '',
+                      }))
+                    }}
+                  />
+                  可直接使用
+                  <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(201,169,110,0.15)', color: '#C9A96E' }}>推荐</span>
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'var(--foreground)' }}>
+                  <input
+                    type="radio"
+                    name="requiresCompatibility"
+                    checked={form.requiresCompatibility}
+                    onChange={() => patch('requiresCompatibility', true)}
+                  />
+                  需要配套使用
+                </label>
+              </div>
+              {form.requiresCompatibility && (
+                <div className="space-y-3 pt-1">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>混合比例</label>
+                    <input
+                      value={form.mixingRatio ?? ''}
+                      onChange={e => patch('mixingRatio', e.target.value === '' ? null : e.target.value)}
+                      className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+                      style={inputStyle()}
+                      placeholder="例如：油:固:水 (10:1.5:3)"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>配套产品编码</label>
+                    <textarea
+                      value={form.compatibleProductsText}
+                      onChange={e => patch('compatibleProductsText', e.target.value)}
+                      className="w-full min-h-28 rounded-lg px-3 py-2.5 text-sm outline-none resize-y font-mono"
+                      style={inputStyle()}
+                      placeholder={'例如：\nPU-6000\nRG-929\nSO-1031P'}
+                    />
+                  </div>
+                  <div className="rounded-lg p-3 space-y-2 text-xs" style={{ background: '#111108', border: '1px solid #2A2418', color: '#7A7060' }}>
+                    <p className="font-medium" style={{ color: 'var(--muted-foreground)' }}>示例</p>
+                    <div>
+                      <p className="font-medium" style={{ color: '#9A9080' }}>Example 1</p>
+                      <p>混合比例：油：固：水 (10: 1.5: 3)</p>
+                      <p>产品：PU-6000, RG-929, SO-1031P</p>
+                    </div>
+                    <div>
+                      <p className="font-medium" style={{ color: '#9A9080' }}>Example 2</p>
+                      <p>混合比例：油：水 (10: 5)</p>
+                      <p>产品：AE-200, SO-1031P</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid sm:grid-cols-2 gap-3">
@@ -359,6 +590,7 @@ export default function AdminCosmoCoatProductsPage() {
                   <th style={th}>Product</th>
                   <th style={th}>Type</th>
                   <th style={th}>Homepage</th>
+                  <th style={th}>配套状态</th>
                   <th style={th}>Visible</th>
                   <th style={th}>Sort</th>
                   <th style={{ ...th, textAlign: 'right' }}>Actions</th>
@@ -391,6 +623,21 @@ export default function AdminCosmoCoatProductsPage() {
                       </span>
                     </td>
                     <td style={td}>{product.isFeatured ? 'Featured' : 'No'}</td>
+                    <td style={td}>
+                      {(() => {
+                        const count = countCompatibleProducts(product.compatibleProducts)
+                        if (count === 0) return null
+                        return (
+                          <span
+                            className="inline-flex items-center justify-center min-w-[1.75rem] px-1.5 py-0.5 rounded-full text-xs font-medium"
+                            style={{ background: 'rgba(201,169,110,0.15)', color: '#C9A96E' }}
+                            title={product.mixingRatio ? `混合比例：${product.mixingRatio}` : undefined}
+                          >
+                            +{count}
+                          </span>
+                        )
+                      })()}
+                    </td>
                     <td style={td}>{product.isVisible ? 'Visible' : 'Hidden'}</td>
                     <td style={td}>{product.sortOrder}</td>
                     <td style={{ ...td, textAlign: 'right' }}>

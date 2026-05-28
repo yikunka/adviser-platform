@@ -28,6 +28,21 @@ function serializeRecipeItem(item: {
     notes: string
     category: { id: string; code: string; name: string }
   } | null
+  productSemifinished: {
+    id: string
+    code: string
+    name: string
+    description: string
+    category: string
+    stock: unknown
+    unit: string
+    unitPrice: unknown
+    sourceProductionOrder: {
+      id: string
+      code: string
+      batchNo: string
+    } | null
+  } | null
 }) {
   const base = {
     id: item.id,
@@ -52,12 +67,41 @@ function serializeRecipeItem(item: {
         notes: item.componentRecipe.notes,
         category: item.componentRecipe.category,
       },
+      productSemifinished: null,
+      rawMaterial: null,
+    }
+  }
+
+  if (item.productSemifinished) {
+    return {
+      ...base,
+      itemType: 'product_semifinished' as const,
+      productSemifinished: {
+        id: item.productSemifinished.id,
+        code: item.productSemifinished.code,
+        name: item.productSemifinished.name,
+        description: item.productSemifinished.description,
+        category: item.productSemifinished.category,
+        stock: Number(item.productSemifinished.stock),
+        unit: item.productSemifinished.unit,
+        unitPrice: item.productSemifinished.unitPrice != null
+          ? Number(item.productSemifinished.unitPrice)
+          : null,
+        sourceProductionOrder: item.productSemifinished.sourceProductionOrder
+          ? {
+              id: item.productSemifinished.sourceProductionOrder.id,
+              code: item.productSemifinished.sourceProductionOrder.code,
+              batchNo: item.productSemifinished.sourceProductionOrder.batchNo,
+            }
+          : null,
+      },
+      recipe: null,
       rawMaterial: null,
     }
   }
 
   if (!item.rawMaterial) {
-    throw new Error(`Recipe item ${item.id} has no material or component recipe`)
+    throw new Error(`Recipe item ${item.id} has no material, component recipe, or product semifinished`)
   }
 
   return {
@@ -74,6 +118,7 @@ function serializeRecipeItem(item: {
       notes: item.rawMaterial.primaryNotes,
     },
     recipe: null,
+    productSemifinished: null,
   }
 }
 
@@ -87,6 +132,11 @@ export async function serializeFullRecipe(recipeId: string) {
         include: {
           rawMaterial: true,
           componentRecipe: { include: { category: true } },
+          productSemifinished: {
+            include: {
+              sourceProductionOrder: { select: { id: true, code: true, batchNo: true } },
+            },
+          },
         },
       },
     },
@@ -108,6 +158,9 @@ export async function serializeFullRecipe(recipeId: string) {
     batchQuantity,
     unitCost: recipe.unitCost != null ? Number(recipe.unitCost) : totals.unitCost,
     notes: recipe.notes,
+    stirringRequirements: recipe.stirringRequirements,
+    packagingRequirements: recipe.packagingRequirements,
+    productionNotes: recipe.productionNotes,
     createdAt: recipe.createdAt.toISOString(),
     updatedAt: recipe.updatedAt.toISOString(),
     category: {

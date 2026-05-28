@@ -6,6 +6,9 @@ import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { ossImg } from '@/lib/oss-img'
 import { getAllProducts, HOME_FEATURED_PIDS } from '@/app/cosmocoat/data/products'
+import { curingFieldsSchema, serializeUvCuringIntensity, toCuringDbData } from '@/lib/cosmocoat/product-curing'
+import { compatibilityFieldsSchema, toCompatibilityDbData } from '@/lib/cosmocoat/product-compatibility'
+import { viscosityFieldsSchema, serializeViscosity, toViscosityDbData } from '@/lib/cosmocoat/product-viscosity'
 
 const productSchema = z.object({
   pid: z.string().trim().min(1).max(64),
@@ -17,6 +20,9 @@ const productSchema = z.object({
   sortOrder: z.coerce.number().int().min(0).max(999999).optional().default(0),
   isFeatured: z.boolean().optional().default(false),
   isVisible: z.boolean().optional().default(true),
+  ...curingFieldsSchema,
+  ...viscosityFieldsSchema,
+  ...compatibilityFieldsSchema,
 })
 
 function revalidateCosmoCoat() {
@@ -32,10 +38,16 @@ function normalizeProductImagePath(path: string): string {
   return `/cosmocoat/${trimmed}`
 }
 
-function productWithImageUrl<T extends { imagePath: string }>(product: T) {
+function productWithImageUrl<T extends { imagePath: string; uvCuringIntensity?: unknown; viscosity?: unknown }>(
+  product: T,
+) {
   const imagePath = normalizeProductImagePath(product.imagePath)
+  const { uvCuringIntensity, viscosity, ...rest } = product
   return {
-    ...product,
+    ...rest,
+    imagePath,
+    uvCuringIntensity: serializeUvCuringIntensity(uvCuringIntensity),
+    viscosity: serializeViscosity(viscosity),
     imageUrl: /^https?:\/\//i.test(imagePath) ? imagePath : ossImg(imagePath, { w: 500 }),
   }
 }
@@ -132,7 +144,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Product ID already exists' }, { status: 409 })
     }
 
-    const product = await prisma.cosTableProduct.create({ data: parsed.data })
+    const {
+      irCuringTime,
+      irCuringTemp,
+      uvCuringIntensity,
+      uvCuringUnit,
+      viscosity,
+      viscosityUnit,
+      requiresCompatibility,
+      mixingRatio,
+      compatibleProducts,
+      ...rest
+    } = parsed.data
+    const product = await prisma.cosTableProduct.create({
+      data: {
+        ...rest,
+        ...toCuringDbData({ irCuringTime, irCuringTemp, uvCuringIntensity, uvCuringUnit }),
+        ...toViscosityDbData({ viscosity, viscosityUnit }),
+        ...toCompatibilityDbData({ requiresCompatibility, mixingRatio, compatibleProducts }),
+      } as Prisma.CosTableProductUncheckedCreateInput,
+    })
     revalidateCosmoCoat()
     return NextResponse.json({ product: productWithImageUrl(product) }, { status: 201 })
   } catch (error) {

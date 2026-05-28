@@ -26,6 +26,7 @@ export async function POST(
           include: {
             rawMaterial: true,
             componentRecipe: true,
+            productSemifinished: true,
           },
         },
       },
@@ -35,7 +36,9 @@ export async function POST(
     for (const item of recipe.items) {
       const unitPrice = item.componentRecipe
         ? (item.componentRecipe.unitCost != null ? Number(item.componentRecipe.unitCost) : null)
-        : (item.rawMaterial?.primaryPricePerKg != null ? Number(item.rawMaterial.primaryPricePerKg) : null)
+        : item.productSemifinished
+          ? (item.productSemifinished.unitPrice != null ? Number(item.productSemifinished.unitPrice) : null)
+          : (item.rawMaterial?.primaryPricePerKg != null ? Number(item.rawMaterial.primaryPricePerKg) : null)
       const amount = computeItemAmount(Number(item.quantity), unitPrice)
       await prisma.cosTableRecipeItem.update({
         where: { id: item.id },

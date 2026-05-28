@@ -17,10 +17,14 @@ type FactoryProductOption = {
   productCode: string
   name: string
   unit: string
-  productionRequirements: string
-  qualityCheckRequirements: string
-  packagingRequirements: string
-  currentRecipe: { id: string; code: string; name: string } | null
+  currentRecipe: {
+    id: string
+    code: string
+    name: string
+    stirringRequirements?: string
+    packagingRequirements?: string
+    productionNotes?: string
+  } | null
 }
 
 type RecipeItem = {
@@ -145,9 +149,6 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
         productCode: p.productCode,
         name: p.name,
         unit: p.unit,
-        productionRequirements: p.productionRequirements,
-        qualityCheckRequirements: p.qualityCheckRequirements,
-        packagingRequirements: p.packagingRequirements,
         currentRecipe: p.currentRecipe,
       })))
     } catch {
@@ -167,6 +168,11 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       const recipe = data.recipe
       setRecipeCode(recipe.code)
       setRecipeName(recipe.name)
+      if (isNew) {
+        setProductionNotes(recipe.stirringRequirements ?? '')
+        setQualityNotes(recipe.productionNotes ?? '')
+        setPackagingNotes(recipe.packagingRequirements ?? '')
+      }
       setRecipeItems(recipe.items.map((item: {
         sortOrder: number
         quantity: number
@@ -184,7 +190,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       toast.error('加载配方失败')
       setRecipeItems([])
     }
-  }, [])
+  }, [isNew])
 
   const loadOrder = useCallback(async () => {
     if (isNew) return
@@ -256,9 +262,6 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
     if (!product) return
     setProductName(product.name)
     setProductUnit(product.unit)
-    setProductionNotes(product.productionRequirements)
-    setQualityNotes(product.qualityCheckRequirements)
-    setPackagingNotes(product.packagingRequirements)
     if (!product.currentRecipe) {
       setRecipeCode('')
       setRecipeName('')
@@ -352,9 +355,6 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
           productionNotes,
           qualityNotes,
           packagingNotes,
-          productionRequirements: selectedProduct?.productionRequirements || '',
-          qualityCheckRequirements: selectedProduct?.qualityCheckRequirements || '',
-          packagingRequirements: selectedProduct?.packagingRequirements || '',
           status,
           items: items.map(item => ({
             id: item.id,
@@ -551,12 +551,12 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div style={card} className="p-4 space-y-2">
-          <label className="text-xs font-medium" style={{ color: '#C9A96E' }}>生产要求</label>
-          <textarea value={productionNotes} onChange={e => setProductionNotes(e.target.value)} rows={4} className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y" style={inputStyle()} placeholder="如：控制好粘度、调粘度..." />
+          <label className="text-xs font-medium" style={{ color: '#C9A96E' }}>搅拌要求</label>
+          <textarea value={productionNotes} onChange={e => setProductionNotes(e.target.value)} rows={4} className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y" style={inputStyle()} placeholder="如：1000 转/分钟，搅拌 30 分钟" />
         </div>
         <div style={card} className="p-4 space-y-2">
-          <label className="text-xs font-medium" style={{ color: '#C9A96E' }}>质检要求</label>
-          <textarea value={qualityNotes} onChange={e => setQualityNotes(e.target.value)} rows={4} className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y" style={inputStyle()} placeholder="如：粘度 9.7-9.8、密度..." />
+          <label className="text-xs font-medium" style={{ color: '#C9A96E' }}>生产注意事项（含质检）</label>
+          <textarea value={qualityNotes} onChange={e => setQualityNotes(e.target.value)} rows={4} className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y" style={inputStyle()} placeholder="如：先加 A 料；粘度 9.7-9.8..." />
         </div>
         <div style={card} className="p-4 space-y-2">
           <label className="text-xs font-medium" style={{ color: '#C9A96E' }}>包装要求</label>

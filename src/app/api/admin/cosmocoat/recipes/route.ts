@@ -18,6 +18,9 @@ const recipeSchema = z.object({
   name: z.string().trim().min(1).max(160),
   batchQuantity: z.coerce.number().min(0.001).optional().default(100),
   notes: z.string().trim().max(1000).optional().default(''),
+  stirringRequirements: z.string().trim().max(2000).optional().default(''),
+  packagingRequirements: z.string().trim().max(2000).optional().default(''),
+  productionNotes: z.string().trim().max(2000).optional().default(''),
   items: z.array(itemSchema).optional().default([]),
 })
 
@@ -145,6 +148,9 @@ export async function POST(req: NextRequest) {
         batchQuantity: parsed.data.batchQuantity,
         unitCost: totals.unitCost,
         notes: parsed.data.notes,
+        stirringRequirements: parsed.data.stirringRequirements,
+        packagingRequirements: parsed.data.packagingRequirements,
+        productionNotes: parsed.data.productionNotes,
       },
     })
 

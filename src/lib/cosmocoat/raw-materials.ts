@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client'
+import { prisma } from '@/lib/db/prisma'
 
 export type RawMaterialInput = {
   category: string
@@ -28,6 +29,11 @@ export type RawMaterialRow = RawMaterialInput & {
   id: string
   createdAt: string
   updatedAt: string
+}
+
+export type RawMaterialListRow = RawMaterialRow & {
+  isUsedInRecipe: boolean
+  recipeUsageCount: number
 }
 
 const CATEGORY_KEY = '待生产明细：调色部  '
@@ -128,6 +134,46 @@ export function toPrismaCreateData(input: RawMaterialInput): Prisma.CosTableRawM
     secondaryNotes: input.secondaryNotes,
     tdsFileKey: input.tdsFileKey,
     msdsFileKey: input.msdsFileKey,
+  }
+}
+
+/** Distinct recipe count per raw material ID (batch query for list endpoints). */
+export async function getRecipeUsageCountsByRawMaterialIds(
+  rawMaterialIds: string[],
+): Promise<Map<string, number>> {
+  if (rawMaterialIds.length === 0) return new Map()
+
+  const rows = await prisma.cosTableRecipeItem.findMany({
+    where: { rawMaterialId: { in: rawMaterialIds } },
+    select: { rawMaterialId: true, recipeId: true },
+  })
+
+  const recipeIdsByMaterial = new Map<string, Set<string>>()
+  for (const row of rows) {
+    if (!row.rawMaterialId) continue
+    let set = recipeIdsByMaterial.get(row.rawMaterialId)
+    if (!set) {
+      set = new Set()
+      recipeIdsByMaterial.set(row.rawMaterialId, set)
+    }
+    set.add(row.recipeId)
+  }
+
+  const counts = new Map<string, number>()
+  for (const id of rawMaterialIds) {
+    counts.set(id, recipeIdsByMaterial.get(id)?.size ?? 0)
+  }
+  return counts
+}
+
+export function serializeRawMaterialListRow(
+  row: Parameters<typeof serializeRawMaterial>[0],
+  recipeUsageCount: number,
+): RawMaterialListRow {
+  return {
+    ...serializeRawMaterial(row),
+    isUsedInRecipe: recipeUsageCount > 0,
+    recipeUsageCount,
   }
 }
 

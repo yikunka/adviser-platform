@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
+import { recipeToOrderRequirements } from '@/lib/cosmocoat/recipes'
 
 export type { ProductionOrderItemDraft } from '@/lib/cosmocoat/recipes'
 export {
@@ -10,10 +11,17 @@ export {
 
 export const orderInclude = {
   factoryProduct: {
-    select: { id: true, productCode: true, name: true, unit: true, productionRequirements: true, qualityCheckRequirements: true, packagingRequirements: true },
+    select: { id: true, productCode: true, name: true, unit: true },
   },
   recipe: {
-    select: { id: true, code: true, name: true },
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      stirringRequirements: true,
+      packagingRequirements: true,
+      productionNotes: true,
+    },
   },
   items: {
     orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
@@ -80,7 +88,13 @@ export async function resolveProductCurrentRecipe(factoryProductId: string) {
     where: { id: factoryProductId },
     include: {
       currentRecipe: {
-        include: {
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          stirringRequirements: true,
+          packagingRequirements: true,
+          productionNotes: true,
           items: {
             orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
             include: { rawMaterial: true },
@@ -97,22 +111,18 @@ export async function resolveProductCurrentRecipe(factoryProductId: string) {
       productCode: product.productCode,
       name: product.name,
       unit: product.unit,
-      productionRequirements: product.productionRequirements,
-      qualityCheckRequirements: product.qualityCheckRequirements,
-      packagingRequirements: product.packagingRequirements,
-    }
+    },
   }
+  const requirements = recipeToOrderRequirements(product.currentRecipe)
   return {
     product: {
       id: product.id,
       productCode: product.productCode,
       name: product.name,
       unit: product.unit,
-      productionRequirements: product.productionRequirements,
-      qualityCheckRequirements: product.qualityCheckRequirements,
-      packagingRequirements: product.packagingRequirements,
+      ...requirements,
     },
-    recipe: product.currentRecipe
+    recipe: product.currentRecipe,
   }
 }
 

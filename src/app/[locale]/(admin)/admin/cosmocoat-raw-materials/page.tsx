@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { FlaskConical, Pencil, Plus, Search, Trash2, UploadCloud, CheckCircle, XCircle } from 'lucide-react'
-import type { RawMaterialRow } from '@/lib/cosmocoat/raw-materials'
+import { CategoryComboField } from '@/components/cosmocoat/category-combo-field'
+import type { RawMaterialListRow, RawMaterialRow } from '@/lib/cosmocoat/raw-materials'
 
 type RawMaterialForm = Omit<RawMaterialRow, 'id' | 'createdAt' | 'updatedAt'>
 
@@ -70,6 +71,28 @@ function ynLabel(value: string) {
 
 function numOrEmpty(value: number | null) {
   return value == null ? '—' : String(value)
+}
+
+function RecipeUsageStatus({ item }: { item: RawMaterialListRow }) {
+  const tooltip = item.isUsedInRecipe
+    ? `已在 ${item.recipeUsageCount} 个配方中使用`
+    : '未在配方中使用'
+
+  if (item.isUsedInRecipe) {
+    return (
+      <span title={tooltip} className="inline-flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+        <CheckCircle size={16} style={{ color: '#4A9F52', flexShrink: 0 }} />
+        <span className="text-xs font-medium" style={{ color: '#4A9F52' }}>已使用</span>
+      </span>
+    )
+  }
+
+  return (
+    <span title={tooltip} className="inline-flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+      <XCircle size={16} style={{ color: '#7A7060', flexShrink: 0 }} />
+      <span className="text-xs" style={{ color: '#7A7060' }}>未使用</span>
+    </span>
+  )
 }
 
 function Field({ label, children, className = '' }: { label: string; children: React.ReactNode; className?: string }) {
@@ -192,8 +215,13 @@ function RawMaterialCreateModal({
             <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>基本信息</h3>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <Field label="分类">
-                <input list="category-options" required value={form.category} onChange={e => patch('category', e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
-                <datalist id="category-options">{categories.map(c => <option key={c} value={c} />)}</datalist>
+                <CategoryComboField
+                  required
+                  value={form.category}
+                  onChange={v => patch('category', v)}
+                  categories={categories}
+                  placeholder="输入或选择分类"
+                />
               </Field>
               <Field label="属性">
                 <input list="attribute-options" required value={form.attributeCode} onChange={e => patch('attributeCode', e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
@@ -235,7 +263,7 @@ function RawMaterialCreateModal({
 
 export default function AdminCosmoCoatRawMaterialsPage() {
   const router = useRouter()
-  const [items, setItems] = useState<RawMaterialRow[]>([])
+  const [items, setItems] = useState<RawMaterialListRow[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -245,6 +273,7 @@ export default function AdminCosmoCoatRawMaterialsPage() {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('')
   const [attribute, setAttribute] = useState('')
+  const [usedInRecipe, setUsedInRecipe] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
@@ -256,6 +285,7 @@ export default function AdminCosmoCoatRawMaterialsPage() {
       if (search.trim()) params.set('q', search.trim())
       if (category) params.set('category', category)
       if (attribute) params.set('attribute', attribute)
+      if (usedInRecipe) params.set('usedInRecipe', usedInRecipe)
       const res = await fetch(`/api/admin/cosmocoat/raw-materials?${params}`)
       const data = await res.json()
       if (!res.ok) {
@@ -272,7 +302,7 @@ export default function AdminCosmoCoatRawMaterialsPage() {
     } finally {
       setLoading(false)
     }
-  }, [search, category, attribute, page])
+  }, [search, category, attribute, usedInRecipe, page])
 
   useEffect(() => {
     const t = setTimeout(fetchItems, search ? 300 : 0)
@@ -281,7 +311,7 @@ export default function AdminCosmoCoatRawMaterialsPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [search, category, attribute])
+  }, [search, category, attribute, usedInRecipe])
 
   function openCreate() {
     setShowCreateModal(true)
@@ -379,6 +409,11 @@ export default function AdminCosmoCoatRawMaterialsPage() {
           <option value="">全部属性</option>
           {attributes.map(a => <option key={a} value={a}>{a}</option>)}
         </select>
+        <select value={usedInRecipe} onChange={e => setUsedInRecipe(e.target.value)} className="rounded-lg px-3 py-2 text-sm outline-none" style={inputStyle()}>
+          <option value="">全部配方状态</option>
+          <option value="true">仅已用于配方</option>
+          <option value="false">仅未用于配方</option>
+        </select>
         <div className="relative flex-1 min-w-[14rem]">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索生产号、名称、供应商..." className="w-full pl-8 pr-3 py-2 rounded-lg text-sm outline-none" style={inputStyle()} />
@@ -405,6 +440,7 @@ export default function AdminCosmoCoatRawMaterialsPage() {
                   <th style={th}>主供应商</th>
                   <th style={th}>包装/KG</th>
                   <th style={th}>价格/KG</th>
+                  <th style={th}>配方使用状态</th>
                   <th style={th}>TDS</th>
                   <th style={th}>MSDS</th>
                   <th style={{ ...th, textAlign: 'right' }}>操作</th>
@@ -423,6 +459,9 @@ export default function AdminCosmoCoatRawMaterialsPage() {
                     <td style={td}>{item.primarySupplierName || '—'}</td>
                     <td style={td}>{numOrEmpty(item.primaryPackageKg)}</td>
                     <td style={td}>{numOrEmpty(item.primaryPricePerKg)}</td>
+                    <td style={td}>
+                      <RecipeUsageStatus item={item} />
+                    </td>
                     <td style={td} className="text-center">
                       {item.tdsFileKey ? (
                         <span title="已上传 TDS"><CheckCircle size={16} style={{ color: '#4A9F52', margin: '0 auto' }} /></span>
