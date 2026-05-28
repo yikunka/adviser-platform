@@ -38,6 +38,20 @@ type PickerRecipe = {
 
 type PickerMode = 'raw_material' | 'semi_finished'
 
+type RecipeCategoryOption = {
+  id: string
+  code: string
+  name: string
+}
+
+function mapRecipeCategoryOption(c: { id: string; code: string; name: string }): RecipeCategoryOption {
+  return { id: c.id, code: c.code, name: c.name }
+}
+
+function isSemiFinishedCategory(category: Pick<RecipeCategoryOption, 'name'>) {
+  return category.name.includes('半成品')
+}
+
 type EditableItem = {
   key: string
   itemType: 'raw_material' | 'recipe'
@@ -127,7 +141,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
-  const [categories, setCategories] = useState<Array<{ id: string; code: string; name: string }>>([])
+  const [categories, setCategories] = useState<RecipeCategoryOption[]>([])
   const [pickerMode, setPickerMode] = useState<PickerMode>('raw_material')
   const [pickerMaterials, setPickerMaterials] = useState<PickerMaterial[]>([])
   const [pickerRecipes, setPickerRecipes] = useState<PickerRecipe[]>([])
@@ -138,7 +152,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
   const [selectedPickerId, setSelectedPickerId] = useState<string | null>(null)
 
   const semiFinishedCategories = useMemo(
-    () => categories.filter(c => c.name.includes('半成品')),
+    () => categories.filter(isSemiFinishedCategory),
     [categories],
   )
 
@@ -170,16 +184,12 @@ export default function AdminCosmoCoatRecipeEditorPage() {
       const res = await fetch('/api/admin/cosmocoat/recipe-categories')
       const data = await res.json()
       if (!res.ok) return
-      const list = (data.categories ?? []).map((c: { id: string; code: string; name: string }) => ({
-        id: c.id,
-        code: c.code,
-        name: c.name,
-      }))
+      const list: RecipeCategoryOption[] = (data.categories ?? []).map(mapRecipeCategoryOption)
       setCategories(list)
       if (isNew && list.length > 0) {
         setCategoryId(prev => prev || list[0].id)
       }
-      const semiCats = list.filter((c: { name: string }) => c.name.includes('半成品'))
+      const semiCats = list.filter(isSemiFinishedCategory)
       if (semiCats.length > 0) {
         setSemiFinishedCategoryId(prev => prev || semiCats[0].id)
       }
@@ -203,13 +213,9 @@ export default function AdminCosmoCoatRecipeEditorPage() {
         return
       }
       const recipe = recipeData.recipe as FullRecipe
-      const cats = (categoryData.categories ?? []).map((c: { id: string; code: string; name: string }) => ({
-        id: c.id,
-        code: c.code,
-        name: c.name,
-      }))
+      const cats: RecipeCategoryOption[] = (categoryData.categories ?? []).map(mapRecipeCategoryOption)
       setCategories(cats)
-      const semiCats = cats.filter(c => c.name.includes('半成品'))
+      const semiCats = cats.filter(isSemiFinishedCategory)
       if (semiCats.length > 0) {
         setSemiFinishedCategoryId(prev => prev || semiCats[0].id)
       }

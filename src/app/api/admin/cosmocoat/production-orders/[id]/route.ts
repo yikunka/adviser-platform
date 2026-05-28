@@ -8,6 +8,7 @@ import {
   buildProductionOrderItems,
   getProductionOrderById,
   loadRecipeForProduction,
+  recipeItemsForProduction,
   serializeProductionOrder,
 } from '@/lib/cosmocoat/production-orders'
 
@@ -84,17 +85,7 @@ export async function PATCH(
       if (!recipe) return NextResponse.json({ error: '关联配方不存在' }, { status: 404 })
 
       const itemDrafts = buildProductionOrderItems(
-        recipe.items.map(item => ({
-          sortOrder: item.sortOrder,
-          quantity: Number(item.quantity),
-          percentage: item.percentage != null ? Number(item.percentage) : null,
-          notes: item.notes,
-          rawMaterial: {
-            id: item.rawMaterial.id,
-            productionCode: item.rawMaterial.productionCode,
-            name: item.rawMaterial.name,
-          },
-        })),
+        recipeItemsForProduction(recipe.items),
         totalWeight,
       )
 

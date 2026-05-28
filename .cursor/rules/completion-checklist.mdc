@@ -1,0 +1,40 @@
+---
+description: After completing any coding task, always run these checks before marking done.
+alwaysApply: true
+---
+
+# Task Completion Checklist
+
+After finishing any code change, run through these in order:
+
+## 1. TypeScript
+```bash
+npx tsc --noEmit
+```
+Fix all type errors before finishing. Do not leave `any` casts as a shortcut.
+
+## 2. Prisma (only if schema.prisma was changed)
+```bash
+npx prisma generate
+npx prisma migrate dev --name <short-description>
+```
+Schema changes and their migration must be committed together.
+If only adding fields to existing models, prefer `prisma db push` in dev and a proper migration for prod.
+
+## 3. Build check (for larger changes)
+```bash
+npm run build
+```
+Run if you touched layout files, added new pages, or changed shared components.
+
+## 4. Code quality
+- No unused imports left behind
+- No `console.log` debug statements
+- No `TODO` / placeholder comments unless the user explicitly asked for them
+- `'use client'` only on components that actually use browser APIs or hooks
+
+## 5. Report back
+When done, tell the user:
+- Which files were created or modified
+- Whether migration was run and what it was named
+- Any warnings from tsc/build that need attention

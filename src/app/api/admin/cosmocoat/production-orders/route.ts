@@ -8,6 +8,7 @@ import {
   generateProductionOrderCode,
   getProductionOrderById,
   orderInclude,
+  recipeItemsForProduction,
   resolveProductCurrentRecipe,
   serializeProductionOrder,
 } from '@/lib/cosmocoat/production-orders'
@@ -113,17 +114,7 @@ export async function POST(req: NextRequest) {
     if (existing) return NextResponse.json({ error: '生产单编号已存在' }, { status: 409 })
 
     const itemDrafts = buildProductionOrderItems(
-      recipe.items.map(item => ({
-        sortOrder: item.sortOrder,
-        quantity: Number(item.quantity),
-        percentage: item.percentage != null ? Number(item.percentage) : null,
-        notes: item.notes,
-        rawMaterial: {
-          id: item.rawMaterial.id,
-          productionCode: item.rawMaterial.productionCode,
-          name: item.rawMaterial.name,
-        },
-      })),
+      recipeItemsForProduction(recipe.items),
       parsed.data.totalWeight,
     )
 

@@ -34,6 +34,35 @@ export async function generateProductionOrderCode(): Promise<string> {
   return `${prefix}${String(count + 1).padStart(3, '0')}`
 }
 
+export function recipeItemsForProduction(
+  items: Array<{
+    sortOrder: number
+    quantity: unknown
+    percentage: unknown | null
+    notes: string
+    rawMaterial: {
+      id: string
+      productionCode: string
+      name: string
+    } | null
+  }>,
+) {
+  return items.flatMap(item => {
+    if (!item.rawMaterial) return []
+    return [{
+      sortOrder: item.sortOrder,
+      quantity: Number(item.quantity),
+      percentage: item.percentage != null ? Number(item.percentage) : null,
+      notes: item.notes,
+      rawMaterial: {
+        id: item.rawMaterial.id,
+        productionCode: item.rawMaterial.productionCode,
+        name: item.rawMaterial.name,
+      },
+    }]
+  })
+}
+
 export async function loadRecipeForProduction(recipeId: string) {
   return prisma.cosTableRecipe.findUnique({
     where: { id: recipeId },
