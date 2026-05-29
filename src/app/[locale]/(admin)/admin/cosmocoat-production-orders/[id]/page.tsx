@@ -569,24 +569,50 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       <style>{`
         @media print {
           @page { size: A4 portrait; margin: 12mm 14mm; }
-          body * { visibility: hidden !important; }
-          #cosmocoat-print-area,
-          #cosmocoat-print-area * { visibility: visible !important; }
+
+          /* Completely remove screen UI — no space, no blank page */
+          .cosmocoat-screen { display: none !important; }
+
+          /* Print area: normal document flow, bounded to printable width */
           #cosmocoat-print-area {
-            position: fixed;
-            top: 0; left: 0;
+            display: block !important;
             width: 182mm;
+            max-width: 182mm;
+            box-sizing: border-box;
             font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
-            color: #000;
-            background: #fff;
+            font-size: 9pt;
+            color: #000 !important;
+            background: #fff !important;
+          }
+
+          /* Prevent any child from exceeding the page width */
+          #cosmocoat-print-area * {
+            box-sizing: border-box;
+            max-width: 100%;
+          }
+
+          /* Tables: fixed layout so columns don't overflow */
+          #cosmocoat-print-area table {
+            table-layout: fixed;
+            width: 100%;
+            border-collapse: collapse;
+          }
+
+          /* Cells: wrap long text */
+          #cosmocoat-print-area td,
+          #cosmocoat-print-area th {
+            word-break: break-all;
+            overflow-wrap: break-word;
+            overflow: hidden;
           }
         }
+
         @media screen {
           #cosmocoat-print-area { display: none; }
         }
       `}</style>
 
-      {/* ─── Hidden print view (visible only when printing) ─── */}
+      {/* ─── Print view (hidden on screen, shown when printing) ─── */}
       <PrintView
         code={code}
         productName={productName}
@@ -604,6 +630,8 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
         packagingNotes={packagingNotes}
       />
 
+      {/* ─── Screen UI wrapper (hidden during print) ─── */}
+      <div className="cosmocoat-screen">
     <div className="p-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -780,6 +808,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
         </div>
       </div>
     </div>
+      </div>{/* end cosmocoat-screen */}
     </>
   )
 }
