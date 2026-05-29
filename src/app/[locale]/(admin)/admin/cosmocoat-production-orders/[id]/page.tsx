@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, Save } from 'lucide-react'
+import { ArrowLeft, Printer, Save } from 'lucide-react'
 import {
   buildProductionOrderItems,
   formatPercent,
@@ -102,6 +102,166 @@ function fromDatetimeLocal(value: string): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString()
 }
 
+function formatDatetime(iso: string | null): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+const STATUS_LABEL: Record<string, string> = { draft: '草稿', completed: '已完成' }
+
+interface PrintViewProps {
+  code: string
+  productName: string
+  recipeCode: string
+  recipeName: string
+  totalWeight: number
+  productUnit: string
+  batchNo: string
+  startedAt: string
+  finishedAt: string
+  status: string
+  items: EditableItem[]
+  productionNotes: string
+  qualityNotes: string
+  packagingNotes: string
+}
+
+function PrintView({
+  code, productName, recipeCode, recipeName, totalWeight, productUnit,
+  batchNo, startedAt, finishedAt, status, items,
+  productionNotes, qualityNotes, packagingNotes,
+}: PrintViewProps) {
+  const printedAt = new Date().toLocaleString('zh-CN', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit',
+  })
+
+  return (
+    <div id="cosmocoat-print-area">
+      {/* ─── Header ─── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, paddingBottom: 8, borderBottom: '2px solid #000' }}>
+        <div>
+          <div style={{ fontSize: 9, color: '#666', marginBottom: 2 }}>CosmoCoat</div>
+          <div style={{ fontSize: 16, fontWeight: 700 }}>生产单 Production Order</div>
+        </div>
+        <div style={{ textAlign: 'right', fontSize: 9, color: '#555' }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#000', marginBottom: 2 }}>{code || '（草稿）'}</div>
+          <div>打印时间：{printedAt}</div>
+        </div>
+      </div>
+
+      {/* ─── Basic info grid ─── */}
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12, fontSize: 9 }}>
+        <tbody>
+          <tr>
+            <td style={{ width: '15%', padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>产品名称</td>
+            <td style={{ width: '35%', padding: '3px 6px', border: '1px solid #ccc' }}>{productName || '—'}</td>
+            <td style={{ width: '15%', padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>生产批次</td>
+            <td style={{ width: '35%', padding: '3px 6px', border: '1px solid #ccc' }}>{batchNo || '—'}</td>
+          </tr>
+          <tr>
+            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>配方编号</td>
+            <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{recipeCode || '—'}</td>
+            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>配方名称</td>
+            <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{recipeName || '—'}</td>
+          </tr>
+          <tr>
+            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>生产重量</td>
+            <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{totalWeight} {productUnit}</td>
+            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>状态</td>
+            <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{STATUS_LABEL[status] ?? status}</td>
+          </tr>
+          <tr>
+            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>开始时间</td>
+            <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{formatDatetime(startedAt)}</td>
+            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>完成时间</td>
+            <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{formatDatetime(finishedAt)}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* ─── Materials table ─── */}
+      <div style={{ fontWeight: 700, fontSize: 10, marginBottom: 4, borderLeft: '3px solid #000', paddingLeft: 6 }}>
+        原料投料明细
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 14, fontSize: 9 }}>
+        <thead>
+          <tr style={{ background: '#f0f0f0' }}>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'center', width: '6%' }}>序号</th>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '22%' }}>原材料编号</th>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left' }}>名称</th>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'right', width: '10%' }}>比例</th>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'right', width: '15%' }}>参考投料 ({productUnit})</th>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'right', width: '15%' }}>实投 ({productUnit})</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, index) => (
+            <tr key={item.key} style={{ background: index % 2 === 1 ? '#fafafa' : '#fff' }}>
+              <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'center' }}>{index + 1}</td>
+              <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{item.productionCode}</td>
+              <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{item.materialName}</td>
+              <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>{formatPercent(item.percentage)}</td>
+              <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>{formatWeight(item.requiredWeight)}</td>
+              <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>
+                {item.actualWeight != null ? formatWeight(item.actualWeight) : ''}
+              </td>
+            </tr>
+          ))}
+          {/* Totals row */}
+          <tr style={{ background: '#f0f0f0', fontWeight: 700 }}>
+            <td colSpan={4} style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>合计</td>
+            <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>
+              {formatWeight(items.reduce((s, i) => s + i.requiredWeight, 0))}
+            </td>
+            <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>
+              {items.some(i => i.actualWeight != null)
+                ? formatWeight(items.reduce((s, i) => s + (i.actualWeight ?? 0), 0))
+                : ''}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* ─── Notes sections ─── */}
+      {(productionNotes || qualityNotes || packagingNotes) && (
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9 }}>
+          <thead>
+            <tr style={{ background: '#f0f0f0' }}>
+              {productionNotes && <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '33%' }}>搅拌要求</th>}
+              {qualityNotes   && <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '34%' }}>生产注意事项（含质检）</th>}
+              {packagingNotes && <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '33%' }}>包装要求</th>}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              {productionNotes && <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{productionNotes}</td>}
+              {qualityNotes   && <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{qualityNotes}</td>}
+              {packagingNotes && <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{packagingNotes}</td>}
+            </tr>
+          </tbody>
+        </table>
+      )}
+
+      {/* ─── Signature row ─── */}
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 16, fontSize: 9 }}>
+        <tbody>
+          <tr>
+            {['生产人员', '质检人员', '仓库确认'].map(label => (
+              <td key={label} style={{ padding: '12px 8px 4px', border: '1px solid #ccc', textAlign: 'center', width: '33%' }}>
+                <div>{label}</div>
+                <div style={{ borderBottom: '1px solid #999', marginTop: 16 }} />
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export default function AdminCosmoCoatProductionOrderEditorPage() {
   const params = useParams()
   const router = useRouter()
@@ -110,6 +270,15 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
 
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
+  const [printing, setPrinting] = useState(false)
+
+  function handlePrint() {
+    setPrinting(true)
+    setTimeout(() => {
+      window.print()
+      setPrinting(false)
+    }, 100)
+  }
   const [products, setProducts] = useState<FactoryProductOption[]>([])
   const [recipeItems, setRecipeItems] = useState<RecipeItem[]>([])
 
@@ -395,6 +564,46 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
   }
 
   return (
+    <>
+      {/* ─── Print styles ─── */}
+      <style>{`
+        @media print {
+          @page { size: A4 portrait; margin: 12mm 14mm; }
+          body * { visibility: hidden !important; }
+          #cosmocoat-print-area,
+          #cosmocoat-print-area * { visibility: visible !important; }
+          #cosmocoat-print-area {
+            position: fixed;
+            top: 0; left: 0;
+            width: 182mm;
+            font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+            color: #000;
+            background: #fff;
+          }
+        }
+        @media screen {
+          #cosmocoat-print-area { display: none; }
+        }
+      `}</style>
+
+      {/* ─── Hidden print view (visible only when printing) ─── */}
+      <PrintView
+        code={code}
+        productName={productName}
+        recipeCode={recipeCode}
+        recipeName={recipeName}
+        totalWeight={totalWeight}
+        productUnit={productUnit}
+        batchNo={batchNo}
+        startedAt={startedAt}
+        finishedAt={finishedAt}
+        status={status}
+        items={items}
+        productionNotes={productionNotes}
+        qualityNotes={qualityNotes}
+        packagingNotes={packagingNotes}
+      />
+
     <div className="p-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -410,9 +619,16 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
             </p>
           </div>
         </div>
-        <button type="button" onClick={saveOrder} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50" style={{ background: '#C9A96E', color: '#0A0805' }}>
-          <Save size={14} /> {saving ? '保存中...' : (isNew ? '创建' : '保存')}
-        </button>
+        <div className="flex items-center gap-2">
+          {!isNew && (
+            <button type="button" onClick={handlePrint} disabled={printing} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50" style={{ background: '#1A1A12', border: '1px solid #2A2418', color: 'var(--foreground)' }}>
+              <Printer size={14} /> {printing ? '准备中...' : '打印'}
+            </button>
+          )}
+          <button type="button" onClick={saveOrder} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50" style={{ background: '#C9A96E', color: '#0A0805' }}>
+            <Save size={14} /> {saving ? '保存中...' : (isNew ? '创建' : '保存')}
+          </button>
+        </div>
       </div>
 
       <div style={card} className="p-4 space-y-4">
@@ -564,5 +780,6 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
         </div>
       </div>
     </div>
+    </>
   )
 }
