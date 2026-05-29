@@ -259,6 +259,14 @@ if ! command -v prisma >/dev/null 2>&1; then
   echo "远端未安装 prisma CLI，请在服务器执行: npm install -g prisma"
   exit 1
 fi
+# Clear any migrations stuck in failed state (P3009) before deploying
+psql "\${DATABASE_URL}" -q -c "
+  UPDATE _prisma_migrations
+  SET rolled_back_at = NOW()
+  WHERE finished_at IS NULL
+    AND rolled_back_at IS NULL
+    AND started_at IS NOT NULL;
+" 2>/dev/null && echo "✓ 已清除滞留的失败迁移记录（如有）" || true
 prisma migrate deploy
 END_SSH
 
@@ -472,6 +480,22 @@ _deploy_local_sync_to_app_dir() {
   fi
 }
 
+_resolve_failed_migrations() {
+  # Clear any migrations that are stuck in a "failed" state (P3009).
+  # This happens when a previous deploy crashed mid-migration.
+  # Safe to run even when there are no failures (updates 0 rows).
+  local db_url="${DATABASE_URL:-}"
+  if [[ -n "$db_url" ]]; then
+    psql "$db_url" -q -c "
+      UPDATE _prisma_migrations
+      SET rolled_back_at = NOW()
+      WHERE finished_at IS NULL
+        AND rolled_back_at IS NULL
+        AND started_at IS NOT NULL;
+    " 2>/dev/null && echo "✓ 已清除滞留的失败迁移记录（如有）" || true
+  fi
+}
+
 _deploy_local_migrate() {
   local APP_DIR="$1"
   echo "▶ 数据库迁移 (prisma migrate deploy)…"
@@ -484,6 +508,7 @@ _deploy_local_migrate() {
     source "$APP_DIR/.env"
     set +a
     [[ -n "${DATABASE_URL:-}" ]] || die ".env 中未设置 DATABASE_URL（检查 $APP_DIR/.env）"
+    _resolve_failed_migrations
     npx prisma migrate deploy
     popd >/dev/null
     return 0
@@ -496,6 +521,7 @@ _deploy_local_migrate() {
   set +a
   [[ -n "${DATABASE_URL:-}" ]] || die ".env 中未设置 DATABASE_URL"
   command -v prisma >/dev/null 2>&1 || die "未找到 prisma：请在仓库内 npm ci，或 npm install -g prisma"
+  _resolve_failed_migrations
   prisma migrate deploy
   popd >/dev/null
 }
