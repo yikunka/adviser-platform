@@ -207,6 +207,65 @@ html {
   color: #FFF7E6 !important;
 }
 
+/* Financial dialogs render through portals, outside `.admin-console`.
+   Keep their contrast explicit instead of inheriting light-theme tokens. */
+.financial-modal {
+  background: #11110E !important;
+  color: #FFF7E6 !important;
+  border-color: #2A2418 !important;
+}
+
+.financial-modal [data-slot="dialog-title"],
+.financial-modal label,
+.financial-modal th,
+.financial-modal td {
+  color: #FFF7E6 !important;
+}
+
+.financial-modal [data-slot="dialog-title"] {
+  font-weight: 750 !important;
+}
+
+.financial-modal label,
+.financial-modal th {
+  font-weight: 650 !important;
+}
+
+.financial-modal [data-slot="dialog-description"],
+.financial-modal .financial-muted {
+  color: #B8AD98 !important;
+}
+
+.financial-modal input,
+.financial-modal textarea,
+.financial-modal [data-slot="select-trigger"],
+.financial-modal [data-slot="date-picker-trigger"] {
+  background: #0E0E0A !important;
+  border-color: #2A2418 !important;
+  color: #FFF7E6 !important;
+}
+
+.financial-modal input::placeholder,
+.financial-modal textarea::placeholder {
+  color: #9F927B !important;
+}
+
+.financial-modal [data-slot="dialog-footer"] {
+  background: #16130E !important;
+  border-color: #2A2418 !important;
+}
+
+.financial-modal [data-slot="button"][data-variant="outline"],
+.financial-modal button {
+  color: inherit;
+}
+
+.financial-select-content {
+  background: #11110E !important;
+  border-color: #2A2418 !important;
+  color: #FFF7E6 !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

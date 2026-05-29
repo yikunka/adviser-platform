@@ -1,0 +1,134 @@
+import type { AccountType, JournalStatus } from '@prisma/client'
+
+type Decimalish = { toString(): string }
+
+function money(value: Decimalish | number | string | null | undefined) {
+  return Number(value ?? 0)
+}
+
+export type SerializedAccount = {
+  id: string
+  code: string
+  name: string
+  type: AccountType
+  level: number
+  sortOrder: number
+  parentId: string | null
+  parent?: { id: string; code: string; name: string } | null
+  isSystem: boolean
+  notes: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export function serializeAccount(account: {
+  id: string
+  code: string
+  name: string
+  type: AccountType
+  level: number
+  sortOrder: number
+  parentId: string | null
+  parent?: { id: string; code: string; name: string } | null
+  isSystem: boolean
+  notes: string
+  createdAt?: Date
+  updatedAt?: Date
+}): SerializedAccount {
+  return {
+    id: account.id,
+    code: account.code,
+    name: account.name,
+    type: account.type,
+    level: account.level,
+    sortOrder: account.sortOrder,
+    parentId: account.parentId,
+    parent: account.parent ?? null,
+    isSystem: account.isSystem,
+    notes: account.notes,
+    createdAt: account.createdAt?.toISOString(),
+    updatedAt: account.updatedAt?.toISOString(),
+  }
+}
+
+export function serializeJournalEntry(entry: {
+  id: string
+  voucherNo: string
+  entryDate: Date
+  description: string
+  period: string
+  status: JournalStatus
+  createdAt?: Date
+  postedAt: Date | null
+  reversedAt: Date | null
+  createdBy?: { id: string; nameEn: string; email: string } | null
+  lines: {
+    id: string
+    accountId: string
+    lineNum: number
+    description: string
+    debit: Decimalish
+    credit: Decimalish
+    notes: string
+    account?: { id: string; code: string; name: string; type: AccountType } | null
+  }[]
+}) {
+  const lines = entry.lines
+    .slice()
+    .sort((a, b) => a.lineNum - b.lineNum)
+    .map(line => ({
+      id: line.id,
+      accountId: line.accountId,
+      lineNum: line.lineNum,
+      description: line.description,
+      debit: money(line.debit),
+      credit: money(line.credit),
+      notes: line.notes,
+      account: line.account ?? null,
+    }))
+
+  return {
+    id: entry.id,
+    voucherNo: entry.voucherNo,
+    entryDate: entry.entryDate.toISOString(),
+    date: entry.entryDate.toISOString(),
+    description: entry.description,
+    period: entry.period,
+    status: entry.status,
+    totalAmount: lines.reduce((sum, line) => sum + line.debit, 0),
+    createdBy: entry.createdBy?.nameEn ?? entry.createdBy?.email ?? 'System',
+    createdById: entry.createdBy?.id ?? null,
+    createdAt: entry.createdAt?.toISOString() ?? null,
+    postedAt: entry.postedAt?.toISOString() ?? null,
+    cancelledAt: entry.reversedAt?.toISOString() ?? null,
+    lines,
+  }
+}
+
+export function serializeLedgerEntry(entry: {
+  id: string
+  accountId: string
+  lineNum?: number
+  date: Date
+  voucherNo: string
+  description: string
+  debit: Decimalish
+  credit: Decimalish
+  balance: Decimalish | number
+  account: { id: string; code: string; name: string; type: AccountType }
+}) {
+  return {
+    id: entry.id,
+    accountId: entry.accountId,
+    accountCode: entry.account.code,
+    accountName: entry.account.name,
+    accountType: entry.account.type,
+    lineNum: entry.lineNum ?? 0,
+    date: entry.date.toISOString(),
+    voucherNo: entry.voucherNo,
+    description: entry.description,
+    debit: money(entry.debit),
+    credit: money(entry.credit),
+    balance: money(entry.balance),
+  }
+}

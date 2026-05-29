@@ -57,7 +57,7 @@ model CosTableJournalEntry {
 enum JournalStatus {
   DRAFT   // 草稿
   POSTED  // 已过账
-  REVERSED // 已反冲
+  CANCELLED // 已取消
 }
 
 model CosTableJournalLine {

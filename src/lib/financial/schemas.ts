@@ -1,0 +1,57 @@
+import { z } from 'zod'
+
+export const accountTypeSchema = z.enum(['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'])
+export const journalStatusSchema = z.enum(['DRAFT', 'POSTED', 'CANCELLED'])
+
+const nullableIdSchema = z.preprocess(
+  value => (value === '' || value === 'NONE' || value === undefined ? null : value),
+  z.string().trim().min(1).nullable(),
+)
+
+export const accountCreateSchema = z.object({
+  code: z.string().trim().min(1, 'Code is required').max(32),
+  name: z.string().trim().min(1, 'Name is required').max(200),
+  type: accountTypeSchema,
+  parentId: nullableIdSchema.optional().default(null),
+  sortOrder: z.coerce.number().int().min(0).max(999999).optional().default(0),
+  isSystem: z.coerce.boolean().optional().default(false),
+  notes: z.string().trim().max(1000).optional().default(''),
+})
+
+export const accountUpdateSchema = accountCreateSchema.partial()
+
+export const journalLineSchema = z.object({
+  id: z.string().optional(),
+  accountId: z.string().trim().min(1, 'Account is required'),
+  description: z.string().trim().max(500).optional().default(''),
+  debit: z.coerce.number().min(0).max(999999999999).optional().default(0),
+  credit: z.coerce.number().min(0).max(999999999999).optional().default(0),
+  notes: z.string().trim().max(500).optional().default(''),
+})
+
+export const journalEntryCreateSchema = z.object({
+  entryDate: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
+  description: z.string().trim().min(1, 'Description is required').max(1000),
+  lines: z.array(journalLineSchema).min(2, 'At least two lines are required'),
+  attachments: z.array(z.string().trim().min(1)).optional().default([]),
+})
+
+export const journalEntryUpdateSchema = journalEntryCreateSchema.partial().extend({
+  lines: z.array(journalLineSchema).min(2, 'At least two lines are required').optional(),
+})
+
+export const journalEntryFilterSchema = z.object({
+  period: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+  status: journalStatusSchema.optional(),
+  search: z.string().trim().max(100).optional(),
+})
+
+export const ledgerFilterSchema = z.object({
+  accountId: z.string().trim().min(1).optional(),
+  accountType: accountTypeSchema.optional(),
+  period: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+  voucherNo: z.string().trim().max(100).optional(),
+})
+
+export type AccountFormValues = z.infer<typeof accountCreateSchema>
+export type JournalEntryFormValues = z.infer<typeof journalEntryCreateSchema>

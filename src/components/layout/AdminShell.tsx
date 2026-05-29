@@ -27,6 +27,7 @@ import {
   ClipboardList,
   Boxes,
   FolderTree,
+  BookOpen,
 } from 'lucide-react'
 import type { AdminMenuKey } from '@/lib/auth/admin-access'
 import { pathnameToAdminMenuKey, adminMenusAllow } from '@/lib/auth/admin-access'
@@ -47,6 +48,7 @@ const NAV_GROUPS: {
       { href: '/admin/companies', key: 'companies', Icon: Building2 },
       { href: '/admin/kyc', key: 'kyc', Icon: ClipboardCheck },
       { href: '/admin/aml', key: 'aml', Icon: ShieldAlert },
+      { href: '/admin/financial', key: 'financial', Icon: BookOpen },
     ],
   },
   {

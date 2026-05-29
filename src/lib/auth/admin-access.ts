@@ -5,6 +5,7 @@ export const ADMIN_MENU_KEYS = [
   'companies',
   'kyc',
   'aml',
+  'financial',
   'users',
   'sfsOrders',
   'settings',
@@ -25,6 +26,7 @@ const MENU_PLATFORM: Record<AdminMenuKey, Platform | 'GLOBAL'> = {
   companies: 'ADVISER',
   kyc: 'ADVISER',
   aml: 'ADVISER',
+  financial: 'ADVISER',
   users: 'GLOBAL',
   sfsOrders: 'SFS_DIAMOND',
   cosmocoatProducts: 'COSMICOAT',
@@ -89,6 +91,8 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
       return 'kyc'
     case 'aml':
       return 'aml'
+    case 'financial':
+      return 'financial'
     case 'users':
       return 'users'
     case 'sfs-orders':
@@ -126,6 +130,7 @@ export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: stri
   { key: 'companies', label: 'Companies', group: 'Adviser' },
   { key: 'kyc', label: 'KYC queue', group: 'Adviser' },
   { key: 'aml', label: 'AML', group: 'Adviser' },
+  { key: 'financial', label: 'Financial', group: 'Adviser' },
   { key: 'users', label: 'Customer account management', group: 'System' },
   { key: 'sfsOrders', label: 'SFS orders', group: 'SFS Diamond' },
   { key: 'cosmocoatProducts', label: 'Product management', group: 'CosmoCoat' },

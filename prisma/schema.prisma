@@ -228,6 +228,7 @@ model User {
   orders             ServiceOrder[]
   sfsOrders          SfsOrder[]
   cosJournalEntries  CosTableJournalEntry[]
+  financialJournalEntries JournalEntry[] @relation("FinancialJournalCreatedBy")
 
   @@map("users")
 }
@@ -1292,7 +1293,7 @@ enum AccountType {
 enum JournalStatus {
   DRAFT    // 草稿
   POSTED   // 已过账
-  REVERSED // 已反冲
+  CANCELLED // 已取消
 }
 
 model CosTableAccount {
@@ -1414,4 +1415,125 @@ model CosTableExchangeRate {
   @@unique([fromCurrency, toCurrency, effectiveDate])
   @@index([fromCurrency, toCurrency])
   @@map("cos_exchange_rates")
+}
+
+// ─────────────────────────────────────────────
+// Adviser — FINANCIAL ACCOUNTING MODULE
+// ─────────────────────────────────────────────
+
+model FinAccount {
+  id            String      @id @default(cuid())
+  code          String      @unique
+  name          String
+  type          AccountType
+  parentId      String?
+  level         Int         @default(1)
+  sortOrder     Int         @default(0)
+  isSystem      Boolean     @default(false)
+  notes         String      @default("")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  parent        FinAccount?      @relation("FinAccountHierarchy", fields: [parentId], references: [id])
+  children      FinAccount[]     @relation("FinAccountHierarchy")
+  journalLines  JournalLine[]
+  ledgerEntries Ledger[]
+  accountBalances AccountBalance[]
+
+  @@index([type, sortOrder])
+  @@map("adv_accounts")
+}
+
+model JournalEntry {
+  id            String        @id @default(cuid())
+  voucherNo     String        @unique
+  entryDate     DateTime
+  description   String
+  period        String
+  status        JournalStatus @default(DRAFT)
+  attachments   String[]      @default([])
+  createdById   String?
+  postedAt      DateTime?
+  reversedAt    DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  createdBy     User?         @relation("FinancialJournalCreatedBy", fields: [createdById], references: [id])
+  lines         JournalLine[]
+  ledgerEntries Ledger[]
+
+  @@index([period, status])
+  @@index([entryDate])
+  @@map("adv_journal_entries")
+}
+
+model JournalLine {
+  id          String   @id @default(cuid())
+  entryId     String
+  accountId   String
+  lineNum     Int      @default(0)
+  description String
+  debit       Decimal  @default(0.0) @db.Decimal(18, 4)
+  credit      Decimal  @default(0.0) @db.Decimal(18, 4)
+  notes       String   @default("")
+
+  entry       JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  account     FinAccount   @relation(fields: [accountId], references: [id])
+
+  @@index([entryId, lineNum])
+  @@index([accountId])
+  @@map("adv_journal_lines")
+}
+
+model Ledger {
+  id          String   @id @default(cuid())
+  accountId   String
+  entryId     String?
+  lineNum     Int      @default(0)
+  date        DateTime
+  voucherNo   String
+  description String
+  debit       Decimal  @default(0.0) @db.Decimal(18, 4)
+  credit      Decimal  @default(0.0) @db.Decimal(18, 4)
+  balance     Decimal  @default(0.0) @db.Decimal(18, 4)
+
+  account     FinAccount    @relation(fields: [accountId], references: [id])
+  entry       JournalEntry? @relation(fields: [entryId], references: [id])
+
+  @@index([accountId, date, lineNum])
+  @@index([date])
+  @@index([voucherNo])
+  @@map("adv_ledger")
+}
+
+model AccountBalance {
+  id            String   @id @default(cuid())
+  accountId     String
+  period        String
+  openingDebit  Decimal  @default(0.0) @db.Decimal(18, 4)
+  openingCredit Decimal  @default(0.0) @db.Decimal(18, 4)
+  closingDebit  Decimal  @default(0.0) @db.Decimal(18, 4)
+  closingCredit Decimal  @default(0.0) @db.Decimal(18, 4)
+  endingBalance Decimal  @default(0.0) @db.Decimal(18, 4)
+
+  account       FinAccount @relation(fields: [accountId], references: [id])
+
+  @@unique([accountId, period])
+  @@index([period])
+  @@map("adv_account_balances")
+}
+
+model ExchangeRate {
+  id            String   @id @default(cuid())
+  fromCurrency  String
+  toCurrency    String
+  rate          Decimal  @db.Decimal(10, 6)
+  effectiveDate DateTime
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([fromCurrency, toCurrency, effectiveDate])
+  @@index([fromCurrency, toCurrency])
+  @@map("adv_exchange_rates")
 }
