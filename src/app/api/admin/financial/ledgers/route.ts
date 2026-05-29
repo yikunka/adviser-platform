@@ -49,6 +49,7 @@ export async function GET(req: NextRequest) {
     ledgers.map(entry => ({
       ...entry,
       accountType: entry.account.type,
+      accountCode: entry.account.code,
     })),
   )
 

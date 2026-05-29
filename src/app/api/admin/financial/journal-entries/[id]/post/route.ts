@@ -49,6 +49,7 @@ async function postJournalEntry(id: string, session: Session) {
       const nextBalance = roundMoney((balances.get(line.accountId) ?? 0) + signedLineAmount({
         accountId: line.accountId,
         accountType: line.account.type,
+        accountCode: line.account.code,
         debit: line.debit,
         credit: line.credit,
       }))

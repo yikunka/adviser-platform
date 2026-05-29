@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ACCOUNT_TYPE_OPTIONS } from '@/lib/financial/account-types'
 import { Link } from '@/i18n/navigation'
 
 type LedgerEntry = {
@@ -104,11 +105,9 @@ export default function AdminFinancialLedgerPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">All Accounts</SelectItem>
-                <SelectItem value="ASSET">Assets</SelectItem>
-                <SelectItem value="LIABILITY">Liabilities</SelectItem>
-                <SelectItem value="EQUITY">Equity</SelectItem>
-                <SelectItem value="REVENUE">Revenue</SelectItem>
-                <SelectItem value="EXPENSE">Expenses</SelectItem>
+                {ACCOUNT_TYPE_OPTIONS.map(option => (
+                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Input

@@ -9,15 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { AccountFormDialog, type FinancialAccount } from '@/components/admin/financial/AccountFormDialog'
+import { ACCOUNT_TYPE_COLORS } from '@/lib/financial/account-types'
 import { Link } from '@/i18n/navigation'
-
-const TYPE_COLORS: Record<string, string> = {
-  ASSET: '#38bdf8',
-  LIABILITY: '#ef4444',
-  EQUITY: '#a855f7',
-  REVENUE: '#10b981',
-  EXPENSE: '#f59e0b',
-}
 
 export default function AdminFinancialAccountsPage() {
   const [accounts, setAccounts] = useState<FinancialAccount[]>([])
@@ -135,7 +128,7 @@ export default function AdminFinancialAccountsPage() {
                       <TableCell className="font-mono">{account.code}</TableCell>
                       <TableCell>{account.name}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" style={{ borderColor: TYPE_COLORS[account.type], color: TYPE_COLORS[account.type] }}>
+                        <Badge variant="outline" style={{ borderColor: ACCOUNT_TYPE_COLORS[account.type], color: ACCOUNT_TYPE_COLORS[account.type] }}>
                           {account.type}
                         </Badge>
                       </TableCell>

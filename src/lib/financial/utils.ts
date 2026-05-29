@@ -1,4 +1,5 @@
 import { Prisma, type AccountType } from '@prisma/client'
+import { isDebitNormalAccountType } from '@/lib/financial/account-types'
 import { prisma } from '@/lib/db/prisma'
 
 type VoucherClient = Pick<typeof prisma, 'journalEntry'>
@@ -6,6 +7,7 @@ type VoucherClient = Pick<typeof prisma, 'journalEntry'>
 export type BalanceLine = {
   accountId: string
   accountType?: AccountType
+  accountCode?: string
   debit: number | Prisma.Decimal
   credit: number | Prisma.Decimal
 }
@@ -72,7 +74,7 @@ export function calculateRunningBalance<T extends BalanceLine>(lines: T[]) {
 export function signedLineAmount(line: BalanceLine) {
   const debit = Number(line.debit)
   const credit = Number(line.credit)
-  if (line.accountType && ['LIABILITY', 'EQUITY', 'REVENUE'].includes(line.accountType)) {
+  if (line.accountType && !isDebitNormalAccountType(line.accountType, line.accountCode)) {
     return credit - debit
   }
   return debit - credit

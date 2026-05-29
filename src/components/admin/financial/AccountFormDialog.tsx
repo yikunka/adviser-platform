@@ -17,13 +17,15 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ACCOUNT_TYPE_OPTIONS } from '@/lib/financial/account-types'
 import { flattenAccountHierarchy, isDescendantAccount } from '@/lib/financial/account-tree'
+import type { AccountType } from '@prisma/client'
 
 export type FinancialAccount = {
   id: string
   code: string
   name: string
-  type: 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE'
+  type: AccountType
   level: number
   sortOrder: number
   parentId: string | null
@@ -39,7 +41,6 @@ type Props = {
   onSaved: () => void | Promise<void>
 }
 
-const ACCOUNT_TYPES = ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'] as const
 const modalContentClassName = 'financial-modal max-h-[90vh] overflow-y-auto border-[#2A2418] bg-[#11110E] text-[#FFF7E6] shadow-2xl ring-[#3A3428] sm:max-w-xl'
 const modalFooterClassName = 'mt-4 border-[#2A2418] bg-[#16130E]'
 const labelClassName = 'text-[#EADDC3]'
@@ -157,8 +158,8 @@ export function AccountFormDialog({ open, onOpenChange, account, accounts, onSav
                   <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent className={selectContentClassName}>
-                  {ACCOUNT_TYPES.map(item => (
-                    <SelectItem key={item} value={item}>{item}</SelectItem>
+                  {ACCOUNT_TYPE_OPTIONS.map(item => (
+                    <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

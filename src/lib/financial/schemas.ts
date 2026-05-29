@@ -1,6 +1,14 @@
 import { z } from 'zod'
 
-export const accountTypeSchema = z.enum(['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'])
+export const accountTypeSchema = z.enum([
+  'ASSET',
+  'LIABILITY',
+  'EQUITY',
+  'REVENUE',
+  'EXPENSE',
+  'CGS',
+  'CURRENT_ACCOUNT',
+])
 export const journalStatusSchema = z.enum(['DRAFT', 'POSTED', 'CANCELLED'])
 
 const nullableIdSchema = z.preprocess(

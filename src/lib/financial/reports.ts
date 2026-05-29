@@ -1,5 +1,6 @@
 import type { AccountType } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
+import { isDebitNormalAccountType, isProfitAndLossExpenseType } from '@/lib/financial/account-types'
 import { roundMoney } from '@/lib/financial/utils'
 
 export type ReportAccountRow = {
@@ -95,11 +96,9 @@ export function periodRange(period: string) {
   return { start, end, asOfDate, label: period }
 }
 
-function signedBalance(amount: number, type: AccountType) {
-  if (['LIABILITY', 'EQUITY', 'REVENUE'].includes(type)) {
-    return roundMoney(-amount)
-  }
-  return roundMoney(amount)
+function signedBalance(amount: number, type: AccountType, code?: string) {
+  if (isDebitNormalAccountType(type, code)) return roundMoney(amount)
+  return roundMoney(-amount)
 }
 
 function trialBalanceColumns(balance: number) {
@@ -116,7 +115,21 @@ function isCurrentAsset(account: { code: string; type: AccountType }) {
 }
 
 function isCurrentLiability(account: { code: string; type: AccountType }) {
+  if (account.type === 'CURRENT_ACCOUNT') return /^2/.test(account.code)
   return account.type === 'LIABILITY' && /^2[12]/.test(account.code)
+}
+
+function isCurrentAccountReceivable(account: { code: string; type: AccountType }) {
+  return account.type === 'CURRENT_ACCOUNT' && /^1/.test(account.code)
+}
+
+function isWorkingCapitalAccount(account: { code: string; type: AccountType }) {
+  return (
+    isCurrentAsset(account)
+    || isCurrentLiability(account)
+    || isCurrentAccountReceivable(account)
+    || (account.type === 'CURRENT_ACCOUNT' && /^2/.test(account.code))
+  )
 }
 
 function isNonCurrentAsset(account: ReportAccountRow) {
@@ -176,9 +189,9 @@ async function aggregateLedgerMovements(
   return map
 }
 
-function movementSignedBalance(totals: MovementTotals, type: AccountType) {
+function movementSignedBalance(totals: MovementTotals, type: AccountType, code?: string) {
   const net = roundMoney(totals.debit - totals.credit)
-  return signedBalance(net, type)
+  return signedBalance(net, type, code)
 }
 
 export async function buildFinancialReports(
@@ -220,9 +233,9 @@ export async function buildFinancialReports(
     const periodTotals = periodMovements.get(account.accountId) ?? { debit: 0, credit: 0 }
     const closingTotals = closingMovements.get(account.accountId) ?? { debit: 0, credit: 0 }
 
-    const openingBalance = movementSignedBalance(openingTotals, account.type)
-    const periodNet = movementSignedBalance(periodTotals, account.type)
-    const closingBalance = movementSignedBalance(closingTotals, account.type)
+    const openingBalance = movementSignedBalance(openingTotals, account.type, account.code)
+    const periodNet = movementSignedBalance(periodTotals, account.type, account.code)
+    const closingBalance = movementSignedBalance(closingTotals, account.type, account.code)
 
     openingByAccount.set(account.accountId, openingBalance)
     closingByAccount.set(account.accountId, closingBalance)
@@ -241,10 +254,16 @@ export async function buildFinancialReports(
 
     const row = { ...account, amount: Math.abs(periodNet) }
     if (account.type === 'REVENUE' && periodNet !== 0) revenueLines.push(row)
-    if (account.type === 'EXPENSE' && periodNet !== 0) expenseLines.push(row)
+    if (isProfitAndLossExpenseType(account.type) && periodNet !== 0) expenseLines.push(row)
     if (account.type === 'ASSET' && closingBalance !== 0) assetLines.push({ ...row, amount: closingBalance })
     if (account.type === 'LIABILITY' && closingBalance !== 0) liabilityLines.push({ ...row, amount: closingBalance })
     if (account.type === 'EQUITY' && closingBalance !== 0) equityLines.push({ ...row, amount: closingBalance })
+    if (isCurrentAccountReceivable(account) && closingBalance !== 0) {
+      assetLines.push({ ...row, amount: closingBalance })
+    }
+    if (account.type === 'CURRENT_ACCOUNT' && /^2/.test(account.code) && closingBalance !== 0) {
+      liabilityLines.push({ ...row, amount: closingBalance })
+    }
   }
 
   const totalRevenue = roundMoney(revenueLines.reduce((sum, row) => sum + row.amount, 0))
@@ -339,7 +358,7 @@ function buildIndirectCashFlow(input: {
       continue
     }
 
-    if (isCurrentAsset(account) || isCurrentLiability(account)) {
+    if (isWorkingCapitalAccount(account)) {
       workingCapitalChange = roundMoney(workingCapitalChange - change)
       continue
     }
