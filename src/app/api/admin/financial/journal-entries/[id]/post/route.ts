@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
+import type { Session } from 'next-auth'
 import { logAudit } from '@/lib/audit/logger'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
@@ -18,23 +19,18 @@ function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
 }
 
-export async function PUT(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
-  if (error) return error
-
-  const { id } = await params
+async function postJournalEntry(id: string, session: Session) {
   const before = await prisma.journalEntry.findUnique({ where: { id }, include: journalInclude })
   if (!before) return apiError('Journal entry not found.', 404)
-  if (before.status !== 'DRAFT') return apiError('Only draft journal entries can be posted.')
+  if (before.status !== 'DRAFT') return apiError('Only pending (draft) journal entries can be posted.')
+
+  const sortedLines = before.lines.slice().sort((a, b) => a.lineNum - b.lineNum)
 
   const entry = await prisma.$transaction(async tx => {
     await tx.ledger.deleteMany({ where: { entryId: id } })
 
     const balances = new Map<string, number>()
-    for (const line of before.lines) {
+    for (const line of sortedLines) {
       if (!balances.has(line.accountId)) {
         const previous = await tx.ledger.findFirst({
           where: {
@@ -82,4 +78,26 @@ export async function PUT(
 
   await logAudit(session.user.id, 'POST', 'JournalEntry', id, serializeJournalEntry(before), serializeJournalEntry(entry))
   return NextResponse.json({ entry: serializeJournalEntry(entry), message: 'Journal entry posted.', toast: 'Journal entry posted.' })
+}
+
+export async function PUT(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
+  if (error) return error
+
+  const { id } = await params
+  return postJournalEntry(id, session)
+}
+
+export async function POST(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
+  if (error) return error
+
+  const { id } = await params
+  return postJournalEntry(id, session)
 }

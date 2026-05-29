@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
+import {
+  assertGroupAccessible,
+  resolveEntityGroupAccess,
+} from '@/lib/entity-groups/access'
 import { z } from 'zod'
 
 const updateSchema = z.object({
@@ -17,6 +21,7 @@ const updateSchema = z.object({
   serviceTier: z.enum(['BASIC', 'PROFESSIONAL', 'PREMIUM']).optional(),
   assignedStaffId: z.string().cuid().optional().nullable(),
   clientUserId: z.string().cuid().optional().nullable(),
+  groupId: z.string().cuid().optional().nullable(),
 })
 
 export async function GET(
@@ -47,6 +52,7 @@ export async function GET(
       auditLogs: { orderBy: { createdAt: 'desc' }, take: 20 },
       assignedStaff: { select: { nameEn: true, email: true } },
       clientUser: { select: { nameEn: true, email: true } },
+      group: { select: { id: true, name: true } },
     },
   })
 
@@ -70,6 +76,11 @@ export async function PATCH(
 
   const before = await prisma.company.findUnique({ where: { id } })
   if (!before) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
+  if (parsed.data.groupId && !(await assertGroupAccessible(access, parsed.data.groupId))) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const { dateOfIncorporation, annualReturnDate, ...rest } = parsed.data
   const data = {

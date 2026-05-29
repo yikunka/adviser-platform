@@ -15,7 +15,9 @@
     "db:generate": "prisma generate",
     "aml:download-ofac": "tsx scripts/download-ofac-sdn.ts",
     "generate:business-nature": "node scripts/generate-business-nature-options.mjs",
-    "backup:db": "bash scripts/backup-db.sh"
+    "backup:db": "bash scripts/backup-db.sh",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -77,6 +79,7 @@
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.4"
   }
 }

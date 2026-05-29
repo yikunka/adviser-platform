@@ -58,6 +58,10 @@ export function serializeJournalEntry(entry: {
   description: string
   period: string
   status: JournalStatus
+  companyId?: string | null
+  groupId?: string | null
+  company?: { id: string; nameEn: string; companyCode: string | null } | null
+  group?: { id: string; name: string } | null
   createdAt?: Date
   postedAt: Date | null
   reversedAt: Date | null
@@ -95,6 +99,10 @@ export function serializeJournalEntry(entry: {
     description: entry.description,
     period: entry.period,
     status: entry.status,
+    companyId: entry.companyId ?? null,
+    groupId: entry.groupId ?? null,
+    company: entry.company ?? null,
+    group: entry.group ?? null,
     totalAmount: lines.reduce((sum, line) => sum + line.debit, 0),
     createdBy: entry.createdBy?.nameEn ?? entry.createdBy?.email ?? 'System',
     createdById: entry.createdBy?.id ?? null,

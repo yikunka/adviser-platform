@@ -229,6 +229,7 @@ model User {
   sfsOrders          SfsOrder[]
   cosJournalEntries  CosTableJournalEntry[]
   financialJournalEntries JournalEntry[] @relation("FinancialJournalCreatedBy")
+  entityGroupMemberships  ClientEntityGroupMember[]
 
   @@map("users")
 }
@@ -244,6 +245,44 @@ model VerificationToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("verification_tokens")
+}
+
+// ─────────────────────────────────────────────
+// CLIENT ENTITY GROUPS (accounting firm customers)
+// ─────────────────────────────────────────────
+
+model ClientEntityGroup {
+  id            String   @id @default(cuid())
+  name          String
+  contactPerson String?
+  email         String?
+  phone         String?
+  address       String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  companies       Company[]
+  members         ClientEntityGroupMember[]
+  journalEntries  JournalEntry[]
+
+  @@index([name])
+  @@map("client_entity_groups")
+}
+
+/// Staff user access to a client entity group (many-to-many).
+model ClientEntityGroupMember {
+  id        String   @id @default(cuid())
+  groupId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  group ClientEntityGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@map("client_entity_group_members")
 }
 
 // ─────────────────────────────────────────────
@@ -272,11 +311,14 @@ model Company {
   /// Lowercased email: company is pre-assigned until a CLIENT registers with this email
   pendingClientEmail    String?
   assignedStaffId       String?
+  /// Parent client entity group (accounting firm's customer).
+  groupId               String?
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 
-  clientUser    User?    @relation("ClientCompany", fields: [clientUserId], references: [id])
-  assignedStaff User?    @relation("AssignedStaff", fields: [assignedStaffId], references: [id])
+  clientUser    User?               @relation("ClientCompany", fields: [clientUserId], references: [id])
+  assignedStaff User?               @relation("AssignedStaff", fields: [assignedStaffId], references: [id])
+  group         ClientEntityGroup?  @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   directors              Director[]
   members                Member[]
@@ -293,8 +335,10 @@ model Company {
   keyPersonLinks         CompanyKeyPerson[]
   serviceOrders          ServiceOrder[]
   auditLogs              AuditLog[]                 @relation("CompanyAuditLog")
+  journalEntries         JournalEntry[]
 
   @@index([pendingClientEmail])
+  @@index([groupId])
   @@map("companies")
 }
 
@@ -1452,18 +1496,24 @@ model JournalEntry {
   period        String
   status        JournalStatus @default(DRAFT)
   attachments   String[]      @default([])
+  companyId     String?
+  groupId       String?
   createdById   String?
   postedAt      DateTime?
   reversedAt    DateTime?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  createdBy     User?         @relation("FinancialJournalCreatedBy", fields: [createdById], references: [id])
+  company       Company?           @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  group         ClientEntityGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  createdBy     User?              @relation("FinancialJournalCreatedBy", fields: [createdById], references: [id])
   lines         JournalLine[]
   ledgerEntries Ledger[]
 
   @@index([period, status])
   @@index([entryDate])
+  @@index([companyId])
+  @@index([groupId])
   @@map("adv_journal_entries")
 }
 

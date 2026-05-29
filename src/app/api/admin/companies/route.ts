@@ -3,6 +3,11 @@ import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
 import { normalizeSignupEmail } from '@/lib/company/claim-pending-client'
+import {
+  assertGroupAccessible,
+  buildCompanyGroupWhere,
+  resolveEntityGroupAccess,
+} from '@/lib/entity-groups/access'
 import { z } from 'zod'
 
 const COMPANY_TYPE_PREFIX: Record<string, string> = {
@@ -38,6 +43,7 @@ const createSchema = z
     /** CLIENT signup email when not choosing from list (e.g. not yet verified). */
     clientUserEmail: z.string().max(320).optional(),
     assignedStaffId: z.string().cuid().optional(),
+    groupId: z.string().cuid().optional().nullable(),
   })
   .superRefine((data, ctx) => {
     const id = data.clientUserId?.trim()
@@ -52,70 +58,79 @@ const createSchema = z
   })
 
 export async function GET(req: NextRequest) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'companies' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'companies' })
   if (error) return error
 
   const { searchParams } = req.nextUrl
   const search = searchParams.get('q') ?? ''
+  const groupId = searchParams.get('groupId')
   const page = parseInt(searchParams.get('page') ?? '1')
   const limit = 20
   const skip = (page - 1) * limit
 
-  const where = search
-    ? {
-        OR: [
-          { companyCode: { contains: search, mode: 'insensitive' as const } },
-          { nameEn: { contains: search, mode: 'insensitive' as const } },
-          { nameZh: { contains: search, mode: 'insensitive' as const } },
-          { companyNumber: { contains: search, mode: 'insensitive' as const } },
-        ],
-      }
-    : {}
+  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
+  if (groupId && !(await assertGroupAccessible(access, groupId))) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
-  // Sort by the numeric part of companyCode only (positions 3-7, e.g. "00001" from "AA00001"),
-  // so companies across all prefixes are ordered by their sequential number.
-  // Zero-padded 5-digit strings sort correctly as strings (no CAST needed).
-  const like = `%${search}%`
-  const orderedIds = search
-    ? await prisma.$queryRaw<Array<{ id: string }>>`
-        SELECT id FROM companies
-        WHERE (
-          "companyCode" ILIKE ${like} OR
-          "nameEn"      ILIKE ${like} OR
-          "nameZh"      ILIKE ${like} OR
-          "companyNumber" ILIKE ${like}
-        )
-        ORDER BY
-          CASE WHEN "companyCode" IS NULL THEN 1 ELSE 0 END,
-          SUBSTRING("companyCode" FROM 3) ASC,
-          "createdAt" DESC
-        LIMIT ${limit} OFFSET ${skip}
-      `
-    : await prisma.$queryRaw<Array<{ id: string }>>`
-        SELECT id FROM companies
-        ORDER BY
-          CASE WHEN "companyCode" IS NULL THEN 1 ELSE 0 END,
-          SUBSTRING("companyCode" FROM 3) ASC,
-          "createdAt" DESC
-        LIMIT ${limit} OFFSET ${skip}
-      `
+  const accessFilter = buildCompanyGroupWhere(access)
+  const where = {
+    ...(accessFilter ?? {}),
+    ...(groupId ? { groupId } : {}),
+    ...(search
+      ? {
+          OR: [
+            { companyCode: { contains: search, mode: 'insensitive' as const } },
+            { nameEn: { contains: search, mode: 'insensitive' as const } },
+            { nameZh: { contains: search, mode: 'insensitive' as const } },
+            { companyNumber: { contains: search, mode: 'insensitive' as const } },
+          ],
+        }
+      : {}),
+  }
 
-  const ids = orderedIds.map(r => r.id)
+  const useLegacySort = !search && !groupId && access.kind === 'all'
 
-  const [companiesRaw, total] = await Promise.all([
+  if (useLegacySort) {
+    const orderedIds = await prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT id FROM companies
+      ORDER BY
+        CASE WHEN "companyCode" IS NULL THEN 1 ELSE 0 END,
+        SUBSTRING("companyCode" FROM 3) ASC,
+        "createdAt" DESC
+      LIMIT ${limit} OFFSET ${skip}
+    `
+    const ids = orderedIds.map(r => r.id)
+    const [companiesRaw, total] = await Promise.all([
+      prisma.company.findMany({
+        where: { id: { in: ids } },
+        include: {
+          assignedStaff: { select: { nameEn: true } },
+          clientUser: { select: { nameEn: true, email: true } },
+          group: { select: { id: true, name: true } },
+        },
+      }),
+      prisma.company.count({ where }),
+    ])
+    const idIndex = new Map(ids.map((id, i) => [id, i]))
+    const companies = companiesRaw.sort((a, b) => (idIndex.get(a.id) ?? 0) - (idIndex.get(b.id) ?? 0))
+    return NextResponse.json({ companies, total, page, limit })
+  }
+
+  const [companies, total] = await Promise.all([
     prisma.company.findMany({
-      where: { id: { in: ids } },
+      where,
+      skip,
+      take: limit,
+      orderBy: [{ companyCode: 'asc' }, { createdAt: 'desc' }],
       include: {
         assignedStaff: { select: { nameEn: true } },
         clientUser: { select: { nameEn: true, email: true } },
+        group: { select: { id: true, name: true } },
       },
     }),
     prisma.company.count({ where }),
   ])
-
-  // Re-apply the SQL-determined order (findMany with `in` doesn't preserve order)
-  const idIndex = new Map(ids.map((id, i) => [id, i]))
-  const companies = companiesRaw.sort((a, b) => (idIndex.get(a.id) ?? 0) - (idIndex.get(b.id) ?? 0))
 
   return NextResponse.json({ companies, total, page, limit })
 }
@@ -128,6 +143,11 @@ export async function POST(req: NextRequest) {
   const parsed = createSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
+  }
+
+  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
+  if (parsed.data.groupId && !(await assertGroupAccessible(access, parsed.data.groupId))) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const { dateOfIncorporation, clientUserEmail, ...rest } = parsed.data

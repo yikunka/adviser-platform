@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -48,9 +48,11 @@ export default function NewCompanyPage() {
   const router = useRouter()
   const params = useParams()
   const locale = (params.locale as string) ?? 'en'
+  const searchParams = useSearchParams()
   const t = useTranslations('admin.companies')
 
   const [loading, setLoading] = useState(false)
+  const [entityGroups, setEntityGroups] = useState<{ id: string; name: string }[]>([])
   const [verifiedClients, setVerifiedClients] = useState<VerifiedClient[]>([])
   const [clientsLoading, setClientsLoading] = useState(true)
   const [analyzing, setAnalyzing] = useState(false)
@@ -67,6 +69,7 @@ export default function NewCompanyPage() {
     serviceTier: '' as '' | 'BASIC' | 'PROFESSIONAL' | 'PREMIUM',
     clientUserId: '',
     clientUserEmail: '',
+    groupId: searchParams.get('groupId') ?? '',
   })
 
   useEffect(() => {
@@ -74,10 +77,19 @@ export default function NewCompanyPage() {
 
     async function load() {
       try {
-        const res = await fetch('/api/admin/clients?signedUpOnly=true')
-        if (!res.ok) return
-        const data = await res.json()
+        const [clientsRes, groupsRes] = await Promise.all([
+          fetch('/api/admin/clients?signedUpOnly=true'),
+          fetch('/api/admin/entity-groups?limit=100'),
+        ])
+        if (!clientsRes.ok) return
+        const data = await clientsRes.json()
         if (!cancelled) setVerifiedClients(Array.isArray(data.clients) ? data.clients : [])
+        if (groupsRes.ok) {
+          const groupsJson = await groupsRes.json()
+          if (!cancelled) {
+            setEntityGroups((groupsJson.groups ?? []).map((g: { id: string; name: string }) => ({ id: g.id, name: g.name })))
+          }
+        }
       } finally {
         if (!cancelled) setClientsLoading(false)
       }
@@ -85,7 +97,7 @@ export default function NewCompanyPage() {
 
     void load()
     return () => { cancelled = true }
-  }, [])
+  }, [searchParams])
 
   function set(field: string, value: string) {
     setForm(f => ({ ...f, [field]: value }))
@@ -184,6 +196,7 @@ export default function NewCompanyPage() {
       if (form.registeredAddress) body.registeredAddress = form.registeredAddress
       if (form.businessNature) body.businessNature = form.businessNature
       if (form.serviceTier) body.serviceTier = form.serviceTier
+      if (form.groupId) body.groupId = form.groupId
 
       if (clientMode === 'verified') {
         body.clientUserId = form.clientUserId.trim()
@@ -309,6 +322,20 @@ export default function NewCompanyPage() {
               />
             </div>
           )}
+        </div>
+
+        <div>
+          <label style={labelStyle}>{t('entityGroup')}</label>
+          <select
+            value={form.groupId}
+            onChange={e => set('groupId', e.target.value)}
+            style={fieldStyle}
+          >
+            <option value="" style={{ background: '#141414' }}>{t('entityGroupNone')}</option>
+            {entityGroups.map(g => (
+              <option key={g.id} value={g.id} style={{ background: '#141414' }}>{g.name}</option>
+            ))}
+          </select>
         </div>
 
         <div

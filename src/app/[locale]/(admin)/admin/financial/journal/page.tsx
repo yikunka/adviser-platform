@@ -3,7 +3,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useState } from 'react'
-import { Eye, Pencil, Trash2, Plus } from 'lucide-react'
+import { Eye, Pencil, Trash2, Plus, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -84,6 +84,20 @@ export default function AdminFinancialJournalPage() {
     setViewOpen(true)
   }
 
+  async function postEntry(entry: JournalEntry) {
+    if (!confirm(`Post journal entry ${entry.voucherNo}? This will create ledger entries and cannot be undone.`)) return
+
+    try {
+      const res = await fetch(`/api/admin/financial/journal-entries/${entry.id}/post`, { method: 'PUT' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.toast || data.error || 'Failed to post journal entry.')
+      toast.success(data.toast || 'Journal entry posted.')
+      await fetchEntries()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to post journal entry.')
+    }
+  }
+
   async function cancelEntry(entry: JournalEntry) {
     if (!confirm(`Cancel journal entry ${entry.voucherNo}?`)) return
 
@@ -152,7 +166,7 @@ export default function AdminFinancialJournalPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">All Status</SelectItem>
-                <SelectItem value="DRAFT">Draft</SelectItem>
+                <SelectItem value="DRAFT">Pending</SelectItem>
                 <SelectItem value="POSTED">Posted</SelectItem>
                 <SelectItem value="CANCELLED">Cancelled</SelectItem>
               </SelectContent>
@@ -185,7 +199,7 @@ export default function AdminFinancialJournalPage() {
                       <TableCell className="max-w-[200px] truncate">{entry.description}</TableCell>
                       <TableCell>
                         <Badge variant="outline" style={{ borderColor: STATUS_COLORS[entry.status], color: STATUS_COLORS[entry.status] }}>
-                          {entry.status}
+                          {entry.status === 'DRAFT' ? 'PENDING' : entry.status}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-medium">{entry.totalAmount.toLocaleString()}</TableCell>
@@ -193,6 +207,17 @@ export default function AdminFinancialJournalPage() {
                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openViewModal(entry)}>
                           <Eye size={15} className="text-muted-foreground" />
                         </Button>
+                        {entry.status === 'DRAFT' ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:text-emerald-500"
+                            title="Approve & Post"
+                            onClick={() => postEntry(entry)}
+                          >
+                            <CheckCircle size={15} />
+                          </Button>
+                        ) : null}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -257,6 +282,7 @@ export default function AdminFinancialJournalPage() {
         open={viewOpen}
         onOpenChange={setViewOpen}
         entry={viewingEntry}
+        onPosted={fetchEntries}
       />
     </div>
   )

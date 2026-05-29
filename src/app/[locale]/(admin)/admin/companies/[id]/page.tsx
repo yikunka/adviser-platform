@@ -142,6 +142,8 @@ type Company = {
   clientUserId: string | null
   pendingClientEmail: string | null
   clientUser: { nameEn: string; email: string } | null
+  group?: { id: string; name: string } | null
+  groupId?: string | null
   dateOfIncorporation: string | null
   registeredAddress: string | null
   businessNature: string | null
@@ -320,6 +322,7 @@ function YearGroupedDocs({
 function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => void }) {
   const [saving, setSaving] = useState(false)
   const [clients, setClients] = useState<VerifiedClient[]>([])
+  const [entityGroups, setEntityGroups] = useState<{ id: string; name: string }[]>([])
   const [clientsLoading, setClientsLoading] = useState(true)
   const annualParts = monthDayParts(company.annualReturnDate)
   const [form, setForm] = useState({
@@ -335,6 +338,7 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
     businessNature: company.businessNature ?? '',
     status: company.status,
     serviceTier: '',
+    groupId: company.groupId ?? company.group?.id ?? '',
   })
 
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })) }
@@ -344,10 +348,19 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
     let cancelled = false
     async function loadClients() {
       try {
-        const res = await fetch('/api/admin/clients?signedUpOnly=true')
-        if (!res.ok) return
-        const data = await res.json()
+        const [clientsRes, groupsRes] = await Promise.all([
+          fetch('/api/admin/clients?signedUpOnly=true'),
+          fetch('/api/admin/entity-groups?limit=100'),
+        ])
+        if (!clientsRes.ok) return
+        const data = await clientsRes.json()
         if (!cancelled) setClients(Array.isArray(data.clients) ? data.clients : [])
+        if (groupsRes.ok) {
+          const groupsJson = await groupsRes.json()
+          if (!cancelled) {
+            setEntityGroups((groupsJson.groups ?? []).map((g: { id: string; name: string }) => ({ id: g.id, name: g.name })))
+          }
+        }
       } finally {
         if (!cancelled) setClientsLoading(false)
       }
@@ -370,6 +383,7 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
       if (form.registeredAddress) body.registeredAddress = form.registeredAddress
       if (form.businessNature) body.businessNature = form.businessNature
       if (form.serviceTier) body.serviceTier = form.serviceTier
+      body.groupId = form.groupId || null
 
       const res = await fetch(`/api/admin/companies/${company.id}`, {
         method: 'PATCH',
@@ -422,6 +436,15 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
         {company.pendingClientEmail ? (
           <p className="mt-1 text-xs" style={{ color: '#7A7060' }}>Pending account: {company.pendingClientEmail}</p>
         ) : null}
+      </div>
+      <div>
+        <label style={labelStyle}>Client entity group</label>
+        <select value={form.groupId} onChange={e => set('groupId', e.target.value)} style={fieldStyle}>
+          <option value="" style={{ background: '#141414' }}>No entity group</option>
+          {entityGroups.map(g => (
+            <option key={g.id} value={g.id} style={{ background: '#141414' }}>{g.name}</option>
+          ))}
+        </select>
       </div>
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
@@ -1873,6 +1896,11 @@ export default function CompanyDetailPage() {
           {company.nameZh && <p className="mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{company.nameZh}</p>}
           <div className="flex flex-wrap items-center gap-3 mt-1">
             {company.companyCode && <span className="text-sm font-medium" style={{ color: '#C9A96E' }}>{company.companyCode}</span>}
+            {company.group && (
+              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(201,169,110,0.12)', color: '#C9A96E' }}>
+                {company.group.name}
+              </span>
+            )}
             {company.companyNumber && <span className="text-sm" style={{ color: '#5A5040' }}>Co. No. {company.companyNumber}</span>}
             {company.companyType && (
               <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(201,169,110,0.1)', color: '#C9A96E', border: '1px solid rgba(201,169,110,0.2)' }}>

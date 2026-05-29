@@ -1,5 +1,8 @@
 'use client'
 
+import { useState } from 'react'
+import { CheckCircle } from 'lucide-react'
+import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -31,6 +34,7 @@ type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   entry?: JournalEntryDetails | null
+  onPosted?: () => void | Promise<void>
 }
 
 const STATUS_COLORS: Record<JournalEntryDetails['status'], string> = {
@@ -46,9 +50,29 @@ function money(value: number) {
   return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-export function JournalViewModal({ open, onOpenChange, entry }: Props) {
+export function JournalViewModal({ open, onOpenChange, entry, onPosted }: Props) {
+  const [posting, setPosting] = useState(false)
   const totalDebit = entry?.lines.reduce((sum, line) => sum + line.debit, 0) ?? 0
   const totalCredit = entry?.lines.reduce((sum, line) => sum + line.credit, 0) ?? 0
+
+  async function postEntry() {
+    if (!entry) return
+    if (!confirm(`Post journal entry ${entry.voucherNo}? This will create ledger entries and cannot be undone.`)) return
+
+    setPosting(true)
+    try {
+      const res = await fetch(`/api/admin/financial/journal-entries/${entry.id}/post`, { method: 'PUT' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.toast || data.error || 'Failed to post journal entry.')
+      toast.success(data.toast || 'Journal entry posted.')
+      onOpenChange(false)
+      await onPosted?.()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to post journal entry.')
+    } finally {
+      setPosting(false)
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -76,7 +100,7 @@ export function JournalViewModal({ open, onOpenChange, entry }: Props) {
               <div>
                 <div className="text-xs text-[#B8AD98]">Status</div>
                 <Badge variant="outline" style={{ borderColor: STATUS_COLORS[entry.status], color: STATUS_COLORS[entry.status] }}>
-                  {entry.status}
+                  {entry.status === 'DRAFT' ? 'PENDING' : entry.status}
                 </Badge>
               </div>
             </div>
@@ -123,6 +147,17 @@ export function JournalViewModal({ open, onOpenChange, entry }: Props) {
         ) : null}
 
         <DialogFooter className={modalFooterClassName}>
+          {entry?.status === 'DRAFT' ? (
+            <Button
+              type="button"
+              onClick={postEntry}
+              disabled={posting}
+              style={{ background: '#10b981', color: '#0A0805' }}
+            >
+              <CheckCircle size={15} className="mr-2" />
+              {posting ? 'Posting...' : 'Approve & Post'}
+            </Button>
+          ) : null}
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className={secondaryButtonClassName}>
             Close
           </Button>

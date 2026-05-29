@@ -28,6 +28,7 @@ import {
   Boxes,
   FolderTree,
   BookOpen,
+  Layers,
 } from 'lucide-react'
 import type { AdminMenuKey } from '@/lib/auth/admin-access'
 import { pathnameToAdminMenuKey, adminMenusAllow } from '@/lib/auth/admin-access'
@@ -45,6 +46,7 @@ const NAV_GROUPS: {
   {
     labelKey: 'adviser',
     items: [
+      { href: '/admin/entities', key: 'entities', Icon: Layers },
       { href: '/admin/companies', key: 'companies', Icon: Building2 },
       { href: '/admin/kyc', key: 'kyc', Icon: ClipboardCheck },
       { href: '/admin/aml', key: 'aml', Icon: ShieldAlert },

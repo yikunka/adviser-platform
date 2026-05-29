@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client'
-import { ArrowRight, BookOpen, FileText, Layers, WalletCards } from 'lucide-react'
+import { ArrowRight, BookOpen, FileBarChart, FileText, Layers, WalletCards } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { prisma } from '@/lib/db/prisma'
 import { Badge } from '@/components/ui/badge'
@@ -61,6 +61,12 @@ export default async function AdminFinancialPage() {
       href: '/admin/financial/ledger',
       Icon: Layers,
     },
+    {
+      title: 'HKFRS Reports',
+      desc: 'Trial balance, income statement, balance sheet, and cash flow statements.',
+      href: '/admin/financial/reports',
+      Icon: FileBarChart,
+    },
   ]
 
   return (
@@ -111,7 +117,7 @@ export default async function AdminFinancialPage() {
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {modules.map(({ title, desc, href, Icon }) => (
           <Link key={href} href={href} className="group">
             <Card className="h-full rounded-lg border-[#2A2418] bg-card transition-colors group-hover:border-[#C9A96E66]">

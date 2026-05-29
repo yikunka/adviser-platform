@@ -3,6 +3,7 @@ import type { Platform, UserRole } from '@prisma/client'
 export const ADMIN_MENU_KEYS = [
   'dashboard',
   'companies',
+  'entities',
   'kyc',
   'aml',
   'financial',
@@ -24,6 +25,7 @@ const MENU_PLATFORM: Record<AdminMenuKey, Platform | 'GLOBAL'> = {
   settings: 'GLOBAL',
   adminTeam: 'GLOBAL',
   companies: 'ADVISER',
+  entities: 'ADVISER',
   kyc: 'ADVISER',
   aml: 'ADVISER',
   financial: 'ADVISER',
@@ -87,6 +89,8 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
       return 'dashboard'
     case 'companies':
       return 'companies'
+    case 'entities':
+      return 'entities'
     case 'kyc':
       return 'kyc'
     case 'aml':
@@ -128,6 +132,7 @@ export const ADMIN_PLATFORM_OPTIONS: { value: Platform; label: string }[] = [
 export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: string }[] = [
   { key: 'dashboard', label: 'Dashboard', group: 'main' },
   { key: 'companies', label: 'Companies', group: 'Adviser' },
+  { key: 'entities', label: 'Client entities', group: 'Adviser' },
   { key: 'kyc', label: 'KYC queue', group: 'Adviser' },
   { key: 'aml', label: 'AML', group: 'Adviser' },
   { key: 'financial', label: 'Financial', group: 'Adviser' },

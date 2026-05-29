@@ -5,6 +5,7 @@ import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { journalEntryCreateSchema, journalEntryFilterSchema } from '@/lib/financial/schemas'
 import { serializeJournalEntry } from '@/lib/financial/serializers'
+import { resolveJournalCompanyScope } from '@/lib/entity-groups/journal'
 import { generateVoucherNo, parseYmdDate, periodFromDate, validateBalance } from '@/lib/financial/utils'
 
 function apiError(error: string, status = 400) {
@@ -29,12 +30,16 @@ export async function GET(req: NextRequest) {
     period: req.nextUrl.searchParams.get('period') || undefined,
     status: req.nextUrl.searchParams.get('status') || undefined,
     search: req.nextUrl.searchParams.get('search') || undefined,
+    companyId: req.nextUrl.searchParams.get('companyId') || undefined,
+    groupId: req.nextUrl.searchParams.get('groupId') || undefined,
   })
   if (!parsed.success) return apiError('Invalid journal filters.')
 
   const where: Prisma.JournalEntryWhereInput = {
     ...(parsed.data.period ? { period: parsed.data.period } : {}),
     ...(parsed.data.status ? { status: parsed.data.status } : {}),
+    ...(parsed.data.companyId ? { companyId: parsed.data.companyId } : {}),
+    ...(parsed.data.groupId ? { groupId: parsed.data.groupId } : {}),
     ...(parsed.data.search
       ? {
           OR: [
@@ -83,6 +88,8 @@ export async function POST(req: NextRequest) {
     return apiError('One or more selected accounts do not exist.', 400)
   }
 
+  const companyScope = await resolveJournalCompanyScope(parsed.data.companyId ?? null)
+
   try {
     const entry = await prisma.$transaction(async tx => {
       const entryDate = parseYmdDate(parsed.data.entryDate)
@@ -94,6 +101,8 @@ export async function POST(req: NextRequest) {
           description: parsed.data.description,
           period: periodFromDate(entryDate),
           attachments: parsed.data.attachments,
+          companyId: companyScope.companyId,
+          groupId: companyScope.groupId,
           createdById: session.user.id,
           lines: {
             create: parsed.data.lines.map((line, index) => ({
