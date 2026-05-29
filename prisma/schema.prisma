@@ -227,6 +227,7 @@ model User {
   processedFilings   AnnualFiling[]
   orders             ServiceOrder[]
   sfsOrders          SfsOrder[]
+  cosJournalEntries  CosTableJournalEntry[]
 
   @@map("users")
 }
@@ -1274,4 +1275,143 @@ model CosTableProductionOrderItem {
 
   @@index([orderId, sortOrder])
   @@map("cos_table_production_order_items")
+}
+
+// ─────────────────────────────────────────────
+// CosmoCoat — FINANCIAL MODULE (HKFRS Compliant)
+// ─────────────────────────────────────────────
+
+enum AccountType {
+  ASSET         // 资产
+  LIABILITY     // 负债
+  EQUITY        // 权益
+  REVENUE       // 收入
+  EXPENSE       // 费用
+}
+
+enum JournalStatus {
+  DRAFT    // 草稿
+  POSTED   // 已过账
+  REVERSED // 已反冲
+}
+
+model CosTableAccount {
+  id            String      @id @default(cuid())
+  code          String      @unique // 科目编号：1001, 2001 等
+  name          String      // 科目名称
+  type          AccountType
+  parentId      String?     // 父科目（支持层级结构）
+  level         Int         @default(1) // 层级深度
+  sortOrder     Int         @default(0)
+  isSystem      Boolean     @default(false) // 系统科目锁定
+  notes         String      @default("")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  parent        CosTableAccount?      @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children      CosTableAccount[]     @relation("AccountHierarchy")
+  journalLines  CosTableJournalLine[]
+  ledgerEntries CosTableLedger[]
+  accountBalls  CosTableAccountBalance[]
+
+  @@index([type, sortOrder])
+  @@map("cos_accounts")
+}
+
+model CosTableJournalEntry {
+  id            String      @id @default(cuid())
+  voucherNo     String      @unique // 凭证号
+  entryDate     DateTime    // 入账日期
+  description   String      // 摘要
+  period        String      // YYYY-MM 会计期间
+  status        JournalStatus @default(DRAFT)
+  attachments   String[]    // 附件 URL 数组
+  createdById   String?
+  postedAt      DateTime?
+  reversedAt    DateTime?
+
+  createdBy     User?           @relation(fields: [createdById], references: [id])
+  lines         CosTableJournalLine[]
+  ledgerEntries CosTableLedger[]
+
+  @@index([period, status])
+  @@index([entryDate])
+  @@map("cos_journal_entries")
+}
+
+model CosTableJournalLine {
+  id          String   @id @default(cuid())
+  entryId     String
+  accountId   String
+  lineNum     Int      @default(0) // 显示顺序
+  description String   // 行描述
+  debit       Decimal  @default(0.0) @db.Decimal(18, 4)
+  credit      Decimal  @default(0.0) @db.Decimal(18, 4)
+  notes       String   @default("")
+
+  entry         CosTableJournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  account       CosTableAccount      @relation(fields: [accountId], references: [id])
+
+  @@index([entryId, lineNum])
+  @@index([accountId])
+  @@map("cos_journal_lines")
+}
+
+model CosTableLedger {
+  id          String   @id @default(cuid())
+  accountId   String
+  entryId     String?  // 过账时关联 EntryID
+  date        DateTime
+  voucherNo   String?  // 凭证号引用
+  description String
+  debit       Decimal  @default(0.0) @db.Decimal(18, 4)
+  credit      Decimal  @default(0.0) @db.Decimal(18, 4)
+  balance     Decimal  @default(0.0) @db.Decimal(18, 4) // 累计余额
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  account     CosTableAccount        @relation(fields: [accountId], references: [id])
+  entry       CosTableJournalEntry?  @relation(fields: [entryId], references: [id])
+
+  @@index([accountId, date])
+  @@index([date])
+  @@index([voucherNo])
+  @@map("cos_ledger")
+}
+
+model CosTableAccountBalance {
+  id            String   @id @default(cuid())
+  accountId     String
+  period        String   // YYYY-MM
+  openingDebit  Decimal  @default(0.0) @db.Decimal(18, 4)
+  openingCredit Decimal  @default(0.0) @db.Decimal(18, 4)
+  closingDebit  Decimal  @default(0.0) @db.Decimal(18, 4)
+  closingCredit Decimal  @default(0.0) @db.Decimal(18, 4)
+  endingBalance Decimal  @default(0.0) @db.Decimal(18, 4) // 期末余额（带符号）
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  account       CosTableAccount @relation(fields: [accountId], references: [id])
+
+  @@unique([accountId, period])
+  @@index([period])
+  @@map("cos_account_balances")
+}
+
+model CosTableExchangeRate {
+  id            String   @id @default(cuid())
+  fromCurrency  String   // HKD, USD, RMB
+  toCurrency    String
+  rate          Decimal  @db.Decimal(10, 6)
+  effectiveDate DateTime
+  isActive      Boolean  @default(true)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([fromCurrency, toCurrency, effectiveDate])
+  @@index([fromCurrency, toCurrency])
+  @@map("cos_exchange_rates")
 }

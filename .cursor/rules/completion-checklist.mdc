@@ -15,11 +15,10 @@ Fix all type errors before finishing. Do not leave `any` casts as a shortcut.
 
 ## 2. Prisma (only if schema.prisma was changed)
 ```bash
-npx prisma generate
 npx prisma migrate dev --name <short-description>
 ```
-Schema changes and their migration must be committed together.
-If only adding fields to existing models, prefer `prisma db push` in dev and a proper migration for prod.
+`migrate dev` generates the client automatically. Never use `db push` — it bypasses migration history.
+Schema changes and their migration files must always be committed together.
 
 ## 3. Build check (for larger changes)
 ```bash

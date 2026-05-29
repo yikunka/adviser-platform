@@ -1,0 +1,93 @@
+---
+description: Rules for all Prisma schema changes and database migrations in this project.
+alwaysApply: true
+---
+
+# Prisma Migration Rules
+
+This project uses **PostgreSQL** via Prisma ORM. Follow these rules exactly whenever you touch `schema.prisma` or the database.
+
+---
+
+## The only permitted workflow
+
+```
+1. Edit prisma/schema.prisma
+2. npx prisma migrate dev --name <short-kebab-description>
+3. Commit schema.prisma AND the new migration folder together
+```
+
+`migrate dev` does three things in one command: validates the schema, creates the SQL migration file, and regenerates the Prisma client. Do not split these steps.
+
+---
+
+## Hard rules — never do these
+
+| ❌ Forbidden | ✅ Instead |
+|---|---|
+| `prisma db push` | `prisma migrate dev --name ...` |
+| Write migration SQL by hand | Let Prisma generate it |
+| Run `prisma generate` without `migrate dev` after a schema change | Always use `migrate dev` |
+| Delete or rename migration files | Migration files are permanent history |
+| Commit schema.prisma without the matching migration folder | Always commit them together |
+
+---
+
+## Database is PostgreSQL — not SQLite
+
+If you ever need to write raw SQL (e.g. in a `$queryRaw` or a seed script), use PostgreSQL syntax:
+
+| SQLite ❌ | PostgreSQL ✅ |
+|---|---|
+| `DATETIME` | `TIMESTAMP(3)` |
+| `REAL` | `DECIMAL(p,s)` |
+| `BOOLEAN DEFAULT 0 / 1` | `BOOLEAN DEFAULT false / true` |
+| `INSERT OR IGNORE INTO` | `INSERT INTO ... ON CONFLICT DO NOTHING` |
+| `strftime(...)`, `randomblob(...)` | `NOW()`, `gen_random_uuid()` |
+| `AUTOINCREMENT` | `SERIAL` or Prisma's `@default(cuid())` |
+
+Prisma manages primary keys via `@default(cuid())` — never add custom `DEFAULT` expressions for `id` columns in raw SQL.
+
+---
+
+## Prisma relations always require both sides
+
+When you add a relation field on model A pointing to model B, you **must** also add the back-relation on model B. Prisma will refuse to generate if either side is missing.
+
+```prisma
+// ✅ Correct — both sides present
+model Order {
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+}
+model User {
+  orders Order[]   // ← back-relation required
+}
+```
+
+Run `npx prisma format` if unsure — it will tell you what's missing.
+
+---
+
+## If migrate dev reports a drift or conflict
+
+```bash
+# Check what's pending
+npx prisma migrate status
+
+# If a migration partially applied and failed:
+npx prisma migrate resolve --rolled-back <migration_name>
+# Fix the SQL, then:
+npx prisma migrate deploy
+```
+
+Never use `--force-reset` on the shared dev database without explicit approval from the user.
+
+---
+
+## After any Prisma change, verify
+
+```bash
+npx prisma migrate status   # should say "Database schema is up to date"
+npx tsc --noEmit            # zero errors
+```
