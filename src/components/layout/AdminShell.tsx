@@ -27,10 +27,11 @@ import {
   ClipboardList,
   Boxes,
   FolderTree,
-  BookOpen,
   Layers,
   FileText,
   Palette,
+  WalletCards,
+  FileBarChart,
 } from 'lucide-react'
 import type { AdminMenuKey } from '@/lib/auth/admin-access'
 import { pathnameToAdminMenuKey, adminMenusAllow } from '@/lib/auth/admin-access'
@@ -52,8 +53,16 @@ const NAV_GROUPS: {
       { href: '/admin/companies', key: 'companies', Icon: Building2 },
       { href: '/admin/kyc', key: 'kyc', Icon: ClipboardCheck },
       { href: '/admin/aml', key: 'aml', Icon: ShieldAlert },
-      { href: '/admin/financial', key: 'financial', Icon: BookOpen },
       { href: '/admin/invoices', key: 'invoices', Icon: FileText },
+    ],
+  },
+  {
+    labelKey: 'financial',
+    items: [
+      { href: '/admin/financial/accounts', key: 'financial', labelKey: 'financialAccounts', Icon: WalletCards },
+      { href: '/admin/financial/journal', key: 'financial', labelKey: 'financialJournal', Icon: FileText },
+      { href: '/admin/financial/ledger', key: 'financial', labelKey: 'financialLedger', Icon: Layers },
+      { href: '/admin/financial/reports', key: 'financial', labelKey: 'financialReports', Icon: FileBarChart },
     ],
   },
   {

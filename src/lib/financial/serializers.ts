@@ -116,6 +116,8 @@ export function serializeJournalEntry(entry: {
 export function serializeLedgerEntry(entry: {
   id: string
   accountId: string
+  companyId?: string | null
+  groupId?: string | null
   lineNum?: number
   date: Date
   voucherNo: string
@@ -124,10 +126,16 @@ export function serializeLedgerEntry(entry: {
   credit: Decimalish
   balance: Decimalish | number
   account: { id: string; code: string; name: string; type: AccountType }
+  company?: { id: string; nameEn: string; companyCode: string | null } | null
+  group?: { id: string; name: string } | null
 }) {
   return {
     id: entry.id,
     accountId: entry.accountId,
+    companyId: entry.companyId ?? null,
+    groupId: entry.groupId ?? null,
+    company: entry.company ?? null,
+    group: entry.group ?? null,
     accountCode: entry.account.code,
     accountName: entry.account.name,
     accountType: entry.account.type,

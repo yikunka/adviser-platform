@@ -274,6 +274,7 @@ model ClientEntityGroup {
   companies       Company[]
   members         ClientEntityGroupMember[]
   journalEntries  JournalEntry[]
+  ledgerEntries   Ledger[]
 
   @@index([name])
   @@map("client_entity_groups")
@@ -345,6 +346,7 @@ model Company {
   serviceOrders          ServiceOrder[]
   auditLogs              AuditLog[]                 @relation("CompanyAuditLog")
   journalEntries         JournalEntry[]
+  ledgerEntries          Ledger[]
   invoices               Invoice[]
 
   @@index([pendingClientEmail])
@@ -1710,6 +1712,8 @@ model Ledger {
   id          String   @id @default(cuid())
   accountId   String
   entryId     String?
+  companyId   String?
+  groupId     String?
   lineNum     Int      @default(0)
   date        DateTime
   voucherNo   String
@@ -1720,8 +1724,12 @@ model Ledger {
 
   account     FinAccount    @relation(fields: [accountId], references: [id])
   entry       JournalEntry? @relation(fields: [entryId], references: [id])
+  company     Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  group       ClientEntityGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   @@index([accountId, date, lineNum])
+  @@index([companyId, accountId, date, lineNum])
+  @@index([groupId, accountId, date, lineNum])
   @@index([date])
   @@index([voucherNo])
   @@map("adv_ledger")

@@ -6,6 +6,12 @@ import { prisma } from '@/lib/db/prisma'
 import { journalEntryCreateSchema, journalEntryFilterSchema } from '@/lib/financial/schemas'
 import { serializeJournalEntry } from '@/lib/financial/serializers'
 import { resolveJournalCompanyScope } from '@/lib/entity-groups/journal'
+import {
+  assertCompanyAccessible,
+  assertGroupAccessible,
+  groupIdsFromAccess,
+  resolveEntityGroupAccess,
+} from '@/lib/entity-groups/access'
 import { generateVoucherNo, parseYmdDate, periodFromDate, validateBalance } from '@/lib/financial/utils'
 
 function apiError(error: string, status = 400) {
@@ -23,7 +29,7 @@ function validateJournalLines(lines: { debit: number; credit: number }[]) {
 }
 
 export async function GET(req: NextRequest) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'financial' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
   if (error) return error
 
   const parsed = journalEntryFilterSchema.safeParse({
@@ -35,7 +41,18 @@ export async function GET(req: NextRequest) {
   })
   if (!parsed.success) return apiError('Invalid journal filters.')
 
+  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
+  if (parsed.data.companyId && !(await assertCompanyAccessible(access, parsed.data.companyId))) {
+    return apiError('Forbidden', 403)
+  }
+  if (parsed.data.groupId && !(await assertGroupAccessible(access, parsed.data.groupId))) {
+    return apiError('Forbidden', 403)
+  }
+
+  const restrictedGroupIds = groupIdsFromAccess(access)
+
   const where: Prisma.JournalEntryWhereInput = {
+    ...(!parsed.data.companyId && !parsed.data.groupId && restrictedGroupIds ? { groupId: { in: restrictedGroupIds } } : {}),
     ...(parsed.data.period ? { period: parsed.data.period } : {}),
     ...(parsed.data.status ? { status: parsed.data.status } : {}),
     ...(parsed.data.companyId ? { companyId: parsed.data.companyId } : {}),
@@ -53,6 +70,8 @@ export async function GET(req: NextRequest) {
   const entries = await prisma.journalEntry.findMany({
     where,
     include: {
+      company: { select: { id: true, nameEn: true, companyCode: true } },
+      group: { select: { id: true, name: true } },
       createdBy: { select: { id: true, nameEn: true, email: true } },
       lines: {
         include: { account: { select: { id: true, code: true, name: true, type: true } } },
@@ -72,8 +91,9 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null)
   const parsed = journalEntryCreateSchema.safeParse(body)
   if (!parsed.success) {
+    const message = parsed.error.issues[0]?.message || 'Please check the journal entry form.'
     return NextResponse.json(
-      { error: 'Invalid journal entry input', toast: 'Please check the journal entry form.', details: parsed.error.flatten() },
+      { error: 'Invalid journal entry input', toast: message, details: parsed.error.flatten() },
       { status: 400 },
     )
   }
@@ -88,7 +108,12 @@ export async function POST(req: NextRequest) {
     return apiError('One or more selected accounts do not exist.', 400)
   }
 
-  const companyScope = await resolveJournalCompanyScope(parsed.data.companyId ?? null)
+  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
+  if (!(await assertCompanyAccessible(access, parsed.data.companyId))) {
+    return apiError('Forbidden', 403)
+  }
+  const companyScope = await resolveJournalCompanyScope(parsed.data.companyId)
+  if (!companyScope.companyId) return apiError('Selected company does not exist.', 400)
 
   try {
     const entry = await prisma.$transaction(async tx => {
@@ -116,6 +141,8 @@ export async function POST(req: NextRequest) {
           },
         },
         include: {
+          company: { select: { id: true, nameEn: true, companyCode: true } },
+          group: { select: { id: true, name: true } },
           createdBy: { select: { id: true, nameEn: true, email: true } },
           lines: {
             include: { account: { select: { id: true, code: true, name: true, type: true } } },

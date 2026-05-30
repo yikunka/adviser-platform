@@ -20,10 +20,21 @@ type JournalEntry = JournalEntryDetails & JournalEntryForForm & {
   voucherNo: string
   date: string
   description: string
+  groupId?: string | null
+  company?: { id: string; nameEn: string; companyCode: string | null } | null
+  group?: { id: string; name: string } | null
   status: 'DRAFT' | 'POSTED' | 'CANCELLED'
   totalAmount: number
   createdBy: string
   createdAt: string
+}
+
+type ScopeCompany = {
+  id: string
+  nameEn: string
+  companyCode: string | null
+  groupId: string | null
+  group?: { id: string; name: string } | null
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -38,6 +49,10 @@ export default function AdminFinancialJournalPage() {
   const [search, setSearch] = useState('')
   const [filterPeriod, setFilterPeriod] = useState('')
   const [filterStatus, setFilterStatus] = useState('ALL')
+  const [filterGroupId, setFilterGroupId] = useState('ALL')
+  const [filterCompanyId, setFilterCompanyId] = useState('ALL')
+  const [groups, setGroups] = useState<{ id: string; name: string }[]>([])
+  const [companies, setCompanies] = useState<ScopeCompany[]>([])
   const [page, setPage] = useState(1)
   const [formOpen, setFormOpen] = useState(false)
   const [viewOpen, setViewOpen] = useState(false)
@@ -52,6 +67,8 @@ export default function AdminFinancialJournalPage() {
       const params = new URLSearchParams()
       if (filterPeriod) params.append('period', filterPeriod)
       if (filterStatus !== 'ALL') params.append('status', filterStatus)
+      if (filterGroupId !== 'ALL') params.append('groupId', filterGroupId)
+      if (filterCompanyId !== 'ALL') params.append('companyId', filterCompanyId)
       if (params.toString()) url += '?' + params.toString()
       
       const res = await fetch(url)
@@ -63,11 +80,22 @@ export default function AdminFinancialJournalPage() {
     } finally {
       setLoading(false)
     }
-  }, [filterPeriod, filterStatus])
+  }, [filterPeriod, filterStatus, filterGroupId, filterCompanyId])
 
   useEffect(() => {
     fetchEntries()
   }, [fetchEntries])
+
+  useEffect(() => {
+    fetch('/api/admin/financial/scope')
+      .then(async res => {
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Failed to load financial scope')
+        setGroups(data.groups || [])
+        setCompanies(data.companies || [])
+      })
+      .catch(error => toast.error(error instanceof Error ? error.message : 'Failed to load financial scope'))
+  }, [])
 
   function openCreateForm() {
     setEditingEntry(null)
@@ -116,8 +144,14 @@ export default function AdminFinancialJournalPage() {
     (e.voucherNo.toLowerCase().includes(search.toLowerCase()) ||
      e.description.toLowerCase().includes(search.toLowerCase())) &&
     (filterStatus === 'ALL' || e.status === filterStatus) &&
+    (filterGroupId === 'ALL' || e.groupId === filterGroupId) &&
+    (filterCompanyId === 'ALL' || e.companyId === filterCompanyId) &&
     (!filterPeriod || e.date.startsWith(filterPeriod))
   )
+
+  const companyOptions = filterGroupId === 'ALL'
+    ? companies
+    : companies.filter(company => company.groupId === filterGroupId)
 
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize)
   const totalPages = Math.ceil(filtered.length / pageSize)
@@ -171,6 +205,36 @@ export default function AdminFinancialJournalPage() {
                 <SelectItem value="CANCELLED">Cancelled</SelectItem>
               </SelectContent>
             </Select>
+            <Select
+              value={filterGroupId}
+              onValueChange={value => {
+                setFilterGroupId(value ?? 'ALL')
+                setFilterCompanyId('ALL')
+              }}
+            >
+              <SelectTrigger className="w-[190px]" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
+                <SelectValue placeholder="Entity Group" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Groups</SelectItem>
+                {groups.map(group => (
+                  <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterCompanyId} onValueChange={value => setFilterCompanyId(value ?? 'ALL')}>
+              <SelectTrigger className="w-[220px]" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
+                <SelectValue placeholder="Client Company" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Companies</SelectItem>
+                {companyOptions.map(company => (
+                  <SelectItem key={company.id} value={company.id}>
+                    {company.companyCode ? `${company.companyCode} - ` : ''}{company.nameEn}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent>
@@ -185,6 +249,7 @@ export default function AdminFinancialJournalPage() {
                   <TableRow>
                     <TableHead>Voucher No</TableHead>
                     <TableHead>Date</TableHead>
+                    <TableHead>Company</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Total Amount</TableHead>
@@ -196,6 +261,12 @@ export default function AdminFinancialJournalPage() {
                     <TableRow key={entry.id}>
                       <TableCell className="font-mono">{entry.voucherNo}</TableCell>
                       <TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell>
+                      <TableCell className="max-w-[180px]">
+                        <div className="truncate">{entry.company?.nameEn ?? 'Unassigned'}</div>
+                        {entry.company?.companyCode ? (
+                          <div className="text-xs text-muted-foreground">{entry.company.companyCode}</div>
+                        ) : null}
+                      </TableCell>
                       <TableCell className="max-w-[200px] truncate">{entry.description}</TableCell>
                       <TableCell>
                         <Badge variant="outline" style={{ borderColor: STATUS_COLORS[entry.status], color: STATUS_COLORS[entry.status] }}>

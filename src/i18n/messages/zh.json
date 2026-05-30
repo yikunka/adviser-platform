@@ -17,6 +17,10 @@
     "entities": "客戶實體",
     "aml": "AML篩查",
     "financial": "財務",
+    "financialAccounts": "會計科目",
+    "financialJournal": "日記賬",
+    "financialLedger": "總賬",
+    "financialReports": "財務報表",
     "invoices": "發票",
     "settings": "設定",
     "users": "客戶帳號管理",
@@ -601,6 +605,7 @@
     "nav": {
       "main": "主要",
       "adviser": "Advise",
+      "financial": "財務",
       "invoice": "發票",
       "sfsDiamond": "SFS Diamond",
       "sfsInvoices": "SFS 發票",

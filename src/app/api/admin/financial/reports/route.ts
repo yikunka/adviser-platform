@@ -2,13 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/rbac'
 import { buildFinancialReports } from '@/lib/financial/reports'
 import { financialReportFilterSchema } from '@/lib/financial/schemas'
+import {
+  assertCompanyAccessible,
+  assertGroupAccessible,
+  groupIdsFromAccess,
+  resolveEntityGroupAccess,
+} from '@/lib/entity-groups/access'
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
 }
 
 export async function GET(req: NextRequest) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'financial' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
   if (error) return error
 
   const period = req.nextUrl.searchParams.get('period')
@@ -20,9 +26,17 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
+    if (parsed.data.companyId && !(await assertCompanyAccessible(access, parsed.data.companyId))) {
+      return apiError('Forbidden', 403)
+    }
+    if (parsed.data.groupId && !(await assertGroupAccessible(access, parsed.data.groupId))) {
+      return apiError('Forbidden', 403)
+    }
     const reports = await buildFinancialReports(parsed.data.period, {
       companyId: parsed.data.companyId,
       groupId: parsed.data.groupId,
+      groupIds: groupIdsFromAccess(access) ?? undefined,
     })
     return NextResponse.json({ reports })
   } catch (err) {

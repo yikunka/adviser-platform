@@ -38,30 +38,29 @@ export default function AdminFinancialReportsPage() {
   const [groupId, setGroupId] = useState('')
   const [companyId, setCompanyId] = useState('')
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([])
-  const [companies, setCompanies] = useState<{ id: string; nameEn: string }[]>([])
+  const [companies, setCompanies] = useState<{ id: string; nameEn: string; groupId: string | null; companyCode: string | null }[]>([])
   const [reports, setReports] = useState<FinancialReportsBundle | null>(null)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    fetch('/api/admin/entity-groups?limit=100')
-      .then(r => r.json())
-      .then(json => setGroups((json.groups ?? []).map((g: { id: string; name: string }) => ({ id: g.id, name: g.name }))))
-      .catch(() => {})
+    fetch('/api/admin/financial/scope')
+      .then(async r => {
+        const json = await r.json()
+        if (!r.ok) throw new Error(json.error || 'Failed to load financial scope')
+        setGroups((json.groups ?? []).map((g: { id: string; name: string }) => ({ id: g.id, name: g.name })))
+        setCompanies((json.companies ?? []).map((c: { id: string; nameEn: string; groupId: string | null; companyCode: string | null }) => ({
+          id: c.id,
+          nameEn: c.nameEn,
+          groupId: c.groupId,
+          companyCode: c.companyCode,
+        })))
+      })
+      .catch(error => toast.error(error instanceof Error ? error.message : 'Failed to load financial scope'))
   }, [])
 
-  useEffect(() => {
-    if (groupId) {
-      fetch(`/api/admin/entity-groups/${groupId}`)
-        .then(r => r.json())
-        .then(json => setCompanies((json.companies ?? []).map((c: { id: string; nameEn: string }) => ({ id: c.id, nameEn: c.nameEn }))))
-        .catch(() => setCompanies([]))
-      return
-    }
-    fetch('/api/admin/companies?page=1')
-      .then(r => r.json())
-      .then(json => setCompanies((json.companies ?? []).map((c: { id: string; nameEn: string }) => ({ id: c.id, nameEn: c.nameEn }))))
-      .catch(() => setCompanies([]))
-  }, [groupId])
+  const companyOptions = groupId
+    ? companies.filter(company => company.groupId === groupId)
+    : companies
 
   const fetchReports = useCallback(async () => {
     setLoading(true)
@@ -151,7 +150,11 @@ export default function AdminFinancialReportsPage() {
               style={{ background: '#0E0E0A', border: '1px solid #2A2418', color: '#F0EAD8' }}
             >
               <option value="">All companies</option>
-              {companies.map(c => <option key={c.id} value={c.id}>{c.nameEn}</option>)}
+              {companyOptions.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.companyCode ? `${c.companyCode} - ` : ''}{c.nameEn}
+                </option>
+              ))}
             </select>
             <Button size="sm" onClick={fetchReports} disabled={loading} style={{ background: '#C9A96E', color: '#0A0805' }}>
               <FileBarChart size={15} className="mr-2" />

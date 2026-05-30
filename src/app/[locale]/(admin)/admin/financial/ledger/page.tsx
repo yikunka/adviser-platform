@@ -17,6 +17,8 @@ type LedgerEntry = {
   id: string
   accountCode: string
   accountName: string
+  company?: { id: string; nameEn: string; companyCode: string | null } | null
+  group?: { id: string; name: string } | null
   date: string
   voucherNo: string
   description: string
@@ -25,11 +27,22 @@ type LedgerEntry = {
   balance: number
 }
 
+type ScopeCompany = {
+  id: string
+  nameEn: string
+  companyCode: string | null
+  groupId: string | null
+}
+
 export default function AdminFinancialLedgerPage() {
   const [ledgers, setLedgers] = useState<LedgerEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [filterAccountType, setFilterAccountType] = useState('ALL')
   const [filterPeriod, setFilterPeriod] = useState('')
+  const [filterGroupId, setFilterGroupId] = useState('ALL')
+  const [filterCompanyId, setFilterCompanyId] = useState('ALL')
+  const [groups, setGroups] = useState<{ id: string; name: string }[]>([])
+  const [companies, setCompanies] = useState<ScopeCompany[]>([])
   const [voucherNo, setVoucherNo] = useState('')
 
   const fetchLedgers = useCallback(async () => {
@@ -39,6 +52,8 @@ export default function AdminFinancialLedgerPage() {
       const params = new URLSearchParams()
       if (filterAccountType !== 'ALL') params.append('accountType', filterAccountType)
       if (filterPeriod) params.append('period', filterPeriod)
+      if (filterGroupId !== 'ALL') params.append('groupId', filterGroupId)
+      if (filterCompanyId !== 'ALL') params.append('companyId', filterCompanyId)
       if (voucherNo) params.append('voucherNo', voucherNo)
       if (params.toString()) url += '?' + params.toString()
       
@@ -51,11 +66,26 @@ export default function AdminFinancialLedgerPage() {
     } finally {
       setLoading(false)
     }
-  }, [filterAccountType, filterPeriod, voucherNo])
+  }, [filterAccountType, filterPeriod, filterGroupId, filterCompanyId, voucherNo])
 
   useEffect(() => {
     fetchLedgers()
   }, [fetchLedgers])
+
+  useEffect(() => {
+    fetch('/api/admin/financial/scope')
+      .then(async res => {
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Failed to load financial scope')
+        setGroups(data.groups || [])
+        setCompanies(data.companies || [])
+      })
+      .catch(error => toast.error(error instanceof Error ? error.message : 'Failed to load financial scope'))
+  }, [])
+
+  const companyOptions = filterGroupId === 'ALL'
+    ? companies
+    : companies.filter(company => company.groupId === filterGroupId)
 
   function exportToCSV() {
     const headers = ['Date', 'Voucher No', 'Description', 'Debit', 'Credit', 'Balance']
@@ -117,6 +147,36 @@ export default function AdminFinancialLedgerPage() {
               className="max-w-[160px]"
               style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
             />
+            <Select
+              value={filterGroupId}
+              onValueChange={value => {
+                setFilterGroupId(value ?? 'ALL')
+                setFilterCompanyId('ALL')
+              }}
+            >
+              <SelectTrigger className="w-[190px]" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
+                <SelectValue placeholder="Entity Group" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Groups</SelectItem>
+                {groups.map(group => (
+                  <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterCompanyId} onValueChange={value => setFilterCompanyId(value ?? 'ALL')}>
+              <SelectTrigger className="w-[220px]" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
+                <SelectValue placeholder="Client Company" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Companies</SelectItem>
+                {companyOptions.map(company => (
+                  <SelectItem key={company.id} value={company.id}>
+                    {company.companyCode ? `${company.companyCode} - ` : ''}{company.nameEn}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Input
               value={voucherNo}
               onChange={e => setVoucherNo(e.target.value)}
@@ -141,6 +201,7 @@ export default function AdminFinancialLedgerPage() {
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Voucher No</TableHead>
+                    <TableHead>Company</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>Debit</TableHead>
                     <TableHead>Credit</TableHead>
@@ -152,6 +213,12 @@ export default function AdminFinancialLedgerPage() {
                     <TableRow key={entry.id} style={{ background: idx % 2 === 0 ? 'transparent' : '#0E0E0A' }}>
                       <TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell>
                       <TableCell className="font-mono">{entry.voucherNo}</TableCell>
+                      <TableCell className="max-w-[180px]">
+                        <div className="truncate">{entry.company?.nameEn ?? 'Unassigned'}</div>
+                        {entry.company?.companyCode ? (
+                          <div className="text-xs text-muted-foreground">{entry.company.companyCode}</div>
+                        ) : null}
+                      </TableCell>
                       <TableCell className="max-w-[200px] truncate">{entry.description}</TableCell>
                       <TableCell className="text-right">{entry.debit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                       <TableCell className="text-right">{entry.credit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>

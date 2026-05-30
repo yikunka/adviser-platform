@@ -40,7 +40,7 @@ export const journalLineSchema = z.object({
 export const journalEntryCreateSchema = z.object({
   entryDate: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
   description: z.string().trim().min(1, 'Description is required').max(1000),
-  companyId: nullableIdSchema.optional(),
+  companyId: z.string().cuid('Company is required'),
   lines: z.array(journalLineSchema).min(2, 'At least two lines are required'),
   attachments: z.array(z.string().trim().min(1)).optional().default([]),
 })
@@ -62,6 +62,8 @@ export const ledgerFilterSchema = z.object({
   accountType: accountTypeSchema.optional(),
   period: z.string().regex(/^\d{4}-\d{2}$/).optional(),
   voucherNo: z.string().trim().max(100).optional(),
+  companyId: z.string().cuid().optional(),
+  groupId: z.string().cuid().optional(),
 })
 
 export const financialReportFilterSchema = z.object({

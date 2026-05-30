@@ -5,6 +5,12 @@ import { prisma } from '@/lib/db/prisma'
 import { ledgerFilterSchema } from '@/lib/financial/schemas'
 import { serializeLedgerEntry } from '@/lib/financial/serializers'
 import { calculateRunningBalance } from '@/lib/financial/utils'
+import {
+  assertCompanyAccessible,
+  assertGroupAccessible,
+  groupIdsFromAccess,
+  resolveEntityGroupAccess,
+} from '@/lib/entity-groups/access'
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
@@ -18,7 +24,7 @@ function periodRange(period: string) {
 }
 
 export async function GET(req: NextRequest) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'financial' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
   if (error) return error
 
   const rawAccountId = req.nextUrl.searchParams.get('accountId') || undefined
@@ -27,21 +33,38 @@ export async function GET(req: NextRequest) {
     accountType: req.nextUrl.searchParams.get('accountType') || undefined,
     period: req.nextUrl.searchParams.get('period') || undefined,
     voucherNo: req.nextUrl.searchParams.get('voucherNo') || undefined,
+    companyId: req.nextUrl.searchParams.get('companyId') || undefined,
+    groupId: req.nextUrl.searchParams.get('groupId') || undefined,
   })
   if (!parsed.success) return apiError('Invalid ledger filters.')
 
+  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
+  if (parsed.data.companyId && !(await assertCompanyAccessible(access, parsed.data.companyId))) {
+    return apiError('Forbidden', 403)
+  }
+  if (parsed.data.groupId && !(await assertGroupAccessible(access, parsed.data.groupId))) {
+    return apiError('Forbidden', 403)
+  }
+  const restrictedGroupIds = groupIdsFromAccess(access)
   const range = parsed.data.period ? periodRange(parsed.data.period) : null
   const where: Prisma.LedgerWhereInput = {
     ...(parsed.data.accountId ? { accountId: parsed.data.accountId } : {}),
     ...(parsed.data.accountType ? { account: { type: parsed.data.accountType } } : {}),
     ...(parsed.data.voucherNo ? { voucherNo: { contains: parsed.data.voucherNo, mode: 'insensitive' } } : {}),
+    ...(parsed.data.companyId ? { companyId: parsed.data.companyId } : {}),
+    ...(parsed.data.groupId ? { groupId: parsed.data.groupId } : {}),
+    ...(!parsed.data.companyId && !parsed.data.groupId && restrictedGroupIds ? { groupId: { in: restrictedGroupIds } } : {}),
     ...(range ? { date: { gte: range.start, lt: range.end } } : {}),
     entry: { status: 'POSTED' },
   }
 
   const ledgers = await prisma.ledger.findMany({
     where,
-    include: { account: { select: { id: true, code: true, name: true, type: true } } },
+    include: {
+      account: { select: { id: true, code: true, name: true, type: true } },
+      company: { select: { id: true, nameEn: true, companyCode: true } },
+      group: { select: { id: true, name: true } },
+    },
     orderBy: [{ date: 'asc' }, { lineNum: 'asc' }, { voucherNo: 'asc' }],
   })
 

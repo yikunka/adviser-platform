@@ -6,8 +6,11 @@ import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { serializeJournalEntry } from '@/lib/financial/serializers'
 import { roundMoney, signedLineAmount } from '@/lib/financial/utils'
+import { assertGroupAccessible, resolveEntityGroupAccess } from '@/lib/entity-groups/access'
 
 const journalInclude = {
+  company: { select: { id: true, nameEn: true, companyCode: true } },
+  group: { select: { id: true, name: true } },
   createdBy: { select: { id: true, nameEn: true, email: true } },
   lines: {
     include: { account: { select: { id: true, code: true, name: true, type: true } } },
@@ -23,6 +26,9 @@ async function postJournalEntry(id: string, session: Session) {
   const before = await prisma.journalEntry.findUnique({ where: { id }, include: journalInclude })
   if (!before) return apiError('Journal entry not found.', 404)
   if (before.status !== 'DRAFT') return apiError('Only pending (draft) journal entries can be posted.')
+  if (!before.companyId) return apiError('Journal entry must be assigned to a company before posting.')
+  const access = await resolveEntityGroupAccess(session.user.id, session.user.role)
+  if (!(await assertGroupAccessible(access, before.groupId))) return apiError('Forbidden', 403)
 
   const sortedLines = before.lines.slice().sort((a, b) => a.lineNum - b.lineNum)
 
@@ -35,6 +41,7 @@ async function postJournalEntry(id: string, session: Session) {
         const previous = await tx.ledger.findFirst({
           where: {
             accountId: line.accountId,
+            companyId: before.companyId,
             OR: [
               { date: { lt: before.entryDate } },
               { date: before.entryDate, lineNum: { lt: line.lineNum } },
@@ -59,6 +66,8 @@ async function postJournalEntry(id: string, session: Session) {
         data: {
           accountId: line.accountId,
           entryId: id,
+          companyId: before.companyId,
+          groupId: before.groupId,
           lineNum: line.lineNum,
           date: before.entryDate,
           voucherNo: before.voucherNo,

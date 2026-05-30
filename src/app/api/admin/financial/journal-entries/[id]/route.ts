@@ -6,8 +6,12 @@ import { prisma } from '@/lib/db/prisma'
 import { journalEntryUpdateSchema } from '@/lib/financial/schemas'
 import { serializeJournalEntry } from '@/lib/financial/serializers'
 import { parseYmdDate, periodFromDate, validateBalance } from '@/lib/financial/utils'
+import { assertCompanyAccessible, assertGroupAccessible, resolveEntityGroupAccess } from '@/lib/entity-groups/access'
+import { resolveJournalCompanyScope } from '@/lib/entity-groups/journal'
 
 const journalInclude = {
+  company: { select: { id: true, nameEn: true, companyCode: true } },
+  group: { select: { id: true, name: true } },
   createdBy: { select: { id: true, nameEn: true, email: true } },
   lines: {
     include: { account: { select: { id: true, code: true, name: true, type: true } } },
@@ -33,12 +37,14 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'financial' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
   if (error) return error
 
   const { id } = await params
   const entry = await prisma.journalEntry.findUnique({ where: { id }, include: journalInclude })
   if (!entry) return apiError('Journal entry not found.', 404)
+  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
+  if (!(await assertGroupAccessible(access, entry.groupId))) return apiError('Forbidden', 403)
 
   return NextResponse.json({ entry: serializeJournalEntry(entry) })
 }
@@ -54,8 +60,9 @@ export async function PATCH(
   const body = await req.json().catch(() => null)
   const parsed = journalEntryUpdateSchema.safeParse(body)
   if (!parsed.success) {
+    const message = parsed.error.issues[0]?.message || 'Please check the journal entry form.'
     return NextResponse.json(
-      { error: 'Invalid journal entry input', toast: 'Please check the journal entry form.', details: parsed.error.flatten() },
+      { error: 'Invalid journal entry input', toast: message, details: parsed.error.flatten() },
       { status: 400 },
     )
   }
@@ -63,6 +70,8 @@ export async function PATCH(
   const before = await prisma.journalEntry.findUnique({ where: { id }, include: journalInclude })
   if (!before) return apiError('Journal entry not found.', 404)
   if (before.status !== 'DRAFT') return apiError('Only draft journal entries can be edited.')
+  const access = await resolveEntityGroupAccess(session.user.id, session.user.role)
+  if (!(await assertGroupAccessible(access, before.groupId))) return apiError('Forbidden', 403)
 
   if (parsed.data.lines) {
     const lineError = validateJournalLines(parsed.data.lines)
@@ -78,6 +87,13 @@ export async function PATCH(
 
   const entryDate = parsed.data.entryDate ? parseYmdDate(parsed.data.entryDate) : before.entryDate
   const description = parsed.data.description ?? before.description
+  const companyScope = parsed.data.companyId
+    ? await resolveJournalCompanyScope(parsed.data.companyId)
+    : { companyId: before.companyId, groupId: before.groupId }
+  if (parsed.data.companyId) {
+    if (!(await assertCompanyAccessible(access, parsed.data.companyId))) return apiError('Forbidden', 403)
+    if (!companyScope.companyId) return apiError('Selected company does not exist.', 400)
+  }
 
   const entry = await prisma.$transaction(async tx => {
     if (parsed.data.lines) {
@@ -89,6 +105,9 @@ export async function PATCH(
       data: {
         ...(parsed.data.entryDate ? { entryDate, period: periodFromDate(entryDate) } : {}),
         ...(parsed.data.description !== undefined ? { description } : {}),
+        ...(parsed.data.companyId !== undefined
+          ? { companyId: companyScope.companyId, groupId: companyScope.groupId }
+          : {}),
         ...(parsed.data.attachments !== undefined ? { attachments: parsed.data.attachments } : {}),
         ...(parsed.data.lines
           ? {
@@ -124,6 +143,8 @@ export async function DELETE(
   const before = await prisma.journalEntry.findUnique({ where: { id }, include: journalInclude })
   if (!before) return apiError('Journal entry not found.', 404)
   if (before.status === 'CANCELLED') return apiError('Journal entry is already cancelled.')
+  const access = await resolveEntityGroupAccess(session.user.id, session.user.role)
+  if (!(await assertGroupAccessible(access, before.groupId))) return apiError('Forbidden', 403)
 
   const entry = await prisma.$transaction(async tx => {
     await tx.ledger.deleteMany({ where: { entryId: id } })

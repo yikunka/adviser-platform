@@ -143,6 +143,7 @@ function isFinancingAccount(account: { code: string; type: AccountType }) {
 export type FinancialReportScope = {
   companyId?: string
   groupId?: string
+  groupIds?: string[]
 }
 
 async function aggregateLedgerMovements(
@@ -151,13 +152,14 @@ async function aggregateLedgerMovements(
   scope?: FinancialReportScope,
 ) {
   const where: {
-    entry: { status: 'POSTED'; companyId?: string; groupId?: string }
+    entry: { status: 'POSTED'; companyId?: string; groupId?: string | { in: string[] } }
     date?: { lt?: Date; gte?: Date }
   } = {
     entry: {
       status: 'POSTED',
       ...(scope?.companyId ? { companyId: scope.companyId } : {}),
       ...(scope?.groupId ? { groupId: scope.groupId } : {}),
+      ...(!scope?.companyId && !scope?.groupId && scope?.groupIds ? { groupId: { in: scope.groupIds } } : {}),
     },
   }
 

@@ -29,6 +29,14 @@ type Account = {
   type: string
 }
 
+type ScopeCompany = {
+  id: string
+  nameEn: string
+  companyCode: string | null
+  groupId: string | null
+  group?: { id: string; name: string } | null
+}
+
 type FormLine = {
   accountId: string
   description: string
@@ -41,6 +49,7 @@ export type JournalEntryForForm = {
   entryDate?: string
   date: string
   description: string
+  companyId?: string | null
   status: 'DRAFT' | 'POSTED' | 'CANCELLED'
   lines: {
     accountId: string
@@ -63,6 +72,19 @@ const labelClassName = 'text-[#EADDC3]'
 const fieldClassName = 'border-[#2A2418] bg-[#0E0E0A] text-[#FFF7E6] placeholder:text-[#9F927B]'
 const selectContentClassName = 'financial-select-content border-[#2A2418] bg-[#11110E] text-[#FFF7E6]'
 const secondaryButtonClassName = 'border-[#3A3428] bg-[#0E0E0A] text-[#FFF7E6] hover:bg-[#1E1A12] hover:text-[#FFF7E6]'
+const warningTextClassName = 'text-xs text-[#f59e0b]'
+
+function selectedCompanyLabel(companies: ScopeCompany[], id: string) {
+  const company = companies.find(row => row.id === id)
+  if (!company) return ''
+  return `${company.companyCode ? `${company.companyCode} - ` : ''}${company.nameEn}${company.group?.name ? ` · ${company.group.name}` : ''}`
+}
+
+function selectedAccountLabel(accounts: Account[], id: string) {
+  const account = accounts.find(row => row.id === id)
+  if (!account) return ''
+  return `${account.code} - ${account.name}`
+}
 
 function todayYmd() {
   return new Date().toISOString().slice(0, 10)
@@ -78,7 +100,9 @@ function numeric(value: string) {
 
 export function JournalEntryForm({ open, onOpenChange, entry, onSaved }: Props) {
   const [accounts, setAccounts] = useState<Account[]>([])
+  const [companies, setCompanies] = useState<ScopeCompany[]>([])
   const [entryDate, setEntryDate] = useState(todayYmd())
+  const [companyId, setCompanyId] = useState('NONE')
   const [description, setDescription] = useState('')
   const [lines, setLines] = useState<FormLine[]>([blankLine(), blankLine()])
   const [saving, setSaving] = useState(false)
@@ -87,6 +111,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, onSaved }: Props) 
   useEffect(() => {
     if (!open) return
     setEntryDate((entry?.entryDate ?? entry?.date ?? todayYmd()).slice(0, 10))
+    setCompanyId(entry?.companyId ?? 'NONE')
     setDescription(entry?.description ?? '')
     setLines(entry?.lines?.length
       ? entry.lines.map(line => ({
@@ -101,15 +126,30 @@ export function JournalEntryForm({ open, onOpenChange, entry, onSaved }: Props) 
   useEffect(() => {
     if (!open) return
     setLoadingAccounts(true)
-    fetch('/api/admin/financial/accounts')
-      .then(async res => {
+    Promise.all([
+      fetch('/api/admin/financial/accounts').then(async res => {
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || 'Failed to load accounts.')
-        setAccounts(data.accounts || [])
+        return data.accounts || []
+      }),
+      fetch('/api/admin/financial/scope').then(async res => {
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Failed to load companies.')
+        return data.companies || []
+      }),
+    ])
+      .then(([accountRows, companyRows]) => {
+        setAccounts(accountRows)
+        setCompanies(companyRows)
       })
       .catch(err => toast.error(err instanceof Error ? err.message : 'Failed to load accounts.'))
       .finally(() => setLoadingAccounts(false))
   }, [open])
+
+  useEffect(() => {
+    if (!open || entry || loadingAccounts || companyId !== 'NONE' || companies.length !== 1) return
+    setCompanyId(companies[0]!.id)
+  }, [companies, companyId, entry, loadingAccounts, open])
 
   const totals = useMemo(() => {
     const debit = lines.reduce((sum, line) => sum + numeric(line.debit), 0)
@@ -121,6 +161,14 @@ export function JournalEntryForm({ open, onOpenChange, entry, onSaved }: Props) 
     }
   }, [lines])
 
+  const hasCompany = companyId !== 'NONE'
+  const canSubmit = hasCompany && totals.balanced && !saving
+  const saveBlockedReason = !hasCompany
+    ? 'Select a client company before saving.'
+    : !totals.balanced
+      ? 'Total debit must equal total credit before saving.'
+      : ''
+
   function updateLine(index: number, patch: Partial<FormLine>) {
     setLines(current => current.map((line, lineIndex) => (lineIndex === index ? { ...line, ...patch } : line)))
   }
@@ -129,6 +177,10 @@ export function JournalEntryForm({ open, onOpenChange, entry, onSaved }: Props) 
     event.preventDefault()
     if (!description.trim()) {
       toast.error('Description is required.')
+      return
+    }
+    if (!hasCompany) {
+      toast.error('Please select the client company before saving this journal entry.')
       return
     }
     if (!totals.balanced) {
@@ -153,7 +205,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, onSaved }: Props) 
       const res = await fetch(entry ? `/api/admin/financial/journal-entries/${entry.id}` : '/api/admin/financial/journal-entries', {
         method: entry ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entryDate, description, lines: payloadLines }),
+        body: JSON.stringify({ entryDate, companyId, description, lines: payloadLines }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.toast || data.error || 'Failed to save journal entry.')
@@ -173,11 +225,29 @@ export function JournalEntryForm({ open, onOpenChange, entry, onSaved }: Props) 
       <DialogContent className={modalContentClassName}>
         <DialogHeader>
           <DialogTitle className="text-[#FFF7E6]">{entry ? 'Edit Journal Entry' : 'New Journal Entry'}</DialogTitle>
-          <DialogDescription className="text-[#B8AD98]">Enter a balanced accounting voucher.</DialogDescription>
+          <DialogDescription className="text-[#B8AD98]">
+            Entries are saved as Pending. Use Approve & Post to create ledger entries.
+          </DialogDescription>
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="grid gap-4 sm:grid-cols-[180px_1fr]">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" style={{ borderColor: '#f59e0b', color: '#f59e0b' }}>
+              Status: Pending
+            </Badge>
+            {!hasCompany && (
+              <Badge variant="outline" style={{ borderColor: '#f59e0b', color: '#f59e0b' }}>
+                Company required
+              </Badge>
+            )}
+            {!totals.balanced && (
+              <Badge variant="outline" style={{ borderColor: '#f59e0b', color: '#f59e0b' }}>
+                Debit/Credit not balanced
+              </Badge>
+            )}
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-[180px_minmax(220px,1fr)]">
             <div className="space-y-2">
               <Label className={labelClassName}>Date</Label>
               <DatePickerPopover
@@ -186,6 +256,32 @@ export function JournalEntryForm({ open, onOpenChange, entry, onSaved }: Props) 
                 className={`${fieldClassName} border`}
               />
             </div>
+            <div className="space-y-2">
+              <Label className={labelClassName}>Client Company</Label>
+              <Select value={companyId} onValueChange={value => setCompanyId(value ?? 'NONE')}>
+                <SelectTrigger className={`w-full ${fieldClassName}`}>
+                  <SelectValue placeholder={loadingAccounts ? 'Loading...' : 'Select company'}>
+                    {companyId !== 'NONE' ? selectedCompanyLabel(companies, companyId) : undefined}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className={selectContentClassName}>
+                  <SelectItem value="NONE">Select company</SelectItem>
+                  {companies.map(company => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.companyCode ? `${company.companyCode} - ` : ''}{company.nameEn}
+                      {company.group?.name ? ` · ${company.group.name}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {companies.length === 0 ? (
+                <p className={warningTextClassName}>No accessible client companies. Create or assign a company before posting journals.</p>
+              ) : companyId === 'NONE' ? (
+                <p className={warningTextClassName}>Required. Financial reports and ledgers are scoped by company.</p>
+              ) : null}
+            </div>
+          </div>
+          <div className="space-y-2">
             <div className="space-y-2">
               <Label htmlFor="journal-description" className={labelClassName}>Description</Label>
               <Textarea
@@ -204,7 +300,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, onSaved }: Props) 
               <span className="text-sm font-medium text-[#FFF7E6]">Line Items</span>
               {!totals.balanced && (
                 <Badge variant="outline" style={{ borderColor: '#f59e0b', color: '#f59e0b' }}>
-                  Imbalanced
+                  Difference: {(totals.debit - totals.credit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </Badge>
               )}
             </div>
@@ -237,7 +333,9 @@ export function JournalEntryForm({ open, onOpenChange, entry, onSaved }: Props) 
                     <TableCell>
                       <Select value={line.accountId} onValueChange={value => updateLine(index, { accountId: value ?? 'NONE' })}>
                         <SelectTrigger className={`w-full ${fieldClassName}`}>
-                          <SelectValue placeholder={loadingAccounts ? 'Loading...' : 'Account'} />
+                          <SelectValue placeholder={loadingAccounts ? 'Loading...' : 'Account'}>
+                            {line.accountId !== 'NONE' ? selectedAccountLabel(accounts, line.accountId) : undefined}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent className={selectContentClassName}>
                           <SelectItem value="NONE">Select account</SelectItem>
@@ -302,10 +400,13 @@ export function JournalEntryForm({ open, onOpenChange, entry, onSaved }: Props) 
           </div>
 
           <DialogFooter className={modalFooterClassName}>
+            {saveBlockedReason && (
+              <span className="mr-auto self-center text-xs text-[#f59e0b]">{saveBlockedReason}</span>
+            )}
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving} className={secondaryButtonClassName}>
               Cancel
             </Button>
-            <Button type="submit" disabled={saving || !totals.balanced} style={{ background: '#C9A96E', color: '#0A0805' }}>
+            <Button type="submit" disabled={!canSubmit} style={{ background: '#C9A96E', color: '#0A0805' }}>
               <Save size={14} />
               {saving ? 'Saving...' : 'Save'}
             </Button>

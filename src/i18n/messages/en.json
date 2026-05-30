@@ -17,6 +17,10 @@
     "entities": "Client Entities",
     "aml": "AML Screening",
     "financial": "Financial",
+    "financialAccounts": "Chart of Accounts",
+    "financialJournal": "Journal Entries",
+    "financialLedger": "General Ledger",
+    "financialReports": "Financial Statements",
     "invoices": "Invoices",
     "settings": "Settings",
     "users": "Customer Account Management",
@@ -601,6 +605,7 @@
     "nav": {
       "main": "Main",
       "adviser": "Advise",
+      "financial": "Financial",
       "invoice": "Invoice",
       "sfsDiamond": "SFS Diamond",
       "sfsInvoices": "SFS Invoices",
