@@ -1,5 +1,7 @@
 'use client'
 
+/* eslint-disable react-hooks/set-state-in-effect */
+
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
@@ -26,16 +28,15 @@ type PickerMaterial = {
   primaryNotes: string
 }
 
+// Semi-finished items are recipes whose category name contains "半成品"
 type PickerSemifinished = {
   id: string
   code: string
   name: string
-  description: string
-  category: string
-  stock: number
-  unit: string
-  unitPrice: number | null
-  sourceProductionOrder: { id: string; code: string; batchNo: string } | null
+  batchQuantity: number
+  unitCost: number | null
+  notes: string
+  category: { id: string; code: string; name: string }
 }
 
 type PickerMode = 'raw_material' | 'semi_finished'
@@ -122,18 +123,15 @@ function toEditableItemFromSemifinished(
   quantity = 0,
   notes = '',
 ): EditableItem {
-  const unitPrice = semifinished.unitPrice
+  const unitPrice = semifinished.unitCost
   const qty = quantity
   return {
     key: semifinished.id,
-    itemType: 'product_semifinished',
-    productSemifinishedId: semifinished.id,
+    itemType: 'recipe',
+    recipeId: semifinished.id,
     productionCode: semifinished.code,
     name: semifinished.name,
-    packageKg: null,
-    stock: semifinished.stock,
-    unit: semifinished.unit,
-    sourceOrderCode: semifinished.sourceProductionOrder?.code ?? null,
+    packageKg: semifinished.batchQuantity,
     quantity: qty,
     unitPrice,
     amount: computeItemAmount(qty, unitPrice),
@@ -154,17 +152,17 @@ export default function AdminCosmoCoatRecipeEditorPage() {
   const [pickerMode, setPickerMode] = useState<PickerMode>('raw_material')
   const [pickerMaterials, setPickerMaterials] = useState<PickerMaterial[]>([])
   const [pickerSemifinished, setPickerSemifinished] = useState<PickerSemifinished[]>([])
-  const [semifinishedCategories, setSemifinishedCategories] = useState<string[]>([])
+  const [semifinishedCategories, setSemifinishedCategories] = useState<{ id: string; name: string }[]>([])
+  const [semifinishedCategoryFilter, setSemifinishedCategoryFilter] = useState('')
   const [pickerLoading, setPickerLoading] = useState(false)
   const [attributeFilter, setAttributeFilter] = useState('RS')
-  const [semifinishedCategoryFilter, setSemifinishedCategoryFilter] = useState('Sol.')
   const [pickerSearch, setPickerSearch] = useState('')
   const [selectedPickerId, setSelectedPickerId] = useState<string | null>(null)
 
-  const pickerSemifinishedCategories = useMemo(() => {
-    const merged = new Set([...semifinishedCategories, semifinishedCategoryFilter].filter(Boolean))
-    return Array.from(merged).sort()
-  }, [semifinishedCategories, semifinishedCategoryFilter])
+  const displayedSemifinished = useMemo(() => {
+    if (!semifinishedCategoryFilter || pickerSearch.trim()) return pickerSemifinished
+    return pickerSemifinished.filter(s => s.category.id === semifinishedCategoryFilter)
+  }, [pickerSemifinished, semifinishedCategoryFilter, pickerSearch])
 
   const [categoryId, setCategoryId] = useState('')
   const [code, setCode] = useState('')
@@ -326,30 +324,35 @@ export default function AdminCosmoCoatRecipeEditorPage() {
   const loadPickerSemifinished = useCallback(async () => {
     setPickerLoading(true)
     try {
-      const params = new URLSearchParams({ limit: '200' })
+      const params = new URLSearchParams({ semiFinished: 'true', limit: '200' })
       const q = pickerSearch.trim()
-      if (q) {
-        params.set('q', q)
-      } else if (semifinishedCategoryFilter) {
-        params.set('category', semifinishedCategoryFilter)
-      }
-      const res = await fetch(`/api/admin/cosmocoat/product-semifinished?${params}`)
+      if (q) params.set('q', q)
+      if (!isNew) params.set('excludeId', recipeId)
+      const res = await fetch(`/api/admin/cosmocoat/recipes?${params}`)
       const data = await res.json()
       if (!res.ok) {
-        toast.error(data.error ?? '加载 Sol. 半成品失败')
+        toast.error(data.error ?? '加载半成品配方失败')
         return
       }
-      setPickerSemifinished(data.items ?? [])
-      const cats: string[] = data.categories ?? []
-      if (cats.length > 0) {
-        setSemifinishedCategories(cats)
+      const items: PickerSemifinished[] = data.items ?? []
+      setPickerSemifinished(items)
+      // Extract unique categories from returned items, preserving order
+      const catMap = new Map<string, { id: string; name: string }>()
+      for (const item of items) {
+        if (item.category?.id && !catMap.has(item.category.id)) {
+          catMap.set(item.category.id, { id: item.category.id, name: item.category.name })
+        }
       }
+      const cats = Array.from(catMap.values())
+      setSemifinishedCategories(cats)
+      // Auto-select first category if none selected yet
+      setSemifinishedCategoryFilter(prev => prev || (cats[0]?.id ?? ''))
     } catch {
-      toast.error('加载 Sol. 半成品失败')
+      toast.error('加载半成品配方失败')
     } finally {
       setPickerLoading(false)
     }
-  }, [pickerSearch, semifinishedCategoryFilter])
+  }, [pickerSearch, isNew, recipeId])
 
   useEffect(() => {
     if (isNew) {
@@ -393,12 +396,12 @@ export default function AdminCosmoCoatRecipeEditorPage() {
         toast.error('请先选择 Sol. 半成品')
         return
       }
-      if (items.some(item => item.itemType === 'product_semifinished' && item.productSemifinishedId === semifinished.id)) {
-        toast.error('该半成品已在配方中')
+      if (items.some(item => item.itemType === 'recipe' && item.recipeId === semifinished.id)) {
+        toast.error('该半成品配方已在配方中')
         return
       }
       setItems(prev => [...prev, { ...toEditableItemFromSemifinished(semifinished), key: crypto.randomUUID() }])
-      toast.success('已添加 Sol. 半成品')
+      toast.success('已添加半成品配方')
       return
     }
 
@@ -762,25 +765,27 @@ export default function AdminCosmoCoatRecipeEditorPage() {
                   {group.label}
                 </button>
               ))
-            ) : pickerSemifinishedCategories.length === 0 ? (
-              <p className="px-3 py-4 text-xs" style={{ color: '#5A5040' }}>暂无 Sol. 半成品分类</p>
+            ) : semifinishedCategories.length === 0 ? (
+              <p className="px-3 py-4 text-xs" style={{ color: '#5A5040' }}>暂无半成品分类</p>
             ) : (
-              pickerSemifinishedCategories.map(category => (
+              semifinishedCategories.map(cat => (
                 <button
-                  key={category}
+                  key={cat.id}
                   type="button"
                   onClick={() => {
                     setPickerSearch('')
                     setSelectedPickerId(null)
-                    setSemifinishedCategoryFilter(category)
+                    setSemifinishedCategoryFilter(cat.id)
                   }}
                   className="w-full text-left px-3 py-2 text-xs transition-colors"
                   style={{
-                    background: !pickerSearch.trim() && semifinishedCategoryFilter === category ? 'rgba(201,169,110,0.12)' : 'transparent',
-                    color: !pickerSearch.trim() && semifinishedCategoryFilter === category ? '#C9A96E' : 'var(--muted-foreground)',
+                    background: !pickerSearch.trim() && semifinishedCategoryFilter === cat.id
+                      ? 'rgba(201,169,110,0.12)' : 'transparent',
+                    color: !pickerSearch.trim() && semifinishedCategoryFilter === cat.id
+                      ? '#C9A96E' : 'var(--muted-foreground)',
                   }}
                 >
-                  {category}
+                  {cat.name}
                 </button>
               ))
             )}
@@ -862,10 +867,10 @@ export default function AdminCosmoCoatRecipeEditorPage() {
                   </table>
                 )
               ) : pickerLoading ? (
-                <p className="text-sm py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>加载 Sol. 半成品...</p>
-              ) : pickerSemifinished.length === 0 ? (
+                <p className="text-sm py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>加载半成品配方...</p>
+              ) : displayedSemifinished.length === 0 ? (
                 <p className="text-sm py-8 text-center" style={{ color: '#5A5040' }}>
-                  {pickerSearch.trim() ? '未找到匹配 Sol. 半成品' : '该分类下暂无 Sol. 半成品'}
+                  {pickerSearch.trim() ? '未找到匹配半成品配方' : '该分类下暂无半成品配方'}
                 </p>
               ) : (
                 <table className="w-full">
@@ -874,15 +879,14 @@ export default function AdminCosmoCoatRecipeEditorPage() {
                       <th style={th}>编号</th>
                       <th style={th}>名称</th>
                       <th style={th}>分类</th>
-                      <th style={th}>库存</th>
-                      <th style={th}>单价</th>
-                      <th style={th}>来源订单</th>
+                      <th style={th}>批量</th>
+                      <th style={th}>单位成本</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {pickerSemifinished.map(semifinished => {
+                    {displayedSemifinished.map(semifinished => {
                       const alreadyAdded = items.some(
-                        item => item.itemType === 'product_semifinished' && item.productSemifinishedId === semifinished.id,
+                        item => item.itemType === 'recipe' && item.recipeId === semifinished.id,
                       )
                       return (
                         <tr
@@ -897,10 +901,9 @@ export default function AdminCosmoCoatRecipeEditorPage() {
                         >
                           <td style={td}>{semifinished.code}</td>
                           <td style={td}>{semifinished.name}</td>
-                          <td style={td}>{semifinished.category}</td>
-                          <td style={td}>{formatMoney(semifinished.stock, 3)} {semifinished.unit}</td>
-                          <td style={td}>{formatMoney(semifinished.unitPrice)}</td>
-                          <td style={td}>{semifinished.sourceProductionOrder?.code ?? '—'}</td>
+                          <td style={td}>{semifinished.category.name}</td>
+                          <td style={td}>{formatMoney(semifinished.batchQuantity, 3)}</td>
+                          <td style={td}>{formatMoney(semifinished.unitCost)}</td>
                         </tr>
                       )
                     })}

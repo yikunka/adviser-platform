@@ -29,6 +29,8 @@ import {
   FolderTree,
   BookOpen,
   Layers,
+  FileText,
+  Palette,
 } from 'lucide-react'
 import type { AdminMenuKey } from '@/lib/auth/admin-access'
 import { pathnameToAdminMenuKey, adminMenusAllow } from '@/lib/auth/admin-access'
@@ -54,9 +56,21 @@ const NAV_GROUPS: {
     ],
   },
   {
+    labelKey: 'invoice',
+    items: [
+      { href: '/admin/invoices', key: 'invoices', Icon: FileText },
+    ],
+  },
+  {
     labelKey: 'sfsDiamond',
     items: [
       { href: '/admin/sfs-orders', key: 'sfsOrders', Icon: Diamond },
+    ],
+  },
+  {
+    labelKey: 'sfsInvoices',
+    items: [
+      { href: '/admin/sfs-invoices', key: 'sfsInvoices', Icon: FileText },
     ],
   },
   {
@@ -68,6 +82,12 @@ const NAV_GROUPS: {
       { href: '/admin/cosmocoat-factory-products', key: 'cosmocoatFactoryProducts', Icon: Boxes },
       { href: '/admin/cosmocoat-product-categories', key: 'cosmocoatFactoryProducts', labelKey: 'cosmocoatFactoryProductCategories', Icon: FolderTree },
       { href: '/admin/cosmocoat-production-orders', key: 'cosmocoatProductionOrders', Icon: ClipboardList },
+    ],
+  },
+  {
+    labelKey: 'cosmocoatColorFormulas',
+    items: [
+      { href: '/admin/cosmocoat-color-formulas', key: 'cosmocoatColorFormulas', Icon: Palette },
     ],
   },
   {

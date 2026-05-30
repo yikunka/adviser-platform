@@ -1,8 +1,15 @@
-import { Prisma, type AccountType } from '@prisma/client'
+import type { AccountType, Prisma } from '@prisma/client'
 import { isDebitNormalAccountType } from '@/lib/financial/account-types'
-import { prisma } from '@/lib/db/prisma'
 
-type VoucherClient = Pick<typeof prisma, 'journalEntry'>
+type VoucherClient = {
+  journalEntry: {
+    findFirst(args: {
+      where: { voucherNo: { startsWith: string } }
+      orderBy: { voucherNo: 'desc' }
+      select: { voucherNo: true }
+    }): Promise<{ voucherNo: string } | null>
+  }
+}
 
 export type BalanceLine = {
   accountId: string
@@ -39,7 +46,7 @@ function voucherDatePart(date: Date) {
   ].join('')
 }
 
-export async function generateVoucherNo(entryDate: Date, client: VoucherClient = prisma) {
+export async function generateVoucherNo(entryDate: Date, client: VoucherClient) {
   const prefix = `JE-${voucherDatePart(entryDate)}-`
   const latest = await client.journalEntry.findFirst({
     where: { voucherNo: { startsWith: prefix } },

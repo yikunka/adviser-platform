@@ -7,12 +7,15 @@ export const ADMIN_MENU_KEYS = [
   'kyc',
   'aml',
   'financial',
+  'invoices',
   'users',
   'sfsOrders',
+  'sfsInvoices',
   'settings',
   'cosmocoatProducts',
   'cosmocoatRawMaterials',
   'cosmocoatRecipes',
+  'cosmocoatColorFormulas',
   'cosmocoatFactoryProducts',
   'cosmocoatProductionOrders',
   'adminTeam',
@@ -29,11 +32,14 @@ const MENU_PLATFORM: Record<AdminMenuKey, Platform | 'GLOBAL'> = {
   kyc: 'ADVISER',
   aml: 'ADVISER',
   financial: 'ADVISER',
+  invoices: 'ADVISER',
   users: 'GLOBAL',
   sfsOrders: 'SFS_DIAMOND',
+  sfsInvoices: 'SFS_DIAMOND',
   cosmocoatProducts: 'COSMICOAT',
   cosmocoatRawMaterials: 'COSMICOAT',
   cosmocoatRecipes: 'COSMICOAT',
+  cosmocoatColorFormulas: 'COSMICOAT',
   cosmocoatFactoryProducts: 'COSMICOAT',
   cosmocoatProductionOrders: 'COSMICOAT',
 }
@@ -97,10 +103,14 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
       return 'aml'
     case 'financial':
       return 'financial'
+    case 'invoices':
+      return 'invoices'
     case 'users':
       return 'users'
     case 'sfs-orders':
       return 'sfsOrders'
+    case 'sfs-invoices':
+      return 'sfsInvoices'
     case 'settings':
       return 'settings'
     case 'team':
@@ -113,6 +123,8 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
       return 'cosmocoatRawMaterials'
     case 'cosmocoat-recipes':
       return 'cosmocoatRecipes'
+    case 'cosmocoat-color-formulas':
+      return 'cosmocoatColorFormulas'
     case 'cosmocoat-factory-products':
       return 'cosmocoatFactoryProducts'
     case 'cosmocoat-production-orders':
@@ -136,11 +148,14 @@ export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: stri
   { key: 'kyc', label: 'KYC queue', group: 'Adviser' },
   { key: 'aml', label: 'AML', group: 'Adviser' },
   { key: 'financial', label: 'Financial', group: 'Adviser' },
+  { key: 'invoices', label: 'Invoices', group: 'Invoice' },
   { key: 'users', label: 'Customer account management', group: 'System' },
   { key: 'sfsOrders', label: 'SFS orders', group: 'SFS Diamond' },
+  { key: 'sfsInvoices', label: 'SFS invoices', group: 'SFS Invoices' },
   { key: 'cosmocoatProducts', label: 'Product management', group: 'CosmoCoat' },
   { key: 'cosmocoatRawMaterials', label: 'Raw material management', group: 'CosmoCoat' },
   { key: 'cosmocoatRecipes', label: 'Recipe management', group: 'CosmoCoat' },
+  { key: 'cosmocoatColorFormulas', label: 'Color matching formulas', group: 'CosmoCoat' },
   { key: 'cosmocoatFactoryProducts', label: 'Factory product management', group: 'CosmoCoat' },
   { key: 'cosmocoatProductionOrders', label: 'Production orders', group: 'CosmoCoat' },
   { key: 'settings', label: 'Settings', group: 'System' },

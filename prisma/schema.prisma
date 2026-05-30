@@ -189,6 +189,13 @@ enum EmploymentStatus {
   UNEMPLOYED
 }
 
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  CANCELLED
+}
+
 // ─────────────────────────────────────────────
 // USERS & AUTH
 // ─────────────────────────────────────────────
@@ -230,6 +237,8 @@ model User {
   cosJournalEntries  CosTableJournalEntry[]
   financialJournalEntries JournalEntry[] @relation("FinancialJournalCreatedBy")
   entityGroupMemberships  ClientEntityGroupMember[]
+  invoicesCreated         Invoice[]     @relation("InvoiceCreatedBy")
+  sfsInvoicesCreated      SfsInvoice[]  @relation("SfsInvoiceCreatedBy")
 
   @@map("users")
 }
@@ -336,6 +345,7 @@ model Company {
   serviceOrders          ServiceOrder[]
   auditLogs              AuditLog[]                 @relation("CompanyAuditLog")
   journalEntries         JournalEntry[]
+  invoices               Invoice[]
 
   @@index([pendingClientEmail])
   @@index([groupId])
@@ -897,6 +907,55 @@ model ServiceOrder {
 }
 
 // ─────────────────────────────────────────────
+// INVOICES (Adviser — customer billing)
+// ─────────────────────────────────────────────
+
+model Invoice {
+  id            String        @id @default(cuid())
+  invoiceNumber String        @unique
+  companyId     String
+  status        InvoiceStatus @default(DRAFT)
+  issueDate     DateTime
+  dueDate       DateTime?
+  currency      String        @default("HKD")
+  billToName    String
+  billToAddress String?
+  billToEmail   String?
+  subtotal      Decimal       @db.Decimal(18, 2)
+  taxRate       Decimal       @default(0) @db.Decimal(5, 4)
+  taxAmount     Decimal       @default(0) @db.Decimal(18, 2)
+  total         Decimal       @db.Decimal(18, 2)
+  notes         String?
+  createdById   String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  company   Company           @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  createdBy User              @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
+  lineItems InvoiceLineItem[]
+
+  @@index([companyId])
+  @@index([status])
+  @@index([issueDate])
+  @@map("invoices")
+}
+
+model InvoiceLineItem {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  sortOrder   Int     @default(0)
+  description String
+  quantity    Decimal @default(1) @db.Decimal(12, 4)
+  unitPrice   Decimal @db.Decimal(18, 2)
+  amount      Decimal @db.Decimal(18, 2)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId, sortOrder])
+  @@map("invoice_line_items")
+}
+
+// ─────────────────────────────────────────────
 // AUDIT LOG (append-only)
 // ─────────────────────────────────────────────
 
@@ -1006,7 +1065,8 @@ model SfsOrder {
   adminNotes     String?
   customerRemark String?
 
-  steps SfsOrderStep[]
+  steps    SfsOrderStep[]
+  invoices SfsInvoice[]
 
   @@index([userId])
   @@index([email])
@@ -1029,6 +1089,56 @@ model SfsOrderStep {
 
   @@index([orderId, phase])
   @@map("sfs_order_steps")
+}
+
+// ─────────────────────────────────────────────
+// SFS DIAMOND — INVOICES
+// ─────────────────────────────────────────────
+
+model SfsInvoice {
+  id            String        @id @default(cuid())
+  invoiceNumber String        @unique
+  orderId       String?
+  status        InvoiceStatus @default(DRAFT)
+  issueDate     DateTime
+  dueDate       DateTime?
+  currency      String        @default("HKD")
+  billToName    String
+  billToAddress String?
+  billToEmail   String?
+  billToPhone   String?
+  subtotal      Decimal       @db.Decimal(18, 2)
+  taxRate       Decimal       @default(0) @db.Decimal(5, 4)
+  taxAmount     Decimal       @default(0) @db.Decimal(18, 2)
+  total         Decimal       @db.Decimal(18, 2)
+  notes         String?
+  createdById   String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  order     SfsOrder?            @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  createdBy User                 @relation("SfsInvoiceCreatedBy", fields: [createdById], references: [id])
+  lineItems SfsInvoiceLineItem[]
+
+  @@index([orderId])
+  @@index([status])
+  @@index([issueDate])
+  @@map("sfs_invoices")
+}
+
+model SfsInvoiceLineItem {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  sortOrder   Int     @default(0)
+  description String
+  quantity    Decimal @default(1) @db.Decimal(12, 4)
+  unitPrice   Decimal @db.Decimal(18, 2)
+  amount      Decimal @db.Decimal(18, 2)
+
+  invoice SfsInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId, sortOrder])
+  @@map("sfs_invoice_line_items")
 }
 
 // ─────────────────────────────────────────────
@@ -1126,6 +1236,7 @@ model CosTableRawMaterial {
   @@map("cos_table_raw_materials")
 
   recipeItems CosTableRecipeItem[]
+  colorFormulaItems CosTableColorFormulaItem[]
   productionOrderItems CosTableProductionOrderItem[]
 }
 
@@ -1167,6 +1278,7 @@ model CosTableRecipe {
   productLinks CosTableProductRecipe[]
   currentForProducts CosTableFactoryProduct[] @relation("CurrentFactoryRecipe")
   productionOrders CosTableProductionOrder[]
+  sourceColorFormulas CosTableColorFormula[]
 
   @@index([categoryId, name])
   @@map("cos_table_recipes")
@@ -1247,6 +1359,7 @@ model CosTableFactoryProduct {
   currentRecipe CosTableRecipe? @relation("CurrentFactoryRecipe", fields: [currentRecipeId], references: [id], onDelete: SetNull)
   recipeLinks   CosTableProductRecipe[]
   productionOrders CosTableProductionOrder[]
+  colorFormulas CosTableColorFormula[]
 
   @@index([name])
   @@index([sortOrder])
@@ -1266,6 +1379,62 @@ model CosTableProductRecipe {
   @@unique([productId, recipeId])
   @@index([recipeId])
   @@map("cos_table_product_recipes")
+}
+
+// ─────────────────────────────────────────────
+// CosmoCoat — COLOR MATCHING FORMULAS (調色配方)
+// ─────────────────────────────────────────────
+
+enum CosColorFormulaCategory {
+  PU
+  BAKING_PAINT
+  HT_BAKING_PAINT
+  LT_BAKING_PAINT
+}
+
+model CosTableColorFormula {
+  id               String                  @id @default(cuid())
+  code             String                  @unique
+  name             String
+  category         CosColorFormulaCategory
+  factoryProductId String?
+  sourceRecipeId   String?
+  colorCode        String                  @default("")
+  customerName     String                  @default("")
+  targetColor      String                  @default("")
+  batchQuantity    Decimal                 @default(100) @db.Decimal(12, 3)
+  notes            String                  @default("")
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  factoryProduct CosTableFactoryProduct? @relation(fields: [factoryProductId], references: [id], onDelete: SetNull)
+  sourceRecipe   CosTableRecipe?         @relation(fields: [sourceRecipeId], references: [id], onDelete: SetNull)
+  items          CosTableColorFormulaItem[]
+
+  @@index([category, updatedAt])
+  @@index([factoryProductId])
+  @@map("cos_table_color_formulas")
+}
+
+model CosTableColorFormulaItem {
+  id            String   @id @default(cuid())
+  formulaId     String
+  rawMaterialId String
+  sortOrder     Int      @default(0)
+  quantity      Decimal  @db.Decimal(12, 3)
+  unitPrice     Decimal? @db.Decimal(12, 4)
+  amount        Decimal? @db.Decimal(14, 4)
+  percentage    Decimal? @db.Decimal(8, 4)
+  notes         String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  formula     CosTableColorFormula @relation(fields: [formulaId], references: [id], onDelete: Cascade)
+  rawMaterial CosTableRawMaterial  @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+
+  @@index([formulaId, sortOrder])
+  @@index([rawMaterialId])
+  @@map("cos_table_color_formula_items")
 }
 
 // ─────────────────────────────────────────────

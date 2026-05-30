@@ -235,7 +235,7 @@ cmd_deploy() {
   RSYNC_E="$(rsync_rsh)"
   rsync -az --delete -e "$RSYNC_E" .next/standalone/ "${REMOTE}:${REMOTE_DIR}/"
   rsync -az --delete -e "$RSYNC_E" .next/static/ "${REMOTE}:${REMOTE_DIR}/.next/static/"
-  rsync -az -e "$RSYNC_E" public/ "${REMOTE}:${REMOTE_DIR}/public/"
+  rsync -az --delete -e "$RSYNC_E" public/ "${REMOTE}:${REMOTE_DIR}/public/"
   rsync -az -e "$RSYNC_E" scripts/ "${REMOTE}:${REMOTE_DIR}/scripts/"
   rsync -az -e "$RSYNC_E" prisma/ "${REMOTE}:${REMOTE_DIR}/prisma/"
   rsync -az -e "$RSYNC_E" prisma.config.mjs "${REMOTE}:${REMOTE_DIR}/prisma.config.mjs"
@@ -462,7 +462,7 @@ _deploy_local_sync_to_app_dir() {
   if [[ "$need_build" == 1 ]]; then
     rsync -a --delete .next/standalone/ "$APP_DIR/"
     rsync -a --delete .next/static/ "$APP_DIR/.next/static/"
-    rsync -a public/ "$APP_DIR/public/"
+    rsync -a --delete public/ "$APP_DIR/public/"
     rsync -a scripts/ "$APP_DIR/scripts/"
     rsync -a prisma/ "$APP_DIR/prisma/"
     rsync -a prisma.config.mjs "$APP_DIR/prisma.config.mjs"
@@ -471,7 +471,7 @@ _deploy_local_sync_to_app_dir() {
   fi
 
   if [[ "$need_pub" == 1 ]]; then
-    rsync -a public/ "$APP_DIR/public/"
+    rsync -a --delete public/ "$APP_DIR/public/"
   fi
   if [[ "$need_mig" == 1 ]]; then
     rsync -a prisma/ "$APP_DIR/prisma/"
