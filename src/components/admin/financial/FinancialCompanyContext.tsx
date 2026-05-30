@@ -15,6 +15,19 @@ export type FinancialCompanyInfo = {
   group?: { id: string; name: string } | null
 }
 
+// URL-based company context — when present, takes priority over the global selector context.
+const UrlCompanyContext = createContext<FinancialCompanyInfo | null>(null)
+
+export function UrlBasedCompanyProvider({
+  company,
+  children,
+}: {
+  company: FinancialCompanyInfo
+  children: React.ReactNode
+}) {
+  return <UrlCompanyContext.Provider value={company}>{children}</UrlCompanyContext.Provider>
+}
+
 type FinancialCompanyContextValue = {
   companies: FinancialCompanyInfo[]
   groups: { id: string; name: string }[]
@@ -79,7 +92,10 @@ export function FinancialCompanyProvider({
   )
 
   const isSelectorPage = /\/admin\/financial\/?$/.test(pathname.replace(/\/$/, ''))
-  const needsCompany = pathname.includes('/admin/financial/') && !isSelectorPage
+  // URL-based company routes (/admin/financial/[companyId]/...) handle their own company guard
+  // via UrlBasedCompanyProvider in the [companyId] layout — don't block them here.
+  const isUrlCompanyRoute = /\/admin\/financial\/[^/]+\//.test(pathname)
+  const needsCompany = pathname.includes('/admin/financial/') && !isSelectorPage && !isUrlCompanyRoute
 
   return (
     <FinancialCompanyContext.Provider value={value}>
@@ -112,9 +128,14 @@ export function useFinancialWorkspace(): FinancialCompanyContextValue {
 }
 
 export function useFinancialCompany(): FinancialCompanyInfo {
-  const { company } = useFinancialWorkspace()
-  if (!company) {
-    throw new Error('Select a financial company before opening this page')
-  }
-  return company
+  // URL-based company (from [companyId] layout) takes priority over the global selector.
+  // Both hooks are always called to satisfy React's rules of hooks.
+  const urlCompany = useContext(UrlCompanyContext)
+  const workspace = useContext(FinancialCompanyContext)
+
+  if (urlCompany) return urlCompany
+
+  if (!workspace) throw new Error('useFinancialCompany must be used within FinancialCompanyProvider')
+  if (!workspace.company) throw new Error('Select a financial company before opening this page')
+  return workspace.company
 }

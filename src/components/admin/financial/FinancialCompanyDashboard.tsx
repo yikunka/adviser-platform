@@ -55,25 +55,25 @@ export function FinancialCompanyDashboard() {
     {
       title: 'Chart of Accounts',
       desc: 'Maintain account hierarchy, types, and posting order.',
-      href: '/admin/financial/accounts',
+      href: `/admin/financial/${company.id}/accounts`,
       Icon: WalletCards,
     },
     {
       title: 'Journal Entries',
       desc: 'Create balanced vouchers, review drafts, and post entries.',
-      href: '/admin/financial/journal',
+      href: `/admin/financial/${company.id}/journal`,
       Icon: FileText,
     },
     {
       title: 'General Ledger',
       desc: 'Inspect account activity with running balances.',
-      href: '/admin/financial/ledger',
+      href: `/admin/financial/${company.id}/ledger`,
       Icon: Layers,
     },
     {
       title: 'HKFRS Reports',
       desc: 'Trial balance, income statement, balance sheet, and cash flow.',
-      href: '/admin/financial/reports',
+      href: `/admin/financial/${company.id}/reports`,
       Icon: FileBarChart,
     },
   ]

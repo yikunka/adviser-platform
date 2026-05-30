@@ -5,6 +5,7 @@ import {
   assertCompanyAccessible,
   resolveEntityGroupAccess,
 } from '@/lib/entity-groups/access'
+import { UrlBasedCompanyProvider } from '@/components/admin/financial/FinancialCompanyContext'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,6 +35,7 @@ export default async function FinancialCompanyLayout({
       id: true,
       nameEn: true,
       companyCode: true,
+      groupId: true,
       group: { select: { id: true, name: true } },
     },
   })
@@ -45,5 +47,17 @@ export default async function FinancialCompanyLayout({
     notFound()
   }
 
-  return <>{children}</>
+  return (
+    <UrlBasedCompanyProvider
+      company={{
+        id: company.id,
+        nameEn: company.nameEn,
+        companyCode: company.companyCode,
+        groupId: company.groupId,
+        group: company.group,
+      }}
+    >
+      {children}
+    </UrlBasedCompanyProvider>
+  )
 }

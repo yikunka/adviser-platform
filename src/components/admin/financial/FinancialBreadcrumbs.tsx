@@ -19,7 +19,7 @@ export function FinancialBreadcrumbs({ section }: { section: string }) {
         财务管理
       </Link>
       <span>/</span>
-      <Link href="/admin/financial" className="hover:text-[#C9A96E]">
+      <Link href={`/admin/financial/${company.id}/accounts`} className="hover:text-[#C9A96E]">
         {companyLabel}
       </Link>
       <span>/</span>
