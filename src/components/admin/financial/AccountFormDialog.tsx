@@ -26,6 +26,8 @@ export type FinancialAccount = {
   code: string
   name: string
   type: AccountType
+  companyId?: string | null
+  groupId?: string | null
   level: number
   sortOrder: number
   parentId: string | null
@@ -37,6 +39,7 @@ type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   account?: FinancialAccount | null
+  companyId: string
   accounts: FinancialAccount[]
   onSaved: () => void | Promise<void>
 }
@@ -48,7 +51,7 @@ const fieldClassName = 'border-[#2A2418] bg-[#0E0E0A] text-[#FFF7E6] placeholder
 const selectContentClassName = 'financial-select-content border-[#2A2418] bg-[#11110E] text-[#FFF7E6]'
 const secondaryButtonClassName = 'border-[#3A3428] bg-[#0E0E0A] text-[#FFF7E6] hover:bg-[#1E1A12] hover:text-[#FFF7E6]'
 
-export function AccountFormDialog({ open, onOpenChange, account, accounts, onSaved }: Props) {
+export function AccountFormDialog({ open, onOpenChange, account, companyId, accounts, onSaved }: Props) {
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
   const [type, setType] = useState<FinancialAccount['type']>('ASSET')
@@ -112,6 +115,7 @@ export function AccountFormDialog({ open, onOpenChange, account, accounts, onSav
           code: cleanCode,
           name: cleanName,
           type,
+          companyId,
           parentId: parentId === 'NONE' ? null : parentId,
           sortOrder: Number(sortOrder) || 0,
           isSystem,

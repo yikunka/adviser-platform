@@ -161,6 +161,7 @@ export async function serializeFullRecipe(recipeId: string) {
     stirringRequirements: recipe.stirringRequirements,
     packagingRequirements: recipe.packagingRequirements,
     productionNotes: recipe.productionNotes,
+    formulaIsUsed: recipe.formulaIsUsed,
     createdAt: recipe.createdAt.toISOString(),
     updatedAt: recipe.updatedAt.toISOString(),
     category: {

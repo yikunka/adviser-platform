@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+/* eslint-disable react-hooks/set-state-in-effect */
+
+import { useCallback, useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -10,9 +12,11 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { AccountFormDialog, type FinancialAccount } from '@/components/admin/financial/AccountFormDialog'
 import { ACCOUNT_TYPE_COLORS } from '@/lib/financial/account-types'
-import { Link } from '@/i18n/navigation'
+import { FinancialBreadcrumbs } from '@/components/admin/financial/FinancialBreadcrumbs'
+import { useFinancialCompany } from '@/components/admin/financial/FinancialCompanyContext'
 
 export default function AdminFinancialAccountsPage() {
+  const company = useFinancialCompany()
   const [accounts, setAccounts] = useState<FinancialAccount[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -21,14 +25,10 @@ export default function AdminFinancialAccountsPage() {
   const [editingAccount, setEditingAccount] = useState<FinancialAccount | null>(null)
   const pageSize = 10
 
-  useEffect(() => {
-    fetchAccounts()
-  }, [])
-
-  async function fetchAccounts() {
+  const fetchAccounts = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/financial/accounts')
+      const res = await fetch(`/api/admin/financial/accounts?companyId=${company.id}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to fetch accounts')
       setAccounts(data.accounts || [])
@@ -37,7 +37,11 @@ export default function AdminFinancialAccountsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [company.id])
+
+  useEffect(() => {
+    fetchAccounts()
+  }, [fetchAccounts])
 
   function openCreateDialog() {
     setEditingAccount(null)
@@ -63,9 +67,10 @@ export default function AdminFinancialAccountsPage() {
     }
   }
 
-  const filtered = accounts.filter(a =>
-    a.code.toLowerCase().includes(search.toLowerCase()) ||
-    a.name.toLowerCase().includes(search.toLowerCase())
+  const filtered = accounts.filter(
+    a =>
+      a.code.toLowerCase().includes(search.toLowerCase()) ||
+      a.name.toLowerCase().includes(search.toLowerCase()),
   )
 
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize)
@@ -74,17 +79,15 @@ export default function AdminFinancialAccountsPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="space-y-2">
-        <div className="flex items-center gap-2 text-xs" style={{ color: '#7A7060' }}>
-          <Link href="/admin/dashboard" className="hover:text-[#C9A96E]">Dashboard</Link>
-          <span>/</span>
-          <Link href="/admin/financial" className="hover:text-[#C9A96E]">Financial Accounting</Link>
-          <span>/</span>
-          <span style={{ color: 'var(--muted-foreground)' }}>Accounts</span>
-        </div>
+        <FinancialBreadcrumbs section="Chart of Accounts" />
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>Chart of Accounts</h1>
-            <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>Manage your accounting accounts and hierarchy.</p>
+            <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>
+              Chart of Accounts
+            </h1>
+            <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
+              {company.nameEn} · Manage accounting accounts and hierarchy.
+            </p>
           </div>
           <Button size="sm" onClick={openCreateDialog} style={{ background: '#C9A96E', color: '#0A0805' }}>
             <Plus size={15} className="mr-2" /> Add Account
@@ -106,9 +109,13 @@ export default function AdminFinancialAccountsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="p-8 text-center" style={{ color: 'var(--muted-foreground)' }}>Loading...</div>
+            <div className="p-8 text-center" style={{ color: 'var(--muted-foreground)' }}>
+              Loading...
+            </div>
           ) : filtered.length === 0 ? (
-            <div className="p-8 text-center" style={{ color: '#5A5040' }}>No accounts found</div>
+            <div className="p-8 text-center" style={{ color: '#5A5040' }}>
+              No accounts found
+            </div>
           ) : (
             <>
               <Table>
@@ -128,18 +135,34 @@ export default function AdminFinancialAccountsPage() {
                       <TableCell className="font-mono">{account.code}</TableCell>
                       <TableCell>{account.name}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" style={{ borderColor: ACCOUNT_TYPE_COLORS[account.type], color: ACCOUNT_TYPE_COLORS[account.type] }}>
+                        <Badge
+                          variant="outline"
+                          style={{
+                            borderColor: ACCOUNT_TYPE_COLORS[account.type],
+                            color: ACCOUNT_TYPE_COLORS[account.type],
+                          }}
+                        >
                           {account.type}
                         </Badge>
                       </TableCell>
                       <TableCell>{account.level}</TableCell>
                       <TableCell>{account.sortOrder}</TableCell>
                       <TableCell className="text-right space-x-2">
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEditDialog(account)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => openEditDialog(account)}
+                        >
                           <Pencil size={15} className="text-muted-foreground" />
                         </Button>
                         {!account.isSystem && (
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:text-red-500" onClick={() => deleteAccount(account)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:text-red-500"
+                            onClick={() => deleteAccount(account)}
+                          >
                             <Trash2 size={15} />
                           </Button>
                         )}
@@ -151,7 +174,8 @@ export default function AdminFinancialAccountsPage() {
 
               <div className="flex items-center justify-between mt-4 px-2">
                 <div className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                  Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, filtered.length)} of {filtered.length} accounts
+                  Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, filtered.length)} of{' '}
+                  {filtered.length} accounts
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -183,6 +207,7 @@ export default function AdminFinancialAccountsPage() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         account={editingAccount}
+        companyId={company.id}
         accounts={accounts}
         onSaved={fetchAccounts}
       />

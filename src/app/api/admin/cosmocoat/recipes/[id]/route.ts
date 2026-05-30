@@ -7,6 +7,7 @@ import { computeRecipeTotals, normalizeRecipeItems } from '@/lib/cosmocoat/recip
 import { recipeItemToPrismaCreate } from '@/lib/cosmocoat/recipe-items'
 import { RecipeItemValidationError, validateAndEnrichRecipeItems } from '@/lib/cosmocoat/recipe-item-validation'
 import { recipeItemSchema } from '@/lib/cosmocoat/recipe-api-schemas'
+import { refreshAllFormulaIsUsedCache } from '@/lib/cosmocoat/recipe-usage'
 import { serializeFullRecipe } from '@/lib/cosmocoat/recipe-serializer'
 
 const itemSchema = recipeItemSchema
@@ -111,6 +112,7 @@ export async function PATCH(
       },
     })
 
+    await refreshAllFormulaIsUsedCache()
     const recipe = await serializeFullRecipe(id)
     return NextResponse.json({ recipe })
   } catch (err) {
@@ -136,5 +138,6 @@ export async function DELETE(
   if (!current) return NextResponse.json({ error: '配方不存在' }, { status: 404 })
 
   await prisma.cosTableRecipe.delete({ where: { id } })
+  await refreshAllFormulaIsUsedCache()
   return NextResponse.json({ success: true })
 }

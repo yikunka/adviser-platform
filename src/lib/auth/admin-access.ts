@@ -147,7 +147,7 @@ export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: stri
   { key: 'entities', label: 'Client entities', group: 'Adviser' },
   { key: 'kyc', label: 'KYC queue', group: 'Adviser' },
   { key: 'aml', label: 'AML', group: 'Adviser' },
-  { key: 'financial', label: 'Financial', group: 'Financial' },
+  { key: 'financial', label: 'Financial', group: 'Finance Management' },
   { key: 'invoices', label: 'Invoices', group: 'Adviser' },
   { key: 'users', label: 'Customer account management', group: 'System' },
   { key: 'sfsOrders', label: 'SFS orders', group: 'SFS Diamond' },

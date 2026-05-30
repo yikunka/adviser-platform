@@ -203,6 +203,11 @@ export async function buildFinancialReports(
   const { start, end, asOfDate } = periodRange(period)
 
   const rawAccounts = await prisma.finAccount.findMany({
+    where: {
+      ...(scope?.companyId ? { companyId: scope.companyId } : {}),
+      ...(scope?.groupId ? { groupId: scope.groupId } : {}),
+      ...(!scope?.companyId && !scope?.groupId && scope?.groupIds ? { groupId: { in: scope.groupIds } } : {}),
+    },
     orderBy: [{ type: 'asc' }, { code: 'asc' }],
     select: { id: true, code: true, name: true, type: true, level: true },
   })

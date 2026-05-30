@@ -23,3 +23,24 @@ export function colorFormulaCategoryLabel(
 export function isColorFormulaCategory(value: string): value is CosColorFormulaCategory {
   return COLOR_FORMULA_CATEGORIES.some(c => c.value === value)
 }
+
+export function formatColorFormulaCategoryLabel(
+  categoryLabel: string,
+  suffix: { name: string } | null | undefined,
+) {
+  if (!suffix) return categoryLabel
+  return `${categoryLabel} · ${suffix.name}`
+}
+
+/** Infer color formula category from factory product category slug/name. */
+export function inferCategoryFromProductCategory(
+  category: { name: string; slug: string } | null | undefined,
+): CosColorFormulaCategory {
+  if (!category) return 'PU'
+  const haystack = `${category.name} ${category.slug}`.toLowerCase()
+  if (haystack.includes('ht') || haystack.includes('高温')) return 'HT_BAKING_PAINT'
+  if (haystack.includes('lt') || haystack.includes('低温')) return 'LT_BAKING_PAINT'
+  if (haystack.includes('baking') || haystack.includes('烤漆')) return 'BAKING_PAINT'
+  if (haystack.includes('pu')) return 'PU'
+  return 'PU'
+}

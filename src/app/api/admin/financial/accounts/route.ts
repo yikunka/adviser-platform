@@ -5,21 +5,29 @@ import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { accountCreateSchema } from '@/lib/financial/schemas'
 import { serializeAccount } from '@/lib/financial/serializers'
+import { resolveJournalCompanyScope } from '@/lib/entity-groups/journal'
+import { assertCompanyAccessible, resolveEntityGroupAccess } from '@/lib/entity-groups/access'
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
 }
 
-async function resolveParent(parentId: string | null | undefined) {
+async function resolveParent(parentId: string | null | undefined, companyId: string) {
   if (!parentId) return null
-  return prisma.finAccount.findUnique({ where: { id: parentId } })
+  return prisma.finAccount.findFirst({ where: { id: parentId, companyId } })
 }
 
-export async function GET() {
-  const { error } = await requireRole('STAFF', { adminMenu: 'financial' })
+export async function GET(req: NextRequest) {
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
   if (error) return error
+  const companyId = req.nextUrl.searchParams.get('companyId')
+  if (!companyId) return apiError('Company is required.')
+
+  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
+  if (!(await assertCompanyAccessible(access, companyId))) return apiError('Forbidden', 403)
 
   const accounts = await prisma.finAccount.findMany({
+    where: { companyId },
     include: { parent: { select: { id: true, code: true, name: true } } },
     orderBy: [{ type: 'asc' }, { sortOrder: 'asc' }, { code: 'asc' }],
   })
@@ -40,10 +48,17 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const existing = await prisma.finAccount.findUnique({ where: { code: parsed.data.code } })
+  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
+  if (!(await assertCompanyAccessible(access, parsed.data.companyId))) return apiError('Forbidden', 403)
+  const companyScope = await resolveJournalCompanyScope(parsed.data.companyId)
+  if (!companyScope.companyId) return apiError('Selected company does not exist.', 400)
+
+  const existing = await prisma.finAccount.findFirst({
+    where: { companyId: companyScope.companyId, code: parsed.data.code },
+  })
   if (existing) return apiError('Account code already exists.', 409)
 
-  const parent = await resolveParent(parsed.data.parentId)
+  const parent = await resolveParent(parsed.data.parentId, companyScope.companyId)
   if (parsed.data.parentId && !parent) return apiError('Parent account does not exist.', 404)
   if (parent && parent.level >= 4) return apiError('Parent account level is too deep for a child account.')
 
@@ -53,6 +68,8 @@ export async function POST(req: NextRequest) {
         code: parsed.data.code,
         name: parsed.data.name,
         type: parsed.data.type,
+        companyId: companyScope.companyId,
+        groupId: companyScope.groupId,
         parentId: parent?.id ?? null,
         level: parent ? parent.level + 1 : 1,
         sortOrder: parsed.data.sortOrder,

@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { isColorFormulaCategory } from '@/lib/cosmocoat/color-formula-categories'
+import { validateColorFormulaFactoryProduct } from '@/lib/cosmocoat/color-formula-factory-products'
 import { generateColorFormulaCode } from '@/lib/cosmocoat/color-formula-code'
 import {
   buildColorFormulaListWhere,
@@ -46,11 +47,13 @@ export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q')?.trim() ?? ''
   const categoryParam = req.nextUrl.searchParams.get('category')?.trim() ?? ''
   const category = isColorFormulaCategory(categoryParam) ? categoryParam : undefined
+  const factoryProductId = req.nextUrl.searchParams.get('factoryProductId')?.trim() ?? undefined
+  const subcategoryId = req.nextUrl.searchParams.get('subcategoryId')?.trim() ?? undefined
   const page = Math.max(1, Number(req.nextUrl.searchParams.get('page') ?? '1') || 1)
   const limit = Math.min(200, Math.max(1, Number(req.nextUrl.searchParams.get('limit') ?? '50') || 50))
   const skip = (page - 1) * limit
 
-  const where = buildColorFormulaListWhere({ q, category })
+  const where = buildColorFormulaListWhere({ q, category, factoryProductId, subcategoryId })
 
   try {
     const [total, rows] = await Promise.all([
@@ -58,6 +61,7 @@ export async function GET(req: NextRequest) {
       prisma.cosTableColorFormula.findMany({
         where,
         include: {
+          subcategory: { select: { id: true, parentCategory: true, code: true, name: true } },
           factoryProduct: {
             select: {
               id: true,
@@ -104,17 +108,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '无效的配方类别' }, { status: 400 })
   }
 
+  const productCheck = await validateColorFormulaFactoryProduct({
+    category: parsed.data.category,
+    factoryProductId: parsed.data.factoryProductId,
+  })
+  if (!productCheck.ok) {
+    return NextResponse.json({ error: productCheck.error }, { status: 400 })
+  }
+
   try {
     const code = parsed.data.code?.trim() || (await generateColorFormulaCode())
     const existing = await prisma.cosTableColorFormula.findUnique({ where: { code } })
     if (existing) return NextResponse.json({ error: '配方编号已存在' }, { status: 409 })
-
-    if (parsed.data.factoryProductId) {
-      const product = await prisma.cosTableFactoryProduct.findUnique({
-        where: { id: parsed.data.factoryProductId },
-      })
-      if (!product) return NextResponse.json({ error: '关联产品不存在' }, { status: 404 })
-    }
 
     const enriched = await enrichColorFormulaItemsFromRawMaterials(parsed.data.items as ColorFormulaItemInput[])
 
@@ -123,7 +128,7 @@ export async function POST(req: NextRequest) {
         code,
         name: parsed.data.name,
         category: parsed.data.category,
-        factoryProductId: parsed.data.factoryProductId ?? null,
+        factoryProductId: productCheck.factoryProductId,
         colorCode: parsed.data.colorCode,
         customerName: parsed.data.customerName,
         targetColor: parsed.data.targetColor,

@@ -30,10 +30,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '无效的配方类别' }, { status: 400 })
   }
 
+  const category = parsed.data.category && isColorFormulaCategory(parsed.data.category)
+    ? parsed.data.category
+    : undefined
+
   try {
     const result = await generateColorFormulaFromProduct({
       factoryProductId: parsed.data.factoryProductId,
-      category: parsed.data.category as Parameters<typeof generateColorFormulaFromProduct>[0]['category'],
+      category,
       name: parsed.data.name,
       batchQuantity: parsed.data.batchQuantity,
     })

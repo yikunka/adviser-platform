@@ -63,8 +63,12 @@ export async function GET(req: NextRequest) {
   const where: Prisma.CosTableRawMaterialWhereInput = {
     ...(category ? { category } : {}),
     ...(attribute ? { attributeCode: attribute } : {}),
-    ...(usedInRecipe === 'true' ? { recipeItems: { some: {} } } : {}),
-    ...(usedInRecipe === 'false' ? { recipeItems: { none: {} } } : {}),
+    ...(usedInRecipe === 'true'
+      ? { recipeItems: { some: { recipe: { formulaIsUsed: true } } } }
+      : {}),
+    ...(usedInRecipe === 'false'
+      ? { recipeItems: { none: { recipe: { formulaIsUsed: true } } } }
+      : {}),
     ...(q
       ? {
           OR: [

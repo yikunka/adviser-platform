@@ -137,14 +137,20 @@ export function toPrismaCreateData(input: RawMaterialInput): Prisma.CosTableRawM
   }
 }
 
-/** Distinct recipe count per raw material ID (batch query for list endpoints). */
+/**
+ * Distinct factory-linked recipe count per raw material ID.
+ * Only recipes with formula_is_used (directly or via nested components on products) count.
+ */
 export async function getRecipeUsageCountsByRawMaterialIds(
   rawMaterialIds: string[],
 ): Promise<Map<string, number>> {
   if (rawMaterialIds.length === 0) return new Map()
 
   const rows = await prisma.cosTableRecipeItem.findMany({
-    where: { rawMaterialId: { in: rawMaterialIds } },
+    where: {
+      rawMaterialId: { in: rawMaterialIds },
+      recipe: { formulaIsUsed: true },
+    },
     select: { rawMaterialId: true, recipeId: true },
   })
 

@@ -273,6 +273,7 @@ model ClientEntityGroup {
 
   companies       Company[]
   members         ClientEntityGroupMember[]
+  finAccounts     FinAccount[]
   journalEntries  JournalEntry[]
   ledgerEntries   Ledger[]
 
@@ -345,6 +346,7 @@ model Company {
   keyPersonLinks         CompanyKeyPerson[]
   serviceOrders          ServiceOrder[]
   auditLogs              AuditLog[]                 @relation("CompanyAuditLog")
+  finAccounts            FinAccount[]
   journalEntries         JournalEntry[]
   ledgerEntries          Ledger[]
   invoices               Invoice[]
@@ -1271,6 +1273,8 @@ model CosTableRecipe {
   stirringRequirements  String @default("") @map("stirring_requirements")
   packagingRequirements String @default("") @map("packaging_requirements")
   productionNotes       String @default("") @map("production_notes")
+  /// Cached: true when linked to a factory product directly or as a nested component recipe.
+  formulaIsUsed         Boolean  @default(false) @map("formula_is_used")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -1394,11 +1398,32 @@ enum CosColorFormulaCategory {
   LT_BAKING_PAINT
 }
 
+/// @deprecated Legacy static subcategories — new formulas use factoryProductId on CosTableColorFormula.
+model CosTableColorFormulaSubcategory {
+  id             String                  @id @default(cuid())
+  parentCategory CosColorFormulaCategory
+  code           String
+  name           String
+  sortOrder      Int                     @default(0)
+  isActive       Boolean                 @default(true)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  colorFormulas CosTableColorFormula[]
+
+  @@unique([parentCategory, code])
+  @@index([parentCategory, sortOrder])
+  @@map("cos_table_color_formula_subcategories")
+}
+
 model CosTableColorFormula {
   id               String                  @id @default(cuid())
   code             String                  @unique
   name             String
   category         CosColorFormulaCategory
+  /// @deprecated Legacy static subcategory — use factoryProductId for product-specific scope.
+  subcategoryId    String?
+  /// Specific factory product scope; null = applies to all products in category.
   factoryProductId String?
   sourceRecipeId   String?
   colorCode        String                  @default("")
@@ -1409,11 +1434,13 @@ model CosTableColorFormula {
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
 
-  factoryProduct CosTableFactoryProduct? @relation(fields: [factoryProductId], references: [id], onDelete: SetNull)
-  sourceRecipe   CosTableRecipe?         @relation(fields: [sourceRecipeId], references: [id], onDelete: SetNull)
+  subcategory    CosTableColorFormulaSubcategory? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+  factoryProduct CosTableFactoryProduct?        @relation(fields: [factoryProductId], references: [id], onDelete: SetNull)
+  sourceRecipe   CosTableRecipe?                @relation(fields: [sourceRecipeId], references: [id], onDelete: SetNull)
   items          CosTableColorFormulaItem[]
 
   @@index([category, updatedAt])
+  @@index([subcategoryId])
   @@index([factoryProductId])
   @@map("cos_table_color_formulas")
 }
@@ -1640,10 +1667,12 @@ model CosTableExchangeRate {
 
 model FinAccount {
   id            String      @id @default(cuid())
-  code          String      @unique
+  code          String
   name          String
   type          AccountType
   parentId      String?
+  companyId     String?
+  groupId       String?
   level         Int         @default(1)
   sortOrder     Int         @default(0)
   isSystem      Boolean     @default(false)
@@ -1653,10 +1682,15 @@ model FinAccount {
 
   parent        FinAccount?      @relation("FinAccountHierarchy", fields: [parentId], references: [id])
   children      FinAccount[]     @relation("FinAccountHierarchy")
+  company       Company?         @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  group         ClientEntityGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   journalLines  JournalLine[]
   ledgerEntries Ledger[]
   accountBalances AccountBalance[]
 
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([groupId])
   @@index([type, sortOrder])
   @@map("adv_accounts")
 }

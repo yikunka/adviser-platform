@@ -2,13 +2,14 @@
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { Palette, Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react'
 import { COLOR_FORMULA_CATEGORIES } from '@/lib/cosmocoat/color-formula-categories'
 import type { CosColorFormulaCategory } from '@prisma/client'
 import { formatMoney } from '@/lib/cosmocoat/recipes'
+import type { ColorFormulaFactoryProductOption } from '@/lib/cosmocoat/color-formula-factory-products'
 
 type FormulaRow = {
   id: string
@@ -157,7 +158,7 @@ function GenerateModal({
             </select>
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>配方类别</label>
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>主类别</label>
             <select
               value={category}
               onChange={e => setCategory(e.target.value as CosColorFormulaCategory)}
@@ -189,6 +190,8 @@ export default function CosmocoatColorFormulasPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('')
+  const [factoryProductId, setFactoryProductId] = useState('')
+  const [factoryProducts, setFactoryProducts] = useState<ColorFormulaFactoryProductOption[]>([])
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
@@ -200,7 +203,8 @@ export default function CosmocoatColorFormulasPage() {
     try {
       const params = new URLSearchParams({ page: String(page), limit: '50' })
       if (search.trim()) params.set('q', search.trim())
-      if (category) params.set('category', category)
+      if (factoryProductId) params.set('factoryProductId', factoryProductId)
+      else if (category) params.set('category', category)
       const res = await fetch(`/api/admin/cosmocoat/color-formulas?${params}`)
       const data = await res.json()
       if (!res.ok) {
@@ -215,7 +219,24 @@ export default function CosmocoatColorFormulasPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search, category])
+  }, [page, search, category, factoryProductId])
+
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const res = await fetch('/api/admin/cosmocoat/color-formulas/factory-product-options')
+        const data = await res.json()
+        if (res.ok) setFactoryProducts(data.items ?? [])
+      } catch {
+        /* ignore */
+      }
+    })()
+  }, [])
+
+  const filteredProducts = useMemo(
+    () => (category ? factoryProducts.filter(item => item.parentCategory === category) : []),
+    [factoryProducts, category],
+  )
 
   useEffect(() => {
     const t = setTimeout(fetchItems, search ? 300 : 0)
@@ -224,7 +245,11 @@ export default function CosmocoatColorFormulasPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [search, category])
+  }, [search, category, factoryProductId])
+
+  useEffect(() => {
+    setFactoryProductId('')
+  }, [category])
 
   async function deleteFormula(row: FormulaRow) {
     if (!window.confirm(`确定删除调色配方「${row.name}」？`)) return
@@ -251,7 +276,7 @@ export default function CosmocoatColorFormulasPage() {
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>调色配方管理</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-            按 PU / 烤漆 / 高温烤漆 / 低温烤漆分类管理调色配方，支持从产品当前配方生成。
+            按主类别与工厂产品管理调色配方，支持从产品当前配方生成。
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -277,11 +302,14 @@ export default function CosmocoatColorFormulasPage() {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => setCategory('')}
+            onClick={() => {
+              setCategory('')
+              setFactoryProductId('')
+            }}
             className="px-3 py-1.5 rounded-lg text-sm"
             style={{
-              background: !category ? 'rgba(201,169,110,0.15)' : 'transparent',
-              color: !category ? '#C9A96E' : 'var(--muted-foreground)',
+              background: !category && !factoryProductId ? 'rgba(201,169,110,0.15)' : 'transparent',
+              color: !category && !factoryProductId ? '#C9A96E' : 'var(--muted-foreground)',
               border: '1px solid #2A2418',
             }}
           >
@@ -291,11 +319,14 @@ export default function CosmocoatColorFormulasPage() {
             <button
               key={c.value}
               type="button"
-              onClick={() => setCategory(c.value)}
+              onClick={() => {
+                setCategory(c.value)
+                setFactoryProductId('')
+              }}
               className="px-3 py-1.5 rounded-lg text-sm"
               style={{
-                background: category === c.value ? 'rgba(201,169,110,0.15)' : 'transparent',
-                color: category === c.value ? '#C9A96E' : 'var(--muted-foreground)',
+                background: category === c.value && !factoryProductId ? 'rgba(201,169,110,0.15)' : 'transparent',
+                color: category === c.value && !factoryProductId ? '#C9A96E' : 'var(--muted-foreground)',
                 border: '1px solid #2A2418',
               }}
             >
@@ -303,6 +334,37 @@ export default function CosmocoatColorFormulasPage() {
             </button>
           ))}
         </div>
+        {category && filteredProducts.length > 0 && (
+          <div className="flex flex-wrap gap-2 w-full">
+            <button
+              type="button"
+              onClick={() => setFactoryProductId('')}
+              className="px-3 py-1.5 rounded-lg text-xs"
+              style={{
+                background: !factoryProductId ? 'rgba(201,169,110,0.15)' : 'transparent',
+                color: !factoryProductId ? '#C9A96E' : 'var(--muted-foreground)',
+                border: '1px solid #2A2418',
+              }}
+            >
+              全部{COLOR_FORMULA_CATEGORIES.find(item => item.value === category)?.labelZh}
+            </button>
+            {filteredProducts.map(option => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => setFactoryProductId(option.id)}
+                className="px-3 py-1.5 rounded-lg text-xs"
+                style={{
+                  background: factoryProductId === option.id ? 'rgba(201,169,110,0.15)' : 'transparent',
+                  color: factoryProductId === option.id ? '#C9A96E' : 'var(--muted-foreground)',
+                  border: '1px solid #2A2418',
+                }}
+              >
+                {option.productCode} · {option.name}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="relative flex-1 min-w-[14rem]">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
           <input

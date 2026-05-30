@@ -76,13 +76,6 @@ export async function PATCH(
   if (parsed.data.lines) {
     const lineError = validateJournalLines(parsed.data.lines)
     if (lineError) return apiError(lineError)
-
-    const accountCount = await prisma.finAccount.count({
-      where: { id: { in: parsed.data.lines.map(line => line.accountId) } },
-    })
-    if (accountCount !== new Set(parsed.data.lines.map(line => line.accountId)).size) {
-      return apiError('One or more selected accounts do not exist.', 400)
-    }
   }
 
   const entryDate = parsed.data.entryDate ? parseYmdDate(parsed.data.entryDate) : before.entryDate
@@ -93,6 +86,16 @@ export async function PATCH(
   if (parsed.data.companyId) {
     if (!(await assertCompanyAccessible(access, parsed.data.companyId))) return apiError('Forbidden', 403)
     if (!companyScope.companyId) return apiError('Selected company does not exist.', 400)
+  }
+  if (!companyScope.companyId) return apiError('Journal entry must be assigned to a company before editing lines.')
+
+  if (parsed.data.lines) {
+    const accountCount = await prisma.finAccount.count({
+      where: { companyId: companyScope.companyId, id: { in: parsed.data.lines.map(line => line.accountId) } },
+    })
+    if (accountCount !== new Set(parsed.data.lines.map(line => line.accountId)).size) {
+      return apiError('One or more selected accounts do not belong to this company.', 400)
+    }
   }
 
   const entry = await prisma.$transaction(async tx => {

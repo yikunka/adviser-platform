@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db/prisma'
+import { refreshAllFormulaIsUsedCache } from '@/lib/cosmocoat/recipe-usage'
 import { serializeViscosity } from '@/lib/cosmocoat/product-viscosity'
 
 const productInclude = {
@@ -161,6 +162,8 @@ export async function syncProductRecipes(productId: string, recipeIds: string[],
     where: { id: productId },
     data: { currentRecipeId: resolvedCurrent },
   })
+
+  await refreshAllFormulaIsUsedCache()
 }
 
 export { productInclude }

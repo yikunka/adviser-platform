@@ -8,6 +8,7 @@ import { computeRecipeTotals, normalizeRecipeItems, type RecipeItemInput } from 
 import { recipeItemToPrismaCreate } from '@/lib/cosmocoat/recipe-items'
 import { RecipeItemValidationError, validateAndEnrichRecipeItems } from '@/lib/cosmocoat/recipe-item-validation'
 import { recipeItemSchema } from '@/lib/cosmocoat/recipe-api-schemas'
+import { refreshAllFormulaIsUsedCache } from '@/lib/cosmocoat/recipe-usage'
 import { serializeFullRecipe } from '@/lib/cosmocoat/recipe-serializer'
 
 const itemSchema = recipeItemSchema
@@ -47,6 +48,7 @@ export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q')?.trim() ?? ''
   const categoryId = req.nextUrl.searchParams.get('categoryId')?.trim() ?? ''
   const semiFinishedOnly = req.nextUrl.searchParams.get('semiFinished') === 'true'
+  const usedByFactoryProduct = req.nextUrl.searchParams.get('usedByFactoryProduct')?.trim() ?? ''
   const excludeId = req.nextUrl.searchParams.get('excludeId')?.trim() ?? ''
   const page = Math.max(1, Number(req.nextUrl.searchParams.get('page') ?? '1') || 1)
   const limit = Math.min(200, Math.max(1, Number(req.nextUrl.searchParams.get('limit') ?? '50') || 50))
@@ -55,6 +57,8 @@ export async function GET(req: NextRequest) {
   const where: Prisma.CosTableRecipeWhereInput = {
     ...(categoryId ? { categoryId } : {}),
     ...(excludeId ? { id: { not: excludeId } } : {}),
+    ...(usedByFactoryProduct === 'true' ? { formulaIsUsed: true } : {}),
+    ...(usedByFactoryProduct === 'false' ? { formulaIsUsed: false } : {}),
     ...(semiFinishedOnly
       ? { category: { name: { contains: '半成品', mode: 'insensitive' } } }
       : {}),
@@ -96,6 +100,7 @@ export async function GET(req: NextRequest) {
         batchQuantity: Number(recipe.batchQuantity),
         unitCost: recipe.unitCost != null ? Number(recipe.unitCost) : null,
         notes: recipe.notes,
+        formulaIsUsed: recipe.formulaIsUsed,
         updatedAt: recipe.updatedAt.toISOString(),
         itemCount: recipe._count.items,
         category: recipe.category,
@@ -155,6 +160,7 @@ export async function POST(req: NextRequest) {
     })
 
     await saveRecipeItems(recipe.id, enrichedItems)
+    await refreshAllFormulaIsUsedCache()
     const full = await serializeFullRecipe(recipe.id)
     return NextResponse.json({ recipe: full }, { status: 201 })
   } catch (err) {

@@ -4,6 +4,7 @@ import { Prisma, type CosColorFormulaCategory } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { isColorFormulaCategory } from '@/lib/cosmocoat/color-formula-categories'
+import { validateColorFormulaFactoryProduct } from '@/lib/cosmocoat/color-formula-factory-products'
 import {
   enrichColorFormulaItemsFromRawMaterials,
   getColorFormulaById,
@@ -82,24 +83,34 @@ export async function PATCH(
     if (conflict) return NextResponse.json({ error: '配方编号已存在' }, { status: 409 })
   }
 
-  if (parsed.data.factoryProductId) {
-    const product = await prisma.cosTableFactoryProduct.findUnique({
-      where: { id: parsed.data.factoryProductId },
-    })
-    if (!product) return NextResponse.json({ error: '关联产品不存在' }, { status: 404 })
+  const nextCategory = (parsed.data.category ?? current.category) as CosColorFormulaCategory
+  const factoryProductProvided = parsed.data.factoryProductId !== undefined
+  const factoryProductIdForValidation = factoryProductProvided
+    ? parsed.data.factoryProductId
+    : parsed.data.category !== undefined
+      ? null
+      : current.factoryProductId
+
+  const productCheck = await validateColorFormulaFactoryProduct({
+    category: nextCategory,
+    factoryProductId: factoryProductIdForValidation,
+  })
+  if (!productCheck.ok) {
+    return NextResponse.json({ error: productCheck.error }, { status: 400 })
   }
+
+  const shouldUpdateFactoryProduct =
+    factoryProductProvided || (parsed.data.category !== undefined && parsed.data.category !== current.category)
 
   try {
     const data: Prisma.CosTableColorFormulaUpdateInput = {
       ...(parsed.data.code !== undefined ? { code: parsed.data.code } : {}),
       ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
       ...(parsed.data.category !== undefined ? { category: parsed.data.category as CosColorFormulaCategory } : {}),
-      ...(parsed.data.factoryProductId !== undefined
-        ? {
-            factoryProduct: parsed.data.factoryProductId
-              ? { connect: { id: parsed.data.factoryProductId } }
-              : { disconnect: true },
-          }
+      ...(shouldUpdateFactoryProduct
+        ? productCheck.factoryProductId
+          ? { factoryProduct: { connect: { id: productCheck.factoryProductId } } }
+          : { factoryProduct: { disconnect: true } }
         : {}),
       ...(parsed.data.colorCode !== undefined ? { colorCode: parsed.data.colorCode } : {}),
       ...(parsed.data.customerName !== undefined ? { customerName: parsed.data.customerName } : {}),

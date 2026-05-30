@@ -75,8 +75,8 @@ function numOrEmpty(value: number | null) {
 
 function RecipeUsageStatus({ item }: { item: RawMaterialListRow }) {
   const tooltip = item.isUsedInRecipe
-    ? `已在 ${item.recipeUsageCount} 个配方中使用`
-    : '未在配方中使用'
+    ? `已在 ${item.recipeUsageCount} 个工厂产品关联配方中使用`
+    : '未在工厂产品关联配方中使用'
 
   if (item.isUsedInRecipe) {
     return (
@@ -410,9 +410,9 @@ export default function AdminCosmoCoatRawMaterialsPage() {
           {attributes.map(a => <option key={a} value={a}>{a}</option>)}
         </select>
         <select value={usedInRecipe} onChange={e => setUsedInRecipe(e.target.value)} className="rounded-lg px-3 py-2 text-sm outline-none" style={inputStyle()}>
-          <option value="">全部配方状态</option>
-          <option value="true">仅已用于配方</option>
-          <option value="false">仅未用于配方</option>
+          <option value="">全部使用状态</option>
+          <option value="true">仅已用于工厂产品配方</option>
+          <option value="false">仅未用于工厂产品配方</option>
         </select>
         <div className="relative flex-1 min-w-[14rem]">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />

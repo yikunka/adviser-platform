@@ -21,6 +21,7 @@
     "financialJournal": "日記賬",
     "financialLedger": "總賬",
     "financialReports": "財務報表",
+    "financialCompanySelect": "選擇公司",
     "invoices": "發票",
     "settings": "設定",
     "users": "客戶帳號管理",
@@ -606,6 +607,7 @@
       "main": "主要",
       "adviser": "Advise",
       "financial": "財務",
+      "financeManagement": "財務管理",
       "invoice": "發票",
       "sfsDiamond": "SFS Diamond",
       "sfsInvoices": "SFS 發票",
@@ -714,6 +716,15 @@
       "entityGroup": "客戶實體",
       "entityGroupNone": "不指定實體",
       "allGroups": "全部客戶實體"
+    },
+    "financial": {
+      "selectCompanyTitle": "財務管理",
+      "selectCompanySubtitle": "請先選擇客戶公司，再進行日記賬、總賬及 HKFRS 報表作業。",
+      "searchPlaceholder": "搜尋公司名稱、代碼或客戶實體...",
+      "allGroups": "全部客戶實體",
+      "loading": "載入公司中...",
+      "empty": "沒有可存取的客戶公司。",
+      "noGroup": "未指定實體"
     },
     "invoices": {
       "title": "發票管理",

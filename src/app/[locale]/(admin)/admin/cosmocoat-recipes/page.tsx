@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { Beaker, FolderCog, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { Beaker, CheckCircle, FolderCog, Pencil, Plus, Search, Trash2, XCircle } from 'lucide-react'
 import { formatMoney } from '@/lib/cosmocoat/recipes'
 
 type RecipeRow = {
@@ -15,6 +15,7 @@ type RecipeRow = {
   notes: string
   updatedAt: string
   itemCount: number
+  formulaIsUsed: boolean
   category: { id: string; code: string; name: string }
 }
 
@@ -55,6 +56,28 @@ function inputStyle(): React.CSSProperties {
     border: '1px solid #2A2418',
     color: 'var(--foreground)',
   }
+}
+
+function FactoryUsageStatus({ formulaIsUsed }: { formulaIsUsed: boolean }) {
+  const tooltip = formulaIsUsed
+    ? '已被工厂产品直接或间接使用'
+    : '未被任何工厂产品使用'
+
+  if (formulaIsUsed) {
+    return (
+      <span title={tooltip} className="inline-flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+        <CheckCircle size={16} style={{ color: '#4A9F52', flexShrink: 0 }} />
+        <span className="text-xs font-medium" style={{ color: '#4A9F52' }}>已使用</span>
+      </span>
+    )
+  }
+
+  return (
+    <span title={tooltip} className="inline-flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+      <XCircle size={16} style={{ color: '#7A7060', flexShrink: 0 }} />
+      <span className="text-xs" style={{ color: '#7A7060' }}>未使用</span>
+    </span>
+  )
 }
 
 function ModalShell({
@@ -232,6 +255,7 @@ export default function AdminCosmoCoatRecipesPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [categoryId, setCategoryId] = useState('')
+  const [usedByFactoryProduct, setUsedByFactoryProduct] = useState('')
   const [showCategoryManage, setShowCategoryManage] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -241,6 +265,7 @@ export default function AdminCosmoCoatRecipesPage() {
       const params = new URLSearchParams({ page: String(page), limit: '50' })
       if (search.trim()) params.set('q', search.trim())
       if (categoryId) params.set('categoryId', categoryId)
+      if (usedByFactoryProduct) params.set('usedByFactoryProduct', usedByFactoryProduct)
       const res = await fetch(`/api/admin/cosmocoat/recipes?${params}`)
       const data = await res.json()
       if (!res.ok) {
@@ -256,7 +281,7 @@ export default function AdminCosmoCoatRecipesPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search, categoryId])
+  }, [page, search, categoryId, usedByFactoryProduct])
 
   useEffect(() => {
     const t = setTimeout(fetchItems, search ? 300 : 0)
@@ -265,7 +290,7 @@ export default function AdminCosmoCoatRecipesPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [search, categoryId])
+  }, [search, categoryId, usedByFactoryProduct])
 
   async function deleteRecipe(recipe: RecipeRow) {
     if (!window.confirm(`确定删除配方「${recipe.name}」？`)) return
@@ -321,6 +346,16 @@ export default function AdminCosmoCoatRecipesPage() {
             <option key={c.id} value={c.id}>{c.code} {c.name}</option>
           ))}
         </select>
+        <select
+          value={usedByFactoryProduct}
+          onChange={e => setUsedByFactoryProduct(e.target.value)}
+          className="rounded-lg px-3 py-2 text-sm outline-none"
+          style={inputStyle()}
+        >
+          <option value="">全部使用状态</option>
+          <option value="true">仅已被工厂产品使用</option>
+          <option value="false">仅未被工厂产品使用</option>
+        </select>
         <div className="relative flex-1 min-w-[14rem]">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
           <input
@@ -361,6 +396,7 @@ export default function AdminCosmoCoatRecipesPage() {
                   <th style={th}>配方名称</th>
                   <th style={th}>目录</th>
                   <th style={th}>原料数</th>
+                  <th style={th}>产品使用</th>
                   <th style={th}>成本单价</th>
                   <th style={th}>更新时间</th>
                   <th style={{ ...th, textAlign: 'right' }}>操作</th>
@@ -380,6 +416,9 @@ export default function AdminCosmoCoatRecipesPage() {
                       {recipe.category.name}
                     </td>
                     <td style={td}>{recipe.itemCount}</td>
+                    <td style={td}>
+                      <FactoryUsageStatus formulaIsUsed={recipe.formulaIsUsed} />
+                    </td>
                     <td style={td}>{formatMoney(recipe.unitCost)}</td>
                     <td style={td}>{new Date(recipe.updatedAt).toLocaleDateString('zh-CN')}</td>
                     <td style={{ ...td, textAlign: 'right' }}>

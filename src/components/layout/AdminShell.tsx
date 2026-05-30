@@ -38,9 +38,16 @@ import { pathnameToAdminMenuKey, adminMenusAllow } from '@/lib/auth/admin-access
 
 type MenuAccess = ReadonlySet<AdminMenuKey> | 'all'
 
+type NavItem = {
+  href: string
+  key: AdminMenuKey
+  labelKey?: string
+  Icon: typeof LayoutDashboard
+}
+
 const NAV_GROUPS: {
   labelKey: string
-  items: readonly { href: string; key: AdminMenuKey; labelKey?: string; Icon: typeof LayoutDashboard }[]
+  items: readonly NavItem[]
 }[] = [
   {
     labelKey: 'main',
@@ -57,8 +64,9 @@ const NAV_GROUPS: {
     ],
   },
   {
-    labelKey: 'financial',
+    labelKey: 'financeManagement',
     items: [
+      { href: '/admin/financial', key: 'financial', labelKey: 'financialCompanySelect', Icon: Building2 },
       { href: '/admin/financial/accounts', key: 'financial', labelKey: 'financialAccounts', Icon: WalletCards },
       { href: '/admin/financial/journal', key: 'financial', labelKey: 'financialJournal', Icon: FileText },
       { href: '/admin/financial/ledger', key: 'financial', labelKey: 'financialLedger', Icon: Layers },
@@ -150,8 +158,13 @@ export default function AdminShell({
   const navLocale = (params.locale as string) ?? locale
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  function isActive(href: string) {
-    return pathname.includes(href)
+  function resolveHref(item: NavItem) {
+    return item.href
+  }
+
+  function isActive(item: NavItem) {
+    if (item.href === '/admin/financial') return /\/admin\/financial\/?$/.test(pathname.replace(/\/$/, ''))
+    return pathname.includes(item.href)
   }
 
   const roleBadge = ROLE_BADGE[userRole] ?? { label: userRole, bg: 'rgba(120,113,108,0.15)', text: '#9A8060' }
@@ -212,12 +225,15 @@ export default function AdminShell({
                 >
                   {tAdmin(`nav.${group.labelKey}` as Parameters<typeof tAdmin>[0])}
                 </p>
-                {visibleItems.map(({ href, key, labelKey, Icon }) => {
-                  const active = isActive(href)
+                {visibleItems.map(item => {
+                  const { key, labelKey, Icon } = item
+                  const href = resolveHref(item)
+                  const active = isActive(item)
                   const navLabelKey = (labelKey ?? key) as 'dashboard'
+                  const itemKey = `${group.labelKey}-${labelKey ?? key}-${item.href}`
                   return (
                     <Link
-                      key={href}
+                      key={itemKey}
                       href={href}
                       onClick={() => setSidebarOpen(false)}
                       className="group flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-semibold transition-all duration-150 relative mb-0.5"

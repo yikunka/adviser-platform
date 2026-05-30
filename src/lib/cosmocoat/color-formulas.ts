@@ -1,7 +1,14 @@
 import type { CosColorFormulaCategory, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
 import { generateColorFormulaCode } from '@/lib/cosmocoat/color-formula-code'
-import { colorFormulaCategoryLabel } from '@/lib/cosmocoat/color-formula-categories'
+import {
+  colorFormulaCategoryLabel,
+  formatColorFormulaCategoryLabel,
+  inferCategoryFromProductCategory,
+} from '@/lib/cosmocoat/color-formula-categories'
+import { validateColorFormulaFactoryProduct } from '@/lib/cosmocoat/color-formula-factory-products'
+
+export { inferCategoryFromProductCategory }
 import { computeRecipeTotals, normalizeRecipeItems, type RecipeItemInput } from '@/lib/cosmocoat/recipes'
 
 export type ColorFormulaItemInput = {
@@ -28,6 +35,9 @@ const itemInclude = {
 } as const
 
 const formulaInclude = {
+  subcategory: {
+    select: { id: true, parentCategory: true, code: true, name: true },
+  },
   factoryProduct: {
     select: {
       id: true,
@@ -89,6 +99,7 @@ export function serializeColorFormula(formula: {
   code: string
   name: string
   category: CosColorFormulaCategory
+  subcategoryId?: string | null
   factoryProductId: string | null
   sourceRecipeId: string | null
   colorCode: string
@@ -98,6 +109,12 @@ export function serializeColorFormula(formula: {
   notes: string
   createdAt: Date
   updatedAt: Date
+  subcategory?: {
+    id: string
+    parentCategory: CosColorFormulaCategory
+    code: string
+    name: string
+  } | null
   factoryProduct?: {
     id: string
     productCode: string
@@ -113,13 +130,32 @@ export function serializeColorFormula(formula: {
     items.map(i => ({ quantity: i.quantity, amount: i.amount ?? 0 })),
     Number(formula.batchQuantity),
   )
+  const baseCategoryLabel = colorFormulaCategoryLabel(formula.category)
+  const factoryProductSuffix = formula.factoryProduct
+    ? { name: `${formula.factoryProduct.productCode} · ${formula.factoryProduct.name}` }
+    : null
+  const legacySubcategorySuffix = !formula.factoryProduct && formula.subcategory
+    ? { name: formula.subcategory.name }
+    : null
+  const categoryLabel = factoryProductSuffix
+    ? formatColorFormulaCategoryLabel(baseCategoryLabel, factoryProductSuffix)
+    : formatColorFormulaCategoryLabel(baseCategoryLabel, legacySubcategorySuffix)
 
   return {
     id: formula.id,
     code: formula.code,
     name: formula.name,
     category: formula.category,
-    categoryLabel: colorFormulaCategoryLabel(formula.category),
+    subcategoryId: formula.subcategoryId ?? formula.subcategory?.id ?? null,
+    categoryLabel,
+    subcategory: formula.subcategory
+      ? {
+          id: formula.subcategory.id,
+          parentCategory: formula.subcategory.parentCategory,
+          code: formula.subcategory.code,
+          name: formula.subcategory.name,
+        }
+      : null,
     factoryProductId: formula.factoryProductId,
     sourceRecipeId: formula.sourceRecipeId,
     colorCode: formula.colorCode,
@@ -198,19 +234,6 @@ export async function enrichColorFormulaItemsFromRawMaterials(
   }))
 }
 
-/** Infer color formula category from factory product category slug/name. */
-export function inferCategoryFromProductCategory(
-  category: { name: string; slug: string } | null | undefined,
-): CosColorFormulaCategory {
-  if (!category) return 'PU'
-  const haystack = `${category.name} ${category.slug}`.toLowerCase()
-  if (haystack.includes('ht') || haystack.includes('高温')) return 'HT_BAKING_PAINT'
-  if (haystack.includes('lt') || haystack.includes('低温')) return 'LT_BAKING_PAINT'
-  if (haystack.includes('baking') || haystack.includes('烤漆')) return 'BAKING_PAINT'
-  if (haystack.includes('pu')) return 'PU'
-  return 'PU'
-}
-
 export async function generateColorFormulaFromProduct(params: {
   factoryProductId: string
   category?: CosColorFormulaCategory
@@ -252,6 +275,14 @@ export async function generateColorFormulaFromProduct(params: {
   }
 
   const category = params.category ?? inferCategoryFromProductCategory(product.category)
+  const productCheck = await validateColorFormulaFactoryProduct({
+    category,
+    factoryProductId: product.id,
+  })
+  if (!productCheck.ok) {
+    return { ok: false as const, error: productCheck.error }
+  }
+
   const code = await generateColorFormulaCode()
   const name =
     params.name?.trim() ||
@@ -286,7 +317,7 @@ export async function generateColorFormulaFromProduct(params: {
       code,
       name,
       category,
-      factoryProductId: product.id,
+      factoryProductId: productCheck.factoryProductId,
       sourceRecipeId: product.currentRecipe.id,
       batchQuantity,
       notes: `由产品 ${product.productCode} 当前配方 ${product.currentRecipe.code} 生成`,
@@ -313,10 +344,19 @@ export async function generateColorFormulaFromProduct(params: {
 export function buildColorFormulaListWhere(params: {
   q?: string
   category?: CosColorFormulaCategory
+  factoryProductId?: string
+  /** @deprecated Legacy static subcategory filter */
+  subcategoryId?: string
 }): Prisma.CosTableColorFormulaWhereInput {
   const q = params.q?.trim()
   return {
-    ...(params.category ? { category: params.category } : {}),
+    ...(params.factoryProductId
+      ? { factoryProductId: params.factoryProductId }
+      : params.subcategoryId
+        ? { subcategoryId: params.subcategoryId }
+        : params.category
+          ? { category: params.category }
+          : {}),
     ...(q
       ? {
           OR: [

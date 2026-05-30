@@ -63,6 +63,8 @@ type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   entry?: JournalEntryForForm | null
+  /** When set, journal is locked to this client company (TCSP company workspace). */
+  fixedCompanyId?: string
   onSaved: () => void | Promise<void>
 }
 
@@ -98,7 +100,7 @@ function numeric(value: string) {
   return Number(value || 0)
 }
 
-export function JournalEntryForm({ open, onOpenChange, entry, onSaved }: Props) {
+export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, onSaved }: Props) {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [companies, setCompanies] = useState<ScopeCompany[]>([])
   const [entryDate, setEntryDate] = useState(todayYmd())
@@ -111,7 +113,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, onSaved }: Props) 
   useEffect(() => {
     if (!open) return
     setEntryDate((entry?.entryDate ?? entry?.date ?? todayYmd()).slice(0, 10))
-    setCompanyId(entry?.companyId ?? 'NONE')
+    setCompanyId(entry?.companyId ?? fixedCompanyId ?? 'NONE')
     setDescription(entry?.description ?? '')
     setLines(entry?.lines?.length
       ? entry.lines.map(line => ({
@@ -121,35 +123,42 @@ export function JournalEntryForm({ open, onOpenChange, entry, onSaved }: Props) 
           credit: line.credit ? String(line.credit) : '',
         }))
       : [blankLine(), blankLine()])
-  }, [entry, open])
+  }, [entry, fixedCompanyId, open])
 
   useEffect(() => {
     if (!open) return
+    const accountCompanyId = fixedCompanyId ?? (companyId === 'NONE' ? '' : companyId)
     setLoadingAccounts(true)
     Promise.all([
-      fetch('/api/admin/financial/accounts').then(async res => {
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || 'Failed to load accounts.')
-        return data.accounts || []
-      }),
-      fetch('/api/admin/financial/scope').then(async res => {
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || 'Failed to load companies.')
-        return data.companies || []
-      }),
+      accountCompanyId
+        ? fetch(`/api/admin/financial/accounts?companyId=${accountCompanyId}`).then(async res => {
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Failed to load accounts.')
+            return data.accounts || []
+          })
+        : Promise.resolve([]),
+      fixedCompanyId
+        ? Promise.resolve([])
+        : fetch('/api/admin/financial/scope').then(async res => {
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Failed to load companies.')
+            return data.companies || []
+          }),
     ])
       .then(([accountRows, companyRows]) => {
         setAccounts(accountRows)
-        setCompanies(companyRows)
+        if (!fixedCompanyId) setCompanies(companyRows)
       })
       .catch(err => toast.error(err instanceof Error ? err.message : 'Failed to load accounts.'))
       .finally(() => setLoadingAccounts(false))
-  }, [open])
+  }, [companyId, fixedCompanyId, open])
 
   useEffect(() => {
-    if (!open || entry || loadingAccounts || companyId !== 'NONE' || companies.length !== 1) return
+    if (!open || fixedCompanyId) return
+    if (!entry && loadingAccounts) return
+    if (companyId !== 'NONE' || companies.length !== 1) return
     setCompanyId(companies[0]!.id)
-  }, [companies, companyId, entry, loadingAccounts, open])
+  }, [companies, companyId, entry, fixedCompanyId, loadingAccounts, open])
 
   const totals = useMemo(() => {
     const debit = lines.reduce((sum, line) => sum + numeric(line.debit), 0)
@@ -256,30 +265,34 @@ export function JournalEntryForm({ open, onOpenChange, entry, onSaved }: Props) 
                 className={`${fieldClassName} border`}
               />
             </div>
-            <div className="space-y-2">
-              <Label className={labelClassName}>Client Company</Label>
-              <Select value={companyId} onValueChange={value => setCompanyId(value ?? 'NONE')}>
-                <SelectTrigger className={`w-full ${fieldClassName}`}>
-                  <SelectValue placeholder={loadingAccounts ? 'Loading...' : 'Select company'}>
-                    {companyId !== 'NONE' ? selectedCompanyLabel(companies, companyId) : undefined}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className={selectContentClassName}>
-                  <SelectItem value="NONE">Select company</SelectItem>
-                  {companies.map(company => (
-                    <SelectItem key={company.id} value={company.id}>
-                      {company.companyCode ? `${company.companyCode} - ` : ''}{company.nameEn}
-                      {company.group?.name ? ` · ${company.group.name}` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {companies.length === 0 ? (
-                <p className={warningTextClassName}>No accessible client companies. Create or assign a company before posting journals.</p>
-              ) : companyId === 'NONE' ? (
-                <p className={warningTextClassName}>Required. Financial reports and ledgers are scoped by company.</p>
-              ) : null}
-            </div>
+            {!fixedCompanyId ? (
+              <div className="space-y-2">
+                <Label className={labelClassName}>Client Company</Label>
+                <Select value={companyId} onValueChange={value => setCompanyId(value ?? 'NONE')}>
+                  <SelectTrigger className={`w-full ${fieldClassName}`}>
+                    <SelectValue placeholder={loadingAccounts ? 'Loading...' : 'Select company'}>
+                      {companyId !== 'NONE' ? selectedCompanyLabel(companies, companyId) : undefined}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className={selectContentClassName}>
+                    <SelectItem value="NONE">Select company</SelectItem>
+                    {companies.map(company => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.companyCode ? `${company.companyCode} - ` : ''}{company.nameEn}
+                        {company.group?.name ? ` · ${company.group.name}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {companies.length === 0 ? (
+                  <p className={warningTextClassName}>
+                    No accessible client companies. Create or assign a company before posting journals.
+                  </p>
+                ) : companyId === 'NONE' ? (
+                  <p className={warningTextClassName}>Required. Financial reports and ledgers are scoped by company.</p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
           <div className="space-y-2">
             <div className="space-y-2">

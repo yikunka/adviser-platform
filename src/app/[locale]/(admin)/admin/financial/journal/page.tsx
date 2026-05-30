@@ -13,29 +13,21 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { JournalEntryForm, type JournalEntryForForm } from '@/components/admin/financial/JournalEntryForm'
 import { JournalViewModal, type JournalEntryDetails } from '@/components/admin/financial/JournalViewModal'
-import { Link } from '@/i18n/navigation'
+import { FinancialBreadcrumbs } from '@/components/admin/financial/FinancialBreadcrumbs'
+import { useFinancialCompany } from '@/components/admin/financial/FinancialCompanyContext'
 
-type JournalEntry = JournalEntryDetails & JournalEntryForForm & {
-  id: string
-  voucherNo: string
-  date: string
-  description: string
-  groupId?: string | null
-  company?: { id: string; nameEn: string; companyCode: string | null } | null
-  group?: { id: string; name: string } | null
-  status: 'DRAFT' | 'POSTED' | 'CANCELLED'
-  totalAmount: number
-  createdBy: string
-  createdAt: string
-}
-
-type ScopeCompany = {
-  id: string
-  nameEn: string
-  companyCode: string | null
-  groupId: string | null
-  group?: { id: string; name: string } | null
-}
+type JournalEntry = JournalEntryDetails &
+  JournalEntryForForm & {
+    id: string
+    voucherNo: string
+    date: string
+    description: string
+    companyId?: string | null
+    status: 'DRAFT' | 'POSTED' | 'CANCELLED'
+    totalAmount: number
+    createdBy: string
+    createdAt: string
+  }
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: '#9CA3AF',
@@ -44,15 +36,12 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 export default function AdminFinancialJournalPage() {
+  const company = useFinancialCompany()
   const [entries, setEntries] = useState<JournalEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterPeriod, setFilterPeriod] = useState('')
   const [filterStatus, setFilterStatus] = useState('ALL')
-  const [filterGroupId, setFilterGroupId] = useState('ALL')
-  const [filterCompanyId, setFilterCompanyId] = useState('ALL')
-  const [groups, setGroups] = useState<{ id: string; name: string }[]>([])
-  const [companies, setCompanies] = useState<ScopeCompany[]>([])
   const [page, setPage] = useState(1)
   const [formOpen, setFormOpen] = useState(false)
   const [viewOpen, setViewOpen] = useState(false)
@@ -63,15 +52,10 @@ export default function AdminFinancialJournalPage() {
   const fetchEntries = useCallback(async () => {
     setLoading(true)
     try {
-      let url = '/api/admin/financial/journal-entries'
-      const params = new URLSearchParams()
+      const params = new URLSearchParams({ companyId: company.id })
       if (filterPeriod) params.append('period', filterPeriod)
       if (filterStatus !== 'ALL') params.append('status', filterStatus)
-      if (filterGroupId !== 'ALL') params.append('groupId', filterGroupId)
-      if (filterCompanyId !== 'ALL') params.append('companyId', filterCompanyId)
-      if (params.toString()) url += '?' + params.toString()
-      
-      const res = await fetch(url)
+      const res = await fetch(`/api/admin/financial/journal-entries?${params}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to fetch entries')
       setEntries(data.entries || [])
@@ -80,22 +64,11 @@ export default function AdminFinancialJournalPage() {
     } finally {
       setLoading(false)
     }
-  }, [filterPeriod, filterStatus, filterGroupId, filterCompanyId])
+  }, [company.id, filterPeriod, filterStatus])
 
   useEffect(() => {
     fetchEntries()
   }, [fetchEntries])
-
-  useEffect(() => {
-    fetch('/api/admin/financial/scope')
-      .then(async res => {
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || 'Failed to load financial scope')
-        setGroups(data.groups || [])
-        setCompanies(data.companies || [])
-      })
-      .catch(error => toast.error(error instanceof Error ? error.message : 'Failed to load financial scope'))
-  }, [])
 
   function openCreateForm() {
     setEditingEntry(null)
@@ -113,7 +86,8 @@ export default function AdminFinancialJournalPage() {
   }
 
   async function postEntry(entry: JournalEntry) {
-    if (!confirm(`Post journal entry ${entry.voucherNo}? This will create ledger entries and cannot be undone.`)) return
+    if (!confirm(`Post journal entry ${entry.voucherNo}? This will create ledger entries and cannot be undone.`))
+      return
 
     try {
       const res = await fetch(`/api/admin/financial/journal-entries/${entry.id}/post`, { method: 'PUT' })
@@ -140,18 +114,13 @@ export default function AdminFinancialJournalPage() {
     }
   }
 
-  const filtered = entries.filter(e =>
-    (e.voucherNo.toLowerCase().includes(search.toLowerCase()) ||
-     e.description.toLowerCase().includes(search.toLowerCase())) &&
-    (filterStatus === 'ALL' || e.status === filterStatus) &&
-    (filterGroupId === 'ALL' || e.groupId === filterGroupId) &&
-    (filterCompanyId === 'ALL' || e.companyId === filterCompanyId) &&
-    (!filterPeriod || e.date.startsWith(filterPeriod))
+  const filtered = entries.filter(
+    e =>
+      (e.voucherNo.toLowerCase().includes(search.toLowerCase()) ||
+        e.description.toLowerCase().includes(search.toLowerCase())) &&
+      (filterStatus === 'ALL' || e.status === filterStatus) &&
+      (!filterPeriod || e.date.startsWith(filterPeriod)),
   )
-
-  const companyOptions = filterGroupId === 'ALL'
-    ? companies
-    : companies.filter(company => company.groupId === filterGroupId)
 
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize)
   const totalPages = Math.ceil(filtered.length / pageSize)
@@ -159,17 +128,15 @@ export default function AdminFinancialJournalPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="space-y-2">
-        <div className="flex items-center gap-2 text-xs" style={{ color: '#7A7060' }}>
-          <Link href="/admin/dashboard" className="hover:text-[#C9A96E]">Dashboard</Link>
-          <span>/</span>
-          <Link href="/admin/financial" className="hover:text-[#C9A96E]">Financial Accounting</Link>
-          <span>/</span>
-          <span style={{ color: 'var(--muted-foreground)' }}>Journal Entries</span>
-        </div>
+        <FinancialBreadcrumbs section="Journal Entries" />
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>Journal Entries</h1>
-            <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>Create and manage accounting vouchers.</p>
+            <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>
+              Journal Entries
+            </h1>
+            <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
+              {company.nameEn} · Create and manage accounting vouchers.
+            </p>
           </div>
           <Button size="sm" onClick={openCreateForm} style={{ background: '#C9A96E', color: '#0A0805' }}>
             <Plus size={15} className="mr-2" /> New Entry
@@ -205,43 +172,17 @@ export default function AdminFinancialJournalPage() {
                 <SelectItem value="CANCELLED">Cancelled</SelectItem>
               </SelectContent>
             </Select>
-            <Select
-              value={filterGroupId}
-              onValueChange={value => {
-                setFilterGroupId(value ?? 'ALL')
-                setFilterCompanyId('ALL')
-              }}
-            >
-              <SelectTrigger className="w-[190px]" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
-                <SelectValue placeholder="Entity Group" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Groups</SelectItem>
-                {groups.map(group => (
-                  <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={filterCompanyId} onValueChange={value => setFilterCompanyId(value ?? 'ALL')}>
-              <SelectTrigger className="w-[220px]" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
-                <SelectValue placeholder="Client Company" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Companies</SelectItem>
-                {companyOptions.map(company => (
-                  <SelectItem key={company.id} value={company.id}>
-                    {company.companyCode ? `${company.companyCode} - ` : ''}{company.nameEn}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="p-8 text-center" style={{ color: 'var(--muted-foreground)' }}>Loading...</div>
+            <div className="p-8 text-center" style={{ color: 'var(--muted-foreground)' }}>
+              Loading...
+            </div>
           ) : filtered.length === 0 ? (
-            <div className="p-8 text-center" style={{ color: '#5A5040' }}>No journal entries found</div>
+            <div className="p-8 text-center" style={{ color: '#5A5040' }}>
+              No journal entries found
+            </div>
           ) : (
             <>
               <Table>
@@ -249,7 +190,6 @@ export default function AdminFinancialJournalPage() {
                   <TableRow>
                     <TableHead>Voucher No</TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead>Company</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Total Amount</TableHead>
@@ -261,15 +201,12 @@ export default function AdminFinancialJournalPage() {
                     <TableRow key={entry.id}>
                       <TableCell className="font-mono">{entry.voucherNo}</TableCell>
                       <TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell>
-                      <TableCell className="max-w-[180px]">
-                        <div className="truncate">{entry.company?.nameEn ?? 'Unassigned'}</div>
-                        {entry.company?.companyCode ? (
-                          <div className="text-xs text-muted-foreground">{entry.company.companyCode}</div>
-                        ) : null}
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate">{entry.description}</TableCell>
+                      <TableCell className="max-w-[240px] truncate">{entry.description}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" style={{ borderColor: STATUS_COLORS[entry.status], color: STATUS_COLORS[entry.status] }}>
+                        <Badge
+                          variant="outline"
+                          style={{ borderColor: STATUS_COLORS[entry.status], color: STATUS_COLORS[entry.status] }}
+                        >
                           {entry.status === 'DRAFT' ? 'PENDING' : entry.status}
                         </Badge>
                       </TableCell>
@@ -315,7 +252,8 @@ export default function AdminFinancialJournalPage() {
 
               <div className="flex items-center justify-between mt-4 px-2">
                 <div className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                  Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, filtered.length)} of {filtered.length} entries
+                  Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, filtered.length)} of{' '}
+                  {filtered.length} entries
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -347,14 +285,10 @@ export default function AdminFinancialJournalPage() {
         open={formOpen}
         onOpenChange={setFormOpen}
         entry={editingEntry}
+        fixedCompanyId={company.id}
         onSaved={fetchEntries}
       />
-      <JournalViewModal
-        open={viewOpen}
-        onOpenChange={setViewOpen}
-        entry={viewingEntry}
-        onPosted={fetchEntries}
-      />
+      <JournalViewModal open={viewOpen} onOpenChange={setViewOpen} entry={viewingEntry} onPosted={fetchEntries} />
     </div>
   )
 }

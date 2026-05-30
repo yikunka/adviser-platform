@@ -172,6 +172,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
   const [stirringRequirements, setStirringRequirements] = useState('')
   const [packagingRequirements, setPackagingRequirements] = useState('')
   const [productionNotes, setProductionNotes] = useState('')
+  const [formulaIsUsed, setFormulaIsUsed] = useState(false)
   const [items, setItems] = useState<EditableItem[]>([])
 
   const totals = useMemo(
@@ -230,6 +231,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
       setStirringRequirements(recipe.stirringRequirements)
       setPackagingRequirements(recipe.packagingRequirements)
       setProductionNotes(recipe.productionNotes)
+      setFormulaIsUsed(recipe.formulaIsUsed)
       setItems(recipe.items.map(item => {
         if (item.itemType === 'product_semifinished' && item.productSemifinished) {
           const sf = item.productSemifinished
@@ -519,6 +521,20 @@ export default function AdminCosmoCoatRecipeEditorPage() {
             <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
               {isNew ? '填写基本信息并添加原料，保存后生效' : `${code} · ${name}`}
             </p>
+            {!isNew && (
+              <p className="text-xs mt-2">
+                <span
+                  className="inline-flex px-2 py-0.5 rounded-md font-medium"
+                  style={{
+                    background: formulaIsUsed ? 'rgba(74,159,82,0.15)' : 'rgba(122,112,96,0.15)',
+                    color: formulaIsUsed ? '#4A9F52' : '#7A7060',
+                  }}
+                  title={formulaIsUsed ? '已被工厂产品直接或间接使用' : '未被任何工厂产品使用'}
+                >
+                  {formulaIsUsed ? '已被工厂产品使用' : '未被工厂产品使用'}
+                </span>
+              </p>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">

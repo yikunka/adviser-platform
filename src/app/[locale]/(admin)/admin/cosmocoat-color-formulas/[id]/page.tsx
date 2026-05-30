@@ -8,7 +8,7 @@ import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { ArrowLeft, Save, Search, Trash2 } from 'lucide-react'
 import type { CosColorFormulaCategory } from '@prisma/client'
-import { COLOR_FORMULA_CATEGORIES } from '@/lib/cosmocoat/color-formula-categories'
+import { ColorFormulaCategoryFields } from '@/components/cosmocoat/ColorFormulaCategoryFields'
 import type { FullColorFormula } from '@/lib/cosmocoat/color-formulas'
 import {
   computeItemAmount,
@@ -114,6 +114,7 @@ export default function CosmocoatColorFormulaDetailPage() {
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
   const [category, setCategory] = useState<CosColorFormulaCategory>('PU')
+  const [factoryProductId, setFactoryProductId] = useState<string | null>(null)
   const [colorCode, setColorCode] = useState('')
   const [customerName, setCustomerName] = useState('')
   const [targetColor, setTargetColor] = useState('')
@@ -138,6 +139,7 @@ export default function CosmocoatColorFormulaDetailPage() {
       setCode(formula.code)
       setName(formula.name)
       setCategory(formula.category)
+      setFactoryProductId(formula.factoryProductId)
       setColorCode(formula.colorCode)
       setCustomerName(formula.customerName)
       setTargetColor(formula.targetColor)
@@ -222,6 +224,7 @@ export default function CosmocoatColorFormulaDetailPage() {
       code: code.trim() || undefined,
       name: name.trim(),
       category,
+      factoryProductId,
       colorCode,
       customerName,
       targetColor,
@@ -297,14 +300,14 @@ export default function CosmocoatColorFormulaDetailPage() {
       <div style={card} className="p-4 space-y-4">
         <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>基本信息</h3>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>类别</label>
-            <select value={category} onChange={e => setCategory(e.target.value as CosColorFormulaCategory)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()}>
-              {COLOR_FORMULA_CATEGORIES.map(c => (
-                <option key={c.value} value={c.value}>{c.labelZh}</option>
-              ))}
-            </select>
-          </div>
+          <ColorFormulaCategoryFields
+            className="sm:col-span-2 lg:col-span-2"
+            category={category}
+            factoryProductId={factoryProductId}
+            onCategoryChange={setCategory}
+            onFactoryProductChange={setFactoryProductId}
+            inputStyle={inputStyle()}
+          />
           <div className="space-y-1.5">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>配方编号</label>
             <input value={code} onChange={e => setCode(e.target.value)} placeholder="留空自动生成" className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />

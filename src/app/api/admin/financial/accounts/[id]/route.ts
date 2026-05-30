@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db/prisma'
 import { isDescendantAccount } from '@/lib/financial/account-tree'
 import { accountUpdateSchema } from '@/lib/financial/schemas'
 import { serializeAccount } from '@/lib/financial/serializers'
+import { assertCompanyAccessible, resolveEntityGroupAccess } from '@/lib/entity-groups/access'
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
@@ -30,9 +31,15 @@ export async function PATCH(
 
   const before = await prisma.finAccount.findUnique({ where: { id } })
   if (!before) return apiError('Account not found.', 404)
+  if (!before.companyId) return apiError('Legacy shared accounts cannot be edited from a company ledger.', 400)
+
+  const access = await resolveEntityGroupAccess(session.user.id, session.user.role)
+  if (!(await assertCompanyAccessible(access, before.companyId))) return apiError('Forbidden', 403)
 
   if (parsed.data.code && parsed.data.code !== before.code) {
-    const conflict = await prisma.finAccount.findUnique({ where: { code: parsed.data.code } })
+    const conflict = await prisma.finAccount.findFirst({
+      where: { companyId: before.companyId, code: parsed.data.code, NOT: { id } },
+    })
     if (conflict) return apiError('Account code already exists.', 409)
   }
 
@@ -41,12 +48,16 @@ export async function PATCH(
   if (parentId) {
     if (parentId === id) return apiError('An account cannot be its own parent.')
     const accounts = await prisma.finAccount.findMany({
+      where: { companyId: before.companyId },
       select: { id: true, code: true, name: true, parentId: true, level: true, sortOrder: true },
     })
     if (isDescendantAccount(accounts, id, parentId)) {
       return apiError('An account cannot be moved under one of its children.')
     }
-    parent = await prisma.finAccount.findUnique({ where: { id: parentId }, select: { id: true, level: true } })
+    parent = await prisma.finAccount.findFirst({
+      where: { id: parentId, companyId: before.companyId },
+      select: { id: true, level: true },
+    })
     if (!parent) return apiError('Parent account does not exist.', 404)
     if (parent.level >= 4) return apiError('Parent account level is too deep for a child account.')
   }
@@ -91,6 +102,9 @@ export async function DELETE(
     include: { _count: { select: { journalLines: true, ledgerEntries: true } } },
   })
   if (!before) return apiError('Account not found.', 404)
+  if (!before.companyId) return apiError('Legacy shared accounts cannot be deleted from a company ledger.', 400)
+  const access = await resolveEntityGroupAccess(session.user.id, session.user.role)
+  if (!(await assertCompanyAccessible(access, before.companyId))) return apiError('Forbidden', 403)
   if (before.isSystem) return apiError('System accounts cannot be deleted.', 400)
   if (before._count.journalLines > 0 || before._count.ledgerEntries > 0) {
     return apiError('Account has journal or ledger activity and cannot be deleted.', 409)

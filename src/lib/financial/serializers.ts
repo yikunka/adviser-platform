@@ -11,6 +11,8 @@ export type SerializedAccount = {
   code: string
   name: string
   type: AccountType
+  companyId: string | null
+  groupId: string | null
   level: number
   sortOrder: number
   parentId: string | null
@@ -26,6 +28,8 @@ export function serializeAccount(account: {
   code: string
   name: string
   type: AccountType
+  companyId?: string | null
+  groupId?: string | null
   level: number
   sortOrder: number
   parentId: string | null
@@ -40,6 +44,8 @@ export function serializeAccount(account: {
     code: account.code,
     name: account.name,
     type: account.type,
+    companyId: account.companyId ?? null,
+    groupId: account.groupId ?? null,
     level: account.level,
     sortOrder: account.sortOrder,
     parentId: account.parentId,

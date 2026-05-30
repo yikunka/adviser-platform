@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { getFactoryProductById, syncProductRecipes } from '@/lib/cosmocoat/factory-products'
+import { refreshAllFormulaIsUsedCache } from '@/lib/cosmocoat/recipe-usage'
 import {
   mergeViscosityPatch,
   type ProductViscosityRecord,
@@ -148,5 +149,6 @@ export async function DELETE(
   if (!current) return NextResponse.json({ error: '产品不存在' }, { status: 404 })
 
   await prisma.cosTableFactoryProduct.delete({ where: { id } })
+  await refreshAllFormulaIsUsedCache()
   return NextResponse.json({ success: true })
 }

@@ -21,6 +21,7 @@
     "financialJournal": "Journal Entries",
     "financialLedger": "General Ledger",
     "financialReports": "Financial Statements",
+    "financialCompanySelect": "Select Company",
     "invoices": "Invoices",
     "settings": "Settings",
     "users": "Customer Account Management",
@@ -606,6 +607,7 @@
       "main": "Main",
       "adviser": "Advise",
       "financial": "Financial",
+      "financeManagement": "Finance Management",
       "invoice": "Invoice",
       "sfsDiamond": "SFS Diamond",
       "sfsInvoices": "SFS Invoices",
@@ -714,6 +716,15 @@
       "entityGroup": "Client entity",
       "entityGroupNone": "No entity group",
       "allGroups": "All client entities"
+    },
+    "financial": {
+      "selectCompanyTitle": "Finance Management",
+      "selectCompanySubtitle": "Select a client company to manage journals, ledgers, and HKFRS reports.",
+      "searchPlaceholder": "Search by name, code, or entity group...",
+      "allGroups": "All entity groups",
+      "loading": "Loading companies...",
+      "empty": "No accessible client companies.",
+      "noGroup": "No entity group"
     },
     "invoices": {
       "title": "Invoices",

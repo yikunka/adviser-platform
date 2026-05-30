@@ -20,6 +20,7 @@ export const accountCreateSchema = z.object({
   code: z.string().trim().min(1, 'Code is required').max(32),
   name: z.string().trim().min(1, 'Name is required').max(200),
   type: accountTypeSchema,
+  companyId: z.string().cuid('Company is required'),
   parentId: nullableIdSchema.optional().default(null),
   sortOrder: z.coerce.number().int().min(0).max(999999).optional().default(0),
   isSystem: z.coerce.boolean().optional().default(false),
