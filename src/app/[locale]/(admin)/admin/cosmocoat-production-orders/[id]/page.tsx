@@ -795,8 +795,8 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div style={card} className="p-4 space-y-2">
-          <label className="text-xs font-medium" style={{ color: '#C9A96E' }}>搅拌要求</label>
-          <textarea value={productionNotes} onChange={e => setProductionNotes(e.target.value)} rows={4} className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y" style={inputStyle()} placeholder="如：1000 转/分钟，搅拌 30 分钟" />
+          <label className="text-xs font-medium" style={{ color: '#C9A96E' }}>生产要求</label>
+          <textarea value={productionNotes} onChange={e => setProductionNotes(e.target.value)} rows={4} className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y" style={inputStyle()} placeholder="如：1500 转 / 30 分钟" />
         </div>
         <div style={card} className="p-4 space-y-2">
           <label className="text-xs font-medium" style={{ color: '#C9A96E' }}>生产注意事项（含质检）</label>

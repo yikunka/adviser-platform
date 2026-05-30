@@ -572,14 +572,14 @@ export default function AdminCosmoCoatRecipeEditorPage() {
         </p>
         <div className="grid sm:grid-cols-1 lg:grid-cols-3 gap-3">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>搅拌要求</label>
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>生产要求</label>
             <textarea
               value={stirringRequirements}
               onChange={e => setStirringRequirements(e.target.value)}
               rows={4}
               className="w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-y"
               style={inputStyle()}
-              placeholder="3.4.1 搅拌：1000 转/分钟，搅拌 30 分钟"
+              placeholder="1500 转 / 30 分钟"
             />
           </div>
           <div className="space-y-1.5">
