@@ -11,8 +11,6 @@ export type FinancialCompanyInfo = {
   id: string
   nameEn: string
   companyCode: string | null
-  groupId?: string | null
-  group?: { id: string; name: string } | null
 }
 
 // URL-based company context — when present, takes priority over the global selector context.
@@ -30,7 +28,6 @@ export function UrlBasedCompanyProvider({
 
 type FinancialCompanyContextValue = {
   companies: FinancialCompanyInfo[]
-  groups: { id: string; name: string }[]
   company: FinancialCompanyInfo | null
   selectedCompanyId: string
   setSelectedCompanyId: (id: string) => void
@@ -48,7 +45,6 @@ export function FinancialCompanyProvider({
 }) {
   const pathname = usePathname()
   const [companies, setCompanies] = useState<FinancialCompanyInfo[]>([])
-  const [groups, setGroups] = useState<{ id: string; name: string }[]>([])
   const [selectedCompanyId, setSelectedCompanyIdState] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -58,7 +54,6 @@ export function FinancialCompanyProvider({
       .then(async res => {
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || 'Failed to load financial companies')
-        setGroups(data.groups ?? [])
         setCompanies(data.companies ?? [])
       })
       .catch(error => toast.error(error instanceof Error ? error.message : 'Failed to load financial companies'))
@@ -87,8 +82,8 @@ export function FinancialCompanyProvider({
   }
 
   const value = useMemo<FinancialCompanyContextValue>(
-    () => ({ companies, groups, company, selectedCompanyId, setSelectedCompanyId, loading }),
-    [companies, groups, company, selectedCompanyId, loading],
+    () => ({ companies, company, selectedCompanyId, setSelectedCompanyId, loading }),
+    [companies, company, selectedCompanyId, loading],
   )
 
   const isSelectorPage = /\/admin\/financial\/?$/.test(pathname.replace(/\/$/, ''))

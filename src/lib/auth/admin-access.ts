@@ -3,7 +3,6 @@ import type { Platform, UserRole } from '@prisma/client'
 export const ADMIN_MENU_KEYS = [
   'dashboard',
   'companies',
-  'entities',
   'kyc',
   'aml',
   'financial',
@@ -18,6 +17,7 @@ export const ADMIN_MENU_KEYS = [
   'cosmocoatColorFormulas',
   'cosmocoatFactoryProducts',
   'cosmocoatProductionOrders',
+  'cosmocoatProcessKits',
   'adminTeam',
 ] as const
 
@@ -28,7 +28,6 @@ const MENU_PLATFORM: Record<AdminMenuKey, Platform | 'GLOBAL'> = {
   settings: 'GLOBAL',
   adminTeam: 'GLOBAL',
   companies: 'ADVISER',
-  entities: 'ADVISER',
   kyc: 'ADVISER',
   aml: 'ADVISER',
   financial: 'ADVISER',
@@ -42,6 +41,7 @@ const MENU_PLATFORM: Record<AdminMenuKey, Platform | 'GLOBAL'> = {
   cosmocoatColorFormulas: 'COSMICOAT',
   cosmocoatFactoryProducts: 'COSMICOAT',
   cosmocoatProductionOrders: 'COSMICOAT',
+  cosmocoatProcessKits: 'COSMICOAT',
 }
 
 export type AdminAccessUser = {
@@ -95,8 +95,6 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
       return 'dashboard'
     case 'companies':
       return 'companies'
-    case 'entities':
-      return 'entities'
     case 'kyc':
       return 'kyc'
     case 'aml':
@@ -129,6 +127,8 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
       return 'cosmocoatFactoryProducts'
     case 'cosmocoat-production-orders':
       return 'cosmocoatProductionOrders'
+    case 'cosmocoat-process-kits':
+      return 'cosmocoatProcessKits'
     default:
       return null
   }
@@ -144,7 +144,6 @@ export const ADMIN_PLATFORM_OPTIONS: { value: Platform; label: string }[] = [
 export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: string }[] = [
   { key: 'dashboard', label: 'Dashboard', group: 'main' },
   { key: 'companies', label: 'Companies', group: 'Adviser' },
-  { key: 'entities', label: 'Client entities', group: 'Adviser' },
   { key: 'kyc', label: 'KYC queue', group: 'Adviser' },
   { key: 'aml', label: 'AML', group: 'Adviser' },
   { key: 'financial', label: 'Financial', group: 'Finance Management' },
@@ -158,6 +157,7 @@ export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: stri
   { key: 'cosmocoatColorFormulas', label: 'Color matching formulas', group: 'CosmoCoat' },
   { key: 'cosmocoatFactoryProducts', label: 'Factory product management', group: 'CosmoCoat' },
   { key: 'cosmocoatProductionOrders', label: 'Production orders', group: 'CosmoCoat' },
+  { key: 'cosmocoatProcessKits', label: 'Process kits', group: 'CosmoCoat' },
   { key: 'settings', label: 'Settings', group: 'System' },
   { key: 'adminTeam', label: 'Admin users & access', group: 'System' },
 ]

@@ -307,6 +307,17 @@ export default function KYCQueuePage() {
   // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchRecords updates state after the async request resolves.
   useEffect(() => { fetchRecords() }, [fetchRecords])
 
+  async function fetchAML(id: string) {
+    setAmlData(null)
+    setAmlLoading(true)
+    try {
+      const res = await fetch(`/api/admin/kyc/${id}/aml`)
+      if (res.ok) setAmlData(await res.json())
+    } finally {
+      setAmlLoading(false)
+    }
+  }
+
   // Auto-open a specific person when ?personId=xxx is in the URL (e.g. navigating from AML alerts)
   useEffect(() => {
     const personId = searchParams.get('personId')
@@ -321,8 +332,6 @@ export default function KYCQueuePage() {
         void fetchAML(personId)
       })
     return () => { cancelled = true }
-  // fetchAML is stable (defined outside useCallback) so no dep needed
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
   useEffect(() => {
@@ -379,17 +388,6 @@ export default function KYCQueuePage() {
       fetchRecords('APPROVED', 1)
     } finally {
       setCreating(false)
-    }
-  }
-
-  async function fetchAML(id: string) {
-    setAmlData(null)
-    setAmlLoading(true)
-    try {
-      const res = await fetch(`/api/admin/kyc/${id}/aml`)
-      if (res.ok) setAmlData(await res.json())
-    } finally {
-      setAmlLoading(false)
     }
   }
 

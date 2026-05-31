@@ -12,6 +12,7 @@ type ColorFormulaCategoryFieldsProps = {
   factoryProductId: string | null
   onCategoryChange: (category: CosColorFormulaCategory) => void
   onFactoryProductChange: (factoryProductId: string | null) => void
+  onProductsLoaded?: (products: ColorFormulaFactoryProductOption[]) => void
   inputStyle?: React.CSSProperties
   showLabels?: boolean
   className?: string
@@ -30,6 +31,7 @@ export function ColorFormulaCategoryFields({
   factoryProductId,
   onCategoryChange,
   onFactoryProductChange,
+  onProductsLoaded,
   inputStyle = defaultInputStyle(),
   showLabels = true,
   className = '',
@@ -45,7 +47,9 @@ export function ColorFormulaCategoryFields({
         const res = await fetch('/api/admin/cosmocoat/color-formulas/factory-product-options')
         const data = await res.json()
         if (!cancelled && res.ok) {
-          setProducts(data.items ?? [])
+          const items = data.items ?? []
+          setProducts(items)
+          onProductsLoaded?.(items)
         }
       } catch {
         /* ignore */
@@ -56,7 +60,7 @@ export function ColorFormulaCategoryFields({
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [onProductsLoaded])
 
   const childOptions = useMemo(
     () => products.filter(item => item.parentCategory === category),

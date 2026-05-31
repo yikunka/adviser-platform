@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
-import { assertCompanyAccessible, resolveEntityGroupAccess } from '@/lib/entity-groups/access'
+import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
 import { invoicePdfFilename, renderInvoicePdf } from '@/lib/invoice/invoice-pdf'
 
 export async function GET(
@@ -21,7 +21,7 @@ export async function GET(
   })
   if (!invoice) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
+  const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
   if (!(await assertCompanyAccessible(access, invoice.companyId))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }

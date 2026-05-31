@@ -4,11 +4,33 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ─────────────────────────────────────────────
 // ENUMS
 // ─────────────────────────────────────────────
+
+enum ProcessKitStatus {
+  DRAFT    // 草稿
+  ACTIVE   // 已启用
+  ARCHIVED // 已归档
+}
+
+enum ProcessTestType {
+  PERFORMANCE       // 性能测试
+  DURABILITY        // 耐久性测试
+  ADHESION          // 附着力测试
+  COLOR_STABILITY   // 色牢度测试
+  BOND_STRENGTH     // 粘结强度测试
+  OTHER             // 其他
+}
+
+enum ProcessTestResult {
+  PASSED  // 通过
+  FAILED  // 未通过
+  PENDING // 待测试
+}
 
 enum UserRole {
   CLIENT
@@ -236,9 +258,11 @@ model User {
   sfsOrders          SfsOrder[]
   cosJournalEntries  CosTableJournalEntry[]
   financialJournalEntries JournalEntry[] @relation("FinancialJournalCreatedBy")
-  entityGroupMemberships  ClientEntityGroupMember[]
   invoicesCreated         Invoice[]     @relation("InvoiceCreatedBy")
   sfsInvoicesCreated      SfsInvoice[]  @relation("SfsInvoiceCreatedBy")
+
+  createdProcessKits CosProcessKit[]  @relation("ProcessKitCreator")
+  testedProcessKits  CosProcessTest[] @relation("ProcessTestTester")
 
   @@map("users")
 }
@@ -254,46 +278,6 @@ model VerificationToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("verification_tokens")
-}
-
-// ─────────────────────────────────────────────
-// CLIENT ENTITY GROUPS (accounting firm customers)
-// ─────────────────────────────────────────────
-
-model ClientEntityGroup {
-  id            String   @id @default(cuid())
-  name          String
-  contactPerson String?
-  email         String?
-  phone         String?
-  address       String?
-  notes         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  companies       Company[]
-  members         ClientEntityGroupMember[]
-  finAccounts     FinAccount[]
-  journalEntries  JournalEntry[]
-  ledgerEntries   Ledger[]
-
-  @@index([name])
-  @@map("client_entity_groups")
-}
-
-/// Staff user access to a client entity group (many-to-many).
-model ClientEntityGroupMember {
-  id        String   @id @default(cuid())
-  groupId   String
-  userId    String
-  createdAt DateTime @default(now())
-
-  group ClientEntityGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  user  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([groupId, userId])
-  @@index([userId])
-  @@map("client_entity_group_members")
 }
 
 // ─────────────────────────────────────────────
@@ -322,14 +306,11 @@ model Company {
   /// Lowercased email: company is pre-assigned until a CLIENT registers with this email
   pendingClientEmail    String?
   assignedStaffId       String?
-  /// Parent client entity group (accounting firm's customer).
-  groupId               String?
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 
   clientUser    User?               @relation("ClientCompany", fields: [clientUserId], references: [id])
   assignedStaff User?               @relation("AssignedStaff", fields: [assignedStaffId], references: [id])
-  group         ClientEntityGroup?  @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   directors              Director[]
   members                Member[]
@@ -352,7 +333,6 @@ model Company {
   invoices               Invoice[]
 
   @@index([pendingClientEmail])
-  @@index([groupId])
   @@map("companies")
 }
 
@@ -1662,6 +1642,75 @@ model CosTableExchangeRate {
 }
 
 // ─────────────────────────────────────────────
+// CosmoCoat — Process Kits (產品配套工藝書)
+// ─────────────────────────────────────────────
+
+/// Process Kit - 产品配套工艺书（组合多个产品 + 使用方法）
+model CosProcessKit {
+  id            String           @id @default(cuid())
+  code          String           @unique
+  name          String
+  description   String?
+  status        ProcessKitStatus @default(DRAFT)
+  createdBy     String?
+  createdByName String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  createdByUser User? @relation("ProcessKitCreator", fields: [createdBy], references: [id])
+
+  products CosProcessKitProduct[]
+  tests    CosProcessTest[]
+
+  @@index([status])
+  @@map("cos_process_kits")
+}
+
+/// Product in a Process Kit - 工艺书中的产品组合
+model CosProcessKitProduct {
+  id            String  @id @default(cuid())
+  kitId         String
+  productId     String
+  productName   String
+  sortOrder     Int     @default(0)
+  quantityRatio String?
+  usageMethod   String
+  notes         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  kit CosProcessKit @relation(fields: [kitId], references: [id], onDelete: Cascade)
+
+  @@index([kitId])
+  @@index([productId])
+  @@map("cos_process_kit_products")
+}
+
+/// Test Records for Process Kit - 工艺书的测试记录
+model CosProcessTest {
+  id         String            @id @default(cuid())
+  kitId      String
+  testType   ProcessTestType
+  testResult ProcessTestResult @default(PENDING)
+  testDate   DateTime
+  testerName String
+  testerId   String?
+  reportLink String?
+  testNotes  String?
+  passedAt   DateTime?
+
+  kit          CosProcessKit @relation(fields: [kitId], references: [id], onDelete: Cascade)
+  testedByUser User?         @relation("ProcessTestTester", fields: [testerId], references: [id])
+
+  @@index([kitId])
+  @@index([testType])
+  @@index([testResult])
+  @@index([testDate])
+  @@map("cos_process_tests")
+}
+
+// ─────────────────────────────────────────────
 // Adviser — FINANCIAL ACCOUNTING MODULE
 // ─────────────────────────────────────────────
 
@@ -1672,7 +1721,6 @@ model FinAccount {
   type          AccountType
   parentId      String?
   companyId     String?
-  groupId       String?
   level         Int         @default(1)
   sortOrder     Int         @default(0)
   isSystem      Boolean     @default(false)
@@ -1683,14 +1731,12 @@ model FinAccount {
   parent        FinAccount?      @relation("FinAccountHierarchy", fields: [parentId], references: [id])
   children      FinAccount[]     @relation("FinAccountHierarchy")
   company       Company?         @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  group         ClientEntityGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   journalLines  JournalLine[]
   ledgerEntries Ledger[]
   accountBalances AccountBalance[]
 
   @@unique([companyId, code])
   @@index([companyId])
-  @@index([groupId])
   @@index([type, sortOrder])
   @@map("adv_accounts")
 }
@@ -1704,7 +1750,6 @@ model JournalEntry {
   status        JournalStatus @default(DRAFT)
   attachments   String[]      @default([])
   companyId     String?
-  groupId       String?
   createdById   String?
   postedAt      DateTime?
   reversedAt    DateTime?
@@ -1712,7 +1757,6 @@ model JournalEntry {
   updatedAt     DateTime      @updatedAt
 
   company       Company?           @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  group         ClientEntityGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   createdBy     User?              @relation("FinancialJournalCreatedBy", fields: [createdById], references: [id])
   lines         JournalLine[]
   ledgerEntries Ledger[]
@@ -1720,7 +1764,6 @@ model JournalEntry {
   @@index([period, status])
   @@index([entryDate])
   @@index([companyId])
-  @@index([groupId])
   @@map("adv_journal_entries")
 }
 
@@ -1747,7 +1790,6 @@ model Ledger {
   accountId   String
   entryId     String?
   companyId   String?
-  groupId     String?
   lineNum     Int      @default(0)
   date        DateTime
   voucherNo   String
@@ -1759,11 +1801,9 @@ model Ledger {
   account     FinAccount    @relation(fields: [accountId], references: [id])
   entry       JournalEntry? @relation(fields: [entryId], references: [id])
   company     Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  group       ClientEntityGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   @@index([accountId, date, lineNum])
   @@index([companyId, accountId, date, lineNum])
-  @@index([groupId, accountId, date, lineNum])
   @@index([date])
   @@index([voucherNo])
   @@map("adv_ledger")

@@ -55,7 +55,6 @@ export const journalEntryFilterSchema = z.object({
   status: journalStatusSchema.optional(),
   search: z.string().trim().max(100).optional(),
   companyId: z.string().cuid().optional(),
-  groupId: z.string().cuid().optional(),
 })
 
 export const ledgerFilterSchema = z.object({
@@ -64,13 +63,11 @@ export const ledgerFilterSchema = z.object({
   period: z.string().regex(/^\d{4}-\d{2}$/).optional(),
   voucherNo: z.string().trim().max(100).optional(),
   companyId: z.string().cuid().optional(),
-  groupId: z.string().cuid().optional(),
 })
 
 export const financialReportFilterSchema = z.object({
   period: z.string().regex(/^\d{4}-\d{2}$/, 'Period must be YYYY-MM'),
   companyId: z.string().cuid().optional(),
-  groupId: z.string().cuid().optional(),
 })
 
 export type AccountFormValues = z.infer<typeof accountCreateSchema>

@@ -1,0 +1,110 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { Prisma } from '@prisma/client'
+import { requireRole } from '@/lib/auth/rbac'
+import { prisma } from '@/lib/db/prisma'
+import {
+  generateProcessKitCode,
+  getProcessKitById,
+  kitInclude,
+  serializeProcessKit,
+} from '@/lib/cosmocoat/process-kits'
+
+const kitSchema = z.object({
+  code: z.string().trim().min(1).max(32).optional(),
+  name: z.string().trim().min(1).max(160),
+  description: z.string().trim().max(2000).optional().default(''),
+  status: z.enum(['DRAFT', 'ACTIVE', 'ARCHIVED']).optional().default('DRAFT'),
+})
+
+function isMissingTable(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021'
+}
+
+export async function GET(req: NextRequest) {
+  const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
+  if (error) return error
+
+  const q = req.nextUrl.searchParams.get('q')?.trim() ?? ''
+  const status = req.nextUrl.searchParams.get('status')?.trim() ?? ''
+  const page = Math.max(1, Number(req.nextUrl.searchParams.get('page') ?? '1') || 1)
+  const limit = Math.min(200, Math.max(1, Number(req.nextUrl.searchParams.get('limit') ?? '50') || 50))
+  const skip = (page - 1) * limit
+
+  const where: Prisma.CosProcessKitWhereInput = {
+    ...(q
+      ? {
+          OR: [
+            { code: { contains: q, mode: 'insensitive' } },
+            { name: { contains: q, mode: 'insensitive' } },
+            { description: { contains: q, mode: 'insensitive' } },
+          ],
+        }
+      : {}),
+    ...(status && ['DRAFT', 'ACTIVE', 'ARCHIVED'].includes(status)
+      ? { status: status as 'DRAFT' | 'ACTIVE' | 'ARCHIVED' }
+      : {}),
+  }
+
+  try {
+    const [total, items] = await Promise.all([
+      prisma.cosProcessKit.count({ where }),
+      prisma.cosProcessKit.findMany({
+        where,
+        include: kitInclude,
+        orderBy: [{ updatedAt: 'desc' }],
+        skip,
+        take: limit,
+      }),
+    ])
+
+    return NextResponse.json({
+      items: items.map(serializeProcessKit),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    })
+  } catch (err) {
+    if (isMissingTable(err)) {
+      return NextResponse.json({ error: '工艺书表不存在，请先运行数据库迁移' }, { status: 503 })
+    }
+    throw err
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
+  if (error) return error
+
+  const body = await req.json().catch(() => null)
+  const parsed = kitSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
+  }
+
+  try {
+    const code = parsed.data.code?.trim() || await generateProcessKitCode()
+    const existing = await prisma.cosProcessKit.findUnique({ where: { code } })
+    if (existing) return NextResponse.json({ error: '工艺书编号已存在' }, { status: 409 })
+
+    const kit = await prisma.cosProcessKit.create({
+      data: {
+        code,
+        name: parsed.data.name,
+        description: parsed.data.description || null,
+        status: parsed.data.status,
+        createdBy: session!.user.id,
+        createdByName: session!.user.name ?? session!.user.email ?? null,
+      },
+    })
+
+    const full = await getProcessKitById(kit.id)
+    return NextResponse.json({ kit: full }, { status: 201 })
+  } catch (err) {
+    if (isMissingTable(err)) {
+      return NextResponse.json({ error: '工艺书表不存在，请先运行数据库迁移' }, { status: 503 })
+    }
+    throw err
+  }
+}

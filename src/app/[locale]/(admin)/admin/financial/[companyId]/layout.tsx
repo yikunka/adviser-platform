@@ -3,8 +3,8 @@ import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
 import {
   assertCompanyAccessible,
-  resolveEntityGroupAccess,
-} from '@/lib/entity-groups/access'
+  resolveCompanyAccess,
+} from '@/lib/company-access'
 import { UrlBasedCompanyProvider } from '@/components/admin/financial/FinancialCompanyContext'
 
 export const dynamic = 'force-dynamic'
@@ -35,14 +35,12 @@ export default async function FinancialCompanyLayout({
       id: true,
       nameEn: true,
       companyCode: true,
-      groupId: true,
-      group: { select: { id: true, name: true } },
     },
   })
 
   if (!company) notFound()
 
-  const access = await resolveEntityGroupAccess(session.user.id, session.user.role)
+  const access = await resolveCompanyAccess(session.user.id, session.user.role)
   if (!(await assertCompanyAccessible(access, company.id))) {
     notFound()
   }
@@ -53,8 +51,6 @@ export default async function FinancialCompanyLayout({
         id: company.id,
         nameEn: company.nameEn,
         companyCode: company.companyCode,
-        groupId: company.groupId,
-        group: company.group,
       }}
     >
       {children}

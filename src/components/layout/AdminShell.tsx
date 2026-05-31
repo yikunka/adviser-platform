@@ -25,6 +25,7 @@ import {
   FlaskConical,
   Beaker,
   ClipboardList,
+  BookOpen,
   Boxes,
   FolderTree,
   Layers,
@@ -56,7 +57,6 @@ const NAV_GROUPS: {
   {
     labelKey: 'adviser',
     items: [
-      { href: '/admin/entities', key: 'entities', Icon: Layers },
       { href: '/admin/companies', key: 'companies', Icon: Building2 },
       { href: '/admin/kyc', key: 'kyc', Icon: ClipboardCheck },
       { href: '/admin/aml', key: 'aml', Icon: ShieldAlert },
@@ -90,6 +90,7 @@ const NAV_GROUPS: {
       { href: '/admin/cosmocoat-factory-products', key: 'cosmocoatFactoryProducts', Icon: Boxes },
       { href: '/admin/cosmocoat-color-formulas', key: 'cosmocoatColorFormulas', Icon: Palette },
       { href: '/admin/cosmocoat-production-orders', key: 'cosmocoatProductionOrders', Icon: ClipboardList },
+      { href: '/admin/cosmocoat-process-kits', key: 'cosmocoatProcessKits', Icon: BookOpen },
     ],
   },
   {

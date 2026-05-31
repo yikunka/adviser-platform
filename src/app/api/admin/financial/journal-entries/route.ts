@@ -5,13 +5,11 @@ import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { journalEntryCreateSchema, journalEntryFilterSchema } from '@/lib/financial/schemas'
 import { serializeJournalEntry } from '@/lib/financial/serializers'
-import { resolveJournalCompanyScope } from '@/lib/entity-groups/journal'
+import { resolveJournalCompanyScope } from '@/lib/financial/company-scope'
 import {
   assertCompanyAccessible,
-  assertGroupAccessible,
-  groupIdsFromAccess,
-  resolveEntityGroupAccess,
-} from '@/lib/entity-groups/access'
+  resolveCompanyAccess,
+} from '@/lib/company-access'
 import { generateVoucherNo, parseYmdDate, periodFromDate, validateBalance } from '@/lib/financial/utils'
 
 function apiError(error: string, status = 400) {
@@ -37,26 +35,19 @@ export async function GET(req: NextRequest) {
     status: req.nextUrl.searchParams.get('status') || undefined,
     search: req.nextUrl.searchParams.get('search') || undefined,
     companyId: req.nextUrl.searchParams.get('companyId') || undefined,
-    groupId: req.nextUrl.searchParams.get('groupId') || undefined,
   })
   if (!parsed.success) return apiError('Invalid journal filters.')
 
-  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
+  const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
   if (parsed.data.companyId && !(await assertCompanyAccessible(access, parsed.data.companyId))) {
     return apiError('Forbidden', 403)
   }
-  if (parsed.data.groupId && !(await assertGroupAccessible(access, parsed.data.groupId))) {
-    return apiError('Forbidden', 403)
-  }
-
-  const restrictedGroupIds = groupIdsFromAccess(access)
 
   const where: Prisma.JournalEntryWhereInput = {
-    ...(!parsed.data.companyId && !parsed.data.groupId && restrictedGroupIds ? { groupId: { in: restrictedGroupIds } } : {}),
+    ...(!parsed.data.companyId && access.kind === 'restricted' ? { companyId: { in: access.companyIds } } : {}),
     ...(parsed.data.period ? { period: parsed.data.period } : {}),
     ...(parsed.data.status ? { status: parsed.data.status } : {}),
     ...(parsed.data.companyId ? { companyId: parsed.data.companyId } : {}),
-    ...(parsed.data.groupId ? { groupId: parsed.data.groupId } : {}),
     ...(parsed.data.search
       ? {
           OR: [
@@ -71,7 +62,6 @@ export async function GET(req: NextRequest) {
     where,
     include: {
       company: { select: { id: true, nameEn: true, companyCode: true } },
-      group: { select: { id: true, name: true } },
       createdBy: { select: { id: true, nameEn: true, email: true } },
       lines: {
         include: { account: { select: { id: true, code: true, name: true, type: true } } },
@@ -101,7 +91,7 @@ export async function POST(req: NextRequest) {
   const lineError = validateJournalLines(parsed.data.lines)
   if (lineError) return apiError(lineError)
 
-  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
+  const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
   if (!(await assertCompanyAccessible(access, parsed.data.companyId))) {
     return apiError('Forbidden', 403)
   }
@@ -127,7 +117,6 @@ export async function POST(req: NextRequest) {
           period: periodFromDate(entryDate),
           attachments: parsed.data.attachments,
           companyId: companyScope.companyId,
-          groupId: companyScope.groupId,
           createdById: session.user.id,
           lines: {
             create: parsed.data.lines.map((line, index) => ({
@@ -142,7 +131,6 @@ export async function POST(req: NextRequest) {
         },
         include: {
           company: { select: { id: true, nameEn: true, companyCode: true } },
-          group: { select: { id: true, name: true } },
           createdBy: { select: { id: true, nameEn: true, email: true } },
           lines: {
             include: { account: { select: { id: true, code: true, name: true, type: true } } },

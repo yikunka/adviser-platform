@@ -6,7 +6,7 @@ import { prisma } from '@/lib/db/prisma'
 import { isDescendantAccount } from '@/lib/financial/account-tree'
 import { accountUpdateSchema } from '@/lib/financial/schemas'
 import { serializeAccount } from '@/lib/financial/serializers'
-import { assertCompanyAccessible, resolveEntityGroupAccess } from '@/lib/entity-groups/access'
+import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
@@ -33,7 +33,7 @@ export async function PATCH(
   if (!before) return apiError('Account not found.', 404)
   if (!before.companyId) return apiError('Legacy shared accounts cannot be edited from a company ledger.', 400)
 
-  const access = await resolveEntityGroupAccess(session.user.id, session.user.role)
+  const access = await resolveCompanyAccess(session.user.id, session.user.role)
   if (!(await assertCompanyAccessible(access, before.companyId))) return apiError('Forbidden', 403)
 
   if (parsed.data.code && parsed.data.code !== before.code) {
@@ -103,7 +103,7 @@ export async function DELETE(
   })
   if (!before) return apiError('Account not found.', 404)
   if (!before.companyId) return apiError('Legacy shared accounts cannot be deleted from a company ledger.', 400)
-  const access = await resolveEntityGroupAccess(session.user.id, session.user.role)
+  const access = await resolveCompanyAccess(session.user.id, session.user.role)
   if (!(await assertCompanyAccessible(access, before.companyId))) return apiError('Forbidden', 403)
   if (before.isSystem) return apiError('System accounts cannot be deleted.', 400)
   if (before._count.journalLines > 0 || before._count.ledgerEntries > 0) {

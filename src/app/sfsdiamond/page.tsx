@@ -152,7 +152,7 @@ export default function SFSHomePage() {
               </p>
               <p>
                 We believe that <em>love never fades; it takes on a new form.</em> Through Chemical
-                Vapor Deposition, carbon extracted from your loved one's remains is guided — atom by
+                Vapor Deposition, carbon extracted from your loved one&apos;s remains is guided — atom by
                 atom — into a perfect crystalline lattice: a real, certified diamond.
               </p>
               <p>
@@ -264,7 +264,7 @@ export default function SFSHomePage() {
           </h2>
           <p className="text-sm leading-relaxed mb-10" style={{ color: '#4A3E30' }}>
             Every memorial diamond is unique — as unique as the life it honours. Reach out to our
-            team and we'll walk you through the entire process with patience and care.
+            team and we&apos;ll walk you through the entire process with patience and care.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link

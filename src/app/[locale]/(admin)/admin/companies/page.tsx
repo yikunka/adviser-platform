@@ -8,8 +8,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 
-type EntityGroupOption = { id: string; name: string }
-
 type Company = {
   id: string
   companyCode?: string | null
@@ -21,7 +19,6 @@ type Company = {
   annualReturnDate?: string
   assignedStaff?: { nameEn: string }
   clientUser?: { nameEn: string; email: string }
-  group?: { id: string; name: string } | null
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -37,23 +34,13 @@ export default function CompaniesPage() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
-  const [groupId, setGroupId] = useState('')
-  const [groups, setGroups] = useState<EntityGroupOption[]>([])
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    fetch('/api/admin/entity-groups?limit=100')
-      .then(r => r.json())
-      .then(json => setGroups((json.groups ?? []).map((g: EntityGroupOption) => ({ id: g.id, name: g.name }))))
-      .catch(() => {})
-  }, [])
 
   const fetchCompanies = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams({ q: search, page: String(page) })
-      if (groupId) params.set('groupId', groupId)
       const res = await fetch(`/api/admin/companies?${params}`)
       const json = await res.json()
       setCompanies(json.companies ?? [])
@@ -63,7 +50,7 @@ export default function CompaniesPage() {
     } finally {
       setLoading(false)
     }
-  }, [search, page, groupId])
+  }, [search, page])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchCompanies updates state after the async request resolves.
   useEffect(() => { fetchCompanies() }, [fetchCompanies])
@@ -84,17 +71,6 @@ export default function CompaniesPage() {
           onChange={e => { setSearch(e.target.value); setPage(1) }}
           className="max-w-xs"
         />
-        <select
-          value={groupId}
-          onChange={e => { setGroupId(e.target.value); setPage(1) }}
-          className="max-w-xs rounded-md px-3 py-2 text-sm"
-          style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: '#F0EAD8' }}
-        >
-          <option value="">{t('allGroups')}</option>
-          {groups.map(g => (
-            <option key={g.id} value={g.id}>{g.name}</option>
-          ))}
-        </select>
       </div>
 
       <Card>
@@ -103,7 +79,6 @@ export default function CompaniesPage() {
             <thead style={{ background: '#1A1A12', borderBottom: '1px solid #2A2418' }}>
               <tr>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('companyCode')}</th>
-                <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('entityGroup')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('companyName')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('companyNumber')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('status')}</th>
@@ -114,9 +89,9 @@ export default function CompaniesPage() {
             </thead>
             <tbody className="divide-y divide-[#2A2418]">
               {loading ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>Loading...</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>Loading...</td></tr>
               ) : companies.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>{t('empty')}</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>{t('empty')}</td></tr>
               ) : companies.map(c => (
                 <tr
                   key={c.id}
@@ -128,15 +103,6 @@ export default function CompaniesPage() {
                   }}
                 >
                   <td className="px-4 py-3 font-semibold" style={{ color: '#C9A96E' }}>{c.companyCode ?? '—'}</td>
-                  <td className="px-4 py-3">
-                    {c.group ? (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: 'rgba(201,169,110,0.12)', color: '#C9A96E' }}>
-                        {c.group.name}
-                      </span>
-                    ) : (
-                      <span style={{ color: 'var(--muted-foreground)' }}>—</span>
-                    )}
-                  </td>
                   <td className="px-4 py-3">
                     <p className="font-medium" style={{ color: 'var(--foreground)' }}>{c.nameEn}</p>
                     {c.nameZh && <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{c.nameZh}</p>}

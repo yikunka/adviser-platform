@@ -5,8 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Link } from '@/i18n/navigation'
 
 export default async function AdminDashboardPage() {
-  const session = await auth()
+  await auth()
   const t = await getTranslations('admin.dashboard')
+  const today = new Date()
+  const thirtyDaysFromNow = new Date(today)
+  thirtyDaysFromNow.setDate(today.getDate() + 30)
 
   const [totalCompanies, pendingKyc, amlAlerts, upcomingAR] = await Promise.all([
     prisma.company.count({ where: { status: 'ACTIVE' } }),
@@ -15,8 +18,8 @@ export default async function AdminDashboardPage() {
     prisma.company.count({
       where: {
         annualReturnDate: {
-          gte: new Date(),
-          lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          gte: today,
+          lte: thirtyDaysFromNow,
         },
       },
     }),

@@ -33,8 +33,6 @@ type ScopeCompany = {
   id: string
   nameEn: string
   companyCode: string | null
-  groupId: string | null
-  group?: { id: string; name: string } | null
 }
 
 type FormLine = {
@@ -79,7 +77,7 @@ const warningTextClassName = 'text-xs text-[#f59e0b]'
 function selectedCompanyLabel(companies: ScopeCompany[], id: string) {
   const company = companies.find(row => row.id === id)
   if (!company) return ''
-  return `${company.companyCode ? `${company.companyCode} - ` : ''}${company.nameEn}${company.group?.name ? ` · ${company.group.name}` : ''}`
+  return `${company.companyCode ? `${company.companyCode} - ` : ''}${company.nameEn}`
 }
 
 function selectedAccountLabel(accounts: Account[], id: string) {
@@ -279,7 +277,6 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                     {companies.map(company => (
                       <SelectItem key={company.id} value={company.id}>
                         {company.companyCode ? `${company.companyCode} - ` : ''}{company.nameEn}
-                        {company.group?.name ? ` · ${company.group.name}` : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>

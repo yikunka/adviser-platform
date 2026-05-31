@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { ArrowLeft, Save, Search, Trash2 } from 'lucide-react'
 import type { CosColorFormulaCategory } from '@prisma/client'
 import { ColorFormulaCategoryFields } from '@/components/cosmocoat/ColorFormulaCategoryFields'
+import type { ColorFormulaFactoryProductOption } from '@/lib/cosmocoat/color-formula-factory-products'
 import type { FullColorFormula } from '@/lib/cosmocoat/color-formulas'
 import {
   computeItemAmount,
@@ -115,6 +116,8 @@ export default function CosmocoatColorFormulaDetailPage() {
   const [name, setName] = useState('')
   const [category, setCategory] = useState<CosColorFormulaCategory>('PU')
   const [factoryProductId, setFactoryProductId] = useState<string | null>(null)
+  const [factoryProducts, setFactoryProducts] = useState<ColorFormulaFactoryProductOption[]>([])
+  const [lastAutoCode, setLastAutoCode] = useState('')
   const [colorCode, setColorCode] = useState('')
   const [customerName, setCustomerName] = useState('')
   const [targetColor, setTargetColor] = useState('')
@@ -156,6 +159,54 @@ export default function CosmocoatColorFormulaDetailPage() {
   useEffect(() => {
     loadFormula()
   }, [loadFormula])
+
+  const handleProductsLoaded = useCallback((products: ColorFormulaFactoryProductOption[]) => {
+    setFactoryProducts(products)
+  }, [])
+
+  const selectedFactoryProduct = useMemo(
+    () => factoryProducts.find(product => product.id === factoryProductId),
+    [factoryProducts, factoryProductId],
+  )
+
+  useEffect(() => {
+    if (!isNew) return
+    if (!selectedFactoryProduct?.productCode) {
+      if (code && code === lastAutoCode) setCode('')
+      if (lastAutoCode) setLastAutoCode('')
+      return
+    }
+    if (code && code !== lastAutoCode) return
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(
+          `/api/admin/cosmocoat/color-formulas/by-product/${encodeURIComponent(selectedFactoryProduct.productCode)}`,
+        )
+        const data = await res.json()
+        if (!res.ok || cancelled) return
+
+        const prefix = `${selectedFactoryProduct.productCode}-`
+        const maxNumber = (data.formulas ?? []).reduce((max: number, formula: { code?: string }) => {
+          if (!formula.code?.startsWith(prefix)) return max
+          const suffix = formula.code.slice(prefix.length)
+          if (!/^\d{4}$/.test(suffix)) return max
+          return Math.max(max, Number(suffix))
+        }, 0)
+        const nextCode = `${prefix}${String(maxNumber + 1).padStart(4, '0')}`
+        setCode(nextCode)
+        setLastAutoCode(nextCode)
+        if (!name.trim()) setName(`${selectedFactoryProduct.name} 调色配方`)
+      } catch {
+        /* keep manual entry available */
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [code, isNew, lastAutoCode, name, selectedFactoryProduct])
 
   useEffect(() => {
     const q = pickerQuery.trim()
@@ -306,6 +357,7 @@ export default function CosmocoatColorFormulaDetailPage() {
             factoryProductId={factoryProductId}
             onCategoryChange={setCategory}
             onFactoryProductChange={setFactoryProductId}
+            onProductsLoaded={handleProductsLoaded}
             inputStyle={inputStyle()}
           />
           <div className="space-y-1.5">

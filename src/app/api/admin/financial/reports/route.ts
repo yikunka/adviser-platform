@@ -4,10 +4,8 @@ import { buildFinancialReports } from '@/lib/financial/reports'
 import { financialReportFilterSchema } from '@/lib/financial/schemas'
 import {
   assertCompanyAccessible,
-  assertGroupAccessible,
-  groupIdsFromAccess,
-  resolveEntityGroupAccess,
-} from '@/lib/entity-groups/access'
+  resolveCompanyAccess,
+} from '@/lib/company-access'
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
@@ -19,24 +17,18 @@ export async function GET(req: NextRequest) {
 
   const period = req.nextUrl.searchParams.get('period')
   const companyId = req.nextUrl.searchParams.get('companyId') ?? undefined
-  const groupId = req.nextUrl.searchParams.get('groupId') ?? undefined
-  const parsed = financialReportFilterSchema.safeParse({ period, companyId, groupId })
+  const parsed = financialReportFilterSchema.safeParse({ period, companyId })
   if (!parsed.success) {
     return apiError('Period is required in YYYY-MM format.')
   }
 
   try {
-    const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
+    const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
     if (parsed.data.companyId && !(await assertCompanyAccessible(access, parsed.data.companyId))) {
-      return apiError('Forbidden', 403)
-    }
-    if (parsed.data.groupId && !(await assertGroupAccessible(access, parsed.data.groupId))) {
       return apiError('Forbidden', 403)
     }
     const reports = await buildFinancialReports(parsed.data.period, {
       companyId: parsed.data.companyId,
-      groupId: parsed.data.groupId,
-      groupIds: groupIdsFromAccess(access) ?? undefined,
     })
     return NextResponse.json({ reports })
   } catch (err) {

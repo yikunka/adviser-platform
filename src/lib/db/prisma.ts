@@ -1,14 +1,12 @@
 import { PrismaClient } from '@prisma/client'
-import { PrismaPg } from '@prisma/adapter-pg'
 
 function createPrismaClient() {
   const connectionString = process.env.DATABASE_URL
   if (!connectionString) {
     throw new Error('DATABASE_URL is not set. Check .env / .env.local and restart the dev server.')
   }
-  const adapter = new PrismaPg({ connectionString })
   return new PrismaClient({
-    adapter,
+    datasourceUrl: connectionString,
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   })
 }

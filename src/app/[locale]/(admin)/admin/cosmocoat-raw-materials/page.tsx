@@ -1,5 +1,7 @@
 'use client'
 
+/* eslint-disable react-hooks/set-state-in-effect */
+
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'

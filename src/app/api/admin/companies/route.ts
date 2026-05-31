@@ -4,10 +4,9 @@ import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
 import { normalizeSignupEmail } from '@/lib/company/claim-pending-client'
 import {
-  assertGroupAccessible,
-  buildCompanyGroupWhere,
-  resolveEntityGroupAccess,
-} from '@/lib/entity-groups/access'
+  buildCompanyAccessWhere,
+  resolveCompanyAccess,
+} from '@/lib/company-access'
 import { z } from 'zod'
 
 const COMPANY_TYPE_PREFIX: Record<string, string> = {
@@ -43,7 +42,6 @@ const createSchema = z
     /** CLIENT signup email when not choosing from list (e.g. not yet verified). */
     clientUserEmail: z.string().max(320).optional(),
     assignedStaffId: z.string().cuid().optional(),
-    groupId: z.string().cuid().optional().nullable(),
   })
   .superRefine((data, ctx) => {
     const id = data.clientUserId?.trim()
@@ -63,20 +61,15 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = req.nextUrl
   const search = searchParams.get('q') ?? ''
-  const groupId = searchParams.get('groupId')
   const page = parseInt(searchParams.get('page') ?? '1')
   const limit = 20
   const skip = (page - 1) * limit
 
-  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
-  if (groupId && !(await assertGroupAccessible(access, groupId))) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
 
-  const accessFilter = buildCompanyGroupWhere(access)
+  const accessFilter = buildCompanyAccessWhere(access)
   const where = {
     ...(accessFilter ?? {}),
-    ...(groupId ? { groupId } : {}),
     ...(search
       ? {
           OR: [
@@ -89,7 +82,7 @@ export async function GET(req: NextRequest) {
       : {}),
   }
 
-  const useLegacySort = !search && !groupId && access.kind === 'all'
+  const useLegacySort = !search && access.kind === 'all'
 
   if (useLegacySort) {
     const orderedIds = await prisma.$queryRaw<Array<{ id: string }>>`
@@ -107,7 +100,6 @@ export async function GET(req: NextRequest) {
         include: {
           assignedStaff: { select: { nameEn: true } },
           clientUser: { select: { nameEn: true, email: true } },
-          group: { select: { id: true, name: true } },
         },
       }),
       prisma.company.count({ where }),
@@ -126,7 +118,6 @@ export async function GET(req: NextRequest) {
       include: {
         assignedStaff: { select: { nameEn: true } },
         clientUser: { select: { nameEn: true, email: true } },
-        group: { select: { id: true, name: true } },
       },
     }),
     prisma.company.count({ where }),
@@ -143,11 +134,6 @@ export async function POST(req: NextRequest) {
   const parsed = createSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
-  }
-
-  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
-  if (parsed.data.groupId && !(await assertGroupAccessible(access, parsed.data.groupId))) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const { dateOfIncorporation, clientUserEmail, ...rest } = parsed.data

@@ -5,8 +5,8 @@ import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { accountCreateSchema } from '@/lib/financial/schemas'
 import { serializeAccount } from '@/lib/financial/serializers'
-import { resolveJournalCompanyScope } from '@/lib/entity-groups/journal'
-import { assertCompanyAccessible, resolveEntityGroupAccess } from '@/lib/entity-groups/access'
+import { resolveJournalCompanyScope } from '@/lib/financial/company-scope'
+import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   const companyId = req.nextUrl.searchParams.get('companyId')
   if (!companyId) return apiError('Company is required.')
 
-  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
+  const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
   if (!(await assertCompanyAccessible(access, companyId))) return apiError('Forbidden', 403)
 
   const accounts = await prisma.finAccount.findMany({
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
+  const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
   if (!(await assertCompanyAccessible(access, parsed.data.companyId))) return apiError('Forbidden', 403)
   const companyScope = await resolveJournalCompanyScope(parsed.data.companyId)
   if (!companyScope.companyId) return apiError('Selected company does not exist.', 400)
@@ -69,7 +69,6 @@ export async function POST(req: NextRequest) {
         name: parsed.data.name,
         type: parsed.data.type,
         companyId: companyScope.companyId,
-        groupId: companyScope.groupId,
         parentId: parent?.id ?? null,
         level: parent ? parent.level + 1 : 1,
         sortOrder: parsed.data.sortOrder,

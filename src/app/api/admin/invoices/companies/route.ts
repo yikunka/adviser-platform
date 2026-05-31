@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
-import { buildCompanyGroupWhere, resolveEntityGroupAccess } from '@/lib/entity-groups/access'
+import { buildCompanyAccessWhere, resolveCompanyAccess } from '@/lib/company-access'
 
 /** Company picker for invoice forms (invoices menu permission). */
 export async function GET(req: NextRequest) {
@@ -9,8 +9,8 @@ export async function GET(req: NextRequest) {
   if (error) return error
 
   const q = req.nextUrl.searchParams.get('q') ?? ''
-  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
-  const accessFilter = buildCompanyGroupWhere(access)
+  const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
+  const accessFilter = buildCompanyAccessWhere(access)
 
   const companies = await prisma.company.findMany({
     where: {

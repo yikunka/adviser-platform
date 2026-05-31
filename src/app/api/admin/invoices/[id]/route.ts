@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
-import { assertCompanyAccessible, resolveEntityGroupAccess } from '@/lib/entity-groups/access'
+import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
 import { computeTotals, toMoney, toQuantity, toTaxRate } from '@/lib/invoice/calc'
 import { z } from 'zod'
 
@@ -30,7 +30,7 @@ async function loadInvoice(id: string) {
     where: { id },
     include: {
       lineItems: { orderBy: { sortOrder: 'asc' } },
-      company: { select: { id: true, nameEn: true, companyCode: true, companyNumber: true, groupId: true } },
+      company: { select: { id: true, nameEn: true, companyCode: true, companyNumber: true } },
       createdBy: { select: { id: true, nameEn: true, email: true } },
     },
   })
@@ -47,7 +47,7 @@ export async function GET(
   const invoice = await loadInvoice(id)
   if (!invoice) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
+  const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
   if (!(await assertCompanyAccessible(access, invoice.companyId))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
@@ -66,7 +66,7 @@ export async function PATCH(
   const before = await loadInvoice(id)
   if (!before) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
+  const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
   if (!(await assertCompanyAccessible(access, before.companyId))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
@@ -162,7 +162,7 @@ export async function DELETE(
   const before = await loadInvoice(id)
   if (!before) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
+  const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
   if (!(await assertCompanyAccessible(access, before.companyId))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }

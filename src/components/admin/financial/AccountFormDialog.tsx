@@ -27,7 +27,6 @@ export type FinancialAccount = {
   name: string
   type: AccountType
   companyId?: string | null
-  groupId?: string | null
   level: number
   sortOrder: number
   parentId: string | null

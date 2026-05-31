@@ -8,22 +8,19 @@ import { useFinancialWorkspace } from '@/components/admin/financial/FinancialCom
 
 export function FinancialCompanySelector() {
   const t = useTranslations('admin.financial')
-  const { companies, groups, selectedCompanyId, setSelectedCompanyId, loading } = useFinancialWorkspace()
+  const { companies, selectedCompanyId, setSelectedCompanyId, loading } = useFinancialWorkspace()
   const [search, setSearch] = useState('')
-  const [groupId, setGroupId] = useState('')
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return companies.filter(company => {
-      if (groupId && company.groupId !== groupId) return false
       if (!q) return true
       return (
         company.nameEn.toLowerCase().includes(q) ||
-        (company.companyCode?.toLowerCase().includes(q) ?? false) ||
-        (company.group?.name.toLowerCase().includes(q) ?? false)
+        (company.companyCode?.toLowerCase().includes(q) ?? false)
       )
     })
-  }, [companies, search, groupId])
+  }, [companies, search])
 
   return (
     <div className="rounded-lg border border-[#2A2418] bg-card p-4 space-y-3">
@@ -51,19 +48,6 @@ export function FinancialCompanySelector() {
               style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
             />
           </div>
-          <select
-            value={groupId}
-            onChange={e => setGroupId(e.target.value)}
-            className="h-9 max-w-xs rounded-md px-3 text-sm"
-            style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: '#F0EAD8' }}
-          >
-            <option value="">{t('allGroups')}</option>
-            {groups.map(group => (
-              <option key={group.id} value={group.id}>
-                {group.name}
-              </option>
-            ))}
-          </select>
         </div>
       </div>
 
@@ -91,7 +75,7 @@ export function FinancialCompanySelector() {
                 <span className="block truncate font-semibold">{company.nameEn}</span>
                 <span className="block truncate text-xs" style={{ color: active ? '#C9A96E' : 'var(--muted-foreground)' }}>
                   {company.companyCode ? `${company.companyCode} · ` : ''}
-                  {company.group?.name ?? t('noGroup')}
+                  {company.nameEn}
                 </span>
               </button>
             )

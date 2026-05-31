@@ -4,9 +4,9 @@ import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
 import {
   assertCompanyAccessible,
-  buildCompanyGroupWhere,
-  resolveEntityGroupAccess,
-} from '@/lib/entity-groups/access'
+  buildCompanyAccessWhere,
+  resolveCompanyAccess,
+} from '@/lib/company-access'
 import { companyBillingSnapshot } from '@/lib/invoice/company-billing'
 import { computeTotals, toMoney, toQuantity, toTaxRate } from '@/lib/invoice/calc'
 import { nextInvoiceNumber } from '@/lib/invoice/number'
@@ -44,12 +44,12 @@ export async function GET(req: NextRequest) {
   const limit = 20
   const skip = (page - 1) * limit
 
-  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
+  const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
   if (companyId && !(await assertCompanyAccessible(access, companyId))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const companyFilter = buildCompanyGroupWhere(access)
+  const companyFilter = buildCompanyAccessWhere(access)
   const where = {
     ...(companyId ? { companyId } : {}),
     ...(status ? { status: status as 'DRAFT' | 'SENT' | 'PAID' | 'CANCELLED' } : {}),
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
   }
 
-  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
+  const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
   if (!(await assertCompanyAccessible(access, parsed.data.companyId))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }

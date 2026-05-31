@@ -6,12 +6,11 @@ import { prisma } from '@/lib/db/prisma'
 import { journalEntryUpdateSchema } from '@/lib/financial/schemas'
 import { serializeJournalEntry } from '@/lib/financial/serializers'
 import { parseYmdDate, periodFromDate, validateBalance } from '@/lib/financial/utils'
-import { assertCompanyAccessible, assertGroupAccessible, resolveEntityGroupAccess } from '@/lib/entity-groups/access'
-import { resolveJournalCompanyScope } from '@/lib/entity-groups/journal'
+import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
+import { resolveJournalCompanyScope } from '@/lib/financial/company-scope'
 
 const journalInclude = {
   company: { select: { id: true, nameEn: true, companyCode: true } },
-  group: { select: { id: true, name: true } },
   createdBy: { select: { id: true, nameEn: true, email: true } },
   lines: {
     include: { account: { select: { id: true, code: true, name: true, type: true } } },
@@ -43,8 +42,8 @@ export async function GET(
   const { id } = await params
   const entry = await prisma.journalEntry.findUnique({ where: { id }, include: journalInclude })
   if (!entry) return apiError('Journal entry not found.', 404)
-  const access = await resolveEntityGroupAccess(session!.user.id, session!.user.role)
-  if (!(await assertGroupAccessible(access, entry.groupId))) return apiError('Forbidden', 403)
+  const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
+  if (!entry.companyId || !(await assertCompanyAccessible(access, entry.companyId))) return apiError('Forbidden', 403)
 
   return NextResponse.json({ entry: serializeJournalEntry(entry) })
 }
@@ -70,8 +69,8 @@ export async function PATCH(
   const before = await prisma.journalEntry.findUnique({ where: { id }, include: journalInclude })
   if (!before) return apiError('Journal entry not found.', 404)
   if (before.status !== 'DRAFT') return apiError('Only draft journal entries can be edited.')
-  const access = await resolveEntityGroupAccess(session.user.id, session.user.role)
-  if (!(await assertGroupAccessible(access, before.groupId))) return apiError('Forbidden', 403)
+  const access = await resolveCompanyAccess(session.user.id, session.user.role)
+  if (!before.companyId || !(await assertCompanyAccessible(access, before.companyId))) return apiError('Forbidden', 403)
 
   if (parsed.data.lines) {
     const lineError = validateJournalLines(parsed.data.lines)
@@ -82,7 +81,7 @@ export async function PATCH(
   const description = parsed.data.description ?? before.description
   const companyScope = parsed.data.companyId
     ? await resolveJournalCompanyScope(parsed.data.companyId)
-    : { companyId: before.companyId, groupId: before.groupId }
+    : { companyId: before.companyId }
   if (parsed.data.companyId) {
     if (!(await assertCompanyAccessible(access, parsed.data.companyId))) return apiError('Forbidden', 403)
     if (!companyScope.companyId) return apiError('Selected company does not exist.', 400)
@@ -109,7 +108,7 @@ export async function PATCH(
         ...(parsed.data.entryDate ? { entryDate, period: periodFromDate(entryDate) } : {}),
         ...(parsed.data.description !== undefined ? { description } : {}),
         ...(parsed.data.companyId !== undefined
-          ? { companyId: companyScope.companyId, groupId: companyScope.groupId }
+          ? { companyId: companyScope.companyId }
           : {}),
         ...(parsed.data.attachments !== undefined ? { attachments: parsed.data.attachments } : {}),
         ...(parsed.data.lines
@@ -146,8 +145,8 @@ export async function DELETE(
   const before = await prisma.journalEntry.findUnique({ where: { id }, include: journalInclude })
   if (!before) return apiError('Journal entry not found.', 404)
   if (before.status === 'CANCELLED') return apiError('Journal entry is already cancelled.')
-  const access = await resolveEntityGroupAccess(session.user.id, session.user.role)
-  if (!(await assertGroupAccessible(access, before.groupId))) return apiError('Forbidden', 403)
+  const access = await resolveCompanyAccess(session.user.id, session.user.role)
+  if (!before.companyId || !(await assertCompanyAccessible(access, before.companyId))) return apiError('Forbidden', 403)
 
   const entry = await prisma.$transaction(async tx => {
     await tx.ledger.deleteMany({ where: { entryId: id } })

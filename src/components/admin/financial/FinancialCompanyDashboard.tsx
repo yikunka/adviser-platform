@@ -98,7 +98,7 @@ export function FinancialCompanyDashboard() {
               {company.nameEn}
             </h1>
             <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-              {company.group?.name ?? 'Client company'} · Financial workspace
+              Client company · Financial workspace
             </p>
           </div>
           <div className="flex items-center gap-2">
