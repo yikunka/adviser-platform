@@ -6,8 +6,11 @@ import { prisma } from '@/lib/db/prisma'
 import { getProcessKitById } from '@/lib/cosmocoat/process-kits'
 
 const patchSchema = z.object({
+  code: z.string().trim().min(1).max(32).optional(),
   name: z.string().trim().min(1).max(160).optional(),
   description: z.string().trim().max(2000).nullable().optional(),
+  materials: z.array(z.string()).optional(),
+  otherNote: z.string().trim().max(500).nullable().optional(),
   status: z.enum(['DRAFT', 'ACTIVE', 'ARCHIVED']).optional(),
 })
 
@@ -39,7 +42,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
   if (error) return error
 
   const { id } = await params
@@ -53,14 +56,26 @@ export async function PATCH(
   if (!current) return NextResponse.json({ error: '工艺书不存在' }, { status: 404 })
 
   try {
+    if (parsed.data.code && parsed.data.code !== current.code) {
+      const duplicate = await prisma.cosProcessKit.findUnique({ where: { code: parsed.data.code } })
+      if (duplicate) return NextResponse.json({ error: '工艺书编号已存在' }, { status: 409 })
+    }
+
     await prisma.cosProcessKit.update({
       where: { id },
       data: {
+        code: parsed.data.code,
         name: parsed.data.name,
         description: parsed.data.description !== undefined
           ? (parsed.data.description || null)
           : undefined,
+        materials: parsed.data.materials,
+        otherNote: parsed.data.otherNote !== undefined
+          ? (parsed.data.otherNote || null)
+          : undefined,
         status: parsed.data.status,
+        updatedBy: session!.user.id,
+        updatedByName: session!.user.name ?? session!.user.email ?? null,
       },
     })
 

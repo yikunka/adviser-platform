@@ -23,9 +23,13 @@ export function serializeProcessKit(kit: ProcessKitWithRelations) {
     code: kit.code,
     name: kit.name,
     description: kit.description,
+    materials: kit.materials || [],
+    otherNote: kit.otherNote,
     status: kit.status,
     createdBy: kit.createdBy,
     createdByName: kit.createdByName,
+    updatedBy: kit.updatedBy,
+    updatedByName: kit.updatedByName,
     createdAt: kit.createdAt.toISOString(),
     updatedAt: kit.updatedAt.toISOString(),
     productCount: kit.products.length,
@@ -70,10 +74,28 @@ export async function getProcessKitById(id: string) {
 }
 
 export async function generateProcessKitCode(): Promise<string> {
-  const now = new Date()
-  const prefix = `GY${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
-  const count = await prisma.cosProcessKit.count({
-    where: { code: { startsWith: prefix } },
+  // 获取最新的一个工艺书编号
+  const latestKit = await prisma.cosProcessKit.findFirst({
+    where: { code: { startsWith: 'GY' } },
+    orderBy: { code: 'desc' },
+    select: { code: true },
   })
-  return `${prefix}${String(count + 1).padStart(3, '0')}`
+
+  if (!latestKit?.code) {
+    // 没有任何工艺书，从 GY0001 开始
+    return 'GY0001'
+  }
+
+  // 尝试匹配新格式：GY + 正好 4 位或更多纯数字（与旧格式 GYYYYYMMDDnnn 区分）
+  // 新格式：GY0001, GY1234, GY9999
+  // 旧格式：GY20251231050 (超过 8 位数字)
+  const matchNew = latestKit.code.match(/^GY(\d{4,})$/)
+  if (matchNew && matchNew[1].length <= 8) {
+    // 新格式且数字位数合理（4-8 位），递增
+    const lastNumber = parseInt(matchNew[1], 10)
+    return `GY${String(lastNumber === 0 ? 1 : lastNumber + 1).padStart(4, '0')}`
+  }
+
+  // 旧格式（如 GY20251231050，包含日期）或无效格式，从 GY0001 重新开始
+  return 'GY0001'
 }

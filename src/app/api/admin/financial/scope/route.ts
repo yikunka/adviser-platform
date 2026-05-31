@@ -12,7 +12,10 @@ export async function GET() {
 
   const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
   const companies = await prisma.company.findMany({
-    where: buildCompanyAccessWhere(access),
+    where: {
+      financialEnabled: true,
+      ...(buildCompanyAccessWhere(access) ?? {}),
+    },
     orderBy: [{ nameEn: 'asc' }],
     select: {
       id: true,

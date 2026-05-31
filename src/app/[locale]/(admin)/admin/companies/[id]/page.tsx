@@ -146,6 +146,7 @@ type Company = {
   registeredAddress: string | null
   businessNature: string | null
   status: string
+  financialEnabled: boolean
   annualReturnDate: string | null
   directors: Director[]
   members: Member[]
@@ -335,9 +336,10 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
     businessNature: company.businessNature ?? '',
     status: company.status,
     serviceTier: '',
+    financialEnabled: company.financialEnabled,
   })
 
-  function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })) }
+  function set(k: string, v: string | boolean) { setForm(f => ({ ...f, [k]: v })) }
   const annualDayCount = form.annualReturnMonth ? new Date(2000, Number(form.annualReturnMonth), 0).getDate() : 31
 
   useEffect(() => {
@@ -360,7 +362,11 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
     e.preventDefault()
     setSaving(true)
     try {
-      const body: Record<string, unknown> = { nameEn: form.nameEn, status: form.status }
+      const body: Record<string, unknown> = {
+        nameEn: form.nameEn,
+        status: form.status,
+        financialEnabled: form.financialEnabled,
+      }
       if (form.nameZh) body.nameZh = form.nameZh
       if (form.companyNumber) body.companyNumber = form.companyNumber
       body.companyCode = form.companyCode.trim() || null
@@ -490,6 +496,21 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
           </select>
         </div>
       </div>
+      <div className="flex items-center gap-3">
+        <input
+          type="checkbox"
+          id="financialEnabled"
+          checked={form.financialEnabled}
+          onChange={e => set('financialEnabled', e.target.checked)}
+          style={{ accentColor: '#C9A96E', width: 14, height: 14 }}
+        />
+        <label htmlFor="financialEnabled" style={{ ...labelStyle, marginBottom: 0, cursor: 'pointer' }}>
+          Financial module enabled
+        </label>
+      </div>
+      <p className="text-xs" style={{ color: '#7A7060', marginTop: -8 }}>
+        When disabled, this company is hidden from the financial admin scope.
+      </p>
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="outline" size="sm" onClick={onDone} disabled={saving}>Cancel</Button>
         <Button type="submit" size="sm" disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</Button>

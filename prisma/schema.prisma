@@ -261,6 +261,7 @@ model User {
   sfsInvoicesCreated      SfsInvoice[]  @relation("SfsInvoiceCreatedBy")
 
   createdProcessKits CosProcessKit[]  @relation("ProcessKitCreator")
+  updatedProcessKits CosProcessKit[]  @relation("ProcessKitUpdater")
   testedProcessKits  CosProcessTest[] @relation("ProcessTestTester")
 
   @@map("users")
@@ -299,6 +300,7 @@ model Company {
   brExpiryDate          DateTime?
   status                CompanyStatus @default(ACTIVE)
   serviceTier           ServiceTier   @default(BASIC)
+  financialEnabled      Boolean       @default(true)
   internalNotes         String?
   deletedAt             DateTime?
   clientUserId          String?
@@ -1650,13 +1652,18 @@ model CosProcessKit {
   code          String           @unique
   name          String
   description   String?
+  materials     String[]
+  otherNote     String?
   status        ProcessKitStatus @default(DRAFT)
   createdBy     String?
   createdByName String?
+  updatedBy     String?
+  updatedByName String?
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
   createdByUser User? @relation("ProcessKitCreator", fields: [createdBy], references: [id])
+  updatedByUser User? @relation("ProcessKitUpdater", fields: [updatedBy], references: [id])
 
   products CosProcessKitProduct[]
   tests    CosProcessTest[]

@@ -9,6 +9,7 @@ import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { ArrowLeft, Plus, Save, Trash2 } from 'lucide-react'
 import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
+import { cn } from '@/lib/utils'
 
 type FactoryProductOption = {
   id: string
@@ -38,6 +39,39 @@ type KitTest = {
 }
 
 type KitStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED'
+
+type LoadedKit = {
+  code: string
+  name: string
+  description?: string | null
+  materials?: string[]
+  otherNote?: string | null
+  status: KitStatus
+  products?: KitProduct[]
+  tests?: KitTest[]
+}
+
+const MATERIALS = [
+  { id: 'ABS', label: 'ABS' },
+  { id: 'SAN', label: 'SAN' },
+  { id: 'PC', label: 'PC' },
+  { id: 'PC_BF', label: 'PC+ 玻纖' },
+  { id: 'PP', label: 'PP' },
+  { id: 'PETG', label: 'PETG' },
+  { id: 'PET', label: 'PET' },
+  { id: 'PCTA', label: 'PCTA' },
+  { id: 'PS', label: 'PS' },
+  { id: 'PE', label: 'PE' },
+  { id: 'PMMA', label: 'PMMA' },
+  { id: 'NYLON', label: '尼龍' },
+  { id: 'ALUMINUM', label: '鋁合金' },
+  { id: 'ZINC', label: '鋅合金' },
+  { id: 'STAINLESS_302', label: '302' },
+  { id: 'STAINLESS_304', label: '304' },
+  { id: 'COPPER', label: '銅' },
+  { id: 'GLASS', label: '玻璃' },
+  { id: 'OTHER', label: '其他 (需註明)' },
+]
 
 const card: React.CSSProperties = {
   background: 'var(--card)',
@@ -132,6 +166,8 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [selectedMaterials, setSelectedMaterials] = useState<string[]>([])
+  const [otherNote, setOtherNote] = useState('')
   const [status, setStatus] = useState<KitStatus>('DRAFT')
   const [kitProducts, setKitProducts] = useState<KitProduct[]>([])
   const [tests, setTests] = useState<KitTest[]>([])
@@ -155,6 +191,18 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     reportLink: '',
     testNotes: '',
   })
+
+  const hasOther = selectedMaterials.includes('OTHER')
+
+  function toggleMaterial(materialId: string) {
+    setSelectedMaterials(prev => {
+      if (prev.includes(materialId)) {
+        if (materialId === 'OTHER') setOtherNote('')
+        return prev.filter(id => id !== materialId)
+      }
+      return [...prev, materialId]
+    })
+  }
 
   const loadProducts = useCallback(async () => {
     try {
@@ -181,10 +229,16 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
         toast.error(data.error ?? t('loadFailed'))
         return
       }
-      const kit = data.kit
+      const kit = data.kit as LoadedKit
       setCode(kit.code)
       setName(kit.name)
       setDescription(kit.description ?? '')
+      const loadedMaterials: string[] = kit.materials ?? []
+      const loadedOtherNote: string = kit.otherNote ?? ''
+      setSelectedMaterials(
+        loadedOtherNote ? [...loadedMaterials, 'OTHER'] : loadedMaterials,
+      )
+      setOtherNote(loadedOtherNote)
       setStatus(kit.status)
       setKitProducts(kit.products ?? [])
       setTests(kit.tests ?? [])
@@ -210,19 +264,27 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       return
     }
 
+    if (selectedMaterials.length === 0) {
+      toast.error(t('materialRequired'))
+      return
+    }
+
+    if (hasOther && !otherNote.trim()) {
+      toast.error(t('otherNoteRequired'))
+      return
+    }
+
     setSaving(true)
+    const kitData = {
+      name: name.trim(),
+      description: description.trim() || null,
+      materials: selectedMaterials.filter(id => id !== 'OTHER'),
+      otherNote: hasOther && otherNote.trim() ? otherNote.trim() : null,
+      ...(!isNew ? { status } : {}),
+    }
     const payload = isNew
-      ? {
-          code: code.trim() || undefined,
-          name: name.trim(),
-          description: description.trim(),
-          status,
-        }
-      : {
-          name: name.trim(),
-          description: description.trim() || null,
-          status,
-        }
+      ? { code: code.trim() || undefined, ...kitData }
+      : kitData
 
     try {
       const res = await fetch(
@@ -429,6 +491,43 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
               style={inputStyle()}
               placeholder={t('descriptionPlaceholder')}
             />
+          </div>
+          <div className="space-y-1.5 sm:col-span-3">
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('materials')}</label>
+            <p className="text-xs mb-2" style={{ color: 'var(--muted-foreground)' }}>{t('selectMaterialsHint')}</p>
+            <div className="flex flex-wrap gap-2">
+              {MATERIALS.map(material => (
+                <button
+                  key={material.id}
+                  type="button"
+                  onClick={() => toggleMaterial(material.id)}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-xs transition-all border',
+                    selectedMaterials.includes(material.id)
+                      ? 'bg-[#C9A96E] border-[#C9A96E] text-[#0A0805]'
+                      : 'bg-[#0E0E0A] border-[#2A2418] text-[var(--muted-foreground)] hover:border-[#4A4030]',
+                  )}
+                >
+                  {material.label}
+                </button>
+              ))}
+            </div>
+            {hasOther && (
+              <div className="space-y-1.5 pt-2">
+                <label className="text-xs font-medium text-[var(--muted-foreground)]">
+                  {t('otherNoteLabel')}
+                  <span className="text-red-500 ml-0.5">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={otherNote}
+                  onChange={e => setOtherNote(e.target.value)}
+                  placeholder={t('otherNotePlaceholder')}
+                  className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+                  style={inputStyle()}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

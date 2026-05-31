@@ -15,6 +15,7 @@ const updateSchema = z.object({
   businessNature: z.string().max(500).optional(),
   status: z.enum(['ACTIVE', 'DORMANT', 'STRUCK_OFF', 'DEREGISTERED']).optional(),
   serviceTier: z.enum(['BASIC', 'PROFESSIONAL', 'PREMIUM']).optional(),
+  financialEnabled: z.boolean().optional(),
   assignedStaffId: z.string().cuid().optional().nullable(),
   clientUserId: z.string().cuid().optional().nullable(),
 })
