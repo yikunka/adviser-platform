@@ -4,13 +4,15 @@
  */
 import 'dotenv/config'
 import * as XLSX from 'xlsx'
+import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '@prisma/client'
 import { dedupeByProductionCode, parseExcelRow, toPrismaCreateData } from '../src/lib/cosmocoat/raw-materials'
 
 const excelPath = process.argv[2] ?? '/Users/yibing/Downloads/生產編號20260511.xlsx'
 
 async function main() {
-  const prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL })
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
+  const prisma = new PrismaClient({ adapter })
 
   const workbook = XLSX.readFile(excelPath)
   const sheetName = workbook.SheetNames[0]

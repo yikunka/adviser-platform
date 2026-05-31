@@ -8,8 +8,10 @@
  */
 import 'dotenv/config'
 import { PrismaClient } from '@prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
 
-const prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL })
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
+const prisma = new PrismaClient({ adapter })
 
 async function main() {
   const raw = process.argv.slice(2).filter(s => /^\d+$/.test(s))
