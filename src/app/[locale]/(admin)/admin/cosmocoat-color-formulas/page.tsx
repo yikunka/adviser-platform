@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { Palette, Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react'
+import { Palette, Pencil, Plus, RefreshCw, Search, Sparkles, Trash2 } from 'lucide-react'
 import { COLOR_FORMULA_CATEGORIES } from '@/lib/cosmocoat/color-formula-categories'
 import type { CosColorFormulaCategory } from '@prisma/client'
 import { formatMoney } from '@/lib/cosmocoat/recipes'
@@ -183,6 +183,75 @@ function GenerateModal({
   )
 }
 
+function PuSyncModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const [syncing, setSyncing] = useState(false)
+  const [result, setResult] = useState<{ deletedCount: number; createdCount: number; created: string[]; errors: string[] } | null>(null)
+
+  async function handleSync() {
+    setSyncing(true)
+    try {
+      const res = await fetch('/api/admin/cosmocoat/color-formulas/pu-sync', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? '同步失败')
+        return
+      }
+      setResult(data)
+      if (data.errors?.length === 0) toast.success(`已删除 ${data.deletedCount} 条，新建 ${data.createdCount} 条`)
+      else toast.warning(`同步完成，部分产品失败（${data.errors.length} 条）`)
+    } catch {
+      toast.error('同步失败')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div className="w-full max-w-lg rounded-2xl p-6 space-y-4" style={{ background: '#111111', border: '1px solid #2A2418' }}>
+        <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>PU 配方同步</h2>
+        {!result ? (
+          <>
+            <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+              此操作将：<br />
+              1. 删除所有 PU 类别的调色配方记录<br />
+              2. 为所有 PU 类工厂产品自动生成新配方（含关联原料明细）<br /><br />
+              <span style={{ color: '#ef4444' }}>⚠ 此操作不可撤销，请确认。</span>
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm" style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}>
+                取消
+              </button>
+              <button type="button" onClick={handleSync} disabled={syncing} className="flex-1 py-2.5 rounded-lg text-sm font-medium disabled:opacity-60" style={{ background: '#C8102E', color: '#fff' }}>
+                {syncing ? '同步中...' : '确认同步'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="text-sm space-y-1" style={{ color: 'var(--muted-foreground)' }}>
+              <p>已删除：<b style={{ color: 'var(--foreground)' }}>{result.deletedCount}</b> 条</p>
+              <p>已新建：<b style={{ color: 'var(--foreground)' }}>{result.createdCount}</b> 条</p>
+              {result.errors.length > 0 && (
+                <div className="mt-2 p-2 rounded text-xs" style={{ background: '#1E0808', color: '#ef4444', border: '1px solid #3a1111' }}>
+                  {result.errors.map((e, i) => <div key={i}>{e}</div>)}
+                </div>
+              )}
+            </div>
+            <button type="button" onClick={onDone} className="w-full py-2.5 rounded-lg text-sm font-medium" style={{ background: '#C9A96E', color: '#0A0805' }}>
+              完成
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function CosmocoatColorFormulasPage() {
   const router = useRouter()
   const [items, setItems] = useState<FormulaRow[]>([])
@@ -196,6 +265,7 @@ export default function CosmocoatColorFormulasPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [showGenerate, setShowGenerate] = useState(false)
+  const [showPuSync, setShowPuSync] = useState(false)
 
   const fetchItems = useCallback(async () => {
     setLoading(true)
@@ -279,6 +349,16 @@ export default function CosmocoatColorFormulasPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {category === 'PU' && (
+            <button
+              type="button"
+              onClick={() => setShowPuSync(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm"
+              style={{ border: '1px solid #C8102E33', color: '#E46480' }}
+            >
+              <RefreshCw size={15} /> PU 同步
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setShowGenerate(true)}
@@ -288,7 +368,15 @@ export default function CosmocoatColorFormulasPage() {
             <Sparkles size={15} /> 从产品生成
           </button>
           <Link
-            href="/admin/cosmocoat-color-formulas/new"
+            href={
+              factoryProductId
+                ? `/admin/cosmocoat-color-formulas/new?factoryProductId=${factoryProductId}&category=${
+                    factoryProducts.find(p => p.id === factoryProductId)?.parentCategory ?? category
+                  }`
+                : category
+                  ? `/admin/cosmocoat-color-formulas/new?category=${category}`
+                  : '/admin/cosmocoat-color-formulas/new'
+            }
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
             style={{ background: '#C9A96E', color: '#0A0805' }}
           >
@@ -466,6 +554,13 @@ export default function CosmocoatColorFormulasPage() {
         <GenerateModal
           onClose={() => setShowGenerate(false)}
           onCreated={id => router.push(`/admin/cosmocoat-color-formulas/${id}`)}
+        />
+      )}
+
+      {showPuSync && (
+        <PuSyncModal
+          onClose={() => setShowPuSync(false)}
+          onDone={() => { setShowPuSync(false); fetchItems() }}
         />
       )}
     </div>

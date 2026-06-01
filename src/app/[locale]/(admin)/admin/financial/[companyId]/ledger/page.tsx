@@ -2,7 +2,7 @@
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import { useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -16,14 +16,26 @@ import { useFinancialCompany } from '@/components/admin/financial/FinancialCompa
 
 type LedgerEntry = {
   id: string
+  accountId: string
   accountCode: string
   accountName: string
+  lineNum: number
   date: string
   voucherNo: string
   description: string
   debit: number
   credit: number
   balance: number
+}
+
+const ACCOUNT_TYPE_LABELS: Record<string, string> = {
+  ASSET: '资产',
+  LIABILITY: '负债',
+  EQUITY: '权益',
+  REVENUE: '收入',
+  CGS: '销售成本',
+  EXPENSE: '费用',
+  CURRENT_ACCOUNT: '往来科目',
 }
 
 export default function AdminFinancialLedgerPage() {
@@ -43,10 +55,10 @@ export default function AdminFinancialLedgerPage() {
       if (voucherNo) params.append('voucherNo', voucherNo)
       const res = await fetch(`/api/admin/financial/ledgers?${params}`)
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to fetch ledgers')
+      if (!res.ok) throw new Error(data.error || '载入总账失败')
       setLedgers(data.ledgers || [])
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to load ledger entries')
+      toast.error(error instanceof Error ? error.message : '载入总账失败')
     } finally {
       setLoading(false)
     }
@@ -56,16 +68,54 @@ export default function AdminFinancialLedgerPage() {
     fetchLedgers()
   }, [fetchLedgers])
 
+  const groupedLedgers = useMemo(() => {
+    const sorted = ledgers.slice().sort((a, b) => (
+      a.accountCode.localeCompare(b.accountCode, undefined, { numeric: true })
+      || new Date(a.date).getTime() - new Date(b.date).getTime()
+      || a.voucherNo.localeCompare(b.voucherNo, undefined, { numeric: true })
+      || a.lineNum - b.lineNum
+    ))
+
+    return sorted.reduce<Array<{
+      accountId: string
+      accountCode: string
+      accountName: string
+      entries: LedgerEntry[]
+      totalDebit: number
+      totalCredit: number
+    }>>((groups, entry) => {
+      const current = groups[groups.length - 1]
+      if (current && current.accountId === entry.accountId) {
+        current.entries.push(entry)
+        current.totalDebit += entry.debit
+        current.totalCredit += entry.credit
+        return groups
+      }
+
+      groups.push({
+        accountId: entry.accountId,
+        accountCode: entry.accountCode,
+        accountName: entry.accountName,
+        entries: [entry],
+        totalDebit: entry.debit,
+        totalCredit: entry.credit,
+      })
+      return groups
+    }, [])
+  }, [ledgers])
+
   function exportToCSV() {
-    const headers = ['Date', 'Voucher No', 'Description', 'Debit', 'Credit', 'Balance']
-    const rows = ledgers.map(l => [
+    const headers = ['科目编码', '科目名称', '日期', '凭证号', '摘要', '借方', '贷方', '余额']
+    const rows = groupedLedgers.flatMap(group => group.entries.map(l => [
+      group.accountCode,
+      `"${group.accountName.replace(/"/g, '""')}"`,
       l.date,
       l.voucherNo,
       `"${l.description.replace(/"/g, '""')}"`,
       l.debit.toFixed(2),
       l.credit.toFixed(2),
       l.balance.toFixed(2),
-    ])
+    ]))
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
@@ -77,14 +127,14 @@ export default function AdminFinancialLedgerPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="space-y-2">
-        <FinancialBreadcrumbs section="General Ledger" />
+        <FinancialBreadcrumbs section="总分类账" />
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>
-              General Ledger
+              总分类账
             </h1>
             <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-              {company.nameEn} · Account activity with running balances.
+              {company.nameEn} · 按科目分组查看交易流水和余额。
             </p>
           </div>
           <Button
@@ -93,7 +143,7 @@ export default function AdminFinancialLedgerPage() {
             onClick={exportToCSV}
             style={{ borderColor: '#2A2418', color: 'var(--foreground)' }}
           >
-            <Download size={15} className="mr-2" /> Export CSV
+            <Download size={15} className="mr-2" /> 导出 CSV
           </Button>
         </div>
       </div>
@@ -103,13 +153,13 @@ export default function AdminFinancialLedgerPage() {
           <div className="flex flex-wrap items-center gap-4">
             <Select value={filterAccountType} onValueChange={value => setFilterAccountType(value ?? 'ALL')}>
               <SelectTrigger className="w-[180px]" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
-                <SelectValue placeholder="All Accounts" />
+                <SelectValue placeholder="全部科目" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">All Accounts</SelectItem>
+                <SelectItem value="ALL">全部科目</SelectItem>
                 {ACCOUNT_TYPE_OPTIONS.map(option => (
                   <SelectItem key={option.value} value={option.value}>
-                    {option.label}
+                    {ACCOUNT_TYPE_LABELS[option.value] ?? option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -124,60 +174,74 @@ export default function AdminFinancialLedgerPage() {
             <Input
               value={voucherNo}
               onChange={e => setVoucherNo(e.target.value)}
-              placeholder="Voucher No"
+              placeholder="凭证号"
               className="max-w-[160px]"
               style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
             />
             <Button size="sm" onClick={fetchLedgers} style={{ background: '#C9A96E', color: '#0A0805' }}>
-              Filter
+              筛选
             </Button>
           </div>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="p-8 text-center" style={{ color: 'var(--muted-foreground)' }}>
-              Loading...
+              载入中...
             </div>
           ) : ledgers.length === 0 ? (
             <div className="p-8 text-center" style={{ color: '#5A5040' }}>
-              No ledger entries found
+              暂无总账记录
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Voucher No</TableHead>
-                  <TableHead>Account</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Debit</TableHead>
-                  <TableHead>Credit</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
+                  <TableHead>日期</TableHead>
+                  <TableHead>凭证号</TableHead>
+                  <TableHead>摘要</TableHead>
+                  <TableHead>借方</TableHead>
+                  <TableHead>贷方</TableHead>
+                  <TableHead className="text-right">余额</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {ledgers.map((entry, idx) => (
-                  <TableRow key={entry.id} style={{ background: idx % 2 === 0 ? 'transparent' : '#0E0E0A' }}>
-                    <TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell>
-                    <TableCell className="font-mono">{entry.voucherNo}</TableCell>
-                    <TableCell className="max-w-[160px]">
-                      <div className="truncate font-mono text-xs">{entry.accountCode}</div>
-                      <div className="truncate text-xs text-muted-foreground">{entry.accountName}</div>
-                    </TableCell>
-                    <TableCell className="max-w-[200px] truncate">{entry.description}</TableCell>
-                    <TableCell className="text-right">
-                      {entry.debit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {entry.credit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </TableCell>
-                    <TableCell
-                      className="text-right font-medium"
-                      style={{ color: entry.balance >= 0 ? 'var(--foreground)' : '#ef4444' }}
-                    >
-                      {entry.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </TableCell>
-                  </TableRow>
+                {groupedLedgers.map(group => (
+                  <Fragment key={group.accountId}>
+                    <TableRow className="bg-[#16130E] hover:bg-[#16130E]">
+                      <TableCell colSpan={6}>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <span className="font-mono text-sm text-[#C9A96E]">{group.accountCode}</span>
+                            <span className="ml-2 font-semibold">{group.accountName}</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            借方 {group.totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {' · '}
+                            贷方 {group.totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    {group.entries.map((entry, idx) => (
+                      <TableRow key={entry.id} style={{ background: idx % 2 === 0 ? 'transparent' : '#0E0E0A' }}>
+                        <TableCell>{new Date(entry.date).toLocaleDateString('zh-HK')}</TableCell>
+                        <TableCell className="font-mono">{entry.voucherNo}</TableCell>
+                        <TableCell className="max-w-[260px] truncate">{entry.description}</TableCell>
+                        <TableCell className="text-right">
+                          {entry.debit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {entry.credit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell
+                          className="text-right font-medium"
+                          style={{ color: entry.balance >= 0 ? 'var(--foreground)' : '#ef4444' }}
+                        >
+                          {entry.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </Fragment>
                 ))}
               </TableBody>
             </Table>

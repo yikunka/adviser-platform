@@ -16,7 +16,7 @@ const nullableIdSchema = z.preprocess(
   z.string().trim().min(1).nullable(),
 )
 
-export const accountCreateSchema = z.object({
+const accountSchemaBase = z.object({
   code: z.string().trim().min(1, 'Code is required').max(32),
   name: z.string().trim().min(1, 'Name is required').max(200),
   type: accountTypeSchema,
@@ -25,9 +25,23 @@ export const accountCreateSchema = z.object({
   sortOrder: z.coerce.number().int().min(0).max(999999).optional().default(0),
   isSystem: z.coerce.boolean().optional().default(false),
   notes: z.string().trim().max(1000).optional().default(''),
+  openingDebit: z.coerce.number().min(0).max(999999999999).optional().default(0),
+  openingCredit: z.coerce.number().min(0).max(999999999999).optional().default(0),
+  openingBalancePeriod: z.string().regex(/^\d{4}-\d{2}$/).optional(),
 })
 
-export const accountUpdateSchema = accountCreateSchema.partial()
+export const accountCreateSchema = accountSchemaBase.refine(data => !(data.openingDebit > 0 && data.openingCredit > 0), {
+  message: 'Opening balance can be either debit or credit, not both.',
+  path: ['openingDebit'],
+})
+
+export const accountUpdateSchema = accountSchemaBase.partial().refine(
+  data => !((data.openingDebit ?? 0) > 0 && (data.openingCredit ?? 0) > 0),
+  {
+    message: 'Opening balance can be either debit or credit, not both.',
+    path: ['openingDebit'],
+  },
+)
 
 export const journalLineSchema = z.object({
   id: z.string().optional(),

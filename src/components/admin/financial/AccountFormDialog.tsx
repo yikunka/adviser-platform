@@ -50,6 +50,10 @@ const fieldClassName = 'border-[#2A2418] bg-[#0E0E0A] text-[#FFF7E6] placeholder
 const selectContentClassName = 'financial-select-content border-[#2A2418] bg-[#11110E] text-[#FFF7E6]'
 const secondaryButtonClassName = 'border-[#3A3428] bg-[#0E0E0A] text-[#FFF7E6] hover:bg-[#1E1A12] hover:text-[#FFF7E6]'
 
+function defaultOpeningPeriod() {
+  return `${new Date().getUTCFullYear()}-01`
+}
+
 export function AccountFormDialog({ open, onOpenChange, account, companyId, accounts, onSaved }: Props) {
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
@@ -57,6 +61,9 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
   const [parentId, setParentId] = useState('NONE')
   const [sortOrder, setSortOrder] = useState('0')
   const [isSystem, setIsSystem] = useState(false)
+  const [openingBalancePeriod, setOpeningBalancePeriod] = useState(defaultOpeningPeriod)
+  const [openingDebit, setOpeningDebit] = useState('')
+  const [openingCredit, setOpeningCredit] = useState('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -67,6 +74,9 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
     setParentId(account?.parentId ?? 'NONE')
     setSortOrder(String(account?.sortOrder ?? 0))
     setIsSystem(account?.isSystem ?? false)
+    setOpeningBalancePeriod(defaultOpeningPeriod())
+    setOpeningDebit('')
+    setOpeningCredit('')
   }, [account, open])
 
   const parentOptions = useMemo(() => {
@@ -85,23 +95,33 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
     const cleanName = name.trim()
 
     if (!cleanCode || !cleanName) {
-      toast.error('Code and name are required.')
+      toast.error('请填写科目编码和名称。')
       return
     }
 
     const duplicate = accounts.find(item => item.code.toLowerCase() === cleanCode.toLowerCase() && item.id !== account?.id)
     if (duplicate) {
-      toast.error('Account code already exists.')
+      toast.error('科目编码已存在。')
       return
     }
 
     const selectedParent = parentId === 'NONE' ? null : accounts.find(item => item.id === parentId) ?? null
     if (parentId !== 'NONE' && !selectedParent) {
-      toast.error('Parent account does not exist.')
+      toast.error('上级科目不存在。')
       return
     }
     if (selectedParent && selectedParent.level >= 4) {
-      toast.error('Parent account level is too deep.')
+      toast.error('上级科目层级过深。')
+      return
+    }
+    const openingDebitAmount = Number(openingDebit || 0)
+    const openingCreditAmount = Number(openingCredit || 0)
+    if (!Number.isFinite(openingDebitAmount) || !Number.isFinite(openingCreditAmount)) {
+      toast.error('期初余额必须是数字。')
+      return
+    }
+    if (openingDebitAmount > 0 && openingCreditAmount > 0) {
+      toast.error('期初余额只能填写借方或贷方其中一项。')
       return
     }
 
@@ -118,16 +138,23 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
           parentId: parentId === 'NONE' ? null : parentId,
           sortOrder: Number(sortOrder) || 0,
           isSystem,
+          ...(!account
+            ? {
+                openingBalancePeriod,
+                openingDebit: openingDebitAmount,
+                openingCredit: openingCreditAmount,
+              }
+            : {}),
         }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.toast || data.error || 'Failed to save account.')
+      if (!res.ok) throw new Error(data.toast || data.error || '保存科目失败。')
 
-      toast.success(data.toast || (account ? 'Account updated.' : 'Account created.'))
+      toast.success(data.toast || (account ? '科目已更新。' : '科目已创建。'))
       onOpenChange(false)
       await onSaved()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save account.')
+      toast.error(err instanceof Error ? err.message : '保存科目失败。')
     } finally {
       setSaving(false)
     }
@@ -137,28 +164,28 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={modalContentClassName}>
         <DialogHeader>
-          <DialogTitle className="text-[#FFF7E6]">{account ? 'Edit Account' : 'Add Account'}</DialogTitle>
-          <DialogDescription className="text-[#B8AD98]">Maintain chart of accounts structure.</DialogDescription>
+          <DialogTitle className="text-[#FFF7E6]">{account ? '编辑科目' : '新增科目'}</DialogTitle>
+          <DialogDescription className="text-[#B8AD98]">维护会计科目的结构和期初余额。</DialogDescription>
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="account-code" className={labelClassName}>Code</Label>
+              <Label htmlFor="account-code" className={labelClassName}>编码</Label>
               <Input id="account-code" value={code} onChange={event => setCode(event.target.value)} required className={fieldClassName} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="account-name" className={labelClassName}>Name</Label>
+              <Label htmlFor="account-name" className={labelClassName}>名称</Label>
               <Input id="account-name" value={name} onChange={event => setName(event.target.value)} required className={fieldClassName} />
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label className={labelClassName}>Type</Label>
+              <Label className={labelClassName}>类型</Label>
               <Select value={type} onValueChange={value => setType(value as FinancialAccount['type'])}>
                 <SelectTrigger className={`w-full ${fieldClassName}`}>
-                  <SelectValue placeholder="Type" />
+                  <SelectValue placeholder="类型" />
                 </SelectTrigger>
                 <SelectContent className={selectContentClassName}>
                   {ACCOUNT_TYPE_OPTIONS.map(item => (
@@ -168,13 +195,13 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className={labelClassName}>Parent Account</Label>
+              <Label className={labelClassName}>上级科目</Label>
               <Select value={parentId} onValueChange={value => setParentId(value ?? 'NONE')}>
                 <SelectTrigger className={`w-full ${fieldClassName}`}>
-                  <SelectValue placeholder="Parent account" />
+                  <SelectValue placeholder="上级科目" />
                 </SelectTrigger>
                 <SelectContent className={selectContentClassName}>
-                  <SelectItem value="NONE">No parent</SelectItem>
+                  <SelectItem value="NONE">无上级科目</SelectItem>
                   {parentOptions.map(item => (
                     <SelectItem key={item.id} value={item.id}>{item.label}</SelectItem>
                   ))}
@@ -185,7 +212,7 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="sort-order" className={labelClassName}>Sort Order</Label>
+              <Label htmlFor="sort-order" className={labelClassName}>排序</Label>
               <Input id="sort-order" type="number" min={0} value={sortOrder} onChange={event => setSortOrder(event.target.value)} className={fieldClassName} />
             </div>
             <label className="flex items-center gap-2 pt-7 text-sm text-[#EADDC3]">
@@ -195,17 +222,64 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
                 onChange={event => setIsSystem(event.target.checked)}
                 className="size-4 accent-[#C9A96E]"
               />
-              Is System
+              系统科目
             </label>
           </div>
 
+          {!account ? (
+            <div className="rounded-lg border border-[#2A2418] bg-[#0E0E0A] p-4">
+              <div className="mb-3">
+                <h3 className="text-sm font-semibold text-[#FFF7E6]">期初余额</h3>
+                <p className="mt-1 text-xs text-[#B8AD98]">
+                  可选填写此科目的年初余额。借方和贷方只能填写一项。
+                </p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="opening-period" className={labelClassName}>期初期间</Label>
+                  <Input
+                    id="opening-period"
+                    type="month"
+                    value={openingBalancePeriod}
+                    onChange={event => setOpeningBalancePeriod(event.target.value)}
+                    className={fieldClassName}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="opening-debit" className={labelClassName}>期初借方</Label>
+                  <Input
+                    id="opening-debit"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={openingDebit}
+                    onChange={event => setOpeningDebit(event.target.value)}
+                    className={fieldClassName}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="opening-credit" className={labelClassName}>期初贷方</Label>
+                  <Input
+                    id="opening-credit"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={openingCredit}
+                    onChange={event => setOpeningCredit(event.target.value)}
+                    className={fieldClassName}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           <DialogFooter className={modalFooterClassName}>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving} className={secondaryButtonClassName}>
-              Cancel
+              取消
             </Button>
             <Button type="submit" disabled={saving} style={{ background: '#C9A96E', color: '#0A0805' }}>
               <Save size={14} />
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? '保存中...' : '保存'}
             </Button>
           </DialogFooter>
         </form>

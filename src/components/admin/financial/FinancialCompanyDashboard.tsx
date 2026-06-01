@@ -45,34 +45,34 @@ export function FinancialCompanyDashboard() {
   }, [company.id])
 
   const statCards = [
-    { label: 'Chart of Accounts', value: stats.totalAccounts, Icon: WalletCards, tone: '#38bdf8' },
-    { label: 'Pending Journals', value: stats.draftJournals, Icon: FileText, tone: '#f59e0b' },
-    { label: 'Posted Journals', value: stats.postedJournals, Icon: BookOpen, tone: '#10b981' },
-    { label: 'Ledger Entries', value: stats.ledgerEntries, Icon: Layers, tone: '#C9A96E' },
+    { label: '会计科目', value: stats.totalAccounts, Icon: WalletCards, tone: '#38bdf8' },
+    { label: '待过账日记账', value: stats.draftJournals, Icon: FileText, tone: '#f59e0b' },
+    { label: '已过账日记账', value: stats.postedJournals, Icon: BookOpen, tone: '#10b981' },
+    { label: '总账记录', value: stats.ledgerEntries, Icon: Layers, tone: '#C9A96E' },
   ]
 
   const modules = [
     {
-      title: 'Chart of Accounts',
-      desc: 'Maintain account hierarchy, types, and posting order.',
+      title: '会计科目',
+      desc: '维护科目层级、类型和显示顺序。',
       href: `/admin/financial/${company.id}/accounts`,
       Icon: WalletCards,
     },
     {
-      title: 'Journal Entries',
-      desc: 'Create balanced vouchers, review drafts, and post entries.',
+      title: '日记账',
+      desc: '创建平衡凭证、审核草稿并过账。',
       href: `/admin/financial/${company.id}/journal`,
       Icon: FileText,
     },
     {
-      title: 'General Ledger',
-      desc: 'Inspect account activity with running balances.',
+      title: '总分类账',
+      desc: '按账户查看交易流水和余额。',
       href: `/admin/financial/${company.id}/ledger`,
       Icon: Layers,
     },
     {
-      title: 'HKFRS Reports',
-      desc: 'Trial balance, income statement, balance sheet, and cash flow.',
+      title: '财务报表',
+      desc: '试算平衡表、损益表、资产负债表和现金流量表。',
       href: `/admin/financial/${company.id}/reports`,
       Icon: FileBarChart,
     },
@@ -83,7 +83,7 @@ export function FinancialCompanyDashboard() {
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-xs" style={{ color: '#7A7060' }}>
           <Link href="/admin/dashboard" className="hover:text-[#C9A96E]">
-            Dashboard
+            工作台
           </Link>
           <span>/</span>
           <Link href="/admin/financial" className="hover:text-[#C9A96E]">
@@ -98,12 +98,12 @@ export function FinancialCompanyDashboard() {
               {company.nameEn}
             </h1>
             <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-              Client company · Financial workspace
+              客户公司 · 财务工作区
             </p>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="border-[#2A2418] text-[#C9A96E]">
-              TCSP Accounting
+              代理记账
             </Badge>
           </div>
         </div>

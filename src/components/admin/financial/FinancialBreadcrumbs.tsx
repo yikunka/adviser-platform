@@ -12,7 +12,7 @@ export function FinancialBreadcrumbs({ section }: { section: string }) {
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs" style={{ color: '#7A7060' }}>
       <Link href="/admin/dashboard" className="hover:text-[#C9A96E]">
-        Dashboard
+        工作台
       </Link>
       <span>/</span>
       <Link href="/admin/financial" className="hover:text-[#C9A96E]">

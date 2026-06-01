@@ -70,13 +70,13 @@ Full double-entry accounting system per client company, compliant with HKFRS.
 
 Sub-pages (all scoped to a selected company or at `/admin/financial/[companyId]/`):
 
-- **Chart of Accounts** (`/accounts`): hierarchical accounts up to 4 levels; account types: `ASSET`, `LIABILITY`, `EQUITY`, `REVENUE`, `EXPENSE`, `CGS`, `CURRENT_ACCOUNT`; create / edit / delete; system accounts are locked
+- **Chart of Accounts** (`/accounts`): hierarchical accounts up to 4 levels; account types: `ASSET`, `LIABILITY`, `EQUITY`, `REVENUE`, `EXPENSE`, `CGS`, `CURRENT_ACCOUNT`; create / edit / delete; system accounts are locked; account creation supports opening debit or opening credit balances by period
 - **Journal Entries** (`/journal`): create balanced vouchers with multi-line debits/credits; statuses: `DRAFT` → `POSTED` / `CANCELLED`; support attachments; post to ledger; reverse entries; grouped by period (YYYY-MM); Excel import for historical journal entries. Import accepts either line-based rows (`Voucher No`, `Date`, `Description`, `Account Code`, `Debit`, `Credit`) or paired rows (`Date`, `Description`, `Debit Account Code`, `Credit Account Code`, `Amount`). Imported entries are saved as Pending/DRAFT for review before posting.
-- **General Ledger** (`/ledger`): account activity with running balances; filter by account, account type, period, date range
-- **HKFRS Reports** (`/reports`): trial balance, income statement (P&L), balance sheet, cash flow statement; support multi-currency with exchange rates (HKD / USD / RMB)
+- **General Ledger** (`/ledger`): account activity with running balances; entries are grouped by account code and sorted by date within each account; filter by account, account type, period, date range
+- **HKFRS Reports** (`/reports`): trial balance, income statement (P&L), balance sheet, cash flow statement; supports exporting all four statements into one Excel workbook; support multi-currency with exchange rates (HKD / USD / RMB)
 - **Consolidated Report Groups** (on selector page): named portfolios grouping multiple companies for consolidated reporting; create / delete groups; groups do not own journal entries (reporting only)
 
-Financial module can be enabled/disabled per company via the `financialEnabled` flag.
+Financial module can be enabled/disabled per company via the `financialEnabled` flag. The financial admin UI is localized in Chinese.
 
 ### 6. Invoices (`/admin/invoices`)
 Service invoicing for TCSP professional fees.
@@ -221,10 +221,13 @@ Product formulation management.
 Custom color formulations for specific customers or products.
 - Categories shown to users: PU, 色漆, 烤漆; stored enum identifiers remain `PU`, `BAKING_PAINT`, `HT_BAKING_PAINT` (legacy `LT_BAKING_PAINT` records may still exist)
 - Scope: product-specific (linked to a factory product) or category-wide
-- Fields: formula code, name, source recipe, color code, customer name, target color, batch quantity
+- Fields: formula code, name, source recipe, color code (real-time PANTONE / hex color preview swatch next to the input), customer name, target color, batch quantity
 - Line items: raw material library entries, Sol semifinished inventory entries, or manual blank/custom material rows, with quantity, percentage, unit price
-- Material picker supports multi-type filtering for AD, SO, Sol semifinished, DY, CO, CA, CC
+- First line item is always the pinned "适用产品" row when a factory product is linked; it cannot be deleted
+- Material picker supports multi-type filtering for AD, SO, Sol semifinished, DY, CO, CA, CC; a "参考配方" dropdown filters the picker to only materials used in a specific existing recipe
+- Clicking "新建配方" while a product filter is active pre-fills that product in the new formula form
 - Generate from factory product template: creates a linked formula with only an applicable-product row in material details; it does not auto-expand the product's full material list
+- PU 同步 button (visible on PU category, SUPER_ADMIN only): deletes all PU color formulas and recreates them from PU factory products with full recipe item expansion
 
 ### Production Orders (`/admin/cosmocoat-production-orders`)
 Manufacturing batch tracking.

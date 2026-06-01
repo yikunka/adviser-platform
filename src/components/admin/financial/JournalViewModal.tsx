@@ -57,18 +57,18 @@ export function JournalViewModal({ open, onOpenChange, entry, onPosted }: Props)
 
   async function postEntry() {
     if (!entry) return
-    if (!confirm(`Post journal entry ${entry.voucherNo}? This will create ledger entries and cannot be undone.`)) return
+    if (!confirm(`确定审核并过账日记账 ${entry.voucherNo}？过账后会生成总账记录，不能撤销。`)) return
 
     setPosting(true)
     try {
       const res = await fetch(`/api/admin/financial/journal-entries/${entry.id}/post`, { method: 'PUT' })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.toast || data.error || 'Failed to post journal entry.')
-      toast.success(data.toast || 'Journal entry posted.')
+      if (!res.ok) throw new Error(data.toast || data.error || '日记账过账失败。')
+      toast.success(data.toast || '日记账已过账。')
       onOpenChange(false)
       await onPosted?.()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to post journal entry.')
+      toast.error(error instanceof Error ? error.message : '日记账过账失败。')
     } finally {
       setPosting(false)
     }
@@ -78,29 +78,29 @@ export function JournalViewModal({ open, onOpenChange, entry, onPosted }: Props)
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={modalContentClassName}>
         <DialogHeader>
-          <DialogTitle className="text-[#FFF7E6]">{entry?.voucherNo ?? 'Journal Entry'}</DialogTitle>
-          <DialogDescription className="text-[#B8AD98]">Journal voucher details.</DialogDescription>
+          <DialogTitle className="text-[#FFF7E6]">{entry?.voucherNo ?? '日记账'}</DialogTitle>
+          <DialogDescription className="text-[#B8AD98]">日记账凭证详情。</DialogDescription>
         </DialogHeader>
 
         {entry ? (
           <div className="space-y-5">
             <div className="grid gap-3 rounded-lg border border-[#2A2418] bg-[#0E0E0A] p-4 sm:grid-cols-2">
               <div>
-                <div className="text-xs text-[#B8AD98]">Voucher No</div>
+                <div className="text-xs text-[#B8AD98]">凭证号</div>
                 <div className="font-mono">{entry.voucherNo}</div>
               </div>
               <div>
-                <div className="text-xs text-[#B8AD98]">Date</div>
-                <div>{new Date(entry.date).toLocaleDateString()}</div>
+                <div className="text-xs text-[#B8AD98]">日期</div>
+                <div>{new Date(entry.date).toLocaleDateString('zh-HK')}</div>
               </div>
               <div className="sm:col-span-2">
-                <div className="text-xs text-[#B8AD98]">Description</div>
+                <div className="text-xs text-[#B8AD98]">摘要</div>
                 <div>{entry.description}</div>
               </div>
               <div>
-                <div className="text-xs text-[#B8AD98]">Status</div>
+                <div className="text-xs text-[#B8AD98]">状态</div>
                 <Badge variant="outline" style={{ borderColor: STATUS_COLORS[entry.status], color: STATUS_COLORS[entry.status] }}>
-                  {entry.status === 'DRAFT' ? 'PENDING' : entry.status}
+                  {entry.status === 'DRAFT' ? '待过账' : entry.status === 'POSTED' ? '已过账' : '已取消'}
                 </Badge>
               </div>
             </div>
@@ -109,10 +109,10 @@ export function JournalViewModal({ open, onOpenChange, entry, onPosted }: Props)
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Account Code</TableHead>
-                    <TableHead>Account Name</TableHead>
-                    <TableHead className="text-right">Debit</TableHead>
-                    <TableHead className="text-right">Credit</TableHead>
+                    <TableHead>科目编码</TableHead>
+                    <TableHead>科目名称</TableHead>
+                    <TableHead className="text-right">借方</TableHead>
+                    <TableHead className="text-right">贷方</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -125,7 +125,7 @@ export function JournalViewModal({ open, onOpenChange, entry, onPosted }: Props)
                     </TableRow>
                   ))}
                   <TableRow>
-                    <TableCell colSpan={2} className="text-right font-medium">Totals</TableCell>
+                    <TableCell colSpan={2} className="text-right font-medium">合计</TableCell>
                     <TableCell className="text-right font-medium">{money(totalDebit)}</TableCell>
                     <TableCell className="text-right font-medium">{money(totalCredit)}</TableCell>
                   </TableRow>
@@ -135,12 +135,12 @@ export function JournalViewModal({ open, onOpenChange, entry, onPosted }: Props)
 
             <div className="grid gap-3 text-sm sm:grid-cols-2">
               <div>
-                <span className="text-[#B8AD98]">Created By: </span>
-                {entry.createdBy || 'System'}
+                <span className="text-[#B8AD98]">创建人：</span>
+                {entry.createdBy || '系统'}
               </div>
               <div>
-                <span className="text-[#B8AD98]">Created At: </span>
-                {entry.createdAt ? new Date(entry.createdAt).toLocaleString() : '-'}
+                <span className="text-[#B8AD98]">创建时间：</span>
+                {entry.createdAt ? new Date(entry.createdAt).toLocaleString('zh-HK') : '-'}
               </div>
             </div>
           </div>
@@ -155,11 +155,11 @@ export function JournalViewModal({ open, onOpenChange, entry, onPosted }: Props)
               style={{ background: '#10b981', color: '#0A0805' }}
             >
               <CheckCircle size={15} className="mr-2" />
-              {posting ? 'Posting...' : 'Approve & Post'}
+              {posting ? '过账中...' : '审核并过账'}
             </Button>
           ) : null}
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className={secondaryButtonClassName}>
-            Close
+            关闭
           </Button>
         </DialogFooter>
       </DialogContent>

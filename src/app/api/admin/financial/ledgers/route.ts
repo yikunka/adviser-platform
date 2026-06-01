@@ -4,7 +4,6 @@ import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { ledgerFilterSchema } from '@/lib/financial/schemas'
 import { serializeLedgerEntry } from '@/lib/financial/serializers'
-import { calculateRunningBalance } from '@/lib/financial/utils'
 import {
   assertCompanyAccessible,
   resolveCompanyAccess,
@@ -59,15 +58,7 @@ export async function GET(req: NextRequest) {
     orderBy: [{ date: 'asc' }, { lineNum: 'asc' }, { voucherNo: 'asc' }],
   })
 
-  const withRunningBalance = calculateRunningBalance(
-    ledgers.map(entry => ({
-      ...entry,
-      accountType: entry.account.type,
-      accountCode: entry.account.code,
-    })),
-  )
-
   return NextResponse.json({
-    ledgers: withRunningBalance.map(entry => serializeLedgerEntry({ ...entry, balance: entry.balance })),
+    ledgers: ledgers.map(entry => serializeLedgerEntry(entry)),
   })
 }

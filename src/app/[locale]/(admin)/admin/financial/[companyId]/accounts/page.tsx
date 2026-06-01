@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { AccountFormDialog, type FinancialAccount } from '@/components/admin/financial/AccountFormDialog'
-import { ACCOUNT_TYPE_COLORS } from '@/lib/financial/account-types'
+import { ACCOUNT_TYPE_COLORS, ACCOUNT_TYPE_LABELS } from '@/lib/financial/account-types'
 import { FinancialBreadcrumbs } from '@/components/admin/financial/FinancialBreadcrumbs'
 import { useFinancialCompany } from '@/components/admin/financial/FinancialCompanyContext'
 
@@ -33,7 +33,7 @@ export default function AdminFinancialAccountsPage() {
       if (!res.ok) throw new Error(data.error || 'Failed to fetch accounts')
       setAccounts(data.accounts || [])
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to load accounts')
+      toast.error(error instanceof Error ? error.message : '载入会计科目失败')
     } finally {
       setLoading(false)
     }
@@ -54,16 +54,16 @@ export default function AdminFinancialAccountsPage() {
   }
 
   async function deleteAccount(account: FinancialAccount) {
-    if (!confirm(`Delete account ${account.code} - ${account.name}?`)) return
+    if (!confirm(`确定删除科目 ${account.code} - ${account.name}？`)) return
 
     try {
       const res = await fetch(`/api/admin/financial/accounts/${account.id}`, { method: 'DELETE' })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.toast || data.error || 'Failed to delete account')
-      toast.success(data.toast || 'Account deleted.')
+      if (!res.ok) throw new Error(data.toast || data.error || '删除科目失败')
+      toast.success(data.toast || '科目已删除。')
       await fetchAccounts()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to delete account')
+      toast.error(error instanceof Error ? error.message : '删除科目失败')
     }
   }
 
@@ -79,18 +79,18 @@ export default function AdminFinancialAccountsPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="space-y-2">
-        <FinancialBreadcrumbs section="Chart of Accounts" />
+        <FinancialBreadcrumbs section="会计科目" />
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>
-              Chart of Accounts
+              会计科目
             </h1>
             <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-              {company.nameEn} · Manage accounting accounts and hierarchy.
+              {company.nameEn} · 管理会计科目和层级结构。
             </p>
           </div>
           <Button size="sm" onClick={openCreateDialog} style={{ background: '#C9A96E', color: '#0A0805' }}>
-            <Plus size={15} className="mr-2" /> Add Account
+            <Plus size={15} className="mr-2" /> 新增科目
           </Button>
         </div>
       </div>
@@ -101,7 +101,7 @@ export default function AdminFinancialAccountsPage() {
             <Input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search by code or name..."
+              placeholder="按编码或名称搜索..."
               className="max-w-sm"
               style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
             />
@@ -110,23 +110,23 @@ export default function AdminFinancialAccountsPage() {
         <CardContent>
           {loading ? (
             <div className="p-8 text-center" style={{ color: 'var(--muted-foreground)' }}>
-              Loading...
+              载入中...
             </div>
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center" style={{ color: '#5A5040' }}>
-              No accounts found
+              暂无会计科目
             </div>
           ) : (
             <>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Level</TableHead>
-                    <TableHead>Sort Order</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>编码</TableHead>
+                    <TableHead>名称</TableHead>
+                    <TableHead>类型</TableHead>
+                    <TableHead>层级</TableHead>
+                    <TableHead>排序</TableHead>
+                    <TableHead className="text-right">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -142,7 +142,7 @@ export default function AdminFinancialAccountsPage() {
                             color: ACCOUNT_TYPE_COLORS[account.type],
                           }}
                         >
-                          {account.type}
+                          {ACCOUNT_TYPE_LABELS[account.type]}
                         </Badge>
                       </TableCell>
                       <TableCell>{account.level}</TableCell>
@@ -174,8 +174,8 @@ export default function AdminFinancialAccountsPage() {
 
               <div className="flex items-center justify-between mt-4 px-2">
                 <div className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                  Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, filtered.length)} of{' '}
-                  {filtered.length} accounts
+                  显示第 {(page - 1) * pageSize + 1} 至 {Math.min(page * pageSize, filtered.length)} 项，共{' '}
+                  {filtered.length} 个科目
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -185,7 +185,7 @@ export default function AdminFinancialAccountsPage() {
                     disabled={page === 1}
                     style={{ borderColor: '#2A2418' }}
                   >
-                    Previous
+                    上一页
                   </Button>
                   <Button
                     variant="outline"
@@ -194,7 +194,7 @@ export default function AdminFinancialAccountsPage() {
                     disabled={page >= totalPages}
                     style={{ borderColor: '#2A2418' }}
                   >
-                    Next
+                    下一页
                   </Button>
                 </div>
               </div>

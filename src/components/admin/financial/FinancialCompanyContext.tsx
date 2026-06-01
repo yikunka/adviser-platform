@@ -53,10 +53,10 @@ export function FinancialCompanyProvider({
     fetch('/api/admin/financial/scope')
       .then(async res => {
         const data = await res.json()
-        if (!res.ok) throw new Error(data.error || 'Failed to load financial companies')
+        if (!res.ok) throw new Error(data.error || '载入财务公司失败')
         setCompanies(data.companies ?? [])
       })
-      .catch(error => toast.error(error instanceof Error ? error.message : 'Failed to load financial companies'))
+      .catch(error => toast.error(error instanceof Error ? error.message : '载入财务公司失败'))
       .finally(() => setLoading(false))
   }, [])
 
@@ -97,13 +97,13 @@ export function FinancialCompanyProvider({
       {needsCompany && !company && loading ? null : needsCompany && !company ? (
         <div className="p-6">
           <div className="rounded-lg border border-[#2A2418] bg-card p-8 text-center">
-            <p className="text-sm text-muted-foreground">Select a client company before opening this financial page.</p>
+            <p className="text-sm text-muted-foreground">请先选择客户公司，再打开此财务页面。</p>
             <Link
               href="/admin/financial"
               className="mt-4 inline-flex rounded-md border border-[#2A2418] px-3 py-2 text-sm font-medium hover:border-[#C9A96E66]"
               style={{ color: '#C9A96E' }}
             >
-              Choose company
+              选择公司
             </Link>
           </div>
         </div>
@@ -131,6 +131,6 @@ export function useFinancialCompany(): FinancialCompanyInfo {
   if (urlCompany) return urlCompany
 
   if (!workspace) throw new Error('useFinancialCompany must be used within FinancialCompanyProvider')
-  if (!workspace.company) throw new Error('Select a financial company before opening this page')
+  if (!workspace.company) throw new Error('请先选择财务公司，再打开此页面')
   return workspace.company
 }

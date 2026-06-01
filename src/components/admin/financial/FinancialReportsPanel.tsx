@@ -42,16 +42,53 @@ function exportCsv(filename: string, headers: string[], rows: (string | number)[
   link.click()
 }
 
+function sheetRows(title: string, period: string, rows: (string | number | boolean | null)[][]) {
+  return [
+    [title],
+    ['期间', period],
+    [],
+    ...rows,
+  ]
+}
+
+const ACCOUNT_TYPE_LABELS: Record<string, string> = {
+  ASSET: '资产',
+  LIABILITY: '负债',
+  EQUITY: '权益',
+  REVENUE: '收入',
+  CGS: '销售成本',
+  EXPENSE: '费用',
+  CURRENT_ACCOUNT: '往来科目',
+}
+
+const CASH_FLOW_LABELS: Record<string, string> = {
+  'Profit for the period': '本期利润',
+  'Changes in working capital': '营运资金变动',
+  'Net cash from operating activities': '经营活动现金流量净额',
+  'Purchase / disposal of non-current assets': '购置 / 处置非流动资产',
+  'Net cash from investing activities': '投资活动现金流量净额',
+  'Changes in borrowings and equity': '借款及权益变动',
+  'Net cash from financing activities': '融资活动现金流量净额',
+}
+
+function accountTypeLabel(value: string) {
+  return ACCOUNT_TYPE_LABELS[value] ?? value
+}
+
+function reportLineLabel(value: string) {
+  return CASH_FLOW_LABELS[value] ?? (value === 'Profit for the period' ? '本期利润' : value)
+}
+
 export function FinancialReportsPanel() {
   const company = useFinancialCompany()
   return (
     <FinancialReportsContent
       scope={{
-        title: 'Financial Statements',
-        subtitle: `${company.nameEn} · HKFRS-compliant reports from posted ledger entries.`,
+        title: '财务报表',
+        subtitle: `${company.nameEn} · 基于已过账总账生成的 HKFRS 报表。`,
         exportKey: company.companyCode ?? company.id,
         params: { companyId: company.id },
-        breadcrumbSection: 'HKFRS Reports',
+        breadcrumbSection: '财务报表',
       }}
     />
   )
@@ -69,11 +106,11 @@ export function FinancialReportGroupReportsPanel({
   return (
     <FinancialReportsContent
       scope={{
-        title: 'Consolidated Financial Statements',
-        subtitle: `${group.name} · ${companyLabel || 'No companies'} · reporting-only consolidation.`,
+        title: '合并财务报表',
+        subtitle: `${group.name} · ${companyLabel || '暂无公司'} · 仅用于报表合并。`,
         exportKey: group.name.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || group.id,
         params: { reportGroupId: group.id },
-        breadcrumbSection: 'Consolidated Reports',
+        breadcrumbSection: '合并报表',
       }}
     />
   )
@@ -90,10 +127,10 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
       const params = new URLSearchParams({ period, ...scope.params })
       const res = await fetch(`/api/admin/financial/reports?${params}`)
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to generate reports')
+      if (!res.ok) throw new Error(data.error || '生成财务报表失败')
       setReports(data.reports)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to load financial reports')
+      toast.error(error instanceof Error ? error.message : '载入财务报表失败')
       setReports(null)
     } finally {
       setLoading(false)
@@ -108,17 +145,101 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
     if (!reports) return
     exportCsv(
       `trial_balance_${scope.exportKey}_${period}.csv`,
-      ['Account Code', 'Account Name', 'Type', 'Period Debit', 'Period Credit', 'Closing Debit', 'Closing Credit'],
+      ['科目编码', '科目名称', '类型', '本期借方', '本期贷方', '期末借方', '期末贷方'],
       reports.trialBalance.rows.map(row => [
         row.code,
         row.name,
-        row.type,
+        accountTypeLabel(row.type),
         row.periodDebit.toFixed(2),
         row.periodCredit.toFixed(2),
         row.closingDebit.toFixed(2),
         row.closingCredit.toFixed(2),
       ]),
     )
+  }
+
+  async function exportWorkbook() {
+    if (!reports) return
+
+    try {
+      const XLSX = await import('xlsx')
+      const workbook = XLSX.utils.book_new()
+
+      XLSX.utils.book_append_sheet(
+        workbook,
+        XLSX.utils.aoa_to_sheet(sheetRows('试算平衡表', period, [
+          ['科目编码', '科目名称', '类型', '本期借方', '本期贷方', '期末借方', '期末贷方'],
+          ...reports.trialBalance.rows.map(row => [
+            row.code,
+            row.name,
+            accountTypeLabel(row.type),
+            row.periodDebit,
+            row.periodCredit,
+            row.closingDebit,
+            row.closingCredit,
+          ]),
+          [],
+          ['合计', '', '', '', '', reports.trialBalance.totalDebit, reports.trialBalance.totalCredit],
+          ['是否平衡', '', '', '', '', reports.trialBalance.balanced ? '是' : '否'],
+        ])),
+        '试算平衡表',
+      )
+
+      XLSX.utils.book_append_sheet(
+        workbook,
+        XLSX.utils.aoa_to_sheet(sheetRows('损益表', period, [
+          ['分类', '科目编码', '科目名称', '金额'],
+          ...reports.incomeStatement.revenue.map(row => ['收入', row.code, row.name, row.amount]),
+          ['收入合计', '', '', reports.incomeStatement.totalRevenue],
+          [],
+          ...reports.incomeStatement.expenses.map(row => ['费用', row.code, row.name, row.amount]),
+          ['费用合计', '', '', reports.incomeStatement.totalExpenses],
+          ['本期利润', '', '', reports.incomeStatement.netProfit],
+        ])),
+        '损益表',
+      )
+
+      XLSX.utils.book_append_sheet(
+        workbook,
+        XLSX.utils.aoa_to_sheet(sheetRows('资产负债表', period, [
+          ['截至日期', reports.balanceSheet.asOfDate],
+          [],
+          ['分类', '科目编码', '科目名称', '金额'],
+          ...reports.balanceSheet.assets.map(row => ['资产', row.code, row.name, row.amount]),
+          ['资产合计', '', '', reports.balanceSheet.totalAssets],
+          [],
+          ...reports.balanceSheet.liabilities.map(row => ['负债', row.code, row.name, row.amount]),
+          ['负债合计', '', '', reports.balanceSheet.totalLiabilities],
+          [],
+          ...reports.balanceSheet.equity.map(row => ['权益', row.code, reportLineLabel(row.name), row.amount]),
+          ['权益合计', '', '', reports.balanceSheet.totalEquity],
+          ['负债和权益合计', '', '', reports.balanceSheet.totalLiabilitiesAndEquity],
+          ['是否平衡', '', '', reports.balanceSheet.balanced ? '是' : '否'],
+        ])),
+        '资产负债表',
+      )
+
+      XLSX.utils.book_append_sheet(
+        workbook,
+        XLSX.utils.aoa_to_sheet(sheetRows('现金流量表', period, [
+          ['编制方法', '间接法'],
+          [],
+          ['分类', '项目', '金额'],
+          ...reports.cashFlow.operating.map(row => ['经营活动', reportLineLabel(row.label), row.amount]),
+          ...reports.cashFlow.investing.map(row => ['投资活动', reportLineLabel(row.label), row.amount]),
+          ...reports.cashFlow.financing.map(row => ['融资活动', reportLineLabel(row.label), row.amount]),
+          [],
+          ['汇总', '现金净增加 / 减少', reports.cashFlow.netCashChange],
+          ['汇总', '期初现金', reports.cashFlow.openingCash],
+          ['汇总', '期末现金', reports.cashFlow.closingCash],
+        ])),
+        '现金流量表',
+      )
+
+      XLSX.writeFile(workbook, `financial_reports_${scope.exportKey}_${period}.xlsx`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '导出财务报表失败。')
+    }
   }
 
   return (
@@ -152,41 +273,46 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
             />
             <Button size="sm" onClick={fetchReports} disabled={loading} style={{ background: '#C9A96E', color: '#0A0805' }}>
               <FileBarChart size={15} className="mr-2" />
-              {loading ? 'Generating...' : 'Generate Reports'}
+              {loading ? '生成中...' : '生成报表'}
             </Button>
             {reports ? (
-              <Button variant="outline" size="sm" onClick={exportTrialBalance} style={{ borderColor: '#2A2418' }}>
-                <Download size={15} className="mr-2" /> Export Trial Balance
-              </Button>
+              <>
+                <Button variant="outline" size="sm" onClick={exportWorkbook} style={{ borderColor: '#2A2418' }}>
+                  <Download size={15} className="mr-2" /> 导出全部报表
+                </Button>
+                <Button variant="outline" size="sm" onClick={exportTrialBalance} style={{ borderColor: '#2A2418' }}>
+                  <Download size={15} className="mr-2" /> 导出试算平衡表
+                </Button>
+              </>
             ) : null}
           </div>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="p-8 text-center" style={{ color: 'var(--muted-foreground)' }}>
-              Generating HKFRS reports...
+              正在生成 HKFRS 报表...
             </div>
           ) : !reports ? (
             <div className="p-8 text-center" style={{ color: '#5A5040' }}>
-              Select a period and generate reports.
+              请选择期间并生成报表。
             </div>
           ) : (
             <Tabs defaultValue="trial-balance">
               <TabsList className="mb-4 flex flex-wrap h-auto gap-1 bg-[#0E0E0A] border border-[#2A2418] p-1">
-                <TabsTrigger value="trial-balance">Trial Balance</TabsTrigger>
-                <TabsTrigger value="income">Income Statement</TabsTrigger>
-                <TabsTrigger value="balance">Balance Sheet</TabsTrigger>
-                <TabsTrigger value="cashflow">Cash Flows</TabsTrigger>
+                <TabsTrigger value="trial-balance">试算平衡表</TabsTrigger>
+                <TabsTrigger value="income">损益表</TabsTrigger>
+                <TabsTrigger value="balance">资产负债表</TabsTrigger>
+                <TabsTrigger value="cashflow">现金流量表</TabsTrigger>
               </TabsList>
 
               <TabsContent value="trial-balance" className="space-y-4">
-                <ReportHeader title="Trial Balance" period={period} balanced={reports.trialBalance.balanced} />
+                <ReportHeader title="试算平衡表" period={period} balanced={reports.trialBalance.balanced} />
                 <StatementTable
-                  headers={['Code', 'Account', 'Type', 'Period Dr', 'Period Cr', 'Closing Dr', 'Closing Cr']}
+                  headers={['编码', '科目', '类型', '本期借方', '本期贷方', '期末借方', '期末贷方']}
                   rows={reports.trialBalance.rows.map(row => [
                     row.code,
                     row.name,
-                    row.type,
+                    accountTypeLabel(row.type),
                     money(row.periodDebit),
                     money(row.periodCredit),
                     money(row.closingDebit),
@@ -194,31 +320,31 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                   ])}
                 />
                 <TotalsFooter
-                  left={`Total Debit: ${money(reports.trialBalance.totalDebit)}`}
-                  right={`Total Credit: ${money(reports.trialBalance.totalCredit)}`}
+                  left={`借方合计：${money(reports.trialBalance.totalDebit)}`}
+                  right={`贷方合计：${money(reports.trialBalance.totalCredit)}`}
                 />
               </TabsContent>
 
               <TabsContent value="income" className="space-y-4">
-                <ReportHeader title="Income Statement (Profit or Loss)" period={period} />
-                <Section title="Revenue">
+                <ReportHeader title="损益表" period={period} />
+                <Section title="收入">
                   <StatementTable
-                    headers={['Code', 'Account', 'Amount']}
+                    headers={['编码', '科目', '金额']}
                     rows={reports.incomeStatement.revenue.map(row => [row.code, row.name, money(row.amount)])}
-                    emptyLabel="No revenue in this period"
+                    emptyLabel="本期间暂无收入"
                   />
-                  <TotalsFooter left="Total Revenue" right={money(reports.incomeStatement.totalRevenue)} />
+                  <TotalsFooter left="收入合计" right={money(reports.incomeStatement.totalRevenue)} />
                 </Section>
-                <Section title="Expenses">
+                <Section title="费用">
                   <StatementTable
-                    headers={['Code', 'Account', 'Amount']}
+                    headers={['编码', '科目', '金额']}
                     rows={reports.incomeStatement.expenses.map(row => [row.code, row.name, money(row.amount)])}
-                    emptyLabel="No expenses in this period"
+                    emptyLabel="本期间暂无费用"
                   />
-                  <TotalsFooter left="Total Expenses" right={money(reports.incomeStatement.totalExpenses)} />
+                  <TotalsFooter left="费用合计" right={money(reports.incomeStatement.totalExpenses)} />
                 </Section>
                 <TotalsFooter
-                  left="Profit for the period"
+                  left="本期利润"
                   right={money(reports.incomeStatement.netProfit)}
                   highlight
                 />
@@ -226,50 +352,50 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
 
               <TabsContent value="balance" className="space-y-4">
                 <ReportHeader
-                  title="Statement of Financial Position (Balance Sheet)"
+                  title="资产负债表"
                   period={period}
                   balanced={reports.balanceSheet.balanced}
-                  subtitle={`As at ${new Date(reports.balanceSheet.asOfDate).toLocaleDateString('en-HK')}`}
+                  subtitle={`截至 ${new Date(reports.balanceSheet.asOfDate).toLocaleDateString('zh-HK')}`}
                 />
-                <Section title="Assets">
+                <Section title="资产">
                   <StatementTable
-                    headers={['Code', 'Account', 'Amount']}
+                    headers={['编码', '科目', '金额']}
                     rows={reports.balanceSheet.assets.map(row => [row.code, row.name, money(row.amount)])}
-                    emptyLabel="No asset balances"
+                    emptyLabel="暂无资产余额"
                   />
-                  <TotalsFooter left="Total Assets" right={money(reports.balanceSheet.totalAssets)} />
+                  <TotalsFooter left="资产合计" right={money(reports.balanceSheet.totalAssets)} />
                 </Section>
-                <Section title="Liabilities">
+                <Section title="负债">
                   <StatementTable
-                    headers={['Code', 'Account', 'Amount']}
+                    headers={['编码', '科目', '金额']}
                     rows={reports.balanceSheet.liabilities.map(row => [row.code, row.name, money(row.amount)])}
-                    emptyLabel="No liability balances"
+                    emptyLabel="暂无负债余额"
                   />
-                  <TotalsFooter left="Total Liabilities" right={money(reports.balanceSheet.totalLiabilities)} />
+                  <TotalsFooter left="负债合计" right={money(reports.balanceSheet.totalLiabilities)} />
                 </Section>
-                <Section title="Equity">
+                <Section title="权益">
                   <StatementTable
-                    headers={['Code', 'Account', 'Amount']}
-                    rows={reports.balanceSheet.equity.map(row => [row.code, row.name, money(row.amount)])}
-                    emptyLabel="No equity balances"
+                    headers={['编码', '科目', '金额']}
+                    rows={reports.balanceSheet.equity.map(row => [row.code, reportLineLabel(row.name), money(row.amount)])}
+                    emptyLabel="暂无权益余额"
                   />
-                  <TotalsFooter left="Total Equity" right={money(reports.balanceSheet.totalEquity)} />
+                  <TotalsFooter left="权益合计" right={money(reports.balanceSheet.totalEquity)} />
                 </Section>
                 <TotalsFooter
-                  left="Total Liabilities and Equity"
+                  left="负债和权益合计"
                   right={money(reports.balanceSheet.totalLiabilitiesAndEquity)}
                   highlight
                 />
               </TabsContent>
 
               <TabsContent value="cashflow" className="space-y-4">
-                <ReportHeader title="Statement of Cash Flows (Indirect Method)" period={period} />
-                <CashFlowSection title="Operating activities" items={reports.cashFlow.operating} />
-                <CashFlowSection title="Investing activities" items={reports.cashFlow.investing} />
-                <CashFlowSection title="Financing activities" items={reports.cashFlow.financing} />
-                <TotalsFooter left="Net increase / (decrease) in cash" right={money(reports.cashFlow.netCashChange)} highlight />
-                <TotalsFooter left="Cash at beginning of period" right={money(reports.cashFlow.openingCash)} />
-                <TotalsFooter left="Cash at end of period" right={money(reports.cashFlow.closingCash)} />
+                <ReportHeader title="现金流量表（间接法）" period={period} />
+                <CashFlowSection title="经营活动" items={reports.cashFlow.operating} />
+                <CashFlowSection title="投资活动" items={reports.cashFlow.investing} />
+                <CashFlowSection title="融资活动" items={reports.cashFlow.financing} />
+                <TotalsFooter left="现金净增加 / 减少" right={money(reports.cashFlow.netCashChange)} highlight />
+                <TotalsFooter left="期初现金" right={money(reports.cashFlow.openingCash)} />
+                <TotalsFooter left="期末现金" right={money(reports.cashFlow.closingCash)} />
               </TabsContent>
             </Tabs>
           )}
@@ -295,7 +421,7 @@ function ReportHeader({
       <div>
         <h2 className="text-lg font-semibold">{title}</h2>
         <p className="text-sm text-muted-foreground">
-          Period: {period}
+          期间：{period}
           {subtitle ? ` · ${subtitle}` : ''}
         </p>
       </div>
@@ -304,7 +430,7 @@ function ReportHeader({
           variant="outline"
           style={{ borderColor: balanced ? '#10b981' : '#ef4444', color: balanced ? '#10b981' : '#ef4444' }}
         >
-          {balanced ? 'Balanced' : 'Out of balance'}
+          {balanced ? '已平衡' : '不平衡'}
         </Badge>
       ) : null}
     </div>
@@ -323,7 +449,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 function StatementTable({
   headers,
   rows,
-  emptyLabel = 'No data',
+  emptyLabel = '暂无数据',
 }: {
   headers: string[]
   rows: string[][]
@@ -342,7 +468,7 @@ function StatementTable({
               <TableHead
                 key={header}
                 className={
-                  header.includes('Amount') || header.includes('Dr') || header.includes('Cr') ? 'text-right' : undefined
+                  header.includes('金额') || header.includes('借方') || header.includes('贷方') ? 'text-right' : undefined
                 }
               >
                 {header}
@@ -386,7 +512,7 @@ function CashFlowSection({ title, items }: { title: string; items: { label: stri
       <div className="space-y-2 rounded-lg border border-[#2A2418] bg-[#0E0E0A] p-4">
         {items.map(item => (
           <div key={item.label} className="flex justify-between text-sm">
-            <span>{item.label}</span>
+            <span>{reportLineLabel(item.label)}</span>
             <span className="font-mono">{money(item.amount)}</span>
           </div>
         ))}

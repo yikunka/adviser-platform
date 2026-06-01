@@ -358,7 +358,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
     } finally {
       setPickerLoading(false)
     }
-  }, [pickerSearch, isNew, recipeId])
+  }, [pickerSearch, isNew, recipeId, setSemifinishedCategoryFilter])
 
   useEffect(() => {
     if (isNew) {

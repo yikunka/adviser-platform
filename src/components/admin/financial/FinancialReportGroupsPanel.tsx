@@ -36,12 +36,12 @@ export function FinancialReportGroupsPanel() {
     try {
       const res = await fetch('/api/admin/financial/report-groups')
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to load report groups')
+      if (!res.ok) throw new Error(data.error || '载入合并报表组合失败')
       const nextGroups = Array.isArray(data.groups) ? data.groups : []
       setGroups(nextGroups)
       setSelectedGroupId(current => current || nextGroups[0]?.id || '')
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to load report groups')
+      toast.error(error instanceof Error ? error.message : '载入合并报表组合失败')
     } finally {
       setLoading(false)
     }
@@ -66,11 +66,11 @@ export function FinancialReportGroupsPanel() {
   async function createGroup(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) {
-      toast.error('Enter a group name')
+      toast.error('请输入组合名称')
       return
     }
     if (selectedCompanyIds.length === 0) {
-      toast.error('Select at least one company')
+      toast.error('请至少选择一家公司')
       return
     }
 
@@ -82,14 +82,14 @@ export function FinancialReportGroupsPanel() {
         body: JSON.stringify({ name, companyIds: selectedCompanyIds }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to create report group')
+      if (!res.ok) throw new Error(data.error || '创建合并报表组合失败')
       setGroups(current => [...current.filter(group => group.id !== data.id), data].sort((a, b) => a.name.localeCompare(b.name)))
       setSelectedGroupId(data.id)
       setName('')
       setSelectedCompanyIds([])
-      toast.success('Report group created')
+      toast.success('合并报表组合已创建')
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to create report group')
+      toast.error(error instanceof Error ? error.message : '创建合并报表组合失败')
     } finally {
       setSaving(false)
     }
@@ -100,12 +100,12 @@ export function FinancialReportGroupsPanel() {
     try {
       const res = await fetch(`/api/admin/financial/report-groups/${groupId}`, { method: 'DELETE' })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'Failed to delete report group')
+      if (!res.ok) throw new Error(data.error || '删除合并报表组合失败')
       setGroups(current => current.filter(group => group.id !== groupId))
       setSelectedGroupId(current => current === groupId ? '' : current)
-      toast.success('Report group deleted')
+      toast.success('合并报表组合已删除')
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to delete report group')
+      toast.error(error instanceof Error ? error.message : '删除合并报表组合失败')
     } finally {
       setSaving(false)
     }
@@ -116,14 +116,14 @@ export function FinancialReportGroupsPanel() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>
-            Consolidated Report Groups
+            合并报表组合
           </h2>
           <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
-            Reporting-only company portfolios. Journals and ledgers remain company-scoped.
+            仅用于合并报表的公司组合。日记账和总账仍按单家公司隔离。
           </p>
         </div>
         <Button size="sm" variant="outline" onClick={loadGroups} disabled={loading || saving}>
-          Refresh
+          刷新
         </Button>
       </div>
 
@@ -131,7 +131,7 @@ export function FinancialReportGroupsPanel() {
         <Input
           value={name}
           onChange={e => setName(e.target.value)}
-          placeholder="Group name"
+          placeholder="组合名称"
           className="h-9"
           style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
         />
@@ -161,15 +161,15 @@ export function FinancialReportGroupsPanel() {
         </div>
         <Button type="submit" size="sm" disabled={saving || companies.length === 0}>
           <Plus size={14} className="mr-2" />
-          Create
+          创建
         </Button>
       </form>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
         {loading ? (
-          <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>Loading groups...</p>
+          <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>载入组合中...</p>
         ) : groups.length === 0 ? (
-          <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>No report groups yet.</p>
+          <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>暂无合并报表组合。</p>
         ) : (
           groups.map(group => {
             const active = group.id === selectedGroupId
@@ -188,7 +188,7 @@ export function FinancialReportGroupsPanel() {
                     {group.name}
                   </span>
                   <span className="block truncate text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                    {group.companies.length} companies
+                    {group.companies.length} 家公司
                   </span>
                 </button>
                 <Button
@@ -198,7 +198,7 @@ export function FinancialReportGroupsPanel() {
                   className="size-8"
                   onClick={() => deleteGroup(group.id)}
                   disabled={saving}
-                  title="Delete report group"
+                  title="删除合并报表组合"
                 >
                   <Trash2 size={14} />
                 </Button>

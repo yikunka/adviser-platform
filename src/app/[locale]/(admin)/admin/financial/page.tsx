@@ -15,7 +15,7 @@ export default function AdminFinancialSelectCompanyPage() {
         <FinancialCompanyDashboard />
       ) : (
         <div className="rounded-lg border border-[#2A2418] bg-card p-8 text-center text-sm text-muted-foreground">
-          Select a client company above to open its financial workspace.
+          请先在上方选择客户公司，再进入财务工作台。
         </div>
       )}
       <FinancialReportGroupsPanel />

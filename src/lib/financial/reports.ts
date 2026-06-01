@@ -201,6 +201,55 @@ function movementSignedBalance(totals: MovementTotals, type: AccountType, code?:
   return signedBalance(net, type, code)
 }
 
+function periodBeforeDate(date: Date) {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+async function aggregateOpeningBalanceMovements(
+  beforeEnd: Date,
+  scope?: FinancialReportScope,
+) {
+  const companyIds = scopeCompanyIds(scope)
+  const rows = await prisma.accountBalance.findMany({
+    where: {
+      period: { lte: periodBeforeDate(beforeEnd) },
+      account: {
+        ...(companyIds ? { companyId: { in: companyIds } } : {}),
+      },
+    },
+    orderBy: [{ period: 'desc' }],
+    select: {
+      accountId: true,
+      period: true,
+      openingDebit: true,
+      openingCredit: true,
+    },
+  })
+
+  const latestByAccount = new Map<string, { debit: number; credit: number }>()
+  for (const row of rows) {
+    if (latestByAccount.has(row.accountId)) continue
+    latestByAccount.set(row.accountId, {
+      debit: Number(row.openingDebit),
+      credit: Number(row.openingCredit),
+    })
+  }
+
+  return latestByAccount
+}
+
+function mergeMovementMaps(base: Map<string, MovementTotals>, extra: Map<string, MovementTotals>) {
+  const merged = new Map(base)
+  for (const [accountId, totals] of extra) {
+    const current = merged.get(accountId) ?? { debit: 0, credit: 0 }
+    merged.set(accountId, {
+      debit: roundMoney(current.debit + totals.debit),
+      credit: roundMoney(current.credit + totals.credit),
+    })
+  }
+  return merged
+}
+
 function sumMovements(map: Map<string, MovementTotals>, accountIds: string[]) {
   return accountIds.reduce<MovementTotals>((sum, accountId) => {
     const totals = map.get(accountId)
@@ -252,11 +301,15 @@ export async function buildFinancialReports(
         ...rest,
       }))
 
-  const [openingMovements, periodMovements, closingMovements] = await Promise.all([
+  const [ledgerOpeningMovements, periodMovements, ledgerClosingMovements, openingBalances, closingBalances] = await Promise.all([
     aggregateLedgerMovements(start, undefined, scope),
     aggregateLedgerMovements(end, start, scope),
     aggregateLedgerMovements(end, undefined, scope),
+    aggregateOpeningBalanceMovements(start, scope),
+    aggregateOpeningBalanceMovements(end, scope),
   ])
+  const openingMovements = mergeMovementMaps(ledgerOpeningMovements, openingBalances)
+  const closingMovements = mergeMovementMaps(ledgerClosingMovements, closingBalances)
 
   const trialRows: TrialBalanceRow[] = []
   let totalDebit = 0

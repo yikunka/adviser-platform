@@ -1,16 +1,20 @@
 import type { AccountType } from '@prisma/client'
 
 export const ACCOUNT_TYPE_OPTIONS: ReadonlyArray<{ value: AccountType; label: string }> = [
-  { value: 'ASSET', label: 'Asset' },
-  { value: 'LIABILITY', label: 'Liability' },
-  { value: 'EQUITY', label: 'Equity' },
-  { value: 'REVENUE', label: 'Revenue' },
-  { value: 'CGS', label: 'CGS (Cost of Goods Sold)' },
-  { value: 'EXPENSE', label: 'Expense' },
-  { value: 'CURRENT_ACCOUNT', label: 'C/A Account (Current Account)' },
+  { value: 'ASSET', label: '资产' },
+  { value: 'LIABILITY', label: '负债' },
+  { value: 'EQUITY', label: '权益' },
+  { value: 'REVENUE', label: '收入' },
+  { value: 'CGS', label: '销售成本' },
+  { value: 'EXPENSE', label: '费用' },
+  { value: 'CURRENT_ACCOUNT', label: '往来科目' },
 ]
 
 export const ACCOUNT_TYPE_VALUES = ACCOUNT_TYPE_OPTIONS.map(option => option.value)
+
+export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = Object.fromEntries(
+  ACCOUNT_TYPE_OPTIONS.map(option => [option.value, option.label]),
+) as Record<AccountType, string>
 
 export const ACCOUNT_TYPE_COLORS: Record<AccountType, string> = {
   ASSET: '#38bdf8',

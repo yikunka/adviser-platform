@@ -131,7 +131,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
       accountCompanyId
         ? fetch(`/api/admin/financial/accounts?companyId=${accountCompanyId}`).then(async res => {
             const data = await res.json()
-            if (!res.ok) throw new Error(data.error || 'Failed to load accounts.')
+            if (!res.ok) throw new Error(data.error || '载入会计科目失败。')
             return data.accounts || []
           })
         : Promise.resolve([]),
@@ -139,7 +139,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
         ? Promise.resolve([])
         : fetch('/api/admin/financial/scope').then(async res => {
             const data = await res.json()
-            if (!res.ok) throw new Error(data.error || 'Failed to load companies.')
+            if (!res.ok) throw new Error(data.error || '载入客户公司失败。')
             return data.companies || []
           }),
     ])
@@ -147,7 +147,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
         setAccounts(accountRows)
         if (!fixedCompanyId) setCompanies(companyRows)
       })
-      .catch(err => toast.error(err instanceof Error ? err.message : 'Failed to load accounts.'))
+      .catch(err => toast.error(err instanceof Error ? err.message : '载入会计科目失败。'))
       .finally(() => setLoadingAccounts(false))
   }, [companyId, fixedCompanyId, open])
 
@@ -171,9 +171,9 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
   const hasCompany = companyId !== 'NONE'
   const canSubmit = hasCompany && totals.balanced && !saving
   const saveBlockedReason = !hasCompany
-    ? 'Select a client company before saving.'
+    ? '保存前请选择客户公司。'
     : !totals.balanced
-      ? 'Total debit must equal total credit before saving.'
+      ? '借方合计必须等于贷方合计。'
       : ''
 
   function updateLine(index: number, patch: Partial<FormLine>) {
@@ -183,15 +183,15 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!description.trim()) {
-      toast.error('Description is required.')
+      toast.error('请填写摘要。')
       return
     }
     if (!hasCompany) {
-      toast.error('Please select the client company before saving this journal entry.')
+      toast.error('保存日记账前请选择客户公司。')
       return
     }
     if (!totals.balanced) {
-      toast.error('Total debit must equal total credit.')
+      toast.error('借方合计必须等于贷方合计。')
       return
     }
 
@@ -203,7 +203,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
     }))
 
     if (payloadLines.some(line => !line.accountId)) {
-      toast.error('Select an account for every line.')
+      toast.error('每一行都需要选择会计科目。')
       return
     }
 
@@ -215,13 +215,13 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
         body: JSON.stringify({ entryDate, companyId, description, lines: payloadLines }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.toast || data.error || 'Failed to save journal entry.')
+      if (!res.ok) throw new Error(data.toast || data.error || '保存日记账失败。')
 
-      toast.success(data.toast || (entry ? 'Journal entry updated.' : 'Journal entry created.'))
+      toast.success(data.toast || (entry ? '日记账已更新。' : '日记账已创建。'))
       onOpenChange(false)
       await onSaved()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save journal entry.')
+      toast.error(err instanceof Error ? err.message : '保存日记账失败。')
     } finally {
       setSaving(false)
     }
@@ -231,32 +231,32 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={modalContentClassName}>
         <DialogHeader>
-          <DialogTitle className="text-[#FFF7E6]">{entry ? 'Edit Journal Entry' : 'New Journal Entry'}</DialogTitle>
+          <DialogTitle className="text-[#FFF7E6]">{entry ? '编辑日记账' : '新增日记账'}</DialogTitle>
           <DialogDescription className="text-[#B8AD98]">
-            Entries are saved as Pending. Use Approve & Post to create ledger entries.
+            保存后状态为待过账，使用审核并过账生成总账记录。
           </DialogDescription>
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline" style={{ borderColor: '#f59e0b', color: '#f59e0b' }}>
-              Status: Pending
+              状态：待过账
             </Badge>
             {!hasCompany && (
               <Badge variant="outline" style={{ borderColor: '#f59e0b', color: '#f59e0b' }}>
-                Company required
+                需要选择公司
               </Badge>
             )}
             {!totals.balanced && (
               <Badge variant="outline" style={{ borderColor: '#f59e0b', color: '#f59e0b' }}>
-                Debit/Credit not balanced
+                借贷不平衡
               </Badge>
             )}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-[180px_minmax(220px,1fr)]">
             <div className="space-y-2">
-              <Label className={labelClassName}>Date</Label>
+              <Label className={labelClassName}>日期</Label>
               <DatePickerPopover
                 value={entryDate}
                 onChange={setEntryDate}
@@ -265,15 +265,15 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
             </div>
             {!fixedCompanyId ? (
               <div className="space-y-2">
-                <Label className={labelClassName}>Client Company</Label>
+                <Label className={labelClassName}>客户公司</Label>
                 <Select value={companyId} onValueChange={value => setCompanyId(value ?? 'NONE')}>
                   <SelectTrigger className={`w-full ${fieldClassName}`}>
-                    <SelectValue placeholder={loadingAccounts ? 'Loading...' : 'Select company'}>
+                    <SelectValue placeholder={loadingAccounts ? '载入中...' : '选择公司'}>
                       {companyId !== 'NONE' ? selectedCompanyLabel(companies, companyId) : undefined}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent className={selectContentClassName}>
-                    <SelectItem value="NONE">Select company</SelectItem>
+                    <SelectItem value="NONE">选择公司</SelectItem>
                     {companies.map(company => (
                       <SelectItem key={company.id} value={company.id}>
                         {company.companyCode ? `${company.companyCode} - ` : ''}{company.nameEn}
@@ -283,17 +283,17 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                 </Select>
                 {companies.length === 0 ? (
                   <p className={warningTextClassName}>
-                    No accessible client companies. Create or assign a company before posting journals.
+                    暂无可访问客户公司。请先创建或分配公司后再录入日记账。
                   </p>
                 ) : companyId === 'NONE' ? (
-                  <p className={warningTextClassName}>Required. Financial reports and ledgers are scoped by company.</p>
+                  <p className={warningTextClassName}>必填。财务报表和总账会按公司隔离。</p>
                 ) : null}
               </div>
             ) : null}
           </div>
           <div className="space-y-2">
             <div className="space-y-2">
-              <Label htmlFor="journal-description" className={labelClassName}>Description</Label>
+              <Label htmlFor="journal-description" className={labelClassName}>摘要</Label>
               <Textarea
                 id="journal-description"
                 value={description}
@@ -307,10 +307,10 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
 
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-[#FFF7E6]">Line Items</span>
+              <span className="text-sm font-medium text-[#FFF7E6]">分录明细</span>
               {!totals.balanced && (
                 <Badge variant="outline" style={{ borderColor: '#f59e0b', color: '#f59e0b' }}>
-                  Difference: {(totals.debit - totals.credit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  差额：{(totals.debit - totals.credit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </Badge>
               )}
             </div>
@@ -322,7 +322,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
               className={secondaryButtonClassName}
             >
               <Plus size={14} />
-              Add Line
+              新增行
             </Button>
           </div>
 
@@ -330,10 +330,10 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[260px]">Account</TableHead>
-                  <TableHead className="min-w-[220px]">Line Description</TableHead>
-                  <TableHead className="w-[140px] text-right">Debit</TableHead>
-                  <TableHead className="w-[140px] text-right">Credit</TableHead>
+                  <TableHead className="min-w-[260px]">科目</TableHead>
+                  <TableHead className="min-w-[220px]">行摘要</TableHead>
+                  <TableHead className="w-[140px] text-right">借方</TableHead>
+                  <TableHead className="w-[140px] text-right">贷方</TableHead>
                   <TableHead className="w-[48px]" />
                 </TableRow>
               </TableHeader>
@@ -343,12 +343,12 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                     <TableCell>
                       <Select value={line.accountId} onValueChange={value => updateLine(index, { accountId: value ?? 'NONE' })}>
                         <SelectTrigger className={`w-full ${fieldClassName}`}>
-                          <SelectValue placeholder={loadingAccounts ? 'Loading...' : 'Account'}>
+                          <SelectValue placeholder={loadingAccounts ? '载入中...' : '科目'}>
                             {line.accountId !== 'NONE' ? selectedAccountLabel(accounts, line.accountId) : undefined}
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent className={selectContentClassName}>
-                          <SelectItem value="NONE">Select account</SelectItem>
+                          <SelectItem value="NONE">选择科目</SelectItem>
                           {accounts.map(account => (
                             <SelectItem key={account.id} value={account.id}>
                               {account.code} - {account.name}
@@ -361,7 +361,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                       <Input
                         value={line.description}
                         onChange={event => updateLine(index, { description: event.target.value })}
-                        placeholder="Optional"
+                        placeholder="可选"
                         className={fieldClassName}
                       />
                     </TableCell>
@@ -392,7 +392,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                         size="icon-sm"
                         onClick={() => setLines(current => current.filter((_, lineIndex) => lineIndex !== index))}
                         disabled={lines.length <= 2}
-                        aria-label="Remove line"
+                        aria-label="删除行"
                       >
                         <Trash2 size={14} />
                       </Button>
@@ -400,7 +400,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                   </TableRow>
                 ))}
                 <TableRow>
-                  <TableCell colSpan={2} className="text-right font-medium">Totals</TableCell>
+                  <TableCell colSpan={2} className="text-right font-medium">合计</TableCell>
                   <TableCell className="text-right font-medium">{totals.debit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                   <TableCell className="text-right font-medium">{totals.credit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                   <TableCell />
@@ -414,11 +414,11 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
               <span className="mr-auto self-center text-xs text-[#f59e0b]">{saveBlockedReason}</span>
             )}
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving} className={secondaryButtonClassName}>
-              Cancel
+              取消
             </Button>
             <Button type="submit" disabled={!canSubmit} style={{ background: '#C9A96E', color: '#0A0805' }}>
               <Save size={14} />
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? '保存中...' : '保存'}
             </Button>
           </DialogFooter>
         </form>

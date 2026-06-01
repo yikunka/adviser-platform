@@ -3,7 +3,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { ArrowLeft, Plus, Save, Search, Trash2 } from 'lucide-react'
@@ -18,6 +18,7 @@ import {
   formatMoney,
   formatPercent,
 } from '@/lib/cosmocoat/recipes'
+import { pantoneToHex } from '@/lib/cosmocoat/pantone-colors'
 
 type PickerMaterial = {
   optionType: 'raw_material' | 'product_semifinished'
@@ -31,8 +32,15 @@ type PickerMaterial = {
   primaryNotes: string
 }
 
+type RecipeOption = {
+  id: string
+  code: string
+  name: string
+}
+
 type EditableItem = {
   key: string
+  isLocked: boolean
   itemType: 'raw_material' | 'product_semifinished' | 'manual'
   rawMaterialId: string | null
   productSemifinishedId: string | null
@@ -83,9 +91,10 @@ function inputStyle(): React.CSSProperties {
   }
 }
 
-function toEditableItem(item: FullColorFormula['items'][number]): EditableItem {
+function toEditableItem(item: FullColorFormula['items'][number], index: number): EditableItem {
   return {
     key: item.id,
+    isLocked: index === 0 && item.attributeCode === '适用产品',
     itemType: normalizeItemType(item.itemType),
     rawMaterialId: item.rawMaterialId,
     productSemifinishedId: item.productSemifinishedId,
@@ -104,6 +113,7 @@ function toEditableFromPicker(m: PickerMaterial): EditableItem {
   const quantity = 0
   return {
     key: crypto.randomUUID(),
+    isLocked: false,
     itemType: m.optionType,
     rawMaterialId: m.optionType === 'raw_material' ? m.id : null,
     productSemifinishedId: m.optionType === 'product_semifinished' ? m.id : null,
@@ -120,6 +130,7 @@ function toEditableFromPicker(m: PickerMaterial): EditableItem {
 function toManualItem(): EditableItem {
   return {
     key: crypto.randomUUID(),
+    isLocked: false,
     itemType: 'manual',
     rawMaterialId: null,
     productSemifinishedId: null,
@@ -130,6 +141,23 @@ function toManualItem(): EditableItem {
     unitPrice: null,
     amount: 0,
     notes: '',
+  }
+}
+
+function makeApplicableProductRow(product: { productCode: string; name: string }, recipeCode?: string): EditableItem {
+  return {
+    key: 'applicable-product-locked',
+    isLocked: true,
+    itemType: 'manual',
+    rawMaterialId: null,
+    productSemifinishedId: null,
+    productionCode: product.productCode,
+    name: product.name,
+    attributeCode: '适用产品',
+    quantity: 0,
+    unitPrice: null,
+    amount: 0,
+    notes: recipeCode ? `当前配方：${recipeCode}` : '',
   }
 }
 
@@ -146,15 +174,21 @@ const PICKER_TYPE_OPTIONS = [
 export default function CosmocoatColorFormulaDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const formulaId = params.id as string
   const isNew = formulaId === 'new'
+
+  const initialFactoryProductId = isNew ? (searchParams.get('factoryProductId') || null) : null
+  const initialCategory = isNew
+    ? ((searchParams.get('category') as CosColorFormulaCategory | null) ?? 'PU')
+    : 'PU'
 
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
-  const [category, setCategory] = useState<CosColorFormulaCategory>('PU')
-  const [factoryProductId, setFactoryProductId] = useState<string | null>(null)
+  const [category, setCategory] = useState<CosColorFormulaCategory>(initialCategory)
+  const [factoryProductId, setFactoryProductId] = useState<string | null>(initialFactoryProductId)
   const [factoryProducts, setFactoryProducts] = useState<ColorFormulaFactoryProductOption[]>([])
   const [lastAutoCode, setLastAutoCode] = useState('')
   const [colorCode, setColorCode] = useState('')
@@ -163,10 +197,16 @@ export default function CosmocoatColorFormulaDetailPage() {
   const [batchQuantity, setBatchQuantity] = useState(100)
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<EditableItem[]>([])
+
+  // Material picker state
   const [pickerQuery, setPickerQuery] = useState('')
   const [pickerMaterials, setPickerMaterials] = useState<PickerMaterial[]>([])
   const [selectedPickerKey, setSelectedPickerKey] = useState('')
   const [pickerTypes, setPickerTypes] = useState<string[]>(PICKER_TYPE_OPTIONS.map(option => option.key))
+
+  // Reference recipe picker (Task 1)
+  const [recipeOptions, setRecipeOptions] = useState<RecipeOption[]>([])
+  const [selectedRecipeId, setSelectedRecipeId] = useState('')
 
   const loadFormula = useCallback(async () => {
     if (isNew) return
@@ -188,7 +228,7 @@ export default function CosmocoatColorFormulaDetailPage() {
       setTargetColor(formula.targetColor)
       setBatchQuantity(formula.batchQuantity)
       setNotes(formula.notes)
-      setItems(formula.items.map(toEditableItem))
+      setItems(formula.items.map((item, index) => toEditableItem(item, index)))
     } catch {
       toast.error('加载失败')
     } finally {
@@ -200,6 +240,27 @@ export default function CosmocoatColorFormulaDetailPage() {
     loadFormula()
   }, [loadFormula])
 
+  // Load available recipes for the recipe picker (Task 1)
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const res = await fetch('/api/admin/cosmocoat/recipes?limit=200')
+        const data = await res.json()
+        if (res.ok) {
+          setRecipeOptions(
+            (data.items ?? []).map((r: { id: string; code: string; name: string }) => ({
+              id: r.id,
+              code: r.code,
+              name: r.name,
+            })),
+          )
+        }
+      } catch {
+        /* ignore */
+      }
+    })()
+  }, [])
+
   const handleProductsLoaded = useCallback((products: ColorFormulaFactoryProductOption[]) => {
     setFactoryProducts(products)
   }, [])
@@ -209,6 +270,7 @@ export default function CosmocoatColorFormulaDetailPage() {
     [factoryProducts, factoryProductId],
   )
 
+  // Auto-generate formula code when factory product changes (new formulas)
   useEffect(() => {
     if (!isNew) return
     if (!selectedFactoryProduct?.productCode) {
@@ -248,14 +310,40 @@ export default function CosmocoatColorFormulaDetailPage() {
     }
   }, [code, isNew, lastAutoCode, name, selectedFactoryProduct])
 
+  // Task 2: Sync the locked applicable-product row when factory product changes
+  useEffect(() => {
+    if (!selectedFactoryProduct) {
+      // Remove the locked row if factory product is cleared
+      setItems(prev => prev.filter(item => !item.isLocked))
+      return
+    }
+    const lockedItem = makeApplicableProductRow(selectedFactoryProduct)
+    setItems(prev => {
+      const lockedIndex = prev.findIndex(item => item.isLocked)
+      if (lockedIndex >= 0) {
+        // Update existing locked row in place
+        const next = [...prev]
+        next[lockedIndex] = { ...lockedItem, key: prev[lockedIndex].key }
+        return next
+      }
+      // Prepend new locked row
+      return [lockedItem, ...prev]
+    })
+  }, [selectedFactoryProduct])
+
+  // Fetch picker materials (Task 1: supports recipeId filter)
   useEffect(() => {
     const q = pickerQuery.trim()
     const t = setTimeout(async () => {
       try {
-        const params = new URLSearchParams({ limit: '40' })
-        if (q) params.set('q', q)
-        pickerTypes.forEach(type => params.append('type', type))
-        const res = await fetch(`/api/admin/cosmocoat/color-formulas/material-options?${params}`)
+        const p = new URLSearchParams({ limit: '40' })
+        if (q) p.set('q', q)
+        if (selectedRecipeId) {
+          p.set('recipeId', selectedRecipeId)
+        } else {
+          pickerTypes.forEach(type => p.append('type', type))
+        }
+        const res = await fetch(`/api/admin/cosmocoat/color-formulas/material-options?${p}`)
         const data = await res.json()
         if (res.ok) setPickerMaterials(data.items ?? [])
       } catch {
@@ -263,7 +351,7 @@ export default function CosmocoatColorFormulaDetailPage() {
       }
     }, q ? 250 : 0)
     return () => clearTimeout(t)
-  }, [pickerQuery, pickerTypes])
+  }, [pickerQuery, pickerTypes, selectedRecipeId])
 
   const totals = useMemo(() => {
     const withAmount = items.map(item => ({
@@ -385,6 +473,9 @@ export default function CosmocoatColorFormulaDetailPage() {
     }
   }
 
+  // Task 3: Pantone color preview
+  const pantoneHex = useMemo(() => pantoneToHex(colorCode), [colorCode])
+
   if (loading) {
     return <div className="p-6 text-sm" style={{ color: 'var(--muted-foreground)' }}>加载中...</div>
   }
@@ -441,8 +532,25 @@ export default function CosmocoatColorFormulaDetailPage() {
             <input type="number" min={0.001} step={0.001} value={batchQuantity} onChange={e => setBatchQuantity(Number(e.target.value) || 100)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>色号</label>
-            <input value={colorCode} onChange={e => setColorCode(e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>色号 (PANTONE / HEX)</label>
+            <div className="flex items-center gap-2">
+              <input
+                value={colorCode}
+                onChange={e => setColorCode(e.target.value)}
+                placeholder="如 186 C 或 #C8102E"
+                className="flex-1 rounded-lg px-3 py-2.5 text-sm outline-none"
+                style={inputStyle()}
+              />
+              {/* Task 3: Pantone color preview swatch */}
+              <div
+                className="w-9 h-9 flex-shrink-0 rounded-lg border"
+                style={{
+                  background: pantoneHex ?? 'transparent',
+                  border: pantoneHex ? '1px solid rgba(255,255,255,0.15)' : '1px dashed #3A3020',
+                }}
+                title={pantoneHex ? `≈ ${pantoneHex}` : colorCode ? '未知色号（可直接输入 #RRGGBB）' : '输入色号预览颜色'}
+              />
+            </div>
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>目标色</label>
@@ -467,13 +575,31 @@ export default function CosmocoatColorFormulaDetailPage() {
           </div>
         </div>
 
+        {/* Task 1: Reference recipe picker */}
+        {recipeOptions.length > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs flex-shrink-0" style={{ color: 'var(--muted-foreground)' }}>参考配方</span>
+            <select
+              value={selectedRecipeId}
+              onChange={e => { setSelectedRecipeId(e.target.value); setPickerQuery('') }}
+              className="flex-1 rounded-lg px-3 py-2 text-sm outline-none"
+              style={inputStyle()}
+            >
+              <option value="">全部原料库</option>
+              {recipeOptions.map(r => (
+                <option key={r.id} value={r.id}>{r.code} · {r.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2 items-end">
           <div className="relative flex-1 min-w-[12rem]">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
             <input
               value={pickerQuery}
               onChange={e => setPickerQuery(e.target.value)}
-              placeholder="搜索原料..."
+              placeholder={selectedRecipeId ? '在该配方原料中搜索...' : '搜索原料...'}
               className="w-full pl-8 pr-3 py-2 rounded-lg text-sm outline-none"
               style={inputStyle()}
             />
@@ -494,19 +620,22 @@ export default function CosmocoatColorFormulaDetailPage() {
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>类型筛选</span>
-          {PICKER_TYPE_OPTIONS.map(option => (
-            <label key={option.key} className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs" style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}>
-              <input
-                type="checkbox"
-                checked={pickerTypes.includes(option.key)}
-                onChange={() => togglePickerType(option.key)}
-              />
-              {option.label}
-            </label>
-          ))}
-        </div>
+        {/* Type filter — hidden when filtering by recipe (Task 1) */}
+        {!selectedRecipeId && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>类型筛选</span>
+            {PICKER_TYPE_OPTIONS.map(option => (
+              <label key={option.key} className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs" style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}>
+                <input
+                  type="checkbox"
+                  checked={pickerTypes.includes(option.key)}
+                  onChange={() => togglePickerType(option.key)}
+                />
+                {option.label}
+              </label>
+            ))}
+          </div>
+        )}
 
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -530,9 +659,9 @@ export default function CosmocoatColorFormulaDetailPage() {
                 </tr>
               ) : (
                 items.map(item => (
-                  <tr key={item.key}>
+                  <tr key={item.key} style={item.isLocked ? { background: 'rgba(201,169,110,0.06)' } : undefined}>
                     <td style={{ ...td, color: 'var(--foreground)' }}>
-                      {item.itemType === 'manual' ? (
+                      {item.itemType === 'manual' && !item.isLocked ? (
                         <input
                           value={item.productionCode}
                           onChange={e => updateItem(item.key, { productionCode: e.target.value })}
@@ -540,11 +669,13 @@ export default function CosmocoatColorFormulaDetailPage() {
                           style={inputStyle()}
                         />
                       ) : (
-                        item.productionCode
+                        <span style={item.isLocked ? { color: '#C9A96E', fontWeight: 500 } : undefined}>
+                          {item.productionCode}
+                        </span>
                       )}
                     </td>
                     <td style={td}>
-                      {item.itemType === 'manual' ? (
+                      {item.itemType === 'manual' && !item.isLocked ? (
                         <input
                           value={item.name}
                           onChange={e => updateItem(item.key, { name: e.target.value })}
@@ -556,7 +687,7 @@ export default function CosmocoatColorFormulaDetailPage() {
                       )}
                     </td>
                     <td style={td}>
-                      {item.itemType === 'manual' ? (
+                      {item.itemType === 'manual' && !item.isLocked ? (
                         <input
                           value={item.attributeCode}
                           onChange={e => updateItem(item.key, { attributeCode: e.target.value })}
@@ -564,45 +695,61 @@ export default function CosmocoatColorFormulaDetailPage() {
                           style={inputStyle()}
                         />
                       ) : (
-                        item.attributeCode
+                        <span style={item.isLocked ? { color: '#C9A96E', fontSize: '0.75rem' } : undefined}>
+                          {item.attributeCode}
+                        </span>
                       )}
                     </td>
                     <td style={td}>
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.001}
-                        value={item.quantity}
-                        onChange={e => updateItem(item.key, { quantity: Number(e.target.value) || 0 })}
-                        className="w-24 rounded px-2 py-1 text-sm outline-none"
-                        style={inputStyle()}
-                      />
+                      {item.isLocked ? (
+                        <span style={{ color: '#5A5040' }}>—</span>
+                      ) : (
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.001}
+                          value={item.quantity}
+                          onChange={e => updateItem(item.key, { quantity: Number(e.target.value) || 0 })}
+                          className="w-24 rounded px-2 py-1 text-sm outline-none"
+                          style={inputStyle()}
+                        />
+                      )}
                     </td>
                     <td style={td}>
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.0001}
-                        value={item.unitPrice ?? ''}
-                        onChange={e => updateItem(item.key, { unitPrice: e.target.value === '' ? null : Number(e.target.value) })}
-                        className="w-24 rounded px-2 py-1 text-sm outline-none"
-                        style={inputStyle()}
-                      />
+                      {item.isLocked ? (
+                        <span style={{ color: '#5A5040' }}>—</span>
+                      ) : (
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.0001}
+                          value={item.unitPrice ?? ''}
+                          onChange={e => updateItem(item.key, { unitPrice: e.target.value === '' ? null : Number(e.target.value) })}
+                          className="w-24 rounded px-2 py-1 text-sm outline-none"
+                          style={inputStyle()}
+                        />
+                      )}
                     </td>
-                    <td style={td}>{formatMoney(item.amount)}</td>
-                    <td style={td}>{formatPercent(computeItemPercentage(item.quantity, totalQuantity))}</td>
+                    <td style={td}>{item.isLocked ? '—' : formatMoney(item.amount)}</td>
+                    <td style={td}>{item.isLocked ? '—' : formatPercent(computeItemPercentage(item.quantity, totalQuantity))}</td>
                     <td style={td}>
-                      <input
-                        value={item.notes}
-                        onChange={e => updateItem(item.key, { notes: e.target.value })}
-                        className="w-full min-w-[8rem] rounded px-2 py-1 text-sm outline-none"
-                        style={inputStyle()}
-                      />
+                      {item.isLocked ? (
+                        <span className="text-xs" style={{ color: '#5A5040' }}>{item.notes}</span>
+                      ) : (
+                        <input
+                          value={item.notes}
+                          onChange={e => updateItem(item.key, { notes: e.target.value })}
+                          className="w-full min-w-[8rem] rounded px-2 py-1 text-sm outline-none"
+                          style={inputStyle()}
+                        />
+                      )}
                     </td>
                     <td style={td}>
-                      <button type="button" onClick={() => removeItem(item.key)} className="p-1.5 rounded" style={{ color: '#ef4444' }}>
-                        <Trash2 size={14} />
-                      </button>
+                      {!item.isLocked && (
+                        <button type="button" onClick={() => removeItem(item.key)} className="p-1.5 rounded" style={{ color: '#ef4444' }}>
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))

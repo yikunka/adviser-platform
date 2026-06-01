@@ -50,7 +50,7 @@ export function FinancialCompanySelector() {
           style={isDirty && pendingCompanyId ? { background: '#C9A96E', color: '#0E0E0A' } : {}}
         >
           <Check size={14} className="mr-1.5" />
-          OK
+          确认
         </Button>
       </div>
 
@@ -76,7 +76,7 @@ export function FinancialCompanySelector() {
             />
           </div>
           <span className="text-xs font-medium self-center" style={{ color: 'var(--muted-foreground)' }}>
-            Company Code
+            公司编号
           </span>
         </div>
 
@@ -133,10 +133,9 @@ export function FinancialCompanySelector() {
         </div>
       </div>
 
-      {/* Pending confirmation hint */}
       {isDirty && pendingCompany && (
         <p className="text-xs" style={{ color: '#C9A96E' }}>
-          Selected: <span className="font-medium">{pendingCompany.nameEn}</span> — click OK to confirm
+          已选择：<span className="font-medium">{pendingCompany.nameEn}</span>，点击确认后生效
         </p>
       )}
     </div>

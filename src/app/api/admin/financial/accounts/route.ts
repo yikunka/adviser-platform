@@ -7,9 +7,14 @@ import { accountCreateSchema } from '@/lib/financial/schemas'
 import { serializeAccount } from '@/lib/financial/serializers'
 import { resolveJournalCompanyScope } from '@/lib/financial/company-scope'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
+import { signedLineAmount } from '@/lib/financial/utils'
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
+}
+
+function defaultOpeningPeriod() {
+  return `${new Date().getUTCFullYear()}-01`
 }
 
 async function resolveParent(parentId: string | null | undefined, companyId: string) {
@@ -63,19 +68,44 @@ export async function POST(req: NextRequest) {
   if (parent && parent.level >= 4) return apiError('Parent account level is too deep for a child account.')
 
   try {
-    const account = await prisma.finAccount.create({
-      data: {
-        code: parsed.data.code,
-        name: parsed.data.name,
-        type: parsed.data.type,
-        companyId: companyScope.companyId,
-        parentId: parent?.id ?? null,
-        level: parent ? parent.level + 1 : 1,
-        sortOrder: parsed.data.sortOrder,
-        isSystem: parsed.data.isSystem,
-        notes: parsed.data.notes,
-      },
-      include: { parent: { select: { id: true, code: true, name: true } } },
+    const account = await prisma.$transaction(async tx => {
+      const created = await tx.finAccount.create({
+        data: {
+          code: parsed.data.code,
+          name: parsed.data.name,
+          type: parsed.data.type,
+          companyId: companyScope.companyId,
+          parentId: parent?.id ?? null,
+          level: parent ? parent.level + 1 : 1,
+          sortOrder: parsed.data.sortOrder,
+          isSystem: parsed.data.isSystem,
+          notes: parsed.data.notes,
+        },
+        include: { parent: { select: { id: true, code: true, name: true } } },
+      })
+
+      if (parsed.data.openingDebit > 0 || parsed.data.openingCredit > 0) {
+        const endingBalance = signedLineAmount({
+          accountId: created.id,
+          accountType: created.type,
+          accountCode: created.code,
+          debit: parsed.data.openingDebit,
+          credit: parsed.data.openingCredit,
+        })
+        await tx.accountBalance.create({
+          data: {
+            accountId: created.id,
+            period: parsed.data.openingBalancePeriod || defaultOpeningPeriod(),
+            openingDebit: new Prisma.Decimal(parsed.data.openingDebit),
+            openingCredit: new Prisma.Decimal(parsed.data.openingCredit),
+            closingDebit: new Prisma.Decimal(parsed.data.openingDebit),
+            closingCredit: new Prisma.Decimal(parsed.data.openingCredit),
+            endingBalance: new Prisma.Decimal(endingBalance),
+          },
+        })
+      }
+
+      return created
     })
 
     await logAudit(session.user.id, 'CREATE', 'FinAccount', account.id, null, account)

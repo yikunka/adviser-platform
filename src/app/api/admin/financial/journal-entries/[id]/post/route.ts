@@ -21,6 +21,10 @@ function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
 }
 
+function periodFromEntryDate(date: Date) {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
 async function postJournalEntry(id: string, session: Session) {
   const before = await prisma.journalEntry.findUnique({ where: { id }, include: journalInclude })
   if (!before) return apiError('Journal entry not found.', 404)
@@ -49,7 +53,27 @@ async function postJournalEntry(id: string, session: Session) {
           orderBy: [{ date: 'desc' }, { lineNum: 'desc' }],
           select: { balance: true },
         })
-        balances.set(line.accountId, Number(previous?.balance ?? 0))
+        if (previous) {
+          balances.set(line.accountId, Number(previous.balance))
+        } else {
+          const opening = await tx.accountBalance.findFirst({
+            where: {
+              accountId: line.accountId,
+              period: { lte: periodFromEntryDate(before.entryDate) },
+            },
+            orderBy: { period: 'desc' },
+            select: { openingDebit: true, openingCredit: true },
+          })
+          balances.set(line.accountId, opening
+            ? signedLineAmount({
+                accountId: line.accountId,
+                accountType: line.account.type,
+                accountCode: line.account.code,
+                debit: opening.openingDebit,
+                credit: opening.openingCredit,
+              })
+            : 0)
+        }
       }
 
       const nextBalance = roundMoney((balances.get(line.accountId) ?? 0) + signedLineAmount({

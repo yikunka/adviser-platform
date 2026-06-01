@@ -72,10 +72,10 @@ export default function AdminFinancialJournalPage() {
       if (filterStatus !== 'ALL') params.append('status', filterStatus)
       const res = await fetch(`/api/admin/financial/journal-entries?${params}`)
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to fetch entries')
+      if (!res.ok) throw new Error(data.error || '载入日记账失败')
       setEntries(data.entries || [])
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to load journal entries')
+      toast.error(error instanceof Error ? error.message : '载入日记账失败')
     } finally {
       setLoading(false)
     }
@@ -101,31 +101,31 @@ export default function AdminFinancialJournalPage() {
   }
 
   async function postEntry(entry: JournalEntry) {
-    if (!confirm(`Post journal entry ${entry.voucherNo}? This will create ledger entries and cannot be undone.`))
+    if (!confirm(`确定审核并过账日记账 ${entry.voucherNo}？过账后会生成总账记录，不能撤销。`))
       return
 
     try {
       const res = await fetch(`/api/admin/financial/journal-entries/${entry.id}/post`, { method: 'PUT' })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.toast || data.error || 'Failed to post journal entry.')
-      toast.success(data.toast || 'Journal entry posted.')
+      if (!res.ok) throw new Error(data.toast || data.error || '日记账过账失败。')
+      toast.success(data.toast || '日记账已过账。')
       await fetchEntries()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to post journal entry.')
+      toast.error(error instanceof Error ? error.message : '日记账过账失败。')
     }
   }
 
   async function cancelEntry(entry: JournalEntry) {
-    if (!confirm(`Cancel journal entry ${entry.voucherNo}?`)) return
+    if (!confirm(`确定取消日记账 ${entry.voucherNo}？`)) return
 
     try {
       const res = await fetch(`/api/admin/financial/journal-entries/${entry.id}`, { method: 'DELETE' })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.toast || data.error || 'Failed to cancel journal entry.')
-      toast.success(data.toast || 'Journal entry cancelled.')
+      if (!res.ok) throw new Error(data.toast || data.error || '取消日记账失败。')
+      toast.success(data.toast || '日记账已取消。')
       await fetchEntries()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to cancel journal entry.')
+      toast.error(error instanceof Error ? error.message : '取消日记账失败。')
     }
   }
 
@@ -145,17 +145,17 @@ export default function AdminFinancialJournalPage() {
       if (!res.ok) {
         setImportResult({
           imported: 0,
-          errors: Array.isArray(data.errors) ? data.errors : [{ row: 0, message: data.toast || data.error || 'Import failed.' }],
+          errors: Array.isArray(data.errors) ? data.errors : [{ row: 0, message: data.toast || data.error || '导入失败。' }],
           errorCount: Number(data.errorCount ?? data.errors?.length ?? 1),
         })
-        throw new Error(data.toast || data.error || 'Import failed.')
+        throw new Error(data.toast || data.error || '导入失败。')
       }
 
       setImportResult({ imported: data.imported ?? 0, rows: data.rows ?? 0 })
-      toast.success(data.toast || `Imported ${data.imported ?? 0} pending journal entries.`)
+      toast.success(data.toast || `已导入 ${data.imported ?? 0} 条待过账日记账。`)
       await fetchEntries()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to import journal entries.')
+      toast.error(error instanceof Error ? error.message : '导入日记账失败。')
     } finally {
       setImporting(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -182,14 +182,14 @@ export default function AdminFinancialJournalPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="space-y-2">
-        <FinancialBreadcrumbs section="Journal Entries" />
+        <FinancialBreadcrumbs section="日记账" />
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>
-              Journal Entries
+              日记账
             </h1>
             <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-              {company.nameEn} · Create and manage accounting vouchers.
+              {company.nameEn} · 创建和管理会计凭证。
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -208,10 +208,10 @@ export default function AdminFinancialJournalPage() {
               disabled={importing}
               style={{ borderColor: '#2A2418' }}
             >
-              <Upload size={15} className="mr-2" /> {importing ? 'Importing...' : 'Import Excel'}
+              <Upload size={15} className="mr-2" /> {importing ? '导入中...' : '导入 Excel'}
             </Button>
             <Button size="sm" onClick={openCreateForm} style={{ background: '#C9A96E', color: '#0A0805' }}>
-              <Plus size={15} className="mr-2" /> New Entry
+              <Plus size={15} className="mr-2" /> 新增日记账
             </Button>
           </div>
         </div>
@@ -223,7 +223,7 @@ export default function AdminFinancialJournalPage() {
             <Input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search voucher no or description..."
+              placeholder="搜索凭证号或摘要..."
               className="max-w-xs"
               style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
             />
@@ -236,19 +236,19 @@ export default function AdminFinancialJournalPage() {
             />
             <Select value={filterStatus} onValueChange={value => setFilterStatus(value ?? 'ALL')}>
               <SelectTrigger className="w-[140px]" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
-                <SelectValue placeholder="All Status" />
+                <SelectValue placeholder="全部状态" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">All Status</SelectItem>
-                <SelectItem value="DRAFT">Pending</SelectItem>
-                <SelectItem value="POSTED">Posted</SelectItem>
-                <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                <SelectItem value="ALL">全部状态</SelectItem>
+                <SelectItem value="DRAFT">待过账</SelectItem>
+                <SelectItem value="POSTED">已过账</SelectItem>
+                <SelectItem value="CANCELLED">已取消</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="mt-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-            Excel import supports line rows: Voucher No, Date, Description, Account Code, Debit, Credit; or paired rows:
-            Date, Description, Debit Account Code, Credit Account Code, Amount. Imported entries are saved as Pending.
+            Excel 导入支持逐行分录：Voucher No、Date、Description、Account Code、Debit、Credit；也支持借贷配对行：
+            Date、Description、Debit Account Code、Credit Account Code、Amount。导入后保存为待过账。
           </div>
           {importResult ? (
             <div
@@ -261,15 +261,15 @@ export default function AdminFinancialJournalPage() {
             >
               {importResult.errors?.length ? (
                 <div className="space-y-1">
-                  <p className="font-medium">Import failed with {importResult.errorCount ?? importResult.errors.length} error(s).</p>
+                  <p className="font-medium">导入失败，共 {importResult.errorCount ?? importResult.errors.length} 个错误。</p>
                   {importResult.errors.slice(0, 8).map((error, index) => (
                     <p key={`${error.row}-${index}`}>
-                      Row {error.row || '-'}: {error.message}
+                      第 {error.row || '-'} 行：{error.message}
                     </p>
                   ))}
                 </div>
               ) : (
-                <p>Imported {importResult.imported} pending journal entries from {importResult.rows ?? 0} Excel rows.</p>
+                <p>已从 {importResult.rows ?? 0} 行 Excel 数据导入 {importResult.imported} 条待过账日记账。</p>
               )}
             </div>
           ) : null}
@@ -277,37 +277,37 @@ export default function AdminFinancialJournalPage() {
         <CardContent>
           {loading ? (
             <div className="p-8 text-center" style={{ color: 'var(--muted-foreground)' }}>
-              Loading...
+              载入中...
             </div>
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center" style={{ color: '#5A5040' }}>
-              No journal entries found
+              暂无日记账
             </div>
           ) : (
             <>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Voucher No</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Total Amount</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>凭证号</TableHead>
+                    <TableHead>日期</TableHead>
+                    <TableHead>摘要</TableHead>
+                    <TableHead>状态</TableHead>
+                    <TableHead className="text-right">金额合计</TableHead>
+                    <TableHead className="text-right">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginated.map(entry => (
                     <TableRow key={entry.id}>
                       <TableCell className="font-mono">{entry.voucherNo}</TableCell>
-                      <TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell>
+                      <TableCell>{new Date(entry.date).toLocaleDateString('zh-HK')}</TableCell>
                       <TableCell className="max-w-[240px] truncate">{entry.description}</TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
                           style={{ borderColor: STATUS_COLORS[entry.status], color: STATUS_COLORS[entry.status] }}
                         >
-                          {entry.status === 'DRAFT' ? 'PENDING' : entry.status}
+                          {entry.status === 'DRAFT' ? '待过账' : entry.status === 'POSTED' ? '已过账' : '已取消'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-medium">{entry.totalAmount.toLocaleString()}</TableCell>
@@ -320,7 +320,7 @@ export default function AdminFinancialJournalPage() {
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0 hover:text-emerald-500"
-                            title="Approve & Post"
+                            title="审核并过账"
                             onClick={() => postEntry(entry)}
                           >
                             <CheckCircle size={15} />
@@ -352,8 +352,8 @@ export default function AdminFinancialJournalPage() {
 
               <div className="flex items-center justify-between mt-4 px-2">
                 <div className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                  Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, filtered.length)} of{' '}
-                  {filtered.length} entries
+                  显示第 {(page - 1) * pageSize + 1} 至 {Math.min(page * pageSize, filtered.length)} 项，共{' '}
+                  {filtered.length} 条日记账
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -363,7 +363,7 @@ export default function AdminFinancialJournalPage() {
                     disabled={page === 1}
                     style={{ borderColor: '#2A2418' }}
                   >
-                    Previous
+                    上一页
                   </Button>
                   <Button
                     variant="outline"
@@ -372,7 +372,7 @@ export default function AdminFinancialJournalPage() {
                     disabled={page >= totalPages}
                     style={{ borderColor: '#2A2418' }}
                   >
-                    Next
+                    下一页
                   </Button>
                 </div>
               </div>
