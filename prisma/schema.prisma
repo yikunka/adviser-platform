@@ -1916,14 +1916,16 @@ enum FeatureRequestStatus {
 }
 
 model FeedbackConfig {
-  id            String   @id @default("singleton") // always one row
-  provider      String   @default("anthropic")     // anthropic | deepseek | alibaba
-  model         String   @default("claude-opus-4-5")
+  id              String   @id @default("singleton") // always one row
+  provider        String   @default("anthropic")     // anthropic | deepseek | alibaba
+  model           String   @default("claude-opus-4-5")
   // API keys stored in DB (overrides env vars when set)
-  anthropicKey  String   @default("")
-  deepseekKey   String   @default("")
-  alibabaKey    String   @default("")
-  updatedAt     DateTime @updatedAt
+  anthropicKey    String   @default("")
+  deepseekKey     String   @default("")
+  alibabaKey      String   @default("")
+  // Dev-tool access: SHA-256 hash of the generated bearer token
+  devtoolKeyHash  String   @default("")
+  updatedAt       DateTime @updatedAt
 
   @@map("adv_feedback_config")
 }

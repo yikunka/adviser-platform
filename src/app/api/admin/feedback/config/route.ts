@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requireFeedbackAccess, prisma } from '@/lib/feedback/adapter'
 import { resolveApiKey, maskApiKey, testLlmConnection } from '@/lib/feedback/llm'
 import { type Provider } from '@/lib/feedback/options'
+import { generateRawKey, hashKey } from '@/lib/feedback/devtool-auth'
 
 // ─────────────────────────────────────────────
 // Feedback Plugin — LLM Config (singleton row)
@@ -25,6 +26,7 @@ function buildResponse(config: {
   anthropicKey: string
   deepseekKey: string
   alibabaKey: string
+  devtoolKeyHash: string
 }) {
   const p = config.provider as Provider
   const dbKey =
@@ -33,10 +35,10 @@ function buildResponse(config: {
   const effectiveKey = resolveApiKey(p, dbKey)
 
   return {
-    provider:  config.provider,
-    model:     config.model,
-    hasApiKey: !!effectiveKey,
-    // Masked hints so UI can show "already configured" per provider
+    provider:      config.provider,
+    model:         config.model,
+    hasApiKey:     !!effectiveKey,
+    hasDevtoolKey: !!config.devtoolKeyHash,
     keys: {
       anthropic: maskApiKey(resolveApiKey('anthropic', config.anthropicKey)),
       deepseek:  maskApiKey(resolveApiKey('deepseek',  config.deepseekKey)),
@@ -114,6 +116,30 @@ export async function POST(req: NextRequest) {
   if (error) return error
 
   const body = await req.json().catch(() => ({}))
+
+  // ── Generate dev-tool API key ─────────────────────────────────────────────
+  if (body?.action === 'generate-devtool-key') {
+    const rawKey = generateRawKey()
+    await prisma.feedbackConfig.upsert({
+      where:  { id: 'singleton' },
+      update: { devtoolKeyHash: hashKey(rawKey) },
+      create: { id: 'singleton', provider: 'anthropic', model: 'claude-opus-4-5', devtoolKeyHash: hashKey(rawKey) },
+    })
+    // Return raw key ONCE — it is not stored and cannot be recovered
+    return NextResponse.json({ action: 'generate-devtool-key', rawKey })
+  }
+
+  // ── Revoke dev-tool API key ───────────────────────────────────────────────
+  if (body?.action === 'revoke-devtool-key') {
+    await prisma.feedbackConfig.upsert({
+      where:  { id: 'singleton' },
+      update: { devtoolKeyHash: '' },
+      create: { id: 'singleton', provider: 'anthropic', model: 'claude-opus-4-5', devtoolKeyHash: '' },
+    })
+    return NextResponse.json({ action: 'revoke-devtool-key', success: true })
+  }
+
+  // ── Test LLM connection ───────────────────────────────────────────────────
   if (body?.action !== 'test') {
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
   }

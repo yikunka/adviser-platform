@@ -22,6 +22,9 @@ import {
   EyeOff,
   Zap,
   ClipboardCopy,
+  KeyRound,
+  RefreshCw,
+  Trash2,
 } from 'lucide-react'
 import { PROVIDER_OPTIONS, MODEL_OPTIONS, type Provider } from '@/lib/feedback/options'
 
@@ -52,6 +55,7 @@ type SavedConfig = {
   provider: Provider
   model: string
   hasApiKey: boolean
+  hasDevtoolKey: boolean
   keys: Record<string, string>  // masked hints: "sk-81b7...009a"
 }
 
@@ -138,6 +142,8 @@ function ConfigTab() {
   const [configLoading, setConfigLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
+  const [generatingKey, setGeneratingKey] = useState(false)
+  const [newRawKey, setNewRawKey] = useState('')
 
   // Form state — initialised from PROVIDER_OPTIONS so Select always has items
   const [provider, setProvider] = useState<Provider>(PROVIDER_OPTIONS[0].value)
@@ -215,8 +221,45 @@ function ConfigTab() {
     }
   }
 
+  async function generateDevtoolKey() {
+    setGeneratingKey(true)
+    setNewRawKey('')
+    try {
+      const res = await fetch('/api/admin/feedback/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'generate-devtool-key' }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.rawKey) throw new Error(data.error || '生成失败')
+      setNewRawKey(data.rawKey as string)
+      setSaved(prev => prev ? { ...prev, hasDevtoolKey: true } : prev)
+      toast.success('API Key 已生成，请立即复制，离开后无法再查看')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '生成失败')
+    } finally {
+      setGeneratingKey(false)
+    }
+  }
+
+  async function revokeDevtoolKey() {
+    try {
+      await fetch('/api/admin/feedback/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'revoke-devtool-key' }),
+      })
+      setSaved(prev => prev ? { ...prev, hasDevtoolKey: false } : prev)
+      setNewRawKey('')
+      toast.success('API Key 已撤销')
+    } catch {
+      toast.error('撤销失败')
+    }
+  }
+
   const modelOptions = MODEL_OPTIONS[provider] ?? []
   const hasKey = saved?.hasApiKey ?? false
+  const hasDevtoolKey = saved?.hasDevtoolKey ?? false
   const keyHints = saved?.keys ?? {}
 
   return (
@@ -330,6 +373,99 @@ function ConfigTab() {
                 : <><Zap size={13} className="mr-1.5" />测试连接</>
               }
             </Button>
+          </div>
+
+        </CardContent>
+      </Card>
+
+      {/* ── Dev Tool API Key ── */}
+      <Card className="rounded-lg border-[#2A2418] bg-card">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2" style={{ color: 'var(--foreground)' }}>
+            <KeyRound size={16} style={{ color: '#C9A96E' }} />
+            Dev Tool API Key
+          </CardTitle>
+          <CardDescription>
+            供外部开发管理工具通过 Bearer Token 查询需求列表。发现接口：
+            <code className="ml-1 text-xs px-1 py-0.5 rounded" style={{ background: '#1A1A12', color: '#C9A96E' }}>
+              GET /api/devtool/info
+            </code>
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+
+          <div className="flex items-center gap-2 text-sm">
+            {hasDevtoolKey ? (
+              <><CheckCircle size={14} style={{ color: '#10b981' }} /><span style={{ color: '#10b981' }}>已配置 API Key</span></>
+            ) : (
+              <><AlertCircle size={14} style={{ color: '#6B7280' }} /><span style={{ color: '#6B7280' }}>尚未生成 API Key</span></>
+            )}
+          </div>
+
+          {newRawKey && (
+            <div
+              className="rounded-lg p-3 space-y-2"
+              style={{ background: 'rgba(201,169,110,0.08)', border: '1px solid rgba(201,169,110,0.3)' }}
+            >
+              <p className="text-xs font-medium" style={{ color: '#C9A96E' }}>
+                ⚠️ 请立即复制，此 Key 只显示一次
+              </p>
+              <div className="flex items-center gap-2">
+                <code
+                  className="flex-1 text-xs font-mono break-all rounded px-2 py-1.5 select-all"
+                  style={{ background: '#0E0E0A', color: '#FFF7E6', border: '1px solid #2A2418' }}
+                >
+                  {newRawKey}
+                </code>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0"
+                  style={{ borderColor: '#2A2418' }}
+                  onClick={() => { navigator.clipboard.writeText(newRawKey); toast.success('已复制') }}
+                >
+                  <ClipboardCopy size={13} />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button
+              onClick={generateDevtoolKey}
+              disabled={generatingKey}
+              size="sm"
+              variant="outline"
+              style={{ borderColor: '#2A2418' }}
+            >
+              {generatingKey
+                ? <><Loader2 size={13} className="animate-spin mr-1.5" />生成中…</>
+                : hasDevtoolKey
+                  ? <><RefreshCw size={13} className="mr-1.5" />重新生成</>
+                  : <><KeyRound size={13} className="mr-1.5" />生成 API Key</>
+              }
+            </Button>
+            {hasDevtoolKey && (
+              <Button
+                onClick={revokeDevtoolKey}
+                size="sm"
+                variant="outline"
+                style={{ borderColor: '#ef444444', color: '#ef4444' }}
+              >
+                <Trash2 size={13} className="mr-1.5" />撤销
+              </Button>
+            )}
+          </div>
+
+          <div
+            className="rounded-lg p-3 text-xs space-y-1.5"
+            style={{ background: '#0E0E0A', border: '1px solid #1E1A14', color: '#7A7060' }}
+          >
+            <p className="font-medium" style={{ color: '#9F927B' }}>开发工具接入方式</p>
+            <p>① 探测服务器：<code className="font-mono" style={{ color: '#C9A96E' }}>GET /api/devtool/info</code></p>
+            <p>② 查询需求：<code className="font-mono" style={{ color: '#C9A96E' }}>GET /api/devtool/requirements?status=PENDING</code></p>
+            <p>③ 更新状态：<code className="font-mono" style={{ color: '#C9A96E' }}>PATCH /api/devtool/requirements/:id  {'{"status":"IN_PROGRESS"}'}</code></p>
+            <p>④ 请求 header：<code className="font-mono" style={{ color: '#C9A96E' }}>Authorization: Bearer &lt;key&gt;</code></p>
           </div>
 
         </CardContent>
