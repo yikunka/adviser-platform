@@ -222,8 +222,9 @@ Custom color formulations for specific customers or products.
 - Categories shown to users: PU, 色漆, 烤漆; stored enum identifiers remain `PU`, `BAKING_PAINT`, `HT_BAKING_PAINT` (legacy `LT_BAKING_PAINT` records may still exist)
 - Scope: product-specific (linked to a factory product) or category-wide
 - Fields: formula code, name, source recipe, color code, customer name, target color, batch quantity
-- Line items: raw materials with quantity, percentage, unit price
-- Generate from factory product template; refresh prices from recipe
+- Line items: raw material library entries, Sol semifinished inventory entries, or manual blank/custom material rows, with quantity, percentage, unit price
+- Material picker supports multi-type filtering for AD, SO, Sol semifinished, DY, CO, CA, CC
+- Generate from factory product template: creates a linked formula with only an applicable-product row in material details; it does not auto-expand the product's full material list
 
 ### Production Orders (`/admin/cosmocoat-production-orders`)
 Manufacturing batch tracking.
@@ -241,7 +242,8 @@ Intermediate inventory from production.
 
 ### Process Kits (`/admin/cosmocoat-process-kits`)
 Product application method documentation (產品配套工藝書).
-- Fields: kit code, name, status, materials list, usage notes
+- Fields: kit code, name, status, materials list, performance standards, usage notes
+- Performance standards are multi-select checkboxes: 百格(5B), water-boiling tests (80C30M/60M, 100C30M/60M/120M), RCA (30/50/100/150/200), hardness (B/HB/H/2H), alcohol resistance (99%100/75%100), MEK(100), high temperature/humidity (65C85%24H), salt spray (5%24H/48H)
 - Kit statuses: `DRAFT` → `ACTIVE` → `ARCHIVED`
 - Products in kit: each product has a usage method and notes
 - Test records: type (`PERFORMANCE`, `DURABILITY`, `ADHESION`, `COLOR_STABILITY`, `BOND_STRENGTH`, `OTHER`), result (`PASSED`, `FAILED`, `PENDING`), test date, tester name, report link

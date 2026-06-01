@@ -10,6 +10,7 @@ const patchSchema = z.object({
   name: z.string().trim().min(1).max(160).optional(),
   description: z.string().trim().max(2000).nullable().optional(),
   materials: z.array(z.string()).optional(),
+  performanceStandards: z.array(z.string()).optional(),
   otherNote: z.string().trim().max(500).nullable().optional(),
   status: z.enum(['DRAFT', 'ACTIVE', 'ARCHIVED']).optional(),
 })
@@ -70,6 +71,7 @@ export async function PATCH(
           ? (parsed.data.description || null)
           : undefined,
         materials: parsed.data.materials,
+        performanceStandards: parsed.data.performanceStandards,
         otherNote: parsed.data.otherNote !== undefined
           ? (parsed.data.otherNote || null)
           : undefined,

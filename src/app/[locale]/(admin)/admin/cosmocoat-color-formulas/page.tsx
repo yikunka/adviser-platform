@@ -135,7 +135,7 @@ function GenerateModal({
       <div className="w-full max-w-lg rounded-2xl p-6 space-y-4" style={{ background: '#111111', border: '1px solid #2A2418' }}>
         <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>从产品生成调色配方</h2>
         <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-          将复制该产品「当前配方」中的原料行。产品须已设定当前配方。
+          将创建一张关联该产品的调色配方，原料明细仅保留适用产品行。
         </p>
         <form onSubmit={handleGenerate} className="space-y-4">
           <div className="space-y-1.5">
@@ -152,7 +152,6 @@ function GenerateModal({
               {products.map(p => (
                 <option key={p.id} value={p.id}>
                   {p.productCode} · {p.name}
-                  {!p.currentRecipeId ? '（无当前配方）' : ''}
                 </option>
               ))}
             </select>

@@ -13,11 +13,17 @@ import {
 } from '@/lib/cosmocoat/color-formulas'
 
 const itemSchema = z.object({
-  rawMaterialId: z.string().trim().min(1),
+  rawMaterialId: z.string().trim().min(1).nullable().optional(),
+  productSemifinishedId: z.string().trim().min(1).nullable().optional(),
+  productionCode: z.string().trim().max(64).optional().default(''),
+  name: z.string().trim().max(500).optional().default(''),
+  attributeCode: z.string().trim().max(64).optional().default(''),
   sortOrder: z.coerce.number().int().min(0).optional().default(0),
   quantity: z.coerce.number().min(0),
   unitPrice: z.coerce.number().nullable().optional(),
   notes: z.string().trim().max(500).optional().default(''),
+}).refine(item => !(item.rawMaterialId && item.productSemifinishedId), {
+  message: '每条明细不能同时选择原料和半成品',
 })
 
 const patchSchema = z.object({

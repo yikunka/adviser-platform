@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, Save, Search, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus, Save, Search, Trash2 } from 'lucide-react'
 import type { CosColorFormulaCategory } from '@prisma/client'
 import { ColorFormulaCategoryFields } from '@/components/cosmocoat/ColorFormulaCategoryFields'
 import type { ColorFormulaFactoryProductOption } from '@/lib/cosmocoat/color-formula-factory-products'
@@ -20,6 +20,7 @@ import {
 } from '@/lib/cosmocoat/recipes'
 
 type PickerMaterial = {
+  optionType: 'raw_material' | 'product_semifinished'
   id: string
   productionCode: string
   name: string
@@ -32,7 +33,9 @@ type PickerMaterial = {
 
 type EditableItem = {
   key: string
-  rawMaterialId: string
+  itemType: 'raw_material' | 'product_semifinished' | 'manual'
+  rawMaterialId: string | null
+  productSemifinishedId: string | null
   productionCode: string
   name: string
   attributeCode: string
@@ -40,6 +43,12 @@ type EditableItem = {
   unitPrice: number | null
   amount: number
   notes: string
+}
+
+function normalizeItemType(value: string): EditableItem['itemType'] {
+  if (value === 'product_semifinished') return 'product_semifinished'
+  if (value === 'manual') return 'manual'
+  return 'raw_material'
 }
 
 const card: React.CSSProperties = {
@@ -77,10 +86,12 @@ function inputStyle(): React.CSSProperties {
 function toEditableItem(item: FullColorFormula['items'][number]): EditableItem {
   return {
     key: item.id,
+    itemType: normalizeItemType(item.itemType),
     rawMaterialId: item.rawMaterialId,
-    productionCode: item.rawMaterial.productionCode,
-    name: item.rawMaterial.name,
-    attributeCode: item.rawMaterial.attributeCode,
+    productSemifinishedId: item.productSemifinishedId,
+    productionCode: item.productionCode,
+    name: item.name,
+    attributeCode: item.attributeCode,
     quantity: item.quantity,
     unitPrice: item.unitPrice,
     amount: item.amount ?? computeItemAmount(item.quantity, item.unitPrice),
@@ -93,7 +104,9 @@ function toEditableFromPicker(m: PickerMaterial): EditableItem {
   const quantity = 0
   return {
     key: crypto.randomUUID(),
-    rawMaterialId: m.id,
+    itemType: m.optionType,
+    rawMaterialId: m.optionType === 'raw_material' ? m.id : null,
+    productSemifinishedId: m.optionType === 'product_semifinished' ? m.id : null,
     productionCode: m.productionCode,
     name: m.name,
     attributeCode: m.attributeCode,
@@ -103,6 +116,32 @@ function toEditableFromPicker(m: PickerMaterial): EditableItem {
     notes: '',
   }
 }
+
+function toManualItem(): EditableItem {
+  return {
+    key: crypto.randomUUID(),
+    itemType: 'manual',
+    rawMaterialId: null,
+    productSemifinishedId: null,
+    productionCode: '',
+    name: '',
+    attributeCode: '',
+    quantity: 0,
+    unitPrice: null,
+    amount: 0,
+    notes: '',
+  }
+}
+
+const PICKER_TYPE_OPTIONS = [
+  { key: 'AD', label: 'AD' },
+  { key: 'SO', label: 'SO' },
+  { key: 'Sol', label: 'Sol 半成品' },
+  { key: 'DY', label: 'DY' },
+  { key: 'CO', label: 'CO' },
+  { key: 'CA', label: 'CA' },
+  { key: 'CC', label: 'CC' },
+] as const
 
 export default function CosmocoatColorFormulaDetailPage() {
   const params = useParams()
@@ -126,7 +165,8 @@ export default function CosmocoatColorFormulaDetailPage() {
   const [items, setItems] = useState<EditableItem[]>([])
   const [pickerQuery, setPickerQuery] = useState('')
   const [pickerMaterials, setPickerMaterials] = useState<PickerMaterial[]>([])
-  const [selectedPickerId, setSelectedPickerId] = useState('')
+  const [selectedPickerKey, setSelectedPickerKey] = useState('')
+  const [pickerTypes, setPickerTypes] = useState<string[]>(PICKER_TYPE_OPTIONS.map(option => option.key))
 
   const loadFormula = useCallback(async () => {
     if (isNew) return
@@ -214,7 +254,8 @@ export default function CosmocoatColorFormulaDetailPage() {
       try {
         const params = new URLSearchParams({ limit: '40' })
         if (q) params.set('q', q)
-        const res = await fetch(`/api/admin/cosmocoat/raw-materials?${params}`)
+        pickerTypes.forEach(type => params.append('type', type))
+        const res = await fetch(`/api/admin/cosmocoat/color-formulas/material-options?${params}`)
         const data = await res.json()
         if (res.ok) setPickerMaterials(data.items ?? [])
       } catch {
@@ -222,7 +263,7 @@ export default function CosmocoatColorFormulaDetailPage() {
       }
     }, q ? 250 : 0)
     return () => clearTimeout(t)
-  }, [pickerQuery])
+  }, [pickerQuery, pickerTypes])
 
   const totals = useMemo(() => {
     const withAmount = items.map(item => ({
@@ -246,18 +287,41 @@ export default function CosmocoatColorFormulaDetailPage() {
   }
 
   function addMaterial() {
-    const material = pickerMaterials.find(m => m.id === selectedPickerId)
+    const material = pickerMaterials.find(m => `${m.optionType}:${m.id}` === selectedPickerKey)
     if (!material) {
       toast.error('请先选择原料')
       return
     }
-    if (items.some(i => i.rawMaterialId === material.id)) {
+    if (
+      material.optionType === 'raw_material' &&
+      items.some(i => i.rawMaterialId === material.id)
+    ) {
       toast.error('该原料已在配方中')
       return
     }
+    if (
+      material.optionType === 'product_semifinished' &&
+      items.some(i => i.productSemifinishedId === material.id)
+    ) {
+      toast.error('该半成品已在配方中')
+      return
+    }
     setItems(prev => [...prev, toEditableFromPicker(material)])
-    setSelectedPickerId('')
-    toast.success('已添加原料')
+    setSelectedPickerKey('')
+    toast.success(material.optionType === 'product_semifinished' ? '已添加半成品' : '已添加原料')
+  }
+
+  function addManualRow() {
+    setItems(prev => [...prev, toManualItem()])
+    toast.success('已添加空白行')
+  }
+
+  function togglePickerType(type: string) {
+    setPickerTypes(prev =>
+      prev.includes(type)
+        ? prev.filter(item => item !== type)
+        : [...prev, type],
+    )
   }
 
   function removeItem(key: string) {
@@ -283,6 +347,10 @@ export default function CosmocoatColorFormulaDetailPage() {
       notes,
       items: items.map((item, index) => ({
         rawMaterialId: item.rawMaterialId,
+        productSemifinishedId: item.productSemifinishedId,
+        productionCode: item.productionCode,
+        name: item.name,
+        attributeCode: item.attributeCode,
         sortOrder: index + 1,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
@@ -410,15 +478,34 @@ export default function CosmocoatColorFormulaDetailPage() {
               style={inputStyle()}
             />
           </div>
-          <select value={selectedPickerId} onChange={e => setSelectedPickerId(e.target.value)} className="rounded-lg px-3 py-2 text-sm outline-none min-w-[12rem]" style={inputStyle()}>
+          <select value={selectedPickerKey} onChange={e => setSelectedPickerKey(e.target.value)} className="rounded-lg px-3 py-2 text-sm outline-none min-w-[14rem]" style={inputStyle()}>
             <option value="">选择原料</option>
             {pickerMaterials.map(m => (
-              <option key={m.id} value={m.id}>{m.productionCode} · {m.name}</option>
+              <option key={`${m.optionType}:${m.id}`} value={`${m.optionType}:${m.id}`}>
+                {m.attributeCode} · {m.productionCode} · {m.name}
+              </option>
             ))}
           </select>
           <button type="button" onClick={addMaterial} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: '#C9A96E', color: '#0A0805' }}>
             添加
           </button>
+          <button type="button" onClick={addManualRow} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium" style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}>
+            <Plus size={14} /> 空白行
+          </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>类型筛选</span>
+          {PICKER_TYPE_OPTIONS.map(option => (
+            <label key={option.key} className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs" style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}>
+              <input
+                type="checkbox"
+                checked={pickerTypes.includes(option.key)}
+                onChange={() => togglePickerType(option.key)}
+              />
+              {option.label}
+            </label>
+          ))}
         </div>
 
         <div className="overflow-x-auto">
@@ -444,9 +531,42 @@ export default function CosmocoatColorFormulaDetailPage() {
               ) : (
                 items.map(item => (
                   <tr key={item.key}>
-                    <td style={{ ...td, color: 'var(--foreground)' }}>{item.productionCode}</td>
-                    <td style={td}>{item.name}</td>
-                    <td style={td}>{item.attributeCode}</td>
+                    <td style={{ ...td, color: 'var(--foreground)' }}>
+                      {item.itemType === 'manual' ? (
+                        <input
+                          value={item.productionCode}
+                          onChange={e => updateItem(item.key, { productionCode: e.target.value })}
+                          className="w-28 rounded px-2 py-1 text-sm outline-none"
+                          style={inputStyle()}
+                        />
+                      ) : (
+                        item.productionCode
+                      )}
+                    </td>
+                    <td style={td}>
+                      {item.itemType === 'manual' ? (
+                        <input
+                          value={item.name}
+                          onChange={e => updateItem(item.key, { name: e.target.value })}
+                          className="w-full min-w-[10rem] rounded px-2 py-1 text-sm outline-none"
+                          style={inputStyle()}
+                        />
+                      ) : (
+                        item.name
+                      )}
+                    </td>
+                    <td style={td}>
+                      {item.itemType === 'manual' ? (
+                        <input
+                          value={item.attributeCode}
+                          onChange={e => updateItem(item.key, { attributeCode: e.target.value })}
+                          className="w-24 rounded px-2 py-1 text-sm outline-none"
+                          style={inputStyle()}
+                        />
+                      ) : (
+                        item.attributeCode
+                      )}
+                    </td>
                     <td style={td}>
                       <input
                         type="number"

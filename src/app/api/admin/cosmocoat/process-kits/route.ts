@@ -15,6 +15,7 @@ const kitSchema = z.object({
   name: z.string().trim().min(1).max(160),
   description: z.string().trim().max(2000).optional().default(''),
   materials: z.array(z.string()).optional().default([]),
+  performanceStandards: z.array(z.string()).optional().default([]),
   otherNote: z.string().trim().max(500).nullable().optional(),
   status: z.enum(['DRAFT', 'ACTIVE', 'ARCHIVED']).optional().default('DRAFT'),
 })
@@ -96,6 +97,7 @@ export async function POST(req: NextRequest) {
         name: parsed.data.name,
         description: parsed.data.description || null,
         materials: parsed.data.materials ?? [],
+        performanceStandards: parsed.data.performanceStandards ?? [],
         otherNote: parsed.data.otherNote || null,
         status: parsed.data.status,
         createdBy: session!.user.id,

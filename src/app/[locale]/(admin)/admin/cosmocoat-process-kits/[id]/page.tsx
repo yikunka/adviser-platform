@@ -45,6 +45,7 @@ type LoadedKit = {
   name: string
   description?: string | null
   materials?: string[]
+  performanceStandards?: string[]
   otherNote?: string | null
   status: KitStatus
   products?: KitProduct[]
@@ -71,6 +72,70 @@ const MATERIALS = [
   { id: 'COPPER', label: '銅' },
   { id: 'GLASS', label: '玻璃' },
   { id: 'OTHER', label: '其他 (需註明)' },
+]
+
+const PERFORMANCE_STANDARD_GROUPS = [
+  {
+    id: 'crosshatch',
+    options: [
+      { id: 'CROSSHATCH_5B', label: '百格 5B' },
+    ],
+  },
+  {
+    id: 'boilingWater',
+    options: [
+      { id: 'BOILING_WATER_80C30M', label: '80C30M' },
+      { id: 'BOILING_WATER_80C60M', label: '80C60M' },
+      { id: 'BOILING_WATER_100C30M', label: '100C30M' },
+      { id: 'BOILING_WATER_100C60M', label: '100C60M' },
+      { id: 'BOILING_WATER_100C120M', label: '100C120M' },
+    ],
+  },
+  {
+    id: 'rca',
+    options: [
+      { id: 'RCA_30', label: '30' },
+      { id: 'RCA_50', label: '50' },
+      { id: 'RCA_100', label: '100' },
+      { id: 'RCA_150', label: '150' },
+      { id: 'RCA_200', label: '200' },
+    ],
+  },
+  {
+    id: 'hardness',
+    options: [
+      { id: 'HARDNESS_B', label: 'B' },
+      { id: 'HARDNESS_HB', label: 'HB' },
+      { id: 'HARDNESS_H', label: 'H' },
+      { id: 'HARDNESS_2H', label: '2H' },
+    ],
+  },
+  {
+    id: 'alcohol',
+    options: [
+      { id: 'ALCOHOL_99_100', label: '99%100' },
+      { id: 'ALCOHOL_75_100', label: '75%100' },
+    ],
+  },
+  {
+    id: 'mek',
+    options: [
+      { id: 'MEK_100', label: '耐MEK 100' },
+    ],
+  },
+  {
+    id: 'highTempHumidity',
+    options: [
+      { id: 'HIGH_TEMP_HUMIDITY_65C85_24H', label: '65C85%24H' },
+    ],
+  },
+  {
+    id: 'saltSpray',
+    options: [
+      { id: 'SALT_SPRAY_5_24H', label: '5%24H' },
+      { id: 'SALT_SPRAY_5_48H', label: '5%48H' },
+    ],
+  },
 ]
 
 const card: React.CSSProperties = {
@@ -167,6 +232,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([])
+  const [selectedPerformanceStandards, setSelectedPerformanceStandards] = useState<string[]>([])
   const [otherNote, setOtherNote] = useState('')
   const [status, setStatus] = useState<KitStatus>('DRAFT')
   const [kitProducts, setKitProducts] = useState<KitProduct[]>([])
@@ -204,6 +270,14 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     })
   }
 
+  function togglePerformanceStandard(standardId: string) {
+    setSelectedPerformanceStandards(prev =>
+      prev.includes(standardId)
+        ? prev.filter(id => id !== standardId)
+        : [...prev, standardId],
+    )
+  }
+
   const loadProducts = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/cosmocoat/factory-products?limit=500')
@@ -238,6 +312,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       setSelectedMaterials(
         loadedOtherNote ? [...loadedMaterials, 'OTHER'] : loadedMaterials,
       )
+      setSelectedPerformanceStandards(kit.performanceStandards ?? [])
       setOtherNote(loadedOtherNote)
       setStatus(kit.status)
       setKitProducts(kit.products ?? [])
@@ -279,6 +354,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       name: name.trim(),
       description: description.trim() || null,
       materials: selectedMaterials.filter(id => id !== 'OTHER'),
+      performanceStandards: selectedPerformanceStandards,
       otherNote: hasOther && otherNote.trim() ? otherNote.trim() : null,
       ...(!isNew ? { status } : {}),
     }
@@ -528,6 +604,33 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                 />
               </div>
             )}
+          </div>
+          <div className="space-y-2 sm:col-span-3">
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('performanceStandards')}</label>
+            <div className="grid gap-3 lg:grid-cols-2">
+              {PERFORMANCE_STANDARD_GROUPS.map(group => (
+                <div key={group.id} className="rounded-lg p-3" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
+                  <p className="mb-2 text-xs font-medium" style={{ color: '#C9A96E' }}>{t(`performanceGroups.${group.id}`)}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {group.options.map(option => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => togglePerformanceStandard(option.id)}
+                        className={cn(
+                          'px-3 py-1.5 rounded-lg text-xs transition-all border',
+                          selectedPerformanceStandards.includes(option.id)
+                            ? 'bg-[#C9A96E] border-[#C9A96E] text-[#0A0805]'
+                            : 'bg-[#111108] border-[#2A2418] text-[var(--muted-foreground)] hover:border-[#4A4030]',
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

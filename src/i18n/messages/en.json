@@ -821,6 +821,7 @@
       "materials": "Materials",
       "selectMaterialsHint": "Select materials used (multiple selection allowed)",
       "materialRequired": "Please select at least one material",
+      "performanceStandards": "Performance",
       "otherNoteLabel": "Other material description",
       "otherNotePlaceholder": "Enter specific material name...",
       "otherNoteRequired": "Please select 'Other' and enter details",
@@ -862,6 +863,16 @@
         "DRAFT": "Draft",
         "ACTIVE": "Active",
         "ARCHIVED": "Archived"
+      },
+      "performanceGroups": {
+        "crosshatch": "Crosshatch",
+        "boilingWater": "Boiling water test series",
+        "rca": "RCA series",
+        "hardness": "Hardness series",
+        "alcohol": "Alcohol resistance series",
+        "mek": "MEK resistance",
+        "highTempHumidity": "High temperature and humidity",
+        "saltSpray": "Salt spray"
       },
       "testTypes": {
         "PERFORMANCE": "Performance",

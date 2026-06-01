@@ -12,7 +12,11 @@ export { inferCategoryFromProductCategory }
 import { computeRecipeTotals, normalizeRecipeItems, type RecipeItemInput } from '@/lib/cosmocoat/recipes'
 
 export type ColorFormulaItemInput = {
-  rawMaterialId: string
+  rawMaterialId?: string | null
+  productSemifinishedId?: string | null
+  productionCode?: string
+  name?: string
+  attributeCode?: string
   sortOrder: number
   quantity: number
   unitPrice: number | null
@@ -30,6 +34,15 @@ const itemInclude = {
       primaryPackageKg: true,
       primaryPricePerKg: true,
       primaryNotes: true,
+    },
+  },
+  productSemifinished: {
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      category: true,
+      unitPrice: true,
     },
   },
 } as const
@@ -58,7 +71,11 @@ function serializeItem(item: {
   amount: unknown
   percentage: unknown
   notes: string
-  rawMaterialId: string
+  rawMaterialId: string | null
+  productSemifinishedId: string | null
+  manualProductionCode: string
+  manualName: string
+  manualAttributeCode: string
   rawMaterial: {
     id: string
     productionCode: string
@@ -68,29 +85,72 @@ function serializeItem(item: {
     primaryPackageKg: unknown
     primaryPricePerKg: unknown
     primaryNotes: string
-  }
+  } | null
+  productSemifinished: {
+    id: string
+    code: string
+    name: string
+    category: string
+    unitPrice: unknown
+  } | null
 }) {
+  const itemType = item.rawMaterial
+    ? 'raw_material'
+    : item.productSemifinished
+      ? 'product_semifinished'
+      : 'manual'
+
   return {
     id: item.id,
     sortOrder: item.sortOrder,
     rawMaterialId: item.rawMaterialId,
+    productSemifinishedId: item.productSemifinishedId,
+    itemType,
+    productionCode:
+      item.rawMaterial?.productionCode ??
+      item.productSemifinished?.code ??
+      item.manualProductionCode,
+    name:
+      item.rawMaterial?.name ??
+      item.productSemifinished?.name ??
+      item.manualName,
+    attributeCode:
+      item.rawMaterial?.attributeCode ??
+      item.productSemifinished?.category ??
+      item.manualAttributeCode,
+    manualProductionCode: item.manualProductionCode,
+    manualName: item.manualName,
+    manualAttributeCode: item.manualAttributeCode,
     quantity: Number(item.quantity),
     unitPrice: item.unitPrice != null ? Number(item.unitPrice) : null,
     amount: item.amount != null ? Number(item.amount) : null,
     percentage: item.percentage != null ? Number(item.percentage) : null,
     notes: item.notes,
-    rawMaterial: {
-      id: item.rawMaterial.id,
-      productionCode: item.rawMaterial.productionCode,
-      name: item.rawMaterial.name,
-      attributeCode: item.rawMaterial.attributeCode,
-      category: item.rawMaterial.category,
-      primaryPackageKg:
-        item.rawMaterial.primaryPackageKg != null ? Number(item.rawMaterial.primaryPackageKg) : null,
-      primaryPricePerKg:
-        item.rawMaterial.primaryPricePerKg != null ? Number(item.rawMaterial.primaryPricePerKg) : null,
-      primaryNotes: item.rawMaterial.primaryNotes,
-    },
+    rawMaterial: item.rawMaterial
+      ? {
+          id: item.rawMaterial.id,
+          productionCode: item.rawMaterial.productionCode,
+          name: item.rawMaterial.name,
+          attributeCode: item.rawMaterial.attributeCode,
+          category: item.rawMaterial.category,
+          primaryPackageKg:
+            item.rawMaterial.primaryPackageKg != null ? Number(item.rawMaterial.primaryPackageKg) : null,
+          primaryPricePerKg:
+            item.rawMaterial.primaryPricePerKg != null ? Number(item.rawMaterial.primaryPricePerKg) : null,
+          primaryNotes: item.rawMaterial.primaryNotes,
+        }
+      : null,
+    productSemifinished: item.productSemifinished
+      ? {
+          id: item.productSemifinished.id,
+          code: item.productSemifinished.code,
+          name: item.productSemifinished.name,
+          category: item.productSemifinished.category,
+          unitPrice: item.productSemifinished.unitPrice != null
+            ? Number(item.productSemifinished.unitPrice)
+            : null,
+        }
+      : null,
   }
 }
 
@@ -188,7 +248,8 @@ export async function getColorFormulaById(id: string) {
 export async function saveColorFormulaItems(formulaId: string, items: ColorFormulaItemInput[]) {
   const normalized = normalizeRecipeItems(
     items.map((item, index) => ({
-      rawMaterialId: item.rawMaterialId,
+      rawMaterialId: item.rawMaterialId || undefined,
+      productSemifinishedId: item.productSemifinishedId || undefined,
       sortOrder: item.sortOrder ?? index + 1,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
@@ -199,16 +260,23 @@ export async function saveColorFormulaItems(formulaId: string, items: ColorFormu
   await prisma.cosTableColorFormulaItem.deleteMany({ where: { formulaId } })
   if (normalized.length > 0) {
     await prisma.cosTableColorFormulaItem.createMany({
-      data: normalized.map(item => ({
+      data: normalized.map((item, index) => {
+        const source = items[index]
+        return {
         formulaId,
-        rawMaterialId: item.rawMaterialId!,
+        rawMaterialId: item.rawMaterialId || null,
+        productSemifinishedId: item.productSemifinishedId || null,
+        manualProductionCode: source.productionCode?.trim() ?? '',
+        manualName: source.name?.trim() ?? '',
+        manualAttributeCode: source.attributeCode?.trim() ?? '',
         sortOrder: item.sortOrder,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         amount: item.amount,
         percentage: item.percentage,
         notes: item.notes,
-      })),
+        }
+      }),
     })
   }
   return normalized
@@ -217,20 +285,36 @@ export async function saveColorFormulaItems(formulaId: string, items: ColorFormu
 export async function enrichColorFormulaItemsFromRawMaterials(
   items: ColorFormulaItemInput[],
 ): Promise<ColorFormulaItemInput[]> {
-  const ids = [...new Set(items.map(i => i.rawMaterialId).filter(Boolean))]
-  if (ids.length === 0) return items
+  const rawIds = [...new Set(items.map(i => i.rawMaterialId).filter(Boolean))] as string[]
+  const semifinishedIds = [...new Set(items.map(i => i.productSemifinishedId).filter(Boolean))] as string[]
+  if (rawIds.length === 0 && semifinishedIds.length === 0) return items
 
-  const materials = await prisma.cosTableRawMaterial.findMany({
-    where: { id: { in: ids } },
-    select: { id: true, primaryPricePerKg: true },
-  })
+  const [materials, semifinishedProducts] = await Promise.all([
+    rawIds.length > 0
+      ? prisma.cosTableRawMaterial.findMany({
+          where: { id: { in: rawIds } },
+          select: { id: true, primaryPricePerKg: true },
+        })
+      : [],
+    semifinishedIds.length > 0
+      ? prisma.cosTableProductSemifinished.findMany({
+          where: { id: { in: semifinishedIds } },
+          select: { id: true, unitPrice: true },
+        })
+      : [],
+  ])
   const priceMap = new Map(materials.map(m => [m.id, m.primaryPricePerKg]))
+  const semifinishedPriceMap = new Map(semifinishedProducts.map(m => [m.id, m.unitPrice]))
 
   return items.map(item => ({
     ...item,
     unitPrice:
       item.unitPrice ??
-      (priceMap.get(item.rawMaterialId) != null ? Number(priceMap.get(item.rawMaterialId)) : null),
+      (item.rawMaterialId && priceMap.get(item.rawMaterialId) != null
+        ? Number(priceMap.get(item.rawMaterialId))
+        : item.productSemifinishedId && semifinishedPriceMap.get(item.productSemifinishedId) != null
+          ? Number(semifinishedPriceMap.get(item.productSemifinishedId))
+          : null),
   }))
 }
 
@@ -265,14 +349,6 @@ export async function generateColorFormulaFromProduct(params: {
   if (!product) {
     return { ok: false as const, error: '产品不存在' }
   }
-  if (!product.currentRecipe) {
-    return { ok: false as const, error: '该产品尚未设定当前配方，无法生成调色配方' }
-  }
-
-  const rawItems = product.currentRecipe.items.filter(item => item.rawMaterialId && item.rawMaterial)
-  if (rawItems.length === 0) {
-    return { ok: false as const, error: '当前配方中没有原料行，无法生成调色配方' }
-  }
 
   const category = params.category ?? inferCategoryFromProductCategory(product.category)
   const productCheck = await validateColorFormulaFactoryProduct({
@@ -287,30 +363,8 @@ export async function generateColorFormulaFromProduct(params: {
   const name =
     params.name?.trim() ||
     `${product.name} 调色配方`
-  const batchQuantity = params.batchQuantity ?? Number(product.currentRecipe.batchQuantity)
-
-  const itemInputs: ColorFormulaItemInput[] = rawItems.map((item, index) => ({
-    rawMaterialId: item.rawMaterialId!,
-    sortOrder: item.sortOrder || index + 1,
-    quantity: Number(item.quantity),
-    unitPrice:
-      item.unitPrice != null
-        ? Number(item.unitPrice)
-        : item.rawMaterial?.primaryPricePerKg != null
-          ? Number(item.rawMaterial.primaryPricePerKg)
-          : null,
-    notes: item.notes,
-  }))
-
-  const enriched = await enrichColorFormulaItemsFromRawMaterials(itemInputs)
-  const normalized = normalizeRecipeItems(
-    enriched.map(i => ({
-      rawMaterialId: i.rawMaterialId,
-      sortOrder: i.sortOrder,
-      quantity: i.quantity,
-      unitPrice: i.unitPrice,
-      notes: i.notes,
-    })) as RecipeItemInput[],
+  const batchQuantity = params.batchQuantity ?? (
+    product.currentRecipe ? Number(product.currentRecipe.batchQuantity) : 100
   )
   const formula = await prisma.cosTableColorFormula.create({
     data: {
@@ -318,24 +372,23 @@ export async function generateColorFormulaFromProduct(params: {
       name,
       category,
       factoryProductId: productCheck.factoryProductId,
-      sourceRecipeId: product.currentRecipe.id,
+      sourceRecipeId: product.currentRecipe?.id ?? null,
       batchQuantity,
-      notes: `由产品 ${product.productCode} 当前配方 ${product.currentRecipe.code} 生成`,
+      notes: product.currentRecipe
+        ? `由产品 ${product.productCode} 当前配方 ${product.currentRecipe.code} 生成；原料明细未自动展开`
+        : `由产品 ${product.productCode} 生成；原料明细未自动展开`,
     },
   })
 
-  await prisma.cosTableColorFormulaItem.createMany({
-    data: normalized.map(item => ({
-      formulaId: formula.id,
-      rawMaterialId: item.rawMaterialId!,
-      sortOrder: item.sortOrder,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      amount: item.amount,
-      percentage: item.percentage,
-      notes: item.notes,
-    })),
-  })
+  await saveColorFormulaItems(formula.id, [{
+    sortOrder: 1,
+    quantity: 0,
+    unitPrice: null,
+    productionCode: product.productCode,
+    name: product.name,
+    attributeCode: '适用产品',
+    notes: product.currentRecipe ? `当前配方：${product.currentRecipe.code}` : '',
+  }])
 
   const full = await getColorFormulaById(formula.id)
   return { ok: true as const, formula: full! }

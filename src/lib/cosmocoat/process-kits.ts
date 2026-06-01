@@ -24,6 +24,7 @@ export function serializeProcessKit(kit: ProcessKitWithRelations) {
     name: kit.name,
     description: kit.description,
     materials: kit.materials || [],
+    performanceStandards: kit.performanceStandards || [],
     otherNote: kit.otherNote,
     status: kit.status,
     createdBy: kit.createdBy,

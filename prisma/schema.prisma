@@ -1373,6 +1373,7 @@ model CosTableProductSemifinished {
 
   sourceProductionOrder CosTableProductionOrder? @relation(fields: [sourceProductionOrderId], references: [id], onDelete: SetNull)
   recipeItems           CosTableRecipeItem[]
+  colorFormulaItems     CosTableColorFormulaItem[]
 
   @@index([category])
   @@index([name])
@@ -1484,23 +1485,29 @@ model CosTableColorFormula {
 }
 
 model CosTableColorFormulaItem {
-  id            String   @id @default(cuid())
-  formulaId     String
-  rawMaterialId String
-  sortOrder     Int      @default(0)
-  quantity      Decimal  @db.Decimal(12, 3)
-  unitPrice     Decimal? @db.Decimal(12, 4)
-  amount        Decimal? @db.Decimal(14, 4)
-  percentage    Decimal? @db.Decimal(8, 4)
-  notes         String   @default("")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                     String   @id @default(cuid())
+  formulaId              String
+  rawMaterialId          String?
+  productSemifinishedId  String?
+  manualProductionCode   String   @default("") @map("manual_production_code")
+  manualName             String   @default("") @map("manual_name")
+  manualAttributeCode    String   @default("") @map("manual_attribute_code")
+  sortOrder              Int      @default(0)
+  quantity               Decimal  @db.Decimal(12, 3)
+  unitPrice              Decimal? @db.Decimal(12, 4)
+  amount                 Decimal? @db.Decimal(14, 4)
+  percentage             Decimal? @db.Decimal(8, 4)
+  notes                  String   @default("")
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
-  formula     CosTableColorFormula @relation(fields: [formulaId], references: [id], onDelete: Cascade)
-  rawMaterial CosTableRawMaterial  @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  formula             CosTableColorFormula         @relation(fields: [formulaId], references: [id], onDelete: Cascade)
+  rawMaterial         CosTableRawMaterial?         @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  productSemifinished CosTableProductSemifinished? @relation(fields: [productSemifinishedId], references: [id], onDelete: Restrict)
 
   @@index([formulaId, sortOrder])
   @@index([rawMaterialId])
+  @@index([productSemifinishedId])
   @@map("cos_table_color_formula_items")
 }
 
@@ -1710,6 +1717,7 @@ model CosProcessKit {
   name          String
   description   String?
   materials     String[]
+  performanceStandards String[] @default([])
   otherNote     String?
   status        ProcessKitStatus @default(DRAFT)
   createdBy     String?

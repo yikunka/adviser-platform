@@ -821,6 +821,7 @@
       "materials": "材料",
       "selectMaterialsHint": "请选择使用的材料（可多选）",
       "materialRequired": "请至少选择一种材料",
+      "performanceStandards": "性能",
       "otherNoteLabel": "其他材料说明",
       "otherNotePlaceholder": "请填写具体材料名称...",
       "otherNoteRequired": "请选择「其他」并填写具体说明",
@@ -862,6 +863,16 @@
         "DRAFT": "草稿",
         "ACTIVE": "已启用",
         "ARCHIVED": "已归档"
+      },
+      "performanceGroups": {
+        "crosshatch": "百格",
+        "boilingWater": "水煮測試系列",
+        "rca": "RCA系列",
+        "hardness": "硬度系列",
+        "alcohol": "耐醇系列",
+        "mek": "耐MEK",
+        "highTempHumidity": "高溫高濕",
+        "saltSpray": "鹽霧"
       },
       "testTypes": {
         "PERFORMANCE": "性能测试",
