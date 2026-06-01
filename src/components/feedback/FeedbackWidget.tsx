@@ -79,16 +79,23 @@ export function FeedbackWidget() {
     }
   }, [open])
 
+  const GREETING: ChatMessage = {
+    role: 'assistant',
+    content: '你好！我在这里记录你的需求和改进建议。请告诉我你在使用这个页面时，有什么想调整或新增的功能？',
+  }
+
   function openDialog() {
     setOpen(true)
-    if (messages.length === 0) {
-      // Greeting from assistant
-      setMessages([
-        {
-          role: 'assistant',
-          content: '你好！我在这里记录你的需求和改进建议。请告诉我你在使用这个页面时，有什么想调整或新增的功能？',
-        },
-      ])
+    if (saved) {
+      // Previous session was saved — start fresh so the user isn't stuck on the success screen
+      abortRef.current?.abort()
+      setMessages([GREETING])
+      setInput('')
+      setConfirmed(null)
+      setSaved(false)
+      setStreaming(false)
+    } else if (messages.length === 0) {
+      setMessages([GREETING])
     }
   }
 
