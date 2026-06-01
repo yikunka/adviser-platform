@@ -16,6 +16,14 @@ import { Badge } from '@/components/ui/badge'
 import { FinancialBreadcrumbs } from '@/components/admin/financial/FinancialBreadcrumbs'
 import { useFinancialCompany } from '@/components/admin/financial/FinancialCompanyContext'
 
+type ReportScope = {
+  title: string
+  subtitle: string
+  exportKey: string
+  params: Record<string, string>
+  breadcrumbSection: string
+}
+
 function currentPeriod() {
   const now = new Date()
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`
@@ -36,6 +44,42 @@ function exportCsv(filename: string, headers: string[], rows: (string | number)[
 
 export function FinancialReportsPanel() {
   const company = useFinancialCompany()
+  return (
+    <FinancialReportsContent
+      scope={{
+        title: 'Financial Statements',
+        subtitle: `${company.nameEn} · HKFRS-compliant reports from posted ledger entries.`,
+        exportKey: company.companyCode ?? company.id,
+        params: { companyId: company.id },
+        breadcrumbSection: 'HKFRS Reports',
+      }}
+    />
+  )
+}
+
+export function FinancialReportGroupReportsPanel({
+  group,
+}: {
+  group: { id: string; name: string; companies: { company: { nameEn: string; companyCode: string | null } }[] }
+}) {
+  const companyLabel = group.companies
+    .map(member => member.company.companyCode ? `${member.company.companyCode} ${member.company.nameEn}` : member.company.nameEn)
+    .join(', ')
+
+  return (
+    <FinancialReportsContent
+      scope={{
+        title: 'Consolidated Financial Statements',
+        subtitle: `${group.name} · ${companyLabel || 'No companies'} · reporting-only consolidation.`,
+        exportKey: group.name.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || group.id,
+        params: { reportGroupId: group.id },
+        breadcrumbSection: 'Consolidated Reports',
+      }}
+    />
+  )
+}
+
+function FinancialReportsContent({ scope }: { scope: ReportScope }) {
   const [period, setPeriod] = useState(currentPeriod)
   const [reports, setReports] = useState<FinancialReportsBundle | null>(null)
   const [loading, setLoading] = useState(false)
@@ -43,7 +87,7 @@ export function FinancialReportsPanel() {
   const fetchReports = useCallback(async () => {
     setLoading(true)
     try {
-      const params = new URLSearchParams({ period, companyId: company.id })
+      const params = new URLSearchParams({ period, ...scope.params })
       const res = await fetch(`/api/admin/financial/reports?${params}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to generate reports')
@@ -54,7 +98,7 @@ export function FinancialReportsPanel() {
     } finally {
       setLoading(false)
     }
-  }, [period, company.id])
+  }, [period, scope])
 
   useEffect(() => {
     fetchReports()
@@ -63,7 +107,7 @@ export function FinancialReportsPanel() {
   function exportTrialBalance() {
     if (!reports) return
     exportCsv(
-      `trial_balance_${company.companyCode ?? company.id}_${period}.csv`,
+      `trial_balance_${scope.exportKey}_${period}.csv`,
       ['Account Code', 'Account Name', 'Type', 'Period Debit', 'Period Credit', 'Closing Debit', 'Closing Credit'],
       reports.trialBalance.rows.map(row => [
         row.code,
@@ -80,14 +124,14 @@ export function FinancialReportsPanel() {
   return (
     <div className="p-6 space-y-6">
       <div className="space-y-2">
-        <FinancialBreadcrumbs section="HKFRS Reports" />
+        <FinancialBreadcrumbs section={scope.breadcrumbSection} />
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>
-              Financial Statements
+              {scope.title}
             </h1>
             <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-              {company.nameEn} · HKFRS-compliant reports from posted ledger entries.
+              {scope.subtitle}
             </p>
           </div>
           <Badge variant="outline" className="border-[#2A2418] text-[#C9A96E]">

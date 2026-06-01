@@ -243,6 +243,9 @@ model User {
   verificationTokens VerificationToken[]
   clientCompanies    Company[]           @relation("ClientCompany")
   assignedCompanies  Company[]           @relation("AssignedStaff")
+  companyStaffAssignments CompanyStaffAssignment[]
+  createdCompanyStaffAssignments CompanyStaffAssignment[] @relation("CompanyStaffAssignmentCreator")
+  createdFinancialReportGroups FinancialReportGroup[] @relation("FinancialReportGroupCreator")
   uploadedDocuments  Document[]
   kycReviews         KeyPerson[]         @relation("KYCReviewer")
   kycSubmissions     KeyPerson[]         @relation("ClientKycSubmissions")
@@ -332,9 +335,62 @@ model Company {
   journalEntries         JournalEntry[]
   ledgerEntries          Ledger[]
   invoices               Invoice[]
+  staffAssignments       CompanyStaffAssignment[]
+  reportGroupMemberships FinancialReportGroupCompany[]
 
   @@index([pendingClientEmail])
   @@map("companies")
+}
+
+/// Staff users who can operate a company. This augments legacy Company.assignedStaffId.
+model CompanyStaffAssignment {
+  id          String   @id @default(cuid())
+  companyId   String
+  userId      String
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation("CompanyStaffAssignmentCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([companyId, userId])
+  @@index([userId])
+  @@index([createdById])
+  @@map("company_staff_assignments")
+}
+
+/// Optional reporting-only portfolio for consolidated multi-company reports.
+model FinancialReportGroup {
+  id          String   @id @default(cuid())
+  name        String
+  notes       String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User? @relation("FinancialReportGroupCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  companies FinancialReportGroupCompany[]
+
+  @@index([name])
+  @@index([createdById])
+  @@map("financial_report_groups")
+}
+
+model FinancialReportGroupCompany {
+  id        String   @id @default(cuid())
+  groupId   String
+  companyId String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  group   FinancialReportGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  company Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, companyId])
+  @@index([companyId])
+  @@index([groupId, sortOrder])
+  @@map("financial_report_group_companies")
 }
 
 // ─────────────────────────────────────────────

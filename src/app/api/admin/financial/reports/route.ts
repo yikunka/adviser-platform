@@ -6,6 +6,7 @@ import {
   assertCompanyAccessible,
   resolveCompanyAccess,
 } from '@/lib/company-access'
+import { resolveReportGroupCompanyIds } from '@/lib/financial/report-groups'
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
@@ -17,7 +18,8 @@ export async function GET(req: NextRequest) {
 
   const period = req.nextUrl.searchParams.get('period')
   const companyId = req.nextUrl.searchParams.get('companyId') ?? undefined
-  const parsed = financialReportFilterSchema.safeParse({ period, companyId })
+  const reportGroupId = req.nextUrl.searchParams.get('reportGroupId') ?? undefined
+  const parsed = financialReportFilterSchema.safeParse({ period, companyId, reportGroupId })
   if (!parsed.success) {
     return apiError('Period is required in YYYY-MM format.')
   }
@@ -27,12 +29,16 @@ export async function GET(req: NextRequest) {
     if (parsed.data.companyId && !(await assertCompanyAccessible(access, parsed.data.companyId))) {
       return apiError('Forbidden', 403)
     }
+    const companyIds = parsed.data.reportGroupId
+      ? await resolveReportGroupCompanyIds(parsed.data.reportGroupId, access)
+      : undefined
     const reports = await buildFinancialReports(parsed.data.period, {
       companyId: parsed.data.companyId,
+      companyIds,
     })
     return NextResponse.json({ reports })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to generate financial reports.'
-    return apiError(message, 500)
+    return apiError(message, message === 'Forbidden' ? 403 : 500)
   }
 }

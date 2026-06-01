@@ -68,6 +68,10 @@ export const ledgerFilterSchema = z.object({
 export const financialReportFilterSchema = z.object({
   period: z.string().regex(/^\d{4}-\d{2}$/, 'Period must be YYYY-MM'),
   companyId: z.string().cuid().optional(),
+  reportGroupId: z.string().cuid().optional(),
+}).refine(data => !(data.companyId && data.reportGroupId), {
+  message: 'Use either companyId or reportGroupId, not both.',
+  path: ['reportGroupId'],
 })
 
 export type AccountFormValues = z.infer<typeof accountCreateSchema>

@@ -35,6 +35,13 @@ type VerifiedClient = {
   nameZh: string | null
 }
 
+type StaffOption = {
+  id: string
+  email: string
+  nameEn: string
+  role: string
+}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type Director = {
@@ -142,6 +149,7 @@ type Company = {
   clientUserId: string | null
   pendingClientEmail: string | null
   clientUser: { nameEn: string; email: string } | null
+  staffAssignments: { user: StaffOption }[]
   dateOfIncorporation: string | null
   registeredAddress: string | null
   businessNature: string | null
@@ -321,7 +329,9 @@ function YearGroupedDocs({
 function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => void }) {
   const [saving, setSaving] = useState(false)
   const [clients, setClients] = useState<VerifiedClient[]>([])
+  const [staffOptions, setStaffOptions] = useState<StaffOption[]>([])
   const [clientsLoading, setClientsLoading] = useState(true)
+  const [staffLoading, setStaffLoading] = useState(true)
   const annualParts = monthDayParts(company.annualReturnDate)
   const [form, setForm] = useState({
     nameEn: company.nameEn,
@@ -337,9 +347,10 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
     status: company.status,
     serviceTier: '',
     financialEnabled: company.financialEnabled,
+    staffUserIds: company.staffAssignments?.map(assignment => assignment.user.id) ?? [],
   })
 
-  function set(k: string, v: string | boolean) { setForm(f => ({ ...f, [k]: v })) }
+  function set(k: string, v: string | boolean | string[]) { setForm(f => ({ ...f, [k]: v })) }
   const annualDayCount = form.annualReturnMonth ? new Date(2000, Number(form.annualReturnMonth), 0).getDate() : 31
 
   useEffect(() => {
@@ -358,6 +369,34 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
     return () => { cancelled = true }
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+    async function loadStaff() {
+      try {
+        const staffRes = await fetch('/api/admin/company-staff-options')
+        if (!staffRes.ok) return
+        const data = await staffRes.json()
+        if (!cancelled) setStaffOptions(Array.isArray(data.users) ? data.users : [])
+      } finally {
+        if (!cancelled) setStaffLoading(false)
+      }
+    }
+    void loadStaff()
+    return () => { cancelled = true }
+  }, [])
+
+  function toggleStaff(userId: string) {
+    setForm(current => {
+      const selected = new Set(current.staffUserIds)
+      if (selected.has(userId)) {
+        selected.delete(userId)
+      } else {
+        selected.add(userId)
+      }
+      return { ...current, staffUserIds: Array.from(selected) }
+    })
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
@@ -366,6 +405,7 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
         nameEn: form.nameEn,
         status: form.status,
         financialEnabled: form.financialEnabled,
+        staffUserIds: form.staffUserIds,
       }
       if (form.nameZh) body.nameZh = form.nameZh
       if (form.companyNumber) body.companyNumber = form.companyNumber
@@ -511,6 +551,50 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
       <p className="text-xs" style={{ color: '#7A7060', marginTop: -8 }}>
         When disabled, this company is hidden from the financial admin scope.
       </p>
+      <div>
+        <label style={labelStyle}>Staff Access</label>
+        <div className="rounded-md border border-[#2A2418] bg-[#0A0A0A] p-3">
+          {staffLoading ? (
+            <p className="text-sm" style={{ color: '#7A7060' }}>Loading staff...</p>
+          ) : staffOptions.length === 0 ? (
+            <p className="text-sm" style={{ color: '#7A7060' }}>No active staff users found.</p>
+          ) : (
+            <div className="grid sm:grid-cols-2 gap-2">
+              {staffOptions.map(staff => {
+                const checked = form.staffUserIds.includes(staff.id)
+                return (
+                  <label
+                    key={staff.id}
+                    className="flex items-start gap-2 rounded-md border px-3 py-2 text-sm"
+                    style={{
+                      borderColor: checked ? '#C9A96E' : '#2A2418',
+                      background: checked ? 'rgba(201,169,110,0.10)' : '#0E0E0A',
+                      color: 'var(--foreground)',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleStaff(staff.id)}
+                      disabled={saving}
+                      style={{ accentColor: '#C9A96E', marginTop: 2 }}
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">{staff.nameEn}</span>
+                      <span className="block truncate text-xs" style={{ color: '#7A7060' }}>
+                        {staff.role} · {staff.email}
+                      </span>
+                    </span>
+                  </label>
+                )
+              })}
+            </div>
+          )}
+        </div>
+        <p className="mt-1 text-xs" style={{ color: '#7A7060' }}>
+          Selected staff can operate this company in company-scoped modules, including finance.
+        </p>
+      </div>
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="outline" size="sm" onClick={onDone} disabled={saving}>Cancel</Button>
         <Button type="submit" size="sm" disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</Button>

@@ -17,6 +17,7 @@ const updateSchema = z.object({
   serviceTier: z.enum(['BASIC', 'PROFESSIONAL', 'PREMIUM']).optional(),
   financialEnabled: z.boolean().optional(),
   assignedStaffId: z.string().cuid().optional().nullable(),
+  staffUserIds: z.array(z.string().cuid()).optional(),
   clientUserId: z.string().cuid().optional().nullable(),
 })
 
@@ -47,6 +48,10 @@ export async function GET(
       },
       auditLogs: { orderBy: { createdAt: 'desc' }, take: 20 },
       assignedStaff: { select: { nameEn: true, email: true } },
+      staffAssignments: {
+        orderBy: { createdAt: 'asc' },
+        include: { user: { select: { id: true, nameEn: true, email: true, role: true } } },
+      },
       clientUser: { select: { nameEn: true, email: true } },
     },
   })
@@ -72,15 +77,46 @@ export async function PATCH(
   const before = await prisma.company.findUnique({ where: { id } })
   if (!before) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const { dateOfIncorporation, annualReturnDate, ...rest } = parsed.data
+  const { dateOfIncorporation, annualReturnDate, staffUserIds, ...rest } = parsed.data
   const data = {
     ...rest,
     ...(dateOfIncorporation !== undefined ? { dateOfIncorporation: new Date(dateOfIncorporation) } : {}),
     ...(annualReturnDate !== undefined ? { annualReturnDate: annualReturnDate ? new Date(annualReturnDate) : null } : {}),
     ...(rest.clientUserId !== undefined ? { pendingClientEmail: null as null } : {}),
   }
+  const uniqueStaffIds = staffUserIds !== undefined ? Array.from(new Set(staffUserIds)) : undefined
+  if (uniqueStaffIds && uniqueStaffIds.length > 0) {
+    const staffCount = await prisma.user.count({
+      where: {
+        id: { in: uniqueStaffIds },
+        role: { in: ['STAFF', 'COMPLIANCE', 'SUPER_ADMIN'] },
+        isActive: true,
+      },
+    })
+    if (staffCount !== uniqueStaffIds.length) {
+      return NextResponse.json({ error: 'Invalid staff assignment' }, { status: 400 })
+    }
+  }
 
-  const company = await prisma.company.update({ where: { id }, data })
+  const company = await prisma.$transaction(async tx => {
+    const updated = await tx.company.update({ where: { id }, data })
+
+    if (uniqueStaffIds !== undefined) {
+      await tx.companyStaffAssignment.deleteMany({ where: { companyId: id } })
+      if (uniqueStaffIds.length > 0) {
+        await tx.companyStaffAssignment.createMany({
+          data: uniqueStaffIds.map(userId => ({
+            companyId: id,
+            userId,
+            createdById: session!.user.id,
+          })),
+          skipDuplicates: true,
+        })
+      }
+    }
+
+    return updated
+  })
   await logAudit(session!.user.id, 'UPDATE', 'Company', id, before, company)
   return NextResponse.json(company)
 }

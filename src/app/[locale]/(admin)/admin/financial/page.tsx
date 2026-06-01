@@ -3,6 +3,7 @@
 import { FinancialCompanyDashboard } from '@/components/admin/financial/FinancialCompanyDashboard'
 import { FinancialCompanySelector } from '@/components/admin/financial/FinancialCompanySelector'
 import { useFinancialWorkspace } from '@/components/admin/financial/FinancialCompanyContext'
+import { FinancialReportGroupsPanel } from '@/components/admin/financial/FinancialReportGroupsPanel'
 
 export default function AdminFinancialSelectCompanyPage() {
   const { company, loading } = useFinancialWorkspace()
@@ -17,6 +18,7 @@ export default function AdminFinancialSelectCompanyPage() {
           Select a client company above to open its financial workspace.
         </div>
       )}
+      <FinancialReportGroupsPanel />
     </div>
   )
 }

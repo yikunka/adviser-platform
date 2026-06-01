@@ -1,4 +1,4 @@
-import type { AccountType } from '@prisma/client'
+import type { AccountType, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
 import { isDebitNormalAccountType, isProfitAndLossExpenseType } from '@/lib/financial/account-types'
 import { roundMoney } from '@/lib/financial/utils'
@@ -142,6 +142,17 @@ function isFinancingAccount(account: { code: string; type: AccountType }) {
 
 export type FinancialReportScope = {
   companyId?: string
+  companyIds?: string[]
+}
+
+type InternalReportAccountRow = ReportAccountRow & {
+  sourceAccountIds: string[]
+}
+
+function scopeCompanyIds(scope?: FinancialReportScope) {
+  if (scope?.companyIds?.length) return Array.from(new Set(scope.companyIds))
+  if (scope?.companyId) return [scope.companyId]
+  return undefined
 }
 
 async function aggregateLedgerMovements(
@@ -149,13 +160,11 @@ async function aggregateLedgerMovements(
   fromStart?: Date,
   scope?: FinancialReportScope,
 ) {
-  const where: {
-    entry: { status: 'POSTED'; companyId?: string }
-    date?: { lt?: Date; gte?: Date }
-  } = {
+  const companyIds = scopeCompanyIds(scope)
+  const where: Prisma.LedgerWhereInput = {
     entry: {
       status: 'POSTED',
-      ...(scope?.companyId ? { companyId: scope.companyId } : {}),
+      ...(companyIds ? { companyId: { in: companyIds } } : {}),
     },
   }
 
@@ -192,23 +201,56 @@ function movementSignedBalance(totals: MovementTotals, type: AccountType, code?:
   return signedBalance(net, type, code)
 }
 
+function sumMovements(map: Map<string, MovementTotals>, accountIds: string[]) {
+  return accountIds.reduce<MovementTotals>((sum, accountId) => {
+    const totals = map.get(accountId)
+    if (!totals) return sum
+    return {
+      debit: roundMoney(sum.debit + totals.debit),
+      credit: roundMoney(sum.credit + totals.credit),
+    }
+  }, { debit: 0, credit: 0 })
+}
+
 export async function buildFinancialReports(
   period: string,
   scope?: FinancialReportScope,
 ): Promise<FinancialReportsBundle> {
   const { start, end, asOfDate } = periodRange(period)
+  const companyIds = scopeCompanyIds(scope)
 
   const rawAccounts = await prisma.finAccount.findMany({
     where: {
-      ...(scope?.companyId ? { companyId: scope.companyId } : {}),
+      ...(companyIds ? { companyId: { in: companyIds } } : {}),
     },
     orderBy: [{ type: 'asc' }, { code: 'asc' }],
     select: { id: true, code: true, name: true, type: true, level: true },
   })
-  const accounts: ReportAccountRow[] = rawAccounts.map(({ id, ...rest }) => ({
-    accountId: id,
-    ...rest,
-  }))
+  const shouldConsolidateAccounts = (companyIds?.length ?? 0) > 1
+  const accounts: InternalReportAccountRow[] = shouldConsolidateAccounts
+    ? Array.from(rawAccounts.reduce<Map<string, InternalReportAccountRow>>((map, account) => {
+        const key = `${account.type}:${account.code}`
+        const existing = map.get(key)
+        if (existing) {
+          existing.sourceAccountIds.push(account.id)
+          existing.level = Math.min(existing.level, account.level)
+        } else {
+          map.set(key, {
+            accountId: key,
+            code: account.code,
+            name: account.name,
+            type: account.type,
+            level: account.level,
+            sourceAccountIds: [account.id],
+          })
+        }
+        return map
+      }, new Map()).values())
+    : rawAccounts.map(({ id, ...rest }) => ({
+        accountId: id,
+        sourceAccountIds: [id],
+        ...rest,
+      }))
 
   const [openingMovements, periodMovements, closingMovements] = await Promise.all([
     aggregateLedgerMovements(start, undefined, scope),
@@ -230,9 +272,9 @@ export async function buildFinancialReports(
   const closingByAccount = new Map<string, number>()
 
   for (const account of accounts) {
-    const openingTotals = openingMovements.get(account.accountId) ?? { debit: 0, credit: 0 }
-    const periodTotals = periodMovements.get(account.accountId) ?? { debit: 0, credit: 0 }
-    const closingTotals = closingMovements.get(account.accountId) ?? { debit: 0, credit: 0 }
+    const openingTotals = sumMovements(openingMovements, account.sourceAccountIds)
+    const periodTotals = sumMovements(periodMovements, account.sourceAccountIds)
+    const closingTotals = sumMovements(closingMovements, account.sourceAccountIds)
 
     const openingBalance = movementSignedBalance(openingTotals, account.type, account.code)
     const periodNet = movementSignedBalance(periodTotals, account.type, account.code)
