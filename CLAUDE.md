@@ -2,6 +2,32 @@
 
 ---
 
+# System Knowledge Maintenance
+
+`src/lib/feedback/system-knowledge.md` is the knowledge base for the AI-powered "提交需求" (Submit Requirement) widget. The LLM reads it every time a user opens that dialog. If it is stale, the AI gives inaccurate advice about what the system already supports.
+
+**Rule: whenever a task adds, removes, or meaningfully changes a user-facing feature, update `system-knowledge.md` as part of the same task — not afterwards.**
+
+What counts as a meaningful change:
+- New admin page or new route (add a section or a bullet)
+- New workflow or status state (update the relevant module section)
+- New platform added (add a row to the Multi-Platform Architecture table)
+- Feature removed or renamed (delete / correct the relevant text)
+- Change to a module's behavior that affects what users can do
+
+What does NOT need an update:
+- Bug fixes that don't alter functionality
+- Styling / layout changes
+- Refactors with no user-visible effect
+- Infrastructure or migration-only changes
+
+How to update:
+1. Read the current file: `src/lib/feedback/system-knowledge.md`
+2. Edit only the section(s) affected — do not rewrite unrelated content
+3. Keep language concise and factual (it is a prompt, not documentation)
+
+---
+
 # Multi-Platform Strategy
 
 This project hosts **multiple independent platforms** under one Next.js app + one database. Each platform gets its own URL (managed by nginx), its own folder, and its own DB table prefix — but shares the same codebase, infrastructure, and deployment.

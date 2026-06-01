@@ -94,7 +94,7 @@ export function FinancialCompanyProvider({
 
   return (
     <FinancialCompanyContext.Provider value={value}>
-      {needsCompany && !company && !loading ? (
+      {needsCompany && !company && loading ? null : needsCompany && !company ? (
         <div className="p-6">
           <div className="rounded-lg border border-[#2A2418] bg-card p-8 text-center">
             <p className="text-sm text-muted-foreground">Select a client company before opening this financial page.</p>
