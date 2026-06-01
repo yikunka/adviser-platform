@@ -340,8 +340,10 @@ function ConfigTab() {
 
 // ── Dev prompt builder ─────────────────────────────────────────────────────
 
+const PRIORITY_LABEL_CN: Record<string, string> = { low: '低', medium: '中', high: '高' }
+
 function buildDevPrompt(item: FeatureRequest, conversation: ChatMessage[] = []): string {
-  const priorityLabel = { low: '低', medium: '中', high: '高' }[item.priority] ?? item.priority
+  const priorityLabel = PRIORITY_LABEL_CN[item.priority] ?? item.priority
   const userQuotes = conversation
     .filter(m => m.role === 'user' && m.content.trim())
     .map(m => `> ${m.content.trim()}`)
@@ -365,6 +367,39 @@ function buildDevPrompt(item: FeatureRequest, conversation: ChatMessage[] = []):
   ].join('\n')
 }
 
+function buildBatchDevPrompt(items: FeatureRequest[]): string {
+  const tasks = items.map((item, i) => {
+    const priorityLabel = PRIORITY_LABEL_CN[item.priority] ?? item.priority
+    return [
+      `### 任务 ${i + 1}：${item.title}`,
+      '',
+      `**优先级**：${priorityLabel} · **来源页面**：${item.pageUrl}`,
+      '',
+      '**需求描述**：',
+      item.summary,
+    ].join('\n')
+  })
+
+  return [
+    '## 开发任务列表',
+    '',
+    `共 ${items.length} 个需求，请按顺序逐个完成。`,
+    '',
+    '---',
+    '',
+    tasks.join('\n\n---\n\n'),
+    '',
+    '---',
+    '',
+    '## 执行规则',
+    '',
+    '- 按任务编号顺序执行，完成一个再开始下一个',
+    '- 每完成一个任务，在 /admin/feedback 将对应需求状态更新为「已完成」',
+    '- 每完成一个任务，检查是否需要更新 `src/lib/feedback/system-knowledge.md`',
+    '- 参考 `src/lib/feedback/system-knowledge.md` 了解系统现有功能上下文',
+  ].join('\n')
+}
+
 // ── Requirements Tab ───────────────────────────────────────────────────────
 
 function RequirementsTab() {
@@ -374,6 +409,8 @@ function RequirementsTab() {
   const [detailItem, setDetailItem] = useState<FeatureRequestDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [batchCopying, setBatchCopying] = useState(false)
 
   async function openDetail(item: FeatureRequest) {
     // Show dialog immediately with basic info, then load conversation
@@ -412,6 +449,46 @@ function RequirementsTab() {
   }, [filterStatus])
 
   useEffect(() => { fetchItems() }, [fetchItems])
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === items.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(items.map(i => i.id)))
+    }
+  }
+
+  async function batchCopyDevPrompt() {
+    const selected = items.filter(i => selectedIds.has(i.id))
+    if (selected.length === 0) return
+    setBatchCopying(true)
+    try {
+      await navigator.clipboard.writeText(buildBatchDevPrompt(selected))
+    } catch {
+      toast.error('无法访问剪贴板，请检查浏览器权限')
+      setBatchCopying(false)
+      return
+    }
+    const pendingIds = selected.filter(i => i.status === 'PENDING').map(i => i.id)
+    await Promise.all(pendingIds.map(id => updateStatus(id, 'IN_PROGRESS', true)))
+    setBatchCopying(false)
+    setSelectedIds(new Set())
+    const updatedCount = pendingIds.length
+    toast.success(
+      updatedCount > 0
+        ? `已复制 ${selected.length} 个任务，${updatedCount} 个需求状态已更新为「处理中」`
+        : `已复制 ${selected.length} 个任务到剪贴板`,
+    )
+  }
 
   async function copyDevPrompt(item: FeatureRequest, conversation: ChatMessage[] = []) {
     try {
@@ -481,6 +558,15 @@ function RequirementsTab() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10 pr-0">
+                    <input
+                      type="checkbox"
+                      checked={items.length > 0 && selectedIds.size === items.length}
+                      ref={el => { if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < items.length }}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 rounded accent-[#C9A96E] cursor-pointer"
+                    />
+                  </TableHead>
                   <TableHead>需求标题</TableHead>
                   <TableHead>优先级</TableHead>
                   <TableHead>来源页面</TableHead>
@@ -493,12 +579,22 @@ function RequirementsTab() {
               <TableBody>
                 {items.map(item => {
                   const st = STATUS_META[item.status]
+                  const isSelected = selectedIds.has(item.id)
                   return (
                     <TableRow
                       key={item.id}
                       className="cursor-pointer hover:bg-white/[0.02]"
+                      style={isSelected ? { background: 'rgba(201,169,110,0.05)' } : undefined}
                       onClick={() => openDetail(item)}
                     >
+                      <TableCell className="w-10 pr-0" onClick={e => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelect(item.id)}
+                          className="h-4 w-4 rounded accent-[#C9A96E] cursor-pointer"
+                        />
+                      </TableCell>
                       <TableCell className="max-w-[220px]">
                         <p className="truncate font-medium text-sm" style={{ color: 'var(--foreground)' }}>
                           {item.title || '(无标题)'}
@@ -582,6 +678,38 @@ function RequirementsTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Batch action bar */}
+      {selectedIds.size > 0 && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-full px-5 py-3 shadow-2xl"
+          style={{ background: '#1E1A14', border: '1px solid #C9A96E55' }}
+        >
+          <span className="text-sm font-medium" style={{ color: '#C9A96E' }}>
+            已选 {selectedIds.size} 个需求
+          </span>
+          <div className="w-px h-4" style={{ background: '#3A3020' }} />
+          <Button
+            size="sm"
+            disabled={batchCopying}
+            onClick={batchCopyDevPrompt}
+            style={{ background: '#C9A96E', color: '#0A0805', borderRadius: 999 }}
+          >
+            {batchCopying
+              ? <><Loader2 size={13} className="animate-spin mr-1.5" />复制中…</>
+              : <><ClipboardCopy size={13} className="mr-1.5" />批量复制提示词</>
+            }
+          </Button>
+          <button
+            type="button"
+            onClick={() => setSelectedIds(new Set())}
+            className="text-xs transition-opacity hover:opacity-100 opacity-50"
+            style={{ color: '#9F927B' }}
+          >
+            取消
+          </button>
+        </div>
+      )}
 
       {/* Detail dialog */}
       <Dialog open={!!detailItem} onOpenChange={open => !open && setDetailItem(null)}>
