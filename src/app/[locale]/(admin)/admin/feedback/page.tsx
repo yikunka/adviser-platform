@@ -584,6 +584,7 @@ function RequirementsTab() {
     }
   }, [filterStatus])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchItems updates state after the async request resolves.
   useEffect(() => { fetchItems() }, [fetchItems])
 
   function toggleSelect(id: string) {

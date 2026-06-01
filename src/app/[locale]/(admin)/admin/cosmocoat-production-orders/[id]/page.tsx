@@ -135,33 +135,22 @@ function PrintView({
   batchNo, startedAt, finishedAt, status, items,
   productionNotes, qualityNotes, packagingNotes,
 }: PrintViewProps) {
-  const printedAt = new Date().toLocaleString('zh-CN', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit',
-  })
-
   return (
     <div id="cosmocoat-print-area">
-      {/* ─── Header ─── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, paddingBottom: 8, borderBottom: '2px solid #000' }}>
-        <div>
-          <div style={{ fontSize: 9, color: '#666', marginBottom: 2 }}>CosmoCoat</div>
-          <div style={{ fontSize: 16, fontWeight: 700 }}>生产单 Production Order</div>
-        </div>
-        <div style={{ textAlign: 'right', fontSize: 9, color: '#555' }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#000', marginBottom: 2 }}>{code || '（草稿）'}</div>
-          <div>打印时间：{printedAt}</div>
-        </div>
-      </div>
-
       {/* ─── Basic info grid ─── */}
       <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12, fontSize: 9 }}>
         <tbody>
           <tr>
-            <td style={{ width: '15%', padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>产品名称</td>
-            <td style={{ width: '35%', padding: '3px 6px', border: '1px solid #ccc' }}>{productName || '—'}</td>
+            <td style={{ width: '15%', padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>生产单号</td>
+            <td style={{ width: '35%', padding: '3px 6px', border: '1px solid #ccc' }}>{code || '（草稿）'}</td>
             <td style={{ width: '15%', padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>生产批次</td>
             <td style={{ width: '35%', padding: '3px 6px', border: '1px solid #ccc' }}>{batchNo || '—'}</td>
+          </tr>
+          <tr>
+            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>产品名称</td>
+            <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{productName || '—'}</td>
+            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>生产重量</td>
+            <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{totalWeight} {productUnit}</td>
           </tr>
           <tr>
             <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>配方编号</td>
@@ -170,33 +159,30 @@ function PrintView({
             <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{recipeName || '—'}</td>
           </tr>
           <tr>
-            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>生产重量</td>
-            <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{totalWeight} {productUnit}</td>
-            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>状态</td>
-            <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{STATUS_LABEL[status] ?? status}</td>
-          </tr>
-          <tr>
             <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>开始时间</td>
             <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{formatDatetime(startedAt)}</td>
             <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>完成时间</td>
             <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{formatDatetime(finishedAt)}</td>
           </tr>
+          <tr>
+            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>状态</td>
+            <td colSpan={3} style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{STATUS_LABEL[status] ?? status}</td>
+          </tr>
         </tbody>
       </table>
 
       {/* ─── Materials table ─── */}
-      <div style={{ fontWeight: 700, fontSize: 10, marginBottom: 4, borderLeft: '3px solid #000', paddingLeft: 6 }}>
+      <div className="print-section-title" style={{ fontWeight: 700, fontSize: 10, marginBottom: 4, borderLeft: '3px solid #000', paddingLeft: 6 }}>
         原料投料明细
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 14, fontSize: 9 }}>
         <thead>
           <tr style={{ background: '#f0f0f0' }}>
-            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'center', width: '6%' }}>序号</th>
-            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '22%' }}>原材料编号</th>
-            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left' }}>名称</th>
-            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'right', width: '10%' }}>比例</th>
-            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'right', width: '15%' }}>参考投料 ({productUnit})</th>
-            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'right', width: '15%' }}>实投 ({productUnit})</th>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'center', width: '8%' }}>序号</th>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '34%' }}>原材料编号</th>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'right', width: '14%' }}>比例</th>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'right', width: '22%' }}>参考投料 ({productUnit})</th>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'right', width: '22%' }}>实投 ({productUnit})</th>
           </tr>
         </thead>
         <tbody>
@@ -204,7 +190,6 @@ function PrintView({
             <tr key={item.key} style={{ background: index % 2 === 1 ? '#fafafa' : '#fff' }}>
               <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'center' }}>{index + 1}</td>
               <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{item.productionCode}</td>
-              <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{item.materialName}</td>
               <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>{formatPercent(item.percentage)}</td>
               <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>{formatWeight(item.requiredWeight)}</td>
               <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>
@@ -214,7 +199,7 @@ function PrintView({
           ))}
           {/* Totals row */}
           <tr style={{ background: '#f0f0f0', fontWeight: 700 }}>
-            <td colSpan={4} style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>合计</td>
+            <td colSpan={3} style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>合计</td>
             <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>
               {formatWeight(items.reduce((s, i) => s + i.requiredWeight, 0))}
             </td>
@@ -252,7 +237,7 @@ function PrintView({
         <tbody>
           <tr>
             {['生产人员', '质检人员', '仓库确认'].map(label => (
-              <td key={label} style={{ padding: '12px 8px 4px', border: '1px solid #ccc', textAlign: 'center', width: '33%' }}>
+              <td key={label} className="signature-cell" style={{ padding: '12px 8px 4px', border: '1px solid #ccc', textAlign: 'center', width: '33%' }}>
                 <div>{label}</div>
                 <div style={{ borderBottom: '1px solid #999', marginTop: 16 }} />
               </td>
@@ -582,7 +567,8 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
             max-width: 182mm;
             box-sizing: border-box;
             font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
-            font-size: 9pt;
+            font-size: 11pt;
+            line-height: 1.45;
             color: #000 !important;
             background: #fff !important;
           }
@@ -598,6 +584,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
             table-layout: fixed;
             width: 100%;
             border-collapse: collapse;
+            font-size: 10.5pt !important;
           }
 
           /* Cells: wrap long text */
@@ -606,6 +593,18 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
             word-break: break-all;
             overflow-wrap: break-word;
             overflow: hidden;
+            padding: 5px 8px !important;
+            font-size: 10.5pt !important;
+            line-height: 1.4;
+          }
+
+          #cosmocoat-print-area .print-section-title {
+            font-size: 12pt !important;
+            margin-bottom: 6px !important;
+          }
+
+          #cosmocoat-print-area .signature-cell {
+            padding: 18px 10px 6px !important;
           }
         }
 

@@ -2,8 +2,8 @@
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import { useCallback, useEffect, useState } from 'react'
-import { Eye, Pencil, Trash2, Plus, CheckCircle } from 'lucide-react'
+import { type ChangeEvent, useCallback, useEffect, useRef, useState } from 'react'
+import { Eye, Pencil, Trash2, Plus, CheckCircle, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -35,10 +35,25 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELLED: '#ef4444',
 }
 
+type ImportError = {
+  row: number
+  message: string
+}
+
+type ImportResult = {
+  imported: number
+  rows?: number
+  errors?: ImportError[]
+  errorCount?: number
+}
+
 export default function AdminFinancialJournalPage() {
   const company = useFinancialCompany()
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [entries, setEntries] = useState<JournalEntry[]>([])
   const [loading, setLoading] = useState(true)
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<ImportResult | null>(null)
   const [search, setSearch] = useState('')
   const [filterPeriod, setFilterPeriod] = useState('')
   const [filterStatus, setFilterStatus] = useState('ALL')
@@ -114,6 +129,45 @@ export default function AdminFinancialJournalPage() {
     }
   }
 
+  async function importExcel(file: File) {
+    setImporting(true)
+    setImportResult(null)
+    try {
+      const formData = new FormData()
+      formData.append('companyId', company.id)
+      formData.append('file', file)
+
+      const res = await fetch('/api/admin/financial/journal-entries/import', {
+        method: 'POST',
+        body: formData,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setImportResult({
+          imported: 0,
+          errors: Array.isArray(data.errors) ? data.errors : [{ row: 0, message: data.toast || data.error || 'Import failed.' }],
+          errorCount: Number(data.errorCount ?? data.errors?.length ?? 1),
+        })
+        throw new Error(data.toast || data.error || 'Import failed.')
+      }
+
+      setImportResult({ imported: data.imported ?? 0, rows: data.rows ?? 0 })
+      toast.success(data.toast || `Imported ${data.imported ?? 0} pending journal entries.`)
+      await fetchEntries()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to import journal entries.')
+    } finally {
+      setImporting(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  function handleImportFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    void importExcel(file)
+  }
+
   const filtered = entries.filter(
     e =>
       (e.voucherNo.toLowerCase().includes(search.toLowerCase()) ||
@@ -138,9 +192,28 @@ export default function AdminFinancialJournalPage() {
               {company.nameEn} · Create and manage accounting vouchers.
             </p>
           </div>
-          <Button size="sm" onClick={openCreateForm} style={{ background: '#C9A96E', color: '#0A0805' }}>
-            <Plus size={15} className="mr-2" /> New Entry
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={handleImportFile}
+              disabled={importing}
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={importing}
+              style={{ borderColor: '#2A2418' }}
+            >
+              <Upload size={15} className="mr-2" /> {importing ? 'Importing...' : 'Import Excel'}
+            </Button>
+            <Button size="sm" onClick={openCreateForm} style={{ background: '#C9A96E', color: '#0A0805' }}>
+              <Plus size={15} className="mr-2" /> New Entry
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -173,6 +246,33 @@ export default function AdminFinancialJournalPage() {
               </SelectContent>
             </Select>
           </div>
+          <div className="mt-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+            Excel import supports line rows: Voucher No, Date, Description, Account Code, Debit, Credit; or paired rows:
+            Date, Description, Debit Account Code, Credit Account Code, Amount. Imported entries are saved as Pending.
+          </div>
+          {importResult ? (
+            <div
+              className="mt-3 rounded-md border px-3 py-2 text-xs"
+              style={{
+                borderColor: importResult.errors?.length ? '#ef4444' : '#2A2418',
+                color: importResult.errors?.length ? '#fecaca' : '#C9A96E',
+                background: importResult.errors?.length ? 'rgba(239,68,68,0.08)' : 'rgba(201,169,110,0.08)',
+              }}
+            >
+              {importResult.errors?.length ? (
+                <div className="space-y-1">
+                  <p className="font-medium">Import failed with {importResult.errorCount ?? importResult.errors.length} error(s).</p>
+                  {importResult.errors.slice(0, 8).map((error, index) => (
+                    <p key={`${error.row}-${index}`}>
+                      Row {error.row || '-'}: {error.message}
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                <p>Imported {importResult.imported} pending journal entries from {importResult.rows ?? 0} Excel rows.</p>
+              )}
+            </div>
+          ) : null}
         </CardHeader>
         <CardContent>
           {loading ? (

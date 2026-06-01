@@ -71,7 +71,7 @@ Full double-entry accounting system per client company, compliant with HKFRS.
 Sub-pages (all scoped to a selected company or at `/admin/financial/[companyId]/`):
 
 - **Chart of Accounts** (`/accounts`): hierarchical accounts up to 4 levels; account types: `ASSET`, `LIABILITY`, `EQUITY`, `REVENUE`, `EXPENSE`, `CGS`, `CURRENT_ACCOUNT`; create / edit / delete; system accounts are locked
-- **Journal Entries** (`/journal`): create balanced vouchers with multi-line debits/credits; statuses: `DRAFT` → `POSTED` / `CANCELLED`; support attachments; post to ledger; reverse entries; grouped by period (YYYY-MM)
+- **Journal Entries** (`/journal`): create balanced vouchers with multi-line debits/credits; statuses: `DRAFT` → `POSTED` / `CANCELLED`; support attachments; post to ledger; reverse entries; grouped by period (YYYY-MM); Excel import for historical journal entries. Import accepts either line-based rows (`Voucher No`, `Date`, `Description`, `Account Code`, `Debit`, `Credit`) or paired rows (`Date`, `Description`, `Debit Account Code`, `Credit Account Code`, `Amount`). Imported entries are saved as Pending/DRAFT for review before posting.
 - **General Ledger** (`/ledger`): account activity with running balances; filter by account, account type, period, date range
 - **HKFRS Reports** (`/reports`): trial balance, income statement (P&L), balance sheet, cash flow statement; support multi-currency with exchange rates (HKD / USD / RMB)
 - **Consolidated Report Groups** (on selector page): named portfolios grouping multiple companies for consolidated reporting; create / delete groups; groups do not own journal entries (reporting only)
@@ -213,10 +213,13 @@ Product formulation management.
 - Line items: raw materials or component recipes (nested), with quantity, unit price, percentage
 - Automatic cost calculation; refresh prices from latest material pricing
 - Link to factory products; mark recipe as active/used
+- Print recipe: prints complete recipe sheet (materials, quantities, percentages, costs, production requirements)
+- Packaging requirements field has quick-select presets: 200目、300目、400目、色装机
+- Material rows can be reordered by drag-and-drop; new order is auto-saved immediately
 
 ### Color Matching Formulas (`/admin/cosmocoat-color-formulas`)
 Custom color formulations for specific customers or products.
-- Categories: `PU`, `BAKING_PAINT`, `HT_BAKING_PAINT`, `LT_BAKING_PAINT`
+- Categories shown to users: PU, 色漆, 烤漆; stored enum identifiers remain `PU`, `BAKING_PAINT`, `HT_BAKING_PAINT` (legacy `LT_BAKING_PAINT` records may still exist)
 - Scope: product-specific (linked to a factory product) or category-wide
 - Fields: formula code, name, source recipe, color code, customer name, target color, batch quantity
 - Line items: raw materials with quantity, percentage, unit price
@@ -227,6 +230,7 @@ Manufacturing batch tracking.
 - Fields: order code, factory product, recipe, total weight, batch number
 - Statuses: `DRAFT` → `IN_PROGRESS` → `COMPLETED`
 - Line items: raw materials with required weight and actual weight used
+- Print production order: A4 sheet with enlarged text, no page header, and a material table that omits material names while keeping material codes, ratios, required weight, and actual weight
 - Production / quality / packaging notes and requirements
 - Output: creates semifinished product inventory entries on completion
 
