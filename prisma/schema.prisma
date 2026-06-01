@@ -266,6 +266,7 @@ model User {
   createdProcessKits CosProcessKit[]  @relation("ProcessKitCreator")
   updatedProcessKits CosProcessKit[]  @relation("ProcessKitUpdater")
   testedProcessKits  CosProcessTest[] @relation("ProcessTestTester")
+  featureRequests    FeatureRequest[] @relation("FeatureRequestSubmitter")
 
   @@map("users")
 }
@@ -1901,4 +1902,50 @@ model ExchangeRate {
   @@unique([fromCurrency, toCurrency, effectiveDate])
   @@index([fromCurrency, toCurrency])
   @@map("adv_exchange_rates")
+}
+
+// ─────────────────────────────────────────────
+// FEEDBACK / REQUIREMENTS PLUGIN
+// ─────────────────────────────────────────────
+
+enum FeatureRequestStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  REJECTED
+}
+
+model FeedbackConfig {
+  id            String   @id @default("singleton") // always one row
+  provider      String   @default("anthropic")     // anthropic | deepseek | alibaba
+  model         String   @default("claude-opus-4-5")
+  // API keys stored in DB (overrides env vars when set)
+  anthropicKey  String   @default("")
+  deepseekKey   String   @default("")
+  alibabaKey    String   @default("")
+  updatedAt     DateTime @updatedAt
+
+  @@map("adv_feedback_config")
+}
+
+model FeatureRequest {
+  id           String               @id @default(cuid())
+  pageUrl      String               // page where the request was submitted
+  pageTitle    String               @default("")
+  title        String               @default("")  // LLM-confirmed title
+  summary      String               // LLM-confirmed requirement summary
+  priority     String               @default("medium") // low | medium | high
+  conversation Json                 // full chat history for reference
+  status       FeatureRequestStatus @default(PENDING)
+  userId       String?
+  userEmail    String?
+  userName     String?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  user         User?                @relation("FeatureRequestSubmitter", fields: [userId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([userId])
+  @@map("adv_feature_requests")
 }

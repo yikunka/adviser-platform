@@ -6,6 +6,7 @@ import { usePathname, useParams, useRouter } from 'next/navigation'
 import { Link } from '@/i18n/navigation'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
+import { FeedbackWidget } from '@/components/feedback/FeedbackWidget'
 import {
   LayoutDashboard,
   Building2,
@@ -33,6 +34,7 @@ import {
   Palette,
   WalletCards,
   FileBarChart,
+  MessageSquarePlus,
 } from 'lucide-react'
 import type { AdminMenuKey } from '@/lib/auth/admin-access'
 import { pathnameToAdminMenuKey, adminMenusAllow } from '@/lib/auth/admin-access'
@@ -265,6 +267,25 @@ export default function AdminShell({
           })}
         </nav>
 
+        {/* Feedback plugin — SUPER_ADMIN only */}
+        {userRole === 'SUPER_ADMIN' && (
+          <div className="px-3 pb-2">
+            <Link
+              href="/admin/feedback"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-semibold transition-all"
+              style={{
+                background: pathname.includes('/admin/feedback') ? 'var(--sidebar-accent)' : 'transparent',
+                color: pathname.includes('/admin/feedback') ? '#C9A96E' : 'var(--sidebar-foreground)',
+                opacity: 0.9,
+              }}
+            >
+              <MessageSquarePlus size={15} strokeWidth={1.5} style={{ flexShrink: 0 }} />
+              <span>需求迭代</span>
+            </Link>
+          </div>
+        )}
+
         <div className="mx-4" style={{ height: '1px', background: 'var(--sidebar-border)' }} />
 
         <div className="px-3 py-4 space-y-1">
@@ -363,6 +384,8 @@ export default function AdminShell({
           </AdminRouteGuard>
         </main>
       </div>
+      {/* Feedback / requirements widget — visible on all admin pages */}
+      <FeedbackWidget />
     </div>
   )
 }

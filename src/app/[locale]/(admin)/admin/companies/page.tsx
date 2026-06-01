@@ -16,6 +16,7 @@ type Company = {
   companyNumber: string
   status: string
   serviceTier?: string
+  financialEnabled: boolean
   annualReturnDate?: string
   assignedStaff?: { nameEn: string }
   clientUser?: { nameEn: string; email: string }
@@ -36,6 +37,7 @@ export default function CompaniesPage() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [updatingFinancialId, setUpdatingFinancialId] = useState<string | null>(null)
 
   const fetchCompanies = useCallback(async () => {
     setLoading(true)
@@ -51,6 +53,27 @@ export default function CompaniesPage() {
       setLoading(false)
     }
   }, [search, page])
+
+  async function toggleFinancialModule(company: Company, enabled: boolean) {
+    const previous = company.financialEnabled
+    setUpdatingFinancialId(company.id)
+    setCompanies(current => current.map(row => row.id === company.id ? { ...row, financialEnabled: enabled } : row))
+
+    try {
+      const res = await fetch(`/api/admin/companies/${company.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ financialEnabled: enabled }),
+      })
+      if (!res.ok) throw new Error('Failed to update financial module')
+      toast.success(enabled ? t('financialEnabledOn') : t('financialEnabledOff'))
+    } catch {
+      setCompanies(current => current.map(row => row.id === company.id ? { ...row, financialEnabled: previous } : row))
+      toast.error(t('financialToggleFailed'))
+    } finally {
+      setUpdatingFinancialId(null)
+    }
+  }
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchCompanies updates state after the async request resolves.
   useEffect(() => { fetchCompanies() }, [fetchCompanies])
@@ -83,15 +106,16 @@ export default function CompaniesPage() {
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('companyNumber')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('status')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('client')}</th>
+                <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('financialModule')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('arDate')}</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-[#2A2418]">
               {loading ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>Loading...</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>Loading...</td></tr>
               ) : companies.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>{t('empty')}</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>{t('empty')}</td></tr>
               ) : companies.map(c => (
                 <tr
                   key={c.id}
@@ -114,6 +138,32 @@ export default function CompaniesPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>{c.clientUser?.nameEn ?? '—'}</td>
+                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={c.financialEnabled}
+                      aria-label={`${t('financialModule')}: ${c.nameEn}`}
+                      disabled={updatingFinancialId === c.id}
+                      onClick={e => {
+                        e.stopPropagation()
+                        void toggleFinancialModule(c, !c.financialEnabled)
+                      }}
+                      className="inline-flex h-6 w-11 items-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                      style={{
+                        borderColor: c.financialEnabled ? '#C9A96E' : '#2A2418',
+                        background: c.financialEnabled ? 'rgba(201,169,110,0.35)' : '#0E0E0A',
+                      }}
+                    >
+                      <span
+                        className="block size-4 rounded-full transition-transform"
+                        style={{
+                          transform: c.financialEnabled ? 'translateX(22px)' : 'translateX(3px)',
+                          background: c.financialEnabled ? '#C9A96E' : '#7A7060',
+                        }}
+                      />
+                    </button>
+                  </td>
                   <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
                     {c.annualReturnDate ? new Date(c.annualReturnDate).toLocaleDateString() : '—'}
                   </td>
