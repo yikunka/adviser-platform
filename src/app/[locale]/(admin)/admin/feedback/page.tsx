@@ -21,6 +21,7 @@ import {
   Eye,
   EyeOff,
   Zap,
+  ClipboardCopy,
 } from 'lucide-react'
 import { PROVIDER_OPTIONS, MODEL_OPTIONS, type Provider } from '@/lib/feedback/options'
 
@@ -337,6 +338,33 @@ function ConfigTab() {
   )
 }
 
+// ── Dev prompt builder ─────────────────────────────────────────────────────
+
+function buildDevPrompt(item: FeatureRequest, conversation: ChatMessage[] = []): string {
+  const priorityLabel = { low: '低', medium: '中', high: '高' }[item.priority] ?? item.priority
+  const userQuotes = conversation
+    .filter(m => m.role === 'user' && m.content.trim())
+    .map(m => `> ${m.content.trim()}`)
+    .join('\n')
+
+  return [
+    '## 开发任务',
+    '',
+    `**需求标题**：${item.title}`,
+    `**优先级**：${priorityLabel}`,
+    `**来源页面**：${item.pageUrl}${item.pageTitle ? ` (${item.pageTitle})` : ''}`,
+    `**提交人**：${item.userName || item.userEmail || '未知'}`,
+    '',
+    '**需求描述**：',
+    item.summary,
+    '',
+    ...(userQuotes ? ['**用户原话**：', userQuotes, ''] : []),
+    '---',
+    '参考 `src/lib/feedback/system-knowledge.md` 了解系统现有功能上下文。',
+    '完成后请将此需求在 /admin/feedback 标记为「已完成」，并同步更新 `src/lib/feedback/system-knowledge.md`。',
+  ].join('\n')
+}
+
 // ── Requirements Tab ───────────────────────────────────────────────────────
 
 function RequirementsTab() {
@@ -385,7 +413,22 @@ function RequirementsTab() {
 
   useEffect(() => { fetchItems() }, [fetchItems])
 
-  async function updateStatus(id: string, status: string) {
+  async function copyDevPrompt(item: FeatureRequest, conversation: ChatMessage[] = []) {
+    try {
+      await navigator.clipboard.writeText(buildDevPrompt(item, conversation))
+    } catch {
+      toast.error('无法访问剪贴板，请检查浏览器权限')
+      return
+    }
+    if (item.status === 'PENDING') {
+      await updateStatus(item.id, 'IN_PROGRESS', true)
+      toast.success('已复制到剪贴板，状态已更新为「处理中」')
+    } else {
+      toast.success('已复制到剪贴板')
+    }
+  }
+
+  async function updateStatus(id: string, status: string, silent = false) {
     setUpdatingId(id)
     try {
       const res = await fetch(`/api/admin/feedback/${id}`, {
@@ -397,7 +440,7 @@ function RequirementsTab() {
       if (!res.ok) throw new Error(data.error || '更新失败')
       setItems(prev => prev.map(item => item.id === id ? { ...item, status: status as FeatureRequest['status'] } : item))
       if (detailItem?.id === id) setDetailItem(prev => prev ? { ...prev, status: status as FeatureRequestDetail['status'] } : prev)
-      toast.success('状态已更新')
+      if (!silent) toast.success('状态已更新')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '更新失败')
     } finally {
@@ -516,9 +559,20 @@ function RequirementsTab() {
                         </Select>
                       </TableCell>
                       <TableCell onClick={e => e.stopPropagation()}>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openDetail(item)}>
-                          <ExternalLink size={13} className="text-muted-foreground" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            title="复制为开发提示词"
+                            onClick={() => copyDevPrompt(item)}
+                          >
+                            <ClipboardCopy size={13} className="text-muted-foreground" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openDetail(item)}>
+                            <ExternalLink size={13} className="text-muted-foreground" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   )
@@ -616,6 +670,20 @@ function RequirementsTab() {
                   </div>
                 )}
               </div>
+
+              {/* Copy prompt */}
+              <Button
+                size="sm"
+                className="w-full"
+                style={{ background: '#C9A96E', color: '#0A0805' }}
+                onClick={() => copyDevPrompt(detailItem, detailItem.conversation)}
+              >
+                <ClipboardCopy size={14} className="mr-2" />
+                复制为开发提示词
+                {detailItem.status === 'PENDING' && (
+                  <span className="ml-2 text-xs opacity-70">· 自动标记为处理中</span>
+                )}
+              </Button>
 
               {/* Status */}
               <div>
