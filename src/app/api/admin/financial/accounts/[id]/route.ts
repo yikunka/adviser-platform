@@ -99,18 +99,28 @@ export async function DELETE(
   const { id } = await params
   const before = await prisma.finAccount.findUnique({
     where: { id },
-    include: { _count: { select: { journalLines: true, ledgerEntries: true } } },
+    include: { _count: { select: { journalLines: true } } },
   })
   if (!before) return apiError('Account not found.', 404)
   if (!before.companyId) return apiError('Legacy shared accounts cannot be deleted from a company ledger.', 400)
   const access = await resolveCompanyAccess(session.user.id, session.user.role)
   if (!(await assertCompanyAccessible(access, before.companyId))) return apiError('Forbidden', 403)
   if (before.isSystem) return apiError('System accounts cannot be deleted.', 400)
-  if (before._count.journalLines > 0 || before._count.ledgerEntries > 0) {
-    return apiError('Account has journal or ledger activity and cannot be deleted.', 409)
+  if (before._count.journalLines > 0) {
+    return apiError('Account has journal entries and cannot be deleted.', 409)
+  }
+  const nonOpeningLedgerEntries = await prisma.ledger.count({
+    where: { accountId: id, entryId: { not: null } },
+  })
+  if (nonOpeningLedgerEntries > 0) {
+    return apiError('Account has posted journal activity and cannot be deleted.', 409)
   }
 
-  await prisma.finAccount.delete({ where: { id } })
+  await prisma.$transaction(async tx => {
+    await tx.accountBalance.deleteMany({ where: { accountId: id } })
+    await tx.ledger.deleteMany({ where: { accountId: id, entryId: null } })
+    await tx.finAccount.delete({ where: { id } })
+  })
   await logAudit(session.user.id, 'DELETE', 'FinAccount', id, before, null)
   return NextResponse.json({ success: true, message: 'Account deleted.', toast: 'Account deleted.' })
 }
