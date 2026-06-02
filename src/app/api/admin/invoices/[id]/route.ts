@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import type { UserRole } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
@@ -31,9 +32,18 @@ async function loadInvoice(id: string) {
     include: {
       lineItems: { orderBy: { sortOrder: 'asc' } },
       company: { select: { id: true, nameEn: true, companyCode: true, companyNumber: true } },
+      keyPerson: { select: { id: true, nameEn: true, kycCode: true, idType: true, idNumber: true } },
       createdBy: { select: { id: true, nameEn: true, email: true } },
     },
   })
+}
+
+async function assertInvoiceAccessible(invoice: Awaited<ReturnType<typeof loadInvoice>>, userId: string, userRole: UserRole) {
+  if (!invoice) return false
+  if (invoice.customerType === 'INDIVIDUAL') return true
+  if (!invoice.companyId) return false
+  const access = await resolveCompanyAccess(userId, userRole)
+  return assertCompanyAccessible(access, invoice.companyId)
 }
 
 export async function GET(
@@ -47,8 +57,7 @@ export async function GET(
   const invoice = await loadInvoice(id)
   if (!invoice) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
-  if (!(await assertCompanyAccessible(access, invoice.companyId))) {
+  if (!(await assertInvoiceAccessible(invoice, session!.user.id, session!.user.role))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -66,8 +75,7 @@ export async function PATCH(
   const before = await loadInvoice(id)
   if (!before) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
-  if (!(await assertCompanyAccessible(access, before.companyId))) {
+  if (!(await assertInvoiceAccessible(before, session!.user.id, session!.user.role))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -142,6 +150,7 @@ export async function PATCH(
       include: {
         lineItems: { orderBy: { sortOrder: 'asc' } },
         company: { select: { id: true, nameEn: true, companyCode: true, companyNumber: true } },
+        keyPerson: { select: { id: true, nameEn: true, kycCode: true, idType: true, idNumber: true } },
         createdBy: { select: { nameEn: true } },
       },
     })
@@ -162,8 +171,7 @@ export async function DELETE(
   const before = await loadInvoice(id)
   if (!before) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
-  if (!(await assertCompanyAccessible(access, before.companyId))) {
+  if (!(await assertInvoiceAccessible(before, session!.user.id, session!.user.role))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

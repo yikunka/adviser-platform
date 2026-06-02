@@ -17,12 +17,19 @@ export async function GET(
     include: {
       lineItems: { orderBy: { sortOrder: 'asc' } },
       company: { select: { nameEn: true, companyCode: true, companyNumber: true } },
+      keyPerson: { select: { nameEn: true, kycCode: true, idType: true, idNumber: true } },
     },
   })
   if (!invoice) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
-  if (!(await assertCompanyAccessible(access, invoice.companyId))) {
+  if (invoice.customerType === 'COMPANY') {
+    if (!invoice.companyId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
+    if (!(await assertCompanyAccessible(access, invoice.companyId))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+  }
+  if (invoice.customerType === 'INDIVIDUAL' && !invoice.keyPersonId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

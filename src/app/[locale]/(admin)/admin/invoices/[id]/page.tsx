@@ -34,7 +34,9 @@ type InvoiceDetail = {
   taxAmount: string
   total: string
   notes?: string | null
-  company: { id: string; nameEn: string; companyCode?: string | null; companyNumber?: string | null }
+  customerType: 'COMPANY' | 'INDIVIDUAL'
+  company?: { id: string; nameEn: string; companyCode?: string | null; companyNumber?: string | null } | null
+  keyPerson?: { id: string; nameEn: string; kycCode?: string | null; idType?: string | null; idNumber?: string | null } | null
   createdBy: { nameEn: string }
   lineItems: LineItem[]
 }
@@ -137,9 +139,17 @@ export default function InvoiceDetailPage() {
       <Card>
         <CardHeader><CardTitle>{t('clientSection')}</CardTitle></CardHeader>
         <CardContent className="space-y-2 text-sm">
-          <p><span className="font-medium">{t('company')}:</span> {invoice.company.nameEn}
-            {invoice.company.companyCode && ` (${invoice.company.companyCode})`}
-          </p>
+          <p><span className="font-medium">{t('customerType')}:</span> {invoice.customerType === 'COMPANY' ? t('companyCustomer') : t('individualCustomer')}</p>
+          {invoice.company && (
+            <p><span className="font-medium">{t('company')}:</span> {invoice.company.nameEn}
+              {invoice.company.companyCode && ` (${invoice.company.companyCode})`}
+            </p>
+          )}
+          {invoice.keyPerson && (
+            <p><span className="font-medium">{t('kycIdentity')}:</span> {invoice.keyPerson.nameEn}
+              {invoice.keyPerson.kycCode && ` (${invoice.keyPerson.kycCode})`}
+            </p>
+          )}
           <p><span className="font-medium">{t('billTo')}:</span> {invoice.billToName}</p>
           {invoice.billToAddress && <p style={{ color: 'var(--muted-foreground)' }}>{invoice.billToAddress}</p>}
           {invoice.billToEmail && <p style={{ color: 'var(--muted-foreground)' }}>{invoice.billToEmail}</p>}

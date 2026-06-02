@@ -3,7 +3,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { type ChangeEvent, useCallback, useEffect, useRef, useState } from 'react'
-import { Eye, Pencil, Trash2, Plus, CheckCircle, Upload } from 'lucide-react'
+import { Ban, Eye, Pencil, Trash2, Plus, CheckCircle, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -126,6 +126,20 @@ export default function AdminFinancialJournalPage() {
       await fetchEntries()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '取消日记账失败。')
+    }
+  }
+
+  async function hardDeleteEntry(entry: JournalEntry) {
+    if (!confirm(`确定彻底删除日记账 ${entry.voucherNo}？此操作会永久删除记录和分录，不能恢复。`)) return
+
+    try {
+      const res = await fetch(`/api/admin/financial/journal-entries/${entry.id}/hard-delete`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.toast || data.error || '彻底删除日记账失败。')
+      toast.success(data.toast || '日记账已彻底删除。')
+      await fetchEntries()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '彻底删除日记账失败。')
     }
   }
 
@@ -335,15 +349,27 @@ export default function AdminFinancialJournalPage() {
                         >
                           <Pencil size={15} className="text-muted-foreground" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 hover:text-red-500"
-                          onClick={() => cancelEntry(entry)}
-                          disabled={entry.status === 'CANCELLED'}
-                        >
-                          <Trash2 size={15} />
-                        </Button>
+                        {entry.status === 'CANCELLED' ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:text-red-500"
+                            title="彻底删除"
+                            onClick={() => hardDeleteEntry(entry)}
+                          >
+                            <Trash2 size={15} />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:text-red-500"
+                            title="取消日记账"
+                            onClick={() => cancelEntry(entry)}
+                          >
+                            <Ban size={15} />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

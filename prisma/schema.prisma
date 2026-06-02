@@ -217,6 +217,11 @@ enum InvoiceStatus {
   CANCELLED
 }
 
+enum InvoiceCustomerType {
+  COMPANY
+  INDIVIDUAL
+}
+
 // ─────────────────────────────────────────────
 // USERS & AUTH
 // ─────────────────────────────────────────────
@@ -591,6 +596,7 @@ model KeyPerson {
   kycApprovedBy User?              @relation("KYCReviewer", fields: [kycApprovedById], references: [id])
   kycDocuments  KYCDocument[]
   companyLinks  CompanyKeyPerson[]
+  invoices      Invoice[]
   amlChecks     AMLCheck[]         @relation("KeyPersonAMLCheck")
   directors     Director[]
   members       Member[]
@@ -955,7 +961,9 @@ model ServiceOrder {
 model Invoice {
   id            String        @id @default(cuid())
   invoiceNumber String        @unique
-  companyId     String
+  customerType  InvoiceCustomerType @default(COMPANY)
+  companyId     String?
+  keyPersonId   String?
   status        InvoiceStatus @default(DRAFT)
   issueDate     DateTime
   dueDate       DateTime?
@@ -972,11 +980,14 @@ model Invoice {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  company   Company           @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  company   Company?          @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  keyPerson KeyPerson?        @relation(fields: [keyPersonId], references: [id], onDelete: Restrict)
   createdBy User              @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
   lineItems InvoiceLineItem[]
 
   @@index([companyId])
+  @@index([keyPersonId])
+  @@index([customerType])
   @@index([status])
   @@index([issueDate])
   @@map("invoices")

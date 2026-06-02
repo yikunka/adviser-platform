@@ -73,7 +73,7 @@ Full double-entry accounting system per client company, compliant with HKFRS.
 Sub-pages (all scoped to a selected company or at `/admin/financial/[companyId]/`):
 
 - **Chart of Accounts** (`/accounts`): hierarchical accounts up to 4 levels; account types: `ASSET`, `LIABILITY`, `EQUITY`, `REVENUE`, `EXPENSE`, `CGS`, `CURRENT_ACCOUNT`; create / edit / delete; system accounts are locked; account creation supports opening debit or opening credit balances by period
-- **Journal Entries** (`/journal`): create balanced vouchers with multi-line debits/credits; statuses: `DRAFT` → `POSTED` / `CANCELLED`; support attachments; post to ledger; reverse entries; grouped by period (YYYY-MM); Excel import for historical journal entries. Import accepts either line-based rows (`Voucher No`, `Date`, `Description`, `Account Code`, `Debit`, `Credit`) or paired rows (`Date`, `Description`, `Debit Account Code`, `Credit Account Code`, `Amount`). Imported entries are saved as Pending/DRAFT for review before posting.
+- **Journal Entries** (`/journal`): create balanced vouchers with multi-line debits/credits; statuses: `DRAFT` → `POSTED` / `CANCELLED`; support attachments; post to ledger; cancel/reverse entries; permanently delete already-cancelled entries to remove the voucher and its lines instead of keeping a cancelled record; grouped by period (YYYY-MM); Excel import for historical journal entries. Import accepts either line-based rows (`Voucher No`, `Date`, `Description`, `Account Code`, `Debit`, `Credit`) or paired rows (`Date`, `Description`, `Debit Account Code`, `Credit Account Code`, `Amount`). Imported entries are saved as Pending/DRAFT for review before posting.
 - **General Ledger** (`/ledger`): account activity with running balances; entries are grouped by account code and sorted by date within each account; filter by account, account type, period, date range
 - **HKFRS Reports** (`/reports`): trial balance, income statement (P&L), balance sheet, cash flow statement; supports exporting all four statements into one Excel workbook; support multi-currency with exchange rates (HKD / USD / RMB)
 - **Consolidated Report Groups** (on selector page): named portfolios grouping multiple companies for consolidated reporting; create / delete groups; groups do not own journal entries (reporting only)
@@ -271,7 +271,7 @@ Same double-entry accounting structure as Adviser (chart of accounts, journal en
 - Upload via module-specific endpoints; download via signed URLs
 
 ### Audit Log
-- Append-only `audit_logs` table records all CREATE / UPDATE / DELETE actions with actor, resource type, resource ID, before/after snapshots
+- Append-only `audit_logs` table records standard CREATE / UPDATE / DELETE actions with actor, resource type, resource ID, before/after snapshots; journal-entry permanent delete is an explicit cleanup action for already-cancelled vouchers and does not retain the deleted voucher snapshot.
 
 ### Cron Jobs
 - Scheduled AML screening runs

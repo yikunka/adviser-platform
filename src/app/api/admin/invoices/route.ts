@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import type { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
@@ -7,7 +8,7 @@ import {
   buildCompanyAccessWhere,
   resolveCompanyAccess,
 } from '@/lib/company-access'
-import { companyBillingSnapshot } from '@/lib/invoice/company-billing'
+import { companyBillingSnapshot, keyPersonBillingSnapshot } from '@/lib/invoice/company-billing'
 import { computeTotals, toMoney, toQuantity, toTaxRate } from '@/lib/invoice/calc'
 import { nextInvoiceNumber } from '@/lib/invoice/number'
 import { z } from 'zod'
@@ -19,7 +20,9 @@ const lineSchema = z.object({
 })
 
 const createSchema = z.object({
-  companyId: z.string().cuid(),
+  customerType: z.enum(['COMPANY', 'INDIVIDUAL']).default('COMPANY'),
+  companyId: z.string().cuid().optional().nullable(),
+  keyPersonId: z.string().cuid().optional().nullable(),
   issueDate: z.string(),
   dueDate: z.string().optional().nullable(),
   currency: z.string().min(3).max(3).default('HKD'),
@@ -50,19 +53,25 @@ export async function GET(req: NextRequest) {
   }
 
   const companyFilter = buildCompanyAccessWhere(access)
-  const where = {
-    ...(companyId ? { companyId } : {}),
-    ...(status ? { status: status as 'DRAFT' | 'SENT' | 'PAID' | 'CANCELLED' } : {}),
-    ...(companyFilter ? { company: companyFilter } : {}),
-    ...(search
-      ? {
-          OR: [
-            { invoiceNumber: { contains: search, mode: 'insensitive' as const } },
-            { billToName: { contains: search, mode: 'insensitive' as const } },
-            { company: { nameEn: { contains: search, mode: 'insensitive' as const } } },
-          ],
-        }
-      : {}),
+  const where: Prisma.InvoiceWhereInput = {
+    AND: [
+      ...(companyFilter
+        ? [{ OR: [{ company: companyFilter }, { customerType: 'INDIVIDUAL' }] } satisfies Prisma.InvoiceWhereInput]
+        : []),
+      ...(companyId ? [{ companyId }] : []),
+      ...(status ? [{ status: status as 'DRAFT' | 'SENT' | 'PAID' | 'CANCELLED' }] : []),
+      ...(search
+        ? [{
+            OR: [
+              { invoiceNumber: { contains: search, mode: 'insensitive' as const } },
+              { billToName: { contains: search, mode: 'insensitive' as const } },
+              { company: { nameEn: { contains: search, mode: 'insensitive' as const } } },
+              { keyPerson: { nameEn: { contains: search, mode: 'insensitive' as const } } },
+              { keyPerson: { kycCode: { contains: search, mode: 'insensitive' as const } } },
+            ],
+          } satisfies Prisma.InvoiceWhereInput]
+        : []),
+    ],
   }
 
   const [invoices, total] = await Promise.all([
@@ -73,6 +82,7 @@ export async function GET(req: NextRequest) {
       orderBy: { issueDate: 'desc' },
       include: {
         company: { select: { id: true, nameEn: true, companyCode: true } },
+        keyPerson: { select: { id: true, nameEn: true, kycCode: true } },
         createdBy: { select: { nameEn: true } },
       },
     }),
@@ -93,12 +103,24 @@ export async function POST(req: NextRequest) {
   }
 
   const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
-  if (!(await assertCompanyAccessible(access, parsed.data.companyId))) {
+  const customerType = parsed.data.customerType
+  const companyId = customerType === 'COMPANY' ? parsed.data.companyId : null
+  const keyPersonId = customerType === 'INDIVIDUAL' ? parsed.data.keyPersonId : null
+  if (customerType === 'COMPANY' && !companyId) {
+    return NextResponse.json({ error: 'Company is required' }, { status: 400 })
+  }
+  if (customerType === 'INDIVIDUAL' && !keyPersonId) {
+    return NextResponse.json({ error: 'KYC person is required' }, { status: 400 })
+  }
+
+  if (companyId && !(await assertCompanyAccessible(access, companyId))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const billing = await companyBillingSnapshot(parsed.data.companyId)
-  if (!billing) return NextResponse.json({ error: 'Company not found' }, { status: 404 })
+  const billing = companyId
+    ? await companyBillingSnapshot(companyId)
+    : await keyPersonBillingSnapshot(keyPersonId!)
+  if (!billing) return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
 
   const issueDate = new Date(parsed.data.issueDate)
   const dueDate = parsed.data.dueDate ? new Date(parsed.data.dueDate) : null
@@ -112,7 +134,9 @@ export async function POST(req: NextRequest) {
   const invoice = await prisma.invoice.create({
     data: {
       invoiceNumber,
-      companyId: parsed.data.companyId,
+      customerType,
+      companyId,
+      keyPersonId,
       status: parsed.data.status ?? 'DRAFT',
       issueDate,
       dueDate,
@@ -141,6 +165,7 @@ export async function POST(req: NextRequest) {
     include: {
       lineItems: { orderBy: { sortOrder: 'asc' } },
       company: { select: { id: true, nameEn: true, companyCode: true, companyNumber: true } },
+      keyPerson: { select: { id: true, nameEn: true, kycCode: true, idType: true, idNumber: true } },
       createdBy: { select: { nameEn: true } },
     },
   })

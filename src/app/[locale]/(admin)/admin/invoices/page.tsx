@@ -19,7 +19,9 @@ type InvoiceRow = {
   total: string
   currency: string
   billToName: string
-  company: { id: string; nameEn: string; companyCode?: string | null }
+  customerType: 'COMPANY' | 'INDIVIDUAL'
+  company?: { id: string; nameEn: string; companyCode?: string | null } | null
+  keyPerson?: { id: string; nameEn: string; kycCode?: string | null } | null
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -99,7 +101,7 @@ export default function InvoicesPage() {
             <thead style={{ background: '#1A1A12', borderBottom: '1px solid #2A2418' }}>
               <tr>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('invoiceNumber')}</th>
-                <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('company')}</th>
+                <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('customer')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('billTo')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('issueDate')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('total')}</th>
@@ -116,9 +118,16 @@ export default function InvoicesPage() {
                 <tr key={inv.id} className="hover:bg-[#1A1A12]/50">
                   <td className="px-4 py-3 font-mono text-xs">{inv.invoiceNumber}</td>
                   <td className="px-4 py-3">
-                    <div>{inv.company.nameEn}</div>
-                    {inv.company.companyCode && (
-                      <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{inv.company.companyCode}</div>
+                    <div>{inv.company?.nameEn ?? inv.keyPerson?.nameEn ?? inv.billToName}</div>
+                    <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                      {inv.customerType === 'COMPANY'
+                        ? (inv.company?.companyCode ?? t('companyCustomer'))
+                        : (inv.keyPerson?.kycCode ?? t('individualCustomer'))}
+                    </div>
+                    {inv.customerType === 'INDIVIDUAL' && (
+                      <span className="mt-1 inline-flex px-1.5 py-0.5 rounded text-[11px] bg-[rgba(201,169,110,0.12)] text-[#C9A96E]">
+                        {t('individualCustomer')}
+                      </span>
                     )}
                   </td>
                   <td className="px-4 py-3">{inv.billToName}</td>

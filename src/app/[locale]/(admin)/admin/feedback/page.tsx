@@ -499,7 +499,7 @@ function buildDevPrompt(item: FeatureRequest, conversation: ChatMessage[] = []):
     ...(userQuotes ? ['**用户原话**：', userQuotes, ''] : []),
     '---',
     '参考 `src/lib/feedback/system-knowledge.md` 了解系统现有功能上下文。',
-    '完成后请将此需求在 /admin/feedback 标记为「已完成」，并同步更新 `src/lib/feedback/system-knowledge.md`。',
+    '完成后请同步更新 `src/lib/feedback/system-knowledge.md`。',
   ].join('\n')
 }
 
@@ -530,7 +530,6 @@ function buildBatchDevPrompt(items: FeatureRequest[]): string {
     '## 执行规则',
     '',
     '- 按任务编号顺序执行，完成一个再开始下一个',
-    '- 每完成一个任务，在 /admin/feedback 将对应需求状态更新为「已完成」',
     '- 每完成一个任务，检查是否需要更新 `src/lib/feedback/system-knowledge.md`',
     '- 参考 `src/lib/feedback/system-knowledge.md` 了解系统现有功能上下文',
   ].join('\n')

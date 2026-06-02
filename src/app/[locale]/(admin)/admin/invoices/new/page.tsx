@@ -9,7 +9,16 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { computeTotals } from '@/lib/invoice/calc'
 
-type CompanyOption = { id: string; nameEn: string; companyCode?: string | null }
+type CustomerType = 'COMPANY' | 'INDIVIDUAL'
+type CustomerOption = {
+  type: CustomerType
+  id: string
+  label: string
+  subtitle?: string | null
+  billToName: string
+  billToAddress?: string | null
+  billToEmail?: string | null
+}
 type LineRow = { description: string; quantity: string; unitPrice: string }
 
 const emptyLine = (): LineRow => ({ description: '', quantity: '1', unitPrice: '0' })
@@ -17,8 +26,9 @@ const emptyLine = (): LineRow => ({ description: '', quantity: '1', unitPrice: '
 export default function NewInvoicePage() {
   const t = useTranslations('admin.invoices')
   const router = useRouter()
-  const [companies, setCompanies] = useState<CompanyOption[]>([])
-  const [companyId, setCompanyId] = useState('')
+  const [customers, setCustomers] = useState<CustomerOption[]>([])
+  const [customerType, setCustomerType] = useState<CustomerType>('COMPANY')
+  const [customerId, setCustomerId] = useState('')
   const [billToName, setBillToName] = useState('')
   const [billToAddress, setBillToAddress] = useState('')
   const [billToEmail, setBillToEmail] = useState('')
@@ -30,25 +40,25 @@ export default function NewInvoicePage() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    fetch('/api/admin/invoices/companies')
+    fetch('/api/admin/invoices/customers')
       .then(r => r.json())
-      .then(json => setCompanies(json.companies ?? []))
+      .then(json => setCustomers(json.customers ?? []))
       .catch(() => toast.error(t('loadFailed')))
   }, [t])
 
   useEffect(() => {
-    if (!companyId) return
-    fetch(`/api/admin/invoices/company/${companyId}/billing`)
-      .then(r => r.json())
-      .then(json => {
-        if (json.billToName) setBillToName(json.billToName)
-        setBillToAddress(json.billToAddress ?? '')
-        setBillToEmail(json.billToEmail ?? '')
-      })
-      .catch(() => {})
-  }, [companyId])
+    const customer = customers.find(c => c.type === customerType && c.id === customerId)
+    if (!customer) return
+    setBillToName(customer.billToName)
+    setBillToAddress(customer.billToAddress ?? '')
+    setBillToEmail(customer.billToEmail ?? '')
+  }, [customerId, customerType, customers])
 
   const taxRate = useMemo(() => Math.max(0, parseFloat(taxRatePct) || 0) / 100, [taxRatePct])
+  const customerOptions = useMemo(
+    () => customers.filter(customer => customer.type === customerType),
+    [customerType, customers],
+  )
 
   const totals = useMemo(() => {
     const parsed = lines
@@ -68,8 +78,8 @@ export default function NewInvoicePage() {
   }
 
   async function handleSubmit(status: 'DRAFT' | 'SENT') {
-    if (!companyId) {
-      toast.error(t('companyRequired'))
+    if (!customerId) {
+      toast.error(t('customerRequired'))
       return
     }
     const lineItems = lines
@@ -91,7 +101,9 @@ export default function NewInvoicePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          companyId,
+          customerType,
+          companyId: customerType === 'COMPANY' ? customerId : null,
+          keyPersonId: customerType === 'INDIVIDUAL' ? customerId : null,
           issueDate,
           dueDate: dueDate || null,
           taxRate,
@@ -127,17 +139,37 @@ export default function NewInvoicePage() {
         <CardHeader><CardTitle>{t('clientSection')}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="text-sm font-medium block mb-1">{t('company')}</label>
+            <label className="text-sm font-medium block mb-1">{t('customerType')}</label>
             <select
-              value={companyId}
-              onChange={e => setCompanyId(e.target.value)}
+              value={customerType}
+              onChange={e => {
+                setCustomerType(e.target.value as CustomerType)
+                setCustomerId('')
+                setBillToName('')
+                setBillToAddress('')
+                setBillToEmail('')
+              }}
               className="w-full rounded-md px-3 py-2 text-sm"
               style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: '#F0EAD8' }}
             >
-              <option value="">{t('selectCompany')}</option>
-              {companies.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.companyCode ? `${c.companyCode} — ` : ''}{c.nameEn}
+              <option value="COMPANY">{t('companyCustomer')}</option>
+              <option value="INDIVIDUAL">{t('individualCustomer')}</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-medium block mb-1">{t('customer')}</label>
+            <select
+              value={customerId}
+              onChange={e => setCustomerId(e.target.value)}
+              className="w-full rounded-md px-3 py-2 text-sm"
+              style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: '#F0EAD8' }}
+            >
+              <option value="">
+                {customerType === 'COMPANY' ? t('selectCompany') : t('selectIndividual')}
+              </option>
+              {customerOptions.map(customer => (
+                <option key={`${customer.type}:${customer.id}`} value={customer.id}>
+                  {customer.subtitle ? `${customer.label} — ${customer.subtitle}` : customer.label}
                 </option>
               ))}
             </select>

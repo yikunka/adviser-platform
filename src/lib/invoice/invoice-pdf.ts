@@ -1,9 +1,10 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
-import type { Invoice, InvoiceLineItem, Company } from '@prisma/client'
+import type { Invoice, InvoiceLineItem, Company, KeyPerson } from '@prisma/client'
 
 export type InvoicePdfPayload = Invoice & {
   lineItems: InvoiceLineItem[]
-  company: Pick<Company, 'nameEn' | 'companyCode' | 'companyNumber'>
+  company: Pick<Company, 'nameEn' | 'companyCode' | 'companyNumber'> | null
+  keyPerson?: Pick<KeyPerson, 'nameEn' | 'kycCode' | 'idType' | 'idNumber'> | null
 }
 
 const ISSUER = {
@@ -117,13 +118,18 @@ export async function renderInvoicePdf(invoice: InvoicePdfPayload): Promise<Uint
   if (invoice.billToEmail) drawText(invoice.billToEmail, ML, 9, reg, GREY)
 
   y -= 8
-  const companyRef = [
-    invoice.company.companyCode && `Code: ${invoice.company.companyCode}`,
-    invoice.company.companyNumber && `CR No.: ${invoice.company.companyNumber}`,
-  ]
+  const customerRef = (invoice.company
+    ? [
+        invoice.company.companyCode && `Code: ${invoice.company.companyCode}`,
+        invoice.company.companyNumber && `CR No.: ${invoice.company.companyNumber}`,
+      ]
+    : [
+        invoice.keyPerson?.kycCode && `KYC: ${invoice.keyPerson.kycCode}`,
+        invoice.keyPerson?.idType && invoice.keyPerson?.idNumber && `${invoice.keyPerson.idType}: ${invoice.keyPerson.idNumber}`,
+      ])
     .filter(Boolean)
     .join(' · ')
-  if (companyRef) drawText(companyRef, ML, 8, reg, GREY)
+  if (customerRef) drawText(customerRef, ML, 8, reg, GREY)
 
   y -= 12
   page.drawLine({ start: { x: ML, y }, end: { x: W - MR, y }, thickness: 0.5, color: GOLD })
