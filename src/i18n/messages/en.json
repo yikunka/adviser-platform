@@ -682,6 +682,23 @@
       "pendingKyc": "Pending KYC",
       "amlAlerts": "Open AML Alerts",
       "upcomingAR": "AR Due in 30 Days",
+      "sfs": {
+        "title": "SFS Diamond Orders",
+        "subtitle": "Operational snapshot across memorial diamond commissions.",
+        "viewOrders": "View SFS orders",
+        "totalOrders": "Total orders",
+        "activeOrders": "Active orders",
+        "last30Days": "New in 30 days",
+        "statusDistribution": "Status distribution",
+        "orderCount": "Orders",
+        "statuses": {
+          "PENDING": "Pending",
+          "QUOTED": "Quoted",
+          "CONFIRMED": "Confirmed",
+          "COMPLETED": "Completed",
+          "CANCELLED": "Cancelled"
+        }
+      },
       "recentActivity": "Recent Activity",
       "noActivity": "No recent activity."
     },

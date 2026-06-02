@@ -682,6 +682,23 @@
       "pendingKyc": "待審KYC",
       "amlAlerts": "待處理AML警報",
       "upcomingAR": "30日內到期周年申報",
+      "sfs": {
+        "title": "SFS Diamond 訂單",
+        "subtitle": "快速查看紀念鑽石訂單營運狀況。",
+        "viewOrders": "查看 SFS 訂單",
+        "totalOrders": "總訂單數",
+        "activeOrders": "進行中訂單",
+        "last30Days": "近30日新增",
+        "statusDistribution": "狀態分布",
+        "orderCount": "訂單數",
+        "statuses": {
+          "PENDING": "待處理",
+          "QUOTED": "已報價",
+          "CONFIRMED": "已確認",
+          "COMPLETED": "已完成",
+          "CANCELLED": "已取消"
+        }
+      },
       "recentActivity": "最近活動",
       "noActivity": "暫無活動記錄。"
     },
