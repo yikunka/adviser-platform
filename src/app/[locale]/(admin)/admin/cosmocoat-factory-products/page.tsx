@@ -671,6 +671,7 @@ export default function AdminCosmoCoatFactoryProductsPage() {
                   <th style={th}>类别</th>
                   <th style={th}>单位</th>
                   <th style={th}>单价</th>
+                  <th style={th}>粘度</th>
                   <th style={{ ...th, textAlign: 'right' }}>配方成本</th>
                   <th style={th}>当前配方</th>
                   <th style={th}>关联配方</th>
@@ -689,6 +690,11 @@ export default function AdminCosmoCoatFactoryProductsPage() {
                     <td style={td}>{product.category?.name ?? '—'}</td>
                     <td style={td}>{product.unit}</td>
                     <td style={td}>{formatMoney(product.unitPrice, 2)}</td>
+                    <td style={td}>
+                      {product.viscosity != null
+                        ? `${product.viscosity} ${product.viscosityUnit ?? 'S'}`
+                        : '—'}
+                    </td>
                     <td style={{ ...td, fontFamily: 'monospace', textAlign: 'right' }}>
                       {product.currentRecipe?.unitCost != null
                         ? formatMoney(product.currentRecipe.unitCost, 2)

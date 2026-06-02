@@ -566,7 +566,7 @@ export default function CosmocoatColorFormulaDetailPage() {
                 style={inputStyle()}
               />
               <div
-                className="w-14 h-14 flex-shrink-0 rounded-xl border-2 shadow-sm"
+                className="w-[10.5rem] h-[10.5rem] flex-shrink-0 rounded-xl border-2 shadow-sm"
                 style={{
                   background: pantoneHex ?? 'transparent',
                   border: pantoneHex ? '2px solid rgba(255,255,255,0.2)' : '2px dashed #3A3020',

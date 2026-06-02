@@ -1,11 +1,7 @@
-import { readFileSync } from 'fs'
-import { join } from 'path'
 import {
   AlignmentType,
   BorderStyle,
   Document,
-  Header,
-  ImageRun,
   Packer,
   Paragraph,
   ShadingType,
@@ -17,7 +13,7 @@ import {
   VerticalAlign,
   WidthType,
 } from 'docx'
-import PizZip from 'pizzip'
+import { prisma } from '@/lib/db/prisma'
 import { getColorFormulaById, type FullColorFormula } from '@/lib/cosmocoat/color-formulas'
 import { computeItemPercentage } from '@/lib/cosmocoat/recipes'
 
@@ -25,11 +21,22 @@ const PAGE_WIDTH = 16838
 const PAGE_HEIGHT = 11906
 const PAGE_MARGIN = 1440
 const CONTENT_WIDTH = PAGE_WIDTH - PAGE_MARGIN * 2
-const TABLE_COLUMNS = [700, 1500, 1800, 1000, 1500, 1300, 1000, 900, 1000, 1000, 1258]
+const TABLE_COLUMNS = [700, 1500, 2800, 1200, 1000, 900, 1000, 1000, 2858]
 const THIN_BORDER = { style: BorderStyle.SINGLE, size: 4, color: '000000' }
 const BORDERS = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER }
 const CELL_MARGINS = { top: 90, bottom: 90, left: 90, right: 90 }
 const HEADER_SHADING = { fill: 'D9D9D9', type: ShadingType.CLEAR }
+
+type SourceRecipeProduction = {
+  stirringRequirements: string
+  packagingRequirements: string
+  productionNotes: string
+  notes: string
+} | null
+
+type PrintColorFormula = FullColorFormula & {
+  sourceRecipeProduction: SourceRecipeProduction
+}
 
 function text(value: string | number | null | undefined) {
   const normalized = value == null ? '' : String(value)
@@ -111,108 +118,67 @@ function table(rows: TableRow[]) {
   })
 }
 
-function header() {
-  let logo: Buffer | null = null
-  try {
-    const template = readFileSync(join(process.cwd(), 'templates', 'LM0019色漆+双固化.docx'))
-    const zip = new PizZip(template)
-    const image = zip.file('word/media/image1.png')?.asNodeBuffer()
-    logo = image ?? null
-  } catch {
-    logo = null
-  }
-
-  return new Header({
-    children: [
-      new Table({
-        width: { size: CONTENT_WIDTH, type: WidthType.DXA },
-        layout: TableLayoutType.FIXED,
-        borders: {
-          top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-          bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-          left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-          right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-          insideHorizontal: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-          insideVertical: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-        },
-        rows: [
-          new TableRow({
-            children: [
-              new TableCell({
-                borders: {},
-                width: { size: Math.round(CONTENT_WIDTH * 0.72), type: WidthType.DXA },
-                children: [
-                  p('销售公司:威柔新材料(广州)有限公司\n生产工厂:东莞华兴漆油有限公司\n地址: 广东省东莞市长安镇厦岗龙源街9号\n电话: 0769-85541701 网址:www.cosmocoat.cn', {
-                    size: 17,
-                  }),
-                ],
-              }),
-              new TableCell({
-                borders: {},
-                width: { size: Math.round(CONTENT_WIDTH * 0.28), type: WidthType.DXA },
-                children: [
-                  new Paragraph({
-                    alignment: AlignmentType.RIGHT,
-                    spacing: { before: 0, after: 0 },
-                    children: logo
-                      ? [new ImageRun({ type: 'png', data: logo, transformation: { width: 170, height: 65 } })]
-                      : [new TextRun({ text: 'Cosmocoat', bold: true, size: 26, font: 'Arial' })],
-                  }),
-                ],
-              }),
-            ],
-          }),
-        ],
-      }),
-    ],
-  })
-}
-
-function infoTable(formula: FullColorFormula) {
+function infoTable(formula: PrintColorFormula) {
   const factoryProduct = formula.factoryProduct
     ? `${formula.factoryProduct.productCode} ${formula.factoryProduct.name}`
     : formula.categoryLabel
   const sourceRecipe = formula.sourceRecipe
     ? `${formula.sourceRecipe.code} ${formula.sourceRecipe.name}`
     : '/'
+  const half = CONTENT_WIDTH / 2
 
   return table([
     new TableRow({
       children: [
-        cell(`调色配方: ${text(formula.name)}\n客户: ${text(formula.customerName)}`, CONTENT_WIDTH / 2, {
-          bold: true,
-          size: 20,
-        }),
-        cell(`工艺号:${text(formula.code)}\n色号:${text(formula.colorCode || formula.targetColor)}`, CONTENT_WIDTH / 2, {
-          bold: true,
-          size: 20,
-        }),
+        cell(`配方编号: ${text(formula.code)}`, half, { bold: true, size: 19 }),
+        cell(`配方名称: ${text(formula.name)}`, half, { bold: true, size: 19 }),
       ],
     }),
     new TableRow({
       children: [
-        cell(`素材/适用产品: ${text(factoryProduct)}`, CONTENT_WIDTH / 2, { size: 18 }),
-        cell(`来源配方: ${sourceRecipe}\n基准批量: ${fixed(formula.batchQuantity)} kg`, CONTENT_WIDTH / 2, { size: 18 }),
+        cell(`类别: ${text(formula.categoryLabel)}`, half, { size: 18 }),
+        cell(`客户: ${text(formula.customerName)}`, half, { size: 18 }),
+      ],
+    }),
+    new TableRow({
+      children: [
+        cell(`色号 (PANTONE/HEX): ${text(formula.colorCode)}`, half, { size: 18 }),
+        cell(`目标色: ${text(formula.targetColor)}`, half, { size: 18 }),
+      ],
+    }),
+    new TableRow({
+      children: [
+        cell(`适用产品: ${text(factoryProduct)}`, half, { size: 18 }),
+        cell(`来源配方: ${sourceRecipe}`, half, { size: 18 }),
+      ],
+    }),
+    new TableRow({
+      children: [
+        cell(`基准批量: ${fixed(formula.batchQuantity)} kg`, half, { size: 18 }),
+        cell(`成本单价: ${money(formula.unitCost)} 元/kg`, half, { size: 18 }),
+      ],
+    }),
+    new TableRow({
+      children: [
+        cell(`备注: ${text(formula.notes)}`, CONTENT_WIDTH, { size: 18 }),
       ],
     }),
   ])
 }
 
-function formulaRows(formula: FullColorFormula) {
+function formulaRows(formula: PrintColorFormula) {
   const rows = [
     new TableRow({
       tableHeader: true,
       children: [
-        '工序',
+        '序号',
         '生产编号',
         '原料/产品名称',
         '属性/色号',
-        '来源配方',
-        '客户',
         '用量(kg)',
         '占比',
-        '单价',
-        '金额',
+        '单价(元)',
+        '金额(元)',
         '备注',
       ].map((label, index) => cell(label, TABLE_COLUMNS[index]!, {
         bold: true,
@@ -232,10 +198,6 @@ function formulaRows(formula: FullColorFormula) {
     return rows
   }
 
-  const sourceRecipe = formula.sourceRecipe
-    ? `${formula.sourceRecipe.code} ${formula.sourceRecipe.name}`
-    : ''
-
   formula.items.forEach((item, index) => {
     const percentage = computeItemPercentage(item.quantity, formula.totalQuantity)
     rows.push(new TableRow({
@@ -244,44 +206,124 @@ function formulaRows(formula: FullColorFormula) {
         cell(text(item.productionCode), TABLE_COLUMNS[1]!),
         cell(text(item.name), TABLE_COLUMNS[2]!),
         cell(text(item.attributeCode || formula.colorCode), TABLE_COLUMNS[3]!),
-        cell(text(sourceRecipe), TABLE_COLUMNS[4]!),
-        cell(text(formula.customerName), TABLE_COLUMNS[5]!),
-        cell(fixed(item.quantity), TABLE_COLUMNS[6]!, { align: AlignmentType.RIGHT }),
-        cell(`${fixed(percentage, 2)}%`, TABLE_COLUMNS[7]!, { align: AlignmentType.RIGHT }),
-        cell(money(item.unitPrice), TABLE_COLUMNS[8]!, { align: AlignmentType.RIGHT }),
-        cell(money(item.amount), TABLE_COLUMNS[9]!, { align: AlignmentType.RIGHT }),
-        cell(text(item.notes), TABLE_COLUMNS[10]!),
+        cell(fixed(item.quantity), TABLE_COLUMNS[4]!, { align: AlignmentType.RIGHT }),
+        cell(`${fixed(percentage, 2)}%`, TABLE_COLUMNS[5]!, { align: AlignmentType.RIGHT }),
+        cell(money(item.unitPrice), TABLE_COLUMNS[6]!, { align: AlignmentType.RIGHT }),
+        cell(money(item.amount), TABLE_COLUMNS[7]!, { align: AlignmentType.RIGHT }),
+        cell(text(item.notes), TABLE_COLUMNS[8]!),
       ],
     }))
   })
 
   rows.push(new TableRow({
     children: [
-      cell('合计', TABLE_COLUMNS.slice(0, 6).reduce((sum, width) => sum + width, 0), {
-        colSpan: 6,
+      cell('合计', TABLE_COLUMNS.slice(0, 4).reduce((sum, width) => sum + width, 0), {
+        colSpan: 4,
         bold: true,
         align: AlignmentType.RIGHT,
       }),
-      cell(fixed(formula.totalQuantity), TABLE_COLUMNS[6]!, { bold: true, align: AlignmentType.RIGHT }),
-      cell('100%', TABLE_COLUMNS[7]!, { bold: true, align: AlignmentType.RIGHT }),
-      cell('成本单价', TABLE_COLUMNS[8]!, { bold: true, align: AlignmentType.RIGHT }),
-      cell(money(formula.unitCost), TABLE_COLUMNS[9]!, { bold: true, align: AlignmentType.RIGHT }),
-      cell('', TABLE_COLUMNS[10]!),
+      cell(fixed(formula.totalQuantity), TABLE_COLUMNS[4]!, { bold: true, align: AlignmentType.RIGHT }),
+      cell('100%', TABLE_COLUMNS[5]!, { bold: true, align: AlignmentType.RIGHT }),
+      cell('成本单价', TABLE_COLUMNS[6]!, { bold: true, align: AlignmentType.RIGHT }),
+      cell(money(formula.unitCost), TABLE_COLUMNS[7]!, { bold: true, align: AlignmentType.RIGHT }),
+      cell('', TABLE_COLUMNS[8]!),
     ],
   }))
 
   return rows
 }
 
-function processTable(formula: FullColorFormula) {
-  return table(formulaRows(formula))
+function productionNotesTable(formula: PrintColorFormula) {
+  const recipe = formula.sourceRecipeProduction
+  const rows: TableRow[] = []
+
+  rows.push(new TableRow({
+    children: [
+      cell('生产说明', CONTENT_WIDTH, { bold: true, shade: true, align: AlignmentType.CENTER, size: 17 }),
+    ],
+  }))
+
+  if (!recipe) {
+    rows.push(new TableRow({
+      children: [
+        cell('来源配方未关联，无额外生产要求。', CONTENT_WIDTH, { size: 17 }),
+      ],
+    }))
+    return table(rows)
+  }
+
+  const half = CONTENT_WIDTH / 2
+  rows.push(new TableRow({
+    children: [
+      cell(
+        recipe.stirringRequirements
+          ? `生产/搅拌要求:\n${recipe.stirringRequirements}`
+          : '生产/搅拌要求:\n/',
+        half,
+        { size: 17 },
+      ),
+      cell(
+        recipe.packagingRequirements
+          ? `包装要求:\n${recipe.packagingRequirements}`
+          : '包装要求:\n/',
+        half,
+        { size: 17 },
+      ),
+    ],
+  }))
+
+  if (recipe.productionNotes) {
+    rows.push(new TableRow({
+      children: [
+        cell(`生产注意事项:\n${recipe.productionNotes}`, CONTENT_WIDTH, { size: 17 }),
+      ],
+    }))
+  }
+
+  if (recipe.notes) {
+    rows.push(new TableRow({
+      children: [
+        cell(`来源配方备注:\n${recipe.notes}`, CONTENT_WIDTH, { size: 17 }),
+      ],
+    }))
+  }
+
+  return table(rows)
 }
 
 function spacer(size = 120) {
   return new Paragraph({ spacing: { before: size, after: size }, children: [new TextRun('')] })
 }
 
-export function buildColorFormulaPrintDocx(formula: FullColorFormula) {
+export async function loadPrintFormula(id: string): Promise<PrintColorFormula | null> {
+  const formula = await getColorFormulaById(id)
+  if (!formula) return null
+
+  let sourceRecipeProduction: SourceRecipeProduction = null
+  if (formula.sourceRecipeId) {
+    const recipe = await prisma.cosTableRecipe.findUnique({
+      where: { id: formula.sourceRecipeId },
+      select: {
+        stirringRequirements: true,
+        packagingRequirements: true,
+        productionNotes: true,
+        notes: true,
+      },
+    })
+    if (recipe) {
+      sourceRecipeProduction = {
+        stirringRequirements: recipe.stirringRequirements,
+        packagingRequirements: recipe.packagingRequirements,
+        productionNotes: recipe.productionNotes,
+        notes: recipe.notes,
+      }
+    }
+  }
+
+  return { ...formula, sourceRecipeProduction }
+}
+
+export function buildColorFormulaPrintDocx(formula: PrintColorFormula) {
   const doc = new Document({
     styles: {
       default: {
@@ -292,7 +334,6 @@ export function buildColorFormulaPrintDocx(formula: FullColorFormula) {
       },
     },
     sections: [{
-      headers: { default: header() },
       properties: {
         page: {
           size: { width: PAGE_WIDTH, height: PAGE_HEIGHT },
@@ -307,9 +348,9 @@ export function buildColorFormulaPrintDocx(formula: FullColorFormula) {
         }),
         infoTable(formula),
         spacer(80),
-        processTable(formula),
-        spacer(100),
-        p('如有技术咨询, 请联系负责业务同事或微信号cosmo-prc', { size: 17 }),
+        table(formulaRows(formula)),
+        spacer(80),
+        productionNotesTable(formula),
       ],
     }],
   })
@@ -318,7 +359,7 @@ export function buildColorFormulaPrintDocx(formula: FullColorFormula) {
 }
 
 export async function generateColorFormulaPrintDocxBuffer(id: string) {
-  const formula = await getColorFormulaById(id)
+  const formula = await loadPrintFormula(id)
   if (!formula) return null
   return buildColorFormulaPrintDocx(formula)
 }

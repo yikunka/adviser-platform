@@ -3,8 +3,8 @@ import { requireRole } from '@/lib/auth/rbac'
 import {
   buildColorFormulaPrintDocx,
   colorFormulaPrintFilename,
+  loadPrintFormula,
 } from '@/lib/cosmocoat/color-formula-print-docx'
-import { getColorFormulaById } from '@/lib/cosmocoat/color-formulas'
 
 function contentDisposition(filename: string) {
   const ascii = filename.replace(/[^\w.-]+/g, '_') || 'color-formula-print.docx'
@@ -19,7 +19,7 @@ export async function GET(
   if (error) return error
 
   const { id } = await params
-  const formula = await getColorFormulaById(id)
+  const formula = await loadPrintFormula(id)
   if (!formula) return NextResponse.json({ error: '调色配方不存在' }, { status: 404 })
 
   const buf = await buildColorFormulaPrintDocx(formula)

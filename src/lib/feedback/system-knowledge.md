@@ -201,6 +201,7 @@ Home, Products catalog, Product detail, About, Supporting.
 ### Factory Products (`/admin/cosmocoat-factory-products`)
 Finished goods produced by the factory.
 - Fields: product code, name, category, unit (kg), unit price, viscosity, current recipe, linked recipes, sort order
+- Product list shows viscosity column (value + unit: S or KU)
 - Assign / change current recipe; link multiple recipe candidates
 - Search / filter by name or category
 
@@ -231,13 +232,13 @@ Product formulation management.
 Custom color formulations for specific customers or products.
 - Categories shown to users: PU, 色漆, 烤漆; stored enum identifiers remain `PU`, `BAKING_PAINT`, `HT_BAKING_PAINT` (legacy `LT_BAKING_PAINT` records may still exist)
 - Scope: product-specific (linked to a factory product) or category-wide
-- Fields: formula code, name, source recipe, color code (real-time PANTONE / hex color preview — enlarged swatch beside the input for easier color comparison), customer name, target color, batch quantity
+- Fields: formula code, name, source recipe, color code (real-time PANTONE / hex color preview — 3× enlarged swatch beside the input for easier color comparison), customer name, target color, batch quantity
 - Line items: raw material library entries, Sol semifinished inventory entries, or manual blank/custom material rows, with quantity, percentage, unit price
 - First line item is always the pinned "适用产品" row when a factory product is linked; it cannot be deleted
 - Material details use the same split layout as recipe management: selected item table above, candidate material table below with click-to-select and "添加选中"; picker supports multi-type filtering for AD, SO, Sol semifinished, DY, CO, CA, CC, and a "参考配方" dropdown filters candidates to materials used in a specific existing recipe
 - Clicking "新建配方" while a product filter is active pre-fills that product in the new formula form
 - Generate from factory product template: creates a linked formula with only an applicable-product row in material details; it does not auto-expand the product's full material list
-- Detail page has a "打印文件" action that downloads a DOCX print sheet based on the `templates/LM0019色漆+双固化.docx` process format, including formula code, name, source recipe, color code, customer, linked factory product, material items, quantities, percentages, costs, and production notes
+- Detail page has a "打印文件" action that downloads an A4 DOCX print sheet (standard 2.54 cm margins, no page header/footer): formula code, name, category, color code, target color, customer, linked factory product, source recipe, batch quantity, unit cost, notes, material items with quantities/percentages/costs, and production instructions from the linked source recipe (stirring, packaging, production notes)
 - PU 同步 button (visible on PU category, SUPER_ADMIN only): deletes all PU color formulas and recreates them from PU factory products with full recipe item expansion
 
 ### Production Orders (`/admin/cosmocoat-production-orders`)
