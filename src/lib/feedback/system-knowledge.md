@@ -237,8 +237,8 @@ Manufacturing batch tracking.
 - Fields: order code, factory product, recipe, total weight, batch number
 - Statuses: `DRAFT` → `IN_PROGRESS` → `COMPLETED`
 - Line items: raw materials with required weight and actual weight used
-- Print production order: A4 sheet with enlarged text, no page header, and a material table that omits material names while keeping material codes, ratios, required weight, and actual weight
-- Production / quality / packaging notes and requirements
+- Print production order: A4 sheet with enlarged text, no page header/footer, a material table constrained to page margins, and material names omitted while keeping material codes, ratios, required weight, and actual weight
+- Print output preserves production / quality / packaging notes and requirements
 - Output: creates semifinished product inventory entries on completion
 
 ### Semifinished Products (`/admin/cosmocoat-product-semifinished`)
