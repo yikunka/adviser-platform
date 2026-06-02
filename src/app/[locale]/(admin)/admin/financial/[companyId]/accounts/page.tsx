@@ -75,6 +75,8 @@ export default function AdminFinancialAccountsPage() {
 
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize)
   const totalPages = Math.ceil(filtered.length / pageSize)
+  const formatBalance = (value: number | null | undefined) =>
+    Number(value ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
   return (
     <div className="p-6 space-y-6">
@@ -125,6 +127,7 @@ export default function AdminFinancialAccountsPage() {
                     <TableHead>名称</TableHead>
                     <TableHead>类型</TableHead>
                     <TableHead>层级</TableHead>
+                    <TableHead className="text-right">期初余额</TableHead>
                     <TableHead>排序</TableHead>
                     <TableHead className="text-right">操作</TableHead>
                   </TableRow>
@@ -146,6 +149,9 @@ export default function AdminFinancialAccountsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>{account.level}</TableCell>
+                      <TableCell className="text-right font-mono">
+                        {formatBalance(account.openingBalanceTotal ?? account.openingBalance)}
+                      </TableCell>
                       <TableCell>{account.sortOrder}</TableCell>
                       <TableCell className="text-right space-x-2">
                         <Button

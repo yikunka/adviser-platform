@@ -32,6 +32,11 @@ export type FinancialAccount = {
   parentId: string | null
   isSystem: boolean
   notes?: string
+  openingBalancePeriod?: string | null
+  openingDebit?: number
+  openingCredit?: number
+  openingBalance?: number
+  openingBalanceTotal?: number
 }
 
 type Props = {
@@ -54,6 +59,10 @@ function defaultOpeningPeriod() {
   return `${new Date().getUTCFullYear()}-01`
 }
 
+function amountField(value: number | null | undefined) {
+  return value ? String(value) : ''
+}
+
 export function AccountFormDialog({ open, onOpenChange, account, companyId, accounts, onSaved }: Props) {
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
@@ -74,9 +83,9 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
     setParentId(account?.parentId ?? 'NONE')
     setSortOrder(String(account?.sortOrder ?? 0))
     setIsSystem(account?.isSystem ?? false)
-    setOpeningBalancePeriod(defaultOpeningPeriod())
-    setOpeningDebit('')
-    setOpeningCredit('')
+    setOpeningBalancePeriod(account?.openingBalancePeriod ?? defaultOpeningPeriod())
+    setOpeningDebit(amountField(account?.openingDebit))
+    setOpeningCredit(amountField(account?.openingCredit))
   }, [account, open])
 
   const parentOptions = useMemo(() => {
@@ -138,13 +147,9 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
           parentId: parentId === 'NONE' ? null : parentId,
           sortOrder: Number(sortOrder) || 0,
           isSystem,
-          ...(!account
-            ? {
-                openingBalancePeriod,
-                openingDebit: openingDebitAmount,
-                openingCredit: openingCreditAmount,
-              }
-            : {}),
+          openingBalancePeriod,
+          openingDebit: openingDebitAmount,
+          openingCredit: openingCreditAmount,
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -226,52 +231,50 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
             </label>
           </div>
 
-          {!account ? (
-            <div className="rounded-lg border border-[#2A2418] bg-[#0E0E0A] p-4">
-              <div className="mb-3">
-                <h3 className="text-sm font-semibold text-[#FFF7E6]">期初余额</h3>
-                <p className="mt-1 text-xs text-[#B8AD98]">
-                  可选填写此科目的年初余额。借方和贷方只能填写一项。
-                </p>
+          <div className="rounded-lg border border-[#2A2418] bg-[#0E0E0A] p-4">
+            <div className="mb-3">
+              <h3 className="text-sm font-semibold text-[#FFF7E6]">期初余额</h3>
+              <p className="mt-1 text-xs text-[#B8AD98]">
+                可填写或修改此科目的年初余额。借方和贷方只能填写一项。
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="opening-period" className={labelClassName}>期初期间</Label>
+                <Input
+                  id="opening-period"
+                  type="month"
+                  value={openingBalancePeriod}
+                  onChange={event => setOpeningBalancePeriod(event.target.value)}
+                  className={fieldClassName}
+                />
               </div>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="space-y-2">
-                  <Label htmlFor="opening-period" className={labelClassName}>期初期间</Label>
-                  <Input
-                    id="opening-period"
-                    type="month"
-                    value={openingBalancePeriod}
-                    onChange={event => setOpeningBalancePeriod(event.target.value)}
-                    className={fieldClassName}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="opening-debit" className={labelClassName}>期初借方</Label>
-                  <Input
-                    id="opening-debit"
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={openingDebit}
-                    onChange={event => setOpeningDebit(event.target.value)}
-                    className={fieldClassName}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="opening-credit" className={labelClassName}>期初贷方</Label>
-                  <Input
-                    id="opening-credit"
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={openingCredit}
-                    onChange={event => setOpeningCredit(event.target.value)}
-                    className={fieldClassName}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="opening-debit" className={labelClassName}>期初借方</Label>
+                <Input
+                  id="opening-debit"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={openingDebit}
+                  onChange={event => setOpeningDebit(event.target.value)}
+                  className={fieldClassName}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="opening-credit" className={labelClassName}>期初贷方</Label>
+                <Input
+                  id="opening-credit"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={openingCredit}
+                  onChange={event => setOpeningCredit(event.target.value)}
+                  className={fieldClassName}
+                />
               </div>
             </div>
-          ) : null}
+          </div>
 
           <DialogFooter className={modalFooterClassName}>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving} className={secondaryButtonClassName}>

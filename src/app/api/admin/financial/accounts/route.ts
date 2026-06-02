@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Prisma } from '@prisma/client'
+import { Prisma, type AccountType } from '@prisma/client'
 import { logAudit } from '@/lib/audit/logger'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
@@ -7,7 +7,7 @@ import { accountCreateSchema } from '@/lib/financial/schemas'
 import { serializeAccount } from '@/lib/financial/serializers'
 import { resolveJournalCompanyScope } from '@/lib/financial/company-scope'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
-import { signedLineAmount } from '@/lib/financial/utils'
+import { roundMoney, signedLineAmount } from '@/lib/financial/utils'
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
@@ -22,6 +22,75 @@ async function resolveParent(parentId: string | null | undefined, companyId: str
   return prisma.finAccount.findFirst({ where: { id: parentId, companyId } })
 }
 
+type AccountWithOpeningBalance = {
+  id: string
+  code: string
+  name: string
+  type: AccountType
+  companyId?: string | null
+  level: number
+  sortOrder: number
+  parentId: string | null
+  parent?: { id: string; code: string; name: string } | null
+  isSystem: boolean
+  notes: string
+  createdAt?: Date
+  updatedAt?: Date
+  accountBalances: {
+    period: string
+    openingDebit: Prisma.Decimal
+    openingCredit: Prisma.Decimal
+  }[]
+}
+
+function serializeAccountOpeningBalances(accounts: AccountWithOpeningBalance[]) {
+  const childrenByParent = new Map<string | null, string[]>()
+  const ownBalanceById = new Map<string, number>()
+
+  const serialized = accounts.map(account => {
+    const openingBalance = account.accountBalances[0] ?? null
+    const openingDebit = Number(openingBalance?.openingDebit ?? 0)
+    const openingCredit = Number(openingBalance?.openingCredit ?? 0)
+    const ownBalance = roundMoney(signedLineAmount({
+      accountId: account.id,
+      accountType: account.type,
+      accountCode: account.code,
+      debit: openingDebit,
+      credit: openingCredit,
+    }))
+
+    const parentChildren = childrenByParent.get(account.parentId) ?? []
+    parentChildren.push(account.id)
+    childrenByParent.set(account.parentId, parentChildren)
+    ownBalanceById.set(account.id, ownBalance)
+
+    return {
+      ...serializeAccount(account),
+      openingBalancePeriod: openingBalance?.period ?? null,
+      openingDebit,
+      openingCredit,
+      openingBalance: ownBalance,
+      openingBalanceTotal: ownBalance,
+    }
+  })
+
+  const totalById = new Map<string, number>()
+  const calculateTotal = (accountId: string): number => {
+    const cached = totalById.get(accountId)
+    if (cached !== undefined) return cached
+    const childrenTotal = (childrenByParent.get(accountId) ?? [])
+      .reduce((sum, childId) => roundMoney(sum + calculateTotal(childId)), 0)
+    const total = roundMoney((ownBalanceById.get(accountId) ?? 0) + childrenTotal)
+    totalById.set(accountId, total)
+    return total
+  }
+
+  return serialized.map(account => ({
+    ...account,
+    openingBalanceTotal: calculateTotal(account.id),
+  }))
+}
+
 export async function GET(req: NextRequest) {
   const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
   if (error) return error
@@ -33,11 +102,17 @@ export async function GET(req: NextRequest) {
 
   const accounts = await prisma.finAccount.findMany({
     where: { companyId },
-    include: { parent: { select: { id: true, code: true, name: true } } },
+    include: {
+      parent: { select: { id: true, code: true, name: true } },
+      accountBalances: {
+        orderBy: [{ period: 'desc' }],
+        take: 1,
+      },
+    },
     orderBy: [{ type: 'asc' }, { sortOrder: 'asc' }, { code: 'asc' }],
   })
 
-  return NextResponse.json({ accounts: accounts.map(serializeAccount) })
+  return NextResponse.json({ accounts: serializeAccountOpeningBalances(accounts) })
 }
 
 export async function POST(req: NextRequest) {

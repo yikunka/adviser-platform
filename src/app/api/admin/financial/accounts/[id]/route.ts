@@ -7,9 +7,23 @@ import { isDescendantAccount } from '@/lib/financial/account-tree'
 import { accountUpdateSchema } from '@/lib/financial/schemas'
 import { serializeAccount } from '@/lib/financial/serializers'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
+import { signedLineAmount } from '@/lib/financial/utils'
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
+}
+
+function defaultOpeningPeriod() {
+  return `${new Date().getUTCFullYear()}-01`
+}
+
+function hasPayloadField(body: unknown, field: string) {
+  return Boolean(
+    body
+    && typeof body === 'object'
+    && !Array.isArray(body)
+    && Object.prototype.hasOwnProperty.call(body, field),
+  )
 }
 
 export async function PATCH(
@@ -21,6 +35,8 @@ export async function PATCH(
 
   const { id } = await params
   const body = await req.json().catch(() => null)
+  const openingBalanceRequested = ['openingDebit', 'openingCredit', 'openingBalancePeriod']
+    .some(field => hasPayloadField(body, field))
   const parsed = accountUpdateSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
@@ -43,7 +59,7 @@ export async function PATCH(
     if (conflict) return apiError('Account code already exists.', 409)
   }
 
-  const parentId = parsed.data.parentId === undefined ? before.parentId : parsed.data.parentId
+  const parentId = hasPayloadField(body, 'parentId') ? parsed.data.parentId : before.parentId
   let parent: { id: string; level: number } | null = null
   if (parentId) {
     if (parentId === id) return apiError('An account cannot be its own parent.')
@@ -63,20 +79,62 @@ export async function PATCH(
   }
 
   try {
-    const account = await prisma.finAccount.update({
-      where: { id },
-      data: {
-        ...('code' in parsed.data ? { code: parsed.data.code } : {}),
-        ...('name' in parsed.data ? { name: parsed.data.name } : {}),
-        ...('type' in parsed.data ? { type: parsed.data.type } : {}),
-        ...('sortOrder' in parsed.data ? { sortOrder: parsed.data.sortOrder } : {}),
-        ...('isSystem' in parsed.data ? { isSystem: parsed.data.isSystem } : {}),
-        ...('notes' in parsed.data ? { notes: parsed.data.notes } : {}),
-        ...(parsed.data.parentId !== undefined
-          ? { parentId: parent?.id ?? null, level: parent ? parent.level + 1 : 1 }
-          : {}),
-      },
-      include: { parent: { select: { id: true, code: true, name: true } } },
+    const account = await prisma.$transaction(async tx => {
+      const updated = await tx.finAccount.update({
+        where: { id },
+        data: {
+          ...(hasPayloadField(body, 'code') && parsed.data.code !== undefined ? { code: parsed.data.code } : {}),
+          ...(hasPayloadField(body, 'name') && parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
+          ...(hasPayloadField(body, 'type') && parsed.data.type !== undefined ? { type: parsed.data.type } : {}),
+          ...(hasPayloadField(body, 'sortOrder') && parsed.data.sortOrder !== undefined ? { sortOrder: parsed.data.sortOrder } : {}),
+          ...(hasPayloadField(body, 'isSystem') && parsed.data.isSystem !== undefined ? { isSystem: parsed.data.isSystem } : {}),
+          ...(hasPayloadField(body, 'notes') && parsed.data.notes !== undefined ? { notes: parsed.data.notes } : {}),
+          ...(hasPayloadField(body, 'parentId')
+            ? { parentId: parent?.id ?? null, level: parent ? parent.level + 1 : 1 }
+            : {}),
+        },
+        include: { parent: { select: { id: true, code: true, name: true } } },
+      })
+
+      if (openingBalanceRequested) {
+        const latestOpeningBalance = await tx.accountBalance.findFirst({
+          where: { accountId: id },
+          orderBy: [{ period: 'desc' }],
+          select: { period: true },
+        })
+        const openingDebit = parsed.data.openingDebit ?? 0
+        const openingCredit = parsed.data.openingCredit ?? 0
+        const period = parsed.data.openingBalancePeriod ?? latestOpeningBalance?.period ?? defaultOpeningPeriod()
+        const endingBalance = signedLineAmount({
+          accountId: updated.id,
+          accountType: updated.type,
+          accountCode: updated.code,
+          debit: openingDebit,
+          credit: openingCredit,
+        })
+
+        await tx.accountBalance.upsert({
+          where: { accountId_period: { accountId: id, period } },
+          create: {
+            accountId: id,
+            period,
+            openingDebit: new Prisma.Decimal(openingDebit),
+            openingCredit: new Prisma.Decimal(openingCredit),
+            closingDebit: new Prisma.Decimal(openingDebit),
+            closingCredit: new Prisma.Decimal(openingCredit),
+            endingBalance: new Prisma.Decimal(endingBalance),
+          },
+          update: {
+            openingDebit: new Prisma.Decimal(openingDebit),
+            openingCredit: new Prisma.Decimal(openingCredit),
+            closingDebit: new Prisma.Decimal(openingDebit),
+            closingCredit: new Prisma.Decimal(openingCredit),
+            endingBalance: new Prisma.Decimal(endingBalance),
+          },
+        })
+      }
+
+      return updated
     })
 
     await logAudit(session.user.id, 'UPDATE', 'FinAccount', id, before, account)
