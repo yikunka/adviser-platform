@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
       status: true,
       userEmail: true,
       userName: true,
+      attachments: true,
       createdAt: true,
       updatedAt: true,
     },

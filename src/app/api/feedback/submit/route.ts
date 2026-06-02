@@ -7,6 +7,12 @@ import { auth, prisma } from '@/lib/feedback/adapter'
 // POST /api/feedback/submit
 // ─────────────────────────────────────────────
 
+const attachmentSchema = z.object({
+  url: z.string().url(),
+  name: z.string().max(200),
+  type: z.string().max(100),
+})
+
 const submitSchema = z.object({
   title: z.string().trim().min(1).max(200),
   summary: z.string().trim().min(1).max(5000),
@@ -17,6 +23,7 @@ const submitSchema = z.object({
     role: z.enum(['user', 'assistant']),
     content: z.string(),
   })).default([]),
+  attachments: z.array(attachmentSchema).default([]),
 })
 
 export async function POST(req: NextRequest) {
@@ -42,6 +49,7 @@ export async function POST(req: NextRequest) {
       pageUrl: parsed.data.pageUrl,
       pageTitle: parsed.data.pageTitle,
       conversation: parsed.data.conversation,
+      attachments: parsed.data.attachments,
       userId: session.user.id,
       userEmail: session.user.email ?? '',
       userName: session.user.name ?? '',

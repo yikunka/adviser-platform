@@ -20,6 +20,7 @@ import {
   Bell,
   Lock,
   Users,
+  ContactRound,
   Diamond,
   Package,
   UserCog,
@@ -78,6 +79,7 @@ const NAV_GROUPS: {
   {
     labelKey: 'sfsDiamond',
     items: [
+      { href: '/admin/sfs-customers', key: 'sfsCustomers', Icon: ContactRound },
       { href: '/admin/sfs-orders', key: 'sfsOrders', Icon: Diamond },
       { href: '/admin/sfs-invoices', key: 'sfsInvoices', Icon: FileText },
     ],

@@ -93,7 +93,7 @@ Service invoicing for TCSP professional fees.
 Staff access control.
 - Roles: `SUPER_ADMIN`, `COMPLIANCE`, `STAFF`
 - Per-staff platform access flags (Adviser / SFS Diamond / CosmoCoat)
-- Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, team, feedback, sfs-orders, sfs-invoices, cosmocoat-*)
+- Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, team, feedback, sfs-customers, sfs-orders, sfs-invoices, cosmocoat-*)
 - Legacy mode: no restrictions; new mode: explicit per-menu grants
 - Create / edit / deactivate staff accounts
 
@@ -161,6 +161,12 @@ Memorial diamond jewellery service (lab-grown diamonds from cremation remains). 
 - **Order Success** (`/order/success`): confirmation page
 - **Dashboard** (authenticated): client's orders with milestone progress
 - **Dashboard Detail** (`/dashboard/[id]`): specific order status and phase timeline
+
+### SFS Customers Admin (`/admin/sfs-customers`)
+Customer registry for SFS Diamond.
+- Lists SFS platform registered client accounts, manually created customer profiles, and historical order-only contact records
+- Shows customer name, email, phone, mailing address, source type, order count, and latest order link/status
+- Create manual SFS customer records without creating or binding an official platform login account/email
 
 ### SFS Orders Admin (`/admin/sfs-orders`)
 Order lifecycle management for memorial diamond commissions.

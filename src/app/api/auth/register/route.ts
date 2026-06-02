@@ -42,6 +42,17 @@ export async function POST(req: NextRequest) {
       data: { email, passwordHash, nameEn, phone, platform },
     })
 
+    if (platform === 'SFS_DIAMOND') {
+      await prisma.sfsCustomer.create({
+        data: {
+          userId: user.id,
+          name: nameEn,
+          email,
+          phone: phone ?? null,
+        },
+      })
+    }
+
     await claimPendingCompaniesForUser(user.id, user.email)
 
     // Dev mode: no Resend key → auto-verify immediately, no OTP step needed

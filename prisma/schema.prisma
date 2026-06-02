@@ -263,6 +263,8 @@ model User {
   processedFilings   AnnualFiling[]
   orders             ServiceOrder[]
   sfsOrders          SfsOrder[]
+  sfsCustomers       SfsCustomer[] @relation("SfsCustomerUser")
+  sfsCustomersCreated SfsCustomer[] @relation("SfsCustomerCreator")
   cosJournalEntries  CosTableJournalEntry[]
   financialJournalEntries JournalEntry[] @relation("FinancialJournalCreatedBy")
   invoicesCreated         Invoice[]     @relation("InvoiceCreatedBy")
@@ -1076,6 +1078,10 @@ model SfsOrder {
   userId String?
   user   User?  @relation(fields: [userId], references: [id])
 
+  // Linked SFS customer profile (may be a registered account or a manual customer)
+  customerId String?
+  customer   SfsCustomer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
   // Part 1 — Client Information
   date           String
   sampleCode     String?
@@ -1122,9 +1128,31 @@ model SfsOrder {
   invoices SfsInvoice[]
 
   @@index([userId])
+  @@index([customerId])
   @@index([email])
   @@index([status, createdAt])
   @@map("sfs_orders")
+}
+
+model SfsCustomer {
+  id             String   @id @default(cuid())
+  userId         String?  @unique
+  name           String
+  email          String?
+  phone          String?
+  mailingAddress String?
+  notes          String?
+  createdById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user      User? @relation("SfsCustomerUser", fields: [userId], references: [id], onDelete: SetNull)
+  createdBy User? @relation("SfsCustomerCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  orders    SfsOrder[]
+
+  @@index([email])
+  @@index([createdAt])
+  @@map("sfs_customers")
 }
 
 model SfsOrderStep {
@@ -1960,6 +1988,7 @@ model FeatureRequest {
   summary      String               // LLM-confirmed requirement summary
   priority     String               @default("medium") // low | medium | high
   conversation Json                 // full chat history for reference
+  attachments  Json                 @default("[]") // [{url, name, type}]
   status       FeatureRequestStatus @default(PENDING)
   userId       String?
   userEmail    String?

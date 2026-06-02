@@ -59,24 +59,45 @@ export async function POST(req: NextRequest) {
     code: `${sampleCode}D${String(i + 1).padStart(2, '0')}`,
   }))
 
-  const { contactNumber, mailingAddress } = parsed.data
+  const { clientName, contactNumber, email, mailingAddress } = parsed.data
 
-  const [order] = await prisma.$transaction([
-    prisma.sfsOrder.create({
+  const order = await prisma.$transaction(async tx => {
+    const customer = await tx.sfsCustomer.upsert({
+      where: { userId: session.user.id },
+      create: {
+        userId: session.user.id,
+        name: clientName,
+        email,
+        phone: contactNumber,
+        mailingAddress,
+      },
+      update: {
+        name: clientName,
+        email,
+        phone: contactNumber,
+        mailingAddress,
+      },
+    })
+
+    const created = await tx.sfsOrder.create({
       data: {
         ...parsed.data,
         date: new Date().toISOString().slice(0, 10),
         sampleCode,
         diamonds,
         userId: session.user.id,
+        customerId: customer.id,
       },
-    }),
+    })
+
     // Save phone + address back to the user for future pre-fill
-    prisma.user.update({
+    await tx.user.update({
       where: { id: session.user.id },
       data: { phone: contactNumber, mailingAddress },
-    }),
-  ])
+    })
+
+    return created
+  })
 
   return NextResponse.json({ orderId: order.id, sampleCode }, { status: 201 })
 }

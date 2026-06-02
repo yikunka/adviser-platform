@@ -32,6 +32,8 @@ import { PROVIDER_OPTIONS, MODEL_OPTIONS, type Provider } from '@/lib/feedback/o
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string }
 
+type Attachment = { url: string; name: string; type: string }
+
 type FeatureRequest = {
   id: string
   title: string
@@ -43,6 +45,7 @@ type FeatureRequest = {
   userEmail: string | null
   userName: string | null
   createdAt: string
+  attachments?: Attachment[]
 }
 
 // Full detail includes conversation — fetched separately on demand
@@ -475,7 +478,12 @@ function ConfigTab() {
 }
 
 // ── Dev prompt builder ─────────────────────────────────────────────────────
-
+//
+// ⚠️  原则：生成的提示词里永远不要出现「将需求标记为已完成 / 更新状态」之类的指令。
+//    需求状态（PENDING → IN_PROGRESS → DONE 等）由外部 pipeline 自动维护，
+//    不需要也不应该让 AI Agent 去操作 /admin/feedback。
+//    未来扩展提示词时，请严格遵守这条规则。
+//
 const PRIORITY_LABEL_CN: Record<string, string> = { low: '低', medium: '中', high: '高' }
 
 function buildDevPrompt(item: FeatureRequest, conversation: ChatMessage[] = []): string {
@@ -484,6 +492,11 @@ function buildDevPrompt(item: FeatureRequest, conversation: ChatMessage[] = []):
     .filter(m => m.role === 'user' && m.content.trim())
     .map(m => `> ${m.content.trim()}`)
     .join('\n')
+
+  const attachments = item.attachments ?? []
+  const attachmentLines = attachments.length > 0
+    ? attachments.map(a => `- [${a.name}](${a.url})`).join('\n')
+    : ''
 
   return [
     '## 开发任务',
@@ -497,6 +510,7 @@ function buildDevPrompt(item: FeatureRequest, conversation: ChatMessage[] = []):
     item.summary,
     '',
     ...(userQuotes ? ['**用户原话**：', userQuotes, ''] : []),
+    ...(attachmentLines ? ['**附件**：', attachmentLines, ''] : []),
     '---',
     '参考 `src/lib/feedback/system-knowledge.md` 了解系统现有功能上下文。',
     '完成后请同步更新 `src/lib/feedback/system-knowledge.md`。',
@@ -506,13 +520,17 @@ function buildDevPrompt(item: FeatureRequest, conversation: ChatMessage[] = []):
 function buildBatchDevPrompt(items: FeatureRequest[]): string {
   const tasks = items.map((item, i) => {
     const priorityLabel = PRIORITY_LABEL_CN[item.priority] ?? item.priority
+    const attachments = item.attachments ?? []
+    const attachmentLines = attachments.length > 0
+      ? `\n\n**附件**：\n${attachments.map(a => `- [${a.name}](${a.url})`).join('\n')}`
+      : ''
     return [
       `### 任务 ${i + 1}：${item.title}`,
       '',
       `**优先级**：${priorityLabel} · **来源页面**：${item.pageUrl}`,
       '',
       '**需求描述**：',
-      item.summary,
+      item.summary + attachmentLines,
     ].join('\n')
   })
 
@@ -903,6 +921,29 @@ function RequirementsTab() {
                   <p>{new Date(detailItem.createdAt).toLocaleString('zh-HK')}</p>
                 </div>
               </div>
+
+              {/* Attachments */}
+              {detailItem.attachments && detailItem.attachments.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium mb-2" style={{ color: '#9F927B' }}>
+                    附件 ({detailItem.attachments.length})
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {detailItem.attachments.map(a => (
+                      <a
+                        key={a.url}
+                        href={a.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs hover:border-[#C9A96E66] transition-colors"
+                        style={{ background: '#1E1A14', border: '1px solid #2A2418', color: '#C4B89A' }}
+                      >
+                        {a.type.startsWith('image/') ? '🖼' : '📎'} {a.name}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Conversation */}
               <div>
