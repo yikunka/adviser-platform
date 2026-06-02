@@ -17,9 +17,9 @@ Admin console is at `/[locale]/admin/`. Roles: `SUPER_ADMIN`, `COMPLIANCE`, `STA
 ## Adviser Admin Console
 
 ### 1. Dashboard (`/admin`)
-Key metrics at a glance: active companies count, pending KYC submissions, open AML alerts, annual returns due within 30 days. Each card links to the relevant module.
+Key metrics at a glance are grouped into a distinct Adviser corporate-services module: active companies count, pending KYC submissions, open AML alerts, annual returns due within 30 days. Each metric links to the relevant module.
 
-Includes an SFS Diamond order statistics module showing total SFS orders, active orders, orders created in the last 30 days, and distribution by SFS order status (`PENDING`, `QUOTED`, `CONFIRMED`, `COMPLETED`, `CANCELLED`).
+Includes a visually separate SFS Diamond order statistics module showing total SFS orders, active orders, orders created in the last 30 days, and distribution by SFS order status (`PENDING`, `QUOTED`, `CONFIRMED`, `COMPLETED`, `CANCELLED`).
 
 ### 2. Companies (`/admin/companies`)
 Manages the full portfolio of client companies.

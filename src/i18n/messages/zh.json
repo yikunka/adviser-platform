@@ -682,6 +682,11 @@
       "pendingKyc": "待審KYC",
       "amlAlerts": "待處理AML警報",
       "upcomingAR": "30日內到期周年申報",
+      "adviser": {
+        "title": "Adviser 企業服務",
+        "subtitle": "快速查看 TCSP 客戶公司與合規待辦。",
+        "viewCompanies": "查看公司"
+      },
       "sfs": {
         "title": "SFS Diamond 訂單",
         "subtitle": "快速查看紀念鑽石訂單營運狀況。",

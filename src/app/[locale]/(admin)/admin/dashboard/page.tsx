@@ -6,6 +6,25 @@ import { Link } from '@/i18n/navigation'
 
 const SFS_ORDER_STATUSES = ['PENDING', 'QUOTED', 'CONFIRMED', 'COMPLETED', 'CANCELLED'] as const
 
+const moduleStyles = {
+  adviser: {
+    card: 'border border-[#2563EB33] bg-[linear-gradient(180deg,rgba(37,99,235,0.08),rgba(16,185,129,0.03))]',
+    eyebrow: '#38bdf8',
+    tileBg: 'rgba(37,99,235,0.05)',
+    tileBorder: 'rgba(56,189,248,0.22)',
+    buttonBorder: 'rgba(56,189,248,0.28)',
+    buttonHover: 'hover:bg-[#0B1D22]',
+  },
+  sfs: {
+    card: 'border border-[#C9A96E33] bg-[linear-gradient(180deg,rgba(201,169,110,0.08),rgba(201,169,110,0.025))]',
+    eyebrow: '#C9A96E',
+    tileBg: 'rgba(201,169,110,0.05)',
+    tileBorder: 'rgba(201,169,110,0.24)',
+    buttonBorder: 'rgba(201,169,110,0.28)',
+    buttonHover: 'hover:bg-[#111108]',
+  },
+} as const
+
 export default async function AdminDashboardPage() {
   await auth()
   const t = await getTranslations('admin.dashboard')
@@ -48,10 +67,10 @@ export default async function AdminDashboardPage() {
   })
 
   const stats = [
-    { label: t('totalCompanies'), value: totalCompanies, href: '/admin/companies', color: 'bg-blue-500' },
-    { label: t('pendingKyc'), value: pendingKyc, href: '/admin/kyc', color: 'bg-yellow-500' },
-    { label: t('amlAlerts'), value: amlAlerts, href: '/admin/aml', color: 'bg-red-500' },
-    { label: t('upcomingAR'), value: upcomingAR, href: '/admin/companies', color: 'bg-green-500' },
+    { label: t('totalCompanies'), value: totalCompanies, href: '/admin/companies', accent: '#38bdf8' },
+    { label: t('pendingKyc'), value: pendingKyc, href: '/admin/kyc', accent: '#f59e0b' },
+    { label: t('amlAlerts'), value: amlAlerts, href: '/admin/aml', accent: '#ef4444' },
+    { label: t('upcomingAR'), value: upcomingAR, href: '/admin/companies', accent: '#10b981' },
   ]
 
   const sfsStatusCountMap = new Map(sfsStatusCounts.map(item => [item.status, item._count._all]))
@@ -63,32 +82,56 @@ export default async function AdminDashboardPage() {
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>{t('title')}</h1>
 
-      {/* Stats */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map(({ label, value, href, color }) => (
-          <Link key={label} href={href}>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="pt-6">
-                <div className={`inline-block w-3 h-3 rounded-full ${color} mb-2`} />
-                <p className="text-3xl font-bold" style={{ color: 'var(--foreground)' }}>{value}</p>
-                <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>{label}</p>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
-
-      {/* SFS order stats */}
-      <Card>
+      {/* Adviser stats */}
+      <Card className={moduleStyles.adviser.card}>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle className="text-base">{t('sfs.title')}</CardTitle>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: moduleStyles.adviser.eyebrow }}>
+              Adviser
+            </p>
+            <CardTitle className="text-base mt-1">{t('adviser.title')}</CardTitle>
+            <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>{t('adviser.subtitle')}</p>
+          </div>
+          <Link
+            href="/admin/companies"
+            className={`text-sm font-medium rounded-md px-3 py-2 transition-colors ${moduleStyles.adviser.buttonHover}`}
+            style={{ color: moduleStyles.adviser.eyebrow, border: `1px solid ${moduleStyles.adviser.buttonBorder}` }}
+          >
+            {t('adviser.viewCompanies')}
+          </Link>
+        </CardHeader>
+        <CardContent>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {stats.map(({ label, value, href, accent }) => (
+              <Link
+                key={label}
+                href={href}
+                className="group rounded-lg p-4 transition-colors hover:bg-[#0B1D22]"
+                style={{ border: `1px solid ${moduleStyles.adviser.tileBorder}`, background: moduleStyles.adviser.tileBg }}
+              >
+                <span className="block h-1 w-8 rounded-full mb-4" style={{ background: accent }} />
+                <p className="text-3xl font-bold tabular-nums" style={{ color: 'var(--foreground)' }}>{value}</p>
+                <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>{label}</p>
+              </Link>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* SFS order stats */}
+      <Card className={moduleStyles.sfs.card}>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: moduleStyles.sfs.eyebrow }}>
+              SFS Diamond
+            </p>
+            <CardTitle className="text-base mt-1">{t('sfs.title')}</CardTitle>
             <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>{t('sfs.subtitle')}</p>
           </div>
           <Link
             href="/admin/sfs-orders"
-            className="text-sm font-medium rounded-md px-3 py-2 transition-colors hover:bg-[#111108]"
-            style={{ color: '#C9A96E', border: '1px solid rgba(201,169,110,0.25)' }}
+            className={`text-sm font-medium rounded-md px-3 py-2 transition-colors ${moduleStyles.sfs.buttonHover}`}
+            style={{ color: moduleStyles.sfs.eyebrow, border: `1px solid ${moduleStyles.sfs.buttonBorder}` }}
           >
             {t('sfs.viewOrders')}
           </Link>
@@ -100,8 +143,13 @@ export default async function AdminDashboardPage() {
               { label: t('sfs.activeOrders'), value: sfsActiveOrders },
               { label: t('sfs.last30Days'), value: sfsRecentOrders },
             ].map(item => (
-              <div key={item.label} className="rounded-lg p-4" style={{ border: '1px solid var(--border)', background: 'rgba(201,169,110,0.04)' }}>
-                <p className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>{item.value}</p>
+              <div
+                key={item.label}
+                className="rounded-lg p-4"
+                style={{ border: `1px solid ${moduleStyles.sfs.tileBorder}`, background: moduleStyles.sfs.tileBg }}
+              >
+                <span className="block h-1 w-8 rounded-full mb-4" style={{ background: moduleStyles.sfs.eyebrow }} />
+                <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--foreground)' }}>{item.value}</p>
                 <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>{item.label}</p>
               </div>
             ))}

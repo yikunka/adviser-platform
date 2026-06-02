@@ -682,6 +682,11 @@
       "pendingKyc": "Pending KYC",
       "amlAlerts": "Open AML Alerts",
       "upcomingAR": "AR Due in 30 Days",
+      "adviser": {
+        "title": "Adviser Corporate Services",
+        "subtitle": "Operational snapshot for TCSP client companies and compliance work.",
+        "viewCompanies": "View companies"
+      },
       "sfs": {
         "title": "SFS Diamond Orders",
         "subtitle": "Operational snapshot across memorial diamond commissions.",
