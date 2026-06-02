@@ -10,11 +10,18 @@ import { generateVoucherNo, parseYmdDate, periodFromDate, validateBalance } from
 
 type ParsedLine = {
   accountCode: string
+  accountName: string
   description: string
   debit: number
   credit: number
   rowNumber: number
 }
+
+type ImportFormat = 'codeLine' | 'nameLine' | 'pair'
+
+type AccountRecord = { id: string; code: string; name: string }
+
+type AccountNameLookup = Map<string, AccountRecord | 'ambiguous'>
 
 type ParsedEntry = {
   sourceVoucherNo: string
@@ -37,7 +44,9 @@ const HEADER_ALIASES: Record<string, string[]> = {
   voucherNo: ['voucher no', 'voucher number', 'voucherno', 'entry no', 'entry number', 'journal no', 'journal number', 'reference', 'ref', '凭证号', '憑證號', '分录号', '分錄號'],
   entryDate: ['date', 'entry date', 'journal date', 'posting date', '日期', '凭证日期', '憑證日期', '记账日期', '記賬日期'],
   description: ['description', 'entry description', 'memo', 'narration', '摘要', '描述', '说明', '說明'],
-  accountCode: ['account code', 'account', 'account no', 'account number', '科目编码', '科目編碼', '科目代码', '科目代碼', '科目'],
+  accountCode: ['account code', 'account no', 'account number', '科目编码', '科目編碼', '科目代码', '科目代碼'],
+  accountName: ['account name', 'account', '会计科目名称', '會計科目名稱', '科目名称', '科目名稱', '科目'],
+  particular: ['particular', '凭证描述', '憑證描述'],
   lineDescription: ['line description', 'line memo', 'line narration', '明细摘要', '明細摘要', '分录摘要', '分錄摘要'],
   debit: ['debit', 'debit amount', 'dr', '借方', '借方金额', '借方金額'],
   credit: ['credit', 'credit amount', 'cr', '贷方', '貸方', '贷方金额', '貸方金額'],
@@ -58,17 +67,74 @@ function normalizeHeader(value: unknown) {
     .replace(/\s+/g, ' ')
 }
 
+function headerHasField(normalized: string[], aliases: string[]) {
+  const candidates = aliases.map(normalizeHeader)
+  return normalized.some(header => candidates.includes(header))
+}
+
 function buildHeaderMap(headers: unknown[]) {
   const normalized = headers.map(normalizeHeader)
   const map = new Map<string, number>()
+  const useNameLineFormat = headerHasField(normalized, HEADER_ALIASES.particular)
 
   for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
-    const candidates = aliases.map(normalizeHeader)
+    if (field === 'accountCode' && useNameLineFormat) continue
+    if (field === 'accountName' && !useNameLineFormat) continue
+    if (field === 'particular' && !useNameLineFormat) continue
+    const fieldAliases = field === 'accountCode' && !useNameLineFormat
+      ? [...aliases, 'account']
+      : aliases
+    const candidates = fieldAliases.map(normalizeHeader)
     const index = normalized.findIndex(header => candidates.includes(header))
     if (index >= 0) map.set(field, index)
   }
 
   return map
+}
+
+function detectImportFormat(headerMap: Map<string, number>): ImportFormat | null {
+  const hasPairFormat = headerMap.has('debitAccountCode')
+    && headerMap.has('creditAccountCode')
+    && headerMap.has('amount')
+  const hasNameLineFormat = headerMap.has('entryDate')
+    && headerMap.has('particular')
+    && headerMap.has('accountName')
+    && headerMap.has('debit')
+    && headerMap.has('credit')
+  const hasCodeLineFormat = headerMap.has('entryDate')
+    && headerMap.has('description')
+    && headerMap.has('accountCode')
+    && headerMap.has('debit')
+    && headerMap.has('credit')
+
+  if (hasPairFormat) return 'pair'
+  if (hasNameLineFormat) return 'nameLine'
+  if (hasCodeLineFormat) return 'codeLine'
+  return null
+}
+
+function buildAccountNameLookup(accounts: AccountRecord[]): AccountNameLookup {
+  const lookup: AccountNameLookup = new Map()
+  for (const account of accounts) {
+    const key = account.name.trim()
+    const existing = lookup.get(key)
+    if (existing === 'ambiguous') continue
+    if (existing) lookup.set(key, 'ambiguous')
+    else lookup.set(key, account)
+  }
+  return lookup
+}
+
+function resolveAccountId(
+  line: ParsedLine,
+  accountsByCode: AccountLookup,
+  accountsByName: AccountNameLookup,
+) {
+  if (line.accountName) {
+    const match = accountsByName.get(line.accountName.trim())
+    return match && match !== 'ambiguous' ? match.id : null
+  }
+  return accountsByCode.get(line.accountCode)?.id ?? null
 }
 
 function cell(row: unknown[], headerMap: Map<string, number>, field: string) {
@@ -141,7 +207,39 @@ function getLineFormat(row: unknown[], headerMap: Map<string, number>, rowNumber
     rowNumbers: [rowNumber],
     lines: [{
       accountCode,
+      accountName: '',
       description: text(cell(row, headerMap, 'lineDescription')) || description,
+      debit,
+      credit,
+      rowNumber,
+    }],
+  }
+}
+
+function getNameLineFormat(row: unknown[], headerMap: Map<string, number>, rowNumber: number): ParsedEntry | ImportError {
+  const entryDate = dateToYmd(cell(row, headerMap, 'entryDate'))
+  const description = text(cell(row, headerMap, 'particular'))
+  const accountName = text(cell(row, headerMap, 'accountName'))
+  const debit = amount(cell(row, headerMap, 'debit'))
+  const credit = amount(cell(row, headerMap, 'credit'))
+
+  if (!entryDate) return { row: rowNumber, message: 'Date is required and must be YYYY-MM-DD.' }
+  if (!description) return { row: rowNumber, message: 'Particular is required.' }
+  if (!accountName) return { row: rowNumber, message: 'Account name is required.' }
+  if (!Number.isFinite(debit) || !Number.isFinite(credit)) return { row: rowNumber, message: 'Debit/Credit must be numeric.' }
+  if ((debit > 0 && credit > 0) || (debit <= 0 && credit <= 0)) {
+    return { row: rowNumber, message: 'Each line must have either debit or credit, but not both.' }
+  }
+
+  return {
+    sourceVoucherNo: text(cell(row, headerMap, 'voucherNo')),
+    entryDate,
+    description,
+    rowNumbers: [rowNumber],
+    lines: [{
+      accountCode: '',
+      accountName,
+      description,
       debit,
       credit,
       rowNumber,
@@ -167,8 +265,8 @@ function getPairFormat(row: unknown[], headerMap: Map<string, number>, rowNumber
     description,
     rowNumbers: [rowNumber],
     lines: [
-      { accountCode: debitAccountCode, description, debit: entryAmount, credit: 0, rowNumber },
-      { accountCode: creditAccountCode, description, debit: 0, credit: entryAmount, rowNumber },
+      { accountCode: debitAccountCode, accountName: '', description, debit: entryAmount, credit: 0, rowNumber },
+      { accountCode: creditAccountCode, accountName: '', description, debit: 0, credit: entryAmount, rowNumber },
     ],
   }
 }
@@ -204,7 +302,32 @@ function groupEntries(entries: ParsedEntry[]) {
   return Array.from(grouped.values())
 }
 
-function validateEntries(entries: ParsedEntry[], accounts: AccountLookup) {
+function validateAccountNameEntry(entry: ParsedEntry, accountsByName: AccountNameLookup): ImportError | null {
+  for (const line of entry.lines) {
+    const accountName = line.accountName.trim()
+    const match = accountsByName.get(accountName)
+    if (match === 'ambiguous') {
+      return {
+        row: entry.rowNumbers[0] ?? line.rowNumber,
+        message: `Import record failed: account name "${accountName}" matches multiple accounts for this company.`,
+      }
+    }
+    if (!match) {
+      return {
+        row: entry.rowNumbers[0] ?? line.rowNumber,
+        message: `Import record failed: account name "${accountName}" does not exist for this company.`,
+      }
+    }
+  }
+  return null
+}
+
+function validateEntries(
+  entries: ParsedEntry[],
+  accountsByCode: AccountLookup,
+  accountsByName: AccountNameLookup,
+  importFormat: ImportFormat,
+) {
   const errors: ImportError[] = []
   const seenVoucherNos = new Set<string>()
 
@@ -216,6 +339,14 @@ function validateEntries(entries: ParsedEntry[], accounts: AccountLookup) {
       seenVoucherNos.add(entry.sourceVoucherNo)
     }
 
+    if (importFormat === 'nameLine') {
+      const accountError = validateAccountNameEntry(entry, accountsByName)
+      if (accountError) {
+        errors.push(accountError)
+        continue
+      }
+    }
+
     if (entry.lines.length < 2) {
       errors.push({ row: entry.rowNumbers[0] ?? 0, message: 'Each journal entry must contain at least two lines.' })
     }
@@ -225,9 +356,11 @@ function validateEntries(entries: ParsedEntry[], accounts: AccountLookup) {
       errors.push({ row: entry.rowNumbers[0] ?? 0, message: `Entry is not balanced. Debit ${balance.totalDebit}, Credit ${balance.totalCredit}.` })
     }
 
-    for (const line of entry.lines) {
-      if (!accounts.has(line.accountCode)) {
-        errors.push({ row: line.rowNumber, message: `Account Code "${line.accountCode}" does not exist for this company.` })
+    if (importFormat !== 'nameLine') {
+      for (const line of entry.lines) {
+        if (!accountsByCode.has(line.accountCode)) {
+          errors.push({ row: line.rowNumber, message: `Account Code "${line.accountCode}" does not exist for this company.` })
+        }
       }
     }
   }
@@ -265,10 +398,11 @@ export async function POST(req: NextRequest) {
   if (bodyRows.length > MAX_ROWS) return apiError(`Import supports at most ${MAX_ROWS} rows per file.`)
 
   const headerMap = buildHeaderMap(headers)
-  const hasPairFormat = headerMap.has('debitAccountCode') && headerMap.has('creditAccountCode') && headerMap.has('amount')
-  const hasLineFormat = headerMap.has('accountCode') && headerMap.has('debit') && headerMap.has('credit')
-  if (!headerMap.has('entryDate') || !headerMap.has('description') || (!hasLineFormat && !hasPairFormat)) {
-    return apiError('Missing required columns. Use either Account Code + Debit/Credit, or Debit Account Code + Credit Account Code + Amount.')
+  const importFormat = detectImportFormat(headerMap)
+  if (!importFormat) {
+    return apiError(
+      'Missing required columns. Use Account Code + Debit/Credit, Account Name + Particular + Debit/Credit, or Debit Account Code + Credit Account Code + Amount.',
+    )
   }
 
   const parsedRows: ParsedEntry[] = []
@@ -276,9 +410,11 @@ export async function POST(req: NextRequest) {
   bodyRows.forEach((row, index) => {
     if (!rowHasValue(row)) return
     const rowNumber = index + 2
-    const parsed = hasPairFormat && text(cell(row, headerMap, 'debitAccountCode'))
+    const parsed = importFormat === 'pair' && text(cell(row, headerMap, 'debitAccountCode'))
       ? getPairFormat(row, headerMap, rowNumber)
-      : getLineFormat(row, headerMap, rowNumber)
+      : importFormat === 'nameLine'
+        ? getNameLineFormat(row, headerMap, rowNumber)
+        : getLineFormat(row, headerMap, rowNumber)
     if (isImportError(parsed)) parseErrors.push(parsed)
     else parsedRows.push(parsed)
   })
@@ -290,10 +426,11 @@ export async function POST(req: NextRequest) {
   const entries = groupEntries(parsedRows)
   const accounts = await prisma.finAccount.findMany({
     where: { companyId: companyScope.companyId },
-    select: { id: true, code: true },
+    select: { id: true, code: true, name: true },
   })
   const accountLookup = new Map(accounts.map(account => [account.code, account]))
-  const validationErrors = validateEntries(entries, accountLookup)
+  const accountNameLookup = buildAccountNameLookup(accounts)
+  const validationErrors = validateEntries(entries, accountLookup, accountNameLookup, importFormat)
 
   const voucherNos = entries.map(entry => entry.sourceVoucherNo).filter(Boolean)
   if (voucherNos.length > 0) {
@@ -330,7 +467,7 @@ export async function POST(req: NextRequest) {
           createdById: session.user.id,
           lines: {
             create: entry.lines.map((line, index) => ({
-              accountId: accountLookup.get(line.accountCode)!.id,
+              accountId: resolveAccountId(line, accountLookup, accountNameLookup)!,
               lineNum: index + 1,
               description: line.description || entry.description,
               debit: new Prisma.Decimal(line.debit),

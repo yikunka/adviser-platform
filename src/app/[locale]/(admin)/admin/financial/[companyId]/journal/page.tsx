@@ -261,8 +261,9 @@ export default function AdminFinancialJournalPage() {
             </Select>
           </div>
           <div className="mt-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-            Excel 导入支持逐行分录：Voucher No、Date、Description、Account Code、Debit、Credit；也支持借贷配对行：
-            Date、Description、Debit Account Code、Credit Account Code、Amount。导入后保存为待过账。
+            Excel 导入支持三种格式：逐行分录（Voucher No、Date、Description、Account Code、Debit、Credit）；
+            按科目名称（Date、Account、Particular、Debit、Credit，Account 无法匹配时整条导入记录失败）；
+            借贷配对行（Date、Description、Debit Account Code、Credit Account Code、Amount）。导入后保存为待过账。
           </div>
           {importResult ? (
             <div
