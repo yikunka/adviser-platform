@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, Plus, Save, Search, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus, Printer, Save, Search, Trash2 } from 'lucide-react'
 import type { CosColorFormulaCategory } from '@prisma/client'
 import { ColorFormulaCategoryFields } from '@/components/cosmocoat/ColorFormulaCategoryFields'
 import type { ColorFormulaFactoryProductOption } from '@/lib/cosmocoat/color-formula-factory-products'
@@ -496,15 +496,26 @@ export default function CosmocoatColorFormulaDetailPage() {
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={saveFormula}
-          disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
-          style={{ background: '#C9A96E', color: '#0A0805' }}
-        >
-          <Save size={14} /> {saving ? '保存中...' : (isNew ? '创建' : '保存')}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {!isNew && (
+            <a
+              href={`/api/admin/cosmocoat/color-formulas/${formulaId}/print`}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+              style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
+            >
+              <Printer size={14} /> 打印文件
+            </a>
+          )}
+          <button
+            type="button"
+            onClick={saveFormula}
+            disabled={saving}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+            style={{ background: '#C9A96E', color: '#0A0805' }}
+          >
+            <Save size={14} /> {saving ? '保存中...' : (isNew ? '创建' : '保存')}
+          </button>
+        </div>
       </div>
 
       <div style={card} className="p-4 space-y-4">

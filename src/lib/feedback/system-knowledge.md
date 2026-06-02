@@ -227,6 +227,7 @@ Custom color formulations for specific customers or products.
 - Material picker supports multi-type filtering for AD, SO, Sol semifinished, DY, CO, CA, CC; a "参考配方" dropdown filters the picker to only materials used in a specific existing recipe
 - Clicking "新建配方" while a product filter is active pre-fills that product in the new formula form
 - Generate from factory product template: creates a linked formula with only an applicable-product row in material details; it does not auto-expand the product's full material list
+- Detail page has a "打印文件" action that downloads a DOCX print sheet based on the `templates/LM0019色漆+双固化.docx` process format, including formula code, name, source recipe, color code, customer, linked factory product, material items, quantities, percentages, costs, and production notes
 - PU 同步 button (visible on PU category, SUPER_ADMIN only): deletes all PU color formulas and recreates them from PU factory products with full recipe item expansion
 
 ### Production Orders (`/admin/cosmocoat-production-orders`)
