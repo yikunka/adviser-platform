@@ -84,10 +84,10 @@ Financial module can be enabled/disabled per company via the `financialEnabled` 
 Service invoicing for TCSP professional fees.
 - List with search, status filter
 - Invoice statuses: `DRAFT` → `SENT` → `PAID` / `CANCELLED`
-- Create invoices with multiple line items (description, quantity, unit price, tax)
+- Create invoices for either a linked client company or an approved personal KYC identity; billing fields are auto-filled from the selected customer and can be manually adjusted; multiple line items support description, quantity, unit price, tax
 - Edit DRAFT invoices; status changes
 - Generate and download PDF
-- Link invoices to client companies
+- Link invoices to client companies or approved individual KYC records
 
 ### 7. Team Management (`/admin/team`)
 Staff access control.

@@ -46,14 +46,6 @@ export default function NewInvoicePage() {
       .catch(() => toast.error(t('loadFailed')))
   }, [t])
 
-  useEffect(() => {
-    const customer = customers.find(c => c.type === customerType && c.id === customerId)
-    if (!customer) return
-    setBillToName(customer.billToName)
-    setBillToAddress(customer.billToAddress ?? '')
-    setBillToEmail(customer.billToEmail ?? '')
-  }, [customerId, customerType, customers])
-
   const taxRate = useMemo(() => Math.max(0, parseFloat(taxRatePct) || 0) / 100, [taxRatePct])
   const customerOptions = useMemo(
     () => customers.filter(customer => customer.type === customerType),
@@ -75,6 +67,15 @@ export default function NewInvoicePage() {
 
   function updateLine(i: number, patch: Partial<LineRow>) {
     setLines(prev => prev.map((row, idx) => (idx === i ? { ...row, ...patch } : row)))
+  }
+
+  function selectCustomer(nextCustomerId: string) {
+    setCustomerId(nextCustomerId)
+    const customer = customers.find(c => c.type === customerType && c.id === nextCustomerId)
+    if (!customer) return
+    setBillToName(customer.billToName)
+    setBillToAddress(customer.billToAddress ?? '')
+    setBillToEmail(customer.billToEmail ?? '')
   }
 
   async function handleSubmit(status: 'DRAFT' | 'SENT') {
@@ -160,7 +161,7 @@ export default function NewInvoicePage() {
             <label className="text-sm font-medium block mb-1">{t('customer')}</label>
             <select
               value={customerId}
-              onChange={e => setCustomerId(e.target.value)}
+              onChange={e => selectCustomer(e.target.value)}
               className="w-full rounded-md px-3 py-2 text-sm"
               style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: '#F0EAD8' }}
             >

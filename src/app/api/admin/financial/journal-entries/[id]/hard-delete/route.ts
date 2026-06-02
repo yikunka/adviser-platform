@@ -19,11 +19,11 @@ export async function DELETE(
     where: { id },
     select: { id: true, voucherNo: true, status: true, companyId: true },
   })
-  if (!entry) return apiError('Journal entry not found.', 404)
-  if (entry.status !== 'CANCELLED') return apiError('Only cancelled journal entries can be permanently deleted.')
+  if (!entry) return apiError('日记账不存在。', 404)
+  if (entry.status !== 'CANCELLED') return apiError('只有已取消的日记账可以彻底删除。')
 
   const access = await resolveCompanyAccess(session.user.id, session.user.role)
-  if (!entry.companyId || !(await assertCompanyAccessible(access, entry.companyId))) return apiError('Forbidden', 403)
+  if (!entry.companyId || !(await assertCompanyAccessible(access, entry.companyId))) return apiError('无权操作该日记账。', 403)
 
   await prisma.$transaction(async tx => {
     await tx.ledger.deleteMany({ where: { entryId: id } })
@@ -41,7 +41,7 @@ export async function DELETE(
   return NextResponse.json({
     id,
     voucherNo: entry.voucherNo,
-    message: 'Journal entry permanently deleted.',
-    toast: 'Journal entry permanently deleted.',
+    message: '日记账已彻底删除。',
+    toast: '日记账已彻底删除。',
   })
 }
