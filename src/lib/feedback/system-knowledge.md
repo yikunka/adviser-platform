@@ -213,10 +213,12 @@ Purchasing and sourcing registry.
 Product formulation management.
 - Fields: recipe code, name, category, batch quantity, unit cost
 - Line items: raw materials or component recipes (nested), with quantity, unit price, percentage
+- Unit cost is calculated by percentage: each line contributes `(quantity ÷ total quantity) × unit price`; accurate even when material quantities do not sum to 100
 - Automatic cost calculation; refresh prices from latest material pricing
 - Link to factory products; mark recipe as active/used
 - Print recipe: prints complete recipe sheet (materials, quantities, percentages, costs, production requirements)
-- Packaging requirements field has quick-select presets: 200目、300目、400目、色装机
+- Production process section: stirring requirements, packaging requirements, production notes
+- Packaging requirements: dropdown quick-select presets (200目、300目、400目、色装机); selecting a preset fills the field only on user action — no auto-fill on create or edit
 - Material rows can be reordered by drag-and-drop; new order is auto-saved immediately
 
 ### Color Matching Formulas (`/admin/cosmocoat-color-formulas`)

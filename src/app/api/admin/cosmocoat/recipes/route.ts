@@ -29,9 +29,9 @@ function isMissingTable(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021'
 }
 
-async function saveRecipeItems(recipeId: string, items: RecipeItemInput[]) {
+async function saveRecipeItems(recipeId: string, items: RecipeItemInput[], batchQuantity: number) {
   const enriched = await validateAndEnrichRecipeItems(items, recipeId)
-  const normalized = normalizeRecipeItems(enriched)
+  const normalized = normalizeRecipeItems(enriched, batchQuantity)
   await prisma.cosTableRecipeItem.deleteMany({ where: { recipeId } })
   if (normalized.length > 0) {
     await prisma.cosTableRecipeItem.createMany({
@@ -139,9 +139,13 @@ export async function POST(req: NextRequest) {
     if (existing) return NextResponse.json({ error: '配方编号已存在' }, { status: 409 })
 
     const enrichedItems = await validateAndEnrichRecipeItems(parsed.data.items)
-    const normalized = normalizeRecipeItems(enrichedItems)
+    const normalized = normalizeRecipeItems(enrichedItems, parsed.data.batchQuantity)
     const totals = computeRecipeTotals(
-      normalized.map(item => ({ quantity: item.quantity, amount: item.amount })),
+      normalized.map(item => ({
+        quantity: item.quantity,
+        amount: item.amount,
+        unitPrice: item.unitPrice,
+      })),
       parsed.data.batchQuantity,
     )
 
@@ -159,7 +163,7 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    await saveRecipeItems(recipe.id, enrichedItems)
+    await saveRecipeItems(recipe.id, enrichedItems, parsed.data.batchQuantity)
     await refreshAllFormulaIsUsedCache()
     const full = await serializeFullRecipe(recipe.id)
     return NextResponse.json({ recipe: full }, { status: 201 })

@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db/prisma'
-import { computeRecipeTotals } from '@/lib/cosmocoat/recipes'
+import { computeItemAmount, computeRecipeTotals } from '@/lib/cosmocoat/recipes'
 
 function serializeRecipeItem(item: {
   id: string
@@ -145,8 +145,13 @@ export async function serializeFullRecipe(recipeId: string) {
 
   const items = recipe.items.map(serializeRecipeItem)
   const batchQuantity = Number(recipe.batchQuantity)
+  const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0)
   const totals = computeRecipeTotals(
-    items.map(item => ({ quantity: item.quantity, amount: item.amount ?? 0 })),
+    items.map(item => ({
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      amount: computeItemAmount(item.quantity, item.unitPrice, totalQuantity, batchQuantity),
+    })),
     batchQuantity,
   )
 

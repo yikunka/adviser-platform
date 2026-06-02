@@ -53,9 +53,33 @@ export function toNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-export function computeItemAmount(quantity: number, unitPrice: number | null): number {
-  if (unitPrice == null) return 0
-  return quantity * unitPrice
+/** Common packaging requirement presets for recipe production fields. */
+export const PACKAGING_REQUIREMENT_PRESETS = ['200目', '300目', '400目', '色装机'] as const
+
+/**
+ * Line amount for a recipe batch: (quantity / totalQuantity) × unitPrice × batchQuantity.
+ * Quantities are treated as parts; when they sum to 100 each part is an effective percentage.
+ */
+export function computeItemAmount(
+  quantity: number,
+  unitPrice: number | null,
+  totalQuantity: number,
+  batchQuantity = 1,
+): number {
+  if (unitPrice == null || quantity <= 0 || totalQuantity <= 0 || batchQuantity <= 0) return 0
+  return (quantity / totalQuantity) * unitPrice * batchQuantity
+}
+
+/** Product unit cost (per kg): Σ (quantity / totalQuantity × unitPrice). */
+export function computeUnitCostFromItems(
+  items: { quantity: number; unitPrice: number | null }[],
+): number {
+  const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0)
+  if (totalQuantity <= 0) return 0
+  return items.reduce((sum, item) => {
+    if (item.unitPrice == null || item.quantity <= 0) return sum
+    return sum + (item.quantity / totalQuantity) * item.unitPrice
+  }, 0)
 }
 
 /** 物料占比 = 该物料数量 / 配方物料数量合计 × 100% */
@@ -65,31 +89,36 @@ export function computeItemPercentage(quantity: number, totalQuantity: number): 
 }
 
 export function computeRecipeTotals(
-  items: { quantity: number; amount: number }[],
+  items: { quantity: number; amount: number; unitPrice?: number | null }[],
   batchQuantity: number,
 ): RecipeTotals {
   const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0)
   const totalAmount = items.reduce((sum, item) => sum + item.amount, 0)
-  const unitCost = batchQuantity > 0 ? totalAmount / batchQuantity : 0
+  const unitCost = items.some(item => item.unitPrice !== undefined)
+    ? computeUnitCostFromItems(items.map(item => ({
+        quantity: item.quantity,
+        unitPrice: item.unitPrice ?? null,
+      })))
+    : (batchQuantity > 0 ? totalAmount / batchQuantity : 0)
   return { totalQuantity, totalAmount, unitCost }
 }
 
-export function normalizeRecipeItems(items: RecipeItemInput[]): Array<RecipeItemInput & { amount: number; percentage: number }> {
-  const withAmount = items.map((item, index) => {
+export function normalizeRecipeItems(
+  items: RecipeItemInput[],
+  batchQuantity = 1,
+): Array<RecipeItemInput & { amount: number; percentage: number }> {
+  const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0)
+  return items.map((item, index) => {
     const quantity = item.quantity
     const unitPrice = item.unitPrice
-    const amount = computeItemAmount(quantity, unitPrice)
+    const amount = computeItemAmount(quantity, unitPrice, totalQuantity, batchQuantity)
     return {
       ...item,
       sortOrder: item.sortOrder ?? index + 1,
       amount,
+      percentage: computeItemPercentage(quantity, totalQuantity),
     }
   })
-  const totalQuantity = withAmount.reduce((sum, item) => sum + item.quantity, 0)
-  return withAmount.map(item => ({
-    ...item,
-    percentage: computeItemPercentage(item.quantity, totalQuantity),
-  }))
 }
 
 export function formatMoney(value: number | null | undefined, digits = 4): string {

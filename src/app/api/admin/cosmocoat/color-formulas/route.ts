@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    await saveColorFormulaItems(formula.id, enriched)
+    await saveColorFormulaItems(formula.id, enriched, parsed.data.batchQuantity)
     const full = await getColorFormulaById(formula.id)
     return NextResponse.json({ formula: full }, { status: 201 })
   } catch (err) {

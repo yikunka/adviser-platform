@@ -103,7 +103,7 @@ function toEditableItem(item: FullColorFormula['items'][number], index: number):
     attributeCode: item.attributeCode,
     quantity: item.quantity,
     unitPrice: item.unitPrice,
-    amount: item.amount ?? computeItemAmount(item.quantity, item.unitPrice),
+    amount: item.amount ?? 0,
     notes: item.notes,
   }
 }
@@ -122,7 +122,7 @@ function toEditableFromPicker(m: PickerMaterial): EditableItem {
     attributeCode: m.attributeCode,
     quantity,
     unitPrice,
-    amount: computeItemAmount(quantity, unitPrice),
+    amount: 0,
     notes: '',
   }
 }
@@ -354,23 +354,22 @@ export default function CosmocoatColorFormulaDetailPage() {
   }, [pickerQuery, pickerTypes, selectedRecipeId])
 
   const totals = useMemo(() => {
-    const withAmount = items.map(item => ({
-      quantity: item.quantity,
-      amount: computeItemAmount(item.quantity, item.unitPrice),
-    }))
-    return computeRecipeTotals(withAmount, batchQuantity)
+    const totalQty = items.reduce((sum, item) => sum + item.quantity, 0)
+    return computeRecipeTotals(
+      items.map(item => ({
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        amount: computeItemAmount(item.quantity, item.unitPrice, totalQty, batchQuantity),
+      })),
+      batchQuantity,
+    )
   }, [items, batchQuantity])
 
   const totalQuantity = totals.totalQuantity
 
   function updateItem(key: string, patch: Partial<EditableItem>) {
     setItems(prev =>
-      prev.map(item => {
-        if (item.key !== key) return item
-        const next = { ...item, ...patch }
-        next.amount = computeItemAmount(next.quantity, next.unitPrice)
-        return next
-      }),
+      prev.map(item => (item.key === key ? { ...item, ...patch } : item)),
     )
   }
 
@@ -740,7 +739,7 @@ export default function CosmocoatColorFormulaDetailPage() {
                         />
                       )}
                     </td>
-                    <td style={td}>{item.isLocked ? '—' : formatMoney(item.amount)}</td>
+                    <td style={td}>{item.isLocked ? '—' : formatMoney(computeItemAmount(item.quantity, item.unitPrice, totalQuantity, batchQuantity))}</td>
                     <td style={td}>{item.isLocked ? '—' : formatPercent(computeItemPercentage(item.quantity, totalQuantity))}</td>
                     <td style={td}>
                       {item.isLocked ? (

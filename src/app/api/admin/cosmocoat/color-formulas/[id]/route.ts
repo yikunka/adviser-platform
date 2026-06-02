@@ -132,7 +132,8 @@ export async function PATCH(
 
     if (parsed.data.items) {
       const enriched = await enrichColorFormulaItemsFromRawMaterials(parsed.data.items as ColorFormulaItemInput[])
-      await saveColorFormulaItems(id, enriched)
+      const batchQuantity = parsed.data.batchQuantity ?? Number(current.batchQuantity)
+      await saveColorFormulaItems(id, enriched, batchQuantity)
     }
 
     const full = await getColorFormulaById(id)

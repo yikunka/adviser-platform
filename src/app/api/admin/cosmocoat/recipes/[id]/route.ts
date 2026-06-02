@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
-import { computeRecipeTotals, normalizeRecipeItems } from '@/lib/cosmocoat/recipes'
+import { computeItemAmount, computeRecipeTotals, normalizeRecipeItems } from '@/lib/cosmocoat/recipes'
 import { recipeItemToPrismaCreate } from '@/lib/cosmocoat/recipe-items'
 import { RecipeItemValidationError, validateAndEnrichRecipeItems } from '@/lib/cosmocoat/recipe-item-validation'
 import { recipeItemSchema } from '@/lib/cosmocoat/recipe-api-schemas'
@@ -78,7 +78,8 @@ export async function PATCH(
   try {
     if (parsed.data.items) {
       const enriched = await validateAndEnrichRecipeItems(parsed.data.items, id)
-      const normalized = normalizeRecipeItems(enriched)
+      const batchQty = parsed.data.batchQuantity ?? Number(current.batchQuantity)
+      const normalized = normalizeRecipeItems(enriched, batchQty)
       await prisma.cosTableRecipeItem.deleteMany({ where: { recipeId: id } })
       if (normalized.length > 0) {
         await prisma.cosTableRecipeItem.createMany({
@@ -89,11 +90,17 @@ export async function PATCH(
 
     const batchQuantity = parsed.data.batchQuantity ?? Number(current.batchQuantity)
     const items = await prisma.cosTableRecipeItem.findMany({ where: { recipeId: id } })
+    const totalQuantity = items.reduce((sum, item) => sum + Number(item.quantity), 0)
     const totals = computeRecipeTotals(
-      items.map(item => ({
-        quantity: Number(item.quantity),
-        amount: Number(item.amount ?? 0),
-      })),
+      items.map(item => {
+        const quantity = Number(item.quantity)
+        const unitPrice = item.unitPrice != null ? Number(item.unitPrice) : null
+        return {
+          quantity,
+          unitPrice,
+          amount: computeItemAmount(quantity, unitPrice, totalQuantity, batchQuantity),
+        }
+      }),
       batchQuantity,
     )
 

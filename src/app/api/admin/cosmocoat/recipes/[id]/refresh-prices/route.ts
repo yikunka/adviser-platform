@@ -39,7 +39,13 @@ export async function POST(
         : item.productSemifinished
           ? (item.productSemifinished.unitPrice != null ? Number(item.productSemifinished.unitPrice) : null)
           : (item.rawMaterial?.primaryPricePerKg != null ? Number(item.rawMaterial.primaryPricePerKg) : null)
-      const amount = computeItemAmount(Number(item.quantity), unitPrice)
+      const quantity = Number(item.quantity)
+      const amount = computeItemAmount(
+        quantity,
+        unitPrice,
+        recipe.items.reduce((sum, i) => sum + Number(i.quantity), 0),
+        Number(recipe.batchQuantity),
+      )
       await prisma.cosTableRecipeItem.update({
         where: { id: item.id },
         data: { unitPrice, amount },
@@ -47,12 +53,19 @@ export async function POST(
     }
 
     const updatedItems = await prisma.cosTableRecipeItem.findMany({ where: { recipeId: id } })
+    const batchQuantity = Number(recipe.batchQuantity)
+    const totalQuantity = updatedItems.reduce((sum, item) => sum + Number(item.quantity), 0)
     const totals = computeRecipeTotals(
-      updatedItems.map(item => ({
-        quantity: Number(item.quantity),
-        amount: Number(item.amount ?? 0),
-      })),
-      Number(recipe.batchQuantity),
+      updatedItems.map(item => {
+        const quantity = Number(item.quantity)
+        const unitPrice = item.unitPrice != null ? Number(item.unitPrice) : null
+        return {
+          quantity,
+          unitPrice,
+          amount: computeItemAmount(quantity, unitPrice, totalQuantity, batchQuantity),
+        }
+      }),
+      batchQuantity,
     )
 
     await prisma.cosTableRecipe.update({

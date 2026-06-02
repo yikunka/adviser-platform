@@ -9,7 +9,7 @@ import {
 import { validateColorFormulaFactoryProduct } from '@/lib/cosmocoat/color-formula-factory-products'
 
 export { inferCategoryFromProductCategory }
-import { computeRecipeTotals, normalizeRecipeItems, type RecipeItemInput } from '@/lib/cosmocoat/recipes'
+import { computeItemAmount, computeRecipeTotals, normalizeRecipeItems, type RecipeItemInput } from '@/lib/cosmocoat/recipes'
 
 export type ColorFormulaItemInput = {
   rawMaterialId?: string | null
@@ -186,9 +186,15 @@ export function serializeColorFormula(formula: {
   _count?: { items: number }
 }) {
   const items = formula.items?.map(serializeItem) ?? []
+  const batchQuantity = Number(formula.batchQuantity)
+  const totalQuantity = items.reduce((sum, i) => sum + i.quantity, 0)
   const totals = computeRecipeTotals(
-    items.map(i => ({ quantity: i.quantity, amount: i.amount ?? 0 })),
-    Number(formula.batchQuantity),
+    items.map(i => ({
+      quantity: i.quantity,
+      unitPrice: i.unitPrice,
+      amount: computeItemAmount(i.quantity, i.unitPrice, totalQuantity, batchQuantity),
+    })),
+    batchQuantity,
   )
   const baseCategoryLabel = colorFormulaCategoryLabel(formula.category)
   const factoryProductSuffix = formula.factoryProduct
@@ -245,7 +251,11 @@ export async function getColorFormulaById(id: string) {
   return formula ? serializeColorFormula(formula) : null
 }
 
-export async function saveColorFormulaItems(formulaId: string, items: ColorFormulaItemInput[]) {
+export async function saveColorFormulaItems(
+  formulaId: string,
+  items: ColorFormulaItemInput[],
+  batchQuantity = 1,
+) {
   const normalized = normalizeRecipeItems(
     items.map((item, index) => ({
       rawMaterialId: item.rawMaterialId || undefined,
@@ -255,6 +265,7 @@ export async function saveColorFormulaItems(formulaId: string, items: ColorFormu
       unitPrice: item.unitPrice,
       notes: item.notes,
     })) as RecipeItemInput[],
+    batchQuantity,
   )
 
   await prisma.cosTableColorFormulaItem.deleteMany({ where: { formulaId } })
@@ -388,7 +399,7 @@ export async function generateColorFormulaFromProduct(params: {
     name: product.name,
     attributeCode: '适用产品',
     notes: product.currentRecipe ? `当前配方：${product.currentRecipe.code}` : '',
-  }])
+  }], batchQuantity)
 
   const full = await getColorFormulaById(formula.id)
   return { ok: true as const, formula: full! }

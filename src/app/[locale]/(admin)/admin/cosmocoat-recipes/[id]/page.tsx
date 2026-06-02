@@ -15,6 +15,7 @@ import {
   computeRecipeTotals,
   formatMoney,
   formatPercent,
+  PACKAGING_REQUIREMENT_PRESETS,
 } from '@/lib/cosmocoat/recipes'
 
 type PickerMaterial = {
@@ -69,8 +70,6 @@ type EditableItem = {
   notes: string
 }
 
-const PACKAGING_PRESETS = ['200目', '300目', '400目', '色装机']
-
 const card: React.CSSProperties = {
   background: 'var(--card)',
   border: '1px solid var(--border)',
@@ -115,7 +114,7 @@ function toEditableItemFromMaterial(material: PickerMaterial, quantity = 0, note
     packageKg: material.primaryPackageKg,
     quantity: qty,
     unitPrice,
-    amount: computeItemAmount(qty, unitPrice),
+    amount: 0,
     notes,
   }
 }
@@ -136,7 +135,7 @@ function toEditableItemFromSemifinished(
     packageKg: semifinished.batchQuantity,
     quantity: qty,
     unitPrice,
-    amount: computeItemAmount(qty, unitPrice),
+    amount: 0,
     notes,
   }
 }
@@ -175,25 +174,31 @@ export default function AdminCosmoCoatRecipeEditorPage() {
   const [notes, setNotes] = useState('')
   const [stirringRequirements, setStirringRequirements] = useState('')
   const [packagingRequirements, setPackagingRequirements] = useState('')
+  const [packagingPresetSelect, setPackagingPresetSelect] = useState('')
   const [productionNotes, setProductionNotes] = useState('')
   const [formulaIsUsed, setFormulaIsUsed] = useState(false)
   const [items, setItems] = useState<EditableItem[]>([])
 
-  const totals = useMemo(
-    () => computeRecipeTotals(
-      items.map(item => ({ quantity: item.quantity, amount: item.amount })),
+  const totals = useMemo(() => {
+    const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0)
+    return computeRecipeTotals(
+      items.map(item => ({
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        amount: computeItemAmount(item.quantity, item.unitPrice, totalQuantity, batchQuantity),
+      })),
       batchQuantity,
-    ),
-    [items, batchQuantity],
-  )
+    )
+  }, [items, batchQuantity])
 
   const itemsWithPercentage = useMemo(() => {
     const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0)
     return items.map(item => ({
       ...item,
       percentage: computeItemPercentage(item.quantity, totalQuantity),
+      amount: computeItemAmount(item.quantity, item.unitPrice, totalQuantity, batchQuantity),
     }))
-  }, [items])
+  }, [items, batchQuantity])
 
   const loadCategories = useCallback(async () => {
     try {
@@ -251,7 +256,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
             sourceOrderCode: sf.sourceProductionOrder?.code ?? null,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
-            amount: item.amount ?? computeItemAmount(item.quantity, item.unitPrice),
+            amount: item.amount ?? 0,
             notes: item.notes,
           }
         }
@@ -265,7 +270,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
             packageKg: item.recipe.batchQuantity,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
-            amount: item.amount ?? computeItemAmount(item.quantity, item.unitPrice),
+            amount: item.amount ?? 0,
             notes: item.notes,
           }
         }
@@ -279,7 +284,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
           packageKg: material.packageKg,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
-          amount: item.amount ?? computeItemAmount(item.quantity, item.unitPrice),
+          amount: item.amount ?? 0,
           notes: item.notes,
         }
       }))
@@ -387,12 +392,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
   }
 
   function patchItem(key: string, patch: Partial<EditableItem>) {
-    setItems(prev => prev.map(item => {
-      if (item.key !== key) return item
-      const next = { ...item, ...patch }
-      next.amount = computeItemAmount(next.quantity, next.unitPrice)
-      return next
-    }))
+    setItems(prev => prev.map(item => (item.key === key ? { ...item, ...patch } : item)))
   }
 
   function addSelectedPickerItem() {
@@ -801,19 +801,23 @@ export default function AdminCosmoCoatRecipeEditorPage() {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
               <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>包装要求</label>
-              <div className="flex gap-1">
-                {PACKAGING_PRESETS.map(preset => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => setPackagingRequirements(preset)}
-                    className="px-2 py-0.5 rounded text-xs"
-                    style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)', background: 'transparent' }}
-                  >
-                    {preset}
-                  </button>
+              <select
+                value={packagingPresetSelect}
+                onChange={e => {
+                  const preset = e.target.value
+                  if (preset) {
+                    setPackagingRequirements(preset)
+                  }
+                  setPackagingPresetSelect('')
+                }}
+                className="rounded-lg px-2 py-1 text-xs outline-none"
+                style={{ ...inputStyle(), minWidth: '7rem' }}
+              >
+                <option value="">快速选择…</option>
+                {PACKAGING_REQUIREMENT_PRESETS.map(preset => (
+                  <option key={preset} value={preset}>{preset}</option>
                 ))}
-              </div>
+              </select>
             </div>
             <textarea
               value={packagingRequirements}

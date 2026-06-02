@@ -10,12 +10,12 @@ const items = await prisma.featureRequest.findMany({
   where: {
     status: { not: 'DONE' },
     OR: [
-      { title: { contains: '調適配色號預覽色塊放大' } },
-      { title: { contains: '预览色块' } },
-      { pageUrl: { contains: 'cosmocoat-color-formulas/new' } },
-      { title: { contains: '配方详情页打印功能空白' } },
-      { title: { contains: '打印功能空白' } },
-      { pageUrl: { contains: 'cosmocoat-recipes/cmpp2cp4l0t74hcw5ta2tqnqw' } },
+      { title: { contains: 'CosmoCoat 配方成本单价应按百分比计算' } },
+      { title: { contains: '取消配方页面包装要求字段自动预填' } },
+      { title: { contains: '配方詳情包裝要求預設選項' } },
+      { pageUrl: { contains: 'cosmocoat-recipes/cmpw8u640001bs9w57i7rt5pz' } },
+      { pageUrl: { contains: 'cosmocoat-recipes/cmpw85fu9000cs9w5bv7inptc' } },
+      { pageUrl: { contains: 'cosmocoat-recipes/cmpo3rjth000zhcw5wkfljy1d' } },
     ],
   },
 })

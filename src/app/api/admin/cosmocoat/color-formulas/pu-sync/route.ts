@@ -123,7 +123,7 @@ export async function POST() {
           }
         }
 
-        await saveColorFormulaItems(formula.id, items)
+        await saveColorFormulaItems(formula.id, items, Number(formula.batchQuantity))
         created.push(`${product.productCode} · ${product.name}`)
       } catch (err) {
         errors.push(`${product.productCode}: ${err instanceof Error ? err.message : String(err)}`)
