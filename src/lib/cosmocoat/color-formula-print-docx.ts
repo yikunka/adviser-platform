@@ -277,40 +277,6 @@ function processTable(formula: FullColorFormula) {
   return table(formulaRows(formula))
 }
 
-function notesTable(formula: FullColorFormula) {
-  const formulaNotes = formula.notes ? `配方备注:\n${formula.notes}` : '配方备注:\n/'
-  return table([
-    new TableRow({
-      children: [
-        cell(`${formulaNotes}\n\n备注:\n1.PU双液型产品，请在稀释后2小时（夏天）至4小时（冬天）内用完，以免固化`, CONTENT_WIDTH, {
-          colSpan: 2,
-          size: 17,
-        }),
-      ],
-    }),
-    new TableRow({
-      children: [
-        cell('前处理制程：\n1.产品使用前充分搅拌，特别是银粉、珠光等成份容易沉淀，以免出现色差及效果异常\n2.喷涂前需先以酒精或清洗剂等将素材表面灰尘，油污，脱模剂等擦拭干净后再进行涂装作业', CONTENT_WIDTH / 2, { size: 17 }),
-        cell('过滤方面\n1.请使用干净的滤网过滤\n2.过滤后请将涂料盖好避免掉入灰尘或杂物导致不良率上升', CONTENT_WIDTH / 2, { size: 17 }),
-      ],
-    }),
-    new TableRow({
-      children: [
-        cell('建议喷涂环境\n1.请于15-30℃，相对湿度小于70%环境下喷涂.\n2.湿度过高易造成光泽降低或发白现象.', CONTENT_WIDTH / 2, { size: 17 }),
-        cell('涂料保存\n1.涂料最佳保存条件温度在15-35℃湿度在40-70℃.\n2.且避免阳光直晒或雨淋.', CONTENT_WIDTH / 2, { size: 17 }),
-      ],
-    }),
-    new TableRow({
-      children: [
-        cell('*以上资料为我司提供作业之参考条件，请贵司依据实际操作条件加以调整/ *请首件做好以上基本测试性能后方可生产', CONTENT_WIDTH, {
-          colSpan: 2,
-          size: 17,
-        }),
-      ],
-    }),
-  ])
-}
-
 function spacer(size = 120) {
   return new Paragraph({ spacing: { before: size, after: size }, children: [new TextRun('')] })
 }
@@ -337,15 +303,13 @@ export function buildColorFormulaPrintDocx(formula: FullColorFormula) {
         new Paragraph({
           alignment: AlignmentType.CENTER,
           spacing: { before: 0, after: 140 },
-          children: [new TextRun({ text: '工艺', bold: true, size: 24, font: 'Arial' })],
+          children: [new TextRun({ text: '调色配方', bold: true, size: 24, font: 'Arial' })],
         }),
         infoTable(formula),
         spacer(80),
         processTable(formula),
         spacer(100),
         p('如有技术咨询, 请联系负责业务同事或微信号cosmo-prc', { size: 17 }),
-        spacer(80),
-        notesTable(formula),
       ],
     }],
   })

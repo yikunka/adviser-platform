@@ -563,143 +563,11 @@ export default function AdminCosmoCoatRecipeEditorPage() {
     setDragOverIndex(null)
   }
 
-  function printRecipe() {
-    window.print()
-  }
-
   if (loading) {
     return <div className="p-6 text-sm" style={{ color: 'var(--muted-foreground)' }}>加载中...</div>
   }
 
-  const categoryName = categories.find(c => c.id === categoryId)
-
   return (
-    <>
-    <style>{`
-      @media print {
-        @page { size: A4 portrait; margin: 12mm 14mm; }
-
-        .admin-console > aside,
-        .admin-console > .flex-1 > header,
-        .cosmocoat-screen { display: none !important; }
-
-        .admin-console main {
-          padding: 0 !important;
-          overflow: visible !important;
-          background: #fff !important;
-        }
-
-        #recipe-print-section {
-          display: block !important;
-          width: 182mm;
-          max-width: 182mm;
-          box-sizing: border-box;
-          color: #000 !important;
-          background: #fff !important;
-          font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
-          font-size: 11pt;
-          line-height: 1.45;
-        }
-
-        #recipe-print-section * {
-          box-sizing: border-box;
-          max-width: 100%;
-        }
-
-        #recipe-print-section h1 { font-size: 16pt; font-weight: bold; margin-bottom: 4px; }
-        #recipe-print-section .print-meta { color: #555; font-size: 10pt; margin-bottom: 12px; }
-        #recipe-print-section .print-section-title { font-weight: bold; font-size: 12pt; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin: 14px 0 8px; }
-        #recipe-print-section table { table-layout: fixed; width: 100%; border-collapse: collapse; font-size: 10pt; }
-        #recipe-print-section th { background: #f5f5f5; border: 1px solid #ddd; padding: 5px 8px; text-align: left; font-weight: 600; word-break: break-all; }
-        #recipe-print-section td { border: 1px solid #ddd; padding: 5px 8px; word-break: break-all; overflow-wrap: break-word; }
-        #recipe-print-section .print-totals { margin-top: 8px; font-size: 11pt; }
-        #recipe-print-section .print-field { margin-bottom: 6px; }
-        #recipe-print-section .print-label { color: #555; font-size: 10pt; }
-        #recipe-print-section .print-value { font-size: 11pt; white-space: pre-wrap; }
-      }
-
-      @media screen { #recipe-print-section { display: none; } }
-    `}</style>
-
-    <div id="recipe-print-section">
-      <h1>{code} {name}</h1>
-      <div className="print-meta">
-        目录: {categoryName ? `${categoryName.code} ${categoryName.name}` : '—'} ·
-        每生产产品数量: {batchQuantity} ·
-        {formulaIsUsed ? '已被工厂产品使用' : '未被工厂产品使用'}
-      </div>
-      <div className="print-section-title">原料清单</div>
-      <table>
-        <thead>
-          <tr>
-            <th>序号</th>
-            <th>编号</th>
-            <th>名称</th>
-            <th>规格</th>
-            <th>数量</th>
-            <th>占比</th>
-            <th>单价(元)</th>
-            <th>金额(元)</th>
-            <th>备注</th>
-          </tr>
-        </thead>
-        <tbody>
-          {itemsWithPercentage.map((item, index) => (
-            <tr key={item.key}>
-              <td>{index + 1}</td>
-              <td>{item.productionCode}{item.itemType === 'recipe' ? ' [配方]' : item.itemType === 'product_semifinished' ? ' [Sol.]' : ''}</td>
-              <td>{item.name}{item.sourceOrderCode ? ` (来源: ${item.sourceOrderCode})` : ''}</td>
-              <td>
-                {item.itemType === 'product_semifinished'
-                  ? `库存 ${item.stock ?? '—'} ${item.unit ?? 'kg'}`
-                  : `${item.packageKg ?? '—'}${item.itemType === 'recipe' ? ' kg/批' : ''}`}
-              </td>
-              <td>{item.quantity}</td>
-              <td>{formatPercent(item.percentage)}</td>
-              <td>{formatMoney(item.unitPrice)}</td>
-              <td>{formatMoney(item.amount, 3)}</td>
-              <td>{item.notes}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="print-totals">
-        产品成本单价：<strong>{formatMoney(totals.unitCost)}</strong> ·
-        材料数量合计：{formatMoney(totals.totalQuantity, 3)} ·
-        材料金额合计：{formatMoney(totals.totalAmount, 3)} 元
-      </div>
-      {(stirringRequirements || packagingRequirements || productionNotes || notes) && (
-        <>
-          <div className="print-section-title">生产工艺</div>
-          {stirringRequirements && (
-            <div className="print-field">
-              <div className="print-label">生产要求</div>
-              <div className="print-value">{stirringRequirements}</div>
-            </div>
-          )}
-          {packagingRequirements && (
-            <div className="print-field">
-              <div className="print-label">包装要求</div>
-              <div className="print-value">{packagingRequirements}</div>
-            </div>
-          )}
-          {productionNotes && (
-            <div className="print-field">
-              <div className="print-label">生产注意事项</div>
-              <div className="print-value">{productionNotes}</div>
-            </div>
-          )}
-          {notes && (
-            <div className="print-field">
-              <div className="print-label">备注</div>
-              <div className="print-value">{notes}</div>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-
-    <div className="cosmocoat-screen">
     <div className="p-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -735,9 +603,13 @@ export default function AdminCosmoCoatRecipeEditorPage() {
               <button type="button" onClick={refreshPrices} disabled={refreshing} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm disabled:opacity-50" style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}>
                 <RefreshCw size={14} /> {refreshing ? '更新中...' : '更新价格'}
               </button>
-              <button type="button" onClick={printRecipe} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm" style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}>
-                <Printer size={14} /> 打印
-              </button>
+              <a
+                href={`/api/admin/cosmocoat/recipes/${recipeId}/print`}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm"
+                style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}
+              >
+                <Printer size={14} /> 打印文件
+              </a>
             </>
           )}
           <button type="button" onClick={saveRecipe} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50" style={{ background: '#C9A96E', color: '#0A0805' }}>
@@ -1159,7 +1031,5 @@ export default function AdminCosmoCoatRecipeEditorPage() {
         </div>
       </div>
     </div>
-    </div>{/* end cosmocoat-screen */}
-    </>
   )
 }
