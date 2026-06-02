@@ -201,6 +201,7 @@ export default function CosmocoatColorFormulaDetailPage() {
   // Material picker state
   const [pickerQuery, setPickerQuery] = useState('')
   const [pickerMaterials, setPickerMaterials] = useState<PickerMaterial[]>([])
+  const [pickerLoading, setPickerLoading] = useState(false)
   const [selectedPickerKey, setSelectedPickerKey] = useState('')
   const [pickerTypes, setPickerTypes] = useState<string[]>(PICKER_TYPE_OPTIONS.map(option => option.key))
 
@@ -335,6 +336,7 @@ export default function CosmocoatColorFormulaDetailPage() {
   useEffect(() => {
     const q = pickerQuery.trim()
     const t = setTimeout(async () => {
+      setPickerLoading(true)
       try {
         const p = new URLSearchParams({ limit: '40' })
         if (q) p.set('q', q)
@@ -348,6 +350,8 @@ export default function CosmocoatColorFormulaDetailPage() {
         if (res.ok) setPickerMaterials(data.items ?? [])
       } catch {
         /* ignore */
+      } finally {
+        setPickerLoading(false)
       }
     }, q ? 250 : 0)
     return () => clearTimeout(t)
@@ -366,6 +370,13 @@ export default function CosmocoatColorFormulaDetailPage() {
   }, [items, batchQuantity])
 
   const totalQuantity = totals.totalQuantity
+  const itemsWithAmounts = useMemo(() => {
+    return items.map(item => ({
+      ...item,
+      amount: computeItemAmount(item.quantity, item.unitPrice, totalQuantity, batchQuantity),
+      percentage: computeItemPercentage(item.quantity, totalQuantity),
+    }))
+  }, [items, totalQuantity, batchQuantity])
 
   function updateItem(key: string, patch: Partial<EditableItem>) {
     setItems(prev =>
@@ -404,9 +415,12 @@ export default function CosmocoatColorFormulaDetailPage() {
   }
 
   function togglePickerType(type: string) {
+    setSelectedPickerKey('')
     setPickerTypes(prev =>
       prev.includes(type)
-        ? prev.filter(item => item !== type)
+        ? prev.length === 1
+          ? prev
+          : prev.filter(item => item !== type)
         : [...prev, type],
     )
   }
@@ -576,99 +590,43 @@ export default function CosmocoatColorFormulaDetailPage() {
         </div>
       </div>
 
-      <div style={card} className="p-4 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>原料明细</h3>
-          <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-            合计 {formatMoney(totals.totalAmount)} · 成本单价 {formatMoney(totals.unitCost)} / {batchQuantity} kg
+      <div style={{ ...card, overflow: 'hidden' }}>
+        <div className="px-4 py-3 border-b flex flex-wrap items-center justify-between gap-3" style={{ borderColor: '#2A2418' }}>
+          <div>
+            <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>原料明细</h3>
+            <div className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
+              合计 {formatMoney(totals.totalAmount)} · 成本单价 {formatMoney(totals.unitCost)} / {batchQuantity} kg
+            </div>
           </div>
-        </div>
-
-        {/* Task 1: Reference recipe picker */}
-        {recipeOptions.length > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs flex-shrink-0" style={{ color: 'var(--muted-foreground)' }}>参考配方</span>
-            <select
-              value={selectedRecipeId}
-              onChange={e => { setSelectedRecipeId(e.target.value); setPickerQuery('') }}
-              className="flex-1 rounded-lg px-3 py-2 text-sm outline-none"
-              style={inputStyle()}
-            >
-              <option value="">全部原料库</option>
-              {recipeOptions.map(r => (
-                <option key={r.id} value={r.id}>{r.code} · {r.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-2 items-end">
-          <div className="relative flex-1 min-w-[12rem]">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
-            <input
-              value={pickerQuery}
-              onChange={e => setPickerQuery(e.target.value)}
-              placeholder={selectedRecipeId ? '在该配方原料中搜索...' : '搜索原料...'}
-              className="w-full pl-8 pr-3 py-2 rounded-lg text-sm outline-none"
-              style={inputStyle()}
-            />
-          </div>
-          <select value={selectedPickerKey} onChange={e => setSelectedPickerKey(e.target.value)} className="rounded-lg px-3 py-2 text-sm outline-none min-w-[14rem]" style={inputStyle()}>
-            <option value="">选择原料</option>
-            {pickerMaterials.map(m => (
-              <option key={`${m.optionType}:${m.id}`} value={`${m.optionType}:${m.id}`}>
-                {m.attributeCode} · {m.productionCode} · {m.name}
-              </option>
-            ))}
-          </select>
-          <button type="button" onClick={addMaterial} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: '#C9A96E', color: '#0A0805' }}>
-            添加
-          </button>
-          <button type="button" onClick={addManualRow} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium" style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}>
-            <Plus size={14} /> 空白行
+          <button type="button" onClick={addManualRow} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium" style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}>
+            <Plus size={13} /> 空白行
           </button>
         </div>
-
-        {/* Type filter — hidden when filtering by recipe (Task 1) */}
-        {!selectedRecipeId && (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>类型筛选</span>
-            {PICKER_TYPE_OPTIONS.map(option => (
-              <label key={option.key} className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs" style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}>
-                <input
-                  type="checkbox"
-                  checked={pickerTypes.includes(option.key)}
-                  onChange={() => togglePickerType(option.key)}
-                />
-                {option.label}
-              </label>
-            ))}
-          </div>
-        )}
-
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr>
+                <th style={th}>序号</th>
                 <th style={th}>生产编号</th>
                 <th style={th}>名称</th>
                 <th style={th}>属性</th>
                 <th style={th}>数量</th>
-                <th style={th}>单价</th>
-                <th style={th}>金额</th>
                 <th style={th}>占比</th>
+                <th style={th}>单价(元)</th>
+                <th style={th}>金额(元)</th>
                 <th style={th}>备注</th>
-                <th style={{ ...th, width: 48 }} />
+                <th style={{ ...th, textAlign: 'right' }}>操作</th>
               </tr>
             </thead>
             <tbody>
-              {items.length === 0 ? (
+              {itemsWithAmounts.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={{ ...td, textAlign: 'center', padding: '2rem' }}>暂无原料，请搜索并添加</td>
+                  <td colSpan={10} style={{ ...td, textAlign: 'center', padding: '2rem' }}>请从下方选择原料、Sol. 半成品或添加空白行</td>
                 </tr>
               ) : (
-                items.map(item => (
+                itemsWithAmounts.map((item, index) => (
                   <tr key={item.key} style={item.isLocked ? { background: 'rgba(201,169,110,0.06)' } : undefined}>
+                    <td style={td}>{index + 1}</td>
                     <td style={{ ...td, color: 'var(--foreground)' }}>
                       {item.itemType === 'manual' && !item.isLocked ? (
                         <input
@@ -678,8 +636,14 @@ export default function CosmocoatColorFormulaDetailPage() {
                           style={inputStyle()}
                         />
                       ) : (
-                        <span style={item.isLocked ? { color: '#C9A96E', fontWeight: 500 } : undefined}>
-                          {item.productionCode}
+                        <span className="inline-flex items-center gap-1" style={item.isLocked ? { color: '#C9A96E', fontWeight: 500 } : undefined}>
+                          {item.productionCode || '—'}
+                          {item.itemType === 'product_semifinished' && (
+                            <span className="text-[10px] px-1 py-0.5 rounded" style={{ background: 'rgba(201,169,110,0.15)', color: '#C9A96E' }}>Sol.</span>
+                          )}
+                          {item.itemType === 'manual' && !item.isLocked && (
+                            <span className="text-[10px] px-1 py-0.5 rounded" style={{ background: 'rgba(122,112,96,0.15)', color: '#7A7060' }}>手工</span>
+                          )}
                         </span>
                       )}
                     </td>
@@ -705,7 +669,7 @@ export default function CosmocoatColorFormulaDetailPage() {
                         />
                       ) : (
                         <span style={item.isLocked ? { color: '#C9A96E', fontSize: '0.75rem' } : undefined}>
-                          {item.attributeCode}
+                          {item.attributeCode || '—'}
                         </span>
                       )}
                     </td>
@@ -724,6 +688,7 @@ export default function CosmocoatColorFormulaDetailPage() {
                         />
                       )}
                     </td>
+                    <td style={td}>{item.isLocked ? '—' : formatPercent(item.percentage)}</td>
                     <td style={td}>
                       {item.isLocked ? (
                         <span style={{ color: '#5A5040' }}>—</span>
@@ -739,8 +704,7 @@ export default function CosmocoatColorFormulaDetailPage() {
                         />
                       )}
                     </td>
-                    <td style={td}>{item.isLocked ? '—' : formatMoney(computeItemAmount(item.quantity, item.unitPrice, totalQuantity, batchQuantity))}</td>
-                    <td style={td}>{item.isLocked ? '—' : formatPercent(computeItemPercentage(item.quantity, totalQuantity))}</td>
+                    <td style={td}>{item.isLocked ? '—' : formatMoney(item.amount, 3)}</td>
                     <td style={td}>
                       {item.isLocked ? (
                         <span className="text-xs" style={{ color: '#5A5040' }}>{item.notes}</span>
@@ -753,7 +717,7 @@ export default function CosmocoatColorFormulaDetailPage() {
                         />
                       )}
                     </td>
-                    <td style={td}>
+                    <td style={{ ...td, textAlign: 'right' }}>
                       {!item.isLocked && (
                         <button type="button" onClick={() => removeItem(item.key)} className="p-1.5 rounded" style={{ color: '#ef4444' }}>
                           <Trash2 size={14} />
@@ -765,6 +729,151 @@ export default function CosmocoatColorFormulaDetailPage() {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div style={card} className="overflow-hidden">
+        <div className="px-4 py-3 border-b flex flex-wrap items-center justify-between gap-2" style={{ borderColor: '#2A2418' }}>
+          <div className="flex items-center gap-3">
+            <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>待选物料</h3>
+          </div>
+          {recipeOptions.length > 0 && (
+            <div className="flex items-center gap-2 min-w-[16rem] sm:min-w-[22rem]">
+              <span className="text-xs flex-shrink-0" style={{ color: 'var(--muted-foreground)' }}>参考配方</span>
+              <select
+                value={selectedRecipeId}
+                onChange={e => {
+                  setSelectedRecipeId(e.target.value)
+                  setPickerQuery('')
+                  setSelectedPickerKey('')
+                }}
+                className="flex-1 rounded-lg px-3 py-1.5 text-xs outline-none"
+                style={inputStyle()}
+              >
+                <option value="">全部原料库</option>
+                {recipeOptions.map(r => (
+                  <option key={r.id} value={r.id}>{r.code} · {r.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {pickerQuery.trim() && (
+            <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+              {selectedRecipeId ? '正在参考配方中搜索原料' : '正在所选类型中搜索物料'}
+            </span>
+          )}
+        </div>
+        <div className="grid lg:grid-cols-[12rem_1fr] min-h-[14rem]">
+          <div
+            className="border-r overflow-y-auto max-h-72 lg:max-h-80"
+            style={{ borderColor: '#2A2418', opacity: selectedRecipeId ? 0.55 : 1 }}
+          >
+            {selectedRecipeId ? (
+              <div className="px-3 py-4 text-xs space-y-1.5" style={{ color: 'var(--muted-foreground)' }}>
+                <p style={{ color: '#C9A96E' }}>参考配方过滤中</p>
+                <p style={{ color: '#5A5040' }}>候选表仅显示该配方内已使用的原料。</p>
+              </div>
+            ) : (
+              PICKER_TYPE_OPTIONS.map(option => {
+                const checked = pickerTypes.includes(option.key)
+                return (
+                  <button
+                    key={option.key}
+                    type="button"
+                    onClick={() => togglePickerType(option.key)}
+                    className="w-full text-left px-3 py-2 text-xs transition-colors"
+                    aria-pressed={checked}
+                    style={{
+                      background: checked ? 'rgba(201,169,110,0.12)' : 'transparent',
+                      color: checked ? '#C9A96E' : 'var(--muted-foreground)',
+                    }}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <span
+                        className="inline-block h-2 w-2 rounded-full"
+                        style={{ background: checked ? '#C9A96E' : '#3A3020' }}
+                      />
+                      {option.label}
+                    </span>
+                  </button>
+                )
+              })
+            )}
+          </div>
+          <div className="p-3 space-y-3">
+            <div className="flex flex-wrap gap-2 items-center">
+              <div className="relative flex-1 min-w-[12rem]">
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
+                <input
+                  value={pickerQuery}
+                  onChange={e => {
+                    setPickerQuery(e.target.value)
+                    setSelectedPickerKey('')
+                  }}
+                  placeholder={selectedRecipeId ? '在该配方原料中搜索...' : '搜索全部候选物料（编号、名称、类别）...'}
+                  className="w-full pl-8 pr-3 py-2 rounded-lg text-sm outline-none"
+                  style={inputStyle()}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={addMaterial}
+                className="px-4 py-2 rounded-lg text-sm font-medium"
+                style={{ background: 'rgba(201,169,110,0.15)', color: '#C9A96E', border: '1px solid rgba(201,169,110,0.25)' }}
+              >
+                添加选中
+              </button>
+            </div>
+            <div className="overflow-x-auto max-h-56 overflow-y-auto">
+              {pickerLoading ? (
+                <p className="text-sm py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>加载物料...</p>
+              ) : pickerMaterials.length === 0 ? (
+                <p className="text-sm py-8 text-center" style={{ color: '#5A5040' }}>
+                  {pickerQuery.trim() ? '未找到匹配物料' : '当前条件下暂无候选物料'}
+                </p>
+              ) : (
+                <table className="w-full">
+                  <thead>
+                    <tr>
+                      <th style={th}>编号</th>
+                      <th style={th}>名称</th>
+                      <th style={th}>属性</th>
+                      <th style={th}>规格</th>
+                      <th style={th}>单价</th>
+                      <th style={th}>备注</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pickerMaterials.map(material => {
+                      const pickerKey = `${material.optionType}:${material.id}`
+                      const alreadyAdded = material.optionType === 'raw_material'
+                        ? items.some(item => item.rawMaterialId === material.id)
+                        : items.some(item => item.productSemifinishedId === material.id)
+                      return (
+                        <tr
+                          key={pickerKey}
+                          onClick={() => !alreadyAdded && setSelectedPickerKey(pickerKey)}
+                          className={alreadyAdded ? 'opacity-40' : 'cursor-pointer'}
+                          style={{
+                            background: selectedPickerKey === pickerKey && !alreadyAdded
+                              ? 'rgba(201,169,110,0.08)'
+                              : 'transparent',
+                          }}
+                        >
+                          <td style={td}>{material.productionCode}</td>
+                          <td style={td}>{material.name}</td>
+                          <td style={td}>{material.attributeCode}</td>
+                          <td style={td}>{material.primaryPackageKg ?? '—'}</td>
+                          <td style={td}>{formatMoney(material.primaryPricePerKg)}</td>
+                          <td style={td}>{material.primaryNotes || '—'}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
