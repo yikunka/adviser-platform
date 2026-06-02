@@ -26,6 +26,14 @@ function hasPayloadField(body: unknown, field: string) {
   )
 }
 
+function splitLegacyYearToDateAmount(amount: number, type: string, code: string) {
+  const creditNormal = ['LIABILITY', 'EQUITY', 'REVENUE'].includes(type) || (type === 'CURRENT_ACCOUNT' && /^2/.test(code))
+  return {
+    debit: creditNormal ? 0 : amount,
+    credit: creditNormal ? amount : 0,
+  }
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -36,6 +44,8 @@ export async function PATCH(
   const { id } = await params
   const body = await req.json().catch(() => null)
   const openingBalanceRequested = ['openingDebit', 'openingCredit', 'openingBalancePeriod']
+    .some(field => hasPayloadField(body, field))
+  const yearToDateRequested = ['yearToDateDebit', 'yearToDateCredit', 'yearToDateAmount']
     .some(field => hasPayloadField(body, field))
   const parsed = accountUpdateSchema.safeParse(body)
   if (!parsed.success) {
@@ -80,6 +90,19 @@ export async function PATCH(
 
   try {
     const account = await prisma.$transaction(async tx => {
+      const nextType = parsed.data.type ?? before.type
+      const nextCode = parsed.data.code ?? before.code
+      const legacyYearToDate = hasPayloadField(body, 'yearToDateAmount')
+        ? splitLegacyYearToDateAmount(parsed.data.yearToDateAmount ?? 0, nextType, nextCode)
+        : null
+      const yearToDateDebit = hasPayloadField(body, 'yearToDateDebit')
+        ? parsed.data.yearToDateDebit ?? 0
+        : legacyYearToDate?.debit ?? Number(before.yearToDateDebit)
+      const yearToDateCredit = hasPayloadField(body, 'yearToDateCredit')
+        ? parsed.data.yearToDateCredit ?? 0
+        : legacyYearToDate?.credit ?? Number(before.yearToDateCredit)
+      const yearToDateAmount = yearToDateRequested ? yearToDateDebit + yearToDateCredit : undefined
+
       const updated = await tx.finAccount.update({
         where: { id },
         data: {
@@ -89,8 +112,12 @@ export async function PATCH(
           ...(hasPayloadField(body, 'sortOrder') && parsed.data.sortOrder !== undefined ? { sortOrder: parsed.data.sortOrder } : {}),
           ...(hasPayloadField(body, 'isSystem') && parsed.data.isSystem !== undefined ? { isSystem: parsed.data.isSystem } : {}),
           ...(hasPayloadField(body, 'notes') && parsed.data.notes !== undefined ? { notes: parsed.data.notes } : {}),
-          ...(hasPayloadField(body, 'yearToDateAmount') && parsed.data.yearToDateAmount !== undefined
-            ? { yearToDateAmount: new Prisma.Decimal(parsed.data.yearToDateAmount) }
+          ...(yearToDateRequested
+            ? {
+                yearToDateAmount: new Prisma.Decimal(yearToDateAmount ?? 0),
+                yearToDateDebit: new Prisma.Decimal(yearToDateDebit),
+                yearToDateCredit: new Prisma.Decimal(yearToDateCredit),
+              }
             : {}),
           ...(hasPayloadField(body, 'parentId')
             ? { parentId: parent?.id ?? null, level: parent ? parent.level + 1 : 1 }

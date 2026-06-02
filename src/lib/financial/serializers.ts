@@ -19,6 +19,8 @@ export type SerializedAccount = {
   isSystem: boolean
   notes: string
   yearToDateAmount: number
+  yearToDateDebit: number
+  yearToDateCredit: number
   createdAt?: string
   updatedAt?: string
 }
@@ -36,9 +38,17 @@ export function serializeAccount(account: {
   isSystem: boolean
   notes: string
   yearToDateAmount?: Decimalish | number
+  yearToDateDebit?: Decimalish | number
+  yearToDateCredit?: Decimalish | number
   createdAt?: Date
   updatedAt?: Date
 }): SerializedAccount {
+  const yearToDateDebit = money(account.yearToDateDebit)
+  const yearToDateCredit = money(account.yearToDateCredit)
+  const yearToDateAmount = account.yearToDateAmount === undefined
+    ? yearToDateDebit + yearToDateCredit
+    : money(account.yearToDateAmount)
+
   return {
     id: account.id,
     code: account.code,
@@ -51,7 +61,9 @@ export function serializeAccount(account: {
     parent: account.parent ?? null,
     isSystem: account.isSystem,
     notes: account.notes,
-    yearToDateAmount: money(account.yearToDateAmount),
+    yearToDateAmount,
+    yearToDateDebit,
+    yearToDateCredit,
     createdAt: account.createdAt?.toISOString(),
     updatedAt: account.updatedAt?.toISOString(),
   }

@@ -35,6 +35,8 @@ type AccountWithOpeningBalance = {
   isSystem: boolean
   notes: string
   yearToDateAmount: Prisma.Decimal
+  yearToDateDebit: Prisma.Decimal
+  yearToDateCredit: Prisma.Decimal
   createdAt?: Date
   updatedAt?: Date
   accountBalances: {
@@ -48,6 +50,8 @@ function serializeAccountOpeningBalances(accounts: AccountWithOpeningBalance[]) 
   const childrenByParent = new Map<string | null, string[]>()
   const ownBalanceById = new Map<string, number>()
   const ownYearToDateById = new Map<string, number>()
+  const ownYearToDateDebitById = new Map<string, number>()
+  const ownYearToDateCreditById = new Map<string, number>()
 
   const serialized = accounts.map(account => {
     const openingBalance = account.accountBalances[0] ?? null
@@ -65,7 +69,12 @@ function serializeAccountOpeningBalances(accounts: AccountWithOpeningBalance[]) 
     parentChildren.push(account.id)
     childrenByParent.set(account.parentId, parentChildren)
     ownBalanceById.set(account.id, ownBalance)
-    ownYearToDateById.set(account.id, roundMoney(Number(account.yearToDateAmount)))
+    const yearToDateDebit = roundMoney(Number(account.yearToDateDebit))
+    const yearToDateCredit = roundMoney(Number(account.yearToDateCredit))
+    const yearToDateAmount = roundMoney(yearToDateDebit + yearToDateCredit)
+    ownYearToDateById.set(account.id, yearToDateAmount)
+    ownYearToDateDebitById.set(account.id, yearToDateDebit)
+    ownYearToDateCreditById.set(account.id, yearToDateCredit)
 
     return {
       ...serializeAccount(account),
@@ -74,8 +83,12 @@ function serializeAccountOpeningBalances(accounts: AccountWithOpeningBalance[]) 
       openingCredit,
       openingBalance: ownBalance,
       openingBalanceTotal: ownBalance,
-      yearToDateAmount: roundMoney(Number(account.yearToDateAmount)),
-      yearToDateAmountTotal: roundMoney(Number(account.yearToDateAmount)),
+      yearToDateAmount,
+      yearToDateDebit,
+      yearToDateCredit,
+      yearToDateAmountTotal: yearToDateAmount,
+      yearToDateDebitTotal: yearToDateDebit,
+      yearToDateCreditTotal: yearToDateCredit,
     }
   })
 
@@ -90,21 +103,51 @@ function serializeAccountOpeningBalances(accounts: AccountWithOpeningBalance[]) 
     return total
   }
   const yearToDateTotalById = new Map<string, number>()
-  const calculateYearToDateTotal = (accountId: string): number => {
-    const cached = yearToDateTotalById.get(accountId)
+  const yearToDateDebitTotalById = new Map<string, number>()
+  const yearToDateCreditTotalById = new Map<string, number>()
+  const calculateNumericTotal = (
+    accountId: string,
+    ownById: Map<string, number>,
+    totalById: Map<string, number>,
+  ): number => {
+    const cached = totalById.get(accountId)
     if (cached !== undefined) return cached
     const childrenTotal = (childrenByParent.get(accountId) ?? [])
-      .reduce((sum, childId) => roundMoney(sum + calculateYearToDateTotal(childId)), 0)
-    const total = roundMoney((ownYearToDateById.get(accountId) ?? 0) + childrenTotal)
-    yearToDateTotalById.set(accountId, total)
+      .reduce((sum, childId) => roundMoney(sum + calculateNumericTotal(childId, ownById, totalById)), 0)
+    const total = roundMoney((ownById.get(accountId) ?? 0) + childrenTotal)
+    totalById.set(accountId, total)
     return total
   }
 
   return serialized.map(account => ({
     ...account,
     openingBalanceTotal: calculateTotal(account.id),
-    yearToDateAmountTotal: calculateYearToDateTotal(account.id),
+    yearToDateAmountTotal: calculateNumericTotal(account.id, ownYearToDateById, yearToDateTotalById),
+    yearToDateDebitTotal: calculateNumericTotal(account.id, ownYearToDateDebitById, yearToDateDebitTotalById),
+    yearToDateCreditTotal: calculateNumericTotal(account.id, ownYearToDateCreditById, yearToDateCreditTotalById),
   }))
+}
+
+function yearToDateValues(input: {
+  yearToDateAmount?: number
+  yearToDateDebit?: number
+  yearToDateCredit?: number
+}, type: AccountType, code: string) {
+  const explicitDebit = input.yearToDateDebit !== undefined
+  const explicitCredit = input.yearToDateCredit !== undefined
+  if (explicitDebit || explicitCredit) {
+    const debit = roundMoney(input.yearToDateDebit ?? 0)
+    const credit = roundMoney(input.yearToDateCredit ?? 0)
+    return { debit, credit, amount: roundMoney(debit + credit) }
+  }
+
+  const amount = roundMoney(input.yearToDateAmount ?? 0)
+  const creditNormal = ['LIABILITY', 'EQUITY', 'REVENUE'].includes(type) || (type === 'CURRENT_ACCOUNT' && /^2/.test(code))
+  return {
+    debit: creditNormal ? 0 : amount,
+    credit: creditNormal ? amount : 0,
+    amount,
+  }
 }
 
 export async function GET(req: NextRequest) {
@@ -161,18 +204,23 @@ export async function POST(req: NextRequest) {
   try {
     const account = await prisma.$transaction(async tx => {
       const created = await tx.finAccount.create({
-        data: {
-          code: parsed.data.code,
-          name: parsed.data.name,
-          type: parsed.data.type,
-          companyId: companyScope.companyId,
-          parentId: parent?.id ?? null,
-          level: parent ? parent.level + 1 : 1,
-          sortOrder: parsed.data.sortOrder,
-          isSystem: parsed.data.isSystem,
-          notes: parsed.data.notes,
-          yearToDateAmount: new Prisma.Decimal(parsed.data.yearToDateAmount),
-        },
+        data: (() => {
+          const ytd = yearToDateValues(parsed.data, parsed.data.type, parsed.data.code)
+          return {
+            code: parsed.data.code,
+            name: parsed.data.name,
+            type: parsed.data.type,
+            companyId: companyScope.companyId,
+            parentId: parent?.id ?? null,
+            level: parent ? parent.level + 1 : 1,
+            sortOrder: parsed.data.sortOrder,
+            isSystem: parsed.data.isSystem,
+            notes: parsed.data.notes,
+            yearToDateAmount: new Prisma.Decimal(ytd.amount),
+            yearToDateDebit: new Prisma.Decimal(ytd.debit),
+            yearToDateCredit: new Prisma.Decimal(ytd.credit),
+          }
+        })(),
         include: { parent: { select: { id: true, code: true, name: true } } },
       })
 

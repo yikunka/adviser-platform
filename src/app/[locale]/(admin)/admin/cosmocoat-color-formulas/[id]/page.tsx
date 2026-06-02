@@ -552,12 +552,11 @@ export default function CosmocoatColorFormulaDetailPage() {
                 className="flex-1 rounded-lg px-3 py-2.5 text-sm outline-none"
                 style={inputStyle()}
               />
-              {/* Task 3: Pantone color preview swatch */}
               <div
-                className="w-9 h-9 flex-shrink-0 rounded-lg border"
+                className="w-14 h-14 flex-shrink-0 rounded-xl border-2 shadow-sm"
                 style={{
                   background: pantoneHex ?? 'transparent',
-                  border: pantoneHex ? '1px solid rgba(255,255,255,0.15)' : '1px dashed #3A3020',
+                  border: pantoneHex ? '2px solid rgba(255,255,255,0.2)' : '2px dashed #3A3020',
                 }}
                 title={pantoneHex ? `≈ ${pantoneHex}` : colorCode ? '未知色号（可直接输入 #RRGGBB）' : '输入色号预览颜色'}
               />

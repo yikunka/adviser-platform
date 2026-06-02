@@ -1808,6 +1808,8 @@ model FinAccount {
   isSystem      Boolean     @default(false)
   notes         String      @default("")
   yearToDateAmount Decimal  @default(0.0) @db.Decimal(18, 4)
+  yearToDateDebit  Decimal  @default(0.0) @db.Decimal(18, 4)
+  yearToDateCredit Decimal  @default(0.0) @db.Decimal(18, 4)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 

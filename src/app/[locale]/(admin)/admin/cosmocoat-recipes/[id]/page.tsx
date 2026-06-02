@@ -577,20 +577,47 @@ export default function AdminCosmoCoatRecipeEditorPage() {
     <>
     <style>{`
       @media print {
-        body > * { display: none !important; }
-        #recipe-print-section { display: block !important; }
-        #recipe-print-section { color: #000; background: #fff; font-family: sans-serif; font-size: 12px; padding: 16px; }
-        #recipe-print-section h1 { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
-        #recipe-print-section .print-meta { color: #555; font-size: 11px; margin-bottom: 16px; }
-        #recipe-print-section .print-section-title { font-weight: bold; font-size: 13px; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin: 16px 0 8px; }
-        #recipe-print-section table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        #recipe-print-section th { background: #f5f5f5; border: 1px solid #ddd; padding: 4px 6px; text-align: left; font-weight: 600; }
-        #recipe-print-section td { border: 1px solid #ddd; padding: 4px 6px; }
-        #recipe-print-section .print-totals { margin-top: 8px; font-size: 12px; }
+        @page { size: A4 portrait; margin: 12mm 14mm; }
+
+        .admin-console > aside,
+        .admin-console > .flex-1 > header,
+        .cosmocoat-screen { display: none !important; }
+
+        .admin-console main {
+          padding: 0 !important;
+          overflow: visible !important;
+          background: #fff !important;
+        }
+
+        #recipe-print-section {
+          display: block !important;
+          width: 182mm;
+          max-width: 182mm;
+          box-sizing: border-box;
+          color: #000 !important;
+          background: #fff !important;
+          font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+          font-size: 11pt;
+          line-height: 1.45;
+        }
+
+        #recipe-print-section * {
+          box-sizing: border-box;
+          max-width: 100%;
+        }
+
+        #recipe-print-section h1 { font-size: 16pt; font-weight: bold; margin-bottom: 4px; }
+        #recipe-print-section .print-meta { color: #555; font-size: 10pt; margin-bottom: 12px; }
+        #recipe-print-section .print-section-title { font-weight: bold; font-size: 12pt; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin: 14px 0 8px; }
+        #recipe-print-section table { table-layout: fixed; width: 100%; border-collapse: collapse; font-size: 10pt; }
+        #recipe-print-section th { background: #f5f5f5; border: 1px solid #ddd; padding: 5px 8px; text-align: left; font-weight: 600; word-break: break-all; }
+        #recipe-print-section td { border: 1px solid #ddd; padding: 5px 8px; word-break: break-all; overflow-wrap: break-word; }
+        #recipe-print-section .print-totals { margin-top: 8px; font-size: 11pt; }
         #recipe-print-section .print-field { margin-bottom: 6px; }
-        #recipe-print-section .print-label { color: #555; font-size: 11px; }
-        #recipe-print-section .print-value { font-size: 12px; white-space: pre-wrap; }
+        #recipe-print-section .print-label { color: #555; font-size: 10pt; }
+        #recipe-print-section .print-value { font-size: 11pt; white-space: pre-wrap; }
       }
+
       @media screen { #recipe-print-section { display: none; } }
     `}</style>
 
@@ -672,6 +699,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
       )}
     </div>
 
+    <div className="cosmocoat-screen">
     <div className="p-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -1127,6 +1155,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
         </div>
       </div>
     </div>
+    </div>{/* end cosmocoat-screen */}
     </>
   )
 }

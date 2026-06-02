@@ -128,7 +128,8 @@ export default function AdminFinancialAccountsPage() {
                     <TableHead>类型</TableHead>
                     <TableHead>层级</TableHead>
                     <TableHead className="text-right">期初余额</TableHead>
-                    <TableHead className="text-right">本年累计发生数</TableHead>
+                    <TableHead className="text-right">本年借方累计</TableHead>
+                    <TableHead className="text-right">本年贷方累计</TableHead>
                     <TableHead>排序</TableHead>
                     <TableHead className="text-right">操作</TableHead>
                   </TableRow>
@@ -154,7 +155,10 @@ export default function AdminFinancialAccountsPage() {
                         {formatBalance(account.openingBalanceTotal ?? account.openingBalance)}
                       </TableCell>
                       <TableCell className="text-right font-mono">
-                        {formatBalance(account.yearToDateAmountTotal ?? account.yearToDateAmount)}
+                        {formatBalance(account.yearToDateDebitTotal ?? account.yearToDateDebit)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {formatBalance(account.yearToDateCreditTotal ?? account.yearToDateCredit)}
                       </TableCell>
                       <TableCell>{account.sortOrder}</TableCell>
                       <TableCell className="text-right space-x-2">

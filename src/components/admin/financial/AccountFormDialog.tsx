@@ -38,7 +38,11 @@ export type FinancialAccount = {
   openingBalance?: number
   openingBalanceTotal?: number
   yearToDateAmount?: number
+  yearToDateDebit?: number
+  yearToDateCredit?: number
   yearToDateAmountTotal?: number
+  yearToDateDebitTotal?: number
+  yearToDateCreditTotal?: number
 }
 
 type Props = {
@@ -80,7 +84,8 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
   const [openingBalancePeriod, setOpeningBalancePeriod] = useState(defaultOpeningPeriod)
   const [openingBalanceAmount, setOpeningBalanceAmount] = useState('')
   const [openingBalanceSide, setOpeningBalanceSide] = useState<OpeningBalanceSide>('DEBIT')
-  const [yearToDateAmount, setYearToDateAmount] = useState('')
+  const [yearToDateDebit, setYearToDateDebit] = useState('')
+  const [yearToDateCredit, setYearToDateCredit] = useState('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -94,7 +99,8 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
     setOpeningBalancePeriod(account?.openingBalancePeriod ?? defaultOpeningPeriod())
     setOpeningBalanceAmount(amountField(Math.max(account?.openingDebit ?? 0, account?.openingCredit ?? 0)))
     setOpeningBalanceSide((account?.openingCredit ?? 0) > 0 ? 'CREDIT' : normalBalanceSide(account?.type ?? 'ASSET'))
-    setYearToDateAmount(amountField(account?.yearToDateAmount))
+    setYearToDateDebit(amountField(account?.yearToDateDebit))
+    setYearToDateCredit(amountField(account?.yearToDateCredit))
   }, [account, open])
 
   const parentOptions = useMemo(() => {
@@ -133,12 +139,13 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
       return
     }
     const openingBalanceValue = Number(openingBalanceAmount || 0)
-    const yearToDateValue = Number(yearToDateAmount || 0)
-    if (!Number.isFinite(openingBalanceValue) || !Number.isFinite(yearToDateValue)) {
-      toast.error('期初余额必须是数字。')
+    const yearToDateDebitValue = Number(yearToDateDebit || 0)
+    const yearToDateCreditValue = Number(yearToDateCredit || 0)
+    if (!Number.isFinite(openingBalanceValue) || !Number.isFinite(yearToDateDebitValue) || !Number.isFinite(yearToDateCreditValue)) {
+      toast.error('期初余额和本年累计发生数必须是数字。')
       return
     }
-    if (openingBalanceValue < 0 || yearToDateValue < 0) {
+    if (openingBalanceValue < 0 || yearToDateDebitValue < 0 || yearToDateCreditValue < 0) {
       toast.error('期初余额和本年累计发生数不能为负数。')
       return
     }
@@ -161,7 +168,8 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
           openingBalancePeriod,
           openingDebit: openingDebitAmount,
           openingCredit: openingCreditAmount,
-          yearToDateAmount: yearToDateValue,
+          yearToDateDebit: yearToDateDebitValue,
+          yearToDateCredit: yearToDateCreditValue,
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -286,14 +294,26 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="year-to-date-amount" className={labelClassName}>本年累计发生数</Label>
+                <Label htmlFor="year-to-date-debit" className={labelClassName}>本年累计发生数（借方）</Label>
                 <Input
-                  id="year-to-date-amount"
+                  id="year-to-date-debit"
                   type="number"
                   min={0}
                   step="0.01"
-                  value={yearToDateAmount}
-                  onChange={event => setYearToDateAmount(event.target.value)}
+                  value={yearToDateDebit}
+                  onChange={event => setYearToDateDebit(event.target.value)}
+                  className={fieldClassName}
+                />
+              </div>
+              <div className="space-y-2 sm:col-start-2">
+                <Label htmlFor="year-to-date-credit" className={labelClassName}>本年累计发生数（贷方）</Label>
+                <Input
+                  id="year-to-date-credit"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={yearToDateCredit}
+                  onChange={event => setYearToDateCredit(event.target.value)}
                   className={fieldClassName}
                 />
               </div>

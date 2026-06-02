@@ -1,6 +1,7 @@
 import type { AccountType, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
 import { isDebitNormalAccountType, isProfitAndLossExpenseType } from '@/lib/financial/account-types'
+import { trialBalanceColumns } from '@/lib/financial/report-balances'
 import { roundMoney } from '@/lib/financial/utils'
 
 export type ReportAccountRow = {
@@ -99,11 +100,6 @@ export function periodRange(period: string) {
 function signedBalance(amount: number, type: AccountType, code?: string) {
   if (isDebitNormalAccountType(type, code)) return roundMoney(amount)
   return roundMoney(-amount)
-}
-
-function trialBalanceColumns(balance: number) {
-  if (balance >= 0) return { closingDebit: balance, closingCredit: 0 }
-  return { closingDebit: 0, closingCredit: Math.abs(balance) }
 }
 
 function isCashAccount(account: { code: string; name: string }) {
@@ -336,7 +332,7 @@ export async function buildFinancialReports(
     openingByAccount.set(account.accountId, openingBalance)
     closingByAccount.set(account.accountId, closingBalance)
 
-    const tbCols = trialBalanceColumns(closingBalance)
+    const tbCols = trialBalanceColumns(closingBalance, account.type, account.code)
     if (periodTotals.debit > 0 || periodTotals.credit > 0 || closingBalance !== 0) {
       trialRows.push({
         ...account,

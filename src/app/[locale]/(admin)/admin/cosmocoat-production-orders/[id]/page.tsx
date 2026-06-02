@@ -214,19 +214,19 @@ function PrintView({
 
       {/* ─── Notes sections ─── */}
       {(productionNotes || qualityNotes || packagingNotes) && (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9 }}>
+        <table className="print-notes-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9 }}>
           <thead>
             <tr style={{ background: '#f0f0f0' }}>
-              {productionNotes && <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '33%' }}>搅拌要求</th>}
-              {qualityNotes   && <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '34%' }}>生产注意事项（含质检）</th>}
-              {packagingNotes && <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '33%' }}>包装要求</th>}
+              <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '33%' }}>生产要求</th>
+              <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '34%' }}>生产注意事项（含质检）</th>
+              <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '33%' }}>包装要求</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              {productionNotes && <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{productionNotes}</td>}
-              {qualityNotes   && <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{qualityNotes}</td>}
-              {packagingNotes && <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{packagingNotes}</td>}
+              <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{productionNotes}</td>
+              <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{qualityNotes}</td>
+              <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{packagingNotes}</td>
             </tr>
           </tbody>
         </table>
@@ -555,22 +555,50 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       {/* ─── Print styles ─── */}
       <style>{`
         @media print {
-          @page { size: A4 portrait; margin: 12mm 14mm; }
+          @page { size: A4 portrait; margin: 0; }
 
-          /* Completely remove screen UI — no space, no blank page */
+          html,
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #fff !important;
+          }
+
+          .admin-console {
+            display: block !important;
+            min-height: auto !important;
+            background: #fff !important;
+          }
+
+          .admin-console > aside,
+          .admin-console > .flex-1 > header,
           .cosmocoat-screen { display: none !important; }
 
-          /* Print area: normal document flow, bounded to printable width */
+          .admin-console > .flex-1 {
+            display: block !important;
+            min-width: 0 !important;
+          }
+
+          .admin-console main {
+            display: block !important;
+            padding: 0 !important;
+            overflow: visible !important;
+            background: #fff !important;
+          }
+
           #cosmocoat-print-area {
             display: block !important;
-            width: 182mm;
-            max-width: 182mm;
+            width: auto;
+            max-width: none;
             box-sizing: border-box;
+            padding: 12mm 14mm;
             font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
             font-size: 11pt;
             line-height: 1.45;
             color: #000 !important;
             background: #fff !important;
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
           }
 
           /* Prevent any child from exceeding the page width */
@@ -584,7 +612,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
             table-layout: fixed;
             width: 100%;
             border-collapse: collapse;
-            font-size: 10.5pt !important;
+            font-size: 10pt !important;
           }
 
           /* Cells: wrap long text */
@@ -593,9 +621,13 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
             word-break: break-all;
             overflow-wrap: break-word;
             overflow: hidden;
-            padding: 5px 8px !important;
-            font-size: 10.5pt !important;
+            padding: 4px 6px !important;
+            font-size: 10pt !important;
             line-height: 1.4;
+          }
+
+          #cosmocoat-print-area .print-notes-table td {
+            white-space: pre-wrap;
           }
 
           #cosmocoat-print-area .print-section-title {

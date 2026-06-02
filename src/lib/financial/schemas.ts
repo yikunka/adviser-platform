@@ -29,6 +29,8 @@ const accountSchemaBase = z.object({
   openingCredit: z.coerce.number().min(0).max(999999999999).optional().default(0),
   openingBalancePeriod: z.string().regex(/^\d{4}-\d{2}$/).optional(),
   yearToDateAmount: z.coerce.number().min(0).max(999999999999).optional().default(0),
+  yearToDateDebit: z.coerce.number().min(0).max(999999999999).optional(),
+  yearToDateCredit: z.coerce.number().min(0).max(999999999999).optional(),
 })
 
 export const accountCreateSchema = accountSchemaBase.refine(data => !(data.openingDebit > 0 && data.openingCredit > 0), {
