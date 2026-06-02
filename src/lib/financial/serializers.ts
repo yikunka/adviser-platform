@@ -18,6 +18,7 @@ export type SerializedAccount = {
   parent?: { id: string; code: string; name: string } | null
   isSystem: boolean
   notes: string
+  yearToDateAmount: number
   createdAt?: string
   updatedAt?: string
 }
@@ -34,6 +35,7 @@ export function serializeAccount(account: {
   parent?: { id: string; code: string; name: string } | null
   isSystem: boolean
   notes: string
+  yearToDateAmount?: Decimalish | number
   createdAt?: Date
   updatedAt?: Date
 }): SerializedAccount {
@@ -49,6 +51,7 @@ export function serializeAccount(account: {
     parent: account.parent ?? null,
     isSystem: account.isSystem,
     notes: account.notes,
+    yearToDateAmount: money(account.yearToDateAmount),
     createdAt: account.createdAt?.toISOString(),
     updatedAt: account.updatedAt?.toISOString(),
   }

@@ -1,0 +1,2 @@
+ALTER TABLE "adv_accounts"
+ADD COLUMN "yearToDateAmount" DECIMAL(18,4) NOT NULL DEFAULT 0.0;

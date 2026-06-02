@@ -37,6 +37,8 @@ export type FinancialAccount = {
   openingCredit?: number
   openingBalance?: number
   openingBalanceTotal?: number
+  yearToDateAmount?: number
+  yearToDateAmountTotal?: number
 }
 
 type Props = {
@@ -54,6 +56,7 @@ const labelClassName = 'text-[#EADDC3]'
 const fieldClassName = 'border-[#2A2418] bg-[#0E0E0A] text-[#FFF7E6] placeholder:text-[#9F927B]'
 const selectContentClassName = 'financial-select-content border-[#2A2418] bg-[#11110E] text-[#FFF7E6]'
 const secondaryButtonClassName = 'border-[#3A3428] bg-[#0E0E0A] text-[#FFF7E6] hover:bg-[#1E1A12] hover:text-[#FFF7E6]'
+type OpeningBalanceSide = 'DEBIT' | 'CREDIT'
 
 function defaultOpeningPeriod() {
   return `${new Date().getUTCFullYear()}-01`
@@ -61,6 +64,10 @@ function defaultOpeningPeriod() {
 
 function amountField(value: number | null | undefined) {
   return value ? String(value) : ''
+}
+
+function normalBalanceSide(type: FinancialAccount['type']): OpeningBalanceSide {
+  return ['LIABILITY', 'EQUITY', 'REVENUE'].includes(type) ? 'CREDIT' : 'DEBIT'
 }
 
 export function AccountFormDialog({ open, onOpenChange, account, companyId, accounts, onSaved }: Props) {
@@ -71,8 +78,9 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
   const [sortOrder, setSortOrder] = useState('0')
   const [isSystem, setIsSystem] = useState(false)
   const [openingBalancePeriod, setOpeningBalancePeriod] = useState(defaultOpeningPeriod)
-  const [openingDebit, setOpeningDebit] = useState('')
-  const [openingCredit, setOpeningCredit] = useState('')
+  const [openingBalanceAmount, setOpeningBalanceAmount] = useState('')
+  const [openingBalanceSide, setOpeningBalanceSide] = useState<OpeningBalanceSide>('DEBIT')
+  const [yearToDateAmount, setYearToDateAmount] = useState('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -84,8 +92,9 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
     setSortOrder(String(account?.sortOrder ?? 0))
     setIsSystem(account?.isSystem ?? false)
     setOpeningBalancePeriod(account?.openingBalancePeriod ?? defaultOpeningPeriod())
-    setOpeningDebit(amountField(account?.openingDebit))
-    setOpeningCredit(amountField(account?.openingCredit))
+    setOpeningBalanceAmount(amountField(Math.max(account?.openingDebit ?? 0, account?.openingCredit ?? 0)))
+    setOpeningBalanceSide((account?.openingCredit ?? 0) > 0 ? 'CREDIT' : normalBalanceSide(account?.type ?? 'ASSET'))
+    setYearToDateAmount(amountField(account?.yearToDateAmount))
   }, [account, open])
 
   const parentOptions = useMemo(() => {
@@ -123,16 +132,18 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
       toast.error('上级科目层级过深。')
       return
     }
-    const openingDebitAmount = Number(openingDebit || 0)
-    const openingCreditAmount = Number(openingCredit || 0)
-    if (!Number.isFinite(openingDebitAmount) || !Number.isFinite(openingCreditAmount)) {
+    const openingBalanceValue = Number(openingBalanceAmount || 0)
+    const yearToDateValue = Number(yearToDateAmount || 0)
+    if (!Number.isFinite(openingBalanceValue) || !Number.isFinite(yearToDateValue)) {
       toast.error('期初余额必须是数字。')
       return
     }
-    if (openingDebitAmount > 0 && openingCreditAmount > 0) {
-      toast.error('期初余额只能填写借方或贷方其中一项。')
+    if (openingBalanceValue < 0 || yearToDateValue < 0) {
+      toast.error('期初余额和本年累计发生数不能为负数。')
       return
     }
+    const openingDebitAmount = openingBalanceSide === 'DEBIT' ? openingBalanceValue : 0
+    const openingCreditAmount = openingBalanceSide === 'CREDIT' ? openingBalanceValue : 0
 
     setSaving(true)
     try {
@@ -150,6 +161,7 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
           openingBalancePeriod,
           openingDebit: openingDebitAmount,
           openingCredit: openingCreditAmount,
+          yearToDateAmount: yearToDateValue,
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -233,12 +245,12 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
 
           <div className="rounded-lg border border-[#2A2418] bg-[#0E0E0A] p-4">
             <div className="mb-3">
-              <h3 className="text-sm font-semibold text-[#FFF7E6]">期初余额</h3>
+              <h3 className="text-sm font-semibold text-[#FFF7E6]">期初及累计数</h3>
               <p className="mt-1 text-xs text-[#B8AD98]">
-                可填写或修改此科目的年初余额。借方和贷方只能填写一项。
+                可填写或修改此科目的期初余额和本年累计发生数。
               </p>
             </div>
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="opening-period" className={labelClassName}>期初期间</Label>
                 <Input
@@ -250,26 +262,38 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="opening-debit" className={labelClassName}>期初借方</Label>
+                <Label htmlFor="opening-balance" className={labelClassName}>期初余额</Label>
                 <Input
-                  id="opening-debit"
+                  id="opening-balance"
                   type="number"
                   min={0}
                   step="0.01"
-                  value={openingDebit}
-                  onChange={event => setOpeningDebit(event.target.value)}
+                  value={openingBalanceAmount}
+                  onChange={event => setOpeningBalanceAmount(event.target.value)}
                   className={fieldClassName}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="opening-credit" className={labelClassName}>期初贷方</Label>
+                <Label className={labelClassName}>期初方向</Label>
+                <Select value={openingBalanceSide} onValueChange={value => setOpeningBalanceSide(value as OpeningBalanceSide)}>
+                  <SelectTrigger className={`w-full ${fieldClassName}`}>
+                    <SelectValue placeholder="期初方向" />
+                  </SelectTrigger>
+                  <SelectContent className={selectContentClassName}>
+                    <SelectItem value="DEBIT">借方</SelectItem>
+                    <SelectItem value="CREDIT">贷方</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="year-to-date-amount" className={labelClassName}>本年累计发生数</Label>
                 <Input
-                  id="opening-credit"
+                  id="year-to-date-amount"
                   type="number"
                   min={0}
                   step="0.01"
-                  value={openingCredit}
-                  onChange={event => setOpeningCredit(event.target.value)}
+                  value={yearToDateAmount}
+                  onChange={event => setYearToDateAmount(event.target.value)}
                   className={fieldClassName}
                 />
               </div>

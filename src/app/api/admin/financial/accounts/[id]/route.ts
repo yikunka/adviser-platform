@@ -89,6 +89,9 @@ export async function PATCH(
           ...(hasPayloadField(body, 'sortOrder') && parsed.data.sortOrder !== undefined ? { sortOrder: parsed.data.sortOrder } : {}),
           ...(hasPayloadField(body, 'isSystem') && parsed.data.isSystem !== undefined ? { isSystem: parsed.data.isSystem } : {}),
           ...(hasPayloadField(body, 'notes') && parsed.data.notes !== undefined ? { notes: parsed.data.notes } : {}),
+          ...(hasPayloadField(body, 'yearToDateAmount') && parsed.data.yearToDateAmount !== undefined
+            ? { yearToDateAmount: new Prisma.Decimal(parsed.data.yearToDateAmount) }
+            : {}),
           ...(hasPayloadField(body, 'parentId')
             ? { parentId: parent?.id ?? null, level: parent ? parent.level + 1 : 1 }
             : {}),

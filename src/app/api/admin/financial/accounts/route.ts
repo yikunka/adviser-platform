@@ -34,6 +34,7 @@ type AccountWithOpeningBalance = {
   parent?: { id: string; code: string; name: string } | null
   isSystem: boolean
   notes: string
+  yearToDateAmount: Prisma.Decimal
   createdAt?: Date
   updatedAt?: Date
   accountBalances: {
@@ -46,6 +47,7 @@ type AccountWithOpeningBalance = {
 function serializeAccountOpeningBalances(accounts: AccountWithOpeningBalance[]) {
   const childrenByParent = new Map<string | null, string[]>()
   const ownBalanceById = new Map<string, number>()
+  const ownYearToDateById = new Map<string, number>()
 
   const serialized = accounts.map(account => {
     const openingBalance = account.accountBalances[0] ?? null
@@ -63,6 +65,7 @@ function serializeAccountOpeningBalances(accounts: AccountWithOpeningBalance[]) 
     parentChildren.push(account.id)
     childrenByParent.set(account.parentId, parentChildren)
     ownBalanceById.set(account.id, ownBalance)
+    ownYearToDateById.set(account.id, roundMoney(Number(account.yearToDateAmount)))
 
     return {
       ...serializeAccount(account),
@@ -71,6 +74,8 @@ function serializeAccountOpeningBalances(accounts: AccountWithOpeningBalance[]) 
       openingCredit,
       openingBalance: ownBalance,
       openingBalanceTotal: ownBalance,
+      yearToDateAmount: roundMoney(Number(account.yearToDateAmount)),
+      yearToDateAmountTotal: roundMoney(Number(account.yearToDateAmount)),
     }
   })
 
@@ -84,10 +89,21 @@ function serializeAccountOpeningBalances(accounts: AccountWithOpeningBalance[]) 
     totalById.set(accountId, total)
     return total
   }
+  const yearToDateTotalById = new Map<string, number>()
+  const calculateYearToDateTotal = (accountId: string): number => {
+    const cached = yearToDateTotalById.get(accountId)
+    if (cached !== undefined) return cached
+    const childrenTotal = (childrenByParent.get(accountId) ?? [])
+      .reduce((sum, childId) => roundMoney(sum + calculateYearToDateTotal(childId)), 0)
+    const total = roundMoney((ownYearToDateById.get(accountId) ?? 0) + childrenTotal)
+    yearToDateTotalById.set(accountId, total)
+    return total
+  }
 
   return serialized.map(account => ({
     ...account,
     openingBalanceTotal: calculateTotal(account.id),
+    yearToDateAmountTotal: calculateYearToDateTotal(account.id),
   }))
 }
 
@@ -155,6 +171,7 @@ export async function POST(req: NextRequest) {
           sortOrder: parsed.data.sortOrder,
           isSystem: parsed.data.isSystem,
           notes: parsed.data.notes,
+          yearToDateAmount: new Prisma.Decimal(parsed.data.yearToDateAmount),
         },
         include: { parent: { select: { id: true, code: true, name: true } } },
       })
