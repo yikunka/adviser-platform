@@ -238,8 +238,8 @@ Custom color formulations for specific customers or products.
 - Material details use the same split layout as recipe management: selected item table above, candidate material table below with click-to-select and "添加选中"; picker supports multi-type filtering for AD, SO, Sol semifinished, DY, CO, CA, CC, and a "参考配方" dropdown filters candidates to materials used in a specific existing recipe
 - Clicking "新建配方" while a product filter is active pre-fills that product in the new formula form
 - Generate from factory product template: creates a linked formula with only an applicable-product row in material details; it does not auto-expand the product's full material list
-- PU sync button (visible on PU category, SUPER_ADMIN only): deletes all existing `PU` color formulas, then creates one linked color formula for each Factory Products item inferred as PU; synced formulas copy the product's current recipe raw materials, Sol semifinished rows, expandable component-recipe materials, and recipe line costs
 - Detail page has a "打印文件" action that downloads an A4 DOCX print sheet (standard 2.54 cm margins, no page header/footer): formula code, name, category, color code, target color, customer, linked factory product, source recipe, batch quantity, unit cost, notes, material items with quantities/percentages/costs, and production instructions from the linked source recipe (stirring, packaging, production notes)
+- PU 同步 button (visible on PU category, SUPER_ADMIN only): deletes all PU color formulas and recreates them from PU factory products with full recipe item expansion
 
 ### Production Orders (`/admin/cosmocoat-production-orders`)
 Manufacturing batch tracking.
