@@ -24,6 +24,7 @@ export type JournalEntryDetails = {
   createdBy?: string | null
   createdAt?: string | null
   lines: {
+    description?: string
     account?: { code: string; name: string } | null
     debit: number
     credit: number
@@ -109,6 +110,7 @@ export function JournalViewModal({ open, onOpenChange, entry, onPosted }: Props)
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>行摘要</TableHead>
                     <TableHead>科目编码</TableHead>
                     <TableHead>科目名称</TableHead>
                     <TableHead className="text-right">借方</TableHead>
@@ -118,6 +120,7 @@ export function JournalViewModal({ open, onOpenChange, entry, onPosted }: Props)
                 <TableBody>
                   {entry.lines.map((line, index) => (
                     <TableRow key={index}>
+                      <TableCell className="max-w-[200px]">{line.description || '-'}</TableCell>
                       <TableCell className="font-mono">{line.account?.code ?? '-'}</TableCell>
                       <TableCell>{line.account?.name ?? '-'}</TableCell>
                       <TableCell className="text-right">{money(line.debit)}</TableCell>
@@ -125,7 +128,7 @@ export function JournalViewModal({ open, onOpenChange, entry, onPosted }: Props)
                     </TableRow>
                   ))}
                   <TableRow>
-                    <TableCell colSpan={2} className="text-right font-medium">合计</TableCell>
+                    <TableCell colSpan={3} className="text-right font-medium">合计</TableCell>
                     <TableCell className="text-right font-medium">{money(totalDebit)}</TableCell>
                     <TableCell className="text-right font-medium">{money(totalCredit)}</TableCell>
                   </TableRow>

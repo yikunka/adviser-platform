@@ -17,8 +17,22 @@ import {
   computeRecipeTotals,
   formatMoney,
   formatPercent,
+  formatWeight,
 } from '@/lib/cosmocoat/recipes'
+import {
+  scaleColorFormulaItemsForProduction,
+  type ColorFormulaPrintItem,
+  type SourceRecipeProduction,
+} from '@/lib/cosmocoat/color-formula-print'
 import { pantoneToHex } from '@/lib/cosmocoat/pantone-colors'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 type PickerMaterial = {
   optionType: 'raw_material' | 'product_semifinished'
@@ -174,6 +188,243 @@ const PICKER_TYPE_OPTIONS = [
   { key: 'CC', label: 'CC' },
 ] as const
 
+const COLOR_FORMULA_PRINT_STYLES = `
+  @media print {
+    @page { size: A4 portrait; margin: 0; }
+
+    html,
+    body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #fff !important;
+    }
+
+    .admin-console {
+      display: block !important;
+      min-height: auto !important;
+      background: #fff !important;
+    }
+
+    .admin-console > aside,
+    .admin-console > .flex-1 > header,
+    .cosmocoat-screen { display: none !important; }
+
+    .admin-console > .flex-1 {
+      display: block !important;
+      min-width: 0 !important;
+    }
+
+    .admin-console main {
+      display: block !important;
+      padding: 0 !important;
+      overflow: visible !important;
+      background: #fff !important;
+    }
+
+    #cosmocoat-print-area {
+      display: block !important;
+      width: auto;
+      max-width: none;
+      box-sizing: border-box;
+      padding: 12mm 14mm;
+      font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+      font-size: 11pt;
+      line-height: 1.45;
+      color: #000 !important;
+      background: #fff !important;
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
+
+    #cosmocoat-print-area * {
+      box-sizing: border-box;
+      max-width: 100%;
+    }
+
+    #cosmocoat-print-area table {
+      table-layout: fixed;
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10pt !important;
+    }
+
+    #cosmocoat-print-area td,
+    #cosmocoat-print-area th {
+      word-break: break-all;
+      overflow-wrap: break-word;
+      overflow: hidden;
+      padding: 4px 6px !important;
+      font-size: 10pt !important;
+      line-height: 1.4;
+    }
+
+    #cosmocoat-print-area .print-notes-table td {
+      white-space: pre-wrap;
+    }
+
+    #cosmocoat-print-area .print-section-title {
+      font-size: 12pt !important;
+      margin-bottom: 6px !important;
+    }
+  }
+
+  @media screen {
+    #cosmocoat-print-area { display: none; }
+  }
+`
+
+function displayText(value: string | number | null | undefined) {
+  const normalized = value == null ? '' : String(value)
+  return normalized.trim() || '—'
+}
+
+interface ColorFormulaPrintViewProps {
+  orderCode: string
+  name: string
+  categoryLabel: string
+  targetColor: string
+  factoryProductLabel: string
+  targetKg: number
+  notes: string
+  items: ColorFormulaPrintItem[]
+  sourceRecipeProduction: SourceRecipeProduction
+}
+
+function ColorFormulaPrintView({
+  orderCode,
+  name,
+  categoryLabel,
+  targetColor,
+  factoryProductLabel,
+  targetKg,
+  notes,
+  items,
+  sourceRecipeProduction,
+}: ColorFormulaPrintViewProps) {
+  const totalScaled = items.reduce((sum, item) => sum + item.quantity, 0)
+
+  return (
+    <div id="cosmocoat-print-area">
+      <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 14, marginBottom: 12 }}>
+        调色配方
+      </div>
+
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12, fontSize: 9 }}>
+        <tbody>
+          <tr>
+            <td style={{ width: '15%', padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>调色单号</td>
+            <td style={{ width: '35%', padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(orderCode)}</td>
+            <td style={{ width: '15%', padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>配方名称</td>
+            <td style={{ width: '35%', padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(name)}</td>
+          </tr>
+          <tr>
+            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>类别</td>
+            <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(categoryLabel)}</td>
+            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>目标色</td>
+            <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(targetColor)}</td>
+          </tr>
+          <tr>
+            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>适用产品</td>
+            <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(factoryProductLabel)}</td>
+            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>生产重量</td>
+            <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{formatWeight(targetKg, 3)} kg</td>
+          </tr>
+          <tr>
+            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>备注</td>
+            <td colSpan={3} style={{ padding: '3px 6px', border: '1px solid #ccc', whiteSpace: 'pre-wrap' }}>{displayText(notes)}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div className="print-section-title" style={{ fontWeight: 700, fontSize: 10, marginBottom: 4, borderLeft: '3px solid #000', paddingLeft: 6 }}>
+        原料明细
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 14, fontSize: 9 }}>
+        <thead>
+          <tr style={{ background: '#f0f0f0' }}>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'center', width: '8%' }}>序号</th>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '18%' }}>生产编号</th>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '34%' }}>原料/产品名称</th>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'right', width: '16%' }}>用量(kg)</th>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'right', width: '12%' }}>占比</th>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '12%' }}>备注</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.length === 0 ? (
+            <tr>
+              <td colSpan={6} style={{ padding: '8px 6px', border: '1px solid #ccc', textAlign: 'center' }}>暂无原材料明细</td>
+            </tr>
+          ) : (
+            items.map((item, index) => (
+              <tr key={`${item.productionCode}-${index}`} style={{ background: index % 2 === 1 ? '#fafafa' : '#fff' }}>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'center' }}>{index + 1}</td>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(item.productionCode)}</td>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(item.name)}</td>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>{formatWeight(item.quantity, 3)}</td>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>{formatPercent(item.percentage)}</td>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(item.notes)}</td>
+              </tr>
+            ))
+          )}
+          {items.length > 0 && (
+            <tr style={{ background: '#f0f0f0', fontWeight: 700 }}>
+              <td colSpan={3} style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>合计</td>
+              <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>{formatWeight(totalScaled, 3)}</td>
+              <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>100%</td>
+              <td style={{ padding: '3px 6px', border: '1px solid #ccc' }} />
+            </tr>
+          )}
+        </tbody>
+      </table>
+
+      <table className="print-notes-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9 }}>
+        <thead>
+          <tr style={{ background: '#f0f0f0' }}>
+            <th colSpan={2} style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'center' }}>生产说明</th>
+          </tr>
+        </thead>
+        <tbody>
+          {!sourceRecipeProduction ? (
+            <tr>
+              <td colSpan={2} style={{ padding: '5px 6px', border: '1px solid #ccc' }}>来源配方未关联，无额外生产要求。</td>
+            </tr>
+          ) : (
+            <>
+              <tr>
+                <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', width: '50%', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                  {sourceRecipeProduction.stirringRequirements
+                    ? `生产/搅拌要求:\n${sourceRecipeProduction.stirringRequirements}`
+                    : '生产/搅拌要求:\n—'}
+                </td>
+                <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', width: '50%', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                  {sourceRecipeProduction.packagingRequirements
+                    ? `包装要求:\n${sourceRecipeProduction.packagingRequirements}`
+                    : '包装要求:\n—'}
+                </td>
+              </tr>
+              {sourceRecipeProduction.productionNotes && (
+                <tr>
+                  <td colSpan={2} style={{ padding: '5px 6px', border: '1px solid #ccc', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                    {`生产注意事项:\n${sourceRecipeProduction.productionNotes}`}
+                  </td>
+                </tr>
+              )}
+              {sourceRecipeProduction.notes && (
+                <tr>
+                  <td colSpan={2} style={{ padding: '5px 6px', border: '1px solid #ccc', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                    {`来源配方备注:\n${sourceRecipeProduction.notes}`}
+                  </td>
+                </tr>
+              )}
+            </>
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export default function CosmocoatColorFormulaDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -188,6 +439,12 @@ export default function CosmocoatColorFormulaDetailPage() {
 
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
+  const [printing, setPrinting] = useState(false)
+  const [printDialogOpen, setPrintDialogOpen] = useState(false)
+  const [printKgInput, setPrintKgInput] = useState('')
+  const [printTargetKg, setPrintTargetKg] = useState<number | null>(null)
+  const [categoryLabel, setCategoryLabel] = useState('')
+  const [sourceRecipeProduction, setSourceRecipeProduction] = useState<SourceRecipeProduction>(null)
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
   const [category, setCategory] = useState<CosColorFormulaCategory>(initialCategory)
@@ -226,6 +483,7 @@ export default function CosmocoatColorFormulaDetailPage() {
       setCode(formula.code)
       setName(formula.name)
       setCategory(formula.category)
+      setCategoryLabel(formula.categoryLabel)
       setFactoryProductId(formula.factoryProductId)
       setColorCode(formula.colorCode)
       setCustomerName(formula.customerName)
@@ -233,6 +491,27 @@ export default function CosmocoatColorFormulaDetailPage() {
       setBatchQuantity(formula.batchQuantity)
       setNotes(formula.notes)
       setItems(formula.items.map((item, index) => toEditableItem(item, index)))
+
+      if (formula.sourceRecipeId) {
+        try {
+          const recipeRes = await fetch(`/api/admin/cosmocoat/recipes/${formula.sourceRecipeId}`)
+          const recipeData = await recipeRes.json()
+          if (recipeRes.ok && recipeData.recipe) {
+            setSourceRecipeProduction({
+              stirringRequirements: recipeData.recipe.stirringRequirements ?? '',
+              packagingRequirements: recipeData.recipe.packagingRequirements ?? '',
+              productionNotes: recipeData.recipe.productionNotes ?? '',
+              notes: recipeData.recipe.notes ?? '',
+            })
+          } else {
+            setSourceRecipeProduction(null)
+          }
+        } catch {
+          setSourceRecipeProduction(null)
+        }
+      } else {
+        setSourceRecipeProduction(null)
+      }
     } catch {
       toast.error('加载失败')
     } finally {
@@ -388,6 +667,39 @@ export default function CosmocoatColorFormulaDetailPage() {
     }))
   }, [items, totalQuantity, batchQuantity])
 
+  const factoryProductLabel = useMemo(() => {
+    if (selectedFactoryProduct) {
+      return `${selectedFactoryProduct.productCode} ${selectedFactoryProduct.name}`
+    }
+    return categoryLabel
+  }, [selectedFactoryProduct, categoryLabel])
+
+  const activePrintKg = printTargetKg ?? batchQuantity
+
+  const printItems = useMemo(() => {
+    return scaleColorFormulaItemsForProduction(items, totalQuantity, activePrintKg)
+  }, [items, activePrintKg, totalQuantity])
+
+  function openPrintDialog() {
+    setPrintKgInput(String(batchQuantity))
+    setPrintDialogOpen(true)
+  }
+
+  function confirmPrint() {
+    const targetKg = Number(printKgInput)
+    if (!Number.isFinite(targetKg) || targetKg <= 0) {
+      toast.error('请输入有效的生产公斤数')
+      return
+    }
+    setPrintTargetKg(targetKg)
+    setPrintDialogOpen(false)
+    setPrinting(true)
+    setTimeout(() => {
+      window.print()
+      setPrinting(false)
+    }, 100)
+  }
+
   function updateItem(key: string, patch: Partial<EditableItem>) {
     setItems(prev =>
       prev.map(item => (item.key === key ? { ...item, ...patch } : item)),
@@ -498,6 +810,72 @@ export default function CosmocoatColorFormulaDetailPage() {
   }
 
   return (
+    <>
+      <style>{COLOR_FORMULA_PRINT_STYLES}</style>
+
+      {!isNew && (
+        <ColorFormulaPrintView
+          orderCode={code}
+          name={name}
+          categoryLabel={categoryLabel}
+          targetColor={targetColor}
+          factoryProductLabel={factoryProductLabel}
+          targetKg={activePrintKg}
+          notes={notes}
+          items={printItems}
+          sourceRecipeProduction={sourceRecipeProduction}
+        />
+      )}
+
+      <Dialog open={printDialogOpen} onOpenChange={setPrintDialogOpen}>
+        <DialogContent className="sm:max-w-md" showCloseButton>
+          <DialogHeader>
+            <DialogTitle>打印调色配方</DialogTitle>
+            <DialogDescription>
+              请输入本次目标生产公斤数，系统将按配方比例自动换算各原料用量后生成 PDF 打印。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+              目标生产公斤数 (kg)
+            </label>
+            <input
+              type="number"
+              min={0.001}
+              step={0.001}
+              value={printKgInput}
+              onChange={e => setPrintKgInput(e.target.value)}
+              className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+              style={inputStyle()}
+              autoFocus
+            />
+            <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+              基准批量 {formatWeight(batchQuantity, 3)} kg，当前明细合计 {formatWeight(totalQuantity, 3)} kg
+            </p>
+          </div>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setPrintDialogOpen(false)}
+              className="px-4 py-2 rounded-lg text-sm font-medium"
+              style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              onClick={confirmPrint}
+              disabled={printing}
+              className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+              style={{ background: '#C9A96E', color: '#0A0805' }}
+            >
+              {printing ? '打印中...' : '确认打印'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <div className="cosmocoat-screen">
     <div className="p-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -515,13 +893,15 @@ export default function CosmocoatColorFormulaDetailPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {!isNew && (
-            <a
-              href={`/api/admin/cosmocoat/color-formulas/${formulaId}/print`}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+            <button
+              type="button"
+              onClick={openPrintDialog}
+              disabled={printing}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
               style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
             >
               <Printer size={14} /> 打印文件
-            </a>
+            </button>
           )}
           <button
             type="button"
@@ -881,5 +1261,7 @@ export default function CosmocoatColorFormulaDetailPage() {
         </div>
       </div>
     </div>
+      </div>
+    </>
   )
 }

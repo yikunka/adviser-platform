@@ -414,6 +414,7 @@ export default function AdminFinancialJournalPage() {
         entry={editingEntry}
         fixedCompanyId={company.id}
         onSaved={fetchEntries}
+        onContinued={() => setEditingEntry(null)}
       />
       <JournalViewModal open={viewOpen} onOpenChange={setViewOpen} entry={viewingEntry} onPosted={fetchEntries} />
     </div>

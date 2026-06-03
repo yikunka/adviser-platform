@@ -2,7 +2,7 @@
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { Plus, Save, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -64,6 +64,8 @@ type Props = {
   /** When set, journal is locked to this client company (TCSP company workspace). */
   fixedCompanyId?: string
   onSaved: () => void | Promise<void>
+  /** Called after F1 save-and-continue so parent clears edit mode. */
+  onContinued?: () => void
 }
 
 const modalContentClassName = 'financial-modal max-h-[92vh] overflow-y-auto border-[#2A2418] bg-[#11110E] text-[#FFF7E6] shadow-2xl ring-[#3A3428] sm:max-w-5xl'
@@ -98,7 +100,15 @@ function numeric(value: string) {
   return Number(value || 0)
 }
 
-export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, onSaved }: Props) {
+function resetFormForNextEntry(
+  setDescription: (v: string) => void,
+  setLines: (v: FormLine[]) => void,
+) {
+  setDescription('')
+  setLines([blankLine(), blankLine()])
+}
+
+export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, onSaved, onContinued }: Props) {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [companies, setCompanies] = useState<ScopeCompany[]>([])
   const [entryDate, setEntryDate] = useState(todayYmd())
@@ -180,51 +190,96 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
     setLines(current => current.map((line, lineIndex) => (lineIndex === index ? { ...line, ...patch } : line)))
   }
 
+  const saveEntry = useCallback(
+    async (options?: { continue?: boolean }) => {
+      if (!description.trim()) {
+        toast.error('请填写摘要。')
+        return
+      }
+      if (!hasCompany) {
+        toast.error('保存日记账前请选择客户公司。')
+        return
+      }
+      if (!totals.balanced) {
+        toast.error('借方合计必须等于贷方合计。')
+        return
+      }
+
+      const payloadLines = lines.map(line => ({
+        accountId: line.accountId === 'NONE' ? '' : line.accountId,
+        description: line.description,
+        debit: numeric(line.debit),
+        credit: numeric(line.credit),
+      }))
+
+      if (payloadLines.some(line => !line.accountId)) {
+        toast.error('每一行都需要选择会计科目。')
+        return
+      }
+
+      setSaving(true)
+      try {
+        const res = await fetch(
+          entry ? `/api/admin/financial/journal-entries/${entry.id}` : '/api/admin/financial/journal-entries',
+          {
+            method: entry ? 'PATCH' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ entryDate, companyId, description, lines: payloadLines }),
+          },
+        )
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data.toast || data.error || '保存日记账失败。')
+
+        toast.success(
+          data.toast ||
+            (options?.continue ? '日记账已保存，可继续录入下一张。' : entry ? '日记账已更新。' : '日记账已创建。'),
+        )
+
+        if (options?.continue) {
+          resetFormForNextEntry(setDescription, setLines)
+          onContinued?.()
+          await onSaved()
+        } else {
+          onOpenChange(false)
+          await onSaved()
+        }
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : '保存日记账失败。')
+      } finally {
+        setSaving(false)
+      }
+    },
+    [
+      companyId,
+      description,
+      entry,
+      entryDate,
+      hasCompany,
+      lines,
+      onContinued,
+      onOpenChange,
+      onSaved,
+      totals.balanced,
+    ],
+  )
+
+  useEffect(() => {
+    if (!open) return
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'F1') return
+      event.preventDefault()
+      if (saving) return
+      void saveEntry({ continue: true })
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [open, saveEntry, saving])
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!description.trim()) {
-      toast.error('请填写摘要。')
-      return
-    }
-    if (!hasCompany) {
-      toast.error('保存日记账前请选择客户公司。')
-      return
-    }
-    if (!totals.balanced) {
-      toast.error('借方合计必须等于贷方合计。')
-      return
-    }
-
-    const payloadLines = lines.map(line => ({
-      accountId: line.accountId === 'NONE' ? '' : line.accountId,
-      description: line.description,
-      debit: numeric(line.debit),
-      credit: numeric(line.credit),
-    }))
-
-    if (payloadLines.some(line => !line.accountId)) {
-      toast.error('每一行都需要选择会计科目。')
-      return
-    }
-
-    setSaving(true)
-    try {
-      const res = await fetch(entry ? `/api/admin/financial/journal-entries/${entry.id}` : '/api/admin/financial/journal-entries', {
-        method: entry ? 'PATCH' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entryDate, companyId, description, lines: payloadLines }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.toast || data.error || '保存日记账失败。')
-
-      toast.success(data.toast || (entry ? '日记账已更新。' : '日记账已创建。'))
-      onOpenChange(false)
-      await onSaved()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : '保存日记账失败。')
-    } finally {
-      setSaving(false)
-    }
+    await saveEntry()
   }
 
   return (
@@ -233,7 +288,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
         <DialogHeader>
           <DialogTitle className="text-[#FFF7E6]">{entry ? '编辑日记账' : '新增日记账'}</DialogTitle>
           <DialogDescription className="text-[#B8AD98]">
-            保存后状态为待过账，使用审核并过账生成总账记录。
+            保存后状态为待过账，使用审核并过账生成总账记录。按 F1 可保存当前凭证并清空表单，继续录入下一张。
           </DialogDescription>
         </DialogHeader>
 
@@ -330,8 +385,8 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[260px]">科目</TableHead>
                   <TableHead className="min-w-[220px]">行摘要</TableHead>
+                  <TableHead className="min-w-[260px]">科目</TableHead>
                   <TableHead className="w-[140px] text-right">借方</TableHead>
                   <TableHead className="w-[140px] text-right">贷方</TableHead>
                   <TableHead className="w-[48px]" />
@@ -340,6 +395,14 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
               <TableBody>
                 {lines.map((line, index) => (
                   <TableRow key={index}>
+                    <TableCell>
+                      <Input
+                        value={line.description}
+                        onChange={event => updateLine(index, { description: event.target.value })}
+                        placeholder="可选"
+                        className={fieldClassName}
+                      />
+                    </TableCell>
                     <TableCell>
                       <Select value={line.accountId} onValueChange={value => updateLine(index, { accountId: value ?? 'NONE' })}>
                         <SelectTrigger className={`w-full ${fieldClassName}`}>
@@ -356,14 +419,6 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                           ))}
                         </SelectContent>
                       </Select>
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        value={line.description}
-                        onChange={event => updateLine(index, { description: event.target.value })}
-                        placeholder="可选"
-                        className={fieldClassName}
-                      />
                     </TableCell>
                     <TableCell>
                       <Input
