@@ -31,6 +31,8 @@ type SourceRecipeProduction = {
   stirringRequirements: string
   packagingRequirements: string
   productionNotes: string
+  qcTestStandard: string
+  qcResult: string
   notes: string
 } | null
 
@@ -280,6 +282,23 @@ function productionNotesTable(formula: PrintColorFormula) {
     }))
   }
 
+  if (recipe.qcTestStandard || recipe.qcResult) {
+    rows.push(new TableRow({
+      children: [
+        cell(
+          recipe.qcTestStandard ? `测试标准:\n${recipe.qcTestStandard}` : '测试标准:\n/',
+          half,
+          { size: 17 },
+        ),
+        cell(
+          recipe.qcResult ? `结果:\n${recipe.qcResult}` : '结果:\n/',
+          half,
+          { size: 17 },
+        ),
+      ],
+    }))
+  }
+
   if (recipe.notes) {
     rows.push(new TableRow({
       children: [
@@ -307,6 +326,8 @@ export async function loadPrintFormula(id: string): Promise<PrintColorFormula | 
         stirringRequirements: true,
         packagingRequirements: true,
         productionNotes: true,
+        qcTestStandard: true,
+        qcResult: true,
         notes: true,
       },
     })
@@ -315,6 +336,8 @@ export async function loadPrintFormula(id: string): Promise<PrintColorFormula | 
         stirringRequirements: recipe.stirringRequirements,
         packagingRequirements: recipe.packagingRequirements,
         productionNotes: recipe.productionNotes,
+        qcTestStandard: recipe.qcTestStandard,
+        qcResult: recipe.qcResult,
         notes: recipe.notes,
       }
     }

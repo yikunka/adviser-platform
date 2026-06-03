@@ -330,6 +330,23 @@ function notesTable(recipe: FullRecipe) {
     }
   }
 
+  if (recipe.qcTestStandard || recipe.qcResult) {
+    rows.push(new TableRow({
+      children: [
+        cell(
+          recipe.qcTestStandard ? `测试标准:\n${recipe.qcTestStandard}` : '测试标准:\n/',
+          CONTENT_WIDTH / 2,
+          { size: 17 },
+        ),
+        cell(
+          recipe.qcResult ? `结果:\n${recipe.qcResult}` : '结果:\n/',
+          CONTENT_WIDTH / 2,
+          { size: 17 },
+        ),
+      ],
+    }))
+  }
+
   return table(rows)
 }
 

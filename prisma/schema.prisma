@@ -1350,6 +1350,8 @@ model CosTableRecipe {
   stirringRequirements  String @default("") @map("stirring_requirements")
   packagingRequirements String @default("") @map("packaging_requirements")
   productionNotes       String @default("") @map("production_notes")
+  qcTestStandard        String @default("") @map("qc_test_standard")
+  qcResult              String @default("") @map("qc_result")
   /// Cached: true when linked to a factory product directly or as a nested component recipe.
   formulaIsUsed         Boolean  @default(false) @map("formula_is_used")
   createdAt     DateTime @default(now())

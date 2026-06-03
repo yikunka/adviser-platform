@@ -21,6 +21,8 @@ const patchSchema = z.object({
   stirringRequirements: z.string().trim().max(2000).optional(),
   packagingRequirements: z.string().trim().max(2000).optional(),
   productionNotes: z.string().trim().max(2000).optional(),
+  qcTestStandard: z.string().trim().max(2000).optional(),
+  qcResult: z.string().trim().max(2000).optional(),
   items: z.array(itemSchema).optional(),
 })
 
@@ -115,6 +117,8 @@ export async function PATCH(
         stirringRequirements: parsed.data.stirringRequirements,
         packagingRequirements: parsed.data.packagingRequirements,
         productionNotes: parsed.data.productionNotes,
+        qcTestStandard: parsed.data.qcTestStandard,
+        qcResult: parsed.data.qcResult,
         unitCost: totals.unitCost,
       },
     })

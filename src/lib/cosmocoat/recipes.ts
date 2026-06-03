@@ -229,13 +229,25 @@ export type RecipeProductionFields = {
   stirringRequirements: string
   packagingRequirements: string
   productionNotes: string
+  qcTestStandard: string
+  qcResult: string
+}
+
+/** Formats recipe QC fields for production-order quality check notes. */
+export function formatRecipeQcRequirements(testStandard: string, result: string): string {
+  const parts: string[] = []
+  const standard = testStandard.trim()
+  const qcResult = result.trim()
+  if (standard) parts.push(`测试标准:\n${standard}`)
+  if (qcResult) parts.push(`结果:\n${qcResult}`)
+  return parts.join('\n\n')
 }
 
 /** Maps recipe production fields to production-order snapshot columns. */
 export function recipeToOrderRequirements(recipe: RecipeProductionFields) {
   return {
     productionRequirements: recipe.stirringRequirements,
-    qualityCheckRequirements: '',
+    qualityCheckRequirements: formatRecipeQcRequirements(recipe.qcTestStandard, recipe.qcResult),
     packagingRequirements: recipe.packagingRequirements,
     productionNotes: recipe.productionNotes,
   }

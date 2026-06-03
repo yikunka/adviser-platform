@@ -13,6 +13,7 @@ import {
   formatWeight,
   recipeItemsForProduction,
   type ProductionRecipeItem,
+  formatRecipeQcRequirements,
 } from '@/lib/cosmocoat/recipes'
 import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
 import { FactoryProductCombobox } from '@/components/cosmocoat/FactoryProductCombobox'
@@ -291,7 +292,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       setRecipeName(recipe.name)
       if (isNew) {
         setProductionNotes(recipe.stirringRequirements ?? '')
-        setQualityNotes(recipe.productionNotes ?? '')
+        setQualityNotes(formatRecipeQcRequirements(recipe.qcTestStandard ?? '', recipe.qcResult ?? ''))
         setPackagingNotes(recipe.packagingRequirements ?? '')
       }
       const productionItems = recipeItemsForProduction(recipe.items)
@@ -795,7 +796,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
           <textarea value={productionNotes} onChange={e => setProductionNotes(e.target.value)} rows={4} className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y" style={inputStyle()} placeholder="如：1500 转 / 30 分钟" />
         </div>
         <div style={card} className="p-4 space-y-2">
-          <label className="text-xs font-medium" style={{ color: '#C9A96E' }}>生产注意事项（含质检）</label>
+          <label className="text-xs font-medium" style={{ color: '#C9A96E' }}>质检要求</label>
           <textarea value={qualityNotes} onChange={e => setQualityNotes(e.target.value)} rows={4} className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y" style={inputStyle()} placeholder="如：先加 A 料；粘度 9.7-9.8..." />
         </div>
         <div style={card} className="p-4 space-y-2">

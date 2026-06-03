@@ -22,6 +22,8 @@ export const orderInclude = {
       stirringRequirements: true,
       packagingRequirements: true,
       productionNotes: true,
+      qcTestStandard: true,
+      qcResult: true,
     },
   },
   items: {
@@ -67,6 +69,8 @@ export async function resolveProductCurrentRecipe(factoryProductId: string) {
           stirringRequirements: true,
           packagingRequirements: true,
           productionNotes: true,
+          qcTestStandard: true,
+          qcResult: true,
           items: {
             orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
             include: { rawMaterial: true },

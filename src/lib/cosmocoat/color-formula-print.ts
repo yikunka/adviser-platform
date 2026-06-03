@@ -12,6 +12,8 @@ export type SourceRecipeProduction = {
   stirringRequirements: string
   packagingRequirements: string
   productionNotes: string
+  qcTestStandard: string
+  qcResult: string
   notes: string
 } | null
 

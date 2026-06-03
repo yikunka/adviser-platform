@@ -424,6 +424,20 @@ function ColorFormulaPrintView({
                   </td>
                 </tr>
               )}
+              {(sourceRecipeProduction.qcTestStandard || sourceRecipeProduction.qcResult) && (
+                <tr>
+                  <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', width: '50%', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                    {sourceRecipeProduction.qcTestStandard
+                      ? `测试标准:\n${sourceRecipeProduction.qcTestStandard}`
+                      : '测试标准:\n—'}
+                  </td>
+                  <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', width: '50%', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                    {sourceRecipeProduction.qcResult
+                      ? `结果:\n${sourceRecipeProduction.qcResult}`
+                      : '结果:\n—'}
+                  </td>
+                </tr>
+              )}
               {sourceRecipeProduction.notes && (
                 <tr>
                   <td colSpan={2} style={{ padding: '5px 6px', border: '1px solid #ccc', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
@@ -515,6 +529,8 @@ export default function CosmocoatColorFormulaDetailPage() {
               stirringRequirements: recipeData.recipe.stirringRequirements ?? '',
               packagingRequirements: recipeData.recipe.packagingRequirements ?? '',
               productionNotes: recipeData.recipe.productionNotes ?? '',
+              qcTestStandard: recipeData.recipe.qcTestStandard ?? '',
+              qcResult: recipeData.recipe.qcResult ?? '',
               notes: recipeData.recipe.notes ?? '',
             })
           } else {

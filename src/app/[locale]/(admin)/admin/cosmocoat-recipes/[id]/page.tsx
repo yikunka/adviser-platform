@@ -174,8 +174,9 @@ export default function AdminCosmoCoatRecipeEditorPage() {
   const [notes, setNotes] = useState('')
   const [stirringRequirements, setStirringRequirements] = useState('')
   const [packagingRequirements, setPackagingRequirements] = useState('')
-  const [packagingPresetSelect, setPackagingPresetSelect] = useState('')
   const [productionNotes, setProductionNotes] = useState('')
+  const [qcTestStandard, setQcTestStandard] = useState('')
+  const [qcResult, setQcResult] = useState('')
   const [formulaIsUsed, setFormulaIsUsed] = useState(false)
   const [items, setItems] = useState<EditableItem[]>([])
 
@@ -240,6 +241,8 @@ export default function AdminCosmoCoatRecipeEditorPage() {
       setStirringRequirements(recipe.stirringRequirements)
       setPackagingRequirements(recipe.packagingRequirements)
       setProductionNotes(recipe.productionNotes)
+      setQcTestStandard(recipe.qcTestStandard)
+      setQcResult(recipe.qcResult)
       setFormulaIsUsed(recipe.formulaIsUsed)
       setItems(recipe.items.map(item => {
         if (item.itemType === 'product_semifinished' && item.productSemifinished) {
@@ -448,6 +451,8 @@ export default function AdminCosmoCoatRecipeEditorPage() {
       stirringRequirements,
       packagingRequirements,
       productionNotes,
+      qcTestStandard,
+      qcResult,
       items: items.map((item, index) => ({
         ...(item.itemType === 'recipe'
           ? { recipeId: item.recipeId }
@@ -656,7 +661,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
       <div style={card} className="p-4 space-y-4">
         <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>生产工艺</h3>
         <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-          创建生产单时将按当前配方自动带出以下要求（质检标准请写在生产注意事项中）
+          创建生产单时将按当前配方自动带出以下要求
         </p>
         <div className="grid sm:grid-cols-1 lg:grid-cols-3 gap-3">
           <div className="space-y-1.5">
@@ -671,25 +676,23 @@ export default function AdminCosmoCoatRecipeEditorPage() {
             />
           </div>
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between gap-2">
-              <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>包装要求</label>
-              <select
-                value={packagingPresetSelect}
-                onChange={e => {
-                  const preset = e.target.value
-                  if (preset) {
-                    setPackagingRequirements(preset)
-                  }
-                  setPackagingPresetSelect('')
-                }}
-                className="rounded-lg px-2 py-1 text-xs outline-none"
-                style={{ ...inputStyle(), minWidth: '7rem' }}
-              >
-                <option value="">快速选择…</option>
-                {PACKAGING_REQUIREMENT_PRESETS.map(preset => (
-                  <option key={preset} value={preset}>{preset}</option>
-                ))}
-              </select>
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>包装要求</label>
+            <div className="flex flex-wrap gap-1.5">
+              {PACKAGING_REQUIREMENT_PRESETS.map(preset => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setPackagingRequirements(preset)}
+                  className="px-2.5 py-1 rounded-md text-xs transition-colors"
+                  style={{
+                    border: '1px solid #2A2418',
+                    background: packagingRequirements === preset ? 'rgba(201,169,110,0.15)' : '#0E0E0A',
+                    color: packagingRequirements === preset ? '#C9A96E' : 'var(--muted-foreground)',
+                  }}
+                >
+                  {preset}
+                </button>
+              ))}
             </div>
             <textarea
               value={packagingRequirements}
@@ -697,7 +700,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
               rows={4}
               className="w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-y"
               style={inputStyle()}
-              placeholder="3.4.2 包装方式：200 目滤网"
+              placeholder="手动填写或点选上方预设"
             />
           </div>
           <div className="space-y-1.5">
@@ -708,7 +711,38 @@ export default function AdminCosmoCoatRecipeEditorPage() {
               rows={4}
               className="w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-y"
               style={inputStyle()}
-              placeholder="3.4.3 生产注意事项：先加 A 料再慢慢加入 B 料；质检：粘度 9.7-9.8..."
+              placeholder="如：先加 A 料再慢慢加入 B 料"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div style={card} className="p-4 space-y-4">
+        <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>QC（质量控制）</h3>
+        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+          与生产工艺分开维护；创建生产单时将写入质检要求
+        </p>
+        <div className="grid sm:grid-cols-1 lg:grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>测试标准</label>
+            <textarea
+              value={qcTestStandard}
+              onChange={e => setQcTestStandard(e.target.value)}
+              rows={4}
+              className="w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-y"
+              style={inputStyle()}
+              placeholder="如：粘度 9.7–9.8 S"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>结果</label>
+            <textarea
+              value={qcResult}
+              onChange={e => setQcResult(e.target.value)}
+              rows={4}
+              className="w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-y"
+              style={inputStyle()}
+              placeholder="如：合格 / 实测值"
             />
           </div>
         </div>

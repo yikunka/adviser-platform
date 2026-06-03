@@ -22,6 +22,8 @@ const recipeSchema = z.object({
   stirringRequirements: z.string().trim().max(2000).optional().default(''),
   packagingRequirements: z.string().trim().max(2000).optional().default(''),
   productionNotes: z.string().trim().max(2000).optional().default(''),
+  qcTestStandard: z.string().trim().max(2000).optional().default(''),
+  qcResult: z.string().trim().max(2000).optional().default(''),
   items: z.array(itemSchema).optional().default([]),
 })
 
@@ -160,6 +162,8 @@ export async function POST(req: NextRequest) {
         stirringRequirements: parsed.data.stirringRequirements,
         packagingRequirements: parsed.data.packagingRequirements,
         productionNotes: parsed.data.productionNotes,
+        qcTestStandard: parsed.data.qcTestStandard,
+        qcResult: parsed.data.qcResult,
       },
     })
 
