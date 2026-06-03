@@ -153,18 +153,51 @@ export type ProductionOrderItemDraft = {
   notes: string
 }
 
-export function buildProductionOrderItems(
-  recipeItems: Array<{
-    sortOrder: number
-    quantity: number
-    percentage: number | null
-    notes: string
-    rawMaterial: {
-      id: string
-      productionCode: string
-      name: string
-    }
+export type RecipeItemForProduction = {
+  sortOrder: number
+  quantity: number
+  percentage: number | null
+  notes: string
+  rawMaterial: {
+    id: string
+    productionCode: string
+    name: string
+  } | null
+}
+
+export type ProductionRecipeItem = {
+  sortOrder: number
+  quantity: number
+  percentage: number | null
+  notes: string
+  rawMaterial: {
+    id: string
+    productionCode: string
+    name: string
+  }
+}
+
+/** Keeps only raw-material lines; drops nested recipes and semifinished rows. */
+export function recipeItemsForProduction(
+  items: Array<Omit<RecipeItemForProduction, 'quantity' | 'percentage'> & {
+    quantity: unknown
+    percentage?: unknown | null
   }>,
+): ProductionRecipeItem[] {
+  return items.flatMap(item => {
+    if (!item.rawMaterial) return []
+    return [{
+      sortOrder: item.sortOrder,
+      quantity: Number(item.quantity),
+      percentage: item.percentage != null ? Number(item.percentage) : null,
+      notes: item.notes,
+      rawMaterial: item.rawMaterial,
+    }]
+  })
+}
+
+export function buildProductionOrderItems(
+  recipeItems: ProductionRecipeItem[],
   totalWeight: number,
   totalQuantity?: number,
 ): ProductionOrderItemDraft[] {

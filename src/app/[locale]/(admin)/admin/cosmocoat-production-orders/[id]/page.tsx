@@ -3,7 +3,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { ArrowLeft, Printer, Save } from 'lucide-react'
@@ -11,31 +11,14 @@ import {
   buildProductionOrderItems,
   formatPercent,
   formatWeight,
+  recipeItemsForProduction,
+  type ProductionRecipeItem,
 } from '@/lib/cosmocoat/recipes'
 import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
+import { FactoryProductCombobox } from '@/components/cosmocoat/FactoryProductCombobox'
+import type { FactoryProductPickerOption } from '@/lib/cosmocoat/factory-product-picker'
 
-type FactoryProductOption = {
-  id: string
-  productCode: string
-  name: string
-  unit: string
-  currentRecipe: {
-    id: string
-    code: string
-    name: string
-    stirringRequirements?: string
-    packagingRequirements?: string
-    productionNotes?: string
-  } | null
-}
-
-type RecipeItem = {
-  sortOrder: number
-  quantity: number
-  percentage: number | null
-  notes: string
-  rawMaterial: { id: string; productionCode: string; name: string }
-}
+type FactoryProductOption = FactoryProductPickerOption
 
 type EditableItem = {
   key: string
@@ -251,9 +234,11 @@ function PrintView({
 
 export default function AdminCosmoCoatProductionOrderEditorPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const router = useRouter()
   const orderId = params.id as string
   const isNew = orderId === 'new'
+  const filterRecipeId = isNew ? (searchParams.get('recipeId')?.trim() || null) : null
 
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
@@ -266,8 +251,8 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       setPrinting(false)
     }, 100)
   }
-  const [products, setProducts] = useState<FactoryProductOption[]>([])
-  const [recipeItems, setRecipeItems] = useState<RecipeItem[]>([])
+  const [selectedProductSnapshot, setSelectedProductSnapshot] = useState<FactoryProductOption | null>(null)
+  const [recipeItems, setRecipeItems] = useState<ProductionRecipeItem[]>([])
 
   const [code, setCode] = useState('')
   const [factoryProductId, setFactoryProductId] = useState('')
@@ -285,32 +270,12 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
   const [status, setStatus] = useState<'draft' | 'completed'>('draft')
   const [items, setItems] = useState<EditableItem[]>([])
 
-  const selectedProduct = useMemo(
-    () => products.find(p => p.id === factoryProductId) ?? null,
-    [products, factoryProductId],
-  )
+  const selectedProduct = selectedProductSnapshot
 
   const requiredTotal = useMemo(
     () => items.reduce((sum, item) => sum + item.requiredWeight, 0),
     [items],
   )
-
-  const loadProducts = useCallback(async () => {
-    try {
-      const res = await fetch('/api/admin/cosmocoat/factory-products?limit=200')
-      const data = await res.json()
-      if (!res.ok) return
-      setProducts((data.items ?? []).map((p: FactoryProductOption) => ({
-        id: p.id,
-        productCode: p.productCode,
-        name: p.name,
-        unit: p.unit,
-        currentRecipe: p.currentRecipe,
-      })))
-    } catch {
-      // non-blocking
-    }
-  }, [])
 
   const loadRecipeItems = useCallback(async (recipeId: string) => {
     try {
@@ -329,19 +294,11 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
         setQualityNotes(recipe.productionNotes ?? '')
         setPackagingNotes(recipe.packagingRequirements ?? '')
       }
-      setRecipeItems(recipe.items.map((item: {
-        sortOrder: number
-        quantity: number
-        percentage: number | null
-        notes: string
-        rawMaterial: { id: string; productionCode: string; name: string }
-      }) => ({
-        sortOrder: item.sortOrder,
-        quantity: item.quantity,
-        percentage: item.percentage,
-        notes: item.notes,
-        rawMaterial: item.rawMaterial,
-      })))
+      const productionItems = recipeItemsForProduction(recipe.items)
+      if (productionItems.length === 0) {
+        toast.error('当前配方无原料明细，无法生成投料表')
+      }
+      setRecipeItems(productionItems)
     } catch {
       toast.error('加载配方失败')
       setRecipeItems([])
@@ -382,11 +339,11 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
         requiredWeight: number
         actualWeight: number | null
         notes: string
-        rawMaterial: { id: string }
+        rawMaterial: { id: string } | null
       }) => ({
         key: item.id,
         id: item.id,
-        rawMaterialId: item.rawMaterial.id,
+        rawMaterialId: item.rawMaterial?.id ?? '',
         sortOrder: item.sortOrder,
         productionCode: item.productionCode,
         materialName: item.materialName,
@@ -403,10 +360,8 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
   }, [orderId, isNew])
 
   useEffect(() => {
-    loadProducts().finally(() => {
-      if (isNew) setLoading(false)
-    })
-  }, [loadProducts, isNew])
+    if (isNew) setLoading(false)
+  }, [isNew])
 
   useEffect(() => {
     if (!isNew) loadOrder()
@@ -414,8 +369,8 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
 
   useEffect(() => {
     if (!isNew || !factoryProductId) return
-    const product = products.find(p => p.id === factoryProductId)
-    if (!product) return
+    const product = selectedProductSnapshot
+    if (!product || product.id !== factoryProductId) return
     setProductName(product.name)
     setProductUnit(product.unit)
     if (!product.currentRecipe) {
@@ -426,7 +381,11 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       return
     }
     loadRecipeItems(product.currentRecipe.id)
-  }, [factoryProductId, products, isNew, loadRecipeItems])
+  }, [factoryProductId, selectedProductSnapshot, isNew, loadRecipeItems])
+
+  function handleProductSelect(product: FactoryProductPickerOption | null) {
+    setSelectedProductSnapshot(product)
+  }
 
   useEffect(() => {
     if (isNew) {
@@ -698,15 +657,19 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
           {isNew ? (
             <div className="space-y-1.5 sm:col-span-2">
               <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>选择产品</label>
-              <select value={factoryProductId} onChange={e => setFactoryProductId(e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()}>
-                <option value="">请选择工厂产品</option>
-                {products.map(product => (
-                  <option key={product.id} value={product.id}>
-                    {product.productCode} · {product.name}
-                    {!product.currentRecipe ? '（无当前配方）' : ''}
-                  </option>
-                ))}
-              </select>
+              <FactoryProductCombobox
+                value={factoryProductId}
+                onChange={setFactoryProductId}
+                onProductSelect={handleProductSelect}
+                recipeId={filterRecipeId}
+                inputStyle={inputStyle()}
+                placeholder="搜索产品编号、名称或配方..."
+              />
+              {filterRecipeId && (
+                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                  已按当前配方筛选，仅显示关联该配方且有当前配方的工厂产品
+                </p>
+              )}
             </div>
           ) : (
             <div className="space-y-1.5">

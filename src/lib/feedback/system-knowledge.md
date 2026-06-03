@@ -246,6 +246,9 @@ Custom color formulations for specific customers or products.
 ### Production Orders (`/admin/cosmocoat-production-orders`)
 Manufacturing batch tracking.
 - Fields: order code, factory product, recipe, total weight, batch number
+- New order page: factory product picker supports type-to-search with fuzzy matching (product code, name, current recipe); loads options on demand via lightweight API instead of bulk-fetching all products
+- Product list auto-excludes factory products without a current recipe; optional `?recipeId=` URL param further limits choices to products linked to that recipe
+- Recipes containing only nested sub-recipes or semifinished components (no raw-material lines) show an empty materials table instead of crashing
 - Statuses: `DRAFT` → `IN_PROGRESS` → `COMPLETED`
 - Line items: raw materials with required weight and actual weight used
 - Print production order: A4 sheet with enlarged text, no page header/footer, a material table constrained to page margins, and material names omitted while keeping material codes, ratios, required weight, and actual weight
