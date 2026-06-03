@@ -219,8 +219,8 @@ function PuSyncModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
             <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
               此操作将：<br />
               1. 删除所有 PU 类别的调色配方记录<br />
-              2. 为所有 PU 类工厂产品自动生成新配方（含关联原料明细）<br /><br />
-              <span style={{ color: '#ef4444' }}>⚠ 此操作不可撤销，请确认。</span>
+              2. 为所有 PU 类工厂产品自动生成新配方（含当前配方原料、半成品、可展开组件和成本）<br /><br />
+              <span style={{ color: '#ef4444' }}>此操作不可撤销，请确认。</span>
             </p>
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm" style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}>
