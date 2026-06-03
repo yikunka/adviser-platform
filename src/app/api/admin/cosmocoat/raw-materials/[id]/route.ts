@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { serializeRawMaterial } from '@/lib/cosmocoat/raw-materials'
+import { refreshRecipeCostsForRawMaterials } from '@/lib/cosmocoat/recipe-cost-refresh'
 
 const ynSchema = z.union([z.literal(''), z.literal('Y'), z.literal('N')])
 
@@ -31,6 +32,13 @@ const patchSchema = z.object({
 
 function isMissingTable(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021'
+}
+
+function decimalChanged(current: unknown, next: number | null | undefined): boolean {
+  if (next === undefined) return false
+  const currentNumber = current == null ? null : Number(current)
+  if (currentNumber === null || next === null) return currentNumber !== next
+  return Math.abs(currentNumber - next) > 1e-9
 }
 
 export async function GET(
@@ -74,11 +82,20 @@ export async function PATCH(
   }
 
   try {
-    const item = await prisma.cosTableRawMaterial.update({
-      where: { id },
-      data: parsed.data,
+    let costRefresh: Awaited<ReturnType<typeof refreshRecipeCostsForRawMaterials>> | null = null
+    const item = await prisma.$transaction(async tx => {
+      const updated = await tx.cosTableRawMaterial.update({
+        where: { id },
+        data: parsed.data,
+      })
+
+      if (decimalChanged(current.primaryPricePerKg, parsed.data.primaryPricePerKg)) {
+        costRefresh = await refreshRecipeCostsForRawMaterials([id], tx)
+      }
+
+      return updated
     })
-    return NextResponse.json({ item: serializeRawMaterial(item) })
+    return NextResponse.json({ item: serializeRawMaterial(item), costRefresh })
   } catch (err) {
     if (isMissingTable(err)) {
       return NextResponse.json({ error: '原料表不存在，请先运行数据库迁移' }, { status: 503 })

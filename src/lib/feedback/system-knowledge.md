@@ -215,6 +215,7 @@ Hierarchical category tree (up to 3 levels) for the website catalog.
 Purchasing and sourcing registry.
 - Fields: material code, production code, attribute code, category, name
 - Dual supplier support: primary and secondary (name, package size kg, price/kg, tax flag, freight flag, notes)
+- Changing a raw material's primary price/kg (including via bulk import) automatically refreshes all referencing recipe and semifinished costs; no manual batch refresh is required
 - Attach and download TDS (Technical Data Sheet) and MSDS (Material Safety Data Sheet) files
 - Bulk import from file
 
@@ -223,7 +224,7 @@ Product formulation management.
 - Fields: recipe code, name, category, batch quantity, unit cost
 - Line items: raw materials or component recipes (nested), with quantity, unit price, percentage
 - Unit cost is calculated by percentage: each line contributes `(quantity ÷ total quantity) × unit price`; accurate even when material quantities do not sum to 100
-- Automatic cost calculation; refresh prices from latest material pricing
+- Automatic cost calculation; line prices can be refreshed from latest source pricing, and raw-material primary price changes automatically cascade through dependent production recipes, nested semifinished recipes, and source-linked semifinished inventory unit prices
 - Link to factory products; mark recipe as active/used
 - Print recipe: prints complete recipe sheet (materials, quantities, percentages, costs, production requirements)
 - Production process section: stirring requirements, packaging requirements, production notes (separate from QC)

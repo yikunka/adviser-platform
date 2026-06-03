@@ -4,9 +4,17 @@ import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { dedupeByProductionCode, parseExcelRow, toPrismaCreateData } from '@/lib/cosmocoat/raw-materials'
+import { refreshRecipeCostsForRawMaterials } from '@/lib/cosmocoat/recipe-cost-refresh'
 
 function isMissingTable(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021'
+}
+
+function decimalChanged(current: unknown, next: number | null | undefined): boolean {
+  if (next === undefined) return false
+  const currentNumber = current == null ? null : Number(current)
+  if (currentNumber === null || next === null) return currentNumber !== next
+  return Math.abs(currentNumber - next) > 1e-9
 }
 
 export async function POST(req: NextRequest) {
@@ -50,23 +58,38 @@ export async function POST(req: NextRequest) {
 
     let imported = 0
     let skipped = 0
-    for (const row of parsed) {
-      const existing = await prisma.cosTableRawMaterial.findUnique({
-        where: { productionCode: row.productionCode },
-      })
-      if (existing) {
-        await prisma.cosTableRawMaterial.update({
-          where: { id: existing.id },
-          data: toPrismaCreateData(row),
-        })
-        skipped += 1
-      } else {
-        await prisma.cosTableRawMaterial.create({ data: toPrismaCreateData(row) })
-        imported += 1
-      }
-    }
+    const costRefresh = await prisma.$transaction(async tx => {
+      const priceChangedIds: string[] = []
 
-    return NextResponse.json({ imported, updated: skipped, mode: 'upsert', total: parsed.length })
+      for (const row of parsed) {
+        const existing = await tx.cosTableRawMaterial.findUnique({
+          where: { productionCode: row.productionCode },
+        })
+        if (existing) {
+          await tx.cosTableRawMaterial.update({
+            where: { id: existing.id },
+            data: toPrismaCreateData(row),
+          })
+          if (decimalChanged(existing.primaryPricePerKg, row.primaryPricePerKg)) {
+            priceChangedIds.push(existing.id)
+          }
+          skipped += 1
+        } else {
+          await tx.cosTableRawMaterial.create({ data: toPrismaCreateData(row) })
+          imported += 1
+        }
+      }
+
+      return refreshRecipeCostsForRawMaterials(priceChangedIds, tx)
+    })
+
+    return NextResponse.json({
+      imported,
+      updated: skipped,
+      mode: 'upsert',
+      total: parsed.length,
+      costRefresh,
+    })
   } catch (err) {
     if (isMissingTable(err)) {
       return NextResponse.json({ error: '原料表不存在，请先运行数据库迁移' }, { status: 503 })
