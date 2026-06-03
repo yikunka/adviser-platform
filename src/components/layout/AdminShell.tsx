@@ -49,10 +49,12 @@ type NavItem = {
   Icon: typeof LayoutDashboard
 }
 
-const NAV_GROUPS: {
+type NavGroup = {
   labelKey: string
   items: readonly NavItem[]
-}[] = [
+}
+
+const NAV_GROUPS: NavGroup[] = [
   {
     labelKey: 'main',
     items: [{ href: '/admin/dashboard', key: 'dashboard', Icon: LayoutDashboard }],
@@ -172,6 +174,32 @@ export default function AdminShell({
     return pathname.includes(item.href)
   }
 
+  function visibleItemsForGroup(group: NavGroup) {
+    return group.items.filter(it => canSeeMenu(menuAccess, it.key, userRole))
+  }
+
+  function activeGroupKey() {
+    for (const group of NAV_GROUPS) {
+      const visibleItems = visibleItemsForGroup(group)
+      if (visibleItems.some(item => isActive(item))) return group.labelKey
+    }
+    return null
+  }
+
+  function defaultExpandedGroup() {
+    const active = activeGroupKey()
+    if (active) return active
+    return NAV_GROUPS.find(group => visibleItemsForGroup(group).length > 0)?.labelKey ?? null
+  }
+
+  const [expandedGroupState, setExpandedGroupState] = useState<{ pathname: string; group: string | null }>(() => ({
+    pathname,
+    group: defaultExpandedGroup(),
+  }))
+  const expandedGroup = expandedGroupState.pathname === pathname
+    ? expandedGroupState.group
+    : defaultExpandedGroup()
+
   const roleBadge = ROLE_BADGE[userRole] ?? { label: userRole, bg: 'rgba(120,113,108,0.15)', text: '#9A8060' }
 
   return (
@@ -220,17 +248,36 @@ export default function AdminShell({
 
         <nav className="flex-1 px-3 py-3 space-y-5 overflow-y-auto">
           {NAV_GROUPS.map(group => {
-            const visibleItems = group.items.filter(it => canSeeMenu(menuAccess, it.key, userRole))
+            const visibleItems = visibleItemsForGroup(group)
             if (visibleItems.length === 0) return null
+            const isExpanded = expandedGroup === group.labelKey
+            const hasActiveItem = visibleItems.some(item => isActive(item))
             return (
               <div key={group.labelKey}>
-                <p
-                  className="px-3 mb-1.5 text-xs font-semibold uppercase tracking-widest"
-                  style={{ color: '#A99A80' }}
+                <button
+                  type="button"
+                  onClick={() => setExpandedGroupState({
+                    pathname,
+                    group: isExpanded ? null : group.labelKey,
+                  })}
+                  className="mb-1.5 flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold uppercase tracking-widest transition-colors"
+                  style={{
+                    color: hasActiveItem || isExpanded ? '#C9A96E' : '#A99A80',
+                    background: isExpanded ? 'rgba(201,169,110,0.08)' : 'transparent',
+                  }}
+                  aria-expanded={isExpanded}
                 >
-                  {tAdmin(`nav.${group.labelKey}` as Parameters<typeof tAdmin>[0])}
-                </p>
-                {visibleItems.map(item => {
+                  <span className="flex-1 text-left">{tAdmin(`nav.${group.labelKey}` as Parameters<typeof tAdmin>[0])}</span>
+                  <ChevronRight
+                    size={12}
+                    className="transition-transform duration-150"
+                    style={{
+                      color: 'inherit',
+                      transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                    }}
+                  />
+                </button>
+                {isExpanded && visibleItems.map(item => {
                   const { key, labelKey, Icon } = item
                   const href = resolveHref(item)
                   const active = isActive(item)
