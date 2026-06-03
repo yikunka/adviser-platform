@@ -5,6 +5,7 @@ import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { getFactoryProductById, syncProductRecipes } from '@/lib/cosmocoat/factory-products'
 import { refreshAllFormulaIsUsedCache } from '@/lib/cosmocoat/recipe-usage'
+import { refreshRecipeCostsForFactoryProducts } from '@/lib/cosmocoat/recipe-cost-refresh'
 import {
   factoryViscosityFieldsSchema,
   mergeFactoryViscosityPatch,
@@ -114,6 +115,11 @@ export async function PATCH(
       typeof body === 'object' &&
       viscosityKeys.some(key => key in body)
 
+    const currentUnitPrice = current.unitPrice != null ? Number(current.unitPrice) : null
+    const unitPriceChanged =
+      parsed.data.unitPrice !== undefined
+      && currentUnitPrice !== parsed.data.unitPrice
+
     await prisma.cosTableFactoryProduct.update({
       where: { id },
       data: {
@@ -126,6 +132,10 @@ export async function PATCH(
           : {}),
       } as Prisma.CosTableFactoryProductUncheckedUpdateInput,
     })
+
+    if (unitPriceChanged) {
+      await refreshRecipeCostsForFactoryProducts([id])
+    }
 
     const product = await getFactoryProductById(id)
     return NextResponse.json({ product })

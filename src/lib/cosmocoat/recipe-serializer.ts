@@ -43,6 +43,15 @@ function serializeRecipeItem(item: {
       batchNo: string
     } | null
   } | null
+  factoryProduct: {
+    id: string
+    productCode: string
+    name: string
+    unit: string
+    unitPrice: unknown
+    notes: string
+    category: { id: string; name: string } | null
+  } | null
 }) {
   const base = {
     id: item.id,
@@ -69,6 +78,7 @@ function serializeRecipeItem(item: {
       },
       productSemifinished: null,
       rawMaterial: null,
+      factoryProduct: null,
     }
   }
 
@@ -97,11 +107,33 @@ function serializeRecipeItem(item: {
       },
       recipe: null,
       rawMaterial: null,
+      factoryProduct: null,
+    }
+  }
+
+  if (item.factoryProduct) {
+    return {
+      ...base,
+      itemType: 'factory_product' as const,
+      factoryProduct: {
+        id: item.factoryProduct.id,
+        productCode: item.factoryProduct.productCode,
+        name: item.factoryProduct.name,
+        unit: item.factoryProduct.unit,
+        unitPrice: item.factoryProduct.unitPrice != null
+          ? Number(item.factoryProduct.unitPrice)
+          : null,
+        notes: item.factoryProduct.notes,
+        category: item.factoryProduct.category,
+      },
+      recipe: null,
+      rawMaterial: null,
+      productSemifinished: null,
     }
   }
 
   if (!item.rawMaterial) {
-    throw new Error(`Recipe item ${item.id} has no material, component recipe, or product semifinished`)
+    throw new Error(`Recipe item ${item.id} has no material, component recipe, product semifinished, or factory product`)
   }
 
   return {
@@ -119,6 +151,7 @@ function serializeRecipeItem(item: {
     },
     recipe: null,
     productSemifinished: null,
+    factoryProduct: null,
   }
 }
 
@@ -135,6 +168,11 @@ export async function serializeFullRecipe(recipeId: string) {
           productSemifinished: {
             include: {
               sourceProductionOrder: { select: { id: true, code: true, batchNo: true } },
+            },
+          },
+          factoryProduct: {
+            include: {
+              category: { select: { id: true, name: true } },
             },
           },
         },

@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, FlaskConical, GripVertical, Printer, RefreshCw, Save, Search, Trash2 } from 'lucide-react'
+import { ArrowLeft, Boxes, FlaskConical, GripVertical, Printer, RefreshCw, Save, Search, Trash2 } from 'lucide-react'
 import type { FullRecipe } from '@/lib/cosmocoat/recipe-serializer'
 import {
   MATERIAL_ATTRIBUTE_GROUPS,
@@ -40,7 +40,17 @@ type PickerSemifinished = {
   category: { id: string; code: string; name: string }
 }
 
-type PickerMode = 'raw_material' | 'semi_finished'
+type PickerFinishedProduct = {
+  id: string
+  productCode: string
+  name: string
+  unit: string
+  unitPrice: number | null
+  notes: string
+  category: { id: string; name: string } | null
+}
+
+type PickerMode = 'raw_material' | 'semi_finished' | 'factory_product'
 
 type RecipeCategoryOption = {
   id: string
@@ -54,10 +64,11 @@ function mapRecipeCategoryOption(c: { id: string; code: string; name: string }):
 
 type EditableItem = {
   key: string
-  itemType: 'raw_material' | 'recipe' | 'product_semifinished'
+  itemType: 'raw_material' | 'recipe' | 'product_semifinished' | 'factory_product'
   rawMaterialId?: string
   recipeId?: string
   productSemifinishedId?: string
+  factoryProductId?: string
   productionCode: string
   name: string
   packageKg: number | null
@@ -140,6 +151,26 @@ function toEditableItemFromSemifinished(
   }
 }
 
+function toEditableItemFromFinishedProduct(
+  product: PickerFinishedProduct,
+  quantity = 0,
+  notes = '',
+): EditableItem {
+  return {
+    key: product.id,
+    itemType: 'factory_product',
+    factoryProductId: product.id,
+    productionCode: product.productCode,
+    name: product.name,
+    packageKg: null,
+    unit: product.unit,
+    quantity,
+    unitPrice: product.unitPrice,
+    amount: 0,
+    notes,
+  }
+}
+
 export default function AdminCosmoCoatRecipeEditorPage() {
   const params = useParams()
   const router = useRouter()
@@ -155,8 +186,11 @@ export default function AdminCosmoCoatRecipeEditorPage() {
   const [pickerMode, setPickerMode] = useState<PickerMode>('raw_material')
   const [pickerMaterials, setPickerMaterials] = useState<PickerMaterial[]>([])
   const [pickerSemifinished, setPickerSemifinished] = useState<PickerSemifinished[]>([])
+  const [pickerFinishedProducts, setPickerFinishedProducts] = useState<PickerFinishedProduct[]>([])
   const [semifinishedCategories, setSemifinishedCategories] = useState<{ id: string; name: string }[]>([])
+  const [finishedProductCategories, setFinishedProductCategories] = useState<{ id: string; name: string }[]>([])
   const [semifinishedCategoryFilter, setSemifinishedCategoryFilter] = useState('')
+  const [finishedProductCategoryFilter, setFinishedProductCategoryFilter] = useState('')
   const [pickerLoading, setPickerLoading] = useState(false)
   const [attributeFilter, setAttributeFilter] = useState('RS')
   const [pickerSearch, setPickerSearch] = useState('')
@@ -166,6 +200,11 @@ export default function AdminCosmoCoatRecipeEditorPage() {
     if (!semifinishedCategoryFilter || pickerSearch.trim()) return pickerSemifinished
     return pickerSemifinished.filter(s => s.category.id === semifinishedCategoryFilter)
   }, [pickerSemifinished, semifinishedCategoryFilter, pickerSearch])
+
+  const displayedFinishedProducts = useMemo(() => {
+    if (!finishedProductCategoryFilter || pickerSearch.trim()) return pickerFinishedProducts
+    return pickerFinishedProducts.filter(p => p.category?.id === finishedProductCategoryFilter)
+  }, [pickerFinishedProducts, finishedProductCategoryFilter, pickerSearch])
 
   const [categoryId, setCategoryId] = useState('')
   const [code, setCode] = useState('')
@@ -245,6 +284,22 @@ export default function AdminCosmoCoatRecipeEditorPage() {
       setQcResult(recipe.qcResult)
       setFormulaIsUsed(recipe.formulaIsUsed)
       setItems(recipe.items.map(item => {
+        if (item.itemType === 'factory_product' && item.factoryProduct) {
+          const product = item.factoryProduct
+          return {
+            key: item.id,
+            itemType: 'factory_product' as const,
+            factoryProductId: product.id,
+            productionCode: product.productCode,
+            name: product.name,
+            packageKg: null,
+            unit: product.unit,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            amount: item.amount ?? 0,
+            notes: item.notes,
+          }
+        }
         if (item.itemType === 'product_semifinished' && item.productSemifinished) {
           const sf = item.productSemifinished
           return {
@@ -368,6 +423,45 @@ export default function AdminCosmoCoatRecipeEditorPage() {
     }
   }, [pickerSearch, isNew, recipeId, setSemifinishedCategoryFilter])
 
+  const loadPickerFinishedProducts = useCallback(async () => {
+    setPickerLoading(true)
+    try {
+      const params = new URLSearchParams({ limit: '200' })
+      const q = pickerSearch.trim()
+      if (q) params.set('q', q)
+      const res = await fetch(`/api/admin/cosmocoat/factory-products?${params}`)
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? '加载成品失败')
+        return
+      }
+      setPickerFinishedProducts((data.items ?? []).map((item: PickerFinishedProduct) => ({
+        id: item.id,
+        productCode: item.productCode,
+        name: item.name,
+        unit: item.unit,
+        unitPrice: item.unitPrice,
+        notes: item.notes ?? '',
+        category: item.category,
+      })))
+      if (!pickerSearch.trim()) {
+        const catMap = new Map<string, { id: string; name: string }>()
+        for (const item of data.items ?? []) {
+          if (item.category?.id && !catMap.has(item.category.id)) {
+            catMap.set(item.category.id, { id: item.category.id, name: item.category.name })
+          }
+        }
+        const cats = Array.from(catMap.values())
+        setFinishedProductCategories(cats)
+        setFinishedProductCategoryFilter(prev => prev || (cats[0]?.id ?? ''))
+      }
+    } catch {
+      toast.error('加载成品失败')
+    } finally {
+      setPickerLoading(false)
+    }
+  }, [pickerSearch])
+
   useEffect(() => {
     if (isNew) {
       loadCategories().finally(() => setLoading(false))
@@ -388,6 +482,12 @@ export default function AdminCosmoCoatRecipeEditorPage() {
     return () => clearTimeout(t)
   }, [loadPickerSemifinished, pickerSearch, pickerMode, semifinishedCategoryFilter])
 
+  useEffect(() => {
+    if (pickerMode !== 'factory_product') return
+    const t = setTimeout(loadPickerFinishedProducts, pickerSearch.trim() ? 300 : 0)
+    return () => clearTimeout(t)
+  }, [loadPickerFinishedProducts, pickerSearch, pickerMode, finishedProductCategoryFilter])
+
   function switchPickerMode(mode: PickerMode) {
     setPickerMode(mode)
     setSelectedPickerId(null)
@@ -399,6 +499,21 @@ export default function AdminCosmoCoatRecipeEditorPage() {
   }
 
   function addSelectedPickerItem() {
+    if (pickerMode === 'factory_product') {
+      const product = pickerFinishedProducts.find(p => p.id === selectedPickerId)
+      if (!product) {
+        toast.error('请先选择成品')
+        return
+      }
+      if (items.some(item => item.itemType === 'factory_product' && item.factoryProductId === product.id)) {
+        toast.error('该成品已在配方中')
+        return
+      }
+      setItems(prev => [...prev, { ...toEditableItemFromFinishedProduct(product), key: crypto.randomUUID() }])
+      toast.success('已添加成品')
+      return
+    }
+
     if (pickerMode === 'semi_finished') {
       const semifinished = pickerSemifinished.find(s => s.id === selectedPickerId)
       if (!semifinished) {
@@ -458,7 +573,9 @@ export default function AdminCosmoCoatRecipeEditorPage() {
           ? { recipeId: item.recipeId }
           : item.itemType === 'product_semifinished'
             ? { productSemifinishedId: item.productSemifinishedId }
-            : { rawMaterialId: item.rawMaterialId }),
+            : item.itemType === 'factory_product'
+              ? { factoryProductId: item.factoryProductId }
+              : { rawMaterialId: item.rawMaterialId }),
         sortOrder: index + 1,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
@@ -503,7 +620,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
         toast.error(data.error ?? '更新价格失败')
         return
       }
-      toast.success('已从原料表和 Sol. 半成品更新价格')
+      toast.success('已从原料表、成品和 Sol. 半成品更新价格')
       loadRecipe()
     } catch {
       toast.error('更新价格失败')
@@ -524,7 +641,9 @@ export default function AdminCosmoCoatRecipeEditorPage() {
               ? { recipeId: item.recipeId }
               : item.itemType === 'product_semifinished'
                 ? { productSemifinishedId: item.productSemifinishedId }
-                : { rawMaterialId: item.rawMaterialId }),
+                : item.itemType === 'factory_product'
+                  ? { factoryProductId: item.factoryProductId }
+                  : { rawMaterialId: item.rawMaterialId }),
             sortOrder: index + 1,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
@@ -772,7 +891,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
             <tbody>
               {itemsWithPercentage.length === 0 ? (
                 <tr>
-                  <td colSpan={11} style={{ ...td, textAlign: 'center', padding: '2rem' }}>请从下方选择原材料或半成品</td>
+                  <td colSpan={11} style={{ ...td, textAlign: 'center', padding: '2rem' }}>请从下方选择原材料、半成品或成品</td>
                 </tr>
               ) : itemsWithPercentage.map((item, index) => (
                 <tr
@@ -799,6 +918,11 @@ export default function AdminCosmoCoatRecipeEditorPage() {
                       {item.itemType === 'recipe' && (
                         <span className="text-[10px] px-1 py-0.5 rounded" style={{ background: 'rgba(201,169,110,0.15)', color: '#C9A96E' }}>配方</span>
                       )}
+                      {item.itemType === 'factory_product' && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded" style={{ background: 'rgba(201,169,110,0.15)', color: '#C9A96E' }}>
+                          <Boxes size={10} /> 成品
+                        </span>
+                      )}
                     </span>
                   </td>
                   <td style={td}>
@@ -810,7 +934,9 @@ export default function AdminCosmoCoatRecipeEditorPage() {
                   <td style={td}>
                     {item.itemType === 'product_semifinished'
                       ? `库存 ${item.stock ?? '—'} ${item.unit ?? 'kg'}`
-                      : `${item.packageKg ?? '—'}${item.itemType === 'recipe' ? ' kg/批' : ''}`}
+                      : item.itemType === 'factory_product'
+                        ? item.unit ?? 'kg'
+                        : `${item.packageKg ?? '—'}${item.itemType === 'recipe' ? ' kg/批' : ''}`}
                   </td>
                   <td style={td}>
                     <input
@@ -883,11 +1009,26 @@ export default function AdminCosmoCoatRecipeEditorPage() {
               >
                 半成品
               </button>
+              <button
+                type="button"
+                onClick={() => switchPickerMode('factory_product')}
+                className="px-3 py-1.5 transition-colors"
+                style={{
+                  background: pickerMode === 'factory_product' ? 'rgba(201,169,110,0.15)' : 'transparent',
+                  color: pickerMode === 'factory_product' ? '#C9A96E' : 'var(--muted-foreground)',
+                }}
+              >
+                成品
+              </button>
             </div>
           </div>
           {pickerSearch.trim() && (
             <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-              {pickerMode === 'raw_material' ? '正在全部分类中搜索原料' : '正在全部 Sol. 半成品中搜索'}
+              {pickerMode === 'raw_material'
+                ? '正在全部分类中搜索原料'
+                : pickerMode === 'semi_finished'
+                  ? '正在全部 Sol. 半成品中搜索'
+                  : '正在全部成品中搜索'}
             </span>
           )}
         </div>
@@ -915,23 +1056,48 @@ export default function AdminCosmoCoatRecipeEditorPage() {
                   {group.label}
                 </button>
               ))
-            ) : semifinishedCategories.length === 0 ? (
-              <p className="px-3 py-4 text-xs" style={{ color: '#5A5040' }}>暂无半成品分类</p>
+            ) : pickerMode === 'semi_finished' ? (
+              semifinishedCategories.length === 0 ? (
+                <p className="px-3 py-4 text-xs" style={{ color: '#5A5040' }}>暂无半成品分类</p>
+              ) : (
+                semifinishedCategories.map(cat => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => {
+                      setPickerSearch('')
+                      setSelectedPickerId(null)
+                      setSemifinishedCategoryFilter(cat.id)
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs transition-colors"
+                    style={{
+                      background: !pickerSearch.trim() && semifinishedCategoryFilter === cat.id
+                        ? 'rgba(201,169,110,0.12)' : 'transparent',
+                      color: !pickerSearch.trim() && semifinishedCategoryFilter === cat.id
+                        ? '#C9A96E' : 'var(--muted-foreground)',
+                    }}
+                  >
+                    {cat.name}
+                  </button>
+                ))
+              )
+            ) : finishedProductCategories.length === 0 ? (
+              <p className="px-3 py-4 text-xs" style={{ color: '#5A5040' }}>暂无产品类别</p>
             ) : (
-              semifinishedCategories.map(cat => (
+              finishedProductCategories.map(cat => (
                 <button
                   key={cat.id}
                   type="button"
                   onClick={() => {
                     setPickerSearch('')
                     setSelectedPickerId(null)
-                    setSemifinishedCategoryFilter(cat.id)
+                    setFinishedProductCategoryFilter(cat.id)
                   }}
                   className="w-full text-left px-3 py-2 text-xs transition-colors"
                   style={{
-                    background: !pickerSearch.trim() && semifinishedCategoryFilter === cat.id
+                    background: !pickerSearch.trim() && finishedProductCategoryFilter === cat.id
                       ? 'rgba(201,169,110,0.12)' : 'transparent',
-                    color: !pickerSearch.trim() && semifinishedCategoryFilter === cat.id
+                    color: !pickerSearch.trim() && finishedProductCategoryFilter === cat.id
                       ? '#C9A96E' : 'var(--muted-foreground)',
                   }}
                 >
@@ -953,7 +1119,9 @@ export default function AdminCosmoCoatRecipeEditorPage() {
                   placeholder={
                     pickerMode === 'raw_material'
                       ? '搜索全部原料（编号、名称、供应商）...'
-                      : '搜索 Sol. 半成品（编号、名称）...'
+                      : pickerMode === 'semi_finished'
+                        ? '搜索 Sol. 半成品（编号、名称）...'
+                        : '搜索成品（编号、名称）...'
                   }
                   className="w-full pl-8 pr-3 py-2 rounded-lg text-sm outline-none"
                   style={inputStyle()}
@@ -1016,11 +1184,56 @@ export default function AdminCosmoCoatRecipeEditorPage() {
                     </tbody>
                   </table>
                 )
+              ) : pickerMode === 'semi_finished' ? (
+                pickerLoading ? (
+                  <p className="text-sm py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>加载半成品配方...</p>
+                ) : displayedSemifinished.length === 0 ? (
+                  <p className="text-sm py-8 text-center" style={{ color: '#5A5040' }}>
+                    {pickerSearch.trim() ? '未找到匹配半成品配方' : '该分类下暂无半成品配方'}
+                  </p>
+                ) : (
+                  <table className="w-full">
+                    <thead>
+                      <tr>
+                        <th style={th}>编号</th>
+                        <th style={th}>名称</th>
+                        <th style={th}>分类</th>
+                        <th style={th}>批量</th>
+                        <th style={th}>单位成本</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayedSemifinished.map(semifinished => {
+                        const alreadyAdded = items.some(
+                          item => item.itemType === 'recipe' && item.recipeId === semifinished.id,
+                        )
+                        return (
+                          <tr
+                            key={semifinished.id}
+                            onClick={() => !alreadyAdded && setSelectedPickerId(semifinished.id)}
+                            className={alreadyAdded ? 'opacity-40' : 'cursor-pointer'}
+                            style={{
+                              background: selectedPickerId === semifinished.id && !alreadyAdded
+                                ? 'rgba(201,169,110,0.08)'
+                                : 'transparent',
+                            }}
+                          >
+                            <td style={td}>{semifinished.code}</td>
+                            <td style={td}>{semifinished.name}</td>
+                            <td style={td}>{semifinished.category.name}</td>
+                            <td style={td}>{formatMoney(semifinished.batchQuantity, 3)}</td>
+                            <td style={td}>{formatMoney(semifinished.unitCost)}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                )
               ) : pickerLoading ? (
-                <p className="text-sm py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>加载半成品配方...</p>
-              ) : displayedSemifinished.length === 0 ? (
+                <p className="text-sm py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>加载成品...</p>
+              ) : displayedFinishedProducts.length === 0 ? (
                 <p className="text-sm py-8 text-center" style={{ color: '#5A5040' }}>
-                  {pickerSearch.trim() ? '未找到匹配半成品配方' : '该分类下暂无半成品配方'}
+                  {pickerSearch.trim() ? '未找到匹配成品' : '该类别下暂无成品'}
                 </p>
               ) : (
                 <table className="w-full">
@@ -1028,32 +1241,34 @@ export default function AdminCosmoCoatRecipeEditorPage() {
                     <tr>
                       <th style={th}>编号</th>
                       <th style={th}>名称</th>
-                      <th style={th}>分类</th>
-                      <th style={th}>批量</th>
-                      <th style={th}>单位成本</th>
+                      <th style={th}>类别</th>
+                      <th style={th}>单位</th>
+                      <th style={th}>单价</th>
+                      <th style={th}>备注</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {displayedSemifinished.map(semifinished => {
+                    {displayedFinishedProducts.map(product => {
                       const alreadyAdded = items.some(
-                        item => item.itemType === 'recipe' && item.recipeId === semifinished.id,
+                        item => item.itemType === 'factory_product' && item.factoryProductId === product.id,
                       )
                       return (
                         <tr
-                          key={semifinished.id}
-                          onClick={() => !alreadyAdded && setSelectedPickerId(semifinished.id)}
+                          key={product.id}
+                          onClick={() => !alreadyAdded && setSelectedPickerId(product.id)}
                           className={alreadyAdded ? 'opacity-40' : 'cursor-pointer'}
                           style={{
-                            background: selectedPickerId === semifinished.id && !alreadyAdded
+                            background: selectedPickerId === product.id && !alreadyAdded
                               ? 'rgba(201,169,110,0.08)'
                               : 'transparent',
                           }}
                         >
-                          <td style={td}>{semifinished.code}</td>
-                          <td style={td}>{semifinished.name}</td>
-                          <td style={td}>{semifinished.category.name}</td>
-                          <td style={td}>{formatMoney(semifinished.batchQuantity, 3)}</td>
-                          <td style={td}>{formatMoney(semifinished.unitCost)}</td>
+                          <td style={td}>{product.productCode}</td>
+                          <td style={td}>{product.name}</td>
+                          <td style={td}>{product.category?.name ?? '—'}</td>
+                          <td style={td}>{product.unit}</td>
+                          <td style={td}>{formatMoney(product.unitPrice)}</td>
+                          <td style={td}>{product.notes || '—'}</td>
                         </tr>
                       )
                     })}

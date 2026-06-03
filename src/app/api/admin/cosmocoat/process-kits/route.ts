@@ -18,10 +18,47 @@ const kitSchema = z.object({
   performanceStandards: z.array(z.string()).optional().default([]),
   otherNote: z.string().trim().max(500).nullable().optional(),
   status: z.enum(['DRAFT', 'ACTIVE', 'ARCHIVED']).optional().default('DRAFT'),
+  products: z.array(z.object({
+    productId: z.string().trim().min(1),
+    sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
+    quantityRatio: z.string().trim().max(64).optional().default(''),
+    usageMethod: z.string().trim().min(1).max(2000),
+    irMinutes: z.coerce.number().min(0).max(9999).nullable().optional(),
+    irTemperature: z.coerce.number().min(0).max(9999).nullable().optional(),
+    uvEnergy: z.coerce.number().min(0).max(999999).nullable().optional(),
+    notes: z.string().trim().max(2000).optional().default(''),
+  })).max(100).optional().default([]),
 })
 
 function isMissingTable(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021'
+}
+
+async function resolveProductRows(products: z.infer<typeof kitSchema>['products']) {
+  if (products.length === 0) return []
+
+  const productIds = [...new Set(products.map(product => product.productId))]
+  const factoryProducts = await prisma.cosTableFactoryProduct.findMany({
+    where: { id: { in: productIds } },
+    select: { id: true, productCode: true, name: true },
+  })
+  const productNameById = new Map(factoryProducts.map(product => [product.id, `${product.productCode} · ${product.name}`]))
+
+  if (productNameById.size !== productIds.length) {
+    throw new Error('FACTORY_PRODUCT_NOT_FOUND')
+  }
+
+  return products.map((product, index) => ({
+    productId: product.productId,
+    productName: productNameById.get(product.productId)!,
+    sortOrder: product.sortOrder ?? index,
+    quantityRatio: product.quantityRatio || null,
+    usageMethod: product.usageMethod,
+    irMinutes: product.irMinutes ?? null,
+    irTemperature: product.irTemperature ?? null,
+    uvEnergy: product.uvEnergy ?? null,
+    notes: product.notes || null,
+  }))
 }
 
 export async function GET(req: NextRequest) {
@@ -90,6 +127,7 @@ export async function POST(req: NextRequest) {
     const code = parsed.data.code?.trim() || await generateProcessKitCode()
     const existing = await prisma.cosProcessKit.findUnique({ where: { code } })
     if (existing) return NextResponse.json({ error: '工艺书编号已存在' }, { status: 409 })
+    const productRows = await resolveProductRows(parsed.data.products)
 
     const kit = await prisma.cosProcessKit.create({
       data: {
@@ -102,12 +140,18 @@ export async function POST(req: NextRequest) {
         status: parsed.data.status,
         createdBy: session!.user.id,
         createdByName: session!.user.name ?? session!.user.email ?? null,
+        ...(productRows.length > 0
+          ? { products: { create: productRows } }
+          : {}),
       },
     })
 
     const full = await getProcessKitById(kit.id)
     return NextResponse.json({ kit: full }, { status: 201 })
   } catch (err) {
+    if (err instanceof Error && err.message === 'FACTORY_PRODUCT_NOT_FOUND') {
+      return NextResponse.json({ error: '工厂产品不存在' }, { status: 400 })
+    }
     if (isMissingTable(err)) {
       return NextResponse.json({ error: '工艺书表不存在，请先运行数据库迁移' }, { status: 503 })
     }

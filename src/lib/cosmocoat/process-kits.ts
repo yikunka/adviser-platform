@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
+import { buildProcessFlowDocument } from '@/lib/cosmocoat/process-flow'
 
 export const kitInclude = {
   products: {
@@ -35,6 +36,15 @@ export function serializeProcessKit(kit: ProcessKitWithRelations) {
     updatedAt: kit.updatedAt.toISOString(),
     productCount: kit.products.length,
     testCount: kit.tests.length,
+    processFlowDocument: buildProcessFlowDocument(kit.products.map(p => ({
+      productName: p.productName,
+      quantityRatio: p.quantityRatio,
+      usageMethod: p.usageMethod,
+      notes: p.notes,
+      irMinutes: p.irMinutes != null ? Number(p.irMinutes) : null,
+      irTemperature: p.irTemperature != null ? Number(p.irTemperature) : null,
+      uvEnergy: p.uvEnergy != null ? Number(p.uvEnergy) : null,
+    }))),
     products: kit.products.map(p => ({
       id: p.id,
       kitId: p.kitId,
@@ -43,6 +53,9 @@ export function serializeProcessKit(kit: ProcessKitWithRelations) {
       sortOrder: p.sortOrder,
       quantityRatio: p.quantityRatio,
       usageMethod: p.usageMethod,
+      irMinutes: p.irMinutes != null ? Number(p.irMinutes) : null,
+      irTemperature: p.irTemperature != null ? Number(p.irTemperature) : null,
+      uvEnergy: p.uvEnergy != null ? Number(p.uvEnergy) : null,
       notes: p.notes,
       createdAt: p.createdAt.toISOString(),
       updatedAt: p.updatedAt.toISOString(),

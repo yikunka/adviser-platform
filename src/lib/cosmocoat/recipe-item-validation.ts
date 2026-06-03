@@ -19,6 +19,7 @@ function countItemRefs(item: RecipeItemInput): number {
     Boolean(item.rawMaterialId),
     Boolean(item.recipeId),
     Boolean(item.productSemifinishedId),
+    Boolean(item.factoryProductId),
   ].filter(Boolean).length
 }
 
@@ -36,12 +37,15 @@ export async function validateAndEnrichRecipeItems(
   const productSemifinishedIds = items
     .map(item => item.productSemifinishedId)
     .filter((id): id is string => Boolean(id))
+  const factoryProductIds = items
+    .map(item => item.factoryProductId)
+    .filter((id): id is string => Boolean(id))
 
   if (parentRecipeId && componentRecipeIds.includes(parentRecipeId)) {
     throw new RecipeItemValidationError('配方不能引用自身作为半成品')
   }
 
-  const [rawMaterials, componentRecipes, productSemifinished] = await Promise.all([
+  const [rawMaterials, componentRecipes, productSemifinished, factoryProducts] = await Promise.all([
     rawMaterialIds.length > 0
       ? prisma.cosTableRawMaterial.findMany({
           where: { id: { in: rawMaterialIds } },
@@ -65,15 +69,22 @@ export async function validateAndEnrichRecipeItems(
           select: { id: true, code: true, unitPrice: true },
         })
       : Promise.resolve([]),
+    factoryProductIds.length > 0
+      ? prisma.cosTableFactoryProduct.findMany({
+          where: { id: { in: factoryProductIds } },
+          select: { id: true, productCode: true, unitPrice: true },
+        })
+      : Promise.resolve([]),
   ])
 
   const rawMap = new Map(rawMaterials.map(m => [m.id, m]))
   const recipeMap = new Map(componentRecipes.map(r => [r.id, r]))
   const semifinishedMap = new Map(productSemifinished.map(s => [s.id, s]))
+  const factoryProductMap = new Map(factoryProducts.map(p => [p.id, p]))
 
   return items.map(item => {
     if (countItemRefs(item) !== 1) {
-      throw new RecipeItemValidationError('每条配料须指定原材料、半成品配方或库存半成品之一')
+      throw new RecipeItemValidationError('每条配料须指定原材料、半成品配方、库存半成品或成品之一')
     }
 
     if (item.rawMaterialId) {
@@ -114,6 +125,17 @@ export async function validateAndEnrichRecipeItems(
       return { ...item, unitPrice }
     }
 
-    throw new RecipeItemValidationError('每条配料须指定原材料、半成品配方或库存半成品之一')
+    if (item.factoryProductId) {
+      const product = factoryProductMap.get(item.factoryProductId)
+      if (!product) {
+        throw new RecipeItemValidationError(`成品不存在: ${item.factoryProductId}`)
+      }
+      const unitPrice = item.unitPrice ?? (
+        product.unitPrice != null ? Number(product.unitPrice) : null
+      )
+      return { ...item, unitPrice }
+    }
+
+    throw new RecipeItemValidationError('每条配料须指定原材料、半成品配方、库存半成品或成品之一')
   })
 }

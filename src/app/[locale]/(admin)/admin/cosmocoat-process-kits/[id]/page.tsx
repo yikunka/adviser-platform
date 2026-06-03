@@ -2,7 +2,7 @@
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/i18n/navigation'
@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { ArrowLeft, Plus, Save, Trash2 } from 'lucide-react'
 import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
 import { cn } from '@/lib/utils'
+import { buildProcessFlowDocument } from '@/lib/cosmocoat/process-flow'
 
 type FactoryProductOption = {
   id: string
@@ -24,6 +25,9 @@ type KitProduct = {
   sortOrder: number
   quantityRatio: string | null
   usageMethod: string
+  irMinutes: number | null
+  irTemperature: number | null
+  uvEnergy: number | null
   notes: string | null
 }
 
@@ -244,6 +248,9 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     productId: '',
     quantityRatio: '',
     usageMethod: '',
+    irMinutes: '',
+    irTemperature: '',
+    uvEnergy: '',
     notes: '',
   })
 
@@ -259,6 +266,10 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   })
 
   const hasOther = selectedMaterials.includes('OTHER')
+  const processFlowDocument = useMemo(
+    () => buildProcessFlowDocument(kitProducts),
+    [kitProducts],
+  )
 
   function toggleMaterial(materialId: string) {
     setSelectedMaterials(prev => {
@@ -276,6 +287,24 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
         ? prev.filter(id => id !== standardId)
         : [...prev, standardId],
     )
+  }
+
+  function parseRequiredNumber(value: string) {
+    if (!value.trim()) return null
+    const parsed = Number(value)
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+  }
+
+  function resetProductForm() {
+    setProductForm({
+      productId: '',
+      quantityRatio: '',
+      usageMethod: '',
+      irMinutes: '',
+      irTemperature: '',
+      uvEnergy: '',
+      notes: '',
+    })
   }
 
   const loadProducts = useCallback(async () => {
@@ -356,6 +385,20 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       materials: selectedMaterials.filter(id => id !== 'OTHER'),
       performanceStandards: selectedPerformanceStandards,
       otherNote: hasOther && otherNote.trim() ? otherNote.trim() : null,
+      ...(isNew
+        ? {
+            products: kitProducts.map((product, index) => ({
+              productId: product.productId,
+              sortOrder: index,
+              quantityRatio: product.quantityRatio,
+              usageMethod: product.usageMethod,
+              irMinutes: product.irMinutes,
+              irTemperature: product.irTemperature,
+              uvEnergy: product.uvEnergy,
+              notes: product.notes,
+            })),
+          }
+        : {}),
       ...(!isNew ? { status } : {}),
     }
     const payload = isNew
@@ -390,10 +433,37 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   }
 
   async function addProduct() {
-    if (!productForm.productId || !productForm.usageMethod.trim()) {
+    const irMinutes = parseRequiredNumber(productForm.irMinutes)
+    const irTemperature = parseRequiredNumber(productForm.irTemperature)
+    const uvEnergy = parseRequiredNumber(productForm.uvEnergy)
+
+    if (!productForm.productId || !productForm.usageMethod.trim() || irMinutes === null || irTemperature === null || uvEnergy === null) {
       toast.error(t('productFormRequired'))
       return
     }
+
+    const selectedProduct = products.find(product => product.id === productForm.productId)
+    if (isNew) {
+      setKitProducts(prev => [
+        ...prev,
+        {
+          id: `draft-${Date.now()}-${prev.length}`,
+          productId: productForm.productId,
+          productName: selectedProduct ? `${selectedProduct.productCode} · ${selectedProduct.name}` : productForm.productId,
+          sortOrder: prev.length,
+          quantityRatio: productForm.quantityRatio.trim() || null,
+          usageMethod: productForm.usageMethod.trim(),
+          irMinutes,
+          irTemperature,
+          uvEnergy,
+          notes: productForm.notes.trim() || null,
+        },
+      ])
+      resetProductForm()
+      setShowProductForm(false)
+      return
+    }
+
     setAddingProduct(true)
     try {
       const res = await fetch(`/api/admin/cosmocoat/process-kits/${kitId}/products`, {
@@ -403,6 +473,9 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
           productId: productForm.productId,
           quantityRatio: productForm.quantityRatio,
           usageMethod: productForm.usageMethod.trim(),
+          irMinutes,
+          irTemperature,
+          uvEnergy,
           notes: productForm.notes,
         }),
       })
@@ -413,7 +486,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       }
       toast.success(t('productAdded'))
       setKitProducts(data.kit?.products ?? [])
-      setProductForm({ productId: '', quantityRatio: '', usageMethod: '', notes: '' })
+      resetProductForm()
       setShowProductForm(false)
     } catch {
       toast.error(t('addProductFailed'))
@@ -424,6 +497,10 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
 
   async function removeProduct(productId: string) {
     if (!window.confirm(t('removeProductConfirm'))) return
+    if (isNew) {
+      setKitProducts(prev => prev.filter(product => product.id !== productId))
+      return
+    }
     try {
       const res = await fetch(`/api/admin/cosmocoat/process-kits/${kitId}/products`, {
         method: 'DELETE',
@@ -635,131 +712,182 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
         </div>
       </div>
 
-      {!isNew && (
-        <>
-          <div style={{ ...card, overflow: 'hidden' }}>
-            <div className="px-4 py-3 border-b flex flex-wrap items-center justify-between gap-2" style={{ borderColor: '#2A2418' }}>
-              <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>{t('productsSection')}</h3>
+      <div style={{ ...card, overflow: 'hidden' }}>
+        <div className="px-4 py-3 border-b flex flex-wrap items-center justify-between gap-2" style={{ borderColor: '#2A2418' }}>
+          <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>{t('processFlowSection')}</h3>
+          <button
+            type="button"
+            onClick={() => setShowProductForm(v => !v)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+            style={{ background: '#1A1A12', border: '1px solid #2A2418', color: 'var(--foreground)' }}
+          >
+            <Plus size={13} /> {t('addProduct')}
+          </button>
+        </div>
+
+        {showProductForm && (
+          <div className="p-4 border-b space-y-3" style={{ borderColor: '#2A2418', background: '#0E0E0A' }}>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="space-y-1.5 sm:col-span-2">
+                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('selectProduct')}</label>
+                <select
+                  value={productForm.productId}
+                  onChange={e => setProductForm(f => ({ ...f, productId: e.target.value }))}
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                  style={inputStyle()}
+                >
+                  <option value="">{t('selectProductPlaceholder')}</option>
+                  {products.map(p => (
+                    <option key={p.id} value={p.id}>{p.productCode} · {p.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('quantityRatio')}</label>
+                <input
+                  value={productForm.quantityRatio}
+                  onChange={e => setProductForm(f => ({ ...f, quantityRatio: e.target.value }))}
+                  placeholder={t('quantityRatioPlaceholder')}
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                  style={inputStyle()}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('irMinutes')}</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={productForm.irMinutes}
+                  onChange={e => setProductForm(f => ({ ...f, irMinutes: e.target.value }))}
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                  style={inputStyle()}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('irTemperature')}</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={productForm.irTemperature}
+                  onChange={e => setProductForm(f => ({ ...f, irTemperature: e.target.value }))}
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                  style={inputStyle()}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('uvEnergy')}</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  value={productForm.uvEnergy}
+                  onChange={e => setProductForm(f => ({ ...f, uvEnergy: e.target.value }))}
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                  style={inputStyle()}
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2 lg:col-span-4">
+                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('usageMethod')}</label>
+                <textarea
+                  value={productForm.usageMethod}
+                  onChange={e => setProductForm(f => ({ ...f, usageMethod: e.target.value }))}
+                  rows={2}
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y"
+                  style={inputStyle()}
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2 lg:col-span-4">
+                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('notes')}</label>
+                <input
+                  value={productForm.notes}
+                  onChange={e => setProductForm(f => ({ ...f, notes: e.target.value }))}
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                  style={inputStyle()}
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => setShowProductForm(v => !v)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                style={{ background: '#1A1A12', border: '1px solid #2A2418', color: 'var(--foreground)' }}
+                onClick={addProduct}
+                disabled={addingProduct}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
+                style={{ background: '#C9A96E', color: '#0A0805' }}
               >
-                <Plus size={13} /> {t('addProduct')}
+                {addingProduct ? t('saving') : t('confirmAdd')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowProductForm(false)}
+                className="px-3 py-1.5 rounded-lg text-xs"
+                style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}
+              >
+                {t('cancel')}
               </button>
             </div>
-
-            {showProductForm && (
-              <div className="p-4 border-b space-y-3" style={{ borderColor: '#2A2418', background: '#0E0E0A' }}>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('selectProduct')}</label>
-                    <select
-                      value={productForm.productId}
-                      onChange={e => setProductForm(f => ({ ...f, productId: e.target.value }))}
-                      className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                      style={inputStyle()}
-                    >
-                      <option value="">{t('selectProductPlaceholder')}</option>
-                      {products.map(p => (
-                        <option key={p.id} value={p.id}>{p.productCode} · {p.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('quantityRatio')}</label>
-                    <input
-                      value={productForm.quantityRatio}
-                      onChange={e => setProductForm(f => ({ ...f, quantityRatio: e.target.value }))}
-                      placeholder={t('quantityRatioPlaceholder')}
-                      className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                      style={inputStyle()}
-                    />
-                  </div>
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('usageMethod')}</label>
-                    <textarea
-                      value={productForm.usageMethod}
-                      onChange={e => setProductForm(f => ({ ...f, usageMethod: e.target.value }))}
-                      rows={2}
-                      className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y"
-                      style={inputStyle()}
-                    />
-                  </div>
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('notes')}</label>
-                    <input
-                      value={productForm.notes}
-                      onChange={e => setProductForm(f => ({ ...f, notes: e.target.value }))}
-                      className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                      style={inputStyle()}
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={addProduct}
-                    disabled={addingProduct}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
-                    style={{ background: '#C9A96E', color: '#0A0805' }}
-                  >
-                    {addingProduct ? t('saving') : t('confirmAdd')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowProductForm(false)}
-                    className="px-3 py-1.5 rounded-lg text-xs"
-                    style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}
-                  >
-                    {t('cancel')}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr>
-                    <th style={th}>#</th>
-                    <th style={th}>{t('productName')}</th>
-                    <th style={th}>{t('quantityRatio')}</th>
-                    <th style={th}>{t('usageMethod')}</th>
-                    <th style={th}>{t('notes')}</th>
-                    <th style={{ ...th, textAlign: 'right' }}>{t('actions')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {kitProducts.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} style={{ ...td, textAlign: 'center', padding: '2rem' }}>{t('noProducts')}</td>
-                    </tr>
-                  ) : kitProducts.map((p, index) => (
-                    <tr key={p.id}>
-                      <td style={td}>{index + 1}</td>
-                      <td style={{ ...td, color: 'var(--foreground)' }}>{p.productName}</td>
-                      <td style={td}>{p.quantityRatio || '—'}</td>
-                      <td style={td}>{p.usageMethod}</td>
-                      <td style={td}>{p.notes || '—'}</td>
-                      <td style={{ ...td, textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          onClick={() => removeProduct(p.id)}
-                          className="p-1.5 rounded-md"
-                          style={{ color: '#ef4444' }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           </div>
+        )}
 
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr>
+                <th style={th}>#</th>
+                <th style={th}>{t('productName')}</th>
+                <th style={th}>{t('quantityRatio')}</th>
+                <th style={th}>{t('usageMethod')}</th>
+                <th style={th}>{t('irParameters')}</th>
+                <th style={th}>{t('uvEnergy')}</th>
+                <th style={th}>{t('notes')}</th>
+                <th style={{ ...th, textAlign: 'right' }}>{t('actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {kitProducts.length === 0 ? (
+                <tr>
+                  <td colSpan={8} style={{ ...td, textAlign: 'center', padding: '2rem' }}>{t('noProducts')}</td>
+                </tr>
+              ) : kitProducts.map((p, index) => (
+                <tr key={p.id}>
+                  <td style={td}>{index + 1}</td>
+                  <td style={{ ...td, color: 'var(--foreground)' }}>{p.productName}</td>
+                  <td style={td}>{p.quantityRatio || '-'}</td>
+                  <td style={td}>{p.usageMethod}</td>
+                  <td style={td}>{p.irMinutes ?? '-'} / {p.irTemperature ?? '-'}</td>
+                  <td style={td}>{p.uvEnergy ?? '-'}</td>
+                  <td style={td}>{p.notes || '-'}</td>
+                  <td style={{ ...td, textAlign: 'right' }}>
+                    <button
+                      type="button"
+                      onClick={() => removeProduct(p.id)}
+                      className="p-1.5 rounded-md"
+                      style={{ color: '#ef4444' }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="p-4 border-t space-y-1.5" style={{ borderColor: '#2A2418' }}>
+          <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('processFlowDocument')}</label>
+          <textarea
+            readOnly
+            value={processFlowDocument || t('processFlowEmptyDocument')}
+            rows={Math.max(4, Math.min(12, (processFlowDocument.match(/\n/g)?.length ?? 2) + 2))}
+            className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y"
+            style={inputStyle()}
+          />
+        </div>
+      </div>
+
+      {!isNew && (
+        <>
           <div style={{ ...card, overflow: 'hidden' }}>
             <div className="px-4 py-3 border-b flex flex-wrap items-center justify-between gap-2" style={{ borderColor: '#2A2418' }}>
               <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>{t('testsSection')}</h3>

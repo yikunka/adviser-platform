@@ -11,6 +11,9 @@ const productSchema = z.object({
   sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
   quantityRatio: z.string().trim().max(64).optional().default(''),
   usageMethod: z.string().trim().min(1).max(2000),
+  irMinutes: z.coerce.number().min(0).max(9999).nullable().optional(),
+  irTemperature: z.coerce.number().min(0).max(9999).nullable().optional(),
+  uvEnergy: z.coerce.number().min(0).max(999999).nullable().optional(),
   notes: z.string().trim().max(2000).optional().default(''),
 })
 
@@ -26,9 +29,9 @@ async function resolveProductName(productId: string, productName?: string) {
   if (productName?.trim()) return productName.trim()
   const factoryProduct = await prisma.cosTableFactoryProduct.findUnique({
     where: { id: productId },
-    select: { name: true },
+    select: { productCode: true, name: true },
   })
-  if (factoryProduct) return factoryProduct.name
+  if (factoryProduct) return `${factoryProduct.productCode} · ${factoryProduct.name}`
   return null
 }
 
@@ -69,6 +72,9 @@ export async function POST(
         sortOrder,
         quantityRatio: parsed.data.quantityRatio || null,
         usageMethod: parsed.data.usageMethod,
+        irMinutes: parsed.data.irMinutes ?? null,
+        irTemperature: parsed.data.irTemperature ?? null,
+        uvEnergy: parsed.data.uvEnergy ?? null,
         notes: parsed.data.notes || null,
       },
     })

@@ -252,6 +252,11 @@ function itemsRows(recipe: FullRecipe) {
       name = item.productSemifinished.name
       attributeCode = 'Sol.'
       packageKg = null
+    } else if (item.itemType === 'factory_product' && item.factoryProduct) {
+      productionCode = item.factoryProduct.productCode
+      name = item.factoryProduct.name
+      attributeCode = '成品'
+      packageKg = null
     }
 
     rows.push(new TableRow({

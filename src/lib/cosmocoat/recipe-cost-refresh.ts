@@ -52,6 +52,7 @@ async function refreshSingleRecipeCost(
           rawMaterial: { select: { primaryPricePerKg: true } },
           componentRecipe: { select: { unitCost: true } },
           productSemifinished: { select: { unitPrice: true } },
+          factoryProduct: { select: { unitPrice: true } },
         },
       },
     },
@@ -67,7 +68,9 @@ async function refreshSingleRecipeCost(
       ? numberOrNull(item.componentRecipe.unitCost)
       : item.productSemifinished
         ? numberOrNull(item.productSemifinished.unitPrice)
-        : numberOrNull(item.rawMaterial?.primaryPricePerKg)
+        : item.factoryProduct
+          ? numberOrNull(item.factoryProduct.unitPrice)
+          : numberOrNull(item.rawMaterial?.primaryPricePerKg)
     const unitPrice = sourcePrice == null ? null : roundDecimal(sourcePrice)
     const amount = roundDecimal(computeItemAmount(quantity, unitPrice, totalQuantity, batchQuantity))
     const percentage = roundDecimal(computeItemPercentage(quantity, totalQuantity))
@@ -234,6 +237,23 @@ export async function refreshRecipeCostsForRawMaterials(
 
   const rows = await db.cosTableRecipeItem.findMany({
     where: { rawMaterialId: { in: materialIds } },
+    select: { recipeId: true },
+  })
+
+  return refreshRecipeCostsCascade(rows.map(row => row.recipeId), db)
+}
+
+export async function refreshRecipeCostsForFactoryProducts(
+  factoryProductIds: string[],
+  db: CostRefreshClient = prisma,
+): Promise<RecipeCostRefreshResult> {
+  const productIds = unique(factoryProductIds)
+  if (productIds.length === 0) {
+    return { refreshedRecipeIds: [], updatedRecipeIds: [], updatedSemifinishedIds: [] }
+  }
+
+  const rows = await db.cosTableRecipeItem.findMany({
+    where: { factoryProductId: { in: productIds } },
     select: { recipeId: true },
   })
 

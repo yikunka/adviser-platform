@@ -1375,6 +1375,7 @@ model CosTableRecipeItem {
   rawMaterialId          String?
   componentRecipeId      String?
   productSemifinishedId  String?
+  factoryProductId       String?
   sortOrder              Int      @default(0)
   quantity               Decimal  @db.Decimal(12, 3)
   unitPrice              Decimal? @db.Decimal(12, 4)
@@ -1388,10 +1389,12 @@ model CosTableRecipeItem {
   rawMaterial         CosTableRawMaterial?        @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
   componentRecipe     CosTableRecipe?             @relation("RecipeItemComponent", fields: [componentRecipeId], references: [id], onDelete: Restrict)
   productSemifinished CosTableProductSemifinished? @relation(fields: [productSemifinishedId], references: [id], onDelete: Restrict)
+  factoryProduct      CosTableFactoryProduct?     @relation(fields: [factoryProductId], references: [id], onDelete: Restrict)
 
   @@index([recipeId, sortOrder])
   @@index([componentRecipeId])
   @@index([productSemifinishedId])
+  @@index([factoryProductId])
   @@map("cos_table_recipe_items")
 }
 
@@ -1446,6 +1449,7 @@ model CosTableFactoryProduct {
   recipeLinks   CosTableProductRecipe[]
   productionOrders CosTableProductionOrder[]
   colorFormulas CosTableColorFormula[]
+  recipeItems   CosTableRecipeItem[]
 
   @@index([name])
   @@index([sortOrder])
@@ -1787,6 +1791,9 @@ model CosProcessKitProduct {
   sortOrder     Int     @default(0)
   quantityRatio String?
   usageMethod   String
+  irMinutes     Decimal? @db.Decimal(8, 2)
+  irTemperature Decimal? @db.Decimal(8, 2)
+  uvEnergy      Decimal? @db.Decimal(10, 3)
   notes         String?
 
   createdAt DateTime @default(now())

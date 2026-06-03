@@ -27,6 +27,8 @@ export type RecipeItemInput = {
   recipeId?: string
   /** Sol. 半成品库存 */
   productSemifinishedId?: string
+  /** 工厂成品 */
+  factoryProductId?: string
   sortOrder: number
   quantity: number
   unitPrice: number | null
@@ -38,6 +40,7 @@ export function isRecipeItemInputValid(item: RecipeItemInput): boolean {
     Boolean(item.rawMaterialId),
     Boolean(item.recipeId),
     Boolean(item.productSemifinishedId),
+    Boolean(item.factoryProductId),
   ].filter(Boolean).length === 1
 }
 

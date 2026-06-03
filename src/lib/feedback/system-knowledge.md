@@ -222,9 +222,10 @@ Purchasing and sourcing registry.
 ### Recipes (`/admin/cosmocoat-recipes`)
 Product formulation management.
 - Fields: recipe code, name, category, batch quantity, unit cost
-- Line items: raw materials or component recipes (nested), with quantity, unit price, percentage
+- Line items: raw materials, factory finished products (from factory products module), component recipes (nested semifinished), or Sol semifinished inventory, with quantity, unit price, percentage
+- Material picker on new/edit recipe page: tabs for 原材料, 半成品, and 成品; finished-product tab loads from factory products list with category filter and search, same click-to-select and "添加选中" flow as raw materials
 - Unit cost is calculated by percentage: each line contributes `(quantity ÷ total quantity) × unit price`; accurate even when material quantities do not sum to 100
-- Automatic cost calculation; line prices can be refreshed from latest source pricing, and raw-material primary price changes automatically cascade through dependent production recipes, nested semifinished recipes, and source-linked semifinished inventory unit prices
+- Automatic cost calculation; line prices can be refreshed from latest source pricing, and raw-material primary price or factory-product unit price changes automatically cascade through dependent production recipes, nested semifinished recipes, and source-linked semifinished inventory unit prices
 - Link to factory products; mark recipe as active/used
 - Print recipe: prints complete recipe sheet (materials, quantities, percentages, costs, production requirements)
 - Production process section: stirring requirements, packaging requirements, production notes (separate from QC)
@@ -267,7 +268,8 @@ Product application method documentation (產品配套工藝書).
 - Fields: kit code, name, status, materials list, performance standards, usage notes
 - Performance standards are multi-select checkboxes: 百格(5B), water-boiling tests (80C30M/60M, 100C30M/60M/120M), RCA (30/50/100/150/200), hardness (B/HB/H/2H), alcohol resistance (99%100/75%100), MEK(100), high temperature/humidity (65C85%24H), salt spray (5%24H/48H)
 - Kit statuses: `DRAFT` → `ACTIVE` → `ARCHIVED`
-- Products in kit: each product has a usage method and notes
+- Process flow module is available on the new/detail process-kit page below performance tests; admins can select multiple factory products, set each product's usage method, IR minutes, IR temperature, UV energy (MJ/CM²), quantity ratio, and notes
+- The process-kit page automatically combines all selected products into a complete process-flow document preview
 - Test records: type (`PERFORMANCE`, `DURABILITY`, `ADHESION`, `COLOR_STABILITY`, `BOND_STRENGTH`, `OTHER`), result (`PASSED`, `FAILED`, `PENDING`), test date, tester name, report link
 
 ### CosmoCoat Financial Accounting
