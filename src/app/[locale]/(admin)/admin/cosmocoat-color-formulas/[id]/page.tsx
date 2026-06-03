@@ -144,7 +144,10 @@ function toManualItem(): EditableItem {
   }
 }
 
-function makeApplicableProductRow(product: { productCode: string; name: string }, recipeCode?: string): EditableItem {
+function makeApplicableProductRow(
+  product: { productCode: string; name: string; unitPrice?: number | null },
+  recipeCode?: string,
+): EditableItem {
   return {
     key: 'applicable-product-locked',
     isLocked: true,
@@ -155,7 +158,7 @@ function makeApplicableProductRow(product: { productCode: string; name: string }
     name: product.name,
     attributeCode: '适用产品',
     quantity: 0,
-    unitPrice: null,
+    unitPrice: product.unitPrice ?? null,
     amount: 0,
     notes: recipeCode ? `当前配方：${recipeCode}` : '',
   }
@@ -203,7 +206,7 @@ export default function CosmocoatColorFormulaDetailPage() {
   const [pickerMaterials, setPickerMaterials] = useState<PickerMaterial[]>([])
   const [pickerLoading, setPickerLoading] = useState(false)
   const [selectedPickerKey, setSelectedPickerKey] = useState('')
-  const [pickerTypes, setPickerTypes] = useState<string[]>(PICKER_TYPE_OPTIONS.map(option => option.key))
+  const [pickerType, setPickerType] = useState<string | null>(null)
 
   // Reference recipe picker (Task 1)
   const [recipeOptions, setRecipeOptions] = useState<RecipeOption[]>([])
@@ -322,19 +325,26 @@ export default function CosmocoatColorFormulaDetailPage() {
     setItems(prev => {
       const lockedIndex = prev.findIndex(item => item.isLocked)
       if (lockedIndex >= 0) {
-        // Update existing locked row in place
         const next = [...prev]
-        next[lockedIndex] = { ...lockedItem, key: prev[lockedIndex].key }
+        next[lockedIndex] = {
+          ...lockedItem,
+          key: prev[lockedIndex].key,
+          quantity: prev[lockedIndex].quantity,
+        }
         return next
       }
-      // Prepend new locked row
       return [lockedItem, ...prev]
     })
   }, [selectedFactoryProduct])
 
-  // Fetch picker materials (Task 1: supports recipeId filter)
   useEffect(() => {
     const q = pickerQuery.trim()
+    if (!selectedRecipeId && !pickerType) {
+      setPickerMaterials([])
+      setPickerLoading(false)
+      return
+    }
+
     const t = setTimeout(async () => {
       setPickerLoading(true)
       try {
@@ -342,8 +352,8 @@ export default function CosmocoatColorFormulaDetailPage() {
         if (q) p.set('q', q)
         if (selectedRecipeId) {
           p.set('recipeId', selectedRecipeId)
-        } else {
-          pickerTypes.forEach(type => p.append('type', type))
+        } else if (pickerType) {
+          p.append('type', pickerType)
         }
         const res = await fetch(`/api/admin/cosmocoat/color-formulas/material-options?${p}`)
         const data = await res.json()
@@ -355,7 +365,7 @@ export default function CosmocoatColorFormulaDetailPage() {
       }
     }, q ? 250 : 0)
     return () => clearTimeout(t)
-  }, [pickerQuery, pickerTypes, selectedRecipeId])
+  }, [pickerQuery, pickerType, selectedRecipeId])
 
   const totals = useMemo(() => {
     const totalQty = items.reduce((sum, item) => sum + item.quantity, 0)
@@ -414,15 +424,9 @@ export default function CosmocoatColorFormulaDetailPage() {
     toast.success('已添加空白行')
   }
 
-  function togglePickerType(type: string) {
+  function selectPickerType(type: string) {
     setSelectedPickerKey('')
-    setPickerTypes(prev =>
-      prev.includes(type)
-        ? prev.length === 1
-          ? prev
-          : prev.filter(item => item !== type)
-        : [...prev, type],
-    )
+    setPickerType(prev => (prev === type ? prev : type))
   }
 
   function removeItem(key: string) {
@@ -674,24 +678,20 @@ export default function CosmocoatColorFormulaDetailPage() {
                       )}
                     </td>
                     <td style={td}>
-                      {item.isLocked ? (
-                        <span style={{ color: '#5A5040' }}>—</span>
-                      ) : (
-                        <input
-                          type="number"
-                          min={0}
-                          step={0.001}
-                          value={item.quantity}
-                          onChange={e => updateItem(item.key, { quantity: Number(e.target.value) || 0 })}
-                          className="w-24 rounded px-2 py-1 text-sm outline-none"
-                          style={inputStyle()}
-                        />
-                      )}
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.001}
+                        value={item.quantity}
+                        onChange={e => updateItem(item.key, { quantity: Number(e.target.value) || 0 })}
+                        className="w-24 rounded px-2 py-1 text-sm outline-none"
+                        style={inputStyle()}
+                      />
                     </td>
-                    <td style={td}>{item.isLocked ? '—' : formatPercent(item.percentage)}</td>
+                    <td style={td}>{formatPercent(item.percentage)}</td>
                     <td style={td}>
                       {item.isLocked ? (
-                        <span style={{ color: '#5A5040' }}>—</span>
+                        <span title="取自工厂产品单价">{formatMoney(item.unitPrice)}</span>
                       ) : (
                         <input
                           type="number"
@@ -704,7 +704,7 @@ export default function CosmocoatColorFormulaDetailPage() {
                         />
                       )}
                     </td>
-                    <td style={td}>{item.isLocked ? '—' : formatMoney(item.amount, 3)}</td>
+                    <td style={td}>{formatMoney(item.amount, 3)}</td>
                     <td style={td}>
                       {item.isLocked ? (
                         <span className="text-xs" style={{ color: '#5A5040' }}>{item.notes}</span>
@@ -775,12 +775,12 @@ export default function CosmocoatColorFormulaDetailPage() {
               </div>
             ) : (
               PICKER_TYPE_OPTIONS.map(option => {
-                const checked = pickerTypes.includes(option.key)
+                const checked = pickerType === option.key
                 return (
                   <button
                     key={option.key}
                     type="button"
-                    onClick={() => togglePickerType(option.key)}
+                    onClick={() => selectPickerType(option.key)}
                     className="w-full text-left px-3 py-2 text-xs transition-colors"
                     aria-pressed={checked}
                     style={{
@@ -829,7 +829,11 @@ export default function CosmocoatColorFormulaDetailPage() {
                 <p className="text-sm py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>加载物料...</p>
               ) : pickerMaterials.length === 0 ? (
                 <p className="text-sm py-8 text-center" style={{ color: '#5A5040' }}>
-                  {pickerQuery.trim() ? '未找到匹配物料' : '当前条件下暂无候选物料'}
+                  {pickerQuery.trim()
+                    ? '未找到匹配物料'
+                    : !pickerType
+                      ? '请从左侧选择一个分类以筛选物料'
+                      : '当前分类下暂无候选物料'}
                 </p>
               ) : (
                 <table className="w-full">

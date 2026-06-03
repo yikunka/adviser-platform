@@ -11,6 +11,7 @@ export type ColorFormulaFactoryProductOption = {
   id: string
   productCode: string
   name: string
+  unitPrice: number | null
   parentCategory: CosColorFormulaCategory
   categoryId: string | null
   categoryName: string | null
@@ -21,14 +22,22 @@ export function serializeColorFormulaFactoryProductOption(product: {
   id: string
   productCode: string
   name: string
+  unitPrice: { toNumber?: () => number } | number | null
   sortOrder: number
   categoryId: string | null
   category: { id: string; name: string; slug: string } | null
 }): ColorFormulaFactoryProductOption {
+  const unitPrice =
+    product.unitPrice == null
+      ? null
+      : typeof product.unitPrice === 'number'
+        ? product.unitPrice
+        : Number(product.unitPrice)
   return {
     id: product.id,
     productCode: product.productCode,
     name: product.name,
+    unitPrice: Number.isFinite(unitPrice) ? unitPrice : null,
     parentCategory: inferCategoryFromProductCategory(product.category),
     categoryId: product.categoryId,
     categoryName: product.category?.name ?? null,

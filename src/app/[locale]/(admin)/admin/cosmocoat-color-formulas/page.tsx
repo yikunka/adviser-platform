@@ -267,9 +267,6 @@ export default function CosmocoatColorFormulasPage() {
           <div className="py-16 text-center space-y-3">
             <Palette size={32} className="mx-auto" style={{ color: '#5A5040' }} />
             <p className="text-sm" style={{ color: '#5A5040' }}>暂无调色配方</p>
-            <Link href="/admin/cosmocoat-color-formulas/new" className="inline-flex px-4 py-2 rounded-lg text-sm font-medium" style={{ background: '#C9A96E', color: '#0A0805' }}>
-              新建配方
-            </Link>
           </div>
         ) : (
           <div className="overflow-x-auto">

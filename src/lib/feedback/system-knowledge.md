@@ -234,8 +234,9 @@ Custom color formulations for specific customers or products.
 - Scope: product-specific (linked to a factory product) or category-wide
 - Fields: formula code, name, source recipe, color code (real-time PANTONE / hex color preview — 3× enlarged swatch beside the input for easier color comparison), customer name, target color, batch quantity
 - Line items: raw material library entries, Sol semifinished inventory entries, or manual blank/custom material rows, with quantity, percentage, unit price
-- First line item is always the pinned "适用产品" row when a factory product is linked; it cannot be deleted
-- Material details use the same split layout as recipe management: selected item table above, candidate material table below with click-to-select and "添加选中"; picker supports multi-type filtering for AD, SO, Sol semifinished, DY, CO, CA, CC, and a "参考配方" dropdown filters candidates to materials used in a specific existing recipe
+- List page: only the header "新建配方" button; empty state shows message only (no duplicate create button)
+- First line item is always the pinned "适用产品" row when a factory product is linked; it cannot be deleted but quantity is editable; unit price auto-fills from the linked factory product's `unitPrice` (read-only in the UI)
+- Material details use the same split layout as recipe management: selected item table above, candidate material table below with click-to-select and "添加选中"; picker category filter is single-select (default none — user picks one of AD, SO, Sol semifinished, DY, CO, CA, CC); a "参考配方" dropdown filters candidates to materials used in a specific existing recipe
 - Category tabs filter the factory-product sub-filters below: PU tab shows only factory products whose product category name is exactly「PU漆」; 色漆 and 烤漆 tabs use inferred category matching
 - Clicking "新建配方" while a product filter is active pre-fills that product in the new formula form
 - Detail page has a "打印文件" action that downloads an A4 DOCX print sheet (standard 2.54 cm margins, no page header/footer): formula code, name, category, color code, target color, customer, linked factory product, source recipe, batch quantity, unit cost, notes, material items with quantities/percentages/costs, and production instructions from the linked source recipe (stirring, packaging, production notes)
