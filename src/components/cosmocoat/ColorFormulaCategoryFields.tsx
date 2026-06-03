@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import type { CosColorFormulaCategory } from '@prisma/client'
-import { COLOR_FORMULA_CATEGORIES } from '@/lib/cosmocoat/color-formula-categories'
+import {
+  COLOR_FORMULA_CATEGORIES,
+  factoryProductMatchesColorFormulaCategory,
+} from '@/lib/cosmocoat/color-formula-categories'
 import type { ColorFormulaFactoryProductOption } from '@/lib/cosmocoat/color-formula-factory-products'
 
 export type { ColorFormulaFactoryProductOption as ColorFormulaSubcategoryOption }
@@ -63,7 +66,13 @@ export function ColorFormulaCategoryFields({
   }, [onProductsLoaded])
 
   const childOptions = useMemo(
-    () => products.filter(item => item.parentCategory === category),
+    () =>
+      products.filter(item =>
+        factoryProductMatchesColorFormulaCategory(
+          item.categoryName ? { name: item.categoryName } : null,
+          category,
+        ),
+      ),
     [products, category],
   )
 
@@ -73,7 +82,13 @@ export function ColorFormulaCategoryFields({
   useEffect(() => {
     if (!factoryProductId) return
     const match = products.find(item => item.id === factoryProductId)
-    if (match && match.parentCategory !== category) {
+    if (
+      match &&
+      !factoryProductMatchesColorFormulaCategory(
+        match.categoryName ? { name: match.categoryName } : null,
+        category,
+      )
+    ) {
       onFactoryProductChange(null)
     }
   }, [category, factoryProductId, products, onFactoryProductChange])

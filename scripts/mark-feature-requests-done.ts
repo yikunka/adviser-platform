@@ -17,6 +17,7 @@ const items = await prisma.featureRequest.findMany({
       { title: { contains: '优化颜色匹配公式详情打印格式' } },
       { title: { contains: 'Pantone色号预览区域放大300%' } },
       { title: { contains: 'CosmoCoat 产品总表增加粘度列显示' } },
+      { title: { contains: '颜色配方管理产品分类筛选修复及功能移除' } },
       { pageUrl: { contains: 'cosmocoat-recipes/cmpw8u640001bs9w57i7rt5pz' } },
       { pageUrl: { contains: 'cosmocoat-recipes/cmpw85fu9000cs9w5bv7inptc' } },
       { pageUrl: { contains: 'cosmocoat-recipes/cmpo3rjth000zhcw5wkfljy1d' } },

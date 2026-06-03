@@ -5,8 +5,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { Palette, Pencil, Plus, RefreshCw, Search, Sparkles, Trash2 } from 'lucide-react'
-import { COLOR_FORMULA_CATEGORIES } from '@/lib/cosmocoat/color-formula-categories'
+import { Palette, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import {
+  COLOR_FORMULA_CATEGORIES,
+  factoryProductMatchesColorFormulaCategory,
+} from '@/lib/cosmocoat/color-formula-categories'
 import type { CosColorFormulaCategory } from '@prisma/client'
 import { formatMoney } from '@/lib/cosmocoat/recipes'
 import type { ColorFormulaFactoryProductOption } from '@/lib/cosmocoat/color-formula-factory-products'
@@ -24,14 +27,6 @@ type FormulaRow = {
   unitCost: number
   updatedAt: string
   factoryProduct: { id: string; productCode: string; name: string } | null
-}
-
-type FactoryProductOption = {
-  id: string
-  productCode: string
-  name: string
-  currentRecipeId: string | null
-  category: { name: string } | null
 }
 
 const card: React.CSSProperties = {
@@ -66,192 +61,6 @@ function inputStyle(): React.CSSProperties {
   }
 }
 
-function GenerateModal({
-  onClose,
-  onCreated,
-}: {
-  onClose: () => void
-  onCreated: (id: string) => void
-}) {
-  const [products, setProducts] = useState<FactoryProductOption[]>([])
-  const [loadingProducts, setLoadingProducts] = useState(true)
-  const [productId, setProductId] = useState('')
-  const [category, setCategory] = useState<CosColorFormulaCategory>('PU')
-  const [generating, setGenerating] = useState(false)
-
-  useEffect(() => {
-    ;(async () => {
-      setLoadingProducts(true)
-      try {
-        const res = await fetch('/api/admin/cosmocoat/factory-products?limit=500')
-        const data = await res.json()
-        if (!res.ok) {
-          toast.error(data.error ?? '加载产品失败')
-          return
-        }
-        setProducts(data.items ?? [])
-      } catch {
-        toast.error('加载产品失败')
-      } finally {
-        setLoadingProducts(false)
-      }
-    })()
-  }, [])
-
-  async function handleGenerate(e: React.FormEvent) {
-    e.preventDefault()
-    if (!productId) {
-      toast.error('请选择产品')
-      return
-    }
-    setGenerating(true)
-    try {
-      const res = await fetch('/api/admin/cosmocoat/color-formulas/generate-from-product', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ factoryProductId: productId, category }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        toast.error(data.error ?? '生成失败')
-        return
-      }
-      toast.success('已从产品当前配方生成调色配方')
-      onCreated(data.formula.id)
-      onClose()
-    } catch {
-      toast.error('生成失败')
-    } finally {
-      setGenerating(false)
-    }
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)' }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div className="w-full max-w-lg rounded-2xl p-6 space-y-4" style={{ background: '#111111', border: '1px solid #2A2418' }}>
-        <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>从产品生成调色配方</h2>
-        <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-          将创建一张关联该产品的调色配方，原料明细仅保留适用产品行。
-        </p>
-        <form onSubmit={handleGenerate} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>工厂产品</label>
-            <select
-              required
-              value={productId}
-              onChange={e => setProductId(e.target.value)}
-              disabled={loadingProducts}
-              className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
-              style={inputStyle()}
-            >
-              <option value="">{loadingProducts ? '加载中...' : '选择产品'}</option>
-              {products.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.productCode} · {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>主类别</label>
-            <select
-              value={category}
-              onChange={e => setCategory(e.target.value as CosColorFormulaCategory)}
-              className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
-              style={inputStyle()}
-            >
-              {COLOR_FORMULA_CATEGORIES.map(c => (
-                <option key={c.value} value={c.value}>{c.labelZh}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm" style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}>
-              取消
-            </button>
-            <button type="submit" disabled={generating} className="flex-1 py-2.5 rounded-lg text-sm font-medium disabled:opacity-60" style={{ background: '#C9A96E', color: '#0A0805' }}>
-              {generating ? '生成中...' : '生成'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-function PuSyncModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
-  const [syncing, setSyncing] = useState(false)
-  const [result, setResult] = useState<{ deletedCount: number; createdCount: number; created: string[]; errors: string[] } | null>(null)
-
-  async function handleSync() {
-    setSyncing(true)
-    try {
-      const res = await fetch('/api/admin/cosmocoat/color-formulas/pu-sync', { method: 'POST' })
-      const data = await res.json()
-      if (!res.ok) {
-        toast.error(data.error ?? '同步失败')
-        return
-      }
-      setResult(data)
-      if (data.errors?.length === 0) toast.success(`已删除 ${data.deletedCount} 条，新建 ${data.createdCount} 条`)
-      else toast.warning(`同步完成，部分产品失败（${data.errors.length} 条）`)
-    } catch {
-      toast.error('同步失败')
-    } finally {
-      setSyncing(false)
-    }
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)' }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div className="w-full max-w-lg rounded-2xl p-6 space-y-4" style={{ background: '#111111', border: '1px solid #2A2418' }}>
-        <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>PU 配方同步</h2>
-        {!result ? (
-          <>
-            <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-              此操作将：<br />
-              1. 删除所有 PU 类别的调色配方记录<br />
-              2. 为所有 PU 类工厂产品自动生成新配方（含关联原料明细）<br /><br />
-              <span style={{ color: '#ef4444' }}>⚠ 此操作不可撤销，请确认。</span>
-            </p>
-            <div className="flex gap-3 pt-2">
-              <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm" style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}>
-                取消
-              </button>
-              <button type="button" onClick={handleSync} disabled={syncing} className="flex-1 py-2.5 rounded-lg text-sm font-medium disabled:opacity-60" style={{ background: '#C8102E', color: '#fff' }}>
-                {syncing ? '同步中...' : '确认同步'}
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="text-sm space-y-1" style={{ color: 'var(--muted-foreground)' }}>
-              <p>已删除：<b style={{ color: 'var(--foreground)' }}>{result.deletedCount}</b> 条</p>
-              <p>已新建：<b style={{ color: 'var(--foreground)' }}>{result.createdCount}</b> 条</p>
-              {result.errors.length > 0 && (
-                <div className="mt-2 p-2 rounded text-xs" style={{ background: '#1E0808', color: '#ef4444', border: '1px solid #3a1111' }}>
-                  {result.errors.map((e, i) => <div key={i}>{e}</div>)}
-                </div>
-              )}
-            </div>
-            <button type="button" onClick={onDone} className="w-full py-2.5 rounded-lg text-sm font-medium" style={{ background: '#C9A96E', color: '#0A0805' }}>
-              完成
-            </button>
-          </>
-        )}
-      </div>
-    </div>
-  )
-}
-
 export default function CosmocoatColorFormulasPage() {
   const router = useRouter()
   const [items, setItems] = useState<FormulaRow[]>([])
@@ -264,9 +73,6 @@ export default function CosmocoatColorFormulasPage() {
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [showGenerate, setShowGenerate] = useState(false)
-  const [showPuSync, setShowPuSync] = useState(false)
-
   const fetchItems = useCallback(async () => {
     setLoading(true)
     try {
@@ -303,7 +109,15 @@ export default function CosmocoatColorFormulasPage() {
   }, [])
 
   const filteredProducts = useMemo(
-    () => (category ? factoryProducts.filter(item => item.parentCategory === category) : []),
+    () =>
+      category
+        ? factoryProducts.filter(item =>
+            factoryProductMatchesColorFormulaCategory(
+              item.categoryName ? { name: item.categoryName } : null,
+              category as CosColorFormulaCategory,
+            ),
+          )
+        : [],
     [factoryProducts, category],
   )
 
@@ -345,28 +159,10 @@ export default function CosmocoatColorFormulasPage() {
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>调色配方管理</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-            按主类别与工厂产品管理调色配方，支持从产品当前配方生成。
+            按主类别与工厂产品管理调色配方；选择 PU 时仅显示工厂分类为「PU漆」的产品。
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {category === 'PU' && (
-            <button
-              type="button"
-              onClick={() => setShowPuSync(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm"
-              style={{ border: '1px solid #C8102E33', color: '#E46480' }}
-            >
-              <RefreshCw size={15} /> PU 同步
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setShowGenerate(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm"
-            style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}
-          >
-            <Sparkles size={15} /> 从产品生成
-          </button>
           <Link
             href={
               factoryProductId
@@ -550,19 +346,6 @@ export default function CosmocoatColorFormulasPage() {
         </div>
       )}
 
-      {showGenerate && (
-        <GenerateModal
-          onClose={() => setShowGenerate(false)}
-          onCreated={id => router.push(`/admin/cosmocoat-color-formulas/${id}`)}
-        />
-      )}
-
-      {showPuSync && (
-        <PuSyncModal
-          onClose={() => setShowPuSync(false)}
-          onDone={() => { setShowPuSync(false); fetchItems() }}
-        />
-      )}
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db/prisma'
 import {
   COLOR_FORMULA_CATEGORIES,
   colorFormulaCategoryLabel,
+  factoryProductMatchesColorFormulaCategory,
   inferCategoryFromProductCategory,
 } from '@/lib/cosmocoat/color-formula-categories'
 
@@ -47,7 +48,12 @@ export async function listColorFormulaFactoryProductOptions(
 
   const options = products.map(serializeColorFormulaFactoryProductOption)
   const filtered = parentCategory
-    ? options.filter(item => item.parentCategory === parentCategory)
+    ? options.filter(item =>
+        factoryProductMatchesColorFormulaCategory(
+          item.categoryName ? { name: item.categoryName } : null,
+          parentCategory,
+        ),
+      )
     : options
 
   return filtered
@@ -91,8 +97,8 @@ export async function validateColorFormulaFactoryProduct(params: {
     return { ok: false as const, error: '无效的工厂产品' }
   }
 
-  const inferred = inferCategoryFromProductCategory(product.category)
-  if (inferred !== params.category) {
+  if (!factoryProductMatchesColorFormulaCategory(product.category, params.category)) {
+    const inferred = inferCategoryFromProductCategory(product.category)
     return {
       ok: false as const,
       error: `工厂产品属于「${colorFormulaCategoryLabel(inferred)}」，与所选主类别不匹配`,

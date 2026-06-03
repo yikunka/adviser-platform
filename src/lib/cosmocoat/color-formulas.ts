@@ -1,12 +1,10 @@
 import type { CosColorFormulaCategory, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
-import { generateColorFormulaCode } from '@/lib/cosmocoat/color-formula-code'
 import {
   colorFormulaCategoryLabel,
   formatColorFormulaCategoryLabel,
   inferCategoryFromProductCategory,
 } from '@/lib/cosmocoat/color-formula-categories'
-import { validateColorFormulaFactoryProduct } from '@/lib/cosmocoat/color-formula-factory-products'
 
 export { inferCategoryFromProductCategory }
 import { computeItemAmount, computeRecipeTotals, normalizeRecipeItems, type RecipeItemInput } from '@/lib/cosmocoat/recipes'
@@ -327,82 +325,6 @@ export async function enrichColorFormulaItemsFromRawMaterials(
           ? Number(semifinishedPriceMap.get(item.productSemifinishedId))
           : null),
   }))
-}
-
-export async function generateColorFormulaFromProduct(params: {
-  factoryProductId: string
-  category?: CosColorFormulaCategory
-  name?: string
-  batchQuantity?: number
-}) {
-  const product = await prisma.cosTableFactoryProduct.findUnique({
-    where: { id: params.factoryProductId },
-    include: {
-      category: { select: { id: true, name: true, slug: true } },
-      currentRecipe: {
-        include: {
-          items: {
-            orderBy: { sortOrder: 'asc' },
-            include: {
-              rawMaterial: {
-                select: {
-                  id: true,
-                  primaryPricePerKg: true,
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  })
-
-  if (!product) {
-    return { ok: false as const, error: '产品不存在' }
-  }
-
-  const category = params.category ?? inferCategoryFromProductCategory(product.category)
-  const productCheck = await validateColorFormulaFactoryProduct({
-    category,
-    factoryProductId: product.id,
-  })
-  if (!productCheck.ok) {
-    return { ok: false as const, error: productCheck.error }
-  }
-
-  const code = await generateColorFormulaCode()
-  const name =
-    params.name?.trim() ||
-    `${product.name} 调色配方`
-  const batchQuantity = params.batchQuantity ?? (
-    product.currentRecipe ? Number(product.currentRecipe.batchQuantity) : 100
-  )
-  const formula = await prisma.cosTableColorFormula.create({
-    data: {
-      code,
-      name,
-      category,
-      factoryProductId: productCheck.factoryProductId,
-      sourceRecipeId: product.currentRecipe?.id ?? null,
-      batchQuantity,
-      notes: product.currentRecipe
-        ? `由产品 ${product.productCode} 当前配方 ${product.currentRecipe.code} 生成；原料明细未自动展开`
-        : `由产品 ${product.productCode} 生成；原料明细未自动展开`,
-    },
-  })
-
-  await saveColorFormulaItems(formula.id, [{
-    sortOrder: 1,
-    quantity: 0,
-    unitPrice: null,
-    productionCode: product.productCode,
-    name: product.name,
-    attributeCode: '适用产品',
-    notes: product.currentRecipe ? `当前配方：${product.currentRecipe.code}` : '',
-  }], batchQuantity)
-
-  const full = await getColorFormulaById(formula.id)
-  return { ok: true as const, formula: full! }
 }
 
 export function buildColorFormulaListWhere(params: {

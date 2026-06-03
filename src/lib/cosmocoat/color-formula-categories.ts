@@ -41,13 +41,28 @@ export function formatColorFormulaCategoryLabel(
   return `${categoryLabel} · ${suffix.name}`
 }
 
+/** Factory product category name shown under the PU color-formula tab. */
+export const PU_FACTORY_PRODUCT_CATEGORY_NAME = 'PU漆'
+
+/** Whether a factory product belongs under a color-formula category tab. */
+export function factoryProductMatchesColorFormulaCategory(
+  productCategory: { name: string; slug?: string } | null | undefined,
+  formulaCategory: CosColorFormulaCategory,
+): boolean {
+  if (formulaCategory === 'PU') {
+    return productCategory?.name.trim() === PU_FACTORY_PRODUCT_CATEGORY_NAME
+  }
+  return inferCategoryFromProductCategory(productCategory) === formulaCategory
+}
+
 /** Infer color formula category from factory product category slug/name. */
 export function inferCategoryFromProductCategory(
-  category: { name: string; slug: string } | null | undefined,
+  category: { name: string; slug?: string } | null | undefined,
 ): CosColorFormulaCategory {
   if (!category) return 'PU'
-  const haystack = `${category.name} ${category.slug}`.toLowerCase()
-  if (haystack.includes('pu')) return 'PU'
+  const name = category.name.trim()
+  if (name === PU_FACTORY_PRODUCT_CATEGORY_NAME) return 'PU'
+  const haystack = `${category.name} ${category.slug ?? ''}`.toLowerCase()
   if (haystack.includes('色漆')) return 'BAKING_PAINT'
   if (
     haystack.includes('baking') ||
