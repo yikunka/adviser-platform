@@ -39,6 +39,15 @@ export type IncomeStatementReport = {
   netProfit: number
 }
 
+export type AccountingEquationCheck = {
+  totalAssets: number
+  totalLiabilities: number
+  totalEquity: number
+  totalLiabilitiesAndEquity: number
+  balanced: boolean
+  difference: number
+}
+
 export type BalanceSheetReport = {
   period: string
   asOfDate: string
@@ -52,6 +61,7 @@ export type BalanceSheetReport = {
   totalEquity: number
   totalLiabilitiesAndEquity: number
   balanced: boolean
+  equation: AccountingEquationCheck
 }
 
 export type CashFlowSection = {
@@ -80,10 +90,30 @@ export type FinancialReportsBundle = {
     totalDebit: number
     totalCredit: number
     balanced: boolean
+    equation: AccountingEquationCheck
   }
   incomeStatement: IncomeStatementReport
   balanceSheet: BalanceSheetReport
   cashFlow: CashFlowReport
+}
+
+const EQUATION_TOLERANCE = 0.01
+
+function buildAccountingEquationCheck(
+  totalAssets: number,
+  totalLiabilities: number,
+  totalEquity: number,
+): AccountingEquationCheck {
+  const totalLiabilitiesAndEquity = roundMoney(totalLiabilities + totalEquity)
+  const difference = roundMoney(totalAssets - totalLiabilitiesAndEquity)
+  return {
+    totalAssets,
+    totalLiabilities,
+    totalEquity,
+    totalLiabilitiesAndEquity,
+    balanced: Math.abs(difference) < EQUATION_TOLERANCE,
+    difference,
+  }
 }
 
 export function periodRange(period: string) {
@@ -365,7 +395,10 @@ export async function buildFinancialReports(
   const totalAssets = roundMoney(assetLines.reduce((sum, row) => sum + row.amount, 0))
   const totalLiabilities = roundMoney(liabilityLines.reduce((sum, row) => sum + row.amount, 0))
   const totalEquity = roundMoney(equityLines.reduce((sum, row) => sum + row.amount, 0))
-  const totalLiabilitiesAndEquity = roundMoney(totalLiabilities + totalEquity + netProfit)
+  const totalEquityWithProfit = roundMoney(totalEquity + netProfit)
+  const totalLiabilitiesAndEquity = roundMoney(totalLiabilities + totalEquityWithProfit)
+  const balanceSheetEquation = buildAccountingEquationCheck(totalAssets, totalLiabilities, totalEquityWithProfit)
+  const trialBalanceEquation = buildAccountingEquationCheck(totalAssets, totalLiabilities, totalEquityWithProfit)
 
   const cashFlow = buildIndirectCashFlow({
     period,
@@ -382,7 +415,8 @@ export async function buildFinancialReports(
       rows: trialRows,
       totalDebit,
       totalCredit,
-      balanced: Math.abs(totalDebit - totalCredit) < 0.01,
+      balanced: Math.abs(totalDebit - totalCredit) < EQUATION_TOLERANCE,
+      equation: trialBalanceEquation,
     },
     incomeStatement: {
       period,
@@ -416,9 +450,10 @@ export async function buildFinancialReports(
       ],
       totalAssets,
       totalLiabilities,
-      totalEquity: roundMoney(totalEquity + netProfit),
+      totalEquity: totalEquityWithProfit,
       totalLiabilitiesAndEquity,
-      balanced: Math.abs(totalAssets - totalLiabilitiesAndEquity) < 0.01,
+      balanced: balanceSheetEquation.balanced,
+      equation: balanceSheetEquation,
     },
     cashFlow,
   }

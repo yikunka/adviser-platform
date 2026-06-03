@@ -7,6 +7,7 @@ import { isDescendantAccount } from '@/lib/financial/account-tree'
 import { accountUpdateSchema } from '@/lib/financial/schemas'
 import { serializeAccount } from '@/lib/financial/serializers'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
+import { canEditOpeningBalance } from '@/lib/financial/opening-balance'
 import { signedLineAmount } from '@/lib/financial/utils'
 
 function apiError(error: string, status = 400) {
@@ -92,6 +93,14 @@ export async function PATCH(
     const account = await prisma.$transaction(async tx => {
       const nextType = parsed.data.type ?? before.type
       const nextCode = parsed.data.code ?? before.code
+      const nextLevel = parent ? parent.level + 1 : (hasPayloadField(body, 'parentId') ? 1 : before.level)
+      const childCount = await tx.finAccount.count({ where: { parentId: id } })
+      const openingDebit = parsed.data.openingDebit ?? 0
+      const openingCredit = parsed.data.openingCredit ?? 0
+      if (openingBalanceRequested && (openingDebit > 0 || openingCredit > 0) && !canEditOpeningBalance(nextLevel, childCount > 0)) {
+        throw new Error('OPENING_BALANCE_NOT_EDITABLE')
+      }
+
       const legacyYearToDate = hasPayloadField(body, 'yearToDateAmount')
         ? splitLegacyYearToDateAmount(parsed.data.yearToDateAmount ?? 0, nextType, nextCode)
         : null
@@ -170,6 +179,9 @@ export async function PATCH(
     await logAudit(session.user.id, 'UPDATE', 'FinAccount', id, before, account)
     return NextResponse.json({ account: serializeAccount(account), message: 'Account updated.', toast: 'Account updated.' })
   } catch (err) {
+    if (err instanceof Error && err.message === 'OPENING_BALANCE_NOT_EDITABLE') {
+      return apiError('此科目不支持单独录入期初余额，请在下级科目中录入。', 400)
+    }
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
       return apiError('Account code already exists.', 409)
     }

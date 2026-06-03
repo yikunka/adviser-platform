@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db/prisma'
 import { accountCreateSchema } from '@/lib/financial/schemas'
 import { serializeAccount } from '@/lib/financial/serializers'
 import { resolveJournalCompanyScope } from '@/lib/financial/company-scope'
+import { canEditOpeningBalance } from '@/lib/financial/opening-balance'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
 import { roundMoney, signedLineAmount } from '@/lib/financial/utils'
 
@@ -96,9 +97,10 @@ function serializeAccountOpeningBalances(accounts: AccountWithOpeningBalance[]) 
   const calculateTotal = (accountId: string): number => {
     const cached = totalById.get(accountId)
     if (cached !== undefined) return cached
-    const childrenTotal = (childrenByParent.get(accountId) ?? [])
-      .reduce((sum, childId) => roundMoney(sum + calculateTotal(childId)), 0)
-    const total = roundMoney((ownBalanceById.get(accountId) ?? 0) + childrenTotal)
+    const children = childrenByParent.get(accountId) ?? []
+    const total = children.length > 0
+      ? children.reduce((sum, childId) => roundMoney(sum + calculateTotal(childId)), 0)
+      : roundMoney(ownBalanceById.get(accountId) ?? 0)
     totalById.set(accountId, total)
     return total
   }
@@ -200,6 +202,13 @@ export async function POST(req: NextRequest) {
   const parent = await resolveParent(parsed.data.parentId, companyScope.companyId)
   if (parsed.data.parentId && !parent) return apiError('Parent account does not exist.', 404)
   if (parent && parent.level >= 4) return apiError('Parent account level is too deep for a child account.')
+
+  const nextLevel = parent ? parent.level + 1 : 1
+  const openingDebit = parsed.data.openingDebit ?? 0
+  const openingCredit = parsed.data.openingCredit ?? 0
+  if ((openingDebit > 0 || openingCredit > 0) && !canEditOpeningBalance(nextLevel, false)) {
+    return apiError('一级科目不支持单独录入期初余额，请在其下级二级科目中录入。', 400)
+  }
 
   try {
     const account = await prisma.$transaction(async tx => {

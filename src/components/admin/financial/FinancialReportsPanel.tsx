@@ -3,9 +3,9 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { Download, FileBarChart } from 'lucide-react'
+import { Download, FileBarChart, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
-import type { FinancialReportsBundle } from '@/lib/financial/reports'
+import type { FinancialReportsBundle, AccountingEquationCheck } from '@/lib/financial/reports'
 import { formatCurrency } from '@/lib/financial/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -180,7 +180,13 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
           ]),
           [],
           ['合计', '', '', '', '', reports.trialBalance.totalDebit, reports.trialBalance.totalCredit],
-          ['是否平衡', '', '', '', '', reports.trialBalance.balanced ? '是' : '否'],
+          ['借贷是否平衡', '', '', '', '', reports.trialBalance.balanced ? '是' : '否'],
+          ['会计恒等式是否平衡', '', '', '', '', reports.trialBalance.equation.balanced ? '是' : '否'],
+          ['资产合计', '', '', '', '', reports.trialBalance.equation.totalAssets],
+          ['负债合计', '', '', '', '', reports.trialBalance.equation.totalLiabilities],
+          ['权益合计（含本期利润）', '', '', '', '', reports.trialBalance.equation.totalEquity],
+          ['负债和权益合计', '', '', '', '', reports.trialBalance.equation.totalLiabilitiesAndEquity],
+          ['恒等式差异（资产 − 负债和权益）', '', '', '', '', reports.trialBalance.equation.difference],
         ])),
         '试算平衡表',
       )
@@ -214,7 +220,8 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
           ...reports.balanceSheet.equity.map(row => ['权益', row.code, reportLineLabel(row.name), row.amount]),
           ['权益合计', '', '', reports.balanceSheet.totalEquity],
           ['负债和权益合计', '', '', reports.balanceSheet.totalLiabilitiesAndEquity],
-          ['是否平衡', '', '', reports.balanceSheet.balanced ? '是' : '否'],
+          ['会计恒等式是否平衡', '', '', reports.balanceSheet.equation.balanced ? '是' : '否'],
+          ['恒等式差异（资产 − 负债和权益）', '', '', reports.balanceSheet.equation.difference],
         ])),
         '资产负债表',
       )
@@ -307,6 +314,7 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
 
               <TabsContent value="trial-balance" className="space-y-4">
                 <ReportHeader title="试算平衡表" period={period} balanced={reports.trialBalance.balanced} />
+                <AccountingEquationAlert equation={reports.trialBalance.equation} />
                 <StatementTable
                   headers={['编码', '科目', '类型', '本期借方', '本期贷方', '期末借方', '期末贷方']}
                   rows={reports.trialBalance.rows.map(row => [
@@ -323,6 +331,12 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                   left={`借方合计：${money(reports.trialBalance.totalDebit)}`}
                   right={`贷方合计：${money(reports.trialBalance.totalCredit)}`}
                 />
+                {!reports.trialBalance.balanced ? (
+                  <BalanceWarning
+                    title="试算平衡表借贷不平衡"
+                    message={`期末借方合计与贷方合计存在 ${money(Math.abs(reports.trialBalance.totalDebit - reports.trialBalance.totalCredit))} 的差异，请检查日记账分录。`}
+                  />
+                ) : null}
               </TabsContent>
 
               <TabsContent value="income" className="space-y-4">
@@ -354,9 +368,10 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                 <ReportHeader
                   title="资产负债表"
                   period={period}
-                  balanced={reports.balanceSheet.balanced}
+                  balanced={reports.balanceSheet.equation.balanced}
                   subtitle={`截至 ${new Date(reports.balanceSheet.asOfDate).toLocaleDateString('zh-HK')}`}
                 />
+                <AccountingEquationAlert equation={reports.balanceSheet.equation} />
                 <Section title="资产">
                   <StatementTable
                     headers={['编码', '科目', '金额']}
@@ -401,6 +416,57 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
           )}
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+function AccountingEquationAlert({ equation }: { equation: AccountingEquationCheck }) {
+  return (
+    <div className="space-y-3">
+      <div className="grid gap-2 rounded-lg border border-[#2A2418] bg-[#0E0E0A] p-4 text-sm sm:grid-cols-3">
+        <div className="flex justify-between sm:block">
+          <span className="text-muted-foreground">资产合计</span>
+          <span className="font-mono">{money(equation.totalAssets)}</span>
+        </div>
+        <div className="flex justify-between sm:block">
+          <span className="text-muted-foreground">负债合计</span>
+          <span className="font-mono">{money(equation.totalLiabilities)}</span>
+        </div>
+        <div className="flex justify-between sm:block">
+          <span className="text-muted-foreground">权益合计（含本期利润）</span>
+          <span className="font-mono">{money(equation.totalEquity)}</span>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#2A2418] bg-[#0E0E0A] px-4 py-3 text-sm">
+        <span className="text-muted-foreground">会计恒等式：资产 = 负债 + 所有者权益</span>
+        <Badge
+          variant="outline"
+          style={{
+            borderColor: equation.balanced ? '#10b981' : '#ef4444',
+            color: equation.balanced ? '#10b981' : '#ef4444',
+          }}
+        >
+          {equation.balanced ? '恒等式成立' : '恒等式不成立'}
+        </Badge>
+      </div>
+      {!equation.balanced ? (
+        <BalanceWarning
+          title="会计恒等式不平衡"
+          message={`资产与「负债 + 所有者权益」相差 ${money(Math.abs(equation.difference))}（${equation.difference > 0 ? '资产偏多' : '负债和权益偏多'}）。请检查科目余额与日记账分录。`}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function BalanceWarning({ title, message }: { title: string; message: string }) {
+  return (
+    <div className="flex gap-3 rounded-lg border border-[#ef444466] bg-[#ef444414] px-4 py-3 text-sm">
+      <AlertTriangle size={18} className="mt-0.5 shrink-0 text-[#ef4444]" />
+      <div>
+        <p className="font-medium text-[#ef4444]">{title}</p>
+        <p className="mt-1 text-muted-foreground">{message}</p>
+      </div>
     </div>
   )
 }

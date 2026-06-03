@@ -30,6 +30,10 @@ const items = await prisma.featureRequest.findMany({
       { title: { contains: '日记账F1快捷键连续录入' } },
       { title: { contains: '日记账列表列顺序调整' } },
       { pageUrl: { contains: '/admin/financial/cmpuo422m00163iw5o0isz8e1/journal' } },
+      { title: { contains: '财务报表恒等式校验与提示' } },
+      { title: { contains: '一级科目自动汇总二级科目期初余额' } },
+      { pageUrl: { contains: '/admin/financial/cmpup2cxv0008fsw5knhu8mm5/accounts' } },
+      { pageUrl: { contains: '/admin/financial/cmpup2cxv0008fsw5knhu8mm5/reports' } },
     ],
   },
 })

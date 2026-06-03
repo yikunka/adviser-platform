@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ACCOUNT_TYPE_OPTIONS } from '@/lib/financial/account-types'
 import { flattenAccountHierarchy, isDescendantAccount } from '@/lib/financial/account-tree'
+import { canEditOpeningBalance, openingBalanceEditBlockedMessage } from '@/lib/financial/opening-balance'
 import type { AccountType } from '@prisma/client'
 
 export type FinancialAccount = {
@@ -113,6 +114,12 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
       })
   }, [account, accounts])
 
+  const selectedParent = parentId === 'NONE' ? null : accounts.find(item => item.id === parentId) ?? null
+  const nextLevel = account?.level ?? (selectedParent ? selectedParent.level + 1 : 1)
+  const hasChildren = account ? accounts.some(item => item.parentId === account.id) : false
+  const openingBalanceEditable = canEditOpeningBalance(nextLevel, hasChildren)
+  const openingBalanceBlockedMessage = openingBalanceEditBlockedMessage(nextLevel, hasChildren)
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const cleanCode = code.trim()
@@ -129,15 +136,17 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
       return
     }
 
-    const selectedParent = parentId === 'NONE' ? null : accounts.find(item => item.id === parentId) ?? null
-    if (parentId !== 'NONE' && !selectedParent) {
+    const selectedParentForSave = parentId === 'NONE' ? null : accounts.find(item => item.id === parentId) ?? null
+    if (parentId !== 'NONE' && !selectedParentForSave) {
       toast.error('上级科目不存在。')
       return
     }
-    if (selectedParent && selectedParent.level >= 4) {
+    if (selectedParentForSave && selectedParentForSave.level >= 4) {
       toast.error('上级科目层级过深。')
       return
     }
+    const saveLevel = account?.level ?? (selectedParentForSave ? selectedParentForSave.level + 1 : 1)
+    const saveHasChildren = account ? accounts.some(item => item.parentId === account.id) : false
     const openingBalanceValue = Number(openingBalanceAmount || 0)
     const yearToDateDebitValue = Number(yearToDateDebit || 0)
     const yearToDateCreditValue = Number(yearToDateCredit || 0)
@@ -149,28 +158,36 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
       toast.error('期初余额和本年累计发生数不能为负数。')
       return
     }
-    const openingDebitAmount = openingBalanceSide === 'DEBIT' ? openingBalanceValue : 0
-    const openingCreditAmount = openingBalanceSide === 'CREDIT' ? openingBalanceValue : 0
+    if ((openingBalanceValue > 0) && !canEditOpeningBalance(saveLevel, saveHasChildren)) {
+      toast.error(openingBalanceEditBlockedMessage(saveLevel, saveHasChildren) || '此科目不支持录入期初余额。')
+      return
+    }
+    const openingDebitAmount = openingBalanceEditable && openingBalanceSide === 'DEBIT' ? openingBalanceValue : 0
+    const openingCreditAmount = openingBalanceEditable && openingBalanceSide === 'CREDIT' ? openingBalanceValue : 0
 
     setSaving(true)
     try {
+      const payload: Record<string, unknown> = {
+        code: cleanCode,
+        name: cleanName,
+        type,
+        companyId,
+        parentId: parentId === 'NONE' ? null : parentId,
+        sortOrder: Number(sortOrder) || 0,
+        isSystem,
+        yearToDateDebit: yearToDateDebitValue,
+        yearToDateCredit: yearToDateCreditValue,
+      }
+      if (openingBalanceEditable) {
+        payload.openingBalancePeriod = openingBalancePeriod
+        payload.openingDebit = openingDebitAmount
+        payload.openingCredit = openingCreditAmount
+      }
+
       const res = await fetch(account ? `/api/admin/financial/accounts/${account.id}` : '/api/admin/financial/accounts', {
         method: account ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          code: cleanCode,
-          name: cleanName,
-          type,
-          companyId,
-          parentId: parentId === 'NONE' ? null : parentId,
-          sortOrder: Number(sortOrder) || 0,
-          isSystem,
-          openingBalancePeriod,
-          openingDebit: openingDebitAmount,
-          openingCredit: openingCreditAmount,
-          yearToDateDebit: yearToDateDebitValue,
-          yearToDateCredit: yearToDateCreditValue,
-        }),
+        body: JSON.stringify(payload),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.toast || data.error || '保存科目失败。')
@@ -255,69 +272,108 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
             <div className="mb-3">
               <h3 className="text-sm font-semibold text-[#FFF7E6]">期初及累计数</h3>
               <p className="mt-1 text-xs text-[#B8AD98]">
-                可填写或修改此科目的期初余额和本年累计发生数。
+                {openingBalanceEditable
+                  ? '可填写或修改此科目的期初余额和本年累计发生数。'
+                  : openingBalanceBlockedMessage}
               </p>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="opening-period" className={labelClassName}>期初期间</Label>
-                <Input
-                  id="opening-period"
-                  type="month"
-                  value={openingBalancePeriod}
-                  onChange={event => setOpeningBalancePeriod(event.target.value)}
-                  className={fieldClassName}
-                />
+            {openingBalanceEditable ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="opening-period" className={labelClassName}>期初期间</Label>
+                  <Input
+                    id="opening-period"
+                    type="month"
+                    value={openingBalancePeriod}
+                    onChange={event => setOpeningBalancePeriod(event.target.value)}
+                    className={fieldClassName}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="opening-balance" className={labelClassName}>期初余额</Label>
+                  <Input
+                    id="opening-balance"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={openingBalanceAmount}
+                    onChange={event => setOpeningBalanceAmount(event.target.value)}
+                    className={fieldClassName}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className={labelClassName}>期初方向</Label>
+                  <Select value={openingBalanceSide} onValueChange={value => setOpeningBalanceSide(value as OpeningBalanceSide)}>
+                    <SelectTrigger className={`w-full ${fieldClassName}`}>
+                      <SelectValue placeholder="期初方向" />
+                    </SelectTrigger>
+                    <SelectContent className={selectContentClassName}>
+                      <SelectItem value="DEBIT">借方</SelectItem>
+                      <SelectItem value="CREDIT">贷方</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="year-to-date-debit" className={labelClassName}>本年累计发生数（借方）</Label>
+                  <Input
+                    id="year-to-date-debit"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={yearToDateDebit}
+                    onChange={event => setYearToDateDebit(event.target.value)}
+                    className={fieldClassName}
+                  />
+                </div>
+                <div className="space-y-2 sm:col-start-2">
+                  <Label htmlFor="year-to-date-credit" className={labelClassName}>本年累计发生数（贷方）</Label>
+                  <Input
+                    id="year-to-date-credit"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={yearToDateCredit}
+                    onChange={event => setYearToDateCredit(event.target.value)}
+                    className={fieldClassName}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="opening-balance" className={labelClassName}>期初余额</Label>
-                <Input
-                  id="opening-balance"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={openingBalanceAmount}
-                  onChange={event => setOpeningBalanceAmount(event.target.value)}
-                  className={fieldClassName}
-                />
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label className={labelClassName}>期初余额（自动汇总）</Label>
+                  <Input
+                    readOnly
+                    value={amountField(Math.max(account?.openingBalanceTotal ?? 0, 0))}
+                    className={`${fieldClassName} opacity-80`}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="year-to-date-debit" className={labelClassName}>本年累计发生数（借方）</Label>
+                  <Input
+                    id="year-to-date-debit"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={yearToDateDebit}
+                    onChange={event => setYearToDateDebit(event.target.value)}
+                    className={fieldClassName}
+                  />
+                </div>
+                <div className="space-y-2 sm:col-start-2">
+                  <Label htmlFor="year-to-date-credit" className={labelClassName}>本年累计发生数（贷方）</Label>
+                  <Input
+                    id="year-to-date-credit"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={yearToDateCredit}
+                    onChange={event => setYearToDateCredit(event.target.value)}
+                    className={fieldClassName}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label className={labelClassName}>期初方向</Label>
-                <Select value={openingBalanceSide} onValueChange={value => setOpeningBalanceSide(value as OpeningBalanceSide)}>
-                  <SelectTrigger className={`w-full ${fieldClassName}`}>
-                    <SelectValue placeholder="期初方向" />
-                  </SelectTrigger>
-                  <SelectContent className={selectContentClassName}>
-                    <SelectItem value="DEBIT">借方</SelectItem>
-                    <SelectItem value="CREDIT">贷方</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="year-to-date-debit" className={labelClassName}>本年累计发生数（借方）</Label>
-                <Input
-                  id="year-to-date-debit"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={yearToDateDebit}
-                  onChange={event => setYearToDateDebit(event.target.value)}
-                  className={fieldClassName}
-                />
-              </div>
-              <div className="space-y-2 sm:col-start-2">
-                <Label htmlFor="year-to-date-credit" className={labelClassName}>本年累计发生数（贷方）</Label>
-                <Input
-                  id="year-to-date-credit"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={yearToDateCredit}
-                  onChange={event => setYearToDateCredit(event.target.value)}
-                  className={fieldClassName}
-                />
-              </div>
-            </div>
+            )}
           </div>
 
           <DialogFooter className={modalFooterClassName}>
