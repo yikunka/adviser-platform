@@ -236,8 +236,8 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
         )
 
         if (options?.continue) {
-          resetFormForNextEntry(setDescription, setLines)
           onContinued?.()
+          resetFormForNextEntry(setDescription, setLines)
           await onSaved()
         } else {
           onOpenChange(false)
