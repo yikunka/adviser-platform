@@ -105,6 +105,15 @@ function inputStyle(): React.CSSProperties {
   }
 }
 
+function printDialogInputStyle(): React.CSSProperties {
+  return {
+    background: '#FFF7E6',
+    border: '1px solid #C9A96E',
+    color: '#11110E',
+    caretColor: '#11110E',
+  }
+}
+
 function toEditableItem(item: FullColorFormula['items'][number], index: number): EditableItem {
   return {
     key: item.id,
@@ -188,6 +197,8 @@ const PICKER_TYPE_OPTIONS = [
   { key: 'CC', label: 'CC' },
 ] as const
 
+const PRINT_DIALOG_CLOSE_DELAY_MS = 180
+
 const COLOR_FORMULA_PRINT_STYLES = `
   @media print {
     @page { size: A4 portrait; margin: 0; }
@@ -207,7 +218,10 @@ const COLOR_FORMULA_PRINT_STYLES = `
 
     .admin-console > aside,
     .admin-console > .flex-1 > header,
-    .cosmocoat-screen { display: none !important; }
+    .cosmocoat-screen,
+    [data-slot="dialog-portal"],
+    [data-slot="dialog-overlay"],
+    [data-slot="dialog-content"] { display: none !important; }
 
     .admin-console > .flex-1 {
       display: block !important;
@@ -697,7 +711,7 @@ export default function CosmocoatColorFormulaDetailPage() {
     setTimeout(() => {
       window.print()
       setPrinting(false)
-    }, 100)
+    }, PRINT_DIALOG_CLOSE_DELAY_MS)
   }
 
   function updateItem(key: string, patch: Partial<EditableItem>) {
@@ -846,7 +860,7 @@ export default function CosmocoatColorFormulaDetailPage() {
               value={printKgInput}
               onChange={e => setPrintKgInput(e.target.value)}
               className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
-              style={inputStyle()}
+              style={printDialogInputStyle()}
               autoFocus
             />
             <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
