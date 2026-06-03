@@ -4,7 +4,7 @@ import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { getFactoryProductById, productInclude, serializeFactoryProduct, syncProductRecipes } from '@/lib/cosmocoat/factory-products'
-import { toViscosityDbData, viscosityFieldsSchema } from '@/lib/cosmocoat/product-viscosity'
+import { factoryViscosityFieldsSchema, toFactoryViscosityDbData } from '@/lib/cosmocoat/factory-product-viscosity'
 
 const productSchema = z.object({
   productCode: z.string().trim().min(1).max(32),
@@ -16,7 +16,7 @@ const productSchema = z.object({
   sortOrder: z.coerce.number().int().min(0).max(999999).optional().default(0),
   recipeIds: z.array(z.string().trim().min(1)).optional().default([]),
   currentRecipeId: z.string().trim().min(1).nullable().optional(),
-  ...viscosityFieldsSchema,
+  ...factoryViscosityFieldsSchema,
 })
 
 function isMissingTable(error: unknown) {
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
         unitPrice: parsed.data.unitPrice,
         notes: parsed.data.notes,
         sortOrder: parsed.data.sortOrder,
-        ...toViscosityDbData({
+        ...toFactoryViscosityDbData({
           viscosity: parsed.data.viscosity,
           viscosityUnit: parsed.data.viscosityUnit,
         }),

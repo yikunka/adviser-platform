@@ -79,10 +79,28 @@ export async function PATCH(
 
   try {
     const totalWeight = parsed.data.totalWeight ?? Number(current.totalWeight)
+    const totalWeightChanged =
+      parsed.data.totalWeight != null
+      && Math.abs(parsed.data.totalWeight - Number(current.totalWeight)) > 1e-9
 
-    if (parsed.data.totalWeight != null) {
+    if (totalWeightChanged) {
       const recipe = await loadRecipeForProduction(current.recipeId)
       if (!recipe) return NextResponse.json({ error: '关联配方不存在' }, { status: 404 })
+
+      const actualByMaterial = new Map<string, number | null>()
+      for (const item of current.items) {
+        actualByMaterial.set(
+          item.rawMaterialId,
+          item.actualWeight != null ? Number(item.actualWeight) : null,
+        )
+      }
+      if (parsed.data.items?.length) {
+        for (const patch of parsed.data.items) {
+          if (!patch.id || patch.actualWeight === undefined) continue
+          const row = current.items.find(item => item.id === patch.id)
+          if (row) actualByMaterial.set(row.rawMaterialId, patch.actualWeight)
+        }
+      }
 
       const itemDrafts = buildProductionOrderItems(
         recipeItemsForProduction(recipe.items),
@@ -100,7 +118,7 @@ export async function PATCH(
             materialName: item.materialName,
             percentage: item.percentage,
             requiredWeight: item.requiredWeight,
-            actualWeight: item.actualWeight,
+            actualWeight: actualByMaterial.get(item.rawMaterialId) ?? null,
             notes: item.notes,
           })),
         })

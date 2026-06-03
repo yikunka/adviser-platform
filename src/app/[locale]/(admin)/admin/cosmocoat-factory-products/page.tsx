@@ -49,8 +49,9 @@ type FactoryProduct = {
   unit: string
   unitPrice: number | null
   notes: string
-  viscosity: number | null
+  viscosity: string | null
   viscosityUnit: ViscosityUnit | null
+  viscosityLabel?: string | null
   currentRecipeId: string | null
   sortOrder: number
   updatedAt: string
@@ -82,7 +83,7 @@ type ProductForm = {
   unit: string
   unitPrice: number | null
   notes: string
-  viscosity: number | null
+  viscosity: string
   viscosityUnit: ViscosityUnit
   sortOrder: number
   recipeIds: string[]
@@ -96,7 +97,7 @@ const emptyForm: ProductForm = {
   unit: 'kg',
   unitPrice: null,
   notes: '',
-  viscosity: null,
+  viscosity: '',
   viscosityUnit: 'S',
   sortOrder: 0,
   recipeIds: [],
@@ -192,7 +193,7 @@ function productToForm(product: FactoryProduct): ProductForm {
     unit: product.unit,
     unitPrice: product.unitPrice,
     notes: product.notes,
-    viscosity: product.viscosity,
+    viscosity: product.viscosity ?? '',
     viscosityUnit: product.viscosityUnit ?? 'S',
     sortOrder: product.sortOrder,
     recipeIds: product.recipes.map(r => r.id),
@@ -201,10 +202,11 @@ function productToForm(product: FactoryProduct): ProductForm {
 }
 
 function formPayload(form: ProductForm) {
-  const hasViscosity = form.viscosity != null && !Number.isNaN(form.viscosity)
+  const viscosity = form.viscosity.trim()
+  const hasViscosity = viscosity.length > 0
   return {
     ...form,
-    viscosity: hasViscosity ? form.viscosity : null,
+    viscosity: hasViscosity ? viscosity : null,
     viscosityUnit: hasViscosity ? form.viscosityUnit : null,
   }
 }
@@ -355,14 +357,12 @@ function ProductEditor({
                 <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>产品黏度（可选）</label>
                 <div className="flex gap-2">
                   <input
-                    type="number"
-                    min={0}
-                    step="any"
-                    value={form.viscosity ?? ''}
-                    onChange={e => patch('viscosity', e.target.value === '' ? null : Number(e.target.value))}
+                    type="text"
+                    value={form.viscosity}
+                    onChange={e => patch('viscosity', e.target.value)}
                     className="flex-1 min-w-0 rounded-lg px-3 py-2.5 text-sm outline-none"
                     style={inputStyle()}
-                    placeholder="数值"
+                    placeholder="例如 9.7-9.8"
                   />
                   <select
                     value={form.viscosityUnit ?? 'S'}
@@ -375,6 +375,7 @@ function ProductEditor({
                     ))}
                   </select>
                 </div>
+                <p className="text-xs" style={{ color: '#5A5040' }}>支持输入范围值，单位可选 S 或 KU</p>
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>备注</label>
@@ -691,9 +692,7 @@ export default function AdminCosmoCoatFactoryProductsPage() {
                     <td style={td}>{product.unit}</td>
                     <td style={td}>{formatMoney(product.unitPrice, 2)}</td>
                     <td style={td}>
-                      {product.viscosity != null
-                        ? `${product.viscosity} ${product.viscosityUnit ?? 'S'}`
-                        : '—'}
+                      {product.viscosityLabel ?? product.viscosity ?? '—'}
                     </td>
                     <td style={{ ...td, fontFamily: 'monospace', textAlign: 'right' }}>
                       {product.currentRecipe?.unitCost != null

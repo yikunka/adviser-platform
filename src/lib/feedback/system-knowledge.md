@@ -202,8 +202,8 @@ Home, Products catalog, Product detail, About, Supporting.
 
 ### Factory Products (`/admin/cosmocoat-factory-products`)
 Finished goods produced by the factory.
-- Fields: product code, name, category, unit (kg), unit price, viscosity, current recipe, linked recipes, sort order
-- Product list shows viscosity column (value + unit: S or KU)
+- Fields: product code, name, category, unit (kg), unit price, viscosity (free-text, e.g. range like `9.7-9.8`), current recipe, linked recipes, sort order
+- Product list shows viscosity column (text value + optional unit S or KU)
 - Assign / change current recipe; link multiple recipe candidates
 - Search / filter by name or category
 
@@ -239,7 +239,7 @@ Custom color formulations for specific customers or products.
 - Line items: raw material library entries, Sol semifinished inventory entries, or manual blank/custom material rows, with quantity, percentage, unit price
 - List page: only the header "新建配方" button; empty state shows message only (no duplicate create button)
 - First line item is always the pinned "适用产品" row when a factory product is linked; it cannot be deleted but quantity is editable; unit price auto-fills from the linked factory product's `unitPrice` (read-only in the UI)
-- Material details use the same split layout as recipe management: selected item table above, candidate material table below with click-to-select and "添加选中"; picker category filter is single-select (default none — user picks one of AD, SO, Sol semifinished, DY, CO, CA, CC); a "参考配方" dropdown filters candidates to materials used in a specific existing recipe
+- Material details use the same split layout as recipe management: selected item table above, candidate material table below with click-to-select and "添加选中"; picker category filter is single-select (default none — user picks one of AD, SO, Sol semifinished, DY, CO, CA, CC)
 - Category tabs filter the factory-product sub-filters below: PU tab shows only factory products whose product category name is exactly「PU漆」; 色漆 and 烤漆 tabs use inferred category matching
 - Clicking "新建配方" while a product filter is active pre-fills that product in the new formula form
 - Detail page has a "打印文件" action: opens a dialog to enter target production weight (kg), scales product and raw-material line quantities proportionally, then triggers browser PDF print (A4, no page header/footer). Print header shows 调色单号 (formula code), name, category, target color, linked factory product, production weight, and notes. Material table shows 序号 / 生产编号 / 原料·产品名称 / 用量(kg) / 占比 / 备注 only (hides attribute, color code, source recipe, customer, unit price, and amount columns). Production instructions from the linked source recipe (stirring, packaging, production notes, QC test standard/result) are included when available.
@@ -251,7 +251,7 @@ Manufacturing batch tracking.
 - Product list auto-excludes factory products without a current recipe; optional `?recipeId=` URL param further limits choices to products linked to that recipe
 - Recipes containing only nested sub-recipes or semifinished components (no raw-material lines) show an empty materials table instead of crashing
 - Statuses: `DRAFT` → `IN_PROGRESS` → `COMPLETED`
-- Line items: raw materials with required weight and actual weight used
+- Line items: raw materials with required weight and actual weight used; saving the detail page persists "本次实投" without recreating line rows when production weight is unchanged
 - Print production order: A4 sheet with enlarged text, no page header/footer, a material table constrained to page margins, and material names omitted while keeping material codes, ratios, required weight, and actual weight
 - Print output preserves production / quality / packaging notes and requirements
 - Output: creates semifinished product inventory entries on completion

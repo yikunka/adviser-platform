@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db/prisma'
 import { refreshAllFormulaIsUsedCache } from '@/lib/cosmocoat/recipe-usage'
-import { serializeViscosity } from '@/lib/cosmocoat/product-viscosity'
+import { serializeFactoryViscosity } from '@/lib/cosmocoat/factory-product-viscosity'
 
 const productInclude = {
   category: { select: { id: true, name: true, slug: true } },
@@ -40,7 +40,7 @@ export async function serializeFactoryProduct(product: {
   unit: string
   unitPrice: unknown
   notes: string
-  viscosity?: unknown
+  viscosity?: string | null
   viscosityUnit?: string | null
   currentRecipeId: string | null
   sortOrder: number
@@ -78,8 +78,9 @@ export async function serializeFactoryProduct(product: {
     unit: product.unit,
     unitPrice: product.unitPrice != null ? Number(product.unitPrice) : null,
     notes: product.notes,
-    viscosity: serializeViscosity(product.viscosity),
-    viscosityUnit: product.viscosityUnit ?? null,
+    viscosity: product.viscosity?.trim() || null,
+    viscosityUnit: product.viscosity ? (product.viscosityUnit ?? 'S') : null,
+    viscosityLabel: serializeFactoryViscosity(product.viscosity, product.viscosityUnit),
     currentRecipeId: product.currentRecipeId,
     sortOrder: product.sortOrder,
     createdAt: product.createdAt.toISOString(),

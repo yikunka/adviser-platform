@@ -40,6 +40,9 @@ const items = await prisma.featureRequest.findMany({
       { title: { contains: '一级科目自动汇总二级科目期初余额' } },
       { pageUrl: { contains: '/admin/financial/cmpup2cxv0008fsw5knhu8mm5/accounts' } },
       { pageUrl: { contains: '/admin/financial/cmpup2cxv0008fsw5knhu8mm5/reports' } },
+      { title: { contains: '移除调色配方待选物料的参考配方下拉筛选' } },
+      { title: { contains: '生产单详情"本次实投"数据无法保存' } },
+      { title: { contains: 'CosmoCoat 工厂产品黏度字段改为手动输入' } },
     ],
   },
 })

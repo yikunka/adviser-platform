@@ -6,10 +6,10 @@ import { prisma } from '@/lib/db/prisma'
 import { getFactoryProductById, syncProductRecipes } from '@/lib/cosmocoat/factory-products'
 import { refreshAllFormulaIsUsedCache } from '@/lib/cosmocoat/recipe-usage'
 import {
-  mergeViscosityPatch,
-  type ProductViscosityRecord,
-  viscosityFieldsSchema,
-} from '@/lib/cosmocoat/product-viscosity'
+  factoryViscosityFieldsSchema,
+  mergeFactoryViscosityPatch,
+  type FactoryProductViscosityRecord,
+} from '@/lib/cosmocoat/factory-product-viscosity'
 
 const patchSchema = z.object({
   productCode: z.string().trim().min(1).max(32).optional(),
@@ -21,7 +21,7 @@ const patchSchema = z.object({
   sortOrder: z.coerce.number().int().min(0).max(999999).optional(),
   recipeIds: z.array(z.string().trim().min(1)).optional(),
   currentRecipeId: z.string().trim().min(1).nullable().optional(),
-  ...viscosityFieldsSchema,
+  ...factoryViscosityFieldsSchema,
 })
 
 function isMissingTable(error: unknown) {
@@ -119,7 +119,7 @@ export async function PATCH(
       data: {
         ...patchRest,
         ...(hasViscosityUpdate
-          ? mergeViscosityPatch(current as ProductViscosityRecord, {
+          ? mergeFactoryViscosityPatch(current as FactoryProductViscosityRecord, {
               viscosity,
               viscosityUnit,
             })

@@ -1434,7 +1434,7 @@ model CosTableFactoryProduct {
   unit            String   @default("kg")
   unitPrice       Decimal? @db.Decimal(12, 4)
   notes           String   @default("")
-  viscosity           Decimal? @db.Decimal(10, 3) @map("viscosity")
+  viscosity           String?  @map("viscosity")
   viscosityUnit       String?  @map("viscosity_unit")
   currentRecipeId String?
   sortOrder       Int      @default(0)

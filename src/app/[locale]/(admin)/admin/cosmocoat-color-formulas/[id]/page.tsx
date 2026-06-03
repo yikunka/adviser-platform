@@ -46,12 +46,6 @@ type PickerMaterial = {
   primaryNotes: string
 }
 
-type RecipeOption = {
-  id: string
-  code: string
-  name: string
-}
-
 type EditableItem = {
   key: string
   isLocked: boolean
@@ -493,10 +487,6 @@ export default function CosmocoatColorFormulaDetailPage() {
   const [selectedPickerKey, setSelectedPickerKey] = useState('')
   const [pickerType, setPickerType] = useState<string | null>(null)
 
-  // Reference recipe picker (Task 1)
-  const [recipeOptions, setRecipeOptions] = useState<RecipeOption[]>([])
-  const [selectedRecipeId, setSelectedRecipeId] = useState('')
-
   const loadFormula = useCallback(async () => {
     if (isNew) return
     setLoading(true)
@@ -552,27 +542,6 @@ export default function CosmocoatColorFormulaDetailPage() {
   useEffect(() => {
     loadFormula()
   }, [loadFormula])
-
-  // Load available recipes for the recipe picker (Task 1)
-  useEffect(() => {
-    ;(async () => {
-      try {
-        const res = await fetch('/api/admin/cosmocoat/recipes?limit=200')
-        const data = await res.json()
-        if (res.ok) {
-          setRecipeOptions(
-            (data.items ?? []).map((r: { id: string; code: string; name: string }) => ({
-              id: r.id,
-              code: r.code,
-              name: r.name,
-            })),
-          )
-        }
-      } catch {
-        /* ignore */
-      }
-    })()
-  }, [])
 
   const handleProductsLoaded = useCallback((products: ColorFormulaFactoryProductOption[]) => {
     setFactoryProducts(products)
@@ -648,7 +617,7 @@ export default function CosmocoatColorFormulaDetailPage() {
 
   useEffect(() => {
     const q = pickerQuery.trim()
-    if (!selectedRecipeId && !pickerType) {
+    if (!pickerType) {
       setPickerMaterials([])
       setPickerLoading(false)
       return
@@ -659,11 +628,7 @@ export default function CosmocoatColorFormulaDetailPage() {
       try {
         const p = new URLSearchParams({ limit: '40' })
         if (q) p.set('q', q)
-        if (selectedRecipeId) {
-          p.set('recipeId', selectedRecipeId)
-        } else if (pickerType) {
-          p.append('type', pickerType)
-        }
+        p.append('type', pickerType)
         const res = await fetch(`/api/admin/cosmocoat/color-formulas/material-options?${p}`)
         const data = await res.json()
         if (res.ok) setPickerMaterials(data.items ?? [])
@@ -674,7 +639,7 @@ export default function CosmocoatColorFormulaDetailPage() {
       }
     }, q ? 250 : 0)
     return () => clearTimeout(t)
-  }, [pickerQuery, pickerType, selectedRecipeId])
+  }, [pickerQuery, pickerType])
 
   const totals = useMemo(() => {
     const totalQty = items.reduce((sum, item) => sum + item.quantity, 0)
@@ -1147,68 +1112,41 @@ export default function CosmocoatColorFormulaDetailPage() {
           <div className="flex items-center gap-3">
             <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>待选物料</h3>
           </div>
-          {recipeOptions.length > 0 && (
-            <div className="flex items-center gap-2 min-w-[16rem] sm:min-w-[22rem]">
-              <span className="text-xs flex-shrink-0" style={{ color: 'var(--muted-foreground)' }}>参考配方</span>
-              <select
-                value={selectedRecipeId}
-                onChange={e => {
-                  setSelectedRecipeId(e.target.value)
-                  setPickerQuery('')
-                  setSelectedPickerKey('')
-                }}
-                className="flex-1 rounded-lg px-3 py-1.5 text-xs outline-none"
-                style={inputStyle()}
-              >
-                <option value="">全部原料库</option>
-                {recipeOptions.map(r => (
-                  <option key={r.id} value={r.id}>{r.code} · {r.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
           {pickerQuery.trim() && (
             <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-              {selectedRecipeId ? '正在参考配方中搜索原料' : '正在所选类型中搜索物料'}
+              正在所选类型中搜索物料
             </span>
           )}
         </div>
         <div className="grid lg:grid-cols-[12rem_1fr] min-h-[14rem]">
           <div
             className="border-r overflow-y-auto max-h-72 lg:max-h-80"
-            style={{ borderColor: '#2A2418', opacity: selectedRecipeId ? 0.55 : 1 }}
+            style={{ borderColor: '#2A2418' }}
           >
-            {selectedRecipeId ? (
-              <div className="px-3 py-4 text-xs space-y-1.5" style={{ color: 'var(--muted-foreground)' }}>
-                <p style={{ color: '#C9A96E' }}>参考配方过滤中</p>
-                <p style={{ color: '#5A5040' }}>候选表仅显示该配方内已使用的原料。</p>
-              </div>
-            ) : (
-              PICKER_TYPE_OPTIONS.map(option => {
-                const checked = pickerType === option.key
-                return (
-                  <button
-                    key={option.key}
-                    type="button"
-                    onClick={() => selectPickerType(option.key)}
-                    className="w-full text-left px-3 py-2 text-xs transition-colors"
-                    aria-pressed={checked}
-                    style={{
-                      background: checked ? 'rgba(201,169,110,0.12)' : 'transparent',
-                      color: checked ? '#C9A96E' : 'var(--muted-foreground)',
-                    }}
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <span
-                        className="inline-block h-2 w-2 rounded-full"
-                        style={{ background: checked ? '#C9A96E' : '#3A3020' }}
-                      />
-                      {option.label}
-                    </span>
-                  </button>
-                )
-              })
-            )}
+            {PICKER_TYPE_OPTIONS.map(option => {
+              const checked = pickerType === option.key
+              return (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => selectPickerType(option.key)}
+                  className="w-full text-left px-3 py-2 text-xs transition-colors"
+                  aria-pressed={checked}
+                  style={{
+                    background: checked ? 'rgba(201,169,110,0.12)' : 'transparent',
+                    color: checked ? '#C9A96E' : 'var(--muted-foreground)',
+                  }}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <span
+                      className="inline-block h-2 w-2 rounded-full"
+                      style={{ background: checked ? '#C9A96E' : '#3A3020' }}
+                    />
+                    {option.label}
+                  </span>
+                </button>
+              )
+            })}
           </div>
           <div className="p-3 space-y-3">
             <div className="flex flex-wrap gap-2 items-center">
@@ -1220,7 +1158,7 @@ export default function CosmocoatColorFormulaDetailPage() {
                     setPickerQuery(e.target.value)
                     setSelectedPickerKey('')
                   }}
-                  placeholder={selectedRecipeId ? '在该配方原料中搜索...' : '搜索全部候选物料（编号、名称、类别）...'}
+                  placeholder="搜索全部候选物料（编号、名称、类别）..."
                   className="w-full pl-8 pr-3 py-2 rounded-lg text-sm outline-none"
                   style={inputStyle()}
                 />
