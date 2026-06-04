@@ -1798,9 +1798,10 @@ model CosProcessKitProduct {
   thinnerProductId    String?
   thinnerProductName  String?
   thinnerRatio        String?
-  irMinutes     Decimal? @db.Decimal(8, 2)
-  irTemperature Decimal? @db.Decimal(8, 2)
-  uvEnergy      Decimal? @db.Decimal(10, 3)
+  irMinutes     String?
+  irTemperature String?
+  uvEnergy      String?
+  filmThickness String?
   notes         String?
 
   createdAt DateTime @default(now())

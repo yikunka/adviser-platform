@@ -32,9 +32,10 @@ type KitProduct = {
   thinnerProductId: string | null
   thinnerProductName: string | null
   thinnerRatio: string | null
-  irMinutes: number | null
-  irTemperature: number | null
-  uvEnergy: number | null
+  irMinutes: string | null
+  irTemperature: string | null
+  uvEnergy: string | null
+  filmThickness: string | null
   notes: string | null
 }
 
@@ -279,6 +280,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     irMinutes: '',
     irTemperature: '',
     uvEnergy: '',
+    filmThickness: '',
     notes: '',
   })
 
@@ -325,10 +327,9 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     )
   }
 
-  function parseRequiredNumber(value: string) {
-    if (!value.trim()) return null
-    const parsed = Number(value)
-    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+  function parseRequiredText(value: string) {
+    const trimmed = value.trim()
+    return trimmed || null
   }
 
   function resetProductForm() {
@@ -343,6 +344,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       irMinutes: '',
       irTemperature: '',
       uvEnergy: '',
+      filmThickness: '',
       notes: '',
     })
   }
@@ -440,6 +442,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
               irMinutes: product.irMinutes,
               irTemperature: product.irTemperature,
               uvEnergy: product.uvEnergy,
+              filmThickness: product.filmThickness,
               notes: product.notes,
             })),
           }
@@ -478,9 +481,10 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   }
 
   async function addProduct() {
-    const irMinutes = parseRequiredNumber(productForm.irMinutes)
-    const irTemperature = parseRequiredNumber(productForm.irTemperature)
-    const uvEnergy = parseRequiredNumber(productForm.uvEnergy)
+    const irMinutes = parseRequiredText(productForm.irMinutes)
+    const irTemperature = parseRequiredText(productForm.irTemperature)
+    const uvEnergy = parseRequiredText(productForm.uvEnergy)
+    const filmThickness = parseRequiredText(productForm.filmThickness)
 
     if (!productForm.productId || irMinutes === null || irTemperature === null || uvEnergy === null) {
       toast.error(t('productFormRequired'))
@@ -521,6 +525,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
           irMinutes,
           irTemperature,
           uvEnergy,
+          filmThickness,
           notes: productForm.notes.trim() || null,
         },
       ])
@@ -543,6 +548,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
           irMinutes,
           irTemperature,
           uvEnergy,
+          filmThickness,
           notes: productForm.notes,
         }),
       })
@@ -900,11 +906,10 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
               <div className="space-y-1.5">
                 <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('irMinutes')}</label>
                 <input
-                  type="number"
-                  min="0"
-                  step="0.01"
+                  type="text"
                   value={productForm.irMinutes}
                   onChange={e => setProductForm(f => ({ ...f, irMinutes: e.target.value }))}
+                  placeholder={t('parameterRangePlaceholder')}
                   className="w-full rounded-lg px-3 py-2 text-sm outline-none"
                   style={inputStyle()}
                 />
@@ -912,11 +917,10 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
               <div className="space-y-1.5">
                 <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('irTemperature')}</label>
                 <input
-                  type="number"
-                  min="0"
-                  step="0.01"
+                  type="text"
                   value={productForm.irTemperature}
                   onChange={e => setProductForm(f => ({ ...f, irTemperature: e.target.value }))}
+                  placeholder={t('parameterRangePlaceholder')}
                   className="w-full rounded-lg px-3 py-2 text-sm outline-none"
                   style={inputStyle()}
                 />
@@ -924,11 +928,21 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
               <div className="space-y-1.5">
                 <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('uvEnergy')}</label>
                 <input
-                  type="number"
-                  min="0"
-                  step="0.001"
+                  type="text"
                   value={productForm.uvEnergy}
                   onChange={e => setProductForm(f => ({ ...f, uvEnergy: e.target.value }))}
+                  placeholder={t('parameterRangePlaceholder')}
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                  style={inputStyle()}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('filmThickness')}</label>
+                <input
+                  type="text"
+                  value={productForm.filmThickness}
+                  onChange={e => setProductForm(f => ({ ...f, filmThickness: e.target.value }))}
+                  placeholder={t('filmThicknessPlaceholder')}
                   className="w-full rounded-lg px-3 py-2 text-sm outline-none"
                   style={inputStyle()}
                 />
@@ -975,6 +989,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                 <th style={th}>{t('thinner')}</th>
                 <th style={th}>{t('irParameters')}</th>
                 <th style={th}>{t('uvEnergy')}</th>
+                <th style={th}>{t('filmThickness')}</th>
                 <th style={th}>{t('notes')}</th>
                 <th style={{ ...th, textAlign: 'right' }}>{t('actions')}</th>
               </tr>
@@ -982,7 +997,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
             <tbody>
               {kitProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ ...td, textAlign: 'center', padding: '2rem' }}>{t('noProducts')}</td>
+                  <td colSpan={9} style={{ ...td, textAlign: 'center', padding: '2rem' }}>{t('noProducts')}</td>
                 </tr>
               ) : kitProducts.map((p, index) => (
                 <tr key={p.id}>
@@ -992,6 +1007,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                   <td style={td}>{p.thinnerProductName ? `${p.thinnerProductName}${p.thinnerRatio ? ` / ${p.thinnerRatio}` : ''}` : '-'}</td>
                   <td style={td}>{p.irMinutes ?? '-'} / {p.irTemperature ?? '-'}</td>
                   <td style={td}>{p.uvEnergy ?? '-'}</td>
+                  <td style={td}>{p.filmThickness ?? '-'}</td>
                   <td style={td}>{p.notes || '-'}</td>
                   <td style={{ ...td, textAlign: 'right' }}>
                     <button

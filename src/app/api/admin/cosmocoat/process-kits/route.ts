@@ -10,6 +10,11 @@ import {
   serializeProcessKit,
 } from '@/lib/cosmocoat/process-kits'
 
+const processParameterSchema = z.preprocess(
+  value => (value === undefined || value === null ? value : String(value)),
+  z.string().trim().max(64).nullable().optional(),
+)
+
 const kitSchema = z.object({
   code: z.string().trim().min(1).max(32).optional(),
   name: z.string().trim().min(1).max(160),
@@ -28,9 +33,10 @@ const kitSchema = z.object({
     hardenerRatio: z.string().trim().max(64).nullable().optional(),
     thinnerProductId: z.string().trim().min(1).nullable().optional(),
     thinnerRatio: z.string().trim().max(64).nullable().optional(),
-    irMinutes: z.coerce.number().min(0).max(9999).nullable().optional(),
-    irTemperature: z.coerce.number().min(0).max(9999).nullable().optional(),
-    uvEnergy: z.coerce.number().min(0).max(999999).nullable().optional(),
+    irMinutes: processParameterSchema,
+    irTemperature: processParameterSchema,
+    uvEnergy: processParameterSchema,
+    filmThickness: processParameterSchema,
     notes: z.string().trim().max(2000).optional().default(''),
   })).max(100).optional().default([]),
 })
@@ -69,9 +75,10 @@ async function resolveProductRows(products: z.infer<typeof kitSchema>['products'
     thinnerProductId: product.thinnerProductId || null,
     thinnerProductName: product.thinnerProductId ? productNameById.get(product.thinnerProductId)! : null,
     thinnerRatio: product.thinnerProductId ? (product.thinnerRatio || null) : null,
-    irMinutes: product.irMinutes ?? null,
-    irTemperature: product.irTemperature ?? null,
-    uvEnergy: product.uvEnergy ?? null,
+    irMinutes: product.irMinutes || null,
+    irTemperature: product.irTemperature || null,
+    uvEnergy: product.uvEnergy || null,
+    filmThickness: product.filmThickness || null,
     notes: product.notes || null,
   }))
 }

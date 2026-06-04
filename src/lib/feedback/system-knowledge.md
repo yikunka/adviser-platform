@@ -268,7 +268,7 @@ Product application method documentation (產品配套工藝書).
 - Fields: kit code, name, status, materials list, performance standards, usage notes
 - Performance standards are multi-select checkboxes: 百格(5B), water-boiling tests (80C30M/60M, 100C30M/60M/120M), RCA (30/50/100/150/200), hardness (B/HB/H/2H), alcohol resistance (99%100/75%100), MEK(100), high temperature/humidity (65C85%24H), salt spray (5%24H/48H)
 - Kit statuses: `DRAFT` → `ACTIVE` → `ARCHIVED`
-- Process flow module is available on the new/detail process-kit page below performance tests; admins can select multiple factory products, set each product's IR minutes, IR temperature, UV energy (MJ/CM²), and notes
+- Process flow module is available on the new/detail process-kit page below performance tests; admins can select multiple factory products, set each product's IR minutes, IR temperature, UV energy (MJ/CM²), film thickness, and notes; IR/UV values are text inputs so ranges and units such as `80-100` or `90-105°C` can be recorded
 - Each selected product can optionally include an HD Hardener product with ratio to the main product, and a Durant thinner product with ratio to the main product
 - The process-kit page automatically combines all selected products and the independent global process-flow note into a complete process-flow document preview; the global note can be filled even when no products are selected
 - Test records: type (`PERFORMANCE`, `DURABILITY`, `ADHESION`, `COLOR_STABILITY`, `BOND_STRENGTH`, `OTHER`), result (`PASSED`, `FAILED`, `PENDING`), test date, tester name, report link

@@ -5,6 +5,11 @@ import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { getProcessKitById } from '@/lib/cosmocoat/process-kits'
 
+const processParameterSchema = z.preprocess(
+  value => (value === undefined || value === null ? value : String(value)),
+  z.string().trim().max(64).nullable().optional(),
+)
+
 const productSchema = z.object({
   productId: z.string().trim().min(1),
   productName: z.string().trim().min(1).max(160).optional(),
@@ -15,9 +20,10 @@ const productSchema = z.object({
   hardenerRatio: z.string().trim().max(64).nullable().optional(),
   thinnerProductId: z.string().trim().min(1).nullable().optional(),
   thinnerRatio: z.string().trim().max(64).nullable().optional(),
-  irMinutes: z.coerce.number().min(0).max(9999).nullable().optional(),
-  irTemperature: z.coerce.number().min(0).max(9999).nullable().optional(),
-  uvEnergy: z.coerce.number().min(0).max(999999).nullable().optional(),
+  irMinutes: processParameterSchema,
+  irTemperature: processParameterSchema,
+  uvEnergy: processParameterSchema,
+  filmThickness: processParameterSchema,
   notes: z.string().trim().max(2000).optional().default(''),
 })
 
@@ -100,9 +106,10 @@ export async function POST(
         thinnerProductId: parsed.data.thinnerProductId || null,
         thinnerProductName: parsed.data.thinnerProductId ? accessoryNames.get(parsed.data.thinnerProductId)! : null,
         thinnerRatio: parsed.data.thinnerProductId ? (parsed.data.thinnerRatio || null) : null,
-        irMinutes: parsed.data.irMinutes ?? null,
-        irTemperature: parsed.data.irTemperature ?? null,
-        uvEnergy: parsed.data.uvEnergy ?? null,
+        irMinutes: parsed.data.irMinutes || null,
+        irTemperature: parsed.data.irTemperature || null,
+        uvEnergy: parsed.data.uvEnergy || null,
+        filmThickness: parsed.data.filmThickness || null,
         notes: parsed.data.notes || null,
       },
     })
