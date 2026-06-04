@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     select: {
       id: true,
+      number: true,
       title: true,
       summary: true,
       priority: true,

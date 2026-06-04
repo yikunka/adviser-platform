@@ -17,12 +17,17 @@ const kitSchema = z.object({
   materials: z.array(z.string()).optional().default([]),
   performanceStandards: z.array(z.string()).optional().default([]),
   otherNote: z.string().trim().max(500).nullable().optional(),
+  processFlowNote: z.string().trim().max(2000).nullable().optional(),
   status: z.enum(['DRAFT', 'ACTIVE', 'ARCHIVED']).optional().default('DRAFT'),
   products: z.array(z.object({
     productId: z.string().trim().min(1),
     sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
     quantityRatio: z.string().trim().max(64).optional().default(''),
-    usageMethod: z.string().trim().min(1).max(2000),
+    usageMethod: z.string().trim().max(2000).optional().default(''),
+    hardenerProductId: z.string().trim().min(1).nullable().optional(),
+    hardenerRatio: z.string().trim().max(64).nullable().optional(),
+    thinnerProductId: z.string().trim().min(1).nullable().optional(),
+    thinnerRatio: z.string().trim().max(64).nullable().optional(),
     irMinutes: z.coerce.number().min(0).max(9999).nullable().optional(),
     irTemperature: z.coerce.number().min(0).max(9999).nullable().optional(),
     uvEnergy: z.coerce.number().min(0).max(999999).nullable().optional(),
@@ -37,7 +42,11 @@ function isMissingTable(error: unknown) {
 async function resolveProductRows(products: z.infer<typeof kitSchema>['products']) {
   if (products.length === 0) return []
 
-  const productIds = [...new Set(products.map(product => product.productId))]
+  const productIds = [...new Set(products.flatMap(product => [
+    product.productId,
+    product.hardenerProductId,
+    product.thinnerProductId,
+  ].filter((id): id is string => Boolean(id))))]
   const factoryProducts = await prisma.cosTableFactoryProduct.findMany({
     where: { id: { in: productIds } },
     select: { id: true, productCode: true, name: true },
@@ -53,7 +62,13 @@ async function resolveProductRows(products: z.infer<typeof kitSchema>['products'
     productName: productNameById.get(product.productId)!,
     sortOrder: product.sortOrder ?? index,
     quantityRatio: product.quantityRatio || null,
-    usageMethod: product.usageMethod,
+    usageMethod: product.usageMethod || '',
+    hardenerProductId: product.hardenerProductId || null,
+    hardenerProductName: product.hardenerProductId ? productNameById.get(product.hardenerProductId)! : null,
+    hardenerRatio: product.hardenerProductId ? (product.hardenerRatio || null) : null,
+    thinnerProductId: product.thinnerProductId || null,
+    thinnerProductName: product.thinnerProductId ? productNameById.get(product.thinnerProductId)! : null,
+    thinnerRatio: product.thinnerProductId ? (product.thinnerRatio || null) : null,
     irMinutes: product.irMinutes ?? null,
     irTemperature: product.irTemperature ?? null,
     uvEnergy: product.uvEnergy ?? null,
@@ -137,6 +152,7 @@ export async function POST(req: NextRequest) {
         materials: parsed.data.materials ?? [],
         performanceStandards: parsed.data.performanceStandards ?? [],
         otherNote: parsed.data.otherNote || null,
+        processFlowNote: parsed.data.processFlowNote || null,
         status: parsed.data.status,
         createdBy: session!.user.id,
         createdByName: session!.user.name ?? session!.user.email ?? null,

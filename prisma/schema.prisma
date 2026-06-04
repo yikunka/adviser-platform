@@ -1764,6 +1764,7 @@ model CosProcessKit {
   materials     String[]
   performanceStandards String[] @default([])
   otherNote     String?
+  processFlowNote String?
   status        ProcessKitStatus @default(DRAFT)
   createdBy     String?
   createdByName String?
@@ -1791,6 +1792,12 @@ model CosProcessKitProduct {
   sortOrder     Int     @default(0)
   quantityRatio String?
   usageMethod   String
+  hardenerProductId   String?
+  hardenerProductName String?
+  hardenerRatio       String?
+  thinnerProductId    String?
+  thinnerProductName  String?
+  thinnerRatio        String?
   irMinutes     Decimal? @db.Decimal(8, 2)
   irTemperature Decimal? @db.Decimal(8, 2)
   uvEnergy      Decimal? @db.Decimal(10, 3)
@@ -1991,6 +1998,7 @@ model FeedbackConfig {
 
 model FeatureRequest {
   id           String               @id @default(cuid())
+  number       Int                  @default(autoincrement())
   pageUrl      String               // page where the request was submitted
   pageTitle    String               @default("")
   title        String               @default("")  // LLM-confirmed title

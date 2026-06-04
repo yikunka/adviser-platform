@@ -10,7 +10,11 @@ const productSchema = z.object({
   productName: z.string().trim().min(1).max(160).optional(),
   sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
   quantityRatio: z.string().trim().max(64).optional().default(''),
-  usageMethod: z.string().trim().min(1).max(2000),
+  usageMethod: z.string().trim().max(2000).optional().default(''),
+  hardenerProductId: z.string().trim().min(1).nullable().optional(),
+  hardenerRatio: z.string().trim().max(64).nullable().optional(),
+  thinnerProductId: z.string().trim().min(1).nullable().optional(),
+  thinnerRatio: z.string().trim().max(64).nullable().optional(),
   irMinutes: z.coerce.number().min(0).max(9999).nullable().optional(),
   irTemperature: z.coerce.number().min(0).max(9999).nullable().optional(),
   uvEnergy: z.coerce.number().min(0).max(999999).nullable().optional(),
@@ -35,6 +39,20 @@ async function resolveProductName(productId: string, productName?: string) {
   return null
 }
 
+async function resolveAccessoryProducts(productIds: string[]) {
+  const uniqueIds = [...new Set(productIds.filter(Boolean))]
+  if (uniqueIds.length === 0) return new Map<string, string>()
+
+  const products = await prisma.cosTableFactoryProduct.findMany({
+    where: { id: { in: uniqueIds } },
+    select: { id: true, productCode: true, name: true },
+  })
+  if (products.length !== uniqueIds.length) {
+    throw new Error('FACTORY_PRODUCT_NOT_FOUND')
+  }
+  return new Map(products.map(product => [product.id, `${product.productCode} · ${product.name}`]))
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -57,6 +75,10 @@ export async function POST(
     if (!resolvedName) {
       return NextResponse.json({ error: '产品不存在，请提供有效的产品 ID 或产品名称' }, { status: 400 })
     }
+    const accessoryNames = await resolveAccessoryProducts([
+      parsed.data.hardenerProductId ?? '',
+      parsed.data.thinnerProductId ?? '',
+    ])
 
     const maxSort = await prisma.cosProcessKitProduct.aggregate({
       where: { kitId },
@@ -71,7 +93,13 @@ export async function POST(
         productName: resolvedName,
         sortOrder,
         quantityRatio: parsed.data.quantityRatio || null,
-        usageMethod: parsed.data.usageMethod,
+        usageMethod: parsed.data.usageMethod || '',
+        hardenerProductId: parsed.data.hardenerProductId || null,
+        hardenerProductName: parsed.data.hardenerProductId ? accessoryNames.get(parsed.data.hardenerProductId)! : null,
+        hardenerRatio: parsed.data.hardenerProductId ? (parsed.data.hardenerRatio || null) : null,
+        thinnerProductId: parsed.data.thinnerProductId || null,
+        thinnerProductName: parsed.data.thinnerProductId ? accessoryNames.get(parsed.data.thinnerProductId)! : null,
+        thinnerRatio: parsed.data.thinnerProductId ? (parsed.data.thinnerRatio || null) : null,
         irMinutes: parsed.data.irMinutes ?? null,
         irTemperature: parsed.data.irTemperature ?? null,
         uvEnergy: parsed.data.uvEnergy ?? null,
@@ -82,6 +110,9 @@ export async function POST(
     const full = await getProcessKitById(kitId)
     return NextResponse.json({ kit: full }, { status: 201 })
   } catch (err) {
+    if (err instanceof Error && err.message === 'FACTORY_PRODUCT_NOT_FOUND') {
+      return NextResponse.json({ error: '固化剂或稀释剂产品不存在' }, { status: 400 })
+    }
     if (isMissingTable(err)) {
       return NextResponse.json({ error: '工艺书表不存在，请先运行数据库迁移' }, { status: 503 })
     }

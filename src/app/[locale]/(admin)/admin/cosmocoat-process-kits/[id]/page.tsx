@@ -16,6 +16,7 @@ type FactoryProductOption = {
   id: string
   productCode: string
   name: string
+  category?: { id: string; name: string; slug: string } | null
 }
 
 type KitProduct = {
@@ -25,6 +26,12 @@ type KitProduct = {
   sortOrder: number
   quantityRatio: string | null
   usageMethod: string
+  hardenerProductId: string | null
+  hardenerProductName: string | null
+  hardenerRatio: string | null
+  thinnerProductId: string | null
+  thinnerProductName: string | null
+  thinnerRatio: string | null
   irMinutes: number | null
   irTemperature: number | null
   uvEnergy: number | null
@@ -51,6 +58,7 @@ type LoadedKit = {
   materials?: string[]
   performanceStandards?: string[]
   otherNote?: string | null
+  processFlowNote?: string | null
   status: KitStatus
   products?: KitProduct[]
   tests?: KitTest[]
@@ -196,6 +204,21 @@ function fromDatetimeLocal(value: string): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString()
 }
 
+function matchesAccessoryProduct(product: FactoryProductOption, type: 'hardener' | 'thinner') {
+  const text = [
+    product.productCode,
+    product.name,
+    product.category?.name,
+    product.category?.slug,
+  ].filter(Boolean).join(' ').toLowerCase()
+
+  if (type === 'hardener') {
+    return product.productCode.toUpperCase().startsWith('HD') || /hardener|固化剂|固化劑/.test(text)
+  }
+
+  return /durant|thinner|diluent|稀释剂|稀釋劑|稀释|稀釋/.test(text)
+}
+
 const TEST_TYPES = [
   'PERFORMANCE',
   'DURABILITY',
@@ -238,6 +261,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([])
   const [selectedPerformanceStandards, setSelectedPerformanceStandards] = useState<string[]>([])
   const [otherNote, setOtherNote] = useState('')
+  const [processFlowNote, setProcessFlowNote] = useState('')
   const [status, setStatus] = useState<KitStatus>('DRAFT')
   const [kitProducts, setKitProducts] = useState<KitProduct[]>([])
   const [tests, setTests] = useState<KitTest[]>([])
@@ -246,8 +270,12 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   const [addingProduct, setAddingProduct] = useState(false)
   const [productForm, setProductForm] = useState({
     productId: '',
-    quantityRatio: '',
-    usageMethod: '',
+    useHardener: false,
+    hardenerProductId: '',
+    hardenerRatio: '',
+    useThinner: false,
+    thinnerProductId: '',
+    thinnerRatio: '',
     irMinutes: '',
     irTemperature: '',
     uvEnergy: '',
@@ -266,9 +294,17 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   })
 
   const hasOther = selectedMaterials.includes('OTHER')
+  const hardenerProducts = useMemo(
+    () => products.filter(product => matchesAccessoryProduct(product, 'hardener')),
+    [products],
+  )
+  const thinnerProducts = useMemo(
+    () => products.filter(product => matchesAccessoryProduct(product, 'thinner')),
+    [products],
+  )
   const processFlowDocument = useMemo(
-    () => buildProcessFlowDocument(kitProducts),
-    [kitProducts],
+    () => buildProcessFlowDocument(kitProducts, processFlowNote),
+    [kitProducts, processFlowNote],
   )
 
   function toggleMaterial(materialId: string) {
@@ -298,8 +334,12 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   function resetProductForm() {
     setProductForm({
       productId: '',
-      quantityRatio: '',
-      usageMethod: '',
+      useHardener: false,
+      hardenerProductId: '',
+      hardenerRatio: '',
+      useThinner: false,
+      thinnerProductId: '',
+      thinnerRatio: '',
       irMinutes: '',
       irTemperature: '',
       uvEnergy: '',
@@ -316,6 +356,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
         id: p.id,
         productCode: p.productCode,
         name: p.name,
+        category: p.category ?? null,
       })))
     } catch {
       // non-blocking
@@ -343,6 +384,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       )
       setSelectedPerformanceStandards(kit.performanceStandards ?? [])
       setOtherNote(loadedOtherNote)
+      setProcessFlowNote(kit.processFlowNote ?? '')
       setStatus(kit.status)
       setKitProducts(kit.products ?? [])
       setTests(kit.tests ?? [])
@@ -385,13 +427,16 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       materials: selectedMaterials.filter(id => id !== 'OTHER'),
       performanceStandards: selectedPerformanceStandards,
       otherNote: hasOther && otherNote.trim() ? otherNote.trim() : null,
+      processFlowNote: processFlowNote.trim() || null,
       ...(isNew
         ? {
             products: kitProducts.map((product, index) => ({
               productId: product.productId,
               sortOrder: index,
-              quantityRatio: product.quantityRatio,
-              usageMethod: product.usageMethod,
+              hardenerProductId: product.hardenerProductId,
+              hardenerRatio: product.hardenerRatio,
+              thinnerProductId: product.thinnerProductId,
+              thinnerRatio: product.thinnerRatio,
               irMinutes: product.irMinutes,
               irTemperature: product.irTemperature,
               uvEnergy: product.uvEnergy,
@@ -437,12 +482,26 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     const irTemperature = parseRequiredNumber(productForm.irTemperature)
     const uvEnergy = parseRequiredNumber(productForm.uvEnergy)
 
-    if (!productForm.productId || !productForm.usageMethod.trim() || irMinutes === null || irTemperature === null || uvEnergy === null) {
+    if (!productForm.productId || irMinutes === null || irTemperature === null || uvEnergy === null) {
       toast.error(t('productFormRequired'))
       return
     }
 
+    if (
+      (productForm.useHardener && (!productForm.hardenerProductId || !productForm.hardenerRatio.trim())) ||
+      (productForm.useThinner && (!productForm.thinnerProductId || !productForm.thinnerRatio.trim()))
+    ) {
+      toast.error(t('accessoryFormRequired'))
+      return
+    }
+
     const selectedProduct = products.find(product => product.id === productForm.productId)
+    const selectedHardener = productForm.useHardener
+      ? products.find(product => product.id === productForm.hardenerProductId)
+      : null
+    const selectedThinner = productForm.useThinner
+      ? products.find(product => product.id === productForm.thinnerProductId)
+      : null
     if (isNew) {
       setKitProducts(prev => [
         ...prev,
@@ -451,8 +510,14 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
           productId: productForm.productId,
           productName: selectedProduct ? `${selectedProduct.productCode} · ${selectedProduct.name}` : productForm.productId,
           sortOrder: prev.length,
-          quantityRatio: productForm.quantityRatio.trim() || null,
-          usageMethod: productForm.usageMethod.trim(),
+          quantityRatio: null,
+          usageMethod: '',
+          hardenerProductId: productForm.useHardener ? productForm.hardenerProductId : null,
+          hardenerProductName: selectedHardener ? `${selectedHardener.productCode} · ${selectedHardener.name}` : null,
+          hardenerRatio: productForm.useHardener ? productForm.hardenerRatio.trim() : null,
+          thinnerProductId: productForm.useThinner ? productForm.thinnerProductId : null,
+          thinnerProductName: selectedThinner ? `${selectedThinner.productCode} · ${selectedThinner.name}` : null,
+          thinnerRatio: productForm.useThinner ? productForm.thinnerRatio.trim() : null,
           irMinutes,
           irTemperature,
           uvEnergy,
@@ -471,8 +536,10 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productId: productForm.productId,
-          quantityRatio: productForm.quantityRatio,
-          usageMethod: productForm.usageMethod.trim(),
+          hardenerProductId: productForm.useHardener ? productForm.hardenerProductId : null,
+          hardenerRatio: productForm.useHardener ? productForm.hardenerRatio.trim() : null,
+          thinnerProductId: productForm.useThinner ? productForm.thinnerProductId : null,
+          thinnerRatio: productForm.useThinner ? productForm.thinnerRatio.trim() : null,
           irMinutes,
           irTemperature,
           uvEnergy,
@@ -742,15 +809,93 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                   ))}
                 </select>
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('quantityRatio')}</label>
-                <input
-                  value={productForm.quantityRatio}
-                  onChange={e => setProductForm(f => ({ ...f, quantityRatio: e.target.value }))}
-                  placeholder={t('quantityRatioPlaceholder')}
-                  className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                  style={inputStyle()}
-                />
+              <div className="space-y-3 sm:col-span-2 lg:col-span-4">
+                <label className="flex items-center gap-2 text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                  <input
+                    type="checkbox"
+                    checked={productForm.useHardener}
+                    onChange={e => setProductForm(f => ({
+                      ...f,
+                      useHardener: e.target.checked,
+                      hardenerProductId: e.target.checked ? f.hardenerProductId : '',
+                      hardenerRatio: e.target.checked ? f.hardenerRatio : '',
+                    }))}
+                    className="h-4 w-4 rounded border-[#2A2418]"
+                  />
+                  {t('useHardener')}
+                </label>
+                {productForm.useHardener && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('hardenerProduct')}</label>
+                      <select
+                        value={productForm.hardenerProductId}
+                        onChange={e => setProductForm(f => ({ ...f, hardenerProductId: e.target.value }))}
+                        className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                        style={inputStyle()}
+                      >
+                        <option value="">{t('selectHardenerPlaceholder')}</option>
+                        {hardenerProducts.map(p => (
+                          <option key={p.id} value={p.id}>{p.productCode} · {p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('hardenerRatio')}</label>
+                      <input
+                        value={productForm.hardenerRatio}
+                        onChange={e => setProductForm(f => ({ ...f, hardenerRatio: e.target.value }))}
+                        placeholder={t('ratioPlaceholder')}
+                        className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                        style={inputStyle()}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-3 sm:col-span-2 lg:col-span-4">
+                <label className="flex items-center gap-2 text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                  <input
+                    type="checkbox"
+                    checked={productForm.useThinner}
+                    onChange={e => setProductForm(f => ({
+                      ...f,
+                      useThinner: e.target.checked,
+                      thinnerProductId: e.target.checked ? f.thinnerProductId : '',
+                      thinnerRatio: e.target.checked ? f.thinnerRatio : '',
+                    }))}
+                    className="h-4 w-4 rounded border-[#2A2418]"
+                  />
+                  {t('useThinner')}
+                </label>
+                {productForm.useThinner && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('thinnerProduct')}</label>
+                      <select
+                        value={productForm.thinnerProductId}
+                        onChange={e => setProductForm(f => ({ ...f, thinnerProductId: e.target.value }))}
+                        className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                        style={inputStyle()}
+                      >
+                        <option value="">{t('selectThinnerPlaceholder')}</option>
+                        {thinnerProducts.map(p => (
+                          <option key={p.id} value={p.id}>{p.productCode} · {p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('thinnerRatio')}</label>
+                      <input
+                        value={productForm.thinnerRatio}
+                        onChange={e => setProductForm(f => ({ ...f, thinnerRatio: e.target.value }))}
+                        placeholder={t('ratioPlaceholder')}
+                        className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                        style={inputStyle()}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('irMinutes')}</label>
@@ -785,16 +930,6 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                   value={productForm.uvEnergy}
                   onChange={e => setProductForm(f => ({ ...f, uvEnergy: e.target.value }))}
                   className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                  style={inputStyle()}
-                />
-              </div>
-              <div className="space-y-1.5 sm:col-span-2 lg:col-span-4">
-                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('usageMethod')}</label>
-                <textarea
-                  value={productForm.usageMethod}
-                  onChange={e => setProductForm(f => ({ ...f, usageMethod: e.target.value }))}
-                  rows={2}
-                  className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y"
                   style={inputStyle()}
                 />
               </div>
@@ -836,8 +971,8 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
               <tr>
                 <th style={th}>#</th>
                 <th style={th}>{t('productName')}</th>
-                <th style={th}>{t('quantityRatio')}</th>
-                <th style={th}>{t('usageMethod')}</th>
+                <th style={th}>{t('hardener')}</th>
+                <th style={th}>{t('thinner')}</th>
                 <th style={th}>{t('irParameters')}</th>
                 <th style={th}>{t('uvEnergy')}</th>
                 <th style={th}>{t('notes')}</th>
@@ -853,8 +988,8 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                 <tr key={p.id}>
                   <td style={td}>{index + 1}</td>
                   <td style={{ ...td, color: 'var(--foreground)' }}>{p.productName}</td>
-                  <td style={td}>{p.quantityRatio || '-'}</td>
-                  <td style={td}>{p.usageMethod}</td>
+                  <td style={td}>{p.hardenerProductName ? `${p.hardenerProductName}${p.hardenerRatio ? ` / ${p.hardenerRatio}` : ''}` : '-'}</td>
+                  <td style={td}>{p.thinnerProductName ? `${p.thinnerProductName}${p.thinnerRatio ? ` / ${p.thinnerRatio}` : ''}` : '-'}</td>
                   <td style={td}>{p.irMinutes ?? '-'} / {p.irTemperature ?? '-'}</td>
                   <td style={td}>{p.uvEnergy ?? '-'}</td>
                   <td style={td}>{p.notes || '-'}</td>
@@ -874,7 +1009,18 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
           </table>
         </div>
 
-        <div className="p-4 border-t space-y-1.5" style={{ borderColor: '#2A2418' }}>
+        <div className="p-4 border-t space-y-4" style={{ borderColor: '#2A2418' }}>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('globalProcessNote')}</label>
+            <textarea
+              value={processFlowNote}
+              onChange={e => setProcessFlowNote(e.target.value)}
+              rows={3}
+              className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y"
+              style={inputStyle()}
+              placeholder={t('globalProcessNotePlaceholder')}
+            />
+          </div>
           <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('processFlowDocument')}</label>
           <textarea
             readOnly

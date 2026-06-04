@@ -1,7 +1,0 @@
-// Route handler factories — import from 'sharecto/routes'
-export { createChatRoute }        from './chat'
-export { createSubmitRoute }      from './submit'
-export { createUploadRoute }      from './upload'
-export { createAdminRoute }       from './admin'
-export { createAdminIdRoute }     from './admin-id'
-export { createAdminConfigRoute } from './admin-config'

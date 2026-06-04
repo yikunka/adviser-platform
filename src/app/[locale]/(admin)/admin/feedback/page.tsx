@@ -36,6 +36,7 @@ type Attachment = { url: string; name: string; type: string }
 
 type FeatureRequest = {
   id: string
+  number: number
   title: string
   summary: string
   priority: string
@@ -501,6 +502,7 @@ function buildDevPrompt(item: FeatureRequest, conversation: ChatMessage[] = []):
   return [
     '## 开发任务',
     '',
+    `**需求编号**：#${item.number}`,
     `**需求标题**：${item.title}`,
     `**优先级**：${priorityLabel}`,
     `**来源页面**：${item.pageUrl}${item.pageTitle ? ` (${item.pageTitle})` : ''}`,
@@ -721,6 +723,7 @@ function RequirementsTab() {
                       className="h-4 w-4 rounded accent-[#C9A96E] cursor-pointer"
                     />
                   </TableHead>
+                  <TableHead className="w-14 text-center" style={{ color: '#7A6A50' }}>#</TableHead>
                   <TableHead>需求标题</TableHead>
                   <TableHead>优先级</TableHead>
                   <TableHead>来源页面</TableHead>
@@ -748,6 +751,11 @@ function RequirementsTab() {
                           onChange={() => toggleSelect(item.id)}
                           className="h-4 w-4 rounded accent-[#C9A96E] cursor-pointer"
                         />
+                      </TableCell>
+                      <TableCell className="w-14 text-center">
+                        <span className="text-xs font-mono font-medium" style={{ color: '#7A6A50' }}>
+                          #{item.number}
+                        </span>
                       </TableCell>
                       <TableCell className="max-w-[220px]">
                         <p className="truncate font-medium text-sm" style={{ color: 'var(--foreground)' }}>
@@ -869,7 +877,12 @@ function RequirementsTab() {
       <Dialog open={!!detailItem} onOpenChange={open => !open && setDetailItem(null)}>
         <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col border-[#2A2418] bg-[#11110E] text-[#FFF7E6]">
           <DialogHeader className="flex-shrink-0">
-            <DialogTitle className="text-[#FFF7E6] text-base">
+            <DialogTitle className="text-[#FFF7E6] text-base flex items-center gap-2">
+              {detailItem?.number && (
+                <span className="text-sm font-mono font-normal shrink-0" style={{ color: '#7A6A50' }}>
+                  #{detailItem.number}
+                </span>
+              )}
               {detailItem?.title || '需求详情'}
             </DialogTitle>
           </DialogHeader>
