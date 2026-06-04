@@ -15,6 +15,15 @@ const processParameterSchema = z.preprocess(
   z.string().trim().max(64).nullable().optional(),
 )
 
+const optionalIdSchema = z.preprocess(
+  value => {
+    if (value === undefined || value === null) return value
+    const trimmed = String(value).trim()
+    return trimmed || null
+  },
+  z.string().min(1).nullable().optional(),
+)
+
 const optionalTextSchema = (max: number) => z.preprocess(
   value => (value === undefined || value === null ? value : String(value)),
   z.string().trim().max(max).nullable().optional(),
@@ -34,9 +43,9 @@ const kitSchema = z.object({
     sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
     quantityRatio: optionalTextSchema(64),
     usageMethod: optionalTextSchema(2000),
-    hardenerProductId: z.string().trim().min(1).nullable().optional(),
+    hardenerProductId: optionalIdSchema,
     hardenerRatio: optionalTextSchema(64),
-    thinnerProductId: z.string().trim().min(1).nullable().optional(),
+    thinnerProductId: optionalIdSchema,
     thinnerRatio: optionalTextSchema(64),
     irMinutes: processParameterSchema,
     irTemperature: processParameterSchema,
