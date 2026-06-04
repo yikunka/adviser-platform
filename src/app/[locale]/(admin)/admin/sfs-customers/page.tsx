@@ -1,12 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Link } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { ContactRound, Mail, MapPin, Phone, Search, UserPlus, X } from 'lucide-react'
+import { ContactRound, Mail, MapPin, Pencil, Phone, Search, UserPlus, X } from 'lucide-react'
 
 type CustomerRow = {
   id: string
@@ -36,6 +36,14 @@ type CustomerRow = {
   } | null
 }
 
+type CustomerFormValues = {
+  name: string
+  email: string
+  phone: string
+  mailingAddress: string
+  notes: string
+}
+
 const SOURCE_STYLE: Record<CustomerRow['source'], { label: string; bg: string; color: string }> = {
   ACCOUNT: { label: 'Account', bg: 'rgba(56,189,248,0.13)', color: '#38bdf8' },
   MANUAL: { label: 'Manual', bg: 'rgba(201,169,110,0.14)', color: '#C9A96E' },
@@ -55,36 +63,48 @@ function formatDate(value: string | null) {
   return new Date(value).toLocaleDateString('en-HK', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-function CreateCustomerModal({
+function CustomerModal({
+  customer,
   onClose,
-  onCreated,
+  onSaved,
 }: {
+  customer?: CustomerRow
   onClose: () => void
-  onCreated: () => void
+  onSaved: () => void
 }) {
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
-  const [mailingAddress, setMailingAddress] = useState('')
-  const [notes, setNotes] = useState('')
+  const isEdit = Boolean(customer)
+  const [form, setForm] = useState<CustomerFormValues>({
+    name: customer?.name ?? '',
+    email: customer?.email ?? '',
+    phone: customer?.phone ?? '',
+    mailingAddress: customer?.mailingAddress ?? '',
+    notes: customer?.notes ?? '',
+  })
   const [saving, setSaving] = useState(false)
 
-  async function handleSubmit(e: React.FormEvent) {
+  function updateField<K extends keyof CustomerFormValues>(key: K, value: CustomerFormValues[K]) {
+    setForm(prev => ({ ...prev, [key]: value }))
+  }
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setSaving(true)
     try {
-      const res = await fetch('/api/admin/sfs-customers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, phone, mailingAddress, notes }),
-      })
+      const res = await fetch(
+        isEdit ? `/api/admin/sfs-customers/${encodeURIComponent(customer!.id)}` : '/api/admin/sfs-customers',
+        {
+          method: isEdit ? 'PATCH' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(form),
+        },
+      )
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error ?? 'Failed to create customer')
-      toast.success('Customer created.')
-      onCreated()
+      if (!res.ok) throw new Error(json.error ?? (isEdit ? 'Failed to update customer' : 'Failed to create customer'))
+      toast.success(isEdit ? 'Customer updated.' : 'Customer created.')
+      onSaved()
       onClose()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create customer.')
+      toast.error(err instanceof Error ? err.message : (isEdit ? 'Failed to update customer.' : 'Failed to create customer.'))
     } finally {
       setSaving(false)
     }
@@ -99,9 +119,13 @@ function CreateCustomerModal({
       <div className="w-full max-w-lg rounded-lg p-6 space-y-5" style={{ background: '#111111', border: '1px solid #2A2418' }}>
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>Create SFS customer</h2>
+            <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>
+              {isEdit ? 'Edit SFS customer' : 'Create SFS customer'}
+            </h2>
             <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
-              Manual customer records do not create or require a platform login account.
+              {isEdit
+                ? 'Updates the SFS customer profile shown in this registry.'
+                : 'Manual customer records do not create or require a platform login account.'}
             </p>
           </div>
           <button
@@ -119,24 +143,24 @@ function CreateCustomerModal({
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-1.5">
               <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Name</span>
-              <Input value={name} onChange={e => setName(e.target.value)} required maxLength={200} />
+              <Input value={form.name} onChange={e => updateField('name', e.target.value)} required maxLength={200} />
             </label>
             <label className="space-y-1.5">
               <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Email optional</span>
-              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} maxLength={320} />
+              <Input value={form.email} onChange={e => updateField('email', e.target.value)} maxLength={320} />
             </label>
           </div>
 
           <label className="space-y-1.5 block">
             <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Phone</span>
-            <Input value={phone} onChange={e => setPhone(e.target.value)} maxLength={50} />
+            <Input value={form.phone} onChange={e => updateField('phone', e.target.value)} maxLength={50} />
           </label>
 
           <label className="space-y-1.5 block">
             <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Mailing address</span>
             <textarea
-              value={mailingAddress}
-              onChange={e => setMailingAddress(e.target.value)}
+              value={form.mailingAddress}
+              onChange={e => updateField('mailingAddress', e.target.value)}
               maxLength={500}
               rows={3}
               className="w-full rounded-md px-3 py-2 text-sm outline-none"
@@ -147,8 +171,8 @@ function CreateCustomerModal({
           <label className="space-y-1.5 block">
             <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Notes</span>
             <textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
+              value={form.notes}
+              onChange={e => updateField('notes', e.target.value)}
               maxLength={2000}
               rows={3}
               className="w-full rounded-md px-3 py-2 text-sm outline-none"
@@ -159,8 +183,8 @@ function CreateCustomerModal({
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
             <Button type="submit" disabled={saving}>
-              <UserPlus size={14} />
-              {saving ? 'Creating...' : 'Create customer'}
+              {isEdit ? <Pencil size={14} /> : <UserPlus size={14} />}
+              {saving ? 'Saving...' : isEdit ? 'Save changes' : 'Create customer'}
             </Button>
           </div>
         </form>
@@ -177,6 +201,7 @@ export default function SfsCustomersPage() {
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
+  const [editingCustomer, setEditingCustomer] = useState<CustomerRow | null>(null)
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true)
@@ -239,16 +264,17 @@ export default function SfsCustomersPage() {
                   {['Customer', 'Contact', 'Address', 'Orders', 'Latest order', 'Source', 'Created'].map(h => (
                     <th key={h} className="px-4 py-3 text-left font-medium whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
                   ))}
+                  <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#2A2418]">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>Loading...</td>
+                    <td colSpan={8} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>Loading...</td>
                   </tr>
                 ) : customers.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center">
+                    <td colSpan={8} className="px-4 py-12 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <ContactRound size={28} style={{ color: '#C9A96E', opacity: 0.45 }} />
                         <span style={{ color: 'var(--muted-foreground)' }}>{search ? 'No customers match your search.' : 'No SFS customers yet.'}</span>
@@ -314,6 +340,12 @@ export default function SfsCustomersPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>{formatDate(customer.createdAt)}</td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <Button variant="outline" size="sm" onClick={() => setEditingCustomer(customer)}>
+                          <Pencil size={13} />
+                          Edit
+                        </Button>
+                      </td>
                     </tr>
                   )
                 })}
@@ -332,12 +364,19 @@ export default function SfsCustomersPage() {
       )}
 
       {showCreate && (
-        <CreateCustomerModal
+        <CustomerModal
           onClose={() => setShowCreate(false)}
-          onCreated={() => {
+          onSaved={() => {
             setPage(1)
             fetchCustomers()
           }}
+        />
+      )}
+      {editingCustomer && (
+        <CustomerModal
+          customer={editingCustomer}
+          onClose={() => setEditingCustomer(null)}
+          onSaved={fetchCustomers}
         />
       )}
     </div>

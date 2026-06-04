@@ -11,6 +11,7 @@ export type ProcessFlowProduct = {
   irTemperature?: number | string | null
   uvEnergy?: number | string | null
   filmThickness?: number | string | null
+  sprayViscosity?: number | string | null
 }
 
 function formatValue(value: number | string | null | undefined) {
@@ -34,6 +35,7 @@ export function buildProcessFlowDocument(products: ProcessFlowProduct[], globalN
     const irTemperature = formatWithUnit(product.irTemperature, '°C', /(°C|℃|\bC\b)/i)
     const uvEnergy = formatWithUnit(product.uvEnergy, 'MJ/CM²', /(MJ\/?CM²|MJ\/?CM2|mJ\/?cm²|mJ\/?cm2)/i)
     const filmThickness = formatValue(product.filmThickness)
+    const sprayViscosity = formatValue(product.sprayViscosity)
 
     lines.push(`${index + 1}. 产品：${product.productName}`)
     if (product.hardenerProductName) {
@@ -49,6 +51,7 @@ export function buildProcessFlowDocument(products: ProcessFlowProduct[], globalN
     }
     if (uvEnergy) lines.push(`   UV能量：${uvEnergy}`)
     if (filmThickness) lines.push(`   膜厚：${filmThickness}`)
+    if (sprayViscosity) lines.push(`   噴塗粘度 2#杯/25C：${sprayViscosity}`)
     if (product.notes) lines.push(`   备注：${product.notes}`)
   })
 

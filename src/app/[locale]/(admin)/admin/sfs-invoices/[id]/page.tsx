@@ -155,9 +155,6 @@ export default function SfsInvoiceDetailPage() {
           {invoice.billToAddress && <p style={{ color: 'var(--muted-foreground)' }}>{invoice.billToAddress}</p>}
           {invoice.billToEmail && <p style={{ color: 'var(--muted-foreground)' }}>{invoice.billToEmail}</p>}
           <p><span className="font-medium">{t('issueDate')}:</span> {new Date(invoice.issueDate).toLocaleDateString()}</p>
-          {invoice.dueDate && (
-            <p><span className="font-medium">{t('dueDate')}:</span> {new Date(invoice.dueDate).toLocaleDateString()}</p>
-          )}
           <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
             {t('createdBy')}: {invoice.createdBy.nameEn}
           </p>
@@ -190,7 +187,7 @@ export default function SfsInvoiceDetailPage() {
           <div className="px-4 py-4 text-sm space-y-1 border-t" style={{ borderColor: '#2A2418' }}>
             <div className="flex justify-between"><span>{t('subtotal')}</span><span>{invoice.currency} {Number(invoice.subtotal).toFixed(2)}</span></div>
             <div className="flex justify-between">
-              <span>{t('tax')} ({(Number(invoice.taxRate) * 100).toFixed(1)}%)</span>
+              <span>{t('tax')}</span>
               <span>{invoice.currency} {Number(invoice.taxAmount).toFixed(2)}</span>
             </div>
             <div className="flex justify-between font-semibold text-base">

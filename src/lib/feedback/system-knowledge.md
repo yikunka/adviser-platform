@@ -169,6 +169,7 @@ Customer registry for SFS Diamond.
 - Lists SFS platform registered client accounts, manually created customer profiles, and historical order-only contact records
 - Shows customer name, email, phone, mailing address, source type, order count, and latest order link/status
 - Create manual SFS customer records without creating or binding an official platform login account/email
+- Edit SFS customer profile fields (name, email, phone, mailing address, notes); order-only contacts are converted to bound customer profiles when edited
 
 ### SFS Orders Admin (`/admin/sfs-orders`)
 Order lifecycle management for memorial diamond commissions.
@@ -190,6 +191,7 @@ Order lifecycle management for memorial diamond commissions.
 - Invoices linked to SFS orders
 - Statuses: `DRAFT` → `SENT` → `PAID` / `CANCELLED`
 - Create from order; edit DRAFT; generate and download PDF
+- Admin invoice screens keep line-item display focused on description, quantity, unit price, and amount; due date and tax-rate display are hidden from the SFS invoice UI
 
 ---
 
@@ -268,7 +270,7 @@ Product application method documentation (產品配套工藝書).
 - Fields: kit code, name, status, materials list, performance standards, usage notes
 - Performance standards are multi-select checkboxes: 百格(5B), water-boiling tests (80C30M/60M, 100C30M/60M/120M), RCA (30/50/100/150/200), hardness (B/HB/H/2H), alcohol resistance (99%100/75%100), MEK(100), high temperature/humidity (65C85%24H), salt spray (5%24H/48H)
 - Kit statuses: `DRAFT` → `ACTIVE` → `ARCHIVED`
-- Process flow module is available on the new/detail process-kit page below performance tests; admins can select multiple factory products, set each product's IR minutes, IR temperature, UV energy (MJ/CM²), film thickness, and notes; IR/UV values are text inputs so ranges and units such as `80-100` or `90-105°C` can be recorded
+- Process flow module is available on the new/detail process-kit page below performance tests; admins can select multiple factory products, set each product's IR minutes, IR temperature, UV energy (MJ/CM²), film thickness, spray viscosity (`噴塗粘度 2#杯/25C`), and notes; IR/UV/process values are text inputs so ranges and units such as `80-100`, `90-105°C`, or `12-14S` can be recorded
 - Each selected product can optionally include an HD Hardener product with ratio to the main product, and a Durant thinner product with ratio to the main product
 - The process-kit page automatically combines all selected products and the independent global process-flow note into a complete process-flow document preview; the global note can be filled even when no products are selected
 - Test records: type (`PERFORMANCE`, `DURABILITY`, `ADHESION`, `COLOR_STABILITY`, `BOND_STRENGTH`, `OTHER`), result (`PASSED`, `FAILED`, `PENDING`), test date, tester name, report link

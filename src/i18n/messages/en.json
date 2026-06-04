@@ -886,6 +886,8 @@
       "uvEnergy": "UV energy (MJ/CM²)",
       "filmThickness": "Film thickness",
       "filmThicknessPlaceholder": "e.g. 10-15μm",
+      "sprayViscosity": "Spray viscosity 2# cup/25C",
+      "sprayViscosityPlaceholder": "e.g. 12-14S",
       "parameterRangePlaceholder": "e.g. 80-100",
       "notes": "Notes",
       "productName": "Product name",

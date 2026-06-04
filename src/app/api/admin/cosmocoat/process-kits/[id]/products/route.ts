@@ -10,21 +10,27 @@ const processParameterSchema = z.preprocess(
   z.string().trim().max(64).nullable().optional(),
 )
 
+const optionalTextSchema = (max: number) => z.preprocess(
+  value => (value === undefined || value === null ? value : String(value)),
+  z.string().trim().max(max).nullable().optional(),
+)
+
 const productSchema = z.object({
   productId: z.string().trim().min(1),
   productName: z.string().trim().min(1).max(160).optional(),
   sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
-  quantityRatio: z.string().trim().max(64).optional().default(''),
-  usageMethod: z.string().trim().max(2000).optional().default(''),
+  quantityRatio: optionalTextSchema(64),
+  usageMethod: optionalTextSchema(2000),
   hardenerProductId: z.string().trim().min(1).nullable().optional(),
-  hardenerRatio: z.string().trim().max(64).nullable().optional(),
+  hardenerRatio: optionalTextSchema(64),
   thinnerProductId: z.string().trim().min(1).nullable().optional(),
-  thinnerRatio: z.string().trim().max(64).nullable().optional(),
+  thinnerRatio: optionalTextSchema(64),
   irMinutes: processParameterSchema,
   irTemperature: processParameterSchema,
   uvEnergy: processParameterSchema,
   filmThickness: processParameterSchema,
-  notes: z.string().trim().max(2000).optional().default(''),
+  sprayViscosity: processParameterSchema,
+  notes: optionalTextSchema(2000),
 })
 
 const deleteSchema = z.object({
@@ -110,6 +116,7 @@ export async function POST(
         irTemperature: parsed.data.irTemperature || null,
         uvEnergy: parsed.data.uvEnergy || null,
         filmThickness: parsed.data.filmThickness || null,
+        sprayViscosity: parsed.data.sprayViscosity || null,
         notes: parsed.data.notes || null,
       },
     })

@@ -1802,6 +1802,7 @@ model CosProcessKitProduct {
   irTemperature String?
   uvEnergy      String?
   filmThickness String?
+  sprayViscosity String?
   notes         String?
 
   createdAt DateTime @default(now())

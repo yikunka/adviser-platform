@@ -50,6 +50,7 @@ export function serializeProcessKit(kit: ProcessKitWithRelations) {
       irTemperature: p.irTemperature,
       uvEnergy: p.uvEnergy,
       filmThickness: p.filmThickness,
+      sprayViscosity: p.sprayViscosity,
     })), kit.processFlowNote),
     products: kit.products.map(p => ({
       id: p.id,
@@ -69,6 +70,7 @@ export function serializeProcessKit(kit: ProcessKitWithRelations) {
       irTemperature: p.irTemperature,
       uvEnergy: p.uvEnergy,
       filmThickness: p.filmThickness,
+      sprayViscosity: p.sprayViscosity,
       notes: p.notes,
       createdAt: p.createdAt.toISOString(),
       updatedAt: p.updatedAt.toISOString(),

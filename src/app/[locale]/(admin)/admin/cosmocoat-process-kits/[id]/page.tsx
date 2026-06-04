@@ -36,6 +36,7 @@ type KitProduct = {
   irTemperature: string | null
   uvEnergy: string | null
   filmThickness: string | null
+  sprayViscosity: string | null
   notes: string | null
 }
 
@@ -281,6 +282,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     irTemperature: '',
     uvEnergy: '',
     filmThickness: '',
+    sprayViscosity: '',
     notes: '',
   })
 
@@ -345,6 +347,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       irTemperature: '',
       uvEnergy: '',
       filmThickness: '',
+      sprayViscosity: '',
       notes: '',
     })
   }
@@ -443,6 +446,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
               irTemperature: product.irTemperature,
               uvEnergy: product.uvEnergy,
               filmThickness: product.filmThickness,
+              sprayViscosity: product.sprayViscosity,
               notes: product.notes,
             })),
           }
@@ -485,6 +489,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     const irTemperature = parseRequiredText(productForm.irTemperature)
     const uvEnergy = parseRequiredText(productForm.uvEnergy)
     const filmThickness = parseRequiredText(productForm.filmThickness)
+    const sprayViscosity = parseRequiredText(productForm.sprayViscosity)
 
     if (!productForm.productId || irMinutes === null || irTemperature === null || uvEnergy === null) {
       toast.error(t('productFormRequired'))
@@ -526,6 +531,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
           irTemperature,
           uvEnergy,
           filmThickness,
+          sprayViscosity,
           notes: productForm.notes.trim() || null,
         },
       ])
@@ -549,6 +555,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
           irTemperature,
           uvEnergy,
           filmThickness,
+          sprayViscosity,
           notes: productForm.notes,
         }),
       })
@@ -947,6 +954,17 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                   style={inputStyle()}
                 />
               </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('sprayViscosity')}</label>
+                <input
+                  type="text"
+                  value={productForm.sprayViscosity}
+                  onChange={e => setProductForm(f => ({ ...f, sprayViscosity: e.target.value }))}
+                  placeholder={t('sprayViscosityPlaceholder')}
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                  style={inputStyle()}
+                />
+              </div>
               <div className="space-y-1.5 sm:col-span-2 lg:col-span-4">
                 <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('notes')}</label>
                 <input
@@ -990,6 +1008,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                 <th style={th}>{t('irParameters')}</th>
                 <th style={th}>{t('uvEnergy')}</th>
                 <th style={th}>{t('filmThickness')}</th>
+                <th style={th}>{t('sprayViscosity')}</th>
                 <th style={th}>{t('notes')}</th>
                 <th style={{ ...th, textAlign: 'right' }}>{t('actions')}</th>
               </tr>
@@ -997,7 +1016,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
             <tbody>
               {kitProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={{ ...td, textAlign: 'center', padding: '2rem' }}>{t('noProducts')}</td>
+                  <td colSpan={10} style={{ ...td, textAlign: 'center', padding: '2rem' }}>{t('noProducts')}</td>
                 </tr>
               ) : kitProducts.map((p, index) => (
                 <tr key={p.id}>
@@ -1008,6 +1027,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                   <td style={td}>{p.irMinutes ?? '-'} / {p.irTemperature ?? '-'}</td>
                   <td style={td}>{p.uvEnergy ?? '-'}</td>
                   <td style={td}>{p.filmThickness ?? '-'}</td>
+                  <td style={td}>{p.sprayViscosity ?? '-'}</td>
                   <td style={td}>{p.notes || '-'}</td>
                   <td style={{ ...td, textAlign: 'right' }}>
                     <button

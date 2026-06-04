@@ -15,29 +15,35 @@ const processParameterSchema = z.preprocess(
   z.string().trim().max(64).nullable().optional(),
 )
 
+const optionalTextSchema = (max: number) => z.preprocess(
+  value => (value === undefined || value === null ? value : String(value)),
+  z.string().trim().max(max).nullable().optional(),
+)
+
 const kitSchema = z.object({
   code: z.string().trim().min(1).max(32).optional(),
   name: z.string().trim().min(1).max(160),
-  description: z.string().trim().max(2000).optional().default(''),
+  description: optionalTextSchema(2000),
   materials: z.array(z.string()).optional().default([]),
   performanceStandards: z.array(z.string()).optional().default([]),
-  otherNote: z.string().trim().max(500).nullable().optional(),
-  processFlowNote: z.string().trim().max(2000).nullable().optional(),
+  otherNote: optionalTextSchema(500),
+  processFlowNote: optionalTextSchema(2000),
   status: z.enum(['DRAFT', 'ACTIVE', 'ARCHIVED']).optional().default('DRAFT'),
   products: z.array(z.object({
     productId: z.string().trim().min(1),
     sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
-    quantityRatio: z.string().trim().max(64).optional().default(''),
-    usageMethod: z.string().trim().max(2000).optional().default(''),
+    quantityRatio: optionalTextSchema(64),
+    usageMethod: optionalTextSchema(2000),
     hardenerProductId: z.string().trim().min(1).nullable().optional(),
-    hardenerRatio: z.string().trim().max(64).nullable().optional(),
+    hardenerRatio: optionalTextSchema(64),
     thinnerProductId: z.string().trim().min(1).nullable().optional(),
-    thinnerRatio: z.string().trim().max(64).nullable().optional(),
+    thinnerRatio: optionalTextSchema(64),
     irMinutes: processParameterSchema,
     irTemperature: processParameterSchema,
     uvEnergy: processParameterSchema,
     filmThickness: processParameterSchema,
-    notes: z.string().trim().max(2000).optional().default(''),
+    sprayViscosity: processParameterSchema,
+    notes: optionalTextSchema(2000),
   })).max(100).optional().default([]),
 })
 
@@ -79,6 +85,7 @@ async function resolveProductRows(products: z.infer<typeof kitSchema>['products'
     irTemperature: product.irTemperature || null,
     uvEnergy: product.uvEnergy || null,
     filmThickness: product.filmThickness || null,
+    sprayViscosity: product.sprayViscosity || null,
     notes: product.notes || null,
   }))
 }
