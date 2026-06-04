@@ -43,6 +43,8 @@ const items = await prisma.featureRequest.findMany({
       { title: { contains: '移除调色配方待选物料的参考配方下拉筛选' } },
       { title: { contains: '生产单详情"本次实投"数据无法保存' } },
       { title: { contains: 'CosmoCoat 工厂产品黏度字段改为手动输入' } },
+      { title: { contains: '财务报表移除货币符号' } },
+      { pageUrl: { contains: '/admin/financial/cmpuo63sq001a3iw5bwz5xlg4/reports' } },
     ],
   },
 })

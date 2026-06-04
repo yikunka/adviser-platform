@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Download, FileBarChart, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import type { FinancialReportsBundle, AccountingEquationCheck } from '@/lib/financial/reports'
-import { formatCurrency } from '@/lib/financial/utils'
+import { formatReportAmount } from '@/lib/financial/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -30,7 +30,7 @@ function currentPeriod() {
 }
 
 function money(value: number) {
-  return formatCurrency(value)
+  return formatReportAmount(value)
 }
 
 function exportCsv(filename: string, headers: string[], rows: (string | number)[][]) {
@@ -263,7 +263,7 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
             </p>
           </div>
           <Badge variant="outline" className="border-[#2A2418] text-[#C9A96E]">
-            HKFRS · HKD
+            HKFRS
           </Badge>
         </div>
       </div>

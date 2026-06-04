@@ -30,6 +30,15 @@ export function formatCurrency(value: number | Prisma.Decimal | string | null | 
   }).format(Number.isFinite(numeric) ? numeric : 0)
 }
 
+/** HKFRS report preview/export amounts — no currency code or symbol. */
+export function formatReportAmount(value: number | Prisma.Decimal | string | null | undefined) {
+  const numeric = Number(value ?? 0)
+  return new Intl.NumberFormat('en-HK', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number.isFinite(numeric) ? numeric : 0)
+}
+
 export function periodFromDate(date: Date) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
 }
