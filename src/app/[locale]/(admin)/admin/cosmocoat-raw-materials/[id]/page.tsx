@@ -416,7 +416,7 @@ export default function AdminCosmoCoatRawMaterialDetailPage() {
             <Field label="生产号">
               <input required value={form.productionCode} onChange={e => patch('productionCode', e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle} />
             </Field>
-            <Field label="华兴号">
+            <Field label="CAS">
               <input value={form.huaxingCode} onChange={e => patch('huaxingCode', e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle} />
             </Field>
             <Field label="名称" className="sm:col-span-2">

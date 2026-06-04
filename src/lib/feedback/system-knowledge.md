@@ -213,7 +213,7 @@ Hierarchical category tree (up to 3 levels) for the website catalog.
 
 ### Raw Materials (`/admin/cosmocoat-raw-materials`)
 Purchasing and sourcing registry.
-- Fields: material code, production code, attribute code, category, name
+- Fields: material code, production code, attribute code, category, name; detail page basic info labels the CAS field (stored as `huaxingCode`)
 - Dual supplier support: primary and secondary (name, package size kg, price/kg, tax flag, freight flag, notes)
 - Changing a raw material's primary price/kg (including via bulk import) automatically refreshes all referencing recipe and semifinished costs; no manual batch refresh is required
 - Attach and download TDS (Technical Data Sheet) and MSDS (Material Safety Data Sheet) files
