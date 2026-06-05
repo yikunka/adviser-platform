@@ -2,7 +2,7 @@
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Plus, Save, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -21,13 +21,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
-
-type Account = {
-  id: string
-  code: string
-  name: string
-  type: string
-}
+import { AccountCombobox } from '@/components/admin/financial/AccountCombobox'
 
 type ScopeCompany = {
   id: string
@@ -82,12 +76,6 @@ function selectedCompanyLabel(companies: ScopeCompany[], id: string) {
   return `${company.companyCode ? `${company.companyCode} - ` : ''}${company.nameEn}`
 }
 
-function selectedAccountLabel(accounts: Account[], id: string) {
-  const account = accounts.find(row => row.id === id)
-  if (!account) return ''
-  return `${account.code} - ${account.name}`
-}
-
 function todayYmd() {
   return new Date().toISOString().slice(0, 10)
 }
@@ -109,18 +97,22 @@ function resetFormForNextEntry(
 }
 
 export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, onSaved, onContinued }: Props) {
-  const [accounts, setAccounts] = useState<Account[]>([])
+  const lastSavedEntryDateRef = useRef<string | null>(null)
   const [companies, setCompanies] = useState<ScopeCompany[]>([])
   const [entryDate, setEntryDate] = useState(todayYmd())
   const [companyId, setCompanyId] = useState('NONE')
   const [description, setDescription] = useState('')
   const [lines, setLines] = useState<FormLine[]>([blankLine(), blankLine()])
   const [saving, setSaving] = useState(false)
-  const [loadingAccounts, setLoadingAccounts] = useState(false)
+  const [loadingScope, setLoadingScope] = useState(false)
 
   useEffect(() => {
     if (!open) return
-    setEntryDate((entry?.entryDate ?? entry?.date ?? todayYmd()).slice(0, 10))
+    if (entry) {
+      setEntryDate((entry.entryDate ?? entry.date).slice(0, 10))
+    } else {
+      setEntryDate(lastSavedEntryDateRef.current ?? todayYmd())
+    }
     setCompanyId(entry?.companyId ?? fixedCompanyId ?? 'NONE')
     setDescription(entry?.description ?? '')
     setLines(entry?.lines?.length
@@ -134,39 +126,25 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
   }, [entry, fixedCompanyId, open])
 
   useEffect(() => {
-    if (!open) return
-    const accountCompanyId = fixedCompanyId ?? (companyId === 'NONE' ? '' : companyId)
-    setLoadingAccounts(true)
-    Promise.all([
-      accountCompanyId
-        ? fetch(`/api/admin/financial/accounts?companyId=${accountCompanyId}`).then(async res => {
-            const data = await res.json()
-            if (!res.ok) throw new Error(data.error || '载入会计科目失败。')
-            return data.accounts || []
-          })
-        : Promise.resolve([]),
-      fixedCompanyId
-        ? Promise.resolve([])
-        : fetch('/api/admin/financial/scope').then(async res => {
-            const data = await res.json()
-            if (!res.ok) throw new Error(data.error || '载入客户公司失败。')
-            return data.companies || []
-          }),
-    ])
-      .then(([accountRows, companyRows]) => {
-        setAccounts(accountRows)
-        if (!fixedCompanyId) setCompanies(companyRows)
+    if (!open || fixedCompanyId) return
+    setLoadingScope(true)
+    fetch('/api/admin/financial/scope')
+      .then(async res => {
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || '载入客户公司失败。')
+        return data.companies || []
       })
-      .catch(err => toast.error(err instanceof Error ? err.message : '载入会计科目失败。'))
-      .finally(() => setLoadingAccounts(false))
-  }, [companyId, fixedCompanyId, open])
+      .then(companyRows => setCompanies(companyRows))
+      .catch(err => toast.error(err instanceof Error ? err.message : '载入客户公司失败。'))
+      .finally(() => setLoadingScope(false))
+  }, [fixedCompanyId, open])
 
   useEffect(() => {
     if (!open || fixedCompanyId) return
-    if (!entry && loadingAccounts) return
+    if (!entry && loadingScope) return
     if (companyId !== 'NONE' || companies.length !== 1) return
     setCompanyId(companies[0]!.id)
-  }, [companies, companyId, entry, fixedCompanyId, loadingAccounts, open])
+  }, [companies, companyId, entry, fixedCompanyId, loadingScope, open])
 
   const totals = useMemo(() => {
     const debit = lines.reduce((sum, line) => sum + numeric(line.debit), 0)
@@ -230,6 +208,8 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
         const data = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(data.toast || data.error || '保存日记账失败。')
 
+        lastSavedEntryDateRef.current = entryDate
+
         toast.success(
           data.toast ||
             (options?.continue ? '日记账已保存，可继续录入下一张。' : entry ? '日记账已更新。' : '日记账已创建。'),
@@ -288,7 +268,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
         <DialogHeader>
           <DialogTitle className="text-[#FFF7E6]">{entry ? '编辑日记账' : '新增日记账'}</DialogTitle>
           <DialogDescription className="text-[#B8AD98]">
-            保存后状态为待过账，使用审核并过账生成总账记录。按 F1 可保存当前凭证并清空表单，继续录入下一张。
+            保存后状态为待过账，使用审核并过账生成总账记录。按 F1 可保存当前凭证并清空表单继续录入下一张，日期会保留为上一条分录日期。科目列支持编码或名称模糊搜索。
           </DialogDescription>
         </DialogHeader>
 
@@ -323,7 +303,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                 <Label className={labelClassName}>客户公司</Label>
                 <Select value={companyId} onValueChange={value => setCompanyId(value ?? 'NONE')}>
                   <SelectTrigger className={`w-full ${fieldClassName}`}>
-                    <SelectValue placeholder={loadingAccounts ? '载入中...' : '选择公司'}>
+                    <SelectValue placeholder={loadingScope ? '载入中...' : '选择公司'}>
                       {companyId !== 'NONE' ? selectedCompanyLabel(companies, companyId) : undefined}
                     </SelectValue>
                   </SelectTrigger>
@@ -404,21 +384,13 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                       />
                     </TableCell>
                     <TableCell>
-                      <Select value={line.accountId} onValueChange={value => updateLine(index, { accountId: value ?? 'NONE' })}>
-                        <SelectTrigger className={`w-full ${fieldClassName}`}>
-                          <SelectValue placeholder={loadingAccounts ? '载入中...' : '科目'}>
-                            {line.accountId !== 'NONE' ? selectedAccountLabel(accounts, line.accountId) : undefined}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent className={selectContentClassName}>
-                          <SelectItem value="NONE">选择科目</SelectItem>
-                          {accounts.map(account => (
-                            <SelectItem key={account.id} value={account.id}>
-                              {account.code} - {account.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <AccountCombobox
+                        value={line.accountId === 'NONE' ? '' : line.accountId}
+                        companyId={fixedCompanyId ?? (companyId === 'NONE' ? '' : companyId)}
+                        onChange={accountId => updateLine(index, { accountId: accountId || 'NONE' })}
+                        inputClassName={fieldClassName}
+                        disabled={!hasCompany}
+                      />
                     </TableCell>
                     <TableCell>
                       <Input

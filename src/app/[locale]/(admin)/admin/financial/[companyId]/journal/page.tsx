@@ -3,7 +3,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { type ChangeEvent, useCallback, useEffect, useRef, useState } from 'react'
-import { Ban, Eye, Pencil, Trash2, Plus, CheckCircle, Upload } from 'lucide-react'
+import { Ban, Eye, Pencil, Trash2, Plus, CheckCircle, Upload, CheckSquare } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -62,6 +62,8 @@ export default function AdminFinancialJournalPage() {
   const [viewOpen, setViewOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null)
   const [viewingEntry, setViewingEntry] = useState<JournalEntry | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [batchPosting, setBatchPosting] = useState(false)
   const pageSize = 10
 
   const fetchEntries = useCallback(async () => {
@@ -84,6 +86,11 @@ export default function AdminFinancialJournalPage() {
   useEffect(() => {
     fetchEntries()
   }, [fetchEntries])
+
+  useEffect(() => {
+    setSelectedIds(new Set())
+    setPage(1)
+  }, [filterPeriod, filterStatus, search, company.id])
 
   function openCreateForm() {
     setEditingEntry(null)
@@ -113,6 +120,54 @@ export default function AdminFinancialJournalPage() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '日记账过账失败。')
     }
+  }
+
+  async function batchPostEntries() {
+    const draftIds = [...selectedIds].filter(id => {
+      const entry = entries.find(row => row.id === id)
+      return entry?.status === 'DRAFT'
+    })
+    if (draftIds.length === 0) {
+      toast.error('请至少选择一条待过账日记账。')
+      return
+    }
+    if (
+      !confirm(
+        `确定批量过账 ${draftIds.length} 条日记账？过账后会生成总账记录，不能撤销。`,
+      )
+    )
+      return
+
+    setBatchPosting(true)
+    try {
+      const res = await fetch('/api/admin/financial/journal-entries/batch-post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: draftIds }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.toast || data.error || '批量过账失败。')
+      if (data.errors?.length) {
+        toast.warning(data.toast || `已成功过账 ${data.posted?.length ?? 0} 条，部分失败。`)
+      } else {
+        toast.success(data.toast || `已成功过账 ${data.posted?.length ?? draftIds.length} 条日记账。`)
+      }
+      setSelectedIds(new Set())
+      await fetchEntries()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '批量过账失败。')
+    } finally {
+      setBatchPosting(false)
+    }
+  }
+
+  function toggleSelectEntry(id: string) {
+    setSelectedIds(current => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }
 
   async function cancelEntry(entry: JournalEntry) {
@@ -192,6 +247,25 @@ export default function AdminFinancialJournalPage() {
 
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize)
   const totalPages = Math.ceil(filtered.length / pageSize)
+  const draftOnPage = paginated.filter(entry => entry.status === 'DRAFT')
+  const allDraftOnPageSelected =
+    draftOnPage.length > 0 && draftOnPage.every(entry => selectedIds.has(entry.id))
+  const selectedDraftCount = [...selectedIds].filter(id => {
+    const entry = entries.find(row => row.id === id)
+    return entry?.status === 'DRAFT'
+  }).length
+
+  function toggleSelectAllDraftOnPage() {
+    setSelectedIds(current => {
+      const next = new Set(current)
+      if (allDraftOnPageSelected) {
+        draftOnPage.forEach(entry => next.delete(entry.id))
+      } else {
+        draftOnPage.forEach(entry => next.add(entry.id))
+      }
+      return next
+    })
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -224,6 +298,17 @@ export default function AdminFinancialJournalPage() {
             >
               <Upload size={15} className="mr-2" /> {importing ? '导入中...' : '导入 Excel'}
             </Button>
+            {selectedDraftCount > 0 ? (
+              <Button
+                size="sm"
+                onClick={() => void batchPostEntries()}
+                disabled={batchPosting}
+                style={{ background: '#10b981', color: '#fff' }}
+              >
+                <CheckSquare size={15} className="mr-2" />
+                {batchPosting ? '过账中...' : `批量过账 (${selectedDraftCount})`}
+              </Button>
+            ) : null}
             <Button size="sm" onClick={openCreateForm} style={{ background: '#C9A96E', color: '#0A0805' }}>
               <Plus size={15} className="mr-2" /> 新增日记账
             </Button>
@@ -303,6 +388,16 @@ export default function AdminFinancialJournalPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[40px]">
+                      <input
+                        type="checkbox"
+                        checked={allDraftOnPageSelected}
+                        onChange={toggleSelectAllDraftOnPage}
+                        disabled={draftOnPage.length === 0}
+                        aria-label="全选本页待过账"
+                        className="cursor-pointer"
+                      />
+                    </TableHead>
                     <TableHead>凭证号</TableHead>
                     <TableHead>日期</TableHead>
                     <TableHead>摘要</TableHead>
@@ -314,6 +409,17 @@ export default function AdminFinancialJournalPage() {
                 <TableBody>
                   {paginated.map(entry => (
                     <TableRow key={entry.id}>
+                      <TableCell>
+                        {entry.status === 'DRAFT' ? (
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(entry.id)}
+                            onChange={() => toggleSelectEntry(entry.id)}
+                            aria-label={`选择 ${entry.voucherNo}`}
+                            className="cursor-pointer"
+                          />
+                        ) : null}
+                      </TableCell>
                       <TableCell className="font-mono">{entry.voucherNo}</TableCell>
                       <TableCell>{new Date(entry.date).toLocaleDateString('zh-HK')}</TableCell>
                       <TableCell className="max-w-[240px] truncate">{entry.description}</TableCell>
