@@ -9,6 +9,7 @@ import {
   kitInclude,
   serializeProcessKit,
 } from '@/lib/cosmocoat/process-kits'
+import { normalizePerformanceStandards } from '@/lib/cosmocoat/process-kit-standards'
 
 const processParameterSchema = z.preprocess(
   value => (value === undefined || value === null ? value : String(value)),
@@ -36,6 +37,7 @@ const kitSchema = z.object({
   materials: z.array(z.string()).optional().default([]),
   performanceStandards: z.array(z.string()).optional().default([]),
   otherNote: optionalTextSchema(500),
+  processDescription: optionalTextSchema(2000),
   processFlowNote: optionalTextSchema(2000),
   status: z.enum(['DRAFT', 'ACTIVE', 'ARCHIVED']).optional().default('DRAFT'),
   products: z.array(z.object({
@@ -173,8 +175,9 @@ export async function POST(req: NextRequest) {
         name: parsed.data.name,
         description: parsed.data.description || null,
         materials: parsed.data.materials ?? [],
-        performanceStandards: parsed.data.performanceStandards ?? [],
+        performanceStandards: normalizePerformanceStandards(parsed.data.performanceStandards ?? []),
         otherNote: parsed.data.otherNote || null,
+        processDescription: parsed.data.processDescription || null,
         processFlowNote: parsed.data.processFlowNote || null,
         status: parsed.data.status,
         createdBy: session!.user.id,

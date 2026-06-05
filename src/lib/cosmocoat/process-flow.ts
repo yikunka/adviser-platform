@@ -25,10 +25,15 @@ function formatWithUnit(value: number | string | null | undefined, unit: string,
   return unitPattern.test(formatted) ? formatted : `${formatted} ${unit}`
 }
 
-export function buildProcessFlowDocument(products: ProcessFlowProduct[], globalNote?: string | null) {
-  if (products.length === 0 && !globalNote?.trim()) return ''
+export function buildProcessFlowDocument(
+  products: ProcessFlowProduct[],
+  globalNote?: string | null,
+  processDescription?: string | null,
+) {
+  if (products.length === 0 && !globalNote?.trim() && !processDescription?.trim()) return ''
 
   const lines = ['完整工艺流程']
+  if (processDescription?.trim()) lines.push(`工艺：${processDescription.trim()}`)
 
   products.forEach((product, index) => {
     const irMinutes = formatWithUnit(product.irMinutes, '分钟', /(分钟|分|min|m\b)/i)
@@ -43,7 +48,7 @@ export function buildProcessFlowDocument(products: ProcessFlowProduct[], globalN
       if (product.hardenerRatio) lines.push(`   固化剂与主产品比例：${product.hardenerRatio}`)
     }
     if (product.thinnerProductName) {
-      lines.push(`   Durant稀释剂：${product.thinnerProductName}`)
+      lines.push(`   Diluent稀释剂：${product.thinnerProductName}`)
       if (product.thinnerRatio) lines.push(`   稀释剂与主产品比例：${product.thinnerRatio}`)
     }
     if (irMinutes || irTemperature) {

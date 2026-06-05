@@ -11,6 +11,7 @@ import { ArrowLeft, Pencil, Plus, Save, Trash2 } from 'lucide-react'
 import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
 import { cn } from '@/lib/utils'
 import { buildProcessFlowDocument } from '@/lib/cosmocoat/process-flow'
+import { CHEMICAL_RESISTANCE_STANDARD_ID, normalizePerformanceStandards } from '@/lib/cosmocoat/process-kit-standards'
 
 type FactoryProductOption = {
   id: string
@@ -60,6 +61,7 @@ type LoadedKit = {
   materials?: string[]
   performanceStandards?: string[]
   otherNote?: string | null
+  processDescription?: string | null
   processFlowNote?: string | null
   status: KitStatus
   products?: KitProduct[]
@@ -125,16 +127,9 @@ const PERFORMANCE_STANDARD_GROUPS = [
     ],
   },
   {
-    id: 'alcohol',
+    id: 'chemicalResistance',
     options: [
-      { id: 'ALCOHOL_99_100', label: '99%100' },
-      { id: 'ALCOHOL_75_100', label: '75%100' },
-    ],
-  },
-  {
-    id: 'mek',
-    options: [
-      { id: 'MEK_100', label: '耐MEK 100' },
+      { id: CHEMICAL_RESISTANCE_STANDARD_ID, label: '耐化性' },
     ],
   },
   {
@@ -218,7 +213,7 @@ function matchesAccessoryProduct(product: FactoryProductOption, type: 'hardener'
     return product.productCode.toUpperCase().startsWith('HD') || /hardener|固化剂|固化劑/.test(text)
   }
 
-  return /durant|thinner|diluent|稀释剂|稀釋劑|稀释|稀釋/.test(text)
+  return /diluent|thinner|diluent|稀释剂|稀釋劑|稀释|稀釋/.test(text)
 }
 
 const TEST_TYPES = [
@@ -263,6 +258,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([])
   const [selectedPerformanceStandards, setSelectedPerformanceStandards] = useState<string[]>([])
   const [otherNote, setOtherNote] = useState('')
+  const [processDescription, setProcessDescription] = useState('')
   const [processFlowNote, setProcessFlowNote] = useState('')
   const [status, setStatus] = useState<KitStatus>('DRAFT')
   const [kitProducts, setKitProducts] = useState<KitProduct[]>([])
@@ -316,8 +312,8 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     [products],
   )
   const processFlowDocument = useMemo(
-    () => buildProcessFlowDocument(kitProducts, processFlowNote),
-    [kitProducts, processFlowNote],
+    () => buildProcessFlowDocument(kitProducts, processFlowNote, processDescription),
+    [kitProducts, processFlowNote, processDescription],
   )
 
   function toggleMaterial(materialId: string) {
@@ -396,8 +392,9 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       setSelectedMaterials(
         loadedOtherNote ? [...loadedMaterials, 'OTHER'] : loadedMaterials,
       )
-      setSelectedPerformanceStandards(kit.performanceStandards ?? [])
+      setSelectedPerformanceStandards(normalizePerformanceStandards(kit.performanceStandards ?? []))
       setOtherNote(loadedOtherNote)
+      setProcessDescription(kit.processDescription ?? '')
       setProcessFlowNote(kit.processFlowNote ?? '')
       setStatus(kit.status)
       setKitProducts(kit.products ?? [])
@@ -439,8 +436,9 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       name: name.trim(),
       description: description.trim() || null,
       materials: selectedMaterials.filter(id => id !== 'OTHER'),
-      performanceStandards: selectedPerformanceStandards,
+      performanceStandards: normalizePerformanceStandards(selectedPerformanceStandards),
       otherNote: hasOther && otherNote.trim() ? otherNote.trim() : null,
+      processDescription: processDescription.trim() || null,
       processFlowNote: processFlowNote.trim() || null,
       ...(isNew
         ? {
@@ -1236,6 +1234,17 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
         </div>
 
         <div className="p-4 border-t space-y-4" style={{ borderColor: '#2A2418' }}>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('addProcess')}</label>
+            <input
+              type="text"
+              value={processDescription}
+              onChange={e => setProcessDescription(e.target.value)}
+              className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+              style={inputStyle()}
+              placeholder={t('addProcessPlaceholder')}
+            />
+          </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('globalProcessNote')}</label>
             <textarea

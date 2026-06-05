@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
 import { buildProcessFlowDocument } from '@/lib/cosmocoat/process-flow'
+import { normalizePerformanceStandards } from '@/lib/cosmocoat/process-kit-standards'
 
 export const kitInclude = {
   products: {
@@ -25,8 +26,9 @@ export function serializeProcessKit(kit: ProcessKitWithRelations) {
     name: kit.name,
     description: kit.description,
     materials: kit.materials || [],
-    performanceStandards: kit.performanceStandards || [],
+    performanceStandards: normalizePerformanceStandards(kit.performanceStandards || []),
     otherNote: kit.otherNote,
+    processDescription: kit.processDescription,
     processFlowNote: kit.processFlowNote,
     status: kit.status,
     createdBy: kit.createdBy,
@@ -37,21 +39,25 @@ export function serializeProcessKit(kit: ProcessKitWithRelations) {
     updatedAt: kit.updatedAt.toISOString(),
     productCount: kit.products.length,
     testCount: kit.tests.length,
-    processFlowDocument: buildProcessFlowDocument(kit.products.map(p => ({
-      productName: p.productName,
-      quantityRatio: p.quantityRatio,
-      usageMethod: p.usageMethod,
-      hardenerProductName: p.hardenerProductName,
-      hardenerRatio: p.hardenerRatio,
-      thinnerProductName: p.thinnerProductName,
-      thinnerRatio: p.thinnerRatio,
-      notes: p.notes,
-      irMinutes: p.irMinutes,
-      irTemperature: p.irTemperature,
-      uvEnergy: p.uvEnergy,
-      filmThickness: p.filmThickness,
-      sprayViscosity: p.sprayViscosity,
-    })), kit.processFlowNote),
+    processFlowDocument: buildProcessFlowDocument(
+      kit.products.map(p => ({
+        productName: p.productName,
+        quantityRatio: p.quantityRatio,
+        usageMethod: p.usageMethod,
+        hardenerProductName: p.hardenerProductName,
+        hardenerRatio: p.hardenerRatio,
+        thinnerProductName: p.thinnerProductName,
+        thinnerRatio: p.thinnerRatio,
+        notes: p.notes,
+        irMinutes: p.irMinutes,
+        irTemperature: p.irTemperature,
+        uvEnergy: p.uvEnergy,
+        filmThickness: p.filmThickness,
+        sprayViscosity: p.sprayViscosity,
+      })),
+      kit.processFlowNote,
+      kit.processDescription,
+    ),
     products: kit.products.map(p => ({
       id: p.id,
       kitId: p.kitId,

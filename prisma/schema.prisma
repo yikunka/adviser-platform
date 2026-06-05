@@ -1764,6 +1764,7 @@ model CosProcessKit {
   materials     String[]
   performanceStandards String[] @default([])
   otherNote     String?
+  processDescription String?
   processFlowNote String?
   status        ProcessKitStatus @default(DRAFT)
   createdBy     String?
