@@ -9,6 +9,7 @@ import { RecipeItemValidationError, validateAndEnrichRecipeItems } from '@/lib/c
 import { recipeItemSchema } from '@/lib/cosmocoat/recipe-api-schemas'
 import { refreshAllFormulaIsUsedCache } from '@/lib/cosmocoat/recipe-usage'
 import { serializeFullRecipe } from '@/lib/cosmocoat/recipe-serializer'
+import { mergeRecipeViscosityPatch, recipeViscosityFieldsSchema } from '@/lib/cosmocoat/recipe-viscosity'
 
 const itemSchema = recipeItemSchema
 
@@ -17,6 +18,7 @@ const patchSchema = z.object({
   code: z.string().trim().min(1).max(32).optional(),
   name: z.string().trim().min(1).max(160).optional(),
   batchQuantity: z.coerce.number().min(0.001).optional(),
+  ...recipeViscosityFieldsSchema,
   notes: z.string().trim().max(1000).optional(),
   productionSpeedRequirements: z.string().trim().max(2000).optional(),
   productionTimeRequirements: z.string().trim().max(2000).optional(),
@@ -114,6 +116,9 @@ export async function PATCH(
         code: parsed.data.code,
         name: parsed.data.name,
         batchQuantity: parsed.data.batchQuantity,
+        ...(parsed.data.viscosity !== undefined || parsed.data.viscosityUnit !== undefined
+          ? mergeRecipeViscosityPatch(current, parsed.data)
+          : {}),
         notes: parsed.data.notes,
         productionSpeedRequirements: parsed.data.productionSpeedRequirements,
         productionTimeRequirements: parsed.data.productionTimeRequirements,

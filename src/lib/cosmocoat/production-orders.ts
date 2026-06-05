@@ -1,14 +1,28 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
-import { recipeToOrderRequirements } from '@/lib/cosmocoat/recipes'
+import {
+  buildProductionOrderItems,
+  productionOrderItemKey,
+  recipeItemsForProduction,
+  recipeToOrderRequirements,
+} from '@/lib/cosmocoat/recipes'
 
 export type { ProductionOrderItemDraft } from '@/lib/cosmocoat/recipes'
 export {
   buildProductionOrderItems,
   computeRequiredWeight,
   formatWeight,
+  productionOrderItemKey,
   recipeItemsForProduction,
 } from '@/lib/cosmocoat/recipes'
+
+const recipeItemsInclude = {
+  orderBy: [{ sortOrder: 'asc' as const }, { createdAt: 'asc' as const }],
+  include: {
+    rawMaterial: true,
+    productSemifinished: true,
+  },
+}
 
 export const orderInclude = {
   factoryProduct: {
@@ -33,6 +47,9 @@ export const orderInclude = {
       rawMaterial: {
         select: { id: true, productionCode: true, name: true, attributeCode: true },
       },
+      productSemifinished: {
+        select: { id: true, code: true, name: true },
+      },
     },
   },
 } satisfies Prisma.CosTableProductionOrderInclude
@@ -50,10 +67,7 @@ export async function loadRecipeForProduction(recipeId: string) {
   return prisma.cosTableRecipe.findUnique({
     where: { id: recipeId },
     include: {
-      items: {
-        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-        include: { rawMaterial: true },
-      },
+      items: recipeItemsInclude,
     },
   })
 }
@@ -73,10 +87,7 @@ export async function resolveProductCurrentRecipe(factoryProductId: string) {
           productionNotes: true,
           qcTestStandard: true,
           qcResult: true,
-          items: {
-            orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-            include: { rawMaterial: true },
-          },
+          items: recipeItemsInclude,
         },
       },
     },
@@ -113,10 +124,13 @@ function serializeOrderItem(item: {
   requiredWeight: unknown
   actualWeight: unknown
   notes: string
-  rawMaterial: { id: string; productionCode: string; name: string; attributeCode: string }
+  rawMaterial: { id: string; productionCode: string; name: string; attributeCode: string } | null
+  productSemifinished: { id: string; code: string; name: string } | null
 }) {
+  const itemType = item.productSemifinished ? 'product_semifinished' as const : 'raw_material' as const
   return {
     id: item.id,
+    itemType,
     sortOrder: item.sortOrder,
     productionCode: item.productionCode,
     materialName: item.materialName,
@@ -125,6 +139,7 @@ function serializeOrderItem(item: {
     actualWeight: item.actualWeight != null ? Number(item.actualWeight) : null,
     notes: item.notes,
     rawMaterial: item.rawMaterial,
+    productSemifinished: item.productSemifinished,
   }
 }
 
@@ -178,12 +193,121 @@ export function serializeProductionOrder(order: {
   }
 }
 
+function orderItemDraftToCreateData(
+  orderId: string,
+  item: ReturnType<typeof buildProductionOrderItems>[number],
+  actualWeight: number | null,
+) {
+  return {
+    orderId,
+    rawMaterialId: item.rawMaterialId ?? null,
+    productSemifinishedId: item.productSemifinishedId ?? null,
+    sortOrder: item.sortOrder,
+    productionCode: item.productionCode,
+    materialName: item.materialName,
+    percentage: item.percentage,
+    requiredWeight: item.requiredWeight,
+    actualWeight,
+    notes: item.notes,
+  }
+}
+
+/** Rebuilds order line items from the linked recipe when rows are missing (e.g. legacy orders). */
+export async function syncProductionOrderItemsFromRecipe(
+  orderId: string,
+  recipeId: string,
+  totalWeight: number,
+  currentItems: Array<{
+    rawMaterialId: string | null
+    productSemifinishedId: string | null
+    actualWeight: unknown
+    notes: string
+  }>,
+) {
+  const recipe = await loadRecipeForProduction(recipeId)
+  if (!recipe) return false
+
+  const expectedDrafts = buildProductionOrderItems(
+    recipeItemsForProduction(recipe.items),
+    totalWeight,
+  )
+  if (expectedDrafts.length === 0) return false
+
+  const currentKeys = new Set(
+    currentItems.map(item => productionOrderItemKey({
+      itemType: item.productSemifinishedId ? 'product_semifinished' : 'raw_material',
+      rawMaterialId: item.rawMaterialId ?? undefined,
+      productSemifinishedId: item.productSemifinishedId ?? undefined,
+    })),
+  )
+  const expectedKeys = new Set(expectedDrafts.map(productionOrderItemKey))
+  const needsSync = expectedKeys.size !== currentKeys.size
+    || [...expectedKeys].some(key => !currentKeys.has(key))
+
+  if (!needsSync) return false
+
+  const actualByKey = new Map<string, number | null>()
+  for (const item of currentItems) {
+    actualByKey.set(
+      productionOrderItemKey({
+        itemType: item.productSemifinishedId ? 'product_semifinished' : 'raw_material',
+        rawMaterialId: item.rawMaterialId ?? undefined,
+        productSemifinishedId: item.productSemifinishedId ?? undefined,
+      }),
+      item.actualWeight != null ? Number(item.actualWeight) : null,
+    )
+  }
+
+  await prisma.cosTableProductionOrderItem.deleteMany({ where: { orderId } })
+  await prisma.cosTableProductionOrderItem.createMany({
+    data: expectedDrafts.map(item => orderItemDraftToCreateData(
+      orderId,
+      item,
+      actualByKey.get(productionOrderItemKey(item)) ?? null,
+    )),
+  })
+
+  return true
+}
+
 export async function getProductionOrderById(id: string) {
   const order = await prisma.cosTableProductionOrder.findUnique({
     where: { id },
     include: orderInclude,
   })
   if (!order) return null
-  return serializeProductionOrder(order as Parameters<typeof serializeProductionOrder>[0])
+
+  await syncProductionOrderItemsFromRecipe(
+    order.id,
+    order.recipeId,
+    Number(order.totalWeight),
+    order.items,
+  )
+
+  const synced = await prisma.cosTableProductionOrder.findUnique({
+    where: { id },
+    include: orderInclude,
+  })
+  if (!synced) return null
+  return serializeProductionOrder(synced as Parameters<typeof serializeProductionOrder>[0])
 }
 
+export function createOrderItemRows(
+  itemDrafts: ReturnType<typeof buildProductionOrderItems>,
+  inputByKey: Map<string, { actualWeight?: number | null; notes?: string }>,
+) {
+  return itemDrafts.map(item => {
+    const input = inputByKey.get(productionOrderItemKey(item))
+    return {
+      rawMaterialId: item.rawMaterialId ?? null,
+      productSemifinishedId: item.productSemifinishedId ?? null,
+      sortOrder: item.sortOrder,
+      productionCode: item.productionCode,
+      materialName: item.materialName,
+      percentage: item.percentage,
+      requiredWeight: item.requiredWeight,
+      actualWeight: input?.actualWeight ?? item.actualWeight,
+      notes: input?.notes ?? item.notes,
+    }
+  })
+}

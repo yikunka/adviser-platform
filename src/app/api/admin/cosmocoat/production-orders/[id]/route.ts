@@ -8,6 +8,7 @@ import {
   buildProductionOrderItems,
   getProductionOrderById,
   loadRecipeForProduction,
+  productionOrderItemKey,
   recipeItemsForProduction,
   serializeProductionOrder,
 } from '@/lib/cosmocoat/production-orders'
@@ -87,10 +88,14 @@ export async function PATCH(
       const recipe = await loadRecipeForProduction(current.recipeId)
       if (!recipe) return NextResponse.json({ error: '关联配方不存在' }, { status: 404 })
 
-      const actualByMaterial = new Map<string, number | null>()
+      const actualByKey = new Map<string, number | null>()
       for (const item of current.items) {
-        actualByMaterial.set(
-          item.rawMaterialId,
+        actualByKey.set(
+          productionOrderItemKey({
+            itemType: item.productSemifinishedId ? 'product_semifinished' : 'raw_material',
+            rawMaterialId: item.rawMaterialId ?? undefined,
+            productSemifinishedId: item.productSemifinishedId ?? undefined,
+          }),
           item.actualWeight != null ? Number(item.actualWeight) : null,
         )
       }
@@ -98,7 +103,15 @@ export async function PATCH(
         for (const patch of parsed.data.items) {
           if (!patch.id || patch.actualWeight === undefined) continue
           const row = current.items.find(item => item.id === patch.id)
-          if (row) actualByMaterial.set(row.rawMaterialId, patch.actualWeight)
+          if (!row) continue
+          actualByKey.set(
+            productionOrderItemKey({
+              itemType: row.productSemifinishedId ? 'product_semifinished' : 'raw_material',
+              rawMaterialId: row.rawMaterialId ?? undefined,
+              productSemifinishedId: row.productSemifinishedId ?? undefined,
+            }),
+            patch.actualWeight,
+          )
         }
       }
 
@@ -112,13 +125,14 @@ export async function PATCH(
         await prisma.cosTableProductionOrderItem.createMany({
           data: itemDrafts.map(item => ({
             orderId: id,
-            rawMaterialId: item.rawMaterialId,
+            rawMaterialId: item.rawMaterialId ?? null,
+            productSemifinishedId: item.productSemifinishedId ?? null,
             sortOrder: item.sortOrder,
             productionCode: item.productionCode,
             materialName: item.materialName,
             percentage: item.percentage,
             requiredWeight: item.requiredWeight,
-            actualWeight: actualByMaterial.get(item.rawMaterialId) ?? null,
+            actualWeight: actualByKey.get(productionOrderItemKey(item)) ?? null,
             notes: item.notes,
           })),
         })

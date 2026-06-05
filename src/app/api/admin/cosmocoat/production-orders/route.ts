@@ -5,19 +5,25 @@ import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import {
   buildProductionOrderItems,
+  createOrderItemRows,
   generateProductionOrderCode,
   getProductionOrderById,
   orderInclude,
+  productionOrderItemKey,
   recipeItemsForProduction,
   resolveProductCurrentRecipe,
   serializeProductionOrder,
 } from '@/lib/cosmocoat/production-orders'
 
 const itemInputSchema = z.object({
-  rawMaterialId: z.string().trim().min(1),
+  rawMaterialId: z.string().trim().min(1).optional(),
+  productSemifinishedId: z.string().trim().min(1).optional(),
   actualWeight: z.coerce.number().min(0).nullable().optional(),
   notes: z.string().trim().max(500).optional(),
-})
+}).refine(
+  data => Boolean(data.rawMaterialId) !== Boolean(data.productSemifinishedId),
+  { message: 'Each item must reference either a raw material or a semifinished product' },
+)
 
 const orderSchema = z.object({
   code: z.string().trim().min(1).max(32).optional(),
@@ -119,11 +125,18 @@ export async function POST(req: NextRequest) {
     )
 
     if (itemDrafts.length === 0) {
-      return NextResponse.json({ error: '当前配方没有原料明细，无法创建生产单' }, { status: 400 })
+      return NextResponse.json({ error: '当前配方没有可投料明细，无法创建生产单' }, { status: 400 })
     }
 
-    const inputByMaterial = new Map(
-      (parsed.data.items ?? []).map(item => [item.rawMaterialId, item]),
+    const inputByKey = new Map(
+      (parsed.data.items ?? []).map(item => [
+        productionOrderItemKey({
+          itemType: item.productSemifinishedId ? 'product_semifinished' : 'raw_material',
+          rawMaterialId: item.rawMaterialId,
+          productSemifinishedId: item.productSemifinishedId,
+        }),
+        item,
+      ]),
     )
 
     const order = await prisma.cosTableProductionOrder.create({
@@ -143,19 +156,7 @@ export async function POST(req: NextRequest) {
         packagingRequirements: parsed.data.packagingRequirements || product.packagingRequirements,
         status: parsed.data.status,
         items: {
-          create: itemDrafts.map(item => {
-            const input = inputByMaterial.get(item.rawMaterialId)
-            return {
-              rawMaterialId: item.rawMaterialId,
-              sortOrder: item.sortOrder,
-              productionCode: item.productionCode,
-              materialName: item.materialName,
-              percentage: item.percentage,
-              requiredWeight: item.requiredWeight,
-              actualWeight: input?.actualWeight ?? item.actualWeight,
-              notes: input?.notes ?? item.notes,
-            }
-          }),
+          create: createOrderItemRows(itemDrafts, inputByKey),
         },
       },
     })

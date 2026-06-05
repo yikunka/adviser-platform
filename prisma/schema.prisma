@@ -1346,6 +1346,8 @@ model CosTableRecipe {
   name          String
   batchQuantity Decimal  @default(100) @db.Decimal(12, 3)
   unitCost      Decimal? @db.Decimal(12, 4)
+  viscosity     String?
+  viscosityUnit String?  @map("viscosity_unit")
   notes         String   @default("")
   productionSpeedRequirements String @default("") @map("production_speed_requirements")
   productionTimeRequirements  String @default("") @map("production_time_requirements")
@@ -1418,6 +1420,7 @@ model CosTableProductSemifinished {
 
   sourceProductionOrder CosTableProductionOrder? @relation(fields: [sourceProductionOrderId], references: [id], onDelete: SetNull)
   recipeItems           CosTableRecipeItem[]
+  productionOrderItems  CosTableProductionOrderItem[]
   colorFormulaItems     CosTableColorFormulaItem[]
 
   @@index([category])
@@ -1591,23 +1594,26 @@ model CosTableProductionOrder {
 }
 
 model CosTableProductionOrderItem {
-  id             String   @id @default(cuid())
-  orderId        String
-  rawMaterialId  String
-  sortOrder      Int      @default(0)
-  productionCode String
-  materialName   String
-  percentage     Decimal  @db.Decimal(8, 4)
-  requiredWeight Decimal  @db.Decimal(12, 3)
-  actualWeight   Decimal? @db.Decimal(12, 3)
-  notes          String   @default("")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  orderId               String
+  rawMaterialId         String?
+  productSemifinishedId String?
+  sortOrder             Int      @default(0)
+  productionCode        String
+  materialName          String
+  percentage            Decimal  @db.Decimal(8, 4)
+  requiredWeight        Decimal  @db.Decimal(12, 3)
+  actualWeight          Decimal? @db.Decimal(12, 3)
+  notes                 String   @default("")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
-  order       CosTableProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  rawMaterial CosTableRawMaterial     @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  order               CosTableProductionOrder      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  rawMaterial         CosTableRawMaterial?         @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  productSemifinished CosTableProductSemifinished? @relation(fields: [productSemifinishedId], references: [id], onDelete: Restrict)
 
   @@index([orderId, sortOrder])
+  @@index([productSemifinishedId])
   @@map("cos_table_production_order_items")
 }
 

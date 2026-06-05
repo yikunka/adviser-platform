@@ -201,6 +201,8 @@ export async function serializeFullRecipe(recipeId: string) {
     batchQuantity,
     unitCost: recipe.unitCost != null ? Number(recipe.unitCost) : totals.unitCost,
     notes: recipe.notes,
+    viscosity: recipe.viscosity,
+    viscosityUnit: recipe.viscosityUnit,
     productionSpeedRequirements: recipe.productionSpeedRequirements,
     productionTimeRequirements: recipe.productionTimeRequirements,
     packagingRequirements: recipe.packagingRequirements,

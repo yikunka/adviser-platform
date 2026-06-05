@@ -10,6 +10,7 @@ import { RecipeItemValidationError, validateAndEnrichRecipeItems } from '@/lib/c
 import { recipeItemSchema } from '@/lib/cosmocoat/recipe-api-schemas'
 import { refreshAllFormulaIsUsedCache } from '@/lib/cosmocoat/recipe-usage'
 import { serializeFullRecipe } from '@/lib/cosmocoat/recipe-serializer'
+import { recipeViscosityFieldsSchema, toRecipeViscosityDbData } from '@/lib/cosmocoat/recipe-viscosity'
 
 const itemSchema = recipeItemSchema
 
@@ -18,6 +19,7 @@ const recipeSchema = z.object({
   code: z.string().trim().max(32).optional(),
   name: z.string().trim().min(1).max(160),
   batchQuantity: z.coerce.number().min(0.001).optional().default(100),
+  ...recipeViscosityFieldsSchema,
   notes: z.string().trim().max(1000).optional().default(''),
   productionSpeedRequirements: z.string().trim().max(2000).optional().default(''),
   productionTimeRequirements: z.string().trim().max(2000).optional().default(''),
@@ -159,6 +161,7 @@ export async function POST(req: NextRequest) {
         name: parsed.data.name,
         batchQuantity: parsed.data.batchQuantity,
         unitCost: totals.unitCost,
+        ...toRecipeViscosityDbData(parsed.data),
         notes: parsed.data.notes,
         productionSpeedRequirements: parsed.data.productionSpeedRequirements,
         productionTimeRequirements: parsed.data.productionTimeRequirements,

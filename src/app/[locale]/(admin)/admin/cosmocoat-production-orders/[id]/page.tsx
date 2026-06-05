@@ -6,11 +6,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, Printer, Save } from 'lucide-react'
+import { ArrowLeft, FlaskConical, Printer, Save } from 'lucide-react'
 import {
   buildProductionOrderItems,
   formatPercent,
   formatWeight,
+  productionOrderItemKey,
   recipeItemsForProduction,
   type ProductionRecipeItem,
   formatProductionRequirements,
@@ -25,7 +26,9 @@ type FactoryProductOption = FactoryProductPickerOption
 type EditableItem = {
   key: string
   id?: string
-  rawMaterialId: string
+  itemType: 'raw_material' | 'product_semifinished'
+  rawMaterialId?: string
+  productSemifinishedId?: string
   sortOrder: number
   productionCode: string
   materialName: string
@@ -164,7 +167,7 @@ function PrintView({
         <thead>
           <tr style={{ background: '#f0f0f0' }}>
             <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'center', width: '8%' }}>序号</th>
-            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '34%' }}>原材料编号</th>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '34%' }}>物料编号</th>
             <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'right', width: '14%' }}>比例</th>
             <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'right', width: '22%' }}>参考投料 ({productUnit})</th>
             <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'right', width: '22%' }}>实投 ({productUnit})</th>
@@ -301,7 +304,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       }
       const productionItems = recipeItemsForProduction(recipe.items)
       if (productionItems.length === 0) {
-        toast.error('当前配方无原料明细，无法生成投料表')
+        toast.error('当前配方无可投料明细，无法生成投料表')
       }
       setRecipeItems(productionItems)
     } catch {
@@ -337,6 +340,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       setStatus(order.status === 'completed' ? 'completed' : 'draft')
       setItems(order.items.map((item: {
         id: string
+        itemType?: 'raw_material' | 'product_semifinished'
         sortOrder: number
         productionCode: string
         materialName: string
@@ -345,10 +349,13 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
         actualWeight: number | null
         notes: string
         rawMaterial: { id: string } | null
+        productSemifinished: { id: string } | null
       }) => ({
         key: item.id,
         id: item.id,
-        rawMaterialId: item.rawMaterial?.id ?? '',
+        itemType: item.itemType ?? (item.productSemifinished ? 'product_semifinished' : 'raw_material'),
+        rawMaterialId: item.rawMaterial?.id,
+        productSemifinishedId: item.productSemifinished?.id,
         sortOrder: item.sortOrder,
         productionCode: item.productionCode,
         materialName: item.materialName,
@@ -404,18 +411,23 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       return
     }
     setItems(prev => {
-      const actualByMaterial = new Map(prev.map(item => [item.rawMaterialId, item.actualWeight]))
-      return buildProductionOrderItems(recipeItems, totalWeight).map(item => ({
-        key: item.rawMaterialId,
-        rawMaterialId: item.rawMaterialId,
-        sortOrder: item.sortOrder,
-        productionCode: item.productionCode,
-        materialName: item.materialName,
-        percentage: item.percentage,
-        requiredWeight: item.requiredWeight,
-        actualWeight: actualByMaterial.get(item.rawMaterialId) ?? null,
-        notes: item.notes,
-      }))
+      const actualByKey = new Map(prev.map(item => [item.key, item.actualWeight]))
+      return buildProductionOrderItems(recipeItems, totalWeight).map(item => {
+        const key = productionOrderItemKey(item)
+        return {
+          key,
+          itemType: item.itemType,
+          rawMaterialId: item.rawMaterialId,
+          productSemifinishedId: item.productSemifinishedId,
+          sortOrder: item.sortOrder,
+          productionCode: item.productionCode,
+          materialName: item.materialName,
+          percentage: item.percentage,
+          requiredWeight: item.requiredWeight,
+          actualWeight: actualByKey.get(key) ?? null,
+          notes: item.notes,
+        }
+      })
     })
   }, [isNew, recipeItems, totalWeight])
 
@@ -443,13 +455,15 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       return
     }
     if (isNew && items.length === 0) {
-      toast.error('当前配方无原料明细，无法创建生产单')
+      toast.error('当前配方无可投料明细，无法创建生产单')
       return
     }
 
     setSaving(true)
     const itemPayload = items.map(item => ({
-      rawMaterialId: item.rawMaterialId,
+      ...(item.itemType === 'product_semifinished'
+        ? { productSemifinishedId: item.productSemifinishedId }
+        : { rawMaterialId: item.rawMaterialId }),
       actualWeight: item.actualWeight,
       notes: item.notes,
     }))
@@ -750,14 +764,14 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
 
       <div style={{ ...card, overflow: 'hidden' }}>
         <div className="px-4 py-3 border-b" style={{ borderColor: '#2A2418' }}>
-          <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>原料投料明细</h3>
+          <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>物料投料明细</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr>
                 <th style={th}>序号</th>
-                <th style={th}>原材料编号</th>
+                <th style={th}>物料编号</th>
                 <th style={th}>比例</th>
                 <th style={th}>参考投料 ({productUnit})</th>
                 <th style={th}>本次实投 ({productUnit})</th>
@@ -767,13 +781,22 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
               {items.length === 0 ? (
                 <tr>
                   <td colSpan={5} style={{ ...td, textAlign: 'center', padding: '2rem' }}>
-                    {isNew ? '请选择有当前配方的产品' : '暂无原料明细'}
+                    {isNew ? '请选择有当前配方的产品' : '暂无物料明细'}
                   </td>
                 </tr>
               ) : items.map((item, index) => (
                 <tr key={item.key}>
                   <td style={td}>{index + 1}</td>
-                  <td style={td}>{item.productionCode}</td>
+                  <td style={td}>
+                    <span className="inline-flex items-center gap-1">
+                      {item.productionCode}
+                      {item.itemType === 'product_semifinished' && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded" style={{ background: 'rgba(201,169,110,0.15)', color: '#C9A96E' }}>
+                          <FlaskConical size={10} /> Sol.
+                        </span>
+                      )}
+                    </span>
+                  </td>
                   <td style={td}>{formatPercent(item.percentage)}</td>
                   <td style={td}>{formatWeight(item.requiredWeight)}</td>
                   <td style={td}>

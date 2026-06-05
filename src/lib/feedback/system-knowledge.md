@@ -224,7 +224,7 @@ Purchasing and sourcing registry.
 
 ### Recipes (`/admin/cosmocoat-recipes`)
 Product formulation management.
-- Fields: recipe code, name, category, batch quantity, unit cost
+- Fields: recipe code, name, category, batch quantity, unit cost, product viscosity (free-text range e.g. `9.7-9.8`, unit S or KU — in basic info above notes)
 - Line items: raw materials, factory finished products (from factory products module), component recipes (nested semifinished), or Sol semifinished inventory, with quantity, unit price, percentage
 - Material picker on new/edit recipe page: tabs for 原材料, 半成品, and 成品; finished-product tab loads from factory products list with category filter and search, same click-to-select and "添加选中" flow as raw materials
 - Unit cost is calculated by percentage: each line contributes `(quantity ÷ total quantity) × unit price`; accurate even when material quantities do not sum to 100
@@ -256,7 +256,7 @@ Manufacturing batch tracking.
 - Product list auto-excludes factory products without a current recipe; optional `?recipeId=` URL param further limits choices to products linked to that recipe
 - Recipes containing only nested sub-recipes or semifinished components (no raw-material lines) show an empty materials table instead of crashing
 - Statuses: `DRAFT` → `IN_PROGRESS` → `COMPLETED`
-- Line items: raw materials with required weight and actual weight used; saving the detail page persists "本次实投" without recreating line rows when production weight is unchanged
+- Line items: raw materials and Sol. semifinished inventory components with required weight and actual weight used; material list matches the linked recipe (raw materials + standalone semifinished rows, excluding nested sub-recipes); opening an existing order auto-syncs missing semifinished rows from the recipe while preserving saved actual weights
 - Print production order: A4 sheet with enlarged text, no page header/footer, a material table constrained to page margins, and material names omitted while keeping material codes, ratios, required weight, and actual weight
 - Print output preserves production / quality / packaging notes and requirements
 - Output: creates semifinished product inventory entries on completion

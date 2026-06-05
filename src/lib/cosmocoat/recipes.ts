@@ -146,7 +146,9 @@ export function formatWeight(value: number | null | undefined, digits = 2): stri
 }
 
 export type ProductionOrderItemDraft = {
-  rawMaterialId: string
+  itemType: 'raw_material' | 'product_semifinished'
+  rawMaterialId?: string
+  productSemifinishedId?: string
   sortOrder: number
   productionCode: string
   materialName: string
@@ -166,6 +168,11 @@ export type RecipeItemForProduction = {
     productionCode: string
     name: string
   } | null
+  productSemifinished: {
+    id: string
+    code: string
+    name: string
+  } | null
 }
 
 export type ProductionRecipeItem = {
@@ -173,30 +180,65 @@ export type ProductionRecipeItem = {
   quantity: number
   percentage: number | null
   notes: string
-  rawMaterial: {
+  itemType: 'raw_material' | 'product_semifinished'
+  rawMaterial?: {
     id: string
     productionCode: string
     name: string
   }
+  productSemifinished?: {
+    id: string
+    code: string
+    name: string
+  }
 }
 
-/** Keeps only raw-material lines; drops nested recipes and semifinished rows. */
+/** Keeps raw-material and Sol. semifinished lines; drops nested recipes and factory products. */
 export function recipeItemsForProduction(
   items: Array<Omit<RecipeItemForProduction, 'quantity' | 'percentage'> & {
     quantity: unknown
     percentage?: unknown | null
+    itemType?: string
+    productSemifinished?: {
+      id: string
+      code: string
+      name: string
+    } | null
   }>,
 ): ProductionRecipeItem[] {
-  return items.flatMap(item => {
-    if (!item.rawMaterial) return []
-    return [{
-      sortOrder: item.sortOrder,
-      quantity: Number(item.quantity),
-      percentage: item.percentage != null ? Number(item.percentage) : null,
-      notes: item.notes,
-      rawMaterial: item.rawMaterial,
-    }]
-  })
+  const result: ProductionRecipeItem[] = []
+  for (const item of items) {
+    if (item.rawMaterial) {
+      result.push({
+        sortOrder: item.sortOrder,
+        quantity: Number(item.quantity),
+        percentage: item.percentage != null ? Number(item.percentage) : null,
+        notes: item.notes,
+        itemType: 'raw_material',
+        rawMaterial: item.rawMaterial,
+      })
+      continue
+    }
+    if (item.productSemifinished) {
+      result.push({
+        sortOrder: item.sortOrder,
+        quantity: Number(item.quantity),
+        percentage: item.percentage != null ? Number(item.percentage) : null,
+        notes: item.notes,
+        itemType: 'product_semifinished',
+        productSemifinished: item.productSemifinished,
+      })
+    }
+  }
+  return result
+}
+
+export function productionOrderItemKey(item: Pick<ProductionOrderItemDraft, 'itemType' | 'rawMaterialId' | 'productSemifinishedId'>): string {
+  if (item.itemType === 'product_semifinished' && item.productSemifinishedId) {
+    return `semifinished:${item.productSemifinishedId}`
+  }
+  if (item.rawMaterialId) return `raw:${item.rawMaterialId}`
+  return ''
 }
 
 export function buildProductionOrderItems(
@@ -211,7 +253,26 @@ export function buildProductionOrderItems(
       ? item.percentage
       : computeItemPercentage(item.quantity, qtyTotal)
 
+    if (item.itemType === 'product_semifinished' && item.productSemifinished) {
+      return {
+        itemType: 'product_semifinished' as const,
+        productSemifinishedId: item.productSemifinished.id,
+        sortOrder: item.sortOrder,
+        productionCode: item.productSemifinished.code,
+        materialName: item.productSemifinished.name,
+        percentage,
+        requiredWeight: computeRequiredWeight(totalWeight, percentage),
+        actualWeight: null,
+        notes: item.notes,
+      }
+    }
+
+    if (!item.rawMaterial) {
+      throw new Error('Production recipe item missing raw material')
+    }
+
     return {
+      itemType: 'raw_material' as const,
       rawMaterialId: item.rawMaterial.id,
       sortOrder: item.sortOrder,
       productionCode: item.rawMaterial.productionCode,
