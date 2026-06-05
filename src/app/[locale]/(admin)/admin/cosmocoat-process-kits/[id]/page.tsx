@@ -11,7 +11,7 @@ import { ArrowLeft, Pencil, Plus, Save, Trash2 } from 'lucide-react'
 import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
 import { cn } from '@/lib/utils'
 import { buildProcessFlowDocument } from '@/lib/cosmocoat/process-flow'
-import { CHEMICAL_RESISTANCE_STANDARD_ID, normalizePerformanceStandards } from '@/lib/cosmocoat/process-kit-standards'
+import { CHEMICAL_RESISTANCE_OPTIONS, normalizePerformanceStandards } from '@/lib/cosmocoat/process-kit-standards'
 
 type FactoryProductOption = {
   id: string
@@ -128,9 +128,7 @@ const PERFORMANCE_STANDARD_GROUPS = [
   },
   {
     id: 'chemicalResistance',
-    options: [
-      { id: CHEMICAL_RESISTANCE_STANDARD_ID, label: '耐化性' },
-    ],
+    options: [...CHEMICAL_RESISTANCE_OPTIONS],
   },
   {
     id: 'highTempHumidity',
