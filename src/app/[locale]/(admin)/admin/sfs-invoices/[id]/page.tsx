@@ -10,6 +10,7 @@ import { Link } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Download } from 'lucide-react'
+import { SfsInvoiceNumberDisplay } from '../components/SfsInvoiceNumberDisplay'
 
 type LineItem = {
   id: string
@@ -103,36 +104,39 @@ export default function SfsInvoiceDetailPage() {
 
   return (
     <div className="space-y-4 max-w-4xl">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <Link href="/admin/sfs-invoices">
             <Button variant="outline" size="sm">{t('back')}</Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold font-mono" style={{ color: 'var(--foreground)' }}>
-              {invoice.invoiceNumber}
+            <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>
+              {t('detailTitle')}
             </h1>
             <span className={`inline-flex mt-1 px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLOR[invoice.status] ?? ''}`}>
               {t(`statuses.${invoice.status}` as 'statuses.DRAFT')}
             </span>
           </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" onClick={downloadPdf}>
-            <Download size={14} className="mr-1" />
-            {t('downloadPdf')}
-          </Button>
-          {invoice.status === 'DRAFT' && (
-            <Button disabled={updating} onClick={() => updateStatus('SENT')}>{t('markSent')}</Button>
-          )}
-          {invoice.status === 'SENT' && (
-            <Button disabled={updating} onClick={() => updateStatus('PAID')}>{t('markPaid')}</Button>
-          )}
-          {(invoice.status === 'DRAFT' || invoice.status === 'SENT') && (
-            <Button variant="outline" disabled={updating} onClick={() => updateStatus('CANCELLED')}>
-              {t('cancel')}
+        <div className="flex flex-wrap items-center gap-4">
+          <SfsInvoiceNumberDisplay value={invoice.invoiceNumber} />
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" onClick={downloadPdf}>
+              <Download size={14} className="mr-1" />
+              {t('downloadPdf')}
             </Button>
-          )}
+            {invoice.status === 'DRAFT' && (
+              <Button disabled={updating} onClick={() => updateStatus('SENT')}>{t('markSent')}</Button>
+            )}
+            {invoice.status === 'SENT' && (
+              <Button disabled={updating} onClick={() => updateStatus('PAID')}>{t('markPaid')}</Button>
+            )}
+            {(invoice.status === 'DRAFT' || invoice.status === 'SENT') && (
+              <Button variant="outline" disabled={updating} onClick={() => updateStatus('CANCELLED')}>
+                {t('cancel')}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 

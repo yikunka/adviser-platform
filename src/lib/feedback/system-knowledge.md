@@ -190,6 +190,7 @@ Order lifecycle management for memorial diamond commissions.
 ### SFS Invoices Admin (`/admin/sfs-invoices`)
 - Invoices linked to SFS orders
 - Statuses: `DRAFT` → `SENT` → `PAID` / `CANCELLED`
+- Auto-generated invoice numbers: 8-digit pure numeric format `YY######` (e.g. `26000001`, `26000002`), sequential within each calendar year; shown in the list table column and in the page header (top-right) on new and detail pages
 - Create from order; edit DRAFT; generate and download PDF
 - Admin invoice screens keep line-item display focused on description, quantity, unit price, and amount; due date and tax-rate display are hidden from the SFS invoice UI
 

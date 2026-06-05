@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { computeTotals } from '@/lib/invoice/calc'
+import { SfsInvoiceNumberDisplay } from '../components/SfsInvoiceNumberDisplay'
 
 type OrderOption = {
   id: string
@@ -35,6 +36,25 @@ export default function NewSfsInvoicePage() {
   const [notes, setNotes] = useState('')
   const [lines, setLines] = useState<LineRow[]>([emptyLine()])
   const [saving, setSaving] = useState(false)
+  const [nextNumber, setNextNumber] = useState<string | null>(null)
+  const [loadingNextNumber, setLoadingNextNumber] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoadingNextNumber(true)
+    fetch(`/api/admin/sfs-invoices/next-number?issueDate=${encodeURIComponent(issueDate)}`)
+      .then(r => r.json())
+      .then(json => {
+        if (!cancelled) setNextNumber(json.invoiceNumber ?? null)
+      })
+      .catch(() => {
+        if (!cancelled) setNextNumber(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingNextNumber(false)
+      })
+    return () => { cancelled = true }
+  }, [issueDate])
 
   useEffect(() => {
     const q = orderSearch.trim()
@@ -138,11 +158,14 @@ export default function NewSfsInvoicePage() {
 
   return (
     <div className="space-y-4 max-w-4xl">
-      <div className="flex items-center gap-3">
-        <Link href="/admin/sfs-invoices">
-          <Button variant="outline" size="sm">{t('back')}</Button>
-        </Link>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>{t('createTitle')}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Link href="/admin/sfs-invoices">
+            <Button variant="outline" size="sm">{t('back')}</Button>
+          </Link>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>{t('createTitle')}</h1>
+        </div>
+        <SfsInvoiceNumberDisplay value={nextNumber} loading={loadingNextNumber} />
       </div>
 
       <Card>
