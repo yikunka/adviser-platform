@@ -24,6 +24,11 @@ const optionalTextSchema = (max: number) => z.preprocess(
   z.string().trim().max(max).nullable().optional(),
 )
 
+const processBlockSchema = z.object({
+  id: z.string().trim().min(1).max(80),
+  text: z.string().trim().min(1).max(2000),
+})
+
 const productSchema = z.object({
   productId: z.string().trim().min(1),
   productName: z.string().trim().min(1).max(160).optional(),
@@ -40,6 +45,7 @@ const productSchema = z.object({
   filmThickness: processParameterSchema,
   sprayViscosity: processParameterSchema,
   notes: optionalTextSchema(2000),
+  processBlocks: z.array(processBlockSchema).max(50).optional().default([]),
 })
 
 const deleteSchema = z.object({
@@ -53,6 +59,7 @@ const updateSchema = z.object({
   uvEnergy: processParameterSchema,
   filmThickness: processParameterSchema,
   notes: optionalTextSchema(2000),
+  processBlocks: z.array(processBlockSchema).max(50).optional(),
 })
 
 function isMissingTable(error: unknown) {
@@ -136,6 +143,7 @@ export async function POST(
         filmThickness: parsed.data.filmThickness || null,
         sprayViscosity: parsed.data.sprayViscosity || null,
         notes: parsed.data.notes || null,
+        processBlocks: parsed.data.processBlocks,
       },
     })
 
@@ -177,11 +185,12 @@ export async function PATCH(
   await prisma.cosProcessKitProduct.update({
     where: { id: parsed.data.id },
     data: {
-      irMinutes: parsed.data.irMinutes || null,
-      irTemperature: parsed.data.irTemperature || null,
-      uvEnergy: parsed.data.uvEnergy || null,
-      filmThickness: parsed.data.filmThickness || null,
-      notes: parsed.data.notes || null,
+      irMinutes: parsed.data.irMinutes !== undefined ? (parsed.data.irMinutes || null) : undefined,
+      irTemperature: parsed.data.irTemperature !== undefined ? (parsed.data.irTemperature || null) : undefined,
+      uvEnergy: parsed.data.uvEnergy !== undefined ? (parsed.data.uvEnergy || null) : undefined,
+      filmThickness: parsed.data.filmThickness !== undefined ? (parsed.data.filmThickness || null) : undefined,
+      notes: parsed.data.notes !== undefined ? (parsed.data.notes || null) : undefined,
+      processBlocks: parsed.data.processBlocks,
     },
   })
 

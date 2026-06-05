@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
-import { buildProcessFlowDocument } from '@/lib/cosmocoat/process-flow'
+import { buildProcessFlowDocument, normalizeProcessBlocks } from '@/lib/cosmocoat/process-flow'
 import { normalizePerformanceStandards } from '@/lib/cosmocoat/process-kit-standards'
 
 export const kitInclude = {
@@ -54,6 +54,7 @@ export function serializeProcessKit(kit: ProcessKitWithRelations) {
         uvEnergy: p.uvEnergy,
         filmThickness: p.filmThickness,
         sprayViscosity: p.sprayViscosity,
+        processBlocks: normalizeProcessBlocks(p.processBlocks),
       })),
       kit.processFlowNote,
       kit.processDescription,
@@ -78,6 +79,7 @@ export function serializeProcessKit(kit: ProcessKitWithRelations) {
       filmThickness: p.filmThickness,
       sprayViscosity: p.sprayViscosity,
       notes: p.notes,
+      processBlocks: normalizeProcessBlocks(p.processBlocks),
       createdAt: p.createdAt.toISOString(),
       updatedAt: p.updatedAt.toISOString(),
     })),

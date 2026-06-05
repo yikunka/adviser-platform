@@ -12,6 +12,32 @@ export type ProcessFlowProduct = {
   uvEnergy?: number | string | null
   filmThickness?: number | string | null
   sprayViscosity?: number | string | null
+  processBlocks?: ProcessFlowBlock[] | null
+}
+
+export type ProcessFlowBlock = {
+  id: string
+  text: string
+}
+
+export function normalizeProcessBlocks(value: unknown): ProcessFlowBlock[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item, index) => {
+      if (typeof item === 'string') {
+        const text = item.trim()
+        return text ? { id: `legacy-${index}`, text } : null
+      }
+      if (!item || typeof item !== 'object') return null
+      const maybeBlock = item as { id?: unknown; text?: unknown }
+      const text = typeof maybeBlock.text === 'string' ? maybeBlock.text.trim() : ''
+      if (!text) return null
+      const id = typeof maybeBlock.id === 'string' && maybeBlock.id.trim()
+        ? maybeBlock.id.trim()
+        : `block-${index}`
+      return { id, text }
+    })
+    .filter((item): item is ProcessFlowBlock => Boolean(item))
 }
 
 function formatValue(value: number | string | null | undefined) {
@@ -58,6 +84,9 @@ export function buildProcessFlowDocument(
     if (filmThickness) lines.push(`   膜厚：${filmThickness}`)
     if (sprayViscosity) lines.push(`   噴塗粘度 2#杯/25C：${sprayViscosity}`)
     if (product.notes) lines.push(`   备注：${product.notes}`)
+    normalizeProcessBlocks(product.processBlocks).forEach((block, blockIndex) => {
+      lines.push(`   工艺${blockIndex + 1}：${block.text}`)
+    })
   })
 
   if (globalNote?.trim()) lines.push(`全局备注：${globalNote.trim()}`)

@@ -30,6 +30,11 @@ const optionalTextSchema = (max: number) => z.preprocess(
   z.string().trim().max(max).nullable().optional(),
 )
 
+const processBlockSchema = z.object({
+  id: z.string().trim().min(1).max(80),
+  text: z.string().trim().min(1).max(2000),
+})
+
 const kitSchema = z.object({
   code: z.string().trim().min(1).max(32).optional(),
   name: z.string().trim().min(1).max(160),
@@ -55,6 +60,7 @@ const kitSchema = z.object({
     filmThickness: processParameterSchema,
     sprayViscosity: processParameterSchema,
     notes: optionalTextSchema(2000),
+    processBlocks: z.array(processBlockSchema).max(50).optional().default([]),
   })).max(100).optional().default([]),
 })
 
@@ -98,6 +104,7 @@ async function resolveProductRows(products: z.infer<typeof kitSchema>['products'
     filmThickness: product.filmThickness || null,
     sprayViscosity: product.sprayViscosity || null,
     notes: product.notes || null,
+    processBlocks: product.processBlocks,
   }))
 }
 

@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import { ArrowLeft, Download, Pencil, Plus, Printer, Save, Trash2 } from 'lucide-react'
 import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
 import { cn } from '@/lib/utils'
-import { buildProcessFlowDocument } from '@/lib/cosmocoat/process-flow'
+import { buildProcessFlowDocument, type ProcessFlowBlock } from '@/lib/cosmocoat/process-flow'
 import { CHEMICAL_RESISTANCE_OPTIONS, normalizePerformanceStandards } from '@/lib/cosmocoat/process-kit-standards'
 
 type FactoryProductOption = {
@@ -39,6 +39,7 @@ type KitProduct = {
   filmThickness: string | null
   sprayViscosity: string | null
   notes: string | null
+  processBlocks?: ProcessFlowBlock[]
 }
 
 type KitTest = {
@@ -509,10 +510,12 @@ function ProcessKitPrintView({
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12, fontSize: 9 }}>
         <tbody>
-          <tr>
-            <td style={{ width: '16%', padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.addProcess}</td>
-            <td style={{ padding: '3px 6px', border: '1px solid #ccc', whiteSpace: 'pre-wrap' }}>{displayText(processDescription)}</td>
-          </tr>
+          {processDescription.trim() && (
+            <tr>
+              <td style={{ width: '16%', padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.addProcess}</td>
+              <td style={{ padding: '3px 6px', border: '1px solid #ccc', whiteSpace: 'pre-wrap' }}>{displayText(processDescription)}</td>
+            </tr>
+          )}
           <tr>
             <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.globalProcessNote}</td>
             <td style={{ padding: '3px 6px', border: '1px solid #ccc', whiteSpace: 'pre-wrap' }}>{displayText(processFlowNote)}</td>
@@ -589,6 +592,8 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   const [addingProduct, setAddingProduct] = useState(false)
   const [editingProductId, setEditingProductId] = useState<string | null>(null)
   const [savingProductEdit, setSavingProductEdit] = useState(false)
+  const [processEditor, setProcessEditor] = useState<{ productId: string; blockId: string | null; text: string } | null>(null)
+  const [savingProcessBlock, setSavingProcessBlock] = useState(false)
   const [editForm, setEditForm] = useState({
     irMinutes: '',
     irTemperature: '',
@@ -820,6 +825,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
               filmThickness: product.filmThickness,
               sprayViscosity: product.sprayViscosity,
               notes: product.notes,
+              processBlocks: product.processBlocks ?? [],
             })),
           }
         : {}),
@@ -968,6 +974,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
           filmThickness,
           sprayViscosity,
           notes: productForm.notes.trim() || null,
+          processBlocks: [],
         },
       ])
       resetProductForm()
@@ -1096,6 +1103,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   async function removeProduct(productId: string) {
     if (!window.confirm(t('removeProductConfirm'))) return
     if (editingProductId === productId) resetEditForm()
+    if (processEditor?.productId === productId) setProcessEditor(null)
     if (isNew) {
       setKitProducts(prev => prev.filter(product => product.id !== productId))
       return
@@ -1116,6 +1124,83 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     } catch {
       toast.error(t('removeProductFailed'))
     }
+  }
+
+  function createProcessBlockId() {
+    return `process-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  }
+
+  function startAddProcessBlock(productId: string) {
+    setProcessEditor({ productId, blockId: null, text: '' })
+  }
+
+  function startEditProcessBlock(productId: string, block: ProcessFlowBlock) {
+    setProcessEditor({ productId, blockId: block.id, text: block.text })
+  }
+
+  async function persistProductProcessBlocks(productId: string, processBlocks: ProcessFlowBlock[]) {
+    if (isNew) {
+      setKitProducts(prev => prev.map(product =>
+        product.id === productId ? { ...product, processBlocks } : product,
+      ))
+      return true
+    }
+
+    setSavingProcessBlock(true)
+    try {
+      const res = await fetch(`/api/admin/cosmocoat/process-kits/${kitId}/products`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: productId, processBlocks }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? t('processBlockSaveFailed'))
+        return false
+      }
+      setKitProducts(data.kit?.products ?? [])
+      return true
+    } catch {
+      toast.error(t('processBlockSaveFailed'))
+      return false
+    } finally {
+      setSavingProcessBlock(false)
+    }
+  }
+
+  async function saveProcessBlock() {
+    if (!processEditor) return
+    const text = processEditor.text.trim()
+    if (!text) {
+      toast.error(t('processBlockRequired'))
+      return
+    }
+
+    const product = kitProducts.find(item => item.id === processEditor.productId)
+    if (!product) return
+
+    const currentBlocks = product.processBlocks ?? []
+    const nextBlocks = processEditor.blockId
+      ? currentBlocks.map(block =>
+          block.id === processEditor.blockId ? { ...block, text } : block,
+        )
+      : [...currentBlocks, { id: createProcessBlockId(), text }]
+
+    const saved = await persistProductProcessBlocks(product.id, nextBlocks)
+    if (!saved) return
+    toast.success(processEditor.blockId ? t('processBlockUpdated') : t('processBlockAdded'))
+    setProcessEditor(null)
+  }
+
+  async function removeProcessBlock(productId: string, blockId: string) {
+    if (!window.confirm(t('removeProcessBlockConfirm'))) return
+    const product = kitProducts.find(item => item.id === productId)
+    if (!product) return
+    const nextBlocks = (product.processBlocks ?? []).filter(block => block.id !== blockId)
+    const saved = await persistProductProcessBlocks(productId, nextBlocks)
+    if (!saved) return
+    if (processEditor?.productId === productId && processEditor.blockId === blockId) setProcessEditor(null)
+    toast.success(t('processBlockRemoved'))
   }
 
   async function addTest() {
@@ -1705,17 +1790,6 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
 
         <div className="p-4 border-t space-y-4" style={{ borderColor: '#2A2418' }}>
           <div className="space-y-1.5">
-            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('addProcess')}</label>
-            <input
-              type="text"
-              value={processDescription}
-              onChange={e => setProcessDescription(e.target.value)}
-              className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-              style={inputStyle()}
-              placeholder={t('addProcessPlaceholder')}
-            />
-          </div>
-          <div className="space-y-1.5">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('globalProcessNote')}</label>
             <textarea
               value={processFlowNote}
@@ -1726,14 +1800,144 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
               placeholder={t('globalProcessNotePlaceholder')}
             />
           </div>
-          <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('processFlowDocument')}</label>
-          <textarea
-            readOnly
-            value={processFlowDocument || t('processFlowEmptyDocument')}
-            rows={Math.max(4, Math.min(12, (processFlowDocument.match(/\n/g)?.length ?? 2) + 2))}
-            className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y"
-            style={inputStyle()}
-          />
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('processFlowDocument')}</label>
+            <div className="rounded-lg p-3 text-sm" style={{ ...inputStyle(), minHeight: 160 }}>
+              {!processFlowDocument ? (
+                <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>{t('processFlowEmptyDocument')}</p>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold" style={{ color: '#C9A96E' }}>完整工艺流程</p>
+                  {processDescription.trim() && (
+                    <p className="whitespace-pre-wrap" style={{ color: 'var(--foreground)' }}>
+                      工艺：{processDescription.trim()}
+                    </p>
+                  )}
+                  {kitProducts.map((product, index) => {
+                    const processBlocks = product.processBlocks ?? []
+                    const isEditingThisProduct = processEditor?.productId === product.id
+                    const activeProcessEditor = isEditingThisProduct ? processEditor : null
+                    return (
+                      <div
+                        key={product.id}
+                        className="group relative rounded-lg p-3 transition-colors"
+                        style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
+                      >
+                        <div className="space-y-1 pr-0 sm:pr-44">
+                          <p className="font-medium" style={{ color: 'var(--foreground)' }}>
+                            {index + 1}. 产品：{product.productName}
+                          </p>
+                          {product.hardenerProductName && (
+                            <p style={{ color: 'var(--muted-foreground)' }}>
+                              HD Hardener固化剂：{product.hardenerProductName}
+                              {product.hardenerRatio ? ` / ${product.hardenerRatio}` : ''}
+                            </p>
+                          )}
+                          {product.thinnerProductName && (
+                            <p style={{ color: 'var(--muted-foreground)' }}>
+                              Diluent稀释剂：{product.thinnerProductName}
+                              {product.thinnerRatio ? ` / ${product.thinnerRatio}` : ''}
+                            </p>
+                          )}
+                          <p style={{ color: 'var(--muted-foreground)' }}>
+                            IR：{product.irMinutes ?? '-'} / {product.irTemperature ?? '-'}
+                          </p>
+                          {product.uvEnergy && <p style={{ color: 'var(--muted-foreground)' }}>UV能量：{product.uvEnergy}</p>}
+                          {product.filmThickness && <p style={{ color: 'var(--muted-foreground)' }}>膜厚：{product.filmThickness}</p>}
+                          {product.sprayViscosity && <p style={{ color: 'var(--muted-foreground)' }}>噴塗粘度 2#杯/25C：{product.sprayViscosity}</p>}
+                          {product.notes && <p style={{ color: 'var(--muted-foreground)' }}>备注：{product.notes}</p>}
+                        </div>
+
+                        {processBlocks.length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            {processBlocks.map((block, blockIndex) => (
+                              <div
+                                key={block.id}
+                                className="flex items-start justify-between gap-3 rounded-lg px-3 py-2"
+                                style={{ background: '#15150F', border: '1px solid #2A2418' }}
+                              >
+                                <p className="whitespace-pre-wrap text-sm" style={{ color: 'var(--foreground)' }}>
+                                  工艺{blockIndex + 1}：{block.text}
+                                </p>
+                                <div className="flex shrink-0 items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => startEditProcessBlock(product.id, block)}
+                                    title={t('editProcessBlock')}
+                                    className="p-1.5 rounded-md transition-colors"
+                                    style={{ color: 'var(--muted-foreground)' }}
+                                  >
+                                    <Pencil size={14} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeProcessBlock(product.id, block.id)}
+                                    title={t('removeProcessBlock')}
+                                    className="p-1.5 rounded-md transition-colors"
+                                    style={{ color: '#ef4444' }}
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {isEditingThisProduct ? (
+                          <div className="mt-3 space-y-2 rounded-lg p-3" style={{ background: '#111108', border: '1px solid #2A2418' }}>
+                            <textarea
+                              value={activeProcessEditor?.text ?? ''}
+                              onChange={e => setProcessEditor(editor => editor ? { ...editor, text: e.target.value } : editor)}
+                              rows={3}
+                              className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y"
+                              style={inputStyle()}
+                              placeholder={t('processBlockPlaceholder')}
+                            />
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={saveProcessBlock}
+                                disabled={savingProcessBlock}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
+                                style={{ background: '#C9A96E', color: '#0A0805' }}
+                              >
+                                <Save size={13} /> {savingProcessBlock ? t('saving') : t('confirmEdit')}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setProcessEditor(null)}
+                                className="px-3 py-1.5 rounded-lg text-xs"
+                                style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}
+                              >
+                                {t('cancel')}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-3 flex justify-end opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                            <button
+                              type="button"
+                              onClick={() => startAddProcessBlock(product.id)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+                              style={{ background: '#1A1A12', border: '1px solid #C9A96E', color: '#C9A96E' }}
+                            >
+                              <Plus size={13} /> {t('addProcessUnderProduct')}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                  {processFlowNote.trim() && (
+                    <p className="whitespace-pre-wrap" style={{ color: 'var(--foreground)' }}>
+                      全局备注：{processFlowNote.trim()}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
