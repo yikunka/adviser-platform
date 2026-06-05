@@ -97,6 +97,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/cosmocoat-color-formulas', key: 'cosmocoatColorFormulas', Icon: Palette },
       { href: '/admin/cosmocoat-production-orders', key: 'cosmocoatProductionOrders', Icon: ClipboardList },
       { href: '/admin/cosmocoat-process-kits', key: 'cosmocoatProcessKits', Icon: BookOpen },
+      { href: '/admin/cosmocoat-customers', key: 'cosmocoatCustomers', Icon: ContactRound },
     ],
   },
   {

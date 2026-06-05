@@ -36,7 +36,8 @@
     "cosmocoatColorFormulas": "Color Formulas",
     "cosmocoatFactoryProducts": "Factory Product Management",
     "cosmocoatProductionOrders": "Production Orders",
-    "cosmocoatProcessKits": "Process Kits"
+    "cosmocoatProcessKits": "Process Kits",
+    "cosmocoatCustomers": "Customer Management"
   },
   "home": {
     "heroTitleHighlight": "6AM Advisory",
@@ -847,6 +848,11 @@
       "saved": "Saved",
       "created": "Process kit created",
       "saveFailed": "Save failed",
+      "print": "Print",
+      "printing": "Printing...",
+      "download": "Download",
+      "downloadFailed": "Download failed",
+      "printTitle": "Product Application Process Kit",
       "basicInfo": "Basic Information",
       "materials": "Materials",
       "selectMaterialsHint": "Select materials used (multiple selection allowed)",

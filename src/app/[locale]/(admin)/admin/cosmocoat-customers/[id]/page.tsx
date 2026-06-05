@@ -1,0 +1,327 @@
+'use client'
+
+/* eslint-disable react-hooks/set-state-in-effect */
+
+import { useCallback, useEffect, useState } from 'react'
+import { useParams } from 'next/navigation'
+import { Link, useRouter } from '@/i18n/navigation'
+import { toast } from 'sonner'
+import { ArrowLeft, Save, Trash2 } from 'lucide-react'
+import type { CosCustomerRow } from '@/lib/cosmocoat/customers'
+
+type PlatformUser = {
+  id: string
+  email: string
+  nameEn: string
+  isActive: boolean
+}
+
+type FormState = {
+  code: string
+  name: string
+  userId: string
+  phone: string
+  address: string
+}
+
+const card: React.CSSProperties = {
+  background: 'var(--card)',
+  border: '1px solid var(--border)',
+  borderRadius: '0.75rem',
+}
+
+function inputStyle(): React.CSSProperties {
+  return {
+    background: '#0E0E0A',
+    border: '1px solid #2A2418',
+    color: 'var(--foreground)',
+  }
+}
+
+function Field({ label, hint, children, className = '' }: { label: string; hint?: string; children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`space-y-1.5 ${className}`}>
+      <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{label}</label>
+      {hint && <p className="text-[11px]" style={{ color: '#756A58' }}>{hint}</p>}
+      {children}
+    </div>
+  )
+}
+
+export default function AdminCosmoCoatCustomerDetailPage() {
+  const params = useParams()
+  const router = useRouter()
+  const customerId = params.id as string
+  const isNew = customerId === 'new'
+
+  const [loading, setLoading] = useState(!isNew)
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [platformUsers, setPlatformUsers] = useState<PlatformUser[]>([])
+  const [customer, setCustomer] = useState<CosCustomerRow | null>(null)
+  const [form, setForm] = useState<FormState>({
+    code: '',
+    name: '',
+    userId: '',
+    phone: '',
+    address: '',
+  })
+
+  const fetchPlatformUsers = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/users?platform=COSMICOAT')
+      const data = await res.json()
+      if (!res.ok) return
+      setPlatformUsers(data.users ?? [])
+    } catch {
+      // optional field — silent fail
+    }
+  }, [])
+
+  const fetchCustomer = useCallback(async () => {
+    if (isNew) return
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/admin/cosmocoat/customers/${customerId}`)
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? '加载客户详情失败')
+        return
+      }
+      const row = data.customer as CosCustomerRow
+      setCustomer(row)
+      setForm({
+        code: row.code,
+        name: row.name,
+        userId: row.userId ?? '',
+        phone: row.phone ?? '',
+        address: row.address ?? '',
+      })
+    } catch {
+      toast.error('加载客户详情失败')
+    } finally {
+      setLoading(false)
+    }
+  }, [customerId, isNew])
+
+  useEffect(() => {
+    fetchPlatformUsers()
+  }, [fetchPlatformUsers])
+
+  useEffect(() => {
+    fetchCustomer()
+  }, [fetchCustomer])
+
+  function patch<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm(prev => ({ ...prev, [key]: value }))
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.name.trim()) {
+      toast.error('请填写客户名称')
+      return
+    }
+
+    setSaving(true)
+    try {
+      const payload = {
+        code: form.code.trim() || undefined,
+        name: form.name.trim(),
+        userId: form.userId || null,
+        phone: form.phone.trim() || null,
+        address: form.address.trim() || null,
+      }
+
+      const res = await fetch(
+        isNew ? '/api/admin/cosmocoat/customers' : `/api/admin/cosmocoat/customers/${customerId}`,
+        {
+          method: isNew ? 'POST' : 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        },
+      )
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? '保存失败')
+        return
+      }
+
+      toast.success(isNew ? '客户已创建' : '客户资料已更新')
+      if (isNew) {
+        router.push(`/admin/cosmocoat-customers/${data.customer.id}`)
+      } else {
+        setCustomer(data.customer)
+        setForm({
+          code: data.customer.code,
+          name: data.customer.name,
+          userId: data.customer.userId ?? '',
+          phone: data.customer.phone ?? '',
+          address: data.customer.address ?? '',
+        })
+      }
+    } catch {
+      toast.error('保存失败')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (isNew || !window.confirm(`确定删除客户「${form.name}」？此操作不可撤销。`)) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/admin/cosmocoat/customers/${customerId}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? '删除失败')
+        return
+      }
+      toast.success('客户已删除')
+      router.push('/admin/cosmocoat-customers')
+    } catch {
+      toast.error('删除失败')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <p style={{ color: 'var(--muted-foreground)' }}>加载中...</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-6 space-y-6 max-w-3xl">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/cosmocoat-customers"
+            className="inline-flex items-center gap-1.5 text-sm"
+            style={{ color: 'var(--muted-foreground)' }}
+          >
+            <ArrowLeft size={16} />
+            返回列表
+          </Link>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>
+            {isNew ? '新建客户' : `客户详情 · ${customer?.code ?? form.code}`}
+          </h1>
+        </div>
+        {!isNew && (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm disabled:opacity-50"
+            style={{ border: '1px solid #5A3030', color: '#E57373' }}
+          >
+            <Trash2 size={14} />
+            {deleting ? '删除中...' : '删除客户'}
+          </button>
+        )}
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="p-5 space-y-4" style={card}>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>基本信息</h2>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Field label="客户编码" hint={isNew ? '留空则自动生成（如 KH0001）' : undefined}>
+              <input
+                value={form.code}
+                onChange={e => patch('code', e.target.value)}
+                maxLength={32}
+                placeholder={isNew ? '自动生成' : undefined}
+                className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+                style={inputStyle()}
+              />
+            </Field>
+            <Field label="客户名称 *">
+              <input
+                value={form.name}
+                onChange={e => patch('name', e.target.value)}
+                required
+                maxLength={200}
+                className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+                style={inputStyle()}
+              />
+            </Field>
+          </div>
+
+          <Field
+            label="客户账号（可选）"
+            hint="可关联「客户账号管理」中维护的 CosmoCoat 平台登录账号"
+          >
+            <select
+              value={form.userId}
+              onChange={e => patch('userId', e.target.value)}
+              className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+              style={inputStyle()}
+            >
+              <option value="">不关联平台账号</option>
+              {platformUsers.map(user => (
+                <option key={user.id} value={user.id}>
+                  {user.email} · {user.nameEn}{user.isActive ? '' : '（已停用）'}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="客户电话">
+            <input
+              value={form.phone}
+              onChange={e => patch('phone', e.target.value)}
+              maxLength={50}
+              className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+              style={inputStyle()}
+            />
+          </Field>
+
+          <Field label="客户地址">
+            <textarea
+              value={form.address}
+              onChange={e => patch('address', e.target.value)}
+              maxLength={500}
+              rows={3}
+              className="w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-y"
+              style={inputStyle()}
+            />
+          </Field>
+        </div>
+
+        {!isNew && customer && (
+          <div className="p-5 space-y-2 text-xs" style={card}>
+            <div style={{ color: 'var(--muted-foreground)' }}>
+              创建时间：{new Date(customer.createdAt).toLocaleString('zh-HK')}
+            </div>
+            <div style={{ color: 'var(--muted-foreground)' }}>
+              最后更新：{new Date(customer.updatedAt).toLocaleString('zh-HK')}
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2">
+          <Link
+            href="/admin/cosmocoat-customers"
+            className="px-4 py-2 rounded-lg text-sm"
+            style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
+          >
+            取消
+          </Link>
+          <button
+            type="submit"
+            disabled={saving}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+            style={{ background: '#C9A96E', color: '#0A0805' }}
+          >
+            <Save size={14} />
+            {saving ? '保存中...' : isNew ? '创建客户' : '保存更改'}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}

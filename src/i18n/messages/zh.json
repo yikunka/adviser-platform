@@ -36,7 +36,8 @@
     "cosmocoatColorFormulas": "调色配方",
     "cosmocoatFactoryProducts": "工厂产品管理",
     "cosmocoatProductionOrders": "生产单管理",
-    "cosmocoatProcessKits": "工艺书管理"
+    "cosmocoatProcessKits": "工艺书管理",
+    "cosmocoatCustomers": "客户管理"
   },
   "home": {
     "heroTitleHighlight": "6AM Advisory",
@@ -847,6 +848,11 @@
       "saved": "已保存",
       "created": "工艺书已创建",
       "saveFailed": "保存失败",
+      "print": "打印",
+      "printing": "打印中...",
+      "download": "下载",
+      "downloadFailed": "下载失败",
+      "printTitle": "产品配套工艺书",
       "basicInfo": "基本信息",
       "materials": "材料",
       "selectMaterialsHint": "请选择使用的材料（可多选）",

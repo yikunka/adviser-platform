@@ -19,6 +19,7 @@ export const ADMIN_MENU_KEYS = [
   'cosmocoatFactoryProducts',
   'cosmocoatProductionOrders',
   'cosmocoatProcessKits',
+  'cosmocoatCustomers',
   'adminTeam',
 ] as const
 
@@ -44,6 +45,7 @@ const MENU_PLATFORM: Record<AdminMenuKey, Platform | 'GLOBAL'> = {
   cosmocoatFactoryProducts: 'COSMICOAT',
   cosmocoatProductionOrders: 'COSMICOAT',
   cosmocoatProcessKits: 'COSMICOAT',
+  cosmocoatCustomers: 'COSMICOAT',
 }
 
 export type AdminAccessUser = {
@@ -133,6 +135,8 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
       return 'cosmocoatProductionOrders'
     case 'cosmocoat-process-kits':
       return 'cosmocoatProcessKits'
+    case 'cosmocoat-customers':
+      return 'cosmocoatCustomers'
     default:
       return null
   }
@@ -163,6 +167,7 @@ export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: stri
   { key: 'cosmocoatFactoryProducts', label: 'Factory product management', group: 'CosmoCoat' },
   { key: 'cosmocoatProductionOrders', label: 'Production orders', group: 'CosmoCoat' },
   { key: 'cosmocoatProcessKits', label: 'Process kits', group: 'CosmoCoat' },
+  { key: 'cosmocoatCustomers', label: 'Customer management', group: 'CosmoCoat' },
   { key: 'settings', label: 'Settings', group: 'System' },
   { key: 'adminTeam', label: 'Admin users & access', group: 'System' },
 ]

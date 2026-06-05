@@ -265,6 +265,8 @@ model User {
   sfsOrders          SfsOrder[]
   sfsCustomers       SfsCustomer[] @relation("SfsCustomerUser")
   sfsCustomersCreated SfsCustomer[] @relation("SfsCustomerCreator")
+  cosCustomers       CosCustomer[] @relation("CosCustomerUser")
+  cosCustomersCreated CosCustomer[] @relation("CosCustomerCreator")
   cosJournalEntries  CosTableJournalEntry[]
   financialJournalEntries JournalEntry[] @relation("FinancialJournalCreatedBy")
   invoicesCreated         Invoice[]     @relation("InvoiceCreatedBy")
@@ -1844,6 +1846,30 @@ model CosProcessTest {
   @@index([testResult])
   @@index([testDate])
   @@map("cos_process_tests")
+}
+
+// ─────────────────────────────────────────────
+// CosmoCoat — Customers (客户管理)
+// ─────────────────────────────────────────────
+
+model CosCustomer {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  userId      String?  @unique
+  phone       String?
+  address     String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User? @relation("CosCustomerUser", fields: [userId], references: [id], onDelete: SetNull)
+  createdBy User? @relation("CosCustomerCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([name])
+  @@index([code])
+  @@index([createdAt])
+  @@map("cos_customers")
 }
 
 // ─────────────────────────────────────────────

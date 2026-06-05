@@ -95,7 +95,7 @@ Service invoicing for TCSP professional fees.
 Staff access control.
 - Roles: `SUPER_ADMIN`, `COMPLIANCE`, `STAFF`
 - Per-staff platform access flags (Adviser / SFS Diamond / CosmoCoat)
-- Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, team, feedback, sfs-customers, sfs-orders, sfs-invoices, cosmocoat-*)
+- Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, team, feedback, sfs-customers, sfs-orders, sfs-invoices, cosmocoat-* including cosmocoat-customers)
 - Legacy mode: no restrictions; new mode: explicit per-menu grants
 - Create / edit / deactivate staff accounts
 
@@ -275,7 +275,15 @@ Product application method documentation (產品配套工藝書).
 - After adding products to the process flow list, each row has Edit and Delete actions; Edit allows updating IR minutes, IR temperature, UV energy, film thickness, and notes for that product (works on both new and saved process kits)
 - Each selected product can optionally include an HD Hardener product with ratio to the main product, and a Diluent thinner product with ratio to the main product
 - The process-kit page automatically combines all selected products, the independent single-line process description (`添加工艺`), and the independent global process-flow note into a complete process-flow document preview; process description and global note can be filled even when no products are selected
+- Detail page actions include browser-based A4 printing and browser-generated Word document download for the current process-kit content; no backend export job is used
 - Test records: type (`PERFORMANCE`, `DURABILITY`, `ADHESION`, `COLOR_STABILITY`, `BOND_STRENGTH`, `OTHER`), result (`PASSED`, `FAILED`, `PENDING`), test date, tester name, report link
+
+### Customers (`/admin/cosmocoat-customers`)
+Unified customer registry for CosmoCoat manufacturing clients (raw material purchases, recipe services, finished goods).
+- Fields: customer code (auto-generated `KH####` if omitted), name, optional linked CosmoCoat platform login account (from Customer Account Management), phone, address
+- List with search (code / name / phone / address / linked account email); paginated table
+- Create, view, edit, and delete customer profiles; detail page at `/admin/cosmocoat-customers/[id]`; new at `/admin/cosmocoat-customers/new`
+- Each CosmoCoat platform account can be linked to at most one customer profile
 
 ### CosmoCoat Financial Accounting
 Same double-entry accounting structure as Adviser (chart of accounts, journal entries, ledger, HKFRS reports). Data is fully isolated from Adviser companies via separate `cos_` prefixed tables.

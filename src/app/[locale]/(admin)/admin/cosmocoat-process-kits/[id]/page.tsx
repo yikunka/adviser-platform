@@ -7,7 +7,7 @@ import { useParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, Pencil, Plus, Save, Trash2 } from 'lucide-react'
+import { ArrowLeft, Download, Pencil, Plus, Printer, Save, Trash2 } from 'lucide-react'
 import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
 import { cn } from '@/lib/utils'
 import { buildProcessFlowDocument } from '@/lib/cosmocoat/process-flow'
@@ -145,6 +145,11 @@ const PERFORMANCE_STANDARD_GROUPS = [
   },
 ]
 
+const MATERIAL_LABELS = new Map(MATERIALS.map(material => [material.id, material.label]))
+const PERFORMANCE_STANDARD_LABELS = new Map(
+  PERFORMANCE_STANDARD_GROUPS.flatMap(group => group.options.map(option => [option.id, option.label] as const)),
+)
+
 const card: React.CSSProperties = {
   background: 'var(--card)',
   border: '1px solid var(--border)',
@@ -185,6 +190,95 @@ const dateTimePickerStyle: React.CSSProperties = {
   fontSize: '0.875rem',
 }
 
+const PRINT_RESET_DELAY_MS = 180
+const PROCESS_KIT_PRINT_AREA_ID = 'cosmocoat-process-kit-print-area'
+
+const PROCESS_KIT_PRINT_STYLES = `
+  @media print {
+    @page { size: A4 portrait; margin: 0; }
+
+    html,
+    body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #fff !important;
+    }
+
+    .admin-console {
+      display: block !important;
+      min-height: auto !important;
+      background: #fff !important;
+    }
+
+    .admin-console > aside,
+    .admin-console > .flex-1 > header,
+    .cosmocoat-process-kit-screen { display: none !important; }
+
+    .admin-console > .flex-1 {
+      display: block !important;
+      min-width: 0 !important;
+    }
+
+    .admin-console main {
+      display: block !important;
+      padding: 0 !important;
+      overflow: visible !important;
+      background: #fff !important;
+    }
+
+    #${PROCESS_KIT_PRINT_AREA_ID} {
+      display: block !important;
+      width: auto;
+      max-width: none;
+      box-sizing: border-box;
+      padding: 12mm 14mm;
+      font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+      font-size: 10pt;
+      line-height: 1.45;
+      color: #000 !important;
+      background: #fff !important;
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
+
+    #${PROCESS_KIT_PRINT_AREA_ID} * {
+      box-sizing: border-box;
+      max-width: 100%;
+    }
+
+    #${PROCESS_KIT_PRINT_AREA_ID} table {
+      table-layout: fixed;
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9pt !important;
+    }
+
+    #${PROCESS_KIT_PRINT_AREA_ID} td,
+    #${PROCESS_KIT_PRINT_AREA_ID} th {
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      padding: 4px 6px !important;
+      font-size: 9pt !important;
+      line-height: 1.35;
+      vertical-align: top;
+    }
+
+    #${PROCESS_KIT_PRINT_AREA_ID} .print-section-title {
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+
+    #${PROCESS_KIT_PRINT_AREA_ID} tr {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+  }
+
+  @media screen {
+    #${PROCESS_KIT_PRINT_AREA_ID} { display: none; }
+  }
+`
+
 function toDatetimeLocal(iso: string | null): string {
   if (!iso) return ''
   const d = new Date(iso)
@@ -214,6 +308,32 @@ function matchesAccessoryProduct(product: FactoryProductOption, type: 'hardener'
   return /diluent|thinner|diluent|稀释剂|稀釋劑|稀释|稀釋/.test(text)
 }
 
+function displayText(value: string | number | null | undefined) {
+  const normalized = value == null ? '' : String(value)
+  return normalized.trim() || '—'
+}
+
+function sanitizeDownloadFilename(value: string) {
+  const sanitized = value.trim().replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, '_')
+  return sanitized || 'process-kit'
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function formatPrintDateTime(value: string | null | undefined) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleString()
+}
+
 const TEST_TYPES = [
   'PERFORMANCE',
   'DURABILITY',
@@ -239,6 +359,208 @@ function ResultBadge({ result, label }: { result: string; label: string }) {
   )
 }
 
+interface ProcessKitPrintViewProps {
+  code: string
+  name: string
+  description: string
+  statusLabel: string
+  materialLabels: string[]
+  performanceStandardLabels: string[]
+  otherNote: string
+  processDescription: string
+  processFlowNote: string
+  processFlowDocument: string
+  kitProducts: KitProduct[]
+  tests: KitTest[]
+  labels: {
+    title: string
+    basicInfo: string
+    code: string
+    name: string
+    status: string
+    description: string
+    materials: string
+    performanceStandards: string
+    processFlowSection: string
+    addProcess: string
+    globalProcessNote: string
+    processFlowDocument: string
+    productsSection: string
+    productName: string
+    hardener: string
+    thinner: string
+    irParameters: string
+    uvEnergy: string
+    filmThickness: string
+    sprayViscosity: string
+    notes: string
+    testsSection: string
+    testType: string
+    testResult: string
+    testDate: string
+    testerName: string
+    reportLink: string
+    noProducts: string
+    noTests: string
+    testTypeLabel: (type: string) => string
+    testResultLabel: (result: string) => string
+  }
+}
+
+function ProcessKitPrintView({
+  code,
+  name,
+  description,
+  statusLabel,
+  materialLabels,
+  performanceStandardLabels,
+  otherNote,
+  processDescription,
+  processFlowNote,
+  processFlowDocument,
+  kitProducts,
+  tests,
+  labels,
+}: ProcessKitPrintViewProps) {
+  return (
+    <div id={PROCESS_KIT_PRINT_AREA_ID}>
+      <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 16, marginBottom: 12 }}>
+        {labels.title}
+      </div>
+
+      <div className="print-section-title" style={{ fontWeight: 700, fontSize: 11, marginBottom: 5, borderLeft: '3px solid #000', paddingLeft: 6 }}>
+        {labels.basicInfo}
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12, fontSize: 9 }}>
+        <tbody>
+          <tr>
+            <td style={{ width: '14%', padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.code}</td>
+            <td style={{ width: '36%', padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(code)}</td>
+            <td style={{ width: '14%', padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.name}</td>
+            <td style={{ width: '36%', padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(name)}</td>
+          </tr>
+          <tr>
+            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.status}</td>
+            <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(statusLabel)}</td>
+            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.materials}</td>
+            <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(materialLabels.join('、'))}</td>
+          </tr>
+          <tr>
+            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.performanceStandards}</td>
+            <td colSpan={3} style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(performanceStandardLabels.join('、'))}</td>
+          </tr>
+          <tr>
+            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.description}</td>
+            <td colSpan={3} style={{ padding: '3px 6px', border: '1px solid #ccc', whiteSpace: 'pre-wrap' }}>{displayText(description)}</td>
+          </tr>
+          {otherNote.trim() && (
+            <tr>
+              <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.notes}</td>
+              <td colSpan={3} style={{ padding: '3px 6px', border: '1px solid #ccc', whiteSpace: 'pre-wrap' }}>{displayText(otherNote)}</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+
+      <div className="print-section-title" style={{ fontWeight: 700, fontSize: 11, marginBottom: 5, borderLeft: '3px solid #000', paddingLeft: 6 }}>
+        {labels.productsSection}
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12, fontSize: 9 }}>
+        <thead>
+          <tr style={{ background: '#f0f0f0' }}>
+            <th style={{ width: '6%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'center' }}>#</th>
+            <th style={{ width: '21%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.productName}</th>
+            <th style={{ width: '16%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.hardener}</th>
+            <th style={{ width: '16%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.thinner}</th>
+            <th style={{ width: '12%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.irParameters}</th>
+            <th style={{ width: '10%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.uvEnergy}</th>
+            <th style={{ width: '10%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.filmThickness}</th>
+            <th style={{ width: '9%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.sprayViscosity}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {kitProducts.length === 0 ? (
+            <tr>
+              <td colSpan={8} style={{ padding: '8px 6px', border: '1px solid #ccc', textAlign: 'center' }}>{labels.noProducts}</td>
+            </tr>
+          ) : (
+            kitProducts.map((product, index) => (
+              <tr key={product.id} style={{ background: index % 2 === 1 ? '#fafafa' : '#fff' }}>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'center' }}>{index + 1}</td>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(product.productName)}</td>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>
+                  {product.hardenerProductName ? `${product.hardenerProductName}${product.hardenerRatio ? ` / ${product.hardenerRatio}` : ''}` : '—'}
+                </td>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>
+                  {product.thinnerProductName ? `${product.thinnerProductName}${product.thinnerRatio ? ` / ${product.thinnerRatio}` : ''}` : '—'}
+                </td>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(product.irMinutes)} / {displayText(product.irTemperature)}</td>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(product.uvEnergy)}</td>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(product.filmThickness)}</td>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(product.sprayViscosity)}</td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+
+      <div className="print-section-title" style={{ fontWeight: 700, fontSize: 11, marginBottom: 5, borderLeft: '3px solid #000', paddingLeft: 6 }}>
+        {labels.processFlowSection}
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12, fontSize: 9 }}>
+        <tbody>
+          <tr>
+            <td style={{ width: '16%', padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.addProcess}</td>
+            <td style={{ padding: '3px 6px', border: '1px solid #ccc', whiteSpace: 'pre-wrap' }}>{displayText(processDescription)}</td>
+          </tr>
+          <tr>
+            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.globalProcessNote}</td>
+            <td style={{ padding: '3px 6px', border: '1px solid #ccc', whiteSpace: 'pre-wrap' }}>{displayText(processFlowNote)}</td>
+          </tr>
+          <tr>
+            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.processFlowDocument}</td>
+            <td style={{ padding: '3px 6px', border: '1px solid #ccc', whiteSpace: 'pre-wrap' }}>{displayText(processFlowDocument)}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div className="print-section-title" style={{ fontWeight: 700, fontSize: 11, marginBottom: 5, borderLeft: '3px solid #000', paddingLeft: 6 }}>
+        {labels.testsSection}
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9 }}>
+        <thead>
+          <tr style={{ background: '#f0f0f0' }}>
+            <th style={{ width: '16%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.testType}</th>
+            <th style={{ width: '14%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.testResult}</th>
+            <th style={{ width: '20%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.testDate}</th>
+            <th style={{ width: '16%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.testerName}</th>
+            <th style={{ width: '17%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.reportLink}</th>
+            <th style={{ width: '17%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.notes}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tests.length === 0 ? (
+            <tr>
+              <td colSpan={6} style={{ padding: '8px 6px', border: '1px solid #ccc', textAlign: 'center' }}>{labels.noTests}</td>
+            </tr>
+          ) : (
+            tests.map((test, index) => (
+              <tr key={test.id} style={{ background: index % 2 === 1 ? '#fafafa' : '#fff' }}>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{labels.testTypeLabel(test.testType)}</td>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{labels.testResultLabel(test.testResult)}</td>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{formatPrintDateTime(test.testDate)}</td>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(test.testerName)}</td>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(test.reportLink)}</td>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(test.testNotes)}</td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export default function AdminCosmoCoatProcessKitDetailPage() {
   const t = useTranslations('admin.processKits')
   const params = useParams()
@@ -248,6 +570,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
 
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
+  const [printing, setPrinting] = useState(false)
   const [products, setProducts] = useState<FactoryProductOption[]>([])
 
   const [code, setCode] = useState('')
@@ -313,6 +636,50 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     () => buildProcessFlowDocument(kitProducts, processFlowNote, processDescription),
     [kitProducts, processFlowNote, processDescription],
   )
+  const materialLabels = useMemo(() => {
+    const labels = selectedMaterials
+      .filter(id => id !== 'OTHER')
+      .map(id => MATERIAL_LABELS.get(id) ?? id)
+    if (hasOther && otherNote.trim()) labels.push(otherNote.trim())
+    return labels
+  }, [hasOther, otherNote, selectedMaterials])
+  const performanceStandardLabels = useMemo(
+    () => selectedPerformanceStandards.map(id => PERFORMANCE_STANDARD_LABELS.get(id) ?? id),
+    [selectedPerformanceStandards],
+  )
+  const printLabels = useMemo(() => ({
+    title: t('printTitle'),
+    basicInfo: t('basicInfo'),
+    code: t('code'),
+    name: t('name'),
+    status: t('status'),
+    description: t('description'),
+    materials: t('materials'),
+    performanceStandards: t('performanceStandards'),
+    processFlowSection: t('processFlowSection'),
+    addProcess: t('addProcess'),
+    globalProcessNote: t('globalProcessNote'),
+    processFlowDocument: t('processFlowDocument'),
+    productsSection: t('productsSection'),
+    productName: t('productName'),
+    hardener: t('hardener'),
+    thinner: t('thinner'),
+    irParameters: t('irParameters'),
+    uvEnergy: t('uvEnergy'),
+    filmThickness: t('filmThickness'),
+    sprayViscosity: t('sprayViscosity'),
+    notes: t('notes'),
+    testsSection: t('testsSection'),
+    testType: t('testType'),
+    testResult: t('testResult'),
+    testDate: t('testDate'),
+    testerName: t('testerName'),
+    reportLink: t('reportLink'),
+    noProducts: t('noProducts'),
+    noTests: t('noTests'),
+    testTypeLabel: (type: string) => t(`testTypes.${type}`),
+    testResultLabel: (result: string) => t(`testResults.${result}`),
+  }), [t])
 
   function toggleMaterial(materialId: string) {
     setSelectedMaterials(prev => {
@@ -487,6 +854,69 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  function printProcessKit() {
+    setPrinting(true)
+    window.setTimeout(() => {
+      window.print()
+      window.setTimeout(() => setPrinting(false), PRINT_RESET_DELAY_MS)
+    }, 0)
+  }
+
+  function downloadProcessKitWord() {
+    const printArea = document.getElementById(PROCESS_KIT_PRINT_AREA_ID)
+    if (!printArea) {
+      toast.error(t('downloadFailed'))
+      return
+    }
+
+    const filename = `${sanitizeDownloadFilename(code || name || 'process-kit')}-工艺书.doc`
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>${escapeHtml(`${displayText(code)} ${displayText(name)}`)}</title>
+  <style>
+    @page { size: A4 portrait; margin: 12mm 14mm; }
+    body {
+      margin: 0;
+      font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      font-size: 10pt;
+      line-height: 1.45;
+      color: #000;
+      background: #fff;
+    }
+    * { box-sizing: border-box; max-width: 100%; }
+    table { table-layout: fixed; width: 100%; border-collapse: collapse; font-size: 9pt; }
+    td, th {
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      padding: 4px 6px;
+      font-size: 9pt;
+      line-height: 1.35;
+      vertical-align: top;
+    }
+    .print-section-title {
+      font-weight: 700;
+      font-size: 11pt;
+      margin-bottom: 5px;
+      border-left: 3px solid #000;
+      padding-left: 6px;
+    }
+  </style>
+</head>
+<body>${printArea.innerHTML}</body>
+</html>`
+    const blob = new Blob(['\ufeff', html], { type: 'application/msword;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
   }
 
   async function addProduct() {
@@ -741,7 +1171,26 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <>
+      <style dangerouslySetInnerHTML={{ __html: PROCESS_KIT_PRINT_STYLES }} />
+      {!isNew && (
+        <ProcessKitPrintView
+          code={code}
+          name={name}
+          description={description}
+          statusLabel={t(`statuses.${status}`)}
+          materialLabels={materialLabels}
+          performanceStandardLabels={performanceStandardLabels}
+          otherNote={otherNote}
+          processDescription={processDescription}
+          processFlowNote={processFlowNote}
+          processFlowDocument={processFlowDocument}
+          kitProducts={kitProducts}
+          tests={tests}
+          labels={printLabels}
+        />
+      )}
+      <div className="cosmocoat-process-kit-screen p-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Link href="/admin/cosmocoat-process-kits" className="p-2 rounded-lg" style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}>
@@ -756,15 +1205,38 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={saveKit}
-          disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
-          style={{ background: '#C9A96E', color: '#0A0805' }}
-        >
-          <Save size={14} /> {saving ? t('saving') : (isNew ? t('create') : t('save'))}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {!isNew && (
+            <>
+              <button
+                type="button"
+                onClick={printProcessKit}
+                disabled={printing}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+                style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
+              >
+                <Printer size={14} /> {printing ? t('printing') : t('print')}
+              </button>
+              <button
+                type="button"
+                onClick={downloadProcessKitWord}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+                style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
+              >
+                <Download size={14} /> {t('download')}
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={saveKit}
+            disabled={saving}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+            style={{ background: '#C9A96E', color: '#0A0805' }}
+          >
+            <Save size={14} /> {saving ? t('saving') : (isNew ? t('create') : t('save'))}
+          </button>
+        </div>
       </div>
 
       <div style={card} className="p-4 space-y-4">
@@ -1415,6 +1887,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       {isNew && (
         <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>{t('saveFirstHint')}</p>
       )}
-    </div>
+      </div>
+    </>
   )
 }
