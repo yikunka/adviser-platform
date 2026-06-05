@@ -1070,6 +1070,16 @@ enum SfsOrderStatus {
   CANCELLED
 }
 
+enum SfsDiamondSpecCategory {
+  COLOR
+  CARAT
+  SHAPE
+  SETTING_TYPE
+  RING_DESIGN
+  NECKLACE_DESIGN
+  METAL
+}
+
 model SfsOrder {
   id        String         @id @default(cuid())
   createdAt DateTime       @default(now())
@@ -1172,6 +1182,23 @@ model SfsOrderStep {
 
   @@index([orderId, phase])
   @@map("sfs_order_steps")
+}
+
+model SfsDiamondSpecOption {
+  id          String                 @id @default(cuid())
+  category    SfsDiamondSpecCategory
+  label       String
+  value       String
+  imageUrl    String?
+  sortOrder   Int                    @default(0)
+  isActive    Boolean                @default(true)
+  createdById String?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@unique([category, value])
+  @@index([category, sortOrder])
+  @@map("sfs_diamond_spec_options")
 }
 
 // ─────────────────────────────────────────────
@@ -1355,8 +1382,9 @@ model CosTableRecipe {
   productionTimeRequirements  String @default("") @map("production_time_requirements")
   packagingRequirements String @default("") @map("packaging_requirements")
   productionNotes       String @default("") @map("production_notes")
-  qcTestStandard        String @default("") @map("qc_test_standard")
-  qcResult              String @default("") @map("qc_result")
+  qcTestStandard        String   @default("") @map("qc_test_standard")
+  qcTestItems           String[] @default([]) @map("qc_test_items")
+  qcResult              String   @default("") @map("qc_result")
   /// Cached: true when linked to a factory product directly or as a nested component recipe.
   formulaIsUsed         Boolean  @default(false) @map("formula_is_used")
   createdAt     DateTime @default(now())
@@ -1814,6 +1842,7 @@ model CosProcessKitProduct {
   filmThickness String?
   sprayViscosity String?
   notes         String?
+  processBlocks Json    @default("[]")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

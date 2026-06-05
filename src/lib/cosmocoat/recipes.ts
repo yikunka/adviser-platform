@@ -1,3 +1,5 @@
+import { formatSelectedRecipeQcTests } from '@/lib/cosmocoat/recipe-qc-tests'
+
 export const MATERIAL_ATTRIBUTE_GROUPS: { code: string; label: string }[] = [
   { code: 'RS', label: '树脂&单体 RS' },
   { code: 'SO', label: '溶剂 SO' },
@@ -294,8 +296,11 @@ export type RecipeProductionFields = {
   productionTimeRequirements: string
   packagingRequirements: string
   productionNotes: string
+  qcTestItems?: string[]
   qcTestStandard: string
   qcResult: string
+  viscosity?: string | null
+  viscosityUnit?: string | null
 }
 
 /** Formats recipe speed/time fields for production-order requirements and print output. */
@@ -309,11 +314,25 @@ export function formatProductionRequirements(speed: string, time: string): strin
 }
 
 /** Formats recipe QC fields for production-order quality check notes. */
-export function formatRecipeQcRequirements(testStandard: string, result: string): string {
+export function formatRecipeQcRequirements(
+  testStandard: string,
+  result: string,
+  options?: {
+    qcTestItems?: string[]
+    viscosity?: string | null
+    viscosityUnit?: string | null
+  },
+): string {
   const parts: string[] = []
-  const standard = testStandard.trim()
+  const selectedTests = formatSelectedRecipeQcTests(
+    options?.qcTestItems,
+    options?.viscosity,
+    options?.viscosityUnit,
+  )
+  const customStandard = testStandard.trim()
+  const standardParts = [selectedTests, customStandard].filter(Boolean).join('\n')
   const qcResult = result.trim()
-  if (standard) parts.push(`测试标准:\n${standard}`)
+  if (standardParts) parts.push(`测试标准:\n${standardParts}`)
   if (qcResult) parts.push(`结果:\n${qcResult}`)
   return parts.join('\n\n')
 }
@@ -325,7 +344,11 @@ export function recipeToOrderRequirements(recipe: RecipeProductionFields) {
       recipe.productionSpeedRequirements,
       recipe.productionTimeRequirements,
     ),
-    qualityCheckRequirements: formatRecipeQcRequirements(recipe.qcTestStandard, recipe.qcResult),
+    qualityCheckRequirements: formatRecipeQcRequirements(recipe.qcTestStandard, recipe.qcResult, {
+      qcTestItems: recipe.qcTestItems,
+      viscosity: recipe.viscosity,
+      viscosityUnit: recipe.viscosityUnit,
+    }),
     packagingRequirements: recipe.packagingRequirements,
     productionNotes: recipe.productionNotes,
   }

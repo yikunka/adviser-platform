@@ -299,7 +299,15 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
           recipe.productionSpeedRequirements ?? '',
           recipe.productionTimeRequirements ?? '',
         ))
-        setQualityNotes(formatRecipeQcRequirements(recipe.qcTestStandard ?? '', recipe.qcResult ?? ''))
+        setQualityNotes(formatRecipeQcRequirements(
+          recipe.qcTestStandard ?? '',
+          recipe.qcResult ?? '',
+          {
+            qcTestItems: recipe.qcTestItems ?? [],
+            viscosity: recipe.viscosity,
+            viscosityUnit: recipe.viscosityUnit,
+          },
+        ))
         setPackagingNotes(recipe.packagingRequirements ?? '')
       }
       const productionItems = recipeItemsForProduction(recipe.items)

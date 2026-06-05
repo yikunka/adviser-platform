@@ -36,6 +36,7 @@ import {
   WalletCards,
   FileBarChart,
   MessageSquarePlus,
+  SlidersHorizontal,
 } from 'lucide-react'
 import type { AdminMenuKey } from '@/lib/auth/admin-access'
 import { pathnameToAdminMenuKey, adminMenusAllow } from '@/lib/auth/admin-access'
@@ -83,6 +84,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/admin/sfs-customers', key: 'sfsCustomers', Icon: ContactRound },
       { href: '/admin/sfs-orders', key: 'sfsOrders', Icon: Diamond },
+      { href: '/admin/sfs-diamond-specs', key: 'sfsDiamondSpecs', Icon: SlidersHorizontal },
       { href: '/admin/sfs-invoices', key: 'sfsInvoices', Icon: FileText },
     ],
   },

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import type { SfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -52,39 +53,6 @@ export const WIZARD_INITIAL: WizardFormData = {
 
 // ─── Design data ──────────────────────────────────────────────────────────────
 
-const CUTS = [
-  { label: 'Round',         src: '/sfsdiamond/order/cut-round.jpeg' },
-  { label: 'Oval',          src: '/sfsdiamond/order/cut-oval.jpeg' },
-  { label: 'Heart',         src: '/sfsdiamond/order/cut-heart.jpeg' },
-  { label: 'Octagon',       src: '/sfsdiamond/order/cut-octagon.jpeg' },
-  { label: 'Cushion Square',src: '/sfsdiamond/order/cut-cushion.jpeg' },
-  { label: 'Princess',      src: '/sfsdiamond/order/cut-princess.png' },
-  { label: 'Emerald',       src: '/sfsdiamond/order/cut-Emerald.png' },
-]
-
-const RING_DESIGNS = [
-  { label: 'Solitaire', src: '/sfsdiamond/order/ring-solitaire.png' },
-  { label: 'Pave',      src: '/sfsdiamond/order/ring-pave.png' },
-  { label: 'Halo',      src: '/sfsdiamond/order/ring-halo.png' },
-  { label: 'R Classic', src: '/sfsdiamond/order/ring-R-Classic.jpg' },
-]
-
-const NECKLACE_DESIGNS = [
-  { label: 'Classic', src: '/sfsdiamond/order/necklace-classic.jpeg' },
-  { label: 'Plain',   src: '/sfsdiamond/order/necklace-plain.jpeg' },
-  { label: 'Buddha',  src: '/sfsdiamond/order/necklace-buddha.jpeg' },
-  { label: 'Cross',   src: '/sfsdiamond/order/necklace-cross.jpeg' },
-  { label: 'Yinyang', src: '/sfsdiamond/order/necklace-yinyang.jpeg' },
-]
-
-const METALS = [
-  { label: 'Platinum',    code: 'Platinum' },
-  { label: 'Yellow Gold', code: 'Yellow Gold' },
-  { label: 'Rose Gold',   code: 'Rose Gold' },
-  { label: 'White Gold',  code: 'White Gold' },
-]
-
-const CARATS = ['0.5', '1.0', '1.5', '2.0', '2.5', '3.0']
 const STEPS = ['Client Info', 'Source Material', 'Color', 'Diamond Specs', 'Order Summary']
 
 // ─── Shared UI helpers ────────────────────────────────────────────────────────
@@ -163,7 +131,7 @@ function CheckCard({ checked, onChange, children }: { checked: boolean; onChange
 }
 
 function ImageCard({ label, src, selected, onClick, tall, hideLabel }: {
-  label: string; src: string; selected: boolean; onClick: () => void; tall?: boolean; hideLabel?: boolean
+  label: string; src: string | null; selected: boolean; onClick: () => void; tall?: boolean; hideLabel?: boolean
 }) {
   return (
     <button
@@ -177,7 +145,13 @@ function ImageCard({ label, src, selected, onClick, tall, hideLabel }: {
       }}
     >
       <div className={`relative w-full ${tall ? 'h-32' : 'h-24'} rounded-xl overflow-hidden`}>
-        <Image src={src} alt={label} fill className="object-contain" />
+        {src ? (
+          <img src={src} alt={label} className="h-full w-full object-contain" />
+        ) : (
+          <div className="h-full w-full flex items-center justify-center text-xs" style={{ color: MUTED }}>
+            {label}
+          </div>
+        )}
       </div>
       {!hideLabel && (
         <span className="text-xs font-semibold text-center" style={{ color: selected ? GOLD : MUTED }}>
@@ -328,8 +302,11 @@ function Step2({ data, update }: { data: WizardFormData; update: (p: Partial<Wiz
 
 // ─── Step 3 ───────────────────────────────────────────────────────────────────
 
-function Step3({ data, update }: { data: WizardFormData; update: (p: Partial<WizardFormData>) => void }) {
-  const COLORS = ['Natural Color', 'Transparent']
+function Step3({ data, update, specOptions }: {
+  data: WizardFormData
+  update: (p: Partial<WizardFormData>) => void
+  specOptions: SfsOrderSpecOptions
+}) {
   return (
     <div className="space-y-6">
       <SectionTitle
@@ -339,9 +316,9 @@ function Step3({ data, update }: { data: WizardFormData; update: (p: Partial<Wiz
       />
       <Field label="Select Color" required>
         <div className="flex flex-wrap gap-3">
-          {COLORS.map(c => (
-            <CheckCard key={c} checked={data.color === c} onChange={() => update({ color: c })}>
-              {c}
+          {specOptions.colors.map(c => (
+            <CheckCard key={c.id} checked={data.color === c.value} onChange={() => update({ color: c.value })}>
+              {c.label}
             </CheckCard>
           ))}
         </div>
@@ -357,11 +334,16 @@ function Step3({ data, update }: { data: WizardFormData; update: (p: Partial<Wiz
 
 // ─── Diamond row (Step 4) ─────────────────────────────────────────────────────
 
-function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, onToggleCollapse }: {
+function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, onToggleCollapse, specOptions }: {
   index: number; item: DiamondItem; onChange: (p: Partial<DiamondItem>) => void
   onRemove: () => void; showRemove: boolean; collapsed: boolean; onToggleCollapse: () => void
+  specOptions: SfsOrderSpecOptions
 }) {
-  const designOptions = item.type === 'Ring' ? RING_DESIGNS : item.type === 'Necklace' ? NECKLACE_DESIGNS : []
+  const designOptions = item.type === 'Ring'
+    ? specOptions.ringDesigns
+    : item.type === 'Necklace'
+      ? specOptions.necklaceDesigns
+      : []
   const summary = [item.carat ? `${item.carat} ct` : '', item.shape, item.type].filter(Boolean).join(' · ')
 
   if (collapsed) {
@@ -429,19 +411,19 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
         </p>
         <Image src="/sfsdiamond/order/size-chart.png" alt="Diamond size chart" width={420} height={80} className="mb-4 rounded-xl" />
         <div className="flex flex-wrap gap-2">
-          {CARATS.map(c => (
+          {specOptions.carats.map(c => (
             <button
-              key={c}
+              key={c.id}
               type="button"
-              onClick={() => onChange({ carat: c })}
+              onClick={() => onChange({ carat: c.value })}
               className="px-5 py-2 rounded-full text-sm font-semibold border-2 transition-all"
               style={{
-                borderColor: item.carat === c ? GOLD : BORDER,
-                background: item.carat === c ? '#FDF8F0' : '#fff',
-                color: item.carat === c ? GOLD : DARK,
+                borderColor: item.carat === c.value ? GOLD : BORDER,
+                background: item.carat === c.value ? '#FDF8F0' : '#fff',
+                color: item.carat === c.value ? GOLD : DARK,
               }}
             >
-              {c} ct
+              {c.label} ct
             </button>
           ))}
         </div>
@@ -453,13 +435,13 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
           Shape<span style={{ color: GOLD }}> *</span>
         </p>
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-          {CUTS.map(cut => (
+          {specOptions.shapes.map(cut => (
             <ImageCard
-              key={cut.label}
+              key={cut.id}
               label={cut.label}
-              src={cut.src}
-              selected={item.shape === cut.label}
-              onClick={() => onChange({ shape: cut.label })}
+              src={cut.imageUrl}
+              selected={item.shape === cut.value}
+              onClick={() => onChange({ shape: cut.value })}
               hideLabel
             />
           ))}
@@ -472,9 +454,9 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
           Setting Type<span style={{ color: GOLD }}> *</span>
         </p>
         <div className="flex flex-wrap gap-2">
-          {['Ring', 'Necklace', 'Diamond only'].map(t => (
-            <CheckCard key={t} checked={item.type === t} onChange={() => onChange({ type: t, design: '', ringSize: '' })}>
-              {t}
+          {specOptions.settingTypes.map(t => (
+            <CheckCard key={t.id} checked={item.type === t.value} onChange={() => onChange({ type: t.value, design: '', ringSize: '' })}>
+              {t.label}
             </CheckCard>
           ))}
         </div>
@@ -499,7 +481,7 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
           </p>
           <div className={`grid gap-3 ${item.type === 'Ring' ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3 sm:grid-cols-5'}`}>
             {designOptions.map(d => (
-              <ImageCard key={d.label} label={d.label} src={d.src} selected={item.design === d.label} onClick={() => onChange({ design: d.label })} tall />
+              <ImageCard key={d.id} label={d.label} src={d.imageUrl} selected={item.design === d.value} onClick={() => onChange({ design: d.value })} tall />
             ))}
           </div>
         </div>
@@ -512,8 +494,8 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
           </p>
           <Image src="/sfsdiamond/order/metal-swatches.png" alt="Metal options" width={400} height={80} className="mb-4 rounded-xl" />
           <div className="flex flex-wrap gap-2">
-            {METALS.map(m => (
-              <CheckCard key={m.code} checked={item.metal === m.code} onChange={() => onChange({ metal: m.code })}>
+            {specOptions.metals.map(m => (
+              <CheckCard key={m.id} checked={item.metal === m.value} onChange={() => onChange({ metal: m.value })}>
                 {m.label}
               </CheckCard>
             ))}
@@ -526,7 +508,11 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
 
 // ─── Step 4 ───────────────────────────────────────────────────────────────────
 
-function Step4({ data, update }: { data: WizardFormData; update: (p: Partial<WizardFormData>) => void }) {
+function Step4({ data, update, specOptions }: {
+  data: WizardFormData
+  update: (p: Partial<WizardFormData>) => void
+  specOptions: SfsOrderSpecOptions
+}) {
   const [collapsedSet, setCollapsedSet] = useState<Set<number>>(new Set())
 
   const updateDiamond = (i: number, patch: Partial<DiamondItem>) => {
@@ -565,6 +551,7 @@ function Step4({ data, update }: { data: WizardFormData; update: (p: Partial<Wiz
             showRemove={data.diamonds.length > 1}
             collapsed={collapsedSet.has(i)}
             onToggleCollapse={() => toggleCollapse(i)}
+            specOptions={specOptions}
           />
         ))}
       </div>
@@ -655,10 +642,12 @@ export default function OrderWizard({
   mode,
   orderId,
   initialData,
+  specOptions,
 }: {
   mode: 'create' | 'edit'
   orderId?: string
   initialData?: Partial<WizardFormData>
+  specOptions: SfsOrderSpecOptions
 }) {
   const router = useRouter()
   const { data: session } = useSession()
@@ -820,8 +809,8 @@ export default function OrderWizard({
       <div className="max-w-3xl mx-auto px-6 py-12">
         {step === 1 && <Step1 data={data} update={update} />}
         {step === 2 && <Step2 data={data} update={update} />}
-        {step === 3 && <Step3 data={data} update={update} />}
-        {step === 4 && <Step4 data={data} update={update} />}
+        {step === 3 && <Step3 data={data} update={update} specOptions={specOptions} />}
+        {step === 4 && <Step4 data={data} update={update} specOptions={specOptions} />}
         {step === 5 && <Step5 data={data} />}
 
         {error && (

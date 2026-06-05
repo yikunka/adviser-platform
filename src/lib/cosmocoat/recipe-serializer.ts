@@ -208,6 +208,7 @@ export async function serializeFullRecipe(recipeId: string) {
     packagingRequirements: recipe.packagingRequirements,
     productionNotes: recipe.productionNotes,
     qcTestStandard: recipe.qcTestStandard,
+    qcTestItems: recipe.qcTestItems,
     qcResult: recipe.qcResult,
     formulaIsUsed: recipe.formulaIsUsed,
     createdAt: recipe.createdAt.toISOString(),

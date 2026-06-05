@@ -13,6 +13,8 @@ const ALLOWED_TYPES: Record<string, string> = {
   'image/png': 'png',
   'image/gif': 'gif',
   'image/webp': 'webp',
+  'image/heic': 'heic',
+  'image/heif': 'heif',
   'application/pdf': 'pdf',
   'application/msword': 'doc',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
@@ -27,7 +29,7 @@ function resolveContentType(file: File): string | null {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
   const byExt: Record<string, string> = {
     jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
-    gif: 'image/gif', webp: 'image/webp', pdf: 'application/pdf',
+    gif: 'image/gif', webp: 'image/webp', heic: 'image/heic', heif: 'image/heif', pdf: 'application/pdf',
     doc: 'application/msword',
     docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     txt: 'text/plain',
@@ -51,7 +53,7 @@ export async function POST(req: NextRequest) {
   const contentType = resolveContentType(file)
   if (!contentType) {
     return NextResponse.json(
-      { error: '不支持的文件格式。支持图片 (JPG/PNG/GIF/WEBP)、PDF、Word、TXT' },
+      { error: '不支持的文件格式。支持图片 (JPG/PNG/GIF/WEBP/HEIC/HEIF)、PDF、Word、TXT' },
       { status: 400 },
     )
   }
@@ -65,7 +67,7 @@ export async function POST(req: NextRequest) {
   const buffer = Buffer.from(await file.arrayBuffer())
 
   await uploadToR2(key, buffer, contentType, {
-    contentDisposition: `inline; filename="${file.name}"`,
+    contentDisposition: `inline; filename="${file.name.replace(/"/g, '')}"`,
     cacheControl: 'public, max-age=2592000', // 30 days
   })
 

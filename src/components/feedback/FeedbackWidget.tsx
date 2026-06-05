@@ -70,6 +70,13 @@ function isImage(type: string) {
   return type.startsWith('image/')
 }
 
+function createUploadId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
 function AttachmentChip({ a, onRemove }: { a: Attachment; onRemove?: () => void }) {
   return (
     <div
@@ -180,7 +187,7 @@ export function FeedbackWidget() {
   // ── File upload ──────────────────────────────────────────────────────────
 
   async function uploadFile(file: File) {
-    const id = crypto.randomUUID()
+    const id = createUploadId()
     setUploadingFiles(prev => [...prev, { id, name: file.name, status: 'uploading' }])
 
     try {
@@ -575,7 +582,7 @@ export function FeedbackWidget() {
                   ref={fileInputRef}
                   type="file"
                   multiple
-                  accept="image/*,.pdf,.doc,.docx,.txt"
+                  accept="image/*,.heic,.heif,.pdf,.doc,.docx,.txt"
                   className="hidden"
                   onChange={handleFileInputChange}
                 />

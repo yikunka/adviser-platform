@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
 import OrderWizard, { type WizardFormData } from '@/app/sfsdiamond/components/OrderWizard'
+import { getSfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options'
 
 const EDITABLE_STATUSES = ['PENDING', 'QUOTED', 'CANCELLED']
 
@@ -14,7 +15,10 @@ export default async function EditOrderPage({
   if (!session) redirect('/sfsdiamond/login')
 
   const { id } = await params
-  const order = await prisma.sfsOrder.findUnique({ where: { id } })
+  const [order, specOptions] = await Promise.all([
+    prisma.sfsOrder.findUnique({ where: { id } }),
+    getSfsOrderSpecOptions(),
+  ])
 
   if (!order || order.userId !== session.user.id) notFound()
   if (!EDITABLE_STATUSES.includes(order.status)) redirect(`/sfsdiamond/dashboard/${id}`)
@@ -50,5 +54,5 @@ export default async function EditOrderPage({
     })),
   }
 
-  return <OrderWizard mode="edit" orderId={id} initialData={initialData} />
+  return <OrderWizard mode="edit" orderId={id} initialData={initialData} specOptions={specOptions} />
 }

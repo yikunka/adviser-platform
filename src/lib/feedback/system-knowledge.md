@@ -159,7 +159,7 @@ Memorial diamond jewellery service (lab-grown diamonds from cremation remains). 
 - **Technology**: diamond creation process (CVD growth explained)
 - **Memorial Diamonds**: product showcase
 - **Q&A**: FAQ
-- **Order** (`/order`): order placement form
+- **Order** (`/order`): order placement form; Diamond Specs options are database-driven from SFS Diamond Specs admin, including image-backed Shape / Ring Design / Necklace Design options
 - **Order Success** (`/order/success`): confirmation page
 - **Dashboard** (authenticated): client's orders with milestone progress
 - **Dashboard Detail** (`/dashboard/[id]`): specific order status and phase timeline
@@ -170,6 +170,12 @@ Customer registry for SFS Diamond.
 - Shows customer name, email, phone, mailing address, source type, order count, and latest order link/status
 - Create manual SFS customer records without creating or binding an official platform login account/email
 - Edit SFS customer profile fields (name, email, phone, mailing address, notes); order-only contacts are converted to bound customer profiles when edited
+
+### SFS Diamond Specs Admin (`/admin/sfs-diamond-specs`)
+Customer-facing order option management for SFS Diamond.
+- Maintains active/inactive options for Color, Carat, Shape, Setting Type, Ring Design, Necklace Design, and Metal
+- Shape, Ring Design, and Necklace Design options can store preview image URLs; admin can upload images to OSS/local storage or paste an existing URL
+- Active options are shown on `/sfsdiamond/order`; submitted orders keep saved text values
 
 ### SFS Orders Admin (`/admin/sfs-orders`)
 Order lifecycle management for memorial diamond commissions.
@@ -233,7 +239,7 @@ Product formulation management.
 - Print recipe: downloads a simplified recipe detail DOCX containing only recipe code, name, category, batch quantity, unit cost, and material list with material code, name, source/category, quantity, and percentage
 - Production process section: production speed requirements, production time requirements, packaging requirements, production notes (separate from QC)
 - Packaging requirements: button quick-select presets (200目、300目、400目、色装机); clicking a preset fills the field; new recipes start with an empty packaging field (no default preset)
-- QC section (separate card): test standard and result fields; carried into production order quality-check requirements when creating orders
+- QC section (separate card): multi-select checkboxes for standard tests (黏度, 百格, 水煮80C/30M, 湿油外观, 干板外观) plus optional free-text test standard and result fields; selected tests and custom text are carried into production order quality-check requirements when creating orders (viscosity checkbox includes recipe viscosity value when set)
 - Material rows can be reordered by drag-and-drop; new order is auto-saved immediately
 
 ### Color Matching Formulas (`/admin/cosmocoat-color-formulas`)

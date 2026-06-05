@@ -11,6 +11,7 @@ export const ADMIN_MENU_KEYS = [
   'sfsCustomers',
   'sfsOrders',
   'sfsInvoices',
+  'sfsDiamondSpecs',
   'settings',
   'cosmocoatProducts',
   'cosmocoatRawMaterials',
@@ -38,6 +39,7 @@ const MENU_PLATFORM: Record<AdminMenuKey, Platform | 'GLOBAL'> = {
   sfsCustomers: 'SFS_DIAMOND',
   sfsOrders: 'SFS_DIAMOND',
   sfsInvoices: 'SFS_DIAMOND',
+  sfsDiamondSpecs: 'SFS_DIAMOND',
   cosmocoatProducts: 'COSMICOAT',
   cosmocoatRawMaterials: 'COSMICOAT',
   cosmocoatRecipes: 'COSMICOAT',
@@ -115,6 +117,8 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
       return 'sfsOrders'
     case 'sfs-invoices':
       return 'sfsInvoices'
+    case 'sfs-diamond-specs':
+      return 'sfsDiamondSpecs'
     case 'settings':
       return 'settings'
     case 'team':
@@ -160,6 +164,7 @@ export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: stri
   { key: 'sfsCustomers', label: 'SFS customers', group: 'SFS Diamond' },
   { key: 'sfsOrders', label: 'SFS orders', group: 'SFS Diamond' },
   { key: 'sfsInvoices', label: 'SFS invoices', group: 'SFS Invoices' },
+  { key: 'sfsDiamondSpecs', label: 'Diamond specs', group: 'SFS Diamond' },
   { key: 'cosmocoatProducts', label: 'Product management', group: 'CosmoCoat' },
   { key: 'cosmocoatRawMaterials', label: 'Raw material management', group: 'CosmoCoat' },
   { key: 'cosmocoatRecipes', label: 'Recipe management', group: 'CosmoCoat' },

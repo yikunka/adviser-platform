@@ -25,6 +25,7 @@ const patchSchema = z.object({
   packagingRequirements: z.string().trim().max(2000).optional(),
   productionNotes: z.string().trim().max(2000).optional(),
   qcTestStandard: z.string().trim().max(2000).optional(),
+  qcTestItems: z.array(z.enum(['VISCOSITY', 'CROSSHATCH', 'BOILING_WATER_80C30M', 'WET_OIL_APPEARANCE', 'DRY_PLATE_APPEARANCE'])).optional(),
   qcResult: z.string().trim().max(2000).optional(),
   items: z.array(itemSchema).optional(),
 })
@@ -125,6 +126,7 @@ export async function PATCH(
         packagingRequirements: parsed.data.packagingRequirements,
         productionNotes: parsed.data.productionNotes,
         qcTestStandard: parsed.data.qcTestStandard,
+        qcTestItems: parsed.data.qcTestItems,
         qcResult: parsed.data.qcResult,
         unitCost: totals.unitCost,
       },
