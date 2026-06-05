@@ -435,8 +435,14 @@ export default function AdminCosmoCoatRecipeEditorPage() {
     try {
       const params = new URLSearchParams({ limit: '200' })
       const q = pickerSearch.trim()
-      if (q) params.set('q', q)
-      const res = await fetch(`/api/admin/cosmocoat/factory-products?${params}`)
+      if (q) {
+        params.set('q', q)
+      } else if (finishedProductCategoryFilter) {
+        params.set('categoryId', finishedProductCategoryFilter)
+      }
+      const res = await fetch(`/api/admin/cosmocoat/recipes/factory-product-options?${params}`, {
+        cache: 'no-store',
+      })
       const data = await res.json()
       if (!res.ok) {
         toast.error(data.error ?? '加载成品失败')
@@ -452,13 +458,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
         category: item.category,
       })))
       if (!pickerSearch.trim()) {
-        const catMap = new Map<string, { id: string; name: string }>()
-        for (const item of data.items ?? []) {
-          if (item.category?.id && !catMap.has(item.category.id)) {
-            catMap.set(item.category.id, { id: item.category.id, name: item.category.name })
-          }
-        }
-        const cats = Array.from(catMap.values())
+        const cats: { id: string; name: string }[] = data.categories ?? []
         setFinishedProductCategories(cats)
         setFinishedProductCategoryFilter(prev => prev || (cats[0]?.id ?? ''))
       }
@@ -467,7 +467,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
     } finally {
       setPickerLoading(false)
     }
-  }, [pickerSearch])
+  }, [pickerSearch, finishedProductCategoryFilter])
 
   useEffect(() => {
     if (isNew) {
@@ -494,6 +494,19 @@ export default function AdminCosmoCoatRecipeEditorPage() {
     const t = setTimeout(loadPickerFinishedProducts, pickerSearch.trim() ? 300 : 0)
     return () => clearTimeout(t)
   }, [loadPickerFinishedProducts, pickerSearch, pickerMode, finishedProductCategoryFilter])
+
+  useEffect(() => {
+    if (pickerMode !== 'factory_product') return
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        loadPickerFinishedProducts()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [loadPickerFinishedProducts, pickerMode])
 
   function switchPickerMode(mode: PickerMode) {
     setPickerMode(mode)
