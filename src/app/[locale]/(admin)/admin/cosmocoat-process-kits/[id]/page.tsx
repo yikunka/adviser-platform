@@ -7,7 +7,7 @@ import { useParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, Plus, Save, Trash2 } from 'lucide-react'
+import { ArrowLeft, Pencil, Plus, Save, Trash2 } from 'lucide-react'
 import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
 import { cn } from '@/lib/utils'
 import { buildProcessFlowDocument } from '@/lib/cosmocoat/process-flow'
@@ -270,6 +270,15 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
 
   const [showProductForm, setShowProductForm] = useState(false)
   const [addingProduct, setAddingProduct] = useState(false)
+  const [editingProductId, setEditingProductId] = useState<string | null>(null)
+  const [savingProductEdit, setSavingProductEdit] = useState(false)
+  const [editForm, setEditForm] = useState({
+    irMinutes: '',
+    irTemperature: '',
+    uvEnergy: '',
+    filmThickness: '',
+    notes: '',
+  })
   const [productForm, setProductForm] = useState({
     productId: '',
     useHardener: false,
@@ -575,8 +584,92 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     }
   }
 
+  function resetEditForm() {
+    setEditingProductId(null)
+    setEditForm({
+      irMinutes: '',
+      irTemperature: '',
+      uvEnergy: '',
+      filmThickness: '',
+      notes: '',
+    })
+  }
+
+  function startEditProduct(product: KitProduct) {
+    setShowProductForm(false)
+    setEditingProductId(product.id)
+    setEditForm({
+      irMinutes: product.irMinutes ?? '',
+      irTemperature: product.irTemperature ?? '',
+      uvEnergy: product.uvEnergy ?? '',
+      filmThickness: product.filmThickness ?? '',
+      notes: product.notes ?? '',
+    })
+  }
+
+  async function saveProductEdit() {
+    if (!editingProductId) return
+
+    const irMinutes = parseRequiredText(editForm.irMinutes)
+    const irTemperature = parseRequiredText(editForm.irTemperature)
+    const uvEnergy = parseRequiredText(editForm.uvEnergy)
+    const filmThickness = parseRequiredText(editForm.filmThickness)
+
+    if (irMinutes === null || irTemperature === null || uvEnergy === null) {
+      toast.error(t('editProductFormRequired'))
+      return
+    }
+
+    if (isNew) {
+      setKitProducts(prev => prev.map(product =>
+        product.id === editingProductId
+          ? {
+              ...product,
+              irMinutes,
+              irTemperature,
+              uvEnergy,
+              filmThickness,
+              notes: editForm.notes.trim() || null,
+            }
+          : product,
+      ))
+      toast.success(t('productUpdated'))
+      resetEditForm()
+      return
+    }
+
+    setSavingProductEdit(true)
+    try {
+      const res = await fetch(`/api/admin/cosmocoat/process-kits/${kitId}/products`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingProductId,
+          irMinutes,
+          irTemperature,
+          uvEnergy,
+          filmThickness,
+          notes: editForm.notes,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? t('editProductFailed'))
+        return
+      }
+      toast.success(t('productUpdated'))
+      setKitProducts(data.kit?.products ?? [])
+      resetEditForm()
+    } catch {
+      toast.error(t('editProductFailed'))
+    } finally {
+      setSavingProductEdit(false)
+    }
+  }
+
   async function removeProduct(productId: string) {
     if (!window.confirm(t('removeProductConfirm'))) return
+    if (editingProductId === productId) resetEditForm()
     if (isNew) {
       setKitProducts(prev => prev.filter(product => product.id !== productId))
       return
@@ -797,7 +890,10 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
           <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>{t('processFlowSection')}</h3>
           <button
             type="button"
-            onClick={() => setShowProductForm(v => !v)}
+            onClick={() => {
+              resetEditForm()
+              setShowProductForm(v => !v)
+            }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
             style={{ background: '#1A1A12', border: '1px solid #2A2418', color: 'var(--foreground)' }}
           >
@@ -997,6 +1093,88 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
           </div>
         )}
 
+        {editingProductId && (
+          <div className="p-4 border-b space-y-3" style={{ borderColor: '#2A2418', background: '#0E0E0A' }}>
+            <p className="text-xs font-medium" style={{ color: '#C9A96E' }}>
+              {t('editProductTitle')} — {kitProducts.find(p => p.id === editingProductId)?.productName}
+            </p>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('irMinutes')}</label>
+                <input
+                  type="text"
+                  value={editForm.irMinutes}
+                  onChange={e => setEditForm(f => ({ ...f, irMinutes: e.target.value }))}
+                  placeholder={t('parameterRangePlaceholder')}
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                  style={inputStyle()}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('irTemperature')}</label>
+                <input
+                  type="text"
+                  value={editForm.irTemperature}
+                  onChange={e => setEditForm(f => ({ ...f, irTemperature: e.target.value }))}
+                  placeholder={t('parameterRangePlaceholder')}
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                  style={inputStyle()}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('uvEnergy')}</label>
+                <input
+                  type="text"
+                  value={editForm.uvEnergy}
+                  onChange={e => setEditForm(f => ({ ...f, uvEnergy: e.target.value }))}
+                  placeholder={t('parameterRangePlaceholder')}
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                  style={inputStyle()}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('filmThickness')}</label>
+                <input
+                  type="text"
+                  value={editForm.filmThickness}
+                  onChange={e => setEditForm(f => ({ ...f, filmThickness: e.target.value }))}
+                  placeholder={t('filmThicknessPlaceholder')}
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                  style={inputStyle()}
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2 lg:col-span-4">
+                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('notes')}</label>
+                <input
+                  value={editForm.notes}
+                  onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                  style={inputStyle()}
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={saveProductEdit}
+                disabled={savingProductEdit}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
+                style={{ background: '#C9A96E', color: '#0A0805' }}
+              >
+                {savingProductEdit ? t('saving') : t('confirmEdit')}
+              </button>
+              <button
+                type="button"
+                onClick={resetEditForm}
+                className="px-3 py-1.5 rounded-lg text-xs"
+                style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}
+              >
+                {t('cancel')}
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -1030,14 +1208,26 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                   <td style={td}>{p.sprayViscosity ?? '-'}</td>
                   <td style={td}>{p.notes || '-'}</td>
                   <td style={{ ...td, textAlign: 'right' }}>
-                    <button
-                      type="button"
-                      onClick={() => removeProduct(p.id)}
-                      className="p-1.5 rounded-md"
-                      style={{ color: '#ef4444' }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => startEditProduct(p)}
+                        title={t('editProduct')}
+                        className="p-1.5 rounded-md transition-colors"
+                        style={{ color: editingProductId === p.id ? '#C9A96E' : 'var(--muted-foreground)' }}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeProduct(p.id)}
+                        title={t('removeProduct')}
+                        className="p-1.5 rounded-md transition-colors"
+                        style={{ color: '#ef4444' }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -46,6 +46,15 @@ const deleteSchema = z.object({
   id: z.string().trim().min(1),
 })
 
+const updateSchema = z.object({
+  id: z.string().trim().min(1),
+  irMinutes: processParameterSchema,
+  irTemperature: processParameterSchema,
+  uvEnergy: processParameterSchema,
+  filmThickness: processParameterSchema,
+  notes: optionalTextSchema(2000),
+})
+
 function isMissingTable(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021'
 }
@@ -141,6 +150,43 @@ export async function POST(
     }
     throw err
   }
+}
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
+  if (error) return error
+
+  const { id: kitId } = await params
+  const kit = await prisma.cosProcessKit.findUnique({ where: { id: kitId } })
+  if (!kit) return NextResponse.json({ error: '工艺书不存在' }, { status: 404 })
+
+  const body = await req.json().catch(() => null)
+  const parsed = updateSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
+  }
+
+  const product = await prisma.cosProcessKitProduct.findFirst({
+    where: { id: parsed.data.id, kitId },
+  })
+  if (!product) return NextResponse.json({ error: '产品明细不存在' }, { status: 404 })
+
+  await prisma.cosProcessKitProduct.update({
+    where: { id: parsed.data.id },
+    data: {
+      irMinutes: parsed.data.irMinutes || null,
+      irTemperature: parsed.data.irTemperature || null,
+      uvEnergy: parsed.data.uvEnergy || null,
+      filmThickness: parsed.data.filmThickness || null,
+      notes: parsed.data.notes || null,
+    },
+  })
+
+  const full = await getProcessKitById(kitId)
+  return NextResponse.json({ kit: full })
 }
 
 export async function DELETE(
