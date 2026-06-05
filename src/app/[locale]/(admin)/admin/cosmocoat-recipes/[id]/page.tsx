@@ -211,7 +211,8 @@ export default function AdminCosmoCoatRecipeEditorPage() {
   const [name, setName] = useState('')
   const [batchQuantity, setBatchQuantity] = useState(100)
   const [notes, setNotes] = useState('')
-  const [stirringRequirements, setStirringRequirements] = useState('')
+  const [productionSpeedRequirements, setProductionSpeedRequirements] = useState('')
+  const [productionTimeRequirements, setProductionTimeRequirements] = useState('')
   const [packagingRequirements, setPackagingRequirements] = useState('')
   const [productionNotes, setProductionNotes] = useState('')
   const [qcTestStandard, setQcTestStandard] = useState('')
@@ -277,7 +278,8 @@ export default function AdminCosmoCoatRecipeEditorPage() {
       setName(recipe.name)
       setBatchQuantity(recipe.batchQuantity)
       setNotes(recipe.notes)
-      setStirringRequirements(recipe.stirringRequirements)
+      setProductionSpeedRequirements(recipe.productionSpeedRequirements)
+      setProductionTimeRequirements(recipe.productionTimeRequirements)
       setPackagingRequirements(recipe.packagingRequirements)
       setProductionNotes(recipe.productionNotes)
       setQcTestStandard(recipe.qcTestStandard)
@@ -563,7 +565,8 @@ export default function AdminCosmoCoatRecipeEditorPage() {
       name: name.trim(),
       batchQuantity,
       notes,
-      stirringRequirements,
+      productionSpeedRequirements,
+      productionTimeRequirements,
       packagingRequirements,
       productionNotes,
       qcTestStandard,
@@ -782,16 +785,27 @@ export default function AdminCosmoCoatRecipeEditorPage() {
         <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
           创建生产单时将按当前配方自动带出以下要求
         </p>
-        <div className="grid sm:grid-cols-1 lg:grid-cols-3 gap-3">
+        <div className="grid sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-3">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>生产要求</label>
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>生产转速要求</label>
             <textarea
-              value={stirringRequirements}
-              onChange={e => setStirringRequirements(e.target.value)}
+              value={productionSpeedRequirements}
+              onChange={e => setProductionSpeedRequirements(e.target.value)}
               rows={4}
               className="w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-y"
               style={inputStyle()}
-              placeholder="1500 转 / 30 分钟"
+              placeholder="如：1500 转"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>生产时间要求</label>
+            <textarea
+              value={productionTimeRequirements}
+              onChange={e => setProductionTimeRequirements(e.target.value)}
+              rows={4}
+              className="w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-y"
+              style={inputStyle()}
+              placeholder="如：30 分钟"
             />
           </div>
           <div className="space-y-1.5">

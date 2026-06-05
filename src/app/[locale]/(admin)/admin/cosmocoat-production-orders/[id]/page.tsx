@@ -13,6 +13,7 @@ import {
   formatWeight,
   recipeItemsForProduction,
   type ProductionRecipeItem,
+  formatProductionRequirements,
   formatRecipeQcRequirements,
 } from '@/lib/cosmocoat/recipes'
 import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
@@ -291,7 +292,10 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       setRecipeCode(recipe.code)
       setRecipeName(recipe.name)
       if (isNew) {
-        setProductionNotes(recipe.stirringRequirements ?? '')
+        setProductionNotes(formatProductionRequirements(
+          recipe.productionSpeedRequirements ?? '',
+          recipe.productionTimeRequirements ?? '',
+        ))
         setQualityNotes(formatRecipeQcRequirements(recipe.qcTestStandard ?? '', recipe.qcResult ?? ''))
         setPackagingNotes(recipe.packagingRequirements ?? '')
       }

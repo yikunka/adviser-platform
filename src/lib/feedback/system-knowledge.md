@@ -230,8 +230,8 @@ Product formulation management.
 - Unit cost is calculated by percentage: each line contributes `(quantity ÷ total quantity) × unit price`; accurate even when material quantities do not sum to 100
 - Automatic cost calculation; line prices can be refreshed from latest source pricing, and raw-material primary price or factory-product unit price changes automatically cascade through dependent production recipes, nested semifinished recipes, and source-linked semifinished inventory unit prices
 - Link to factory products; mark recipe as active/used
-- Print recipe: prints complete recipe sheet (materials, quantities, percentages, costs, production requirements)
-- Production process section: stirring requirements, packaging requirements, production notes (separate from QC)
+- Print recipe: downloads a simplified recipe detail DOCX containing only recipe code, name, category, batch quantity, unit cost, and material list with material code, name, source/category, quantity, and percentage
+- Production process section: production speed requirements, production time requirements, packaging requirements, production notes (separate from QC)
 - Packaging requirements: button quick-select presets (200目、300目、400目、色装机); clicking a preset fills the field; new recipes start with an empty packaging field (no default preset)
 - QC section (separate card): test standard and result fields; carried into production order quality-check requirements when creating orders
 - Material rows can be reordered by drag-and-drop; new order is auto-saved immediately
@@ -247,7 +247,7 @@ Custom color formulations for specific customers or products.
 - Material details use the same split layout as recipe management: selected item table above, candidate material table below with click-to-select and "添加选中"; picker category filter is single-select (default none — user picks one of AD, SO, Sol semifinished, DY, CO, CA, CC)
 - Category tabs filter the factory-product sub-filters below: PU tab shows only factory products whose product category name is exactly「PU漆」; 色漆 and 烤漆 tabs use inferred category matching
 - Clicking "新建配方" while a product filter is active pre-fills that product in the new formula form
-- Detail page has a "打印文件" action: opens a dialog to enter target production weight (kg), scales product and raw-material line quantities proportionally, then triggers browser PDF print (A4, no page header/footer). Print header shows 调色单号 (formula code), name, category, target color, linked factory product, production weight, and notes. Material table shows 序号 / 生产编号 / 原料·产品名称 / 用量(kg) / 占比 / 备注 only (hides attribute, color code, source recipe, customer, unit price, and amount columns). Production instructions from the linked source recipe (stirring, packaging, production notes, QC test standard/result) are included when available.
+- Detail page has a "打印文件" action: opens a dialog to enter target production weight (kg), scales product and raw-material line quantities proportionally, then triggers browser PDF print (A4, no page header/footer). Print header shows 调色单号 (formula code), name, category, target color, linked factory product, production weight, and notes. Material table shows 序号 / 生产编号 / 原料·产品名称 / 用量(kg) / 占比 / 备注 only (hides attribute, color code, source recipe, customer, unit price, and amount columns). Production instructions from the linked source recipe are not included in print output.
 
 ### Production Orders (`/admin/cosmocoat-production-orders`)
 Manufacturing batch tracking.

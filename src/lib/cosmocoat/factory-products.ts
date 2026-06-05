@@ -10,7 +10,8 @@ const productInclude = {
       code: true,
       name: true,
       unitCost: true,
-      stirringRequirements: true,
+      productionSpeedRequirements: true,
+      productionTimeRequirements: true,
       packagingRequirements: true,
       productionNotes: true,
     },
@@ -52,7 +53,8 @@ export async function serializeFactoryProduct(product: {
     code: string
     name: string
     unitCost: unknown
-    stirringRequirements: string
+    productionSpeedRequirements: string
+    productionTimeRequirements: string
     packagingRequirements: string
     productionNotes: string
   } | null
@@ -91,7 +93,8 @@ export async function serializeFactoryProduct(product: {
           code: product.currentRecipe.code,
           name: product.currentRecipe.name,
           unitCost: product.currentRecipe.unitCost != null ? Number(product.currentRecipe.unitCost) : null,
-          stirringRequirements: product.currentRecipe.stirringRequirements,
+          productionSpeedRequirements: product.currentRecipe.productionSpeedRequirements,
+          productionTimeRequirements: product.currentRecipe.productionTimeRequirements,
           packagingRequirements: product.currentRecipe.packagingRequirements,
           productionNotes: product.currentRecipe.productionNotes,
         }

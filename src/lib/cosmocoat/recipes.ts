@@ -229,11 +229,22 @@ export function attributeLabel(code: string): string {
 }
 
 export type RecipeProductionFields = {
-  stirringRequirements: string
+  productionSpeedRequirements: string
+  productionTimeRequirements: string
   packagingRequirements: string
   productionNotes: string
   qcTestStandard: string
   qcResult: string
+}
+
+/** Formats recipe speed/time fields for production-order requirements and print output. */
+export function formatProductionRequirements(speed: string, time: string): string {
+  const parts: string[] = []
+  const speedTrim = speed.trim()
+  const timeTrim = time.trim()
+  if (speedTrim) parts.push(`生产转速要求:\n${speedTrim}`)
+  if (timeTrim) parts.push(`生产时间要求:\n${timeTrim}`)
+  return parts.join('\n\n')
 }
 
 /** Formats recipe QC fields for production-order quality check notes. */
@@ -249,7 +260,10 @@ export function formatRecipeQcRequirements(testStandard: string, result: string)
 /** Maps recipe production fields to production-order snapshot columns. */
 export function recipeToOrderRequirements(recipe: RecipeProductionFields) {
   return {
-    productionRequirements: recipe.stirringRequirements,
+    productionRequirements: formatProductionRequirements(
+      recipe.productionSpeedRequirements,
+      recipe.productionTimeRequirements,
+    ),
     qualityCheckRequirements: formatRecipeQcRequirements(recipe.qcTestStandard, recipe.qcResult),
     packagingRequirements: recipe.packagingRequirements,
     productionNotes: recipe.productionNotes,

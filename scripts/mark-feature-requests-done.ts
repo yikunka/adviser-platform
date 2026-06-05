@@ -45,7 +45,11 @@ const items = await prisma.featureRequest.findMany({
       { title: { contains: 'CosmoCoat 工厂产品黏度字段改为手动输入' } },
       { title: { contains: '财务报表移除货币符号' } },
       { title: { contains: '工艺产品列表添加修改功能' } },
-      { pageUrl: { contains: '/admin/financial/cmpuo63sq001a3iw5bwz5xlg4/reports' } },
+      { title: { contains: '配方详情页生产要求拆分字段' } },
+      { pageUrl: { contains: 'cosmocoat-recipes/cmpjts11i00vpqfw5uxp94fql' } },
+      { title: { contains: '調色配方詳情打印檔移除生產說明段落' } },
+      { title: { contains: '调色配方详情打印档移除生产说明段落' } },
+      { pageUrl: { contains: 'cosmocoat-color-formulas/cmpxoq5mm003glqw5jvxxc4yg' } },
     ],
   },
 })

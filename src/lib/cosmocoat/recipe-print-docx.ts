@@ -1,11 +1,7 @@
-import { readFileSync } from 'fs'
-import { join } from 'path'
 import {
   AlignmentType,
   BorderStyle,
   Document,
-  Header,
-  ImageRun,
   Packer,
   Paragraph,
   ShadingType,
@@ -17,19 +13,19 @@ import {
   VerticalAlign,
   WidthType,
 } from 'docx'
-import PizZip from 'pizzip'
 import { type FullRecipe, serializeFullRecipe } from '@/lib/cosmocoat/recipe-serializer'
 import { computeItemPercentage } from '@/lib/cosmocoat/recipes'
 
-const PAGE_WIDTH = 16838
-const PAGE_HEIGHT = 11906
-const PAGE_MARGIN = 1440
+const PAGE_WIDTH = 11906
+const PAGE_HEIGHT = 16838
+const PAGE_MARGIN = 1000
 const CONTENT_WIDTH = PAGE_WIDTH - PAGE_MARGIN * 2
-const TABLE_COLUMNS = [700, 1500, 2200, 1000, 1000, 1500, 900, 1000, 1000, 1458]
+const ITEM_COLUMNS = [700, 1600, 3000, 1500, 1300, 1806]
 const THIN_BORDER = { style: BorderStyle.SINGLE, size: 4, color: '000000' }
 const BORDERS = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER }
-const CELL_MARGINS = { top: 90, bottom: 90, left: 90, right: 90 }
-const HEADER_SHADING = { fill: 'D9D9D9', type: ShadingType.CLEAR }
+const CELL_MARGINS = { top: 110, bottom: 110, left: 120, right: 120 }
+const HEADER_SHADING = { fill: 'EDE7DE', type: ShadingType.CLEAR }
+const LABEL_SHADING = { fill: 'F7F3EC', type: ShadingType.CLEAR }
 
 function text(value: string | number | null | undefined) {
   const normalized = value == null ? '' : String(value)
@@ -63,7 +59,7 @@ function p(
 ) {
   return new Paragraph({
     alignment: options.alignment,
-    spacing: { before: 0, after: 0, line: 240 },
+    spacing: { before: 0, after: 0, line: 260 },
     children: value.split('\n').flatMap((line, index) => [
       ...(index > 0 ? [new TextRun({ break: 1 })] : []),
       new TextRun({
@@ -83,7 +79,7 @@ function cell(
   options: {
     bold?: boolean
     align?: (typeof AlignmentType)[keyof typeof AlignmentType]
-    shade?: boolean
+    shade?: 'header' | 'label'
     colSpan?: number
     size?: number
   } = {},
@@ -93,7 +89,11 @@ function cell(
     width: { size: width, type: WidthType.DXA },
     margins: CELL_MARGINS,
     verticalAlign: VerticalAlign.CENTER,
-    shading: options.shade ? HEADER_SHADING : undefined,
+    shading: options.shade === 'header'
+      ? HEADER_SHADING
+      : options.shade === 'label'
+        ? LABEL_SHADING
+        : undefined,
     columnSpan: options.colSpan,
     children: [p(value, {
       bold: options.bold,
@@ -111,63 +111,6 @@ function table(rows: TableRow[]) {
   })
 }
 
-function header() {
-  let logo: Buffer | null = null
-  try {
-    const template = readFileSync(join(process.cwd(), 'templates', 'LM0019色漆+双固化.docx'))
-    const zip = new PizZip(template)
-    const image = zip.file('word/media/image1.png')?.asNodeBuffer()
-    logo = image ?? null
-  } catch {
-    logo = null
-  }
-
-  return new Header({
-    children: [
-      new Table({
-        width: { size: CONTENT_WIDTH, type: WidthType.DXA },
-        layout: TableLayoutType.FIXED,
-        borders: {
-          top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-          bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-          left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-          right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-          insideHorizontal: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-          insideVertical: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-        },
-        rows: [
-          new TableRow({
-            children: [
-              new TableCell({
-                borders: {},
-                width: { size: Math.round(CONTENT_WIDTH * 0.72), type: WidthType.DXA },
-                children: [
-                  p('销售公司:威柔新材料(广州)有限公司\n生产工厂:东莞华兴漆油有限公司\n地址: 广东省东莞市长安镇厦岗龙源街9号\n电话: 0769-85541701 网址:www.cosmocoat.cn', {
-                    size: 17,
-                  }),
-                ],
-              }),
-              new TableCell({
-                borders: {},
-                width: { size: Math.round(CONTENT_WIDTH * 0.28), type: WidthType.DXA },
-                children: [
-                  new Paragraph({
-                    alignment: AlignmentType.RIGHT,
-                    spacing: { before: 0, after: 0 },
-                    children: logo
-                      ? [new ImageRun({ type: 'png', data: logo, transformation: { width: 170, height: 65 } })]
-                      : [new TextRun({ text: 'Cosmocoat', bold: true, size: 26, font: 'Arial' })],
-                  }),
-                ],
-              }),
-            ],
-          }),
-        ],
-      }),
-    ],
-  })
-}
-
 function infoTable(recipe: FullRecipe) {
   const categoryLabel = recipe.category
     ? `${recipe.category.code} ${recipe.category.name}`
@@ -176,23 +119,63 @@ function infoTable(recipe: FullRecipe) {
   return table([
     new TableRow({
       children: [
-        cell(`工艺书: ${text(recipe.name)}`, CONTENT_WIDTH / 2, {
-          bold: true,
-          size: 20,
-        }),
-        cell(`配方编号: ${text(recipe.code)}\n每生产产品数量: ${fixed(recipe.batchQuantity)} kg`, CONTENT_WIDTH / 2, {
-          bold: true,
-          size: 20,
-        }),
+        cell('配方编号', 1500, { bold: true, shade: 'label' }),
+        cell(text(recipe.code), 3453, { bold: true }),
+        cell('名称', 1500, { bold: true, shade: 'label' }),
+        cell(text(recipe.name), 3453, { bold: true }),
       ],
     }),
     new TableRow({
       children: [
-        cell(`目录: ${text(categoryLabel)}`, CONTENT_WIDTH / 2, { size: 18 }),
-        cell(`成本单价: ${money(recipe.unitCost)} 元/kg`, CONTENT_WIDTH / 2, { size: 18 }),
+        cell('类别', 1500, { bold: true, shade: 'label' }),
+        cell(text(categoryLabel), 3453),
+        cell('批次数量', 1500, { bold: true, shade: 'label' }),
+        cell(`${fixed(recipe.batchQuantity)} kg`, 3453),
+      ],
+    }),
+    new TableRow({
+      children: [
+        cell('单位成本', 1500, { bold: true, shade: 'label' }),
+        cell(`${money(recipe.unitCost)} 元/kg`, CONTENT_WIDTH - 1500, { colSpan: 3 }),
       ],
     }),
   ])
+}
+
+function itemCodeAndName(item: FullRecipe['items'][number]) {
+  if (item.itemType === 'raw_material' && item.rawMaterial) {
+    return {
+      code: item.rawMaterial.productionCode,
+      name: item.rawMaterial.name,
+      source: item.rawMaterial.category || '原材料',
+    }
+  }
+
+  if (item.itemType === 'recipe' && item.recipe) {
+    return {
+      code: item.recipe.code,
+      name: item.recipe.name,
+      source: '半成品配方',
+    }
+  }
+
+  if (item.itemType === 'product_semifinished' && item.productSemifinished) {
+    return {
+      code: item.productSemifinished.code,
+      name: item.productSemifinished.name,
+      source: 'Sol 半成品',
+    }
+  }
+
+  if (item.itemType === 'factory_product' && item.factoryProduct) {
+    return {
+      code: item.factoryProduct.productCode,
+      name: item.factoryProduct.name,
+      source: '成品',
+    }
+  }
+
+  return { code: '', name: '', source: '' }
 }
 
 function itemsRows(recipe: FullRecipe) {
@@ -201,20 +184,16 @@ function itemsRows(recipe: FullRecipe) {
       tableHeader: true,
       children: [
         '序号',
-        '生产编号',
-        '原料/产品名称',
-        '属性',
-        '规格',
+        '物料代码',
+        '物料名称',
+        '类别/来源',
         '用量(kg)',
         '占比',
-        '单价',
-        '金额',
-        '备注',
-      ].map((label, index) => cell(label, TABLE_COLUMNS[index]!, {
+      ].map((label, index) => cell(label, ITEM_COLUMNS[index]!, {
         bold: true,
-        shade: true,
+        shade: 'header',
         align: AlignmentType.CENTER,
-        size: 16,
+        size: 18,
       })),
     }),
   ]
@@ -222,7 +201,7 @@ function itemsRows(recipe: FullRecipe) {
   if (recipe.items.length === 0) {
     rows.push(new TableRow({
       children: [
-        cell('暂无原料明细', CONTENT_WIDTH, { colSpan: TABLE_COLUMNS.length, align: AlignmentType.CENTER }),
+        cell('暂无物料明细', CONTENT_WIDTH, { colSpan: ITEM_COLUMNS.length, align: AlignmentType.CENTER }),
       ],
     }))
     return rows
@@ -232,45 +211,16 @@ function itemsRows(recipe: FullRecipe) {
 
   recipe.items.forEach((item, index) => {
     const percentage = computeItemPercentage(item.quantity, totalQuantity)
-    let productionCode = ''
-    let name = ''
-    let attributeCode = ''
-    let packageKg: number | null = null
-
-    if (item.itemType === 'raw_material' && item.rawMaterial) {
-      productionCode = item.rawMaterial.productionCode
-      name = item.rawMaterial.name
-      attributeCode = item.rawMaterial.attributeCode
-      packageKg = item.rawMaterial.packageKg
-    } else if (item.itemType === 'recipe' && item.recipe) {
-      productionCode = item.recipe.code
-      name = item.recipe.name
-      attributeCode = '半成品配方'
-      packageKg = item.recipe.batchQuantity
-    } else if (item.itemType === 'product_semifinished' && item.productSemifinished) {
-      productionCode = item.productSemifinished.code
-      name = item.productSemifinished.name
-      attributeCode = 'Sol.'
-      packageKg = null
-    } else if (item.itemType === 'factory_product' && item.factoryProduct) {
-      productionCode = item.factoryProduct.productCode
-      name = item.factoryProduct.name
-      attributeCode = '成品'
-      packageKg = null
-    }
+    const material = itemCodeAndName(item)
 
     rows.push(new TableRow({
       children: [
-        cell(String(index + 1), TABLE_COLUMNS[0]!, { align: AlignmentType.CENTER }),
-        cell(text(productionCode), TABLE_COLUMNS[1]!),
-        cell(text(name), TABLE_COLUMNS[2]!),
-        cell(text(attributeCode), TABLE_COLUMNS[3]!),
-        cell(packageKg != null ? fixed(packageKg) : '/', TABLE_COLUMNS[4]!),
-        cell(fixed(item.quantity), TABLE_COLUMNS[5]!, { align: AlignmentType.RIGHT }),
-        cell(`${fixed(percentage, 2)}%`, TABLE_COLUMNS[6]!, { align: AlignmentType.RIGHT }),
-        cell(money(item.unitPrice), TABLE_COLUMNS[7]!, { align: AlignmentType.RIGHT }),
-        cell(money(item.amount), TABLE_COLUMNS[8]!, { align: AlignmentType.RIGHT }),
-        cell(text(item.notes), TABLE_COLUMNS[9]!),
+        cell(String(index + 1), ITEM_COLUMNS[0]!, { align: AlignmentType.CENTER }),
+        cell(text(material.code), ITEM_COLUMNS[1]!),
+        cell(text(material.name), ITEM_COLUMNS[2]!),
+        cell(text(material.source), ITEM_COLUMNS[3]!),
+        cell(fixed(item.quantity), ITEM_COLUMNS[4]!, { align: AlignmentType.RIGHT }),
+        cell(`${fixed(percentage, 2)}%`, ITEM_COLUMNS[5]!, { align: AlignmentType.RIGHT }),
       ],
     }))
   })
@@ -278,81 +228,17 @@ function itemsRows(recipe: FullRecipe) {
   const totalQuantityVal = recipe.items.reduce((sum, item) => sum + item.quantity, 0)
   rows.push(new TableRow({
     children: [
-      cell('合计', TABLE_COLUMNS.slice(0, 5).reduce((sum, w) => sum + w, 0), {
-        colSpan: 5,
+      cell('合计', ITEM_COLUMNS.slice(0, 4).reduce((sum, w) => sum + w, 0), {
+        colSpan: 4,
         bold: true,
         align: AlignmentType.RIGHT,
       }),
-      cell(fixed(totalQuantityVal), TABLE_COLUMNS[5]!, { bold: true, align: AlignmentType.RIGHT }),
-      cell('100%', TABLE_COLUMNS[6]!, { bold: true, align: AlignmentType.RIGHT }),
-      cell('成本单价', TABLE_COLUMNS[7]!, { bold: true, align: AlignmentType.RIGHT }),
-      cell(money(recipe.unitCost), TABLE_COLUMNS[8]!, { bold: true, align: AlignmentType.RIGHT }),
-      cell('', TABLE_COLUMNS[9]!),
+      cell(fixed(totalQuantityVal), ITEM_COLUMNS[4]!, { bold: true, align: AlignmentType.RIGHT }),
+      cell('100%', ITEM_COLUMNS[5]!, { bold: true, align: AlignmentType.RIGHT }),
     ],
   }))
 
   return rows
-}
-
-function notesTable(recipe: FullRecipe) {
-  const rows: TableRow[] = []
-
-  const notesParts: string[] = []
-  if (recipe.notes) notesParts.push(`备注:\n${recipe.notes}`)
-  if (!notesParts.length) notesParts.push('备注:\n/')
-
-  rows.push(new TableRow({
-    children: [
-      cell(notesParts.join('\n\n'), CONTENT_WIDTH, { colSpan: 2, size: 17 }),
-    ],
-  }))
-
-  if (recipe.stirringRequirements || recipe.packagingRequirements || recipe.productionNotes) {
-    rows.push(new TableRow({
-      children: [
-        cell(
-          recipe.stirringRequirements
-            ? `生产要求:\n${recipe.stirringRequirements}`
-            : '生产要求:\n/',
-          CONTENT_WIDTH / 2,
-          { size: 17 },
-        ),
-        cell(
-          recipe.packagingRequirements
-            ? `包装要求:\n${recipe.packagingRequirements}`
-            : '包装要求:\n/',
-          CONTENT_WIDTH / 2,
-          { size: 17 },
-        ),
-      ],
-    }))
-    if (recipe.productionNotes) {
-      rows.push(new TableRow({
-        children: [
-          cell(`生产注意事项:\n${recipe.productionNotes}`, CONTENT_WIDTH, { colSpan: 2, size: 17 }),
-        ],
-      }))
-    }
-  }
-
-  if (recipe.qcTestStandard || recipe.qcResult) {
-    rows.push(new TableRow({
-      children: [
-        cell(
-          recipe.qcTestStandard ? `测试标准:\n${recipe.qcTestStandard}` : '测试标准:\n/',
-          CONTENT_WIDTH / 2,
-          { size: 17 },
-        ),
-        cell(
-          recipe.qcResult ? `结果:\n${recipe.qcResult}` : '结果:\n/',
-          CONTENT_WIDTH / 2,
-          { size: 17 },
-        ),
-      ],
-    }))
-  }
-
-  return table(rows)
 }
 
 function spacer(size = 120) {
@@ -370,7 +256,6 @@ export function buildRecipePrintDocx(recipe: FullRecipe) {
       },
     },
     sections: [{
-      headers: { default: header() },
       properties: {
         page: {
           size: { width: PAGE_WIDTH, height: PAGE_HEIGHT },
@@ -380,18 +265,20 @@ export function buildRecipePrintDocx(recipe: FullRecipe) {
       children: [
         new Paragraph({
           alignment: AlignmentType.CENTER,
-          spacing: { before: 0, after: 140 },
-          children: [new TextRun({ text: '工艺书', bold: true, size: 24, font: 'Arial' })],
+          spacing: { before: 0, after: 220 },
+          children: [new TextRun({ text: '配方详情', bold: true, size: 32, font: 'Arial' })],
         }),
         infoTable(recipe),
-        spacer(80),
+        spacer(160),
+        new Paragraph({
+          spacing: { before: 0, after: 90 },
+          children: [new TextRun({ text: '原材料清单', bold: true, size: 22, font: 'Arial' })],
+        }),
         new Table({
           width: { size: CONTENT_WIDTH, type: WidthType.DXA },
           layout: TableLayoutType.FIXED,
           rows: itemsRows(recipe),
         }),
-        spacer(100),
-        notesTable(recipe),
       ],
     }],
   })
@@ -406,5 +293,5 @@ export async function generateRecipePrintDocxBuffer(id: string) {
 }
 
 export function recipePrintFilename(code: string) {
-  return `${code || 'recipe'}-工艺书.docx`
+  return `${code || 'recipe'}-配方详情.docx`
 }

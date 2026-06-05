@@ -8,15 +8,6 @@ export type ColorFormulaPrintItem = {
   notes: string
 }
 
-export type SourceRecipeProduction = {
-  stirringRequirements: string
-  packagingRequirements: string
-  productionNotes: string
-  qcTestStandard: string
-  qcResult: string
-  notes: string
-} | null
-
 export function scaleColorFormulaItemsForProduction(
   items: Array<{
     productionCode: string

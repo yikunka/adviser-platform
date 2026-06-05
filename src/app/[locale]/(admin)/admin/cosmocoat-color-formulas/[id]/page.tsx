@@ -22,7 +22,6 @@ import {
 import {
   scaleColorFormulaItemsForProduction,
   type ColorFormulaPrintItem,
-  type SourceRecipeProduction,
 } from '@/lib/cosmocoat/color-formula-print'
 import { pantoneToHex } from '@/lib/cosmocoat/pantone-colors'
 import {
@@ -266,10 +265,6 @@ const COLOR_FORMULA_PRINT_STYLES = `
       line-height: 1.4;
     }
 
-    #cosmocoat-print-area .print-notes-table td {
-      white-space: pre-wrap;
-    }
-
     #cosmocoat-print-area .print-section-title {
       font-size: 12pt !important;
       margin-bottom: 6px !important;
@@ -295,7 +290,6 @@ interface ColorFormulaPrintViewProps {
   targetKg: number
   notes: string
   items: ColorFormulaPrintItem[]
-  sourceRecipeProduction: SourceRecipeProduction
 }
 
 function ColorFormulaPrintView({
@@ -307,7 +301,6 @@ function ColorFormulaPrintView({
   targetKg,
   notes,
   items,
-  sourceRecipeProduction,
 }: ColorFormulaPrintViewProps) {
   const totalScaled = items.reduce((sum, item) => sum + item.quantity, 0)
 
@@ -385,64 +378,6 @@ function ColorFormulaPrintView({
           )}
         </tbody>
       </table>
-
-      <table className="print-notes-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9 }}>
-        <thead>
-          <tr style={{ background: '#f0f0f0' }}>
-            <th colSpan={2} style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'center' }}>生产说明</th>
-          </tr>
-        </thead>
-        <tbody>
-          {!sourceRecipeProduction ? (
-            <tr>
-              <td colSpan={2} style={{ padding: '5px 6px', border: '1px solid #ccc' }}>来源配方未关联，无额外生产要求。</td>
-            </tr>
-          ) : (
-            <>
-              <tr>
-                <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', width: '50%', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
-                  {sourceRecipeProduction.stirringRequirements
-                    ? `生产/搅拌要求:\n${sourceRecipeProduction.stirringRequirements}`
-                    : '生产/搅拌要求:\n—'}
-                </td>
-                <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', width: '50%', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
-                  {sourceRecipeProduction.packagingRequirements
-                    ? `包装要求:\n${sourceRecipeProduction.packagingRequirements}`
-                    : '包装要求:\n—'}
-                </td>
-              </tr>
-              {sourceRecipeProduction.productionNotes && (
-                <tr>
-                  <td colSpan={2} style={{ padding: '5px 6px', border: '1px solid #ccc', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
-                    {`生产注意事项:\n${sourceRecipeProduction.productionNotes}`}
-                  </td>
-                </tr>
-              )}
-              {(sourceRecipeProduction.qcTestStandard || sourceRecipeProduction.qcResult) && (
-                <tr>
-                  <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', width: '50%', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
-                    {sourceRecipeProduction.qcTestStandard
-                      ? `测试标准:\n${sourceRecipeProduction.qcTestStandard}`
-                      : '测试标准:\n—'}
-                  </td>
-                  <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', width: '50%', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
-                    {sourceRecipeProduction.qcResult
-                      ? `结果:\n${sourceRecipeProduction.qcResult}`
-                      : '结果:\n—'}
-                  </td>
-                </tr>
-              )}
-              {sourceRecipeProduction.notes && (
-                <tr>
-                  <td colSpan={2} style={{ padding: '5px 6px', border: '1px solid #ccc', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
-                    {`来源配方备注:\n${sourceRecipeProduction.notes}`}
-                  </td>
-                </tr>
-              )}
-            </>
-          )}
-        </tbody>
-      </table>
     </div>
   )
 }
@@ -466,7 +401,6 @@ export default function CosmocoatColorFormulaDetailPage() {
   const [printKgInput, setPrintKgInput] = useState('')
   const [printTargetKg, setPrintTargetKg] = useState<number | null>(null)
   const [categoryLabel, setCategoryLabel] = useState('')
-  const [sourceRecipeProduction, setSourceRecipeProduction] = useState<SourceRecipeProduction>(null)
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
   const [category, setCategory] = useState<CosColorFormulaCategory>(initialCategory)
@@ -509,29 +443,6 @@ export default function CosmocoatColorFormulaDetailPage() {
       setBatchQuantity(formula.batchQuantity)
       setNotes(formula.notes)
       setItems(formula.items.map((item, index) => toEditableItem(item, index)))
-
-      if (formula.sourceRecipeId) {
-        try {
-          const recipeRes = await fetch(`/api/admin/cosmocoat/recipes/${formula.sourceRecipeId}`)
-          const recipeData = await recipeRes.json()
-          if (recipeRes.ok && recipeData.recipe) {
-            setSourceRecipeProduction({
-              stirringRequirements: recipeData.recipe.stirringRequirements ?? '',
-              packagingRequirements: recipeData.recipe.packagingRequirements ?? '',
-              productionNotes: recipeData.recipe.productionNotes ?? '',
-              qcTestStandard: recipeData.recipe.qcTestStandard ?? '',
-              qcResult: recipeData.recipe.qcResult ?? '',
-              notes: recipeData.recipe.notes ?? '',
-            })
-          } else {
-            setSourceRecipeProduction(null)
-          }
-        } catch {
-          setSourceRecipeProduction(null)
-        }
-      } else {
-        setSourceRecipeProduction(null)
-      }
     } catch {
       toast.error('加载失败')
     } finally {
@@ -818,7 +729,6 @@ export default function CosmocoatColorFormulaDetailPage() {
           targetKg={activePrintKg}
           notes={notes}
           items={printItems}
-          sourceRecipeProduction={sourceRecipeProduction}
         />
       )}
 

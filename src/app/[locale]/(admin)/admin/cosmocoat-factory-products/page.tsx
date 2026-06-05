@@ -60,7 +60,8 @@ type FactoryProduct = {
     code: string
     name: string
     unitCost: number | null
-    stirringRequirements?: string
+    productionSpeedRequirements?: string
+    productionTimeRequirements?: string
     packagingRequirements?: string
     productionNotes?: string
   } | null

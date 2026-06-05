@@ -13,7 +13,6 @@ import {
   VerticalAlign,
   WidthType,
 } from 'docx'
-import { prisma } from '@/lib/db/prisma'
 import { getColorFormulaById, type FullColorFormula } from '@/lib/cosmocoat/color-formulas'
 import { computeItemPercentage } from '@/lib/cosmocoat/recipes'
 
@@ -27,18 +26,7 @@ const BORDERS = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, righ
 const CELL_MARGINS = { top: 90, bottom: 90, left: 90, right: 90 }
 const HEADER_SHADING = { fill: 'D9D9D9', type: ShadingType.CLEAR }
 
-type SourceRecipeProduction = {
-  stirringRequirements: string
-  packagingRequirements: string
-  productionNotes: string
-  qcTestStandard: string
-  qcResult: string
-  notes: string
-} | null
-
-type PrintColorFormula = FullColorFormula & {
-  sourceRecipeProduction: SourceRecipeProduction
-}
+type PrintColorFormula = FullColorFormula
 
 function text(value: string | number | null | undefined) {
   const normalized = value == null ? '' : String(value)
@@ -235,115 +223,12 @@ function formulaRows(formula: PrintColorFormula) {
   return rows
 }
 
-function productionNotesTable(formula: PrintColorFormula) {
-  const recipe = formula.sourceRecipeProduction
-  const rows: TableRow[] = []
-
-  rows.push(new TableRow({
-    children: [
-      cell('生产说明', CONTENT_WIDTH, { bold: true, shade: true, align: AlignmentType.CENTER, size: 17 }),
-    ],
-  }))
-
-  if (!recipe) {
-    rows.push(new TableRow({
-      children: [
-        cell('来源配方未关联，无额外生产要求。', CONTENT_WIDTH, { size: 17 }),
-      ],
-    }))
-    return table(rows)
-  }
-
-  const half = CONTENT_WIDTH / 2
-  rows.push(new TableRow({
-    children: [
-      cell(
-        recipe.stirringRequirements
-          ? `生产/搅拌要求:\n${recipe.stirringRequirements}`
-          : '生产/搅拌要求:\n/',
-        half,
-        { size: 17 },
-      ),
-      cell(
-        recipe.packagingRequirements
-          ? `包装要求:\n${recipe.packagingRequirements}`
-          : '包装要求:\n/',
-        half,
-        { size: 17 },
-      ),
-    ],
-  }))
-
-  if (recipe.productionNotes) {
-    rows.push(new TableRow({
-      children: [
-        cell(`生产注意事项:\n${recipe.productionNotes}`, CONTENT_WIDTH, { size: 17 }),
-      ],
-    }))
-  }
-
-  if (recipe.qcTestStandard || recipe.qcResult) {
-    rows.push(new TableRow({
-      children: [
-        cell(
-          recipe.qcTestStandard ? `测试标准:\n${recipe.qcTestStandard}` : '测试标准:\n/',
-          half,
-          { size: 17 },
-        ),
-        cell(
-          recipe.qcResult ? `结果:\n${recipe.qcResult}` : '结果:\n/',
-          half,
-          { size: 17 },
-        ),
-      ],
-    }))
-  }
-
-  if (recipe.notes) {
-    rows.push(new TableRow({
-      children: [
-        cell(`来源配方备注:\n${recipe.notes}`, CONTENT_WIDTH, { size: 17 }),
-      ],
-    }))
-  }
-
-  return table(rows)
-}
-
 function spacer(size = 120) {
   return new Paragraph({ spacing: { before: size, after: size }, children: [new TextRun('')] })
 }
 
 export async function loadPrintFormula(id: string): Promise<PrintColorFormula | null> {
-  const formula = await getColorFormulaById(id)
-  if (!formula) return null
-
-  let sourceRecipeProduction: SourceRecipeProduction = null
-  if (formula.sourceRecipeId) {
-    const recipe = await prisma.cosTableRecipe.findUnique({
-      where: { id: formula.sourceRecipeId },
-      select: {
-        stirringRequirements: true,
-        packagingRequirements: true,
-        productionNotes: true,
-        qcTestStandard: true,
-        qcResult: true,
-        notes: true,
-      },
-    })
-    if (recipe) {
-      sourceRecipeProduction = {
-        stirringRequirements: recipe.stirringRequirements,
-        packagingRequirements: recipe.packagingRequirements,
-        productionNotes: recipe.productionNotes,
-        qcTestStandard: recipe.qcTestStandard,
-        qcResult: recipe.qcResult,
-        notes: recipe.notes,
-      }
-    }
-  }
-
-  return { ...formula, sourceRecipeProduction }
+  return getColorFormulaById(id)
 }
 
 export function buildColorFormulaPrintDocx(formula: PrintColorFormula) {
@@ -372,8 +257,6 @@ export function buildColorFormulaPrintDocx(formula: PrintColorFormula) {
         infoTable(formula),
         spacer(80),
         table(formulaRows(formula)),
-        spacer(80),
-        productionNotesTable(formula),
       ],
     }],
   })
