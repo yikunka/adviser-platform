@@ -1902,7 +1902,11 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
                                 style={{ background: '#C9A96E', color: '#0A0805' }}
                               >
-                                <Save size={13} /> {savingProcessBlock ? t('saving') : t('confirmEdit')}
+                                <Save size={13} /> {savingProcessBlock
+                                  ? t('saving')
+                                  : activeProcessEditor?.blockId
+                                    ? t('confirmEdit')
+                                    : t('addToProcessDocument')}
                               </button>
                               <button
                                 type="button"

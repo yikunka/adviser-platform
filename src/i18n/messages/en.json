@@ -868,6 +868,7 @@
       "processFlowEmptyDocument": "Add products, product-level process blocks, or a global note to generate the complete process flow document",
       "addProcess": "Add process",
       "addProcessPlaceholder": "Enter one process description shown separately from product information",
+      "addToProcessDocument": "Add to complete process document",
       "addProcessUnderProduct": "Add process below this product",
       "processBlockPlaceholder": "Enter the process text to insert below this product",
       "processBlockRequired": "Process text is required",
