@@ -144,6 +144,12 @@ const PERFORMANCE_STANDARD_GROUPS = [
       { id: 'SALT_SPRAY_5_48H', label: '5%48H' },
     ],
   },
+  {
+    id: 'highTempHumiditySaltSpray',
+    options: [
+      { id: 'HIGH_TEMP_HUMIDITY_SALT_SPRAY', label: '高温高湿/盐雾' },
+    ],
+  },
 ]
 
 const MATERIAL_LABELS = new Map(MATERIALS.map(material => [material.id, material.label]))

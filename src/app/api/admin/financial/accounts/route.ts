@@ -4,12 +4,13 @@ import { logAudit } from '@/lib/audit/logger'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { accountCreateSchema } from '@/lib/financial/schemas'
-import { serializeAccount } from '@/lib/financial/serializers'
 import { resolveJournalCompanyScope } from '@/lib/financial/company-scope'
-import { canEditOpeningBalance } from '@/lib/financial/opening-balance'
+import { serializeAccountsWithRollups } from '@/lib/financial/account-rollup'
+import { serializeAccount } from '@/lib/financial/serializers'
+import { canEditEnteredBalances } from '@/lib/financial/opening-balance'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
 import { roundMoney, signedLineAmount } from '@/lib/financial/utils'
-import { calculateYearToDateAmount, calculateYearToDateBalance } from '@/lib/financial/year-to-date'
+import { calculateYearToDateAmount } from '@/lib/financial/year-to-date'
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
@@ -22,132 +23,6 @@ function defaultOpeningPeriod() {
 async function resolveParent(parentId: string | null | undefined, companyId: string) {
   if (!parentId) return null
   return prisma.finAccount.findFirst({ where: { id: parentId, companyId } })
-}
-
-type AccountWithOpeningBalance = {
-  id: string
-  code: string
-  name: string
-  type: AccountType
-  companyId?: string | null
-  level: number
-  sortOrder: number
-  parentId: string | null
-  parent?: { id: string; code: string; name: string } | null
-  isSystem: boolean
-  notes: string
-  yearToDateAmount: Prisma.Decimal
-  yearToDateDebit: Prisma.Decimal
-  yearToDateCredit: Prisma.Decimal
-  createdAt?: Date
-  updatedAt?: Date
-  accountBalances: {
-    period: string
-    openingDebit: Prisma.Decimal
-    openingCredit: Prisma.Decimal
-  }[]
-}
-
-function serializeAccountOpeningBalances(accounts: AccountWithOpeningBalance[]) {
-  const childrenByParent = new Map<string | null, string[]>()
-  const ownBalanceById = new Map<string, number>()
-  const ownYearToDateById = new Map<string, number>()
-  const ownYearToDateDebitById = new Map<string, number>()
-  const ownYearToDateCreditById = new Map<string, number>()
-  const ownYearToDateBalanceById = new Map<string, number>()
-
-  const serialized = accounts.map(account => {
-    const openingBalance = account.accountBalances[0] ?? null
-    const openingDebit = Number(openingBalance?.openingDebit ?? 0)
-    const openingCredit = Number(openingBalance?.openingCredit ?? 0)
-    const ownBalance = roundMoney(signedLineAmount({
-      accountId: account.id,
-      accountType: account.type,
-      accountCode: account.code,
-      debit: openingDebit,
-      credit: openingCredit,
-    }))
-
-    const parentChildren = childrenByParent.get(account.parentId) ?? []
-    parentChildren.push(account.id)
-    childrenByParent.set(account.parentId, parentChildren)
-    ownBalanceById.set(account.id, ownBalance)
-    const yearToDateDebit = roundMoney(Number(account.yearToDateDebit))
-    const yearToDateCredit = roundMoney(Number(account.yearToDateCredit))
-    const yearToDateAmount = calculateYearToDateAmount({
-      name: account.name,
-      type: account.type,
-      code: account.code,
-      debit: yearToDateDebit,
-      credit: yearToDateCredit,
-    })
-    const yearToDateBalance = calculateYearToDateBalance({
-      name: account.name,
-      type: account.type,
-      code: account.code,
-      debit: yearToDateDebit,
-      credit: yearToDateCredit,
-    })
-    ownYearToDateById.set(account.id, yearToDateAmount)
-    ownYearToDateDebitById.set(account.id, yearToDateDebit)
-    ownYearToDateCreditById.set(account.id, yearToDateCredit)
-    ownYearToDateBalanceById.set(account.id, yearToDateBalance)
-
-    return {
-      ...serializeAccount(account),
-      openingBalancePeriod: openingBalance?.period ?? null,
-      openingDebit,
-      openingCredit,
-      openingBalance: ownBalance,
-      openingBalanceTotal: ownBalance,
-      yearToDateAmount,
-      yearToDateDebit,
-      yearToDateCredit,
-      yearToDateAmountTotal: yearToDateAmount,
-      yearToDateDebitTotal: yearToDateDebit,
-      yearToDateCreditTotal: yearToDateCredit,
-      yearToDateBalance,
-      yearToDateBalanceTotal: yearToDateBalance,
-    }
-  })
-
-  const totalById = new Map<string, number>()
-  const calculateTotal = (accountId: string): number => {
-    const cached = totalById.get(accountId)
-    if (cached !== undefined) return cached
-    const children = childrenByParent.get(accountId) ?? []
-    const total = children.length > 0
-      ? children.reduce((sum, childId) => roundMoney(sum + calculateTotal(childId)), 0)
-      : roundMoney(ownBalanceById.get(accountId) ?? 0)
-    totalById.set(accountId, total)
-    return total
-  }
-  const yearToDateTotalById = new Map<string, number>()
-  const yearToDateDebitTotalById = new Map<string, number>()
-  const yearToDateCreditTotalById = new Map<string, number>()
-  const yearToDateBalanceTotalById = new Map<string, number>()
-  const calculateNumericTotal = (
-    accountId: string,
-    ownById: Map<string, number>,
-    totalById: Map<string, number>,
-  ): number => {
-    const cached = totalById.get(accountId)
-    if (cached !== undefined) return cached
-    const childrenTotal = (childrenByParent.get(accountId) ?? [])
-      .reduce((sum, childId) => roundMoney(sum + calculateNumericTotal(childId, ownById, totalById)), 0)
-    const total = roundMoney((ownById.get(accountId) ?? 0) + childrenTotal)
-    totalById.set(accountId, total)
-    return total
-  }
-
-  return serialized.map(account => ({
-    ...account,
-    openingBalanceTotal: calculateTotal(account.id),
-    yearToDateAmountTotal: calculateNumericTotal(account.id, ownYearToDateById, yearToDateTotalById),
-    yearToDateDebitTotal: calculateNumericTotal(account.id, ownYearToDateDebitById, yearToDateDebitTotalById),
-    yearToDateCreditTotal: calculateNumericTotal(account.id, ownYearToDateCreditById, yearToDateCreditTotalById),
-    yearToDateBalanceTotal: calculateNumericTotal(account.id, ownYearToDateBalanceById, yearToDateBalanceTotalById),
-  }))
 }
 
 function yearToDateValues(input: {
@@ -176,6 +51,31 @@ function yearToDateValues(input: {
   }
 }
 
+function hasPayloadField(body: unknown, field: string) {
+  return Boolean(
+    body
+    && typeof body === 'object'
+    && !Array.isArray(body)
+    && Object.prototype.hasOwnProperty.call(body, field),
+  )
+}
+
+async function clearEnteredBalances(
+  tx: Prisma.TransactionClient,
+  accountId: string,
+) {
+  await tx.finAccount.update({
+    where: { id: accountId },
+    data: {
+      yearToDateAmount: new Prisma.Decimal(0),
+      yearToDateDebit: new Prisma.Decimal(0),
+      yearToDateCredit: new Prisma.Decimal(0),
+    },
+  })
+  await tx.accountBalance.deleteMany({ where: { accountId } })
+  await tx.ledger.deleteMany({ where: { accountId, entryId: null } })
+}
+
 export async function GET(req: NextRequest) {
   const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
   if (error) return error
@@ -197,7 +97,7 @@ export async function GET(req: NextRequest) {
     orderBy: [{ type: 'asc' }, { sortOrder: 'asc' }, { code: 'asc' }],
   })
 
-  return NextResponse.json({ accounts: serializeAccountOpeningBalances(accounts) })
+  return NextResponse.json({ accounts: serializeAccountsWithRollups(accounts) })
 }
 
 export async function POST(req: NextRequest) {
@@ -205,6 +105,10 @@ export async function POST(req: NextRequest) {
   if (error) return error
 
   const body = await req.json().catch(() => null)
+  const openingBalanceRequested = ['openingDebit', 'openingCredit', 'openingBalancePeriod']
+    .some(field => hasPayloadField(body, field))
+  const yearToDateRequested = ['yearToDateDebit', 'yearToDateCredit', 'yearToDateAmount']
+    .some(field => hasPayloadField(body, field))
   const parsed = accountCreateSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
@@ -228,10 +132,11 @@ export async function POST(req: NextRequest) {
   if (parent && parent.level >= 4) return apiError('Parent account level is too deep for a child account.')
 
   const nextLevel = parent ? parent.level + 1 : 1
+  const enteredBalancesEditable = canEditEnteredBalances(nextLevel, false)
   const openingDebit = parsed.data.openingDebit ?? 0
   const openingCredit = parsed.data.openingCredit ?? 0
-  if ((openingDebit > 0 || openingCredit > 0) && !canEditOpeningBalance(nextLevel, false)) {
-    return apiError('一级科目不支持单独录入期初余额，请在其下级二级科目中录入。', 400)
+  if ((openingBalanceRequested || yearToDateRequested) && !enteredBalancesEditable) {
+    return apiError('一级科目不支持单独录入期初余额或本年累计发生数，请在其下级科目中录入。', 400)
   }
 
   try {
@@ -249,30 +154,34 @@ export async function POST(req: NextRequest) {
             sortOrder: parsed.data.sortOrder,
             isSystem: parsed.data.isSystem,
             notes: parsed.data.notes,
-            yearToDateAmount: new Prisma.Decimal(ytd.amount),
-            yearToDateDebit: new Prisma.Decimal(ytd.debit),
-            yearToDateCredit: new Prisma.Decimal(ytd.credit),
+            yearToDateAmount: new Prisma.Decimal(enteredBalancesEditable ? ytd.amount : 0),
+            yearToDateDebit: new Prisma.Decimal(enteredBalancesEditable ? ytd.debit : 0),
+            yearToDateCredit: new Prisma.Decimal(enteredBalancesEditable ? ytd.credit : 0),
           }
         })(),
         include: { parent: { select: { id: true, code: true, name: true } } },
       })
 
-      if (parsed.data.openingDebit > 0 || parsed.data.openingCredit > 0) {
+      if (parent) {
+        await clearEnteredBalances(tx, parent.id)
+      }
+
+      if (enteredBalancesEditable && (openingDebit > 0 || openingCredit > 0)) {
         const endingBalance = signedLineAmount({
           accountId: created.id,
           accountType: created.type,
           accountCode: created.code,
-          debit: parsed.data.openingDebit,
-          credit: parsed.data.openingCredit,
+          debit: openingDebit,
+          credit: openingCredit,
         })
         await tx.accountBalance.create({
           data: {
             accountId: created.id,
             period: parsed.data.openingBalancePeriod || defaultOpeningPeriod(),
-            openingDebit: new Prisma.Decimal(parsed.data.openingDebit),
-            openingCredit: new Prisma.Decimal(parsed.data.openingCredit),
-            closingDebit: new Prisma.Decimal(parsed.data.openingDebit),
-            closingCredit: new Prisma.Decimal(parsed.data.openingCredit),
+            openingDebit: new Prisma.Decimal(openingDebit),
+            openingCredit: new Prisma.Decimal(openingCredit),
+            closingDebit: new Prisma.Decimal(openingDebit),
+            closingCredit: new Prisma.Decimal(openingCredit),
             endingBalance: new Prisma.Decimal(endingBalance),
           },
         })

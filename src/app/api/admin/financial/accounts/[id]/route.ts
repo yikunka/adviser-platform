@@ -7,7 +7,7 @@ import { isDescendantAccount } from '@/lib/financial/account-tree'
 import { accountUpdateSchema } from '@/lib/financial/schemas'
 import { serializeAccount } from '@/lib/financial/serializers'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
-import { canEditOpeningBalance } from '@/lib/financial/opening-balance'
+import { canEditEnteredBalances } from '@/lib/financial/opening-balance'
 import { signedLineAmount } from '@/lib/financial/utils'
 import { calculateYearToDateAmount } from '@/lib/financial/year-to-date'
 
@@ -34,6 +34,22 @@ function splitLegacyYearToDateAmount(amount: number, type: string, code: string)
     debit: creditNormal ? 0 : amount,
     credit: creditNormal ? amount : 0,
   }
+}
+
+async function clearEnteredBalances(
+  tx: Prisma.TransactionClient,
+  accountId: string,
+) {
+  await tx.finAccount.update({
+    where: { id: accountId },
+    data: {
+      yearToDateAmount: new Prisma.Decimal(0),
+      yearToDateDebit: new Prisma.Decimal(0),
+      yearToDateCredit: new Prisma.Decimal(0),
+    },
+  })
+  await tx.accountBalance.deleteMany({ where: { accountId } })
+  await tx.ledger.deleteMany({ where: { accountId, entryId: null } })
 }
 
 export async function PATCH(
@@ -97,10 +113,9 @@ export async function PATCH(
       const nextName = parsed.data.name ?? before.name
       const nextLevel = parent ? parent.level + 1 : (hasPayloadField(body, 'parentId') ? 1 : before.level)
       const childCount = await tx.finAccount.count({ where: { parentId: id } })
-      const openingDebit = parsed.data.openingDebit ?? 0
-      const openingCredit = parsed.data.openingCredit ?? 0
-      if (openingBalanceRequested && (openingDebit > 0 || openingCredit > 0) && !canEditOpeningBalance(nextLevel, childCount > 0)) {
-        throw new Error('OPENING_BALANCE_NOT_EDITABLE')
+      const enteredBalancesEditable = canEditEnteredBalances(nextLevel, childCount > 0)
+      if ((openingBalanceRequested || yearToDateRequested) && !enteredBalancesEditable) {
+        throw new Error('ENTERED_BALANCES_NOT_EDITABLE')
       }
 
       const legacyYearToDate = hasPayloadField(body, 'yearToDateAmount')
@@ -137,6 +152,12 @@ export async function PATCH(
                 yearToDateDebit: new Prisma.Decimal(yearToDateDebit),
                 yearToDateCredit: new Prisma.Decimal(yearToDateCredit),
               }
+            : !enteredBalancesEditable
+              ? {
+                  yearToDateAmount: new Prisma.Decimal(0),
+                  yearToDateDebit: new Prisma.Decimal(0),
+                  yearToDateCredit: new Prisma.Decimal(0),
+                }
             : {}),
           ...(hasPayloadField(body, 'parentId')
             ? { parentId: parent?.id ?? null, level: parent ? parent.level + 1 : 1 }
@@ -145,7 +166,16 @@ export async function PATCH(
         include: { parent: { select: { id: true, code: true, name: true } } },
       })
 
-      if (openingBalanceRequested) {
+      if (!enteredBalancesEditable) {
+        await tx.accountBalance.deleteMany({ where: { accountId: id } })
+        await tx.ledger.deleteMany({ where: { accountId: id, entryId: null } })
+      }
+
+      if (parent) {
+        await clearEnteredBalances(tx, parent.id)
+      }
+
+      if (openingBalanceRequested && enteredBalancesEditable) {
         const latestOpeningBalance = await tx.accountBalance.findFirst({
           where: { accountId: id },
           orderBy: [{ period: 'desc' }],
@@ -189,8 +219,8 @@ export async function PATCH(
     await logAudit(session.user.id, 'UPDATE', 'FinAccount', id, before, account)
     return NextResponse.json({ account: serializeAccount(account), message: 'Account updated.', toast: 'Account updated.' })
   } catch (err) {
-    if (err instanceof Error && err.message === 'OPENING_BALANCE_NOT_EDITABLE') {
-      return apiError('此科目不支持单独录入期初余额，请在下级科目中录入。', 400)
+    if (err instanceof Error && err.message === 'ENTERED_BALANCES_NOT_EDITABLE') {
+      return apiError('此科目不支持单独录入期初余额或本年累计发生数，请在下级科目中录入。', 400)
     }
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
       return apiError('Account code already exists.', 409)
