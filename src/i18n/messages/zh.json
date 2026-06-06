@@ -38,6 +38,7 @@
     "cosmocoatFactoryProducts": "工厂产品管理",
     "cosmocoatProductionOrders": "生产单管理",
     "cosmocoatProcessKits": "工艺书管理",
+    "cosmocoatSampleOrders": "打样单管理",
     "cosmocoatCustomers": "客户管理"
   },
   "home": {

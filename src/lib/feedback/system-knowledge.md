@@ -95,7 +95,7 @@ Service invoicing for TCSP professional fees.
 Staff access control.
 - Roles: `SUPER_ADMIN`, `COMPLIANCE`, `STAFF`
 - Per-staff platform access flags (Adviser / SFS Diamond / CosmoCoat)
-- Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, team, feedback, sfs-customers, sfs-orders, sfs-invoices, cosmocoat-* including cosmocoat-customers)
+- Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, team, feedback, sfs-customers, sfs-orders, sfs-invoices, cosmocoat-* including cosmocoat-customers, cosmocoat-sample-orders)
 - Legacy mode: no restrictions; new mode: explicit per-menu grants
 - Create / edit / deactivate staff accounts
 
@@ -290,6 +290,19 @@ Unified customer registry for CosmoCoat manufacturing clients (raw material purc
 - List with search (code / name / phone / address / linked account email); paginated table
 - Create, view, edit, and delete customer profiles; detail page at `/admin/cosmocoat-customers/[id]`; new at `/admin/cosmocoat-customers/new`
 - Each CosmoCoat platform account can be linked to at most one customer profile
+
+### Sample Orders (`/admin/cosmocoat-sample-orders`)
+打样单（样品单）管理，用于客户打样需求的全流程跟踪。
+- List with search (order code / customer) and status filter; columns: customer, process-kit count, color-formula count, total weight (kg), status, creation date
+- Statuses: `DRAFT` → `IN_PROGRESS` → `COMPLETED`
+- Create at `/admin/cosmocoat-sample-orders/new`; detail at `/admin/cosmocoat-sample-orders/[id]`
+- Link to a CosmoCoat customer profile (required)
+- Line items: select existing Process Kits and/or Color Formulas, each with quantity in kg; no duplicate kits or formulas on the same order
+- Auto-generated order codes: `YP####` (e.g. `YP0001`)
+- Progress tracking: step indicator (草稿 → 进行中 → 已完成), `startedAt` when moving to IN_PROGRESS, `completedAt` when marked COMPLETED
+- Actions: Save (DRAFT), 开始打样 (→ IN_PROGRESS), 标记完成 (→ COMPLETED); completed orders lock line items and customer but remain viewable
+- Detail page shows scaled color-formula material tables and full process-kit content (performance standards, product process parameters, complete process-flow document)
+- Delete allowed for DRAFT and COMPLETED orders; IN_PROGRESS orders cannot be deleted
 
 ### CosmoCoat Financial Accounting
 Same double-entry accounting structure as Adviser (chart of accounts, journal entries, ledger, HKFRS reports). Data is fully isolated from Adviser companies via separate `cos_` prefixed tables.
