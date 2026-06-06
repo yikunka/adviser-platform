@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { canEditOpeningBalance, openingBalanceEditBlockedMessage } from './opening-balance'
+import { canEditEnteredBalances, canEditOpeningBalance, openingBalanceEditBlockedMessage } from './opening-balance'
 
 describe('opening balance edit rules', () => {
   it('allows level-2 leaf accounts', () => {
     expect(canEditOpeningBalance(2, false)).toBe(true)
+    expect(canEditEnteredBalances(2, false)).toBe(true)
   })
 
   it('blocks level-1 accounts', () => {
     expect(canEditOpeningBalance(1, false)).toBe(false)
+    expect(canEditEnteredBalances(1, false)).toBe(false)
     expect(openingBalanceEditBlockedMessage(1, false)).toContain('一级科目')
   })
 

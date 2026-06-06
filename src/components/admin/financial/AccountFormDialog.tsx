@@ -19,7 +19,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ACCOUNT_TYPE_OPTIONS } from '@/lib/financial/account-types'
 import { flattenAccountHierarchy, isDescendantAccount } from '@/lib/financial/account-tree'
-import { canEditOpeningBalance, openingBalanceEditBlockedMessage } from '@/lib/financial/opening-balance'
+import { canEditEnteredBalances, openingBalanceEditBlockedMessage } from '@/lib/financial/opening-balance'
 import { calculateYearToDateBalance, isCurrentYearProfitAccountName } from '@/lib/financial/year-to-date'
 import type { AccountType } from '@prisma/client'
 
@@ -38,6 +38,8 @@ export type FinancialAccount = {
   openingDebit?: number
   openingCredit?: number
   openingBalance?: number
+  openingDebitTotal?: number
+  openingCreditTotal?: number
   openingBalanceTotal?: number
   yearToDateAmount?: number
   yearToDateDebit?: number
@@ -98,6 +100,8 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
 
   useEffect(() => {
     if (!open) return
+    const accountHasChildren = account ? accounts.some(item => item.parentId === account.id) : false
+    const accountBalancesEditable = canEditEnteredBalances(account?.level ?? 1, accountHasChildren)
     setCode(account?.code ?? '')
     setName(account?.name ?? '')
     setType(account?.type ?? 'ASSET')
@@ -105,11 +109,13 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
     setSortOrder(String(account?.sortOrder ?? 0))
     setIsSystem(account?.isSystem ?? false)
     setOpeningBalancePeriod(account?.openingBalancePeriod ?? defaultOpeningPeriod())
-    setOpeningBalanceAmount(amountField(Math.max(account?.openingDebit ?? 0, account?.openingCredit ?? 0)))
+    setOpeningBalanceAmount(amountField(accountBalancesEditable
+      ? Math.max(account?.openingDebit ?? 0, account?.openingCredit ?? 0)
+      : account?.openingBalanceTotal ?? 0))
     setOpeningBalanceSide((account?.openingCredit ?? 0) > 0 ? 'CREDIT' : normalBalanceSide(account?.type ?? 'ASSET'))
-    setYearToDateDebit(amountField(account?.yearToDateDebit))
-    setYearToDateCredit(amountField(account?.yearToDateCredit))
-  }, [account, open])
+    setYearToDateDebit(amountField(accountBalancesEditable ? account?.yearToDateDebit : account?.yearToDateDebitTotal))
+    setYearToDateCredit(amountField(accountBalancesEditable ? account?.yearToDateCredit : account?.yearToDateCreditTotal))
+  }, [account, accounts, open])
 
   const parentOptions = useMemo(() => {
     return flattenAccountHierarchy(accounts)
@@ -122,9 +128,9 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
   }, [account, accounts])
 
   const selectedParent = parentId === 'NONE' ? null : accounts.find(item => item.id === parentId) ?? null
-  const nextLevel = account?.level ?? (selectedParent ? selectedParent.level + 1 : 1)
+  const nextLevel = selectedParent ? selectedParent.level + 1 : 1
   const hasChildren = account ? accounts.some(item => item.parentId === account.id) : false
-  const openingBalanceEditable = canEditOpeningBalance(nextLevel, hasChildren)
+  const enteredBalancesEditable = canEditEnteredBalances(nextLevel, hasChildren)
   const openingBalanceBlockedMessage = openingBalanceEditBlockedMessage(nextLevel, hasChildren)
   const showYearToDateBalance = isCurrentYearProfitAccountName(name)
   const previewDebit = Number(yearToDateDebit || 0)
@@ -162,25 +168,25 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
       toast.error('上级科目层级过深。')
       return
     }
-    const saveLevel = account?.level ?? (selectedParentForSave ? selectedParentForSave.level + 1 : 1)
+    const saveLevel = selectedParentForSave ? selectedParentForSave.level + 1 : 1
     const saveHasChildren = account ? accounts.some(item => item.parentId === account.id) : false
     const openingBalanceValue = Number(openingBalanceAmount || 0)
     const yearToDateDebitValue = Number(yearToDateDebit || 0)
     const yearToDateCreditValue = Number(yearToDateCredit || 0)
-    if (!Number.isFinite(openingBalanceValue) || !Number.isFinite(yearToDateDebitValue) || !Number.isFinite(yearToDateCreditValue)) {
+    if (enteredBalancesEditable && (!Number.isFinite(openingBalanceValue) || !Number.isFinite(yearToDateDebitValue) || !Number.isFinite(yearToDateCreditValue))) {
       toast.error('期初余额和本年累计发生数必须是数字。')
       return
     }
-    if (openingBalanceValue < 0 || yearToDateDebitValue < 0 || yearToDateCreditValue < 0) {
+    if (enteredBalancesEditable && (openingBalanceValue < 0 || yearToDateDebitValue < 0 || yearToDateCreditValue < 0)) {
       toast.error('期初余额和本年累计发生数不能为负数。')
       return
     }
-    if ((openingBalanceValue > 0) && !canEditOpeningBalance(saveLevel, saveHasChildren)) {
+    if ((openingBalanceValue > 0) && !canEditEnteredBalances(saveLevel, saveHasChildren)) {
       toast.error(openingBalanceEditBlockedMessage(saveLevel, saveHasChildren) || '此科目不支持录入期初余额。')
       return
     }
-    const openingDebitAmount = openingBalanceEditable && openingBalanceSide === 'DEBIT' ? openingBalanceValue : 0
-    const openingCreditAmount = openingBalanceEditable && openingBalanceSide === 'CREDIT' ? openingBalanceValue : 0
+    const openingDebitAmount = enteredBalancesEditable && openingBalanceSide === 'DEBIT' ? openingBalanceValue : 0
+    const openingCreditAmount = enteredBalancesEditable && openingBalanceSide === 'CREDIT' ? openingBalanceValue : 0
 
     setSaving(true)
     try {
@@ -192,13 +198,13 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
         parentId: parentId === 'NONE' ? null : parentId,
         sortOrder: Number(sortOrder) || 0,
         isSystem,
-        yearToDateDebit: yearToDateDebitValue,
-        yearToDateCredit: yearToDateCreditValue,
       }
-      if (openingBalanceEditable) {
+      if (enteredBalancesEditable) {
         payload.openingBalancePeriod = openingBalancePeriod
         payload.openingDebit = openingDebitAmount
         payload.openingCredit = openingCreditAmount
+        payload.yearToDateDebit = yearToDateDebitValue
+        payload.yearToDateCredit = yearToDateCreditValue
       }
 
       const res = await fetch(account ? `/api/admin/financial/accounts/${account.id}` : '/api/admin/financial/accounts', {
@@ -289,12 +295,12 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
             <div className="mb-3">
               <h3 className="text-sm font-semibold text-[#FFF7E6]">期初及累计数</h3>
               <p className="mt-1 text-xs text-[#B8AD98]">
-                {openingBalanceEditable
+                {enteredBalancesEditable
                   ? '可填写或修改此科目的期初余额和本年累计发生数。'
                   : openingBalanceBlockedMessage}
               </p>
             </div>
-            {openingBalanceEditable ? (
+            {enteredBalancesEditable ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="opening-period" className={labelClassName}>期初期间</Label>
@@ -372,7 +378,7 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
                   <Label className={labelClassName}>期初余额（自动汇总）</Label>
                   <Input
                     readOnly
-                    value={amountField(Math.max(account?.openingBalanceTotal ?? 0, 0))}
+                    value={displayAmount(account?.openingBalanceTotal ?? 0)}
                     className={`${fieldClassName} opacity-80`}
                   />
                 </div>
@@ -380,37 +386,31 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
                   <Label htmlFor="year-to-date-debit" className={labelClassName}>本年累计发生数（借方）</Label>
                   <Input
                     id="year-to-date-debit"
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={yearToDateDebit}
-                    onChange={event => setYearToDateDebit(event.target.value)}
-                    className={fieldClassName}
+                    readOnly
+                    value={displayAmount(account?.yearToDateDebitTotal ?? 0)}
+                    className={`${fieldClassName} opacity-80`}
                   />
                 </div>
                 <div className="space-y-2 sm:col-start-2">
                   <Label htmlFor="year-to-date-credit" className={labelClassName}>本年累计发生数（贷方）</Label>
                   <Input
                     id="year-to-date-credit"
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={yearToDateCredit}
-                    onChange={event => setYearToDateCredit(event.target.value)}
-                    className={fieldClassName}
+                    readOnly
+                    value={displayAmount(account?.yearToDateCreditTotal ?? 0)}
+                    className={`${fieldClassName} opacity-80`}
                   />
                 </div>
-                {showYearToDateBalance && (
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="year-to-date-balance" className={labelClassName}>本年利润累计余额（贷方 - 借方）</Label>
-                    <Input
-                      id="year-to-date-balance"
-                      readOnly
-                      value={displayAmount(yearToDateBalancePreview)}
-                      className={`${fieldClassName} opacity-80`}
-                    />
-                  </div>
-                )}
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="year-to-date-balance" className={labelClassName}>
+                    {showYearToDateBalance ? '本年利润累计余额（贷方 - 借方）' : '本年累计余额（自动汇总）'}
+                  </Label>
+                  <Input
+                    id="year-to-date-balance"
+                    readOnly
+                    value={displayAmount(account?.yearToDateBalanceTotal ?? 0)}
+                    className={`${fieldClassName} opacity-80`}
+                  />
+                </div>
               </div>
             )}
           </div>
