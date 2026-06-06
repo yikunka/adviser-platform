@@ -9,6 +9,7 @@ import { resolveJournalCompanyScope } from '@/lib/financial/company-scope'
 import { canEditOpeningBalance } from '@/lib/financial/opening-balance'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
 import { roundMoney, signedLineAmount } from '@/lib/financial/utils'
+import { calculateYearToDateAmount, calculateYearToDateBalance } from '@/lib/financial/year-to-date'
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
@@ -53,6 +54,7 @@ function serializeAccountOpeningBalances(accounts: AccountWithOpeningBalance[]) 
   const ownYearToDateById = new Map<string, number>()
   const ownYearToDateDebitById = new Map<string, number>()
   const ownYearToDateCreditById = new Map<string, number>()
+  const ownYearToDateBalanceById = new Map<string, number>()
 
   const serialized = accounts.map(account => {
     const openingBalance = account.accountBalances[0] ?? null
@@ -72,10 +74,24 @@ function serializeAccountOpeningBalances(accounts: AccountWithOpeningBalance[]) 
     ownBalanceById.set(account.id, ownBalance)
     const yearToDateDebit = roundMoney(Number(account.yearToDateDebit))
     const yearToDateCredit = roundMoney(Number(account.yearToDateCredit))
-    const yearToDateAmount = roundMoney(yearToDateDebit + yearToDateCredit)
+    const yearToDateAmount = calculateYearToDateAmount({
+      name: account.name,
+      type: account.type,
+      code: account.code,
+      debit: yearToDateDebit,
+      credit: yearToDateCredit,
+    })
+    const yearToDateBalance = calculateYearToDateBalance({
+      name: account.name,
+      type: account.type,
+      code: account.code,
+      debit: yearToDateDebit,
+      credit: yearToDateCredit,
+    })
     ownYearToDateById.set(account.id, yearToDateAmount)
     ownYearToDateDebitById.set(account.id, yearToDateDebit)
     ownYearToDateCreditById.set(account.id, yearToDateCredit)
+    ownYearToDateBalanceById.set(account.id, yearToDateBalance)
 
     return {
       ...serializeAccount(account),
@@ -90,6 +106,8 @@ function serializeAccountOpeningBalances(accounts: AccountWithOpeningBalance[]) 
       yearToDateAmountTotal: yearToDateAmount,
       yearToDateDebitTotal: yearToDateDebit,
       yearToDateCreditTotal: yearToDateCredit,
+      yearToDateBalance,
+      yearToDateBalanceTotal: yearToDateBalance,
     }
   })
 
@@ -107,6 +125,7 @@ function serializeAccountOpeningBalances(accounts: AccountWithOpeningBalance[]) 
   const yearToDateTotalById = new Map<string, number>()
   const yearToDateDebitTotalById = new Map<string, number>()
   const yearToDateCreditTotalById = new Map<string, number>()
+  const yearToDateBalanceTotalById = new Map<string, number>()
   const calculateNumericTotal = (
     accountId: string,
     ownById: Map<string, number>,
@@ -127,6 +146,7 @@ function serializeAccountOpeningBalances(accounts: AccountWithOpeningBalance[]) 
     yearToDateAmountTotal: calculateNumericTotal(account.id, ownYearToDateById, yearToDateTotalById),
     yearToDateDebitTotal: calculateNumericTotal(account.id, ownYearToDateDebitById, yearToDateDebitTotalById),
     yearToDateCreditTotal: calculateNumericTotal(account.id, ownYearToDateCreditById, yearToDateCreditTotalById),
+    yearToDateBalanceTotal: calculateNumericTotal(account.id, ownYearToDateBalanceById, yearToDateBalanceTotalById),
   }))
 }
 
@@ -134,13 +154,17 @@ function yearToDateValues(input: {
   yearToDateAmount?: number
   yearToDateDebit?: number
   yearToDateCredit?: number
-}, type: AccountType, code: string) {
+}, type: AccountType, code: string, name: string) {
   const explicitDebit = input.yearToDateDebit !== undefined
   const explicitCredit = input.yearToDateCredit !== undefined
   if (explicitDebit || explicitCredit) {
     const debit = roundMoney(input.yearToDateDebit ?? 0)
     const credit = roundMoney(input.yearToDateCredit ?? 0)
-    return { debit, credit, amount: roundMoney(debit + credit) }
+    return {
+      debit,
+      credit,
+      amount: calculateYearToDateAmount({ name, type, code, debit, credit }),
+    }
   }
 
   const amount = roundMoney(input.yearToDateAmount ?? 0)
@@ -214,7 +238,7 @@ export async function POST(req: NextRequest) {
     const account = await prisma.$transaction(async tx => {
       const created = await tx.finAccount.create({
         data: (() => {
-          const ytd = yearToDateValues(parsed.data, parsed.data.type, parsed.data.code)
+          const ytd = yearToDateValues(parsed.data, parsed.data.type, parsed.data.code, parsed.data.name)
           return {
             code: parsed.data.code,
             name: parsed.data.name,

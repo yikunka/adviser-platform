@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ACCOUNT_TYPE_OPTIONS } from '@/lib/financial/account-types'
 import { flattenAccountHierarchy, isDescendantAccount } from '@/lib/financial/account-tree'
 import { canEditOpeningBalance, openingBalanceEditBlockedMessage } from '@/lib/financial/opening-balance'
+import { calculateYearToDateBalance, isCurrentYearProfitAccountName } from '@/lib/financial/year-to-date'
 import type { AccountType } from '@prisma/client'
 
 export type FinancialAccount = {
@@ -44,6 +45,8 @@ export type FinancialAccount = {
   yearToDateAmountTotal?: number
   yearToDateDebitTotal?: number
   yearToDateCreditTotal?: number
+  yearToDateBalance?: number
+  yearToDateBalanceTotal?: number
 }
 
 type Props = {
@@ -69,6 +72,10 @@ function defaultOpeningPeriod() {
 
 function amountField(value: number | null | undefined) {
   return value ? String(value) : ''
+}
+
+function displayAmount(value: number) {
+  return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function normalBalanceSide(type: FinancialAccount['type']): OpeningBalanceSide {
@@ -119,6 +126,16 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
   const hasChildren = account ? accounts.some(item => item.parentId === account.id) : false
   const openingBalanceEditable = canEditOpeningBalance(nextLevel, hasChildren)
   const openingBalanceBlockedMessage = openingBalanceEditBlockedMessage(nextLevel, hasChildren)
+  const showYearToDateBalance = isCurrentYearProfitAccountName(name)
+  const previewDebit = Number(yearToDateDebit || 0)
+  const previewCredit = Number(yearToDateCredit || 0)
+  const yearToDateBalancePreview = calculateYearToDateBalance({
+    name,
+    type,
+    code,
+    debit: Number.isFinite(previewDebit) ? previewDebit : 0,
+    credit: Number.isFinite(previewCredit) ? previewCredit : 0,
+  })
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -337,6 +354,17 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
                     className={fieldClassName}
                   />
                 </div>
+                {showYearToDateBalance && (
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="year-to-date-balance" className={labelClassName}>本年利润累计余额（贷方 - 借方）</Label>
+                    <Input
+                      id="year-to-date-balance"
+                      readOnly
+                      value={displayAmount(yearToDateBalancePreview)}
+                      className={`${fieldClassName} opacity-80`}
+                    />
+                  </div>
+                )}
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
@@ -372,6 +400,17 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
                     className={fieldClassName}
                   />
                 </div>
+                {showYearToDateBalance && (
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="year-to-date-balance" className={labelClassName}>本年利润累计余额（贷方 - 借方）</Label>
+                    <Input
+                      id="year-to-date-balance"
+                      readOnly
+                      value={displayAmount(yearToDateBalancePreview)}
+                      className={`${fieldClassName} opacity-80`}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>

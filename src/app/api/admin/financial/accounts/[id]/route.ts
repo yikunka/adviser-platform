@@ -9,6 +9,7 @@ import { serializeAccount } from '@/lib/financial/serializers'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
 import { canEditOpeningBalance } from '@/lib/financial/opening-balance'
 import { signedLineAmount } from '@/lib/financial/utils'
+import { calculateYearToDateAmount } from '@/lib/financial/year-to-date'
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
@@ -93,6 +94,7 @@ export async function PATCH(
     const account = await prisma.$transaction(async tx => {
       const nextType = parsed.data.type ?? before.type
       const nextCode = parsed.data.code ?? before.code
+      const nextName = parsed.data.name ?? before.name
       const nextLevel = parent ? parent.level + 1 : (hasPayloadField(body, 'parentId') ? 1 : before.level)
       const childCount = await tx.finAccount.count({ where: { parentId: id } })
       const openingDebit = parsed.data.openingDebit ?? 0
@@ -110,7 +112,15 @@ export async function PATCH(
       const yearToDateCredit = hasPayloadField(body, 'yearToDateCredit')
         ? parsed.data.yearToDateCredit ?? 0
         : legacyYearToDate?.credit ?? Number(before.yearToDateCredit)
-      const yearToDateAmount = yearToDateRequested ? yearToDateDebit + yearToDateCredit : undefined
+      const yearToDateAmount = yearToDateRequested
+        ? calculateYearToDateAmount({
+            name: nextName,
+            type: nextType,
+            code: nextCode,
+            debit: yearToDateDebit,
+            credit: yearToDateCredit,
+          })
+        : undefined
 
       const updated = await tx.finAccount.update({
         where: { id },

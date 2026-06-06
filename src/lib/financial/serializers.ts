@@ -1,4 +1,5 @@
 import type { AccountType, JournalStatus } from '@prisma/client'
+import { calculateYearToDateAmount } from '@/lib/financial/year-to-date'
 
 type Decimalish = { toString(): string }
 
@@ -45,9 +46,13 @@ export function serializeAccount(account: {
 }): SerializedAccount {
   const yearToDateDebit = money(account.yearToDateDebit)
   const yearToDateCredit = money(account.yearToDateCredit)
-  const yearToDateAmount = account.yearToDateAmount === undefined
-    ? yearToDateDebit + yearToDateCredit
-    : money(account.yearToDateAmount)
+  const yearToDateAmount = calculateYearToDateAmount({
+    name: account.name,
+    type: account.type,
+    code: account.code,
+    debit: yearToDateDebit,
+    credit: yearToDateCredit,
+  })
 
   return {
     id: account.id,
