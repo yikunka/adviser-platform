@@ -249,7 +249,7 @@ Product formulation management.
 - Print recipe: downloads a simplified recipe detail DOCX containing only recipe code, name, category, batch quantity, unit cost, and material list with material code, name, source/category, quantity, and percentage
 - Production process section: production speed requirements, production time requirements, packaging requirements, production notes (separate from QC)
 - Packaging requirements: button quick-select presets (200目、300目、400目、色装机); clicking a preset fills the field; new recipes start with an empty packaging field (no default preset)
-- QC section (separate card): multi-select checkboxes for standard tests (黏度, 百格, 水煮80C/30M, 湿油外观, 干板外观) plus optional free-text test standard and result fields; selected tests and custom text are carried into production order quality-check requirements when creating orders (viscosity checkbox includes recipe viscosity value when set)
+- QC section (separate card): multi-select checkboxes for standard tests (黏度, 百格, 水煮80C/30M, 湿油外观, 干板外观) plus optional free-text test standard; each checked test shows its own result input on the same row (unchecked tests hide result inputs); selected tests and custom text are carried into production order quality-check requirements when creating orders (viscosity checkbox includes recipe viscosity value when set)
 - Material rows can be reordered by drag-and-drop; new order is auto-saved immediately
 
 ### Color Matching Formulas (`/admin/cosmocoat-color-formulas`)
@@ -272,9 +272,9 @@ Manufacturing batch tracking.
 - Product list auto-excludes factory products without a current recipe; optional `?recipeId=` URL param further limits choices to products linked to that recipe
 - Recipes containing only nested sub-recipes or semifinished components (no raw-material lines) show an empty materials table instead of crashing
 - Statuses: `DRAFT` → `IN_PROGRESS` → `COMPLETED`
-- Line items: raw materials, semifinished component recipes, and Sol. semifinished inventory components with required weight and actual weight used; material list matches the linked recipe, and opening an existing order auto-syncs missing semifinished rows from the recipe while preserving saved actual weights
+- Line items: raw materials, semifinished component recipes, and Sol. semifinished inventory components with required weight and actual weight used; selecting a product on new order or opening a draft order loads the full linked recipe material list and preserves saved actual weights when rows are synced; draft orders have **从配方重新加载** on both the materials table and 生产工艺 sections to refresh material lines and process/QC fields from the current recipe
 - Detail page **生产工艺** section: selecting a product on new order (or opening an existing order) auto-loads the linked recipe's production speed, production time, packaging requirements, and production notes; fields are editable on the order, with a **从配方重新加载** action on draft orders to reset from the current recipe
-- Detail page **QC** section: auto-loads recipe QC test checkboxes (黏度, 百格, 水煮80C/30M, 湿油外观, 干板外观 — viscosity checkbox shows recipe viscosity when set), optional custom test standard, and result fields; all editable on the order
+- Detail page **QC** section: auto-loads recipe QC test checkboxes (黏度, 百格, 水煮80C/30M, 湿油外观, 干板外观 — viscosity checkbox shows recipe viscosity when set), optional custom test standard, and per-item result inputs (only for checked tests); all editable on the order
 - Recipe name row links to the linked recipe detail page
 - Print production order: A4 sheet with enlarged text, no page header/footer, a material table constrained to page margins, and material names omitted while keeping material codes, ratios, required weight, and actual weight
 - Print output includes structured 生产工艺 and QC sections from the order's saved process/QC fields
@@ -308,13 +308,13 @@ Unified customer registry for CosmoCoat manufacturing clients (raw material purc
 
 ### Sample Orders (`/admin/cosmocoat-sample-orders`)
 打样单（样品单）管理，用于客户打样需求的全流程跟踪。
-- List with search (order code / customer) and status filter; columns: reference sample thumbnail, customer, process kit (0 or 1), color-formula count, total color-formula weight (kg), status, creation date
+- List with search (order code / customer) and status filter; columns: reference sample thumbnail (4× size for DRAFT and IN_PROGRESS, standard size for COMPLETED), customer, process kit (0 or 1), color-formula count, total color-formula weight (kg), status, creation date
 - Statuses: `DRAFT` → `IN_PROGRESS` → `COMPLETED`
 - Create at `/admin/cosmocoat-sample-orders/new`; detail at `/admin/cosmocoat-sample-orders/[id]`
 - Link to a CosmoCoat customer profile (required)
 - **One process kit per order** (database unique constraint on `sampleOrderId`); line items also support multiple Color Formulas, each with quantity in kg; no duplicate formulas on the same order
 - Process kit lines do not require a sample weight: adding a kit auto-expands the full process-flow document (performance standards, product parameters, complete process flow); kit **materials** are shown on the kit title; only color formulas use quantity (kg)
-- Basic info includes optional **reference sample image** (max 1): upload to OSS via admin upload endpoint; list shows thumbnail; detail page shows full image
+- Basic info: customer (required), optional **reference sample image** (max 1, upload to OSS), then **notes** below the image; list shows thumbnail; detail page shows full image
 - Auto-generated order codes: `YP####` (e.g. `YP0001`)
 - Progress tracking: step indicator (草稿 → 进行中 → 已完成), `startedAt` when moving to IN_PROGRESS, `completedAt` when marked COMPLETED
 - Actions: Save (DRAFT), 开始打样 (→ IN_PROGRESS), 标记完成 (→ COMPLETED); completed orders lock line items and customer but remain viewable

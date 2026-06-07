@@ -675,33 +675,20 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
 
       <div style={card} className="p-5 space-y-4">
         <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>基本信息</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="客户 *">
-            <select
-              value={customerId}
-              disabled={isReadOnly}
-              onChange={e => setCustomerId(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-sm outline-none disabled:opacity-60"
-              style={inputStyle()}
-            >
-              <option value="">选择客户...</option>
-              {customers.map(c => (
-                <option key={c.id} value={c.id}>{c.code} · {c.name}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="备注">
-            <textarea
-              value={notes}
-              disabled={isReadOnly}
-              onChange={e => setNotes(e.target.value)}
-              rows={2}
-              className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-y disabled:opacity-60"
-              style={inputStyle()}
-              placeholder="打样要求、交付说明等"
-            />
-          </Field>
-        </div>
+        <Field label="客户 *">
+          <select
+            value={customerId}
+            disabled={isReadOnly}
+            onChange={e => setCustomerId(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg text-sm outline-none disabled:opacity-60 max-w-md"
+            style={inputStyle()}
+          >
+            <option value="">选择客户...</option>
+            {customers.map(c => (
+              <option key={c.id} value={c.id}>{c.code} · {c.name}</option>
+            ))}
+          </select>
+        </Field>
         <Field label="参考样品图片">
           <div className="flex flex-wrap items-start gap-4">
             <div
@@ -764,6 +751,17 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
               )}
             </div>
           </div>
+        </Field>
+        <Field label="备注">
+          <textarea
+            value={notes}
+            disabled={isReadOnly}
+            onChange={e => setNotes(e.target.value)}
+            rows={2}
+            className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-y disabled:opacity-60"
+            style={inputStyle()}
+            placeholder="打样要求、交付说明等"
+          />
         </Field>
       </div>
 

@@ -8,11 +8,11 @@ import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { ArrowLeft, FlaskConical, Printer, RefreshCw, Save } from 'lucide-react'
 import {
-  buildProductionOrderItems,
   formatPercent,
   formatWeight,
-  productionOrderItemKey,
+  mergeProductionOrderEditableItems,
   recipeItemsForProduction,
+  type ProductionOrderEditableItem,
   type ProductionRecipeItem,
   hydrateProductionOrderProcessFields,
   productionOrderProcessFieldsToPayload,
@@ -20,9 +20,13 @@ import {
   type ProductionOrderProcessFields,
 } from '@/lib/cosmocoat/recipes'
 import {
+  formatQcTestItemResults,
+  hydrateQcTestItemResults,
   RECIPE_QC_TEST_ITEMS,
+  type QcTestItemResults,
   type RecipeQcTestItemId,
 } from '@/lib/cosmocoat/recipe-qc-tests'
+import { RecipeQcSection } from '@/components/cosmocoat/RecipeQcSection'
 import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
 import { FactoryProductCombobox } from '@/components/cosmocoat/FactoryProductCombobox'
 import type { FactoryProductPickerOption } from '@/lib/cosmocoat/factory-product-picker'
@@ -253,6 +257,43 @@ function PrintView({
   )
 }
 
+function mapOrderItemsToEditable(items: Array<{
+  id: string
+  itemType?: 'raw_material' | 'component_recipe' | 'product_semifinished'
+  sortOrder: number
+  productionCode: string
+  materialName: string
+  percentage: number
+  requiredWeight: number
+  actualWeight: number | null
+  notes: string
+  rawMaterial: { id: string } | null
+  componentRecipe: { id: string } | null
+  productSemifinished: { id: string } | null
+}>): EditableItem[] {
+  return items.map(item => ({
+    key: item.id,
+    id: item.id,
+    itemType: item.itemType ?? (
+      item.componentRecipe
+        ? 'component_recipe'
+        : item.productSemifinished
+          ? 'product_semifinished'
+          : 'raw_material'
+    ),
+    rawMaterialId: item.rawMaterial?.id,
+    componentRecipeId: item.componentRecipe?.id,
+    productSemifinishedId: item.productSemifinished?.id,
+    sortOrder: item.sortOrder,
+    productionCode: item.productionCode,
+    materialName: item.materialName,
+    percentage: item.percentage,
+    requiredWeight: item.requiredWeight,
+    actualWeight: item.actualWeight,
+    notes: item.notes,
+  }))
+}
+
 export default function AdminCosmoCoatProductionOrderEditorPage() {
   const params = useParams()
   const searchParams = useSearchParams()
@@ -291,12 +332,17 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
   const [productionNotes, setProductionNotes] = useState('')
   const [qcTestItems, setQcTestItems] = useState<RecipeQcTestItemId[]>([])
   const [qcTestStandard, setQcTestStandard] = useState('')
-  const [qcResult, setQcResult] = useState('')
+  const [qcTestItemResults, setQcTestItemResults] = useState<QcTestItemResults>({})
   const [recipeViscosity, setRecipeViscosity] = useState<string | null>(null)
   const [recipeViscosityUnit, setRecipeViscosityUnit] = useState<string | null>(null)
   const [linkedRecipeId, setLinkedRecipeId] = useState('')
   const [status, setStatus] = useState<'draft' | 'completed'>('draft')
   const [items, setItems] = useState<EditableItem[]>([])
+
+  const qcResult = useMemo(
+    () => formatQcTestItemResults(qcTestItemResults, qcTestItems),
+    [qcTestItemResults, qcTestItems],
+  )
 
   const processFields = useMemo<ProductionOrderProcessFields>(() => ({
     productionSpeedRequirements,
@@ -323,13 +369,25 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
     setProductionNotes(fields.productionNotes)
     setQcTestItems(fields.qcTestItems)
     setQcTestStandard(fields.qcTestStandard)
-    setQcResult(fields.qcResult)
+    setQcTestItemResults(hydrateQcTestItemResults(fields.qcResult, fields.qcTestItems))
   }
 
   function toggleQcTestItem(id: RecipeQcTestItemId) {
-    setQcTestItems(prev => (
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-    ))
+    setQcTestItems(prev => {
+      if (prev.includes(id)) {
+        setQcTestItemResults(results => {
+          const next = { ...results }
+          delete next[id]
+          return next
+        })
+        return prev.filter(item => item !== id)
+      }
+      return [...prev, id]
+    })
+  }
+
+  function updateQcTestItemResult(id: RecipeQcTestItemId, value: string) {
+    setQcTestItemResults(prev => ({ ...prev, [id]: value }))
   }
 
   const selectedProduct = selectedProductSnapshot
@@ -371,9 +429,21 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
     }
   }, [isNew])
 
-  function reloadFromRecipe() {
+  async function reloadFromRecipe() {
     if (!linkedRecipeId) return
-    void loadRecipeItems(linkedRecipeId, { overwriteProcess: true })
+    await loadRecipeItems(linkedRecipeId, { overwriteProcess: true })
+    if (isNew) return
+    try {
+      const res = await fetch(`/api/admin/cosmocoat/production-orders/${orderId}`)
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? '同步物料明细失败')
+        return
+      }
+      setItems(mapOrderItemsToEditable(data.order.items))
+    } catch {
+      toast.error('同步物料明细失败')
+    }
   }
 
   const loadOrder = useCallback(async () => {
@@ -969,60 +1039,20 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
         </div>
       </div>
 
-      <div style={card} className="p-4 space-y-4">
-        <div>
-          <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>QC 质量控制</h3>
-          <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
-            测试项目与标准来自配方，可在本单中勾选调整或补充实测结果
-          </p>
-        </div>
-        <div className="grid sm:grid-cols-1 lg:grid-cols-2 gap-3">
-          <div className="space-y-3">
-            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>测试项目</label>
-            <div className="flex flex-wrap gap-3">
-              {RECIPE_QC_TEST_ITEMS.map(item => (
-                <label
-                  key={item.id}
-                  className="flex items-center gap-2 cursor-pointer text-sm"
-                  style={{ color: 'var(--foreground)' }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={qcTestItems.includes(item.id)}
-                    onChange={() => toggleQcTestItem(item.id)}
-                    className="rounded border-[#2A2418] accent-[#C9A96E]"
-                  />
-                  {item.label}
-                  {item.id === 'VISCOSITY' && recipeViscosity && (
-                    <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                      ({recipeViscosity}{recipeViscosityUnit ? ` ${recipeViscosityUnit}` : ''})
-                    </span>
-                  )}
-                </label>
-              ))}
-            </div>
-            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>其他测试标准</label>
-            <textarea
-              value={qcTestStandard}
-              onChange={e => setQcTestStandard(e.target.value)}
-              rows={4}
-              className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y"
-              style={inputStyle()}
-              placeholder="补充测试标准（可选）"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>结果</label>
-            <textarea
-              value={qcResult}
-              onChange={e => setQcResult(e.target.value)}
-              rows={4}
-              className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y"
-              style={inputStyle()}
-              placeholder="如：合格 / 实测值"
-            />
-          </div>
-        </div>
+      <div style={card} className="p-4">
+        <RecipeQcSection
+          qcTestItems={qcTestItems}
+          qcTestStandard={qcTestStandard}
+          qcTestItemResults={qcTestItemResults}
+          onToggleQcTestItem={toggleQcTestItem}
+          onQcTestStandardChange={setQcTestStandard}
+          onQcTestItemResultChange={updateQcTestItemResult}
+          inputStyle={inputStyle()}
+          title="QC 质量控制"
+          description="测试项目与标准来自配方，可在本单中勾选调整或补充实测结果"
+          recipeViscosity={recipeViscosity}
+          recipeViscosityUnit={recipeViscosityUnit}
+        />
       </div>
     </div>
       </div>{/* end cosmocoat-screen */}
