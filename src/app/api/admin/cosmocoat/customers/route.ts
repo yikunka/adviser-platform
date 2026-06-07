@@ -19,6 +19,7 @@ const createSchema = z.object({
   userId: z.union([z.string().trim().min(1), z.literal(''), z.null()]).optional(),
   phone: z.string().trim().max(50).optional().nullable(),
   address: z.string().trim().max(500).optional().nullable(),
+  productionEquipmentParams: z.string().trim().max(5000).optional().nullable(),
 })
 
 function nullableText(v: string | null | undefined) {
@@ -118,6 +119,7 @@ export async function POST(req: NextRequest) {
         userId,
         phone: nullableText(parsed.data.phone),
         address: nullableText(parsed.data.address),
+        productionEquipmentParams: nullableText(parsed.data.productionEquipmentParams),
         createdById: session!.user.id,
       },
       include: customerInclude,

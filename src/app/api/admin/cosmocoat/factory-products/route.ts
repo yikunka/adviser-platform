@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { getFactoryProductById, productInclude, serializeFactoryProduct, syncProductRecipes } from '@/lib/cosmocoat/factory-products'
+import { syncFactoryProductViscosityFromCurrentRecipe } from '@/lib/cosmocoat/factory-product-viscosity-sync'
 import { factoryViscosityFieldsSchema, toFactoryViscosityDbData } from '@/lib/cosmocoat/factory-product-viscosity'
 
 const productSchema = z.object({
@@ -98,6 +99,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const hasCurrentRecipe = !!(parsed.data.currentRecipeId ?? null)
+
     const product = await prisma.cosTableFactoryProduct.create({
       data: {
         productCode: parsed.data.productCode,
@@ -107,10 +110,12 @@ export async function POST(req: NextRequest) {
         unitPrice: parsed.data.unitPrice,
         notes: parsed.data.notes,
         sortOrder: parsed.data.sortOrder,
-        ...toFactoryViscosityDbData({
-          viscosity: parsed.data.viscosity,
-          viscosityUnit: parsed.data.viscosityUnit,
-        }),
+        ...(hasCurrentRecipe
+          ? { viscosity: null, viscosityUnit: null }
+          : toFactoryViscosityDbData({
+              viscosity: parsed.data.viscosity,
+              viscosityUnit: parsed.data.viscosityUnit,
+            })),
       } as Prisma.CosTableFactoryProductUncheckedCreateInput,
     })
 

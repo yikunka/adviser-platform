@@ -75,6 +75,8 @@ type RecipeOption = {
   unitCost: number | null
   categoryCode: string
   categoryName: string
+  viscosity: string | null
+  viscosityUnit: ViscosityUnit | null
 }
 
 type ProductForm = {
@@ -203,12 +205,16 @@ function productToForm(product: FactoryProduct): ProductForm {
 }
 
 function formPayload(form: ProductForm) {
-  const viscosity = form.viscosity.trim()
-  const hasViscosity = viscosity.length > 0
+  const { viscosity, viscosityUnit, ...rest } = form
+  if (form.currentRecipeId) {
+    return rest
+  }
+  const trimmedViscosity = viscosity.trim()
+  const hasViscosity = trimmedViscosity.length > 0
   return {
-    ...form,
-    viscosity: hasViscosity ? viscosity : null,
-    viscosityUnit: hasViscosity ? form.viscosityUnit : null,
+    ...rest,
+    viscosity: hasViscosity ? trimmedViscosity : null,
+    viscosityUnit: hasViscosity ? viscosityUnit : null,
   }
 }
 
@@ -235,6 +241,26 @@ function ProductEditor({
       .map(id => recipeOptions.find(r => r.id === id))
       .filter((r): r is RecipeOption => !!r)
   }, [form.recipeIds, recipeOptions])
+
+  const currentRecipeOption = useMemo(() => {
+    if (!form.currentRecipeId) return null
+    return recipeOptions.find(r => r.id === form.currentRecipeId) ?? null
+  }, [form.currentRecipeId, recipeOptions])
+
+  const viscosityFromCurrentRecipe = !!form.currentRecipeId
+
+  useEffect(() => {
+    if (!currentRecipeOption) return
+    setForm(prev => ({
+      ...prev,
+      viscosity: currentRecipeOption.viscosity ?? '',
+      viscosityUnit: currentRecipeOption.viscosityUnit ?? 'S',
+    }))
+  }, [
+    currentRecipeOption?.id,
+    currentRecipeOption?.viscosity,
+    currentRecipeOption?.viscosityUnit,
+  ])
 
   const availableRecipes = useMemo(() => {
     const q = recipeSearch.trim().toLowerCase()
@@ -355,20 +381,32 @@ function ProductEditor({
                 <input type="number" min={0} value={form.sortOrder} onChange={e => patch('sortOrder', Number(e.target.value) || 0)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
               </div>
               <div className="space-y-1.5 sm:col-span-2">
-                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>产品黏度（可选）</label>
+                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                  产品黏度（可选）
+                  {viscosityFromCurrentRecipe && (
+                    <span className="ml-2 font-normal" style={{ color: '#5A5040' }}>— 自动同步当前配方</span>
+                  )}
+                </label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={form.viscosity}
                     onChange={e => patch('viscosity', e.target.value)}
+                    readOnly={viscosityFromCurrentRecipe}
                     className="flex-1 min-w-0 rounded-lg px-3 py-2.5 text-sm outline-none"
-                    style={inputStyle()}
+                    style={{
+                      ...inputStyle(),
+                      ...(viscosityFromCurrentRecipe
+                        ? { opacity: 0.85, cursor: 'not-allowed' }
+                        : {}),
+                    }}
                     placeholder="例如 9.7-9.8"
                   />
                   <select
                     value={form.viscosityUnit ?? 'S'}
                     onChange={e => patch('viscosityUnit', e.target.value as ViscosityUnit)}
-                    className="w-24 shrink-0 rounded-lg px-3 py-2.5 text-sm outline-none"
+                    disabled={viscosityFromCurrentRecipe}
+                    className="w-24 shrink-0 rounded-lg px-3 py-2.5 text-sm outline-none disabled:opacity-85 disabled:cursor-not-allowed"
                     style={inputStyle()}
                   >
                     {VISCOSITY_UNITS.map(unit => (
@@ -376,7 +414,11 @@ function ProductEditor({
                     ))}
                   </select>
                 </div>
-                <p className="text-xs" style={{ color: '#5A5040' }}>支持输入范围值，单位可选 S 或 KU</p>
+                <p className="text-xs" style={{ color: '#5A5040' }}>
+                  {viscosityFromCurrentRecipe
+                    ? '已关联当前配方时，黏度自动取自该配方；修改配方黏度后此处会同步更新'
+                    : '支持输入范围值，单位可选 S 或 KU'}
+                </p>
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>备注</label>
@@ -567,6 +609,8 @@ export default function AdminCosmoCoatFactoryProductsPage() {
             unitCost: recipe.unitCost,
             categoryCode: category.code,
             categoryName: category.name,
+            viscosity: recipe.viscosity?.trim() || null,
+            viscosityUnit: recipe.viscosity ? (recipe.viscosityUnit ?? 'S') : null,
           })
         }
       }

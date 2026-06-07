@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { getFactoryProductById, syncProductRecipes } from '@/lib/cosmocoat/factory-products'
+import { syncFactoryProductViscosityFromCurrentRecipe } from '@/lib/cosmocoat/factory-product-viscosity-sync'
 import { refreshAllFormulaIsUsedCache } from '@/lib/cosmocoat/recipe-usage'
 import { refreshRecipeCostsForFactoryProducts } from '@/lib/cosmocoat/recipe-cost-refresh'
 import {
@@ -111,27 +112,40 @@ export async function PATCH(
     } = parsed.data
     const viscosityKeys = ['viscosity', 'viscosityUnit'] as const
     const hasViscosityUpdate =
-      body != null &&
-      typeof body === 'object' &&
-      viscosityKeys.some(key => key in body)
+      body != null
+      && typeof body === 'object'
+      && viscosityKeys.some(key => key in body)
+    const recipeLinkChanged =
+      parsed.data.recipeIds !== undefined || parsed.data.currentRecipeId !== undefined
 
     const currentUnitPrice = current.unitPrice != null ? Number(current.unitPrice) : null
     const unitPriceChanged =
       parsed.data.unitPrice !== undefined
       && currentUnitPrice !== parsed.data.unitPrice
 
+    const updatedAfterRecipeSync = recipeLinkChanged
+      ? await prisma.cosTableFactoryProduct.findUnique({ where: { id } })
+      : current
+    const hasCurrentRecipe = !!updatedAfterRecipeSync?.currentRecipeId
+
     await prisma.cosTableFactoryProduct.update({
       where: { id },
       data: {
         ...patchRest,
-        ...(hasViscosityUpdate
-          ? mergeFactoryViscosityPatch(current as FactoryProductViscosityRecord, {
-              viscosity,
-              viscosityUnit,
-            })
-          : {}),
+        ...(hasCurrentRecipe
+          ? {}
+          : hasViscosityUpdate
+            ? mergeFactoryViscosityPatch(current as FactoryProductViscosityRecord, {
+                viscosity,
+                viscosityUnit,
+              })
+            : {}),
       } as Prisma.CosTableFactoryProductUncheckedUpdateInput,
     })
+
+    if (hasCurrentRecipe) {
+      await syncFactoryProductViscosityFromCurrentRecipe(id)
+    }
 
     if (unitPriceChanged) {
       await refreshRecipeCostsForFactoryProducts([id])

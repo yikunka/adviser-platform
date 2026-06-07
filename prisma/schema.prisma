@@ -1914,9 +1914,10 @@ model CosCustomer {
   code        String   @unique
   name        String
   userId      String?  @unique
-  phone       String?
-  address     String?
-  createdById String?
+  phone                    String?
+  address                  String?
+  productionEquipmentParams String?
+  createdById              String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

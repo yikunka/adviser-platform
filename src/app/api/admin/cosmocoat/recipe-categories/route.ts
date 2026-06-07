@@ -30,6 +30,8 @@ export async function GET() {
             name: true,
             batchQuantity: true,
             unitCost: true,
+            viscosity: true,
+            viscosityUnit: true,
             updatedAt: true,
           },
         },

@@ -178,7 +178,20 @@ export function serializeProductionOrder(order: {
   createdAt: Date
   updatedAt: Date
   factoryProduct: { id: string; productCode: string; name: string; unit: string }
-  recipe: { id: string; code: string; name: string }
+  recipe: {
+    id: string
+    code: string
+    name: string
+    productionSpeedRequirements?: string
+    productionTimeRequirements?: string
+    packagingRequirements?: string
+    productionNotes?: string
+    qcTestStandard?: string
+    qcTestItems?: string[]
+    qcResult?: string
+    viscosity?: string | null
+    viscosityUnit?: string | null
+  }
   items: Array<Parameters<typeof serializeOrderItem>[0]>
 }) {
   const items = order.items.map(serializeOrderItem)

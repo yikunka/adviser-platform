@@ -1,6 +1,10 @@
 import { prisma } from '@/lib/db/prisma'
 import { refreshAllFormulaIsUsedCache } from '@/lib/cosmocoat/recipe-usage'
 import { serializeFactoryViscosity } from '@/lib/cosmocoat/factory-product-viscosity'
+import {
+  resolveFactoryProductViscosity,
+  syncFactoryProductViscosityFromCurrentRecipe,
+} from '@/lib/cosmocoat/factory-product-viscosity-sync'
 
 const productInclude = {
   category: { select: { id: true, name: true, slug: true } },
@@ -10,6 +14,8 @@ const productInclude = {
       code: true,
       name: true,
       unitCost: true,
+      viscosity: true,
+      viscosityUnit: true,
       productionSpeedRequirements: true,
       productionTimeRequirements: true,
       packagingRequirements: true,
@@ -53,6 +59,8 @@ export async function serializeFactoryProduct(product: {
     code: string
     name: string
     unitCost: unknown
+    viscosity?: string | null
+    viscosityUnit?: string | null
     productionSpeedRequirements: string
     productionTimeRequirements: string
     packagingRequirements: string
@@ -71,6 +79,7 @@ export async function serializeFactoryProduct(product: {
     }
   }>
 }) {
+  const effectiveViscosity = resolveFactoryProductViscosity(product, product.currentRecipe)
   return {
     id: product.id,
     productCode: product.productCode,
@@ -80,9 +89,10 @@ export async function serializeFactoryProduct(product: {
     unit: product.unit,
     unitPrice: product.unitPrice != null ? Number(product.unitPrice) : null,
     notes: product.notes,
-    viscosity: product.viscosity?.trim() || null,
-    viscosityUnit: product.viscosity ? (product.viscosityUnit ?? 'S') : null,
-    viscosityLabel: serializeFactoryViscosity(product.viscosity, product.viscosityUnit),
+    viscosity: effectiveViscosity.viscosity,
+    viscosityUnit: effectiveViscosity.viscosityUnit,
+    viscosityLabel: serializeFactoryViscosity(effectiveViscosity.viscosity, effectiveViscosity.viscosityUnit),
+    viscosityFromCurrentRecipe: !!product.currentRecipe,
     currentRecipeId: product.currentRecipeId,
     sortOrder: product.sortOrder,
     createdAt: product.createdAt.toISOString(),
@@ -168,6 +178,7 @@ export async function syncProductRecipes(productId: string, recipeIds: string[],
   })
 
   await refreshAllFormulaIsUsedCache()
+  await syncFactoryProductViscosityFromCurrentRecipe(productId)
 }
 
 export { productInclude }

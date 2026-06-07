@@ -10,6 +10,7 @@ import { recipeItemSchema } from '@/lib/cosmocoat/recipe-api-schemas'
 import { refreshAllFormulaIsUsedCache } from '@/lib/cosmocoat/recipe-usage'
 import { serializeFullRecipe } from '@/lib/cosmocoat/recipe-serializer'
 import { mergeRecipeViscosityPatch, recipeViscosityFieldsSchema } from '@/lib/cosmocoat/recipe-viscosity'
+import { syncFactoryProductsViscosityFromRecipe } from '@/lib/cosmocoat/factory-product-viscosity-sync'
 
 const itemSchema = recipeItemSchema
 
@@ -110,6 +111,12 @@ export async function PATCH(
       batchQuantity,
     )
 
+    const viscosityKeys = ['viscosity', 'viscosityUnit'] as const
+    const hasViscosityUpdate =
+      body != null
+      && typeof body === 'object'
+      && viscosityKeys.some(key => key in body)
+
     await prisma.cosTableRecipe.update({
       where: { id },
       data: {
@@ -131,6 +138,10 @@ export async function PATCH(
         unitCost: totals.unitCost,
       },
     })
+
+    if (hasViscosityUpdate) {
+      await syncFactoryProductsViscosityFromRecipe(id)
+    }
 
     await refreshAllFormulaIsUsedCache()
     const recipe = await serializeFullRecipe(id)

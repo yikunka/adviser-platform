@@ -7,6 +7,7 @@ export type CosCustomerRow = {
   userId: string | null
   phone: string | null
   address: string | null
+  productionEquipmentParams: string | null
   createdById: string | null
   createdAt: string
   updatedAt: string
@@ -40,6 +41,7 @@ export function serializeCustomer(customer: {
   userId: string | null
   phone: string | null
   address: string | null
+  productionEquipmentParams: string | null
   createdById: string | null
   createdAt: Date
   updatedAt: Date
@@ -59,6 +61,7 @@ export function serializeCustomer(customer: {
     userId: customer.userId,
     phone: customer.phone,
     address: customer.address,
+    productionEquipmentParams: customer.productionEquipmentParams,
     createdById: customer.createdById,
     createdAt: customer.createdAt.toISOString(),
     updatedAt: customer.updatedAt.toISOString(),

@@ -1,4 +1,9 @@
-import { formatSelectedRecipeQcTests } from '@/lib/cosmocoat/recipe-qc-tests'
+import {
+  formatSelectedRecipeQcTests,
+  normalizeRecipeQcTestItems,
+  RECIPE_QC_TEST_ITEMS,
+  type RecipeQcTestItemId,
+} from '@/lib/cosmocoat/recipe-qc-tests'
 
 export const MATERIAL_ATTRIBUTE_GROUPS: { code: string; label: string }[] = [
   { code: 'RS', label: '树脂&单体 RS' },
@@ -395,5 +400,175 @@ export function recipeToOrderRequirements(recipe: RecipeProductionFields) {
     }),
     packagingRequirements: recipe.packagingRequirements,
     productionNotes: recipe.productionNotes,
+  }
+}
+
+export type ProductionOrderProcessFields = {
+  productionSpeedRequirements: string
+  productionTimeRequirements: string
+  packagingRequirements: string
+  productionNotes: string
+  qcTestItems: RecipeQcTestItemId[]
+  qcTestStandard: string
+  qcResult: string
+}
+
+/** Parses stored production requirements back into speed/time fields for the editor. */
+export function parseProductionRequirements(text: string): { speed: string; time: string } {
+  const trimmed = text.trim()
+  if (!trimmed) return { speed: '', time: '' }
+
+  const speedHeader = '生产转速要求:\n'
+  const timeHeader = '生产时间要求:\n'
+  const speedIdx = trimmed.indexOf(speedHeader)
+  const timeIdx = trimmed.indexOf(timeHeader)
+
+  if (speedIdx !== -1 || timeIdx !== -1) {
+    let speed = ''
+    let time = ''
+    if (speedIdx !== -1) {
+      const start = speedIdx + speedHeader.length
+      const end = timeIdx !== -1 && timeIdx > speedIdx ? timeIdx : trimmed.length
+      speed = trimmed.slice(start, end).trim()
+    }
+    if (timeIdx !== -1) {
+      time = trimmed.slice(timeIdx + timeHeader.length).trim()
+    }
+    return { speed, time }
+  }
+
+  return { speed: trimmed, time: '' }
+}
+
+/** Parses stored QC requirements back into checkbox and text fields for the editor. */
+export function parseRecipeQcRequirements(text: string): {
+  qcTestItems: RecipeQcTestItemId[]
+  qcTestStandard: string
+  qcResult: string
+} {
+  const trimmed = text.trim()
+  if (!trimmed) {
+    return { qcTestItems: [], qcTestStandard: '', qcResult: '' }
+  }
+
+  let standardPart = trimmed
+  let qcResult = ''
+  const resultMarker = '\n\n结果:\n'
+  const resultIdx = trimmed.indexOf(resultMarker)
+  if (resultIdx !== -1) {
+    standardPart = trimmed.slice(0, resultIdx)
+    qcResult = trimmed.slice(resultIdx + resultMarker.length).trim()
+  } else if (trimmed.startsWith('结果:\n')) {
+    return { qcTestItems: [], qcTestStandard: '', qcResult: trimmed.slice('结果:\n'.length).trim() }
+  }
+
+  if (standardPart.startsWith('测试标准:\n')) {
+    standardPart = standardPart.slice('测试标准:\n'.length)
+  }
+
+  const qcTestItems: RecipeQcTestItemId[] = []
+  const customLines: string[] = []
+  for (const line of standardPart.split('\n')) {
+    const trimmedLine = line.trim()
+    if (!trimmedLine) continue
+
+    const matched = RECIPE_QC_TEST_ITEMS.find(item => (
+      trimmedLine === item.label
+      || trimmedLine.startsWith(`${item.label}:`)
+      || (item.id === 'VISCOSITY' && trimmedLine.startsWith('黏度'))
+    ))
+    if (matched && !qcTestItems.includes(matched.id)) {
+      qcTestItems.push(matched.id)
+      continue
+    }
+    customLines.push(trimmedLine)
+  }
+
+  return {
+    qcTestItems,
+    qcTestStandard: customLines.join('\n'),
+    qcResult,
+  }
+}
+
+/** Copies linked recipe process/QC fields into production-order editor state. */
+export function recipeToProductionOrderProcessFields(recipe: RecipeProductionFields): ProductionOrderProcessFields {
+  return {
+    productionSpeedRequirements: recipe.productionSpeedRequirements,
+    productionTimeRequirements: recipe.productionTimeRequirements,
+    packagingRequirements: recipe.packagingRequirements,
+    productionNotes: recipe.productionNotes,
+    qcTestItems: normalizeRecipeQcTestItems(recipe.qcTestItems),
+    qcTestStandard: recipe.qcTestStandard,
+    qcResult: recipe.qcResult,
+  }
+}
+
+export function productionOrderProcessFieldsToPayload(
+  fields: ProductionOrderProcessFields,
+  options?: { viscosity?: string | null; viscosityUnit?: string | null },
+) {
+  return {
+    productionRequirements: formatProductionRequirements(
+      fields.productionSpeedRequirements,
+      fields.productionTimeRequirements,
+    ),
+    productionNotes: fields.productionNotes,
+    packagingRequirements: fields.packagingRequirements,
+    packagingNotes: fields.packagingRequirements,
+    qualityCheckRequirements: formatRecipeQcRequirements(
+      fields.qcTestStandard,
+      fields.qcResult,
+      {
+        qcTestItems: fields.qcTestItems,
+        viscosity: options?.viscosity,
+        viscosityUnit: options?.viscosityUnit,
+      },
+    ),
+    qualityNotes: formatRecipeQcRequirements(
+      fields.qcTestStandard,
+      fields.qcResult,
+      {
+        qcTestItems: fields.qcTestItems,
+        viscosity: options?.viscosity,
+        viscosityUnit: options?.viscosityUnit,
+      },
+    ),
+  }
+}
+
+/** Hydrates editor fields from a saved production order, with legacy fallbacks. */
+export function hydrateProductionOrderProcessFields(order: {
+  productionRequirements: string
+  productionNotes: string
+  packagingRequirements: string
+  packagingNotes: string
+  qualityCheckRequirements: string
+  qualityNotes: string
+}, recipe?: RecipeProductionFields | null): ProductionOrderProcessFields {
+  const productionText = order.productionRequirements.trim() || order.productionNotes.trim()
+  const { speed, time } = parseProductionRequirements(productionText)
+  const packaging = order.packagingRequirements.trim() || order.packagingNotes.trim()
+  const qcText = order.qualityCheckRequirements.trim() || order.qualityNotes.trim()
+  const parsedQc = parseRecipeQcRequirements(qcText)
+
+  const hasStoredProductionNotes = Boolean(order.productionNotes.trim())
+    && order.productionNotes.trim() !== productionText.trim()
+  const productionNotes = hasStoredProductionNotes
+    ? order.productionNotes
+    : (recipe?.productionNotes ?? '')
+
+  const qcTestItems = parsedQc.qcTestItems.length > 0
+    ? parsedQc.qcTestItems
+    : normalizeRecipeQcTestItems(recipe?.qcTestItems)
+
+  return {
+    productionSpeedRequirements: speed || recipe?.productionSpeedRequirements || '',
+    productionTimeRequirements: time || recipe?.productionTimeRequirements || '',
+    packagingRequirements: packaging || recipe?.packagingRequirements || '',
+    productionNotes,
+    qcTestItems,
+    qcTestStandard: parsedQc.qcTestStandard || recipe?.qcTestStandard || '',
+    qcResult: parsedQc.qcResult || recipe?.qcResult || '',
   }
 }

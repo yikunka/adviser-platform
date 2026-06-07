@@ -16,6 +16,7 @@ const updateSchema = z.object({
   userId: z.union([z.string().trim().min(1), z.literal(''), z.null()]).optional(),
   phone: z.string().trim().max(50).optional().nullable(),
   address: z.string().trim().max(500).optional().nullable(),
+  productionEquipmentParams: z.string().trim().max(5000).optional().nullable(),
 })
 
 function nullableText(v: string | null | undefined) {
@@ -102,6 +103,9 @@ export async function PATCH(
         ...(userId !== undefined ? { userId } : {}),
         ...(parsed.data.phone !== undefined ? { phone: nullableText(parsed.data.phone) } : {}),
         ...(parsed.data.address !== undefined ? { address: nullableText(parsed.data.address) } : {}),
+        ...(parsed.data.productionEquipmentParams !== undefined
+          ? { productionEquipmentParams: nullableText(parsed.data.productionEquipmentParams) }
+          : {}),
       },
       include: customerInclude,
     })

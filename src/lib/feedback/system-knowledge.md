@@ -216,8 +216,10 @@ Home, Products catalog, Product detail, About, Supporting.
 
 ### Factory Products (`/admin/cosmocoat-factory-products`)
 Finished goods produced by the factory.
-- Fields: product code, name, category, unit (kg), unit price, viscosity (free-text, e.g. range like `9.7-9.8`), current recipe, linked recipes, sort order
+- Fields: product code, name, category, unit (kg), unit price, viscosity, current recipe, linked recipes, sort order
 - Product list shows viscosity column (text value + optional unit S or KU)
+- When a current recipe is assigned, product viscosity is read-only and automatically synced from that recipe's viscosity; updating recipe viscosity propagates to all linked factory products using it as current recipe
+- Without a current recipe, viscosity can be entered manually (free-text range e.g. `9.7-9.8`, unit S or KU)
 - Assign / change current recipe; link multiple recipe candidates
 - Search / filter by name or category
 
@@ -268,8 +270,11 @@ Manufacturing batch tracking.
 - Recipes containing only nested sub-recipes or semifinished components (no raw-material lines) show an empty materials table instead of crashing
 - Statuses: `DRAFT` → `IN_PROGRESS` → `COMPLETED`
 - Line items: raw materials, semifinished component recipes, and Sol. semifinished inventory components with required weight and actual weight used; material list matches the linked recipe, and opening an existing order auto-syncs missing semifinished rows from the recipe while preserving saved actual weights
+- Detail page **生产工艺** section: selecting a product on new order (or opening an existing order) auto-loads the linked recipe's production speed, production time, packaging requirements, and production notes; fields are editable on the order, with a **从配方重新加载** action on draft orders to reset from the current recipe
+- Detail page **QC** section: auto-loads recipe QC test checkboxes (黏度, 百格, 水煮80C/30M, 湿油外观, 干板外观 — viscosity checkbox shows recipe viscosity when set), optional custom test standard, and result fields; all editable on the order
+- Recipe name row links to the linked recipe detail page
 - Print production order: A4 sheet with enlarged text, no page header/footer, a material table constrained to page margins, and material names omitted while keeping material codes, ratios, required weight, and actual weight
-- Print output preserves production / quality / packaging notes and requirements
+- Print output includes structured 生产工艺 and QC sections from the order's saved process/QC fields
 - Output: creates semifinished product inventory entries on completion
 
 ### Semifinished Products (`/admin/cosmocoat-product-semifinished`)
@@ -291,7 +296,7 @@ Product application method documentation (產品配套工藝書).
 
 ### Customers (`/admin/cosmocoat-customers`)
 Unified customer registry for CosmoCoat manufacturing clients (raw material purchases, recipe services, finished goods).
-- Fields: customer code (auto-generated `KH####` if omitted), name, optional linked CosmoCoat platform login account (from Customer Account Management), phone, address
+- Fields: customer code (auto-generated `KH####` if omitted), name, optional linked CosmoCoat platform login account (from Customer Account Management), phone, address, production equipment parameters (free-text multi-line field below address on create/edit form)
 - List with search (code / name / phone / address / linked account email); paginated table
 - Create, view, edit, and delete customer profiles; detail page at `/admin/cosmocoat-customers/[id]`; new at `/admin/cosmocoat-customers/new`
 - Each CosmoCoat platform account can be linked to at most one customer profile

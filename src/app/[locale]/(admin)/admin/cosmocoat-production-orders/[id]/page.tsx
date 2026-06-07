@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, FlaskConical, Printer, Save } from 'lucide-react'
+import { ArrowLeft, FlaskConical, Printer, RefreshCw, Save } from 'lucide-react'
 import {
   buildProductionOrderItems,
   formatPercent,
@@ -14,9 +14,15 @@ import {
   productionOrderItemKey,
   recipeItemsForProduction,
   type ProductionRecipeItem,
-  formatProductionRequirements,
-  formatRecipeQcRequirements,
+  hydrateProductionOrderProcessFields,
+  productionOrderProcessFieldsToPayload,
+  recipeToProductionOrderProcessFields,
+  type ProductionOrderProcessFields,
 } from '@/lib/cosmocoat/recipes'
+import {
+  RECIPE_QC_TEST_ITEMS,
+  type RecipeQcTestItemId,
+} from '@/lib/cosmocoat/recipe-qc-tests'
 import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
 import { FactoryProductCombobox } from '@/components/cosmocoat/FactoryProductCombobox'
 import type { FactoryProductPickerOption } from '@/lib/cosmocoat/factory-product-picker'
@@ -114,16 +120,27 @@ interface PrintViewProps {
   finishedAt: string
   status: string
   items: EditableItem[]
-  productionNotes: string
-  qualityNotes: string
-  packagingNotes: string
+  processFields: ProductionOrderProcessFields
 }
 
 function PrintView({
   code, productName, recipeCode, recipeName, totalWeight, productUnit,
   batchNo, startedAt, finishedAt, status, items,
-  productionNotes, qualityNotes, packagingNotes,
+  processFields,
 }: PrintViewProps) {
+  const {
+    productionSpeedRequirements,
+    productionTimeRequirements,
+    packagingRequirements,
+    productionNotes,
+    qcTestItems,
+    qcTestStandard,
+    qcResult,
+  } = processFields
+  const qcLabels = RECIPE_QC_TEST_ITEMS
+    .filter(item => qcTestItems.includes(item.id))
+    .map(item => item.label)
+    .join('、')
   return (
     <div id="cosmocoat-print-area">
       {/* ─── Basic info grid ─── */}
@@ -201,21 +218,33 @@ function PrintView({
         </tbody>
       </table>
 
-      {/* ─── Notes sections ─── */}
-      {(productionNotes || qualityNotes || packagingNotes) && (
-        <table className="print-notes-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9 }}>
+      {/* ─── Process & QC sections ─── */}
+      {(productionSpeedRequirements || productionTimeRequirements || packagingRequirements || productionNotes
+        || qcLabels || qcTestStandard || qcResult) && (
+        <table className="print-notes-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9, marginBottom: 14 }}>
           <thead>
             <tr style={{ background: '#f0f0f0' }}>
-              <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '33%' }}>生产要求</th>
-              <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '34%' }}>生产注意事项（含质检）</th>
-              <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '33%' }}>包装要求</th>
+              <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '50%' }}>生产工艺</th>
+              <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '50%' }}>QC 质量控制</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{productionNotes}</td>
-              <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{qualityNotes}</td>
-              <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{packagingNotes}</td>
+              <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                {[
+                  productionSpeedRequirements ? `生产转速要求:\n${productionSpeedRequirements}` : '',
+                  productionTimeRequirements ? `生产时间要求:\n${productionTimeRequirements}` : '',
+                  packagingRequirements ? `包装要求:\n${packagingRequirements}` : '',
+                  productionNotes ? `生产注意事项:\n${productionNotes}` : '',
+                ].filter(Boolean).join('\n\n')}
+              </td>
+              <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                {[
+                  qcLabels ? `测试项目: ${qcLabels}` : '',
+                  qcTestStandard ? `其他测试标准:\n${qcTestStandard}` : '',
+                  qcResult ? `结果:\n${qcResult}` : '',
+                ].filter(Boolean).join('\n\n')}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -270,11 +299,52 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
   const [batchNo, setBatchNo] = useState('')
   const [startedAt, setStartedAt] = useState('')
   const [finishedAt, setFinishedAt] = useState('')
+  const [productionSpeedRequirements, setProductionSpeedRequirements] = useState('')
+  const [productionTimeRequirements, setProductionTimeRequirements] = useState('')
+  const [packagingRequirements, setPackagingRequirements] = useState('')
   const [productionNotes, setProductionNotes] = useState('')
-  const [qualityNotes, setQualityNotes] = useState('')
-  const [packagingNotes, setPackagingNotes] = useState('')
+  const [qcTestItems, setQcTestItems] = useState<RecipeQcTestItemId[]>([])
+  const [qcTestStandard, setQcTestStandard] = useState('')
+  const [qcResult, setQcResult] = useState('')
+  const [recipeViscosity, setRecipeViscosity] = useState<string | null>(null)
+  const [recipeViscosityUnit, setRecipeViscosityUnit] = useState<string | null>(null)
+  const [linkedRecipeId, setLinkedRecipeId] = useState('')
   const [status, setStatus] = useState<'draft' | 'completed'>('draft')
   const [items, setItems] = useState<EditableItem[]>([])
+
+  const processFields = useMemo<ProductionOrderProcessFields>(() => ({
+    productionSpeedRequirements,
+    productionTimeRequirements,
+    packagingRequirements,
+    productionNotes,
+    qcTestItems,
+    qcTestStandard,
+    qcResult,
+  }), [
+    productionSpeedRequirements,
+    productionTimeRequirements,
+    packagingRequirements,
+    productionNotes,
+    qcTestItems,
+    qcTestStandard,
+    qcResult,
+  ])
+
+  function applyProcessFields(fields: ProductionOrderProcessFields) {
+    setProductionSpeedRequirements(fields.productionSpeedRequirements)
+    setProductionTimeRequirements(fields.productionTimeRequirements)
+    setPackagingRequirements(fields.packagingRequirements)
+    setProductionNotes(fields.productionNotes)
+    setQcTestItems(fields.qcTestItems)
+    setQcTestStandard(fields.qcTestStandard)
+    setQcResult(fields.qcResult)
+  }
+
+  function toggleQcTestItem(id: RecipeQcTestItemId) {
+    setQcTestItems(prev => (
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    ))
+  }
 
   const selectedProduct = selectedProductSnapshot
 
@@ -283,7 +353,10 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
     [items],
   )
 
-  const loadRecipeItems = useCallback(async (recipeId: string) => {
+  const loadRecipeItems = useCallback(async (
+    recipeId: string,
+    options?: { overwriteProcess?: boolean },
+  ) => {
     try {
       const res = await fetch(`/api/admin/cosmocoat/recipes/${recipeId}`)
       const data = await res.json()
@@ -295,21 +368,11 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       const recipe = data.recipe
       setRecipeCode(recipe.code)
       setRecipeName(recipe.name)
-      if (isNew) {
-        setProductionNotes(formatProductionRequirements(
-          recipe.productionSpeedRequirements ?? '',
-          recipe.productionTimeRequirements ?? '',
-        ))
-        setQualityNotes(formatRecipeQcRequirements(
-          recipe.qcTestStandard ?? '',
-          recipe.qcResult ?? '',
-          {
-            qcTestItems: recipe.qcTestItems ?? [],
-            viscosity: recipe.viscosity,
-            viscosityUnit: recipe.viscosityUnit,
-          },
-        ))
-        setPackagingNotes(recipe.packagingRequirements ?? '')
+      setLinkedRecipeId(recipe.id)
+      setRecipeViscosity(recipe.viscosity ?? null)
+      setRecipeViscosityUnit(recipe.viscosityUnit ?? null)
+      if (isNew || options?.overwriteProcess) {
+        applyProcessFields(recipeToProductionOrderProcessFields(recipe))
       }
       const productionItems = recipeItemsForProduction(recipe.items)
       if (productionItems.length === 0) {
@@ -321,6 +384,11 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       setRecipeItems([])
     }
   }, [isNew])
+
+  function reloadFromRecipe() {
+    if (!linkedRecipeId) return
+    void loadRecipeItems(linkedRecipeId, { overwriteProcess: true })
+  }
 
   const loadOrder = useCallback(async () => {
     if (isNew) return
@@ -339,13 +407,14 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       setProductUnit(order.factoryProduct.unit)
       setRecipeCode(order.recipe.code)
       setRecipeName(order.recipe.name)
+      setLinkedRecipeId(order.recipe.id)
+      setRecipeViscosity(order.recipe.viscosity ?? null)
+      setRecipeViscosityUnit(order.recipe.viscosityUnit ?? null)
       setTotalWeight(order.totalWeight)
       setBatchNo(order.batchNo)
       setStartedAt(toDatetimeLocal(order.startedAt))
       setFinishedAt(toDatetimeLocal(order.finishedAt))
-      setProductionNotes(order.productionNotes || order.productionRequirements)
-      setQualityNotes(order.qualityNotes || order.qualityCheckRequirements)
-      setPackagingNotes(order.packagingNotes || order.packagingRequirements)
+      applyProcessFields(hydrateProductionOrderProcessFields(order, order.recipe))
       setStatus(order.status === 'completed' ? 'completed' : 'draft')
       setItems(order.items.map((item: {
         id: string
@@ -478,6 +547,10 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
     }
 
     setSaving(true)
+    const processPayload = productionOrderProcessFieldsToPayload(processFields, {
+      viscosity: recipeViscosity,
+      viscosityUnit: recipeViscosityUnit,
+    })
     const itemPayload = items.map(item => ({
       ...(item.itemType === 'component_recipe'
         ? { componentRecipeId: item.componentRecipeId }
@@ -495,9 +568,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
           batchNo,
           startedAt: fromDatetimeLocal(startedAt),
           finishedAt: fromDatetimeLocal(finishedAt),
-          productionNotes,
-          qualityNotes,
-          packagingNotes,
+          ...processPayload,
           status,
           items: itemPayload,
         }
@@ -506,9 +577,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
           batchNo,
           startedAt: fromDatetimeLocal(startedAt),
           finishedAt: fromDatetimeLocal(finishedAt),
-          productionNotes,
-          qualityNotes,
-          packagingNotes,
+          ...processPayload,
           status,
           items: items.map(item => ({
             id: item.id,
@@ -656,9 +725,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
         finishedAt={finishedAt}
         status={status}
         items={items}
-        productionNotes={productionNotes}
-        qualityNotes={qualityNotes}
-        packagingNotes={packagingNotes}
+        processFields={processFields}
       />
 
       {/* ─── Screen UI wrapper (hidden during print) ─── */}
@@ -728,7 +795,18 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
           </div>
           <div className="space-y-1.5 sm:col-span-2">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>配方名称</label>
-            <input value={recipeName} readOnly className="w-full rounded-lg px-3 py-2.5 text-sm outline-none opacity-70" style={inputStyle()} />
+            <div className="flex flex-wrap items-center gap-2">
+              <input value={recipeName} readOnly className="flex-1 min-w-[12rem] rounded-lg px-3 py-2.5 text-sm outline-none opacity-70" style={inputStyle()} />
+              {linkedRecipeId && (
+                <Link
+                  href={`/admin/cosmocoat-recipes/${linkedRecipeId}`}
+                  className="text-xs px-2.5 py-1.5 rounded-md"
+                  style={{ border: '1px solid #2A2418', color: '#C9A96E' }}
+                >
+                  查看配方
+                </Link>
+              )}
+            </div>
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>生产重量 ({productUnit})</label>
@@ -842,18 +920,126 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-4">
-        <div style={card} className="p-4 space-y-2">
-          <label className="text-xs font-medium" style={{ color: '#C9A96E' }}>生产要求</label>
-          <textarea value={productionNotes} onChange={e => setProductionNotes(e.target.value)} rows={4} className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y" style={inputStyle()} placeholder="如：1500 转 / 30 分钟" />
+      <div style={card} className="p-4 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>生产工艺</h3>
+            <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
+              选择产品后自动从关联配方带出，可在本单中调整或补充
+            </p>
+          </div>
+          {!isNew && linkedRecipeId && status === 'draft' && (
+            <button
+              type="button"
+              onClick={reloadFromRecipe}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
+              style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
+            >
+              <RefreshCw size={12} /> 从配方重新加载
+            </button>
+          )}
         </div>
-        <div style={card} className="p-4 space-y-2">
-          <label className="text-xs font-medium" style={{ color: '#C9A96E' }}>质检要求</label>
-          <textarea value={qualityNotes} onChange={e => setQualityNotes(e.target.value)} rows={4} className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y" style={inputStyle()} placeholder="如：先加 A 料；粘度 9.7-9.8..." />
+        <div className="grid sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-3">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>生产转速要求</label>
+            <textarea
+              value={productionSpeedRequirements}
+              onChange={e => setProductionSpeedRequirements(e.target.value)}
+              rows={4}
+              className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y"
+              style={inputStyle()}
+              placeholder="如：1500 转"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>生产时间要求</label>
+            <textarea
+              value={productionTimeRequirements}
+              onChange={e => setProductionTimeRequirements(e.target.value)}
+              rows={4}
+              className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y"
+              style={inputStyle()}
+              placeholder="如：30 分钟"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>包装要求</label>
+            <textarea
+              value={packagingRequirements}
+              onChange={e => setPackagingRequirements(e.target.value)}
+              rows={4}
+              className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y"
+              style={inputStyle()}
+              placeholder="如：18KG / 200目"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>生产注意事项</label>
+            <textarea
+              value={productionNotes}
+              onChange={e => setProductionNotes(e.target.value)}
+              rows={4}
+              className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y"
+              style={inputStyle()}
+              placeholder="如：先加 A 料再慢慢加入 B 料"
+            />
+          </div>
         </div>
-        <div style={card} className="p-4 space-y-2">
-          <label className="text-xs font-medium" style={{ color: '#C9A96E' }}>包装要求</label>
-          <textarea value={packagingNotes} onChange={e => setPackagingNotes(e.target.value)} rows={4} className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y" style={inputStyle()} placeholder="如：18KG" />
+      </div>
+
+      <div style={card} className="p-4 space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>QC 质量控制</h3>
+          <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
+            测试项目与标准来自配方，可在本单中勾选调整或补充实测结果
+          </p>
+        </div>
+        <div className="grid sm:grid-cols-1 lg:grid-cols-2 gap-3">
+          <div className="space-y-3">
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>测试项目</label>
+            <div className="flex flex-wrap gap-3">
+              {RECIPE_QC_TEST_ITEMS.map(item => (
+                <label
+                  key={item.id}
+                  className="flex items-center gap-2 cursor-pointer text-sm"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={qcTestItems.includes(item.id)}
+                    onChange={() => toggleQcTestItem(item.id)}
+                    className="rounded border-[#2A2418] accent-[#C9A96E]"
+                  />
+                  {item.label}
+                  {item.id === 'VISCOSITY' && recipeViscosity && (
+                    <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                      ({recipeViscosity}{recipeViscosityUnit ? ` ${recipeViscosityUnit}` : ''})
+                    </span>
+                  )}
+                </label>
+              ))}
+            </div>
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>其他测试标准</label>
+            <textarea
+              value={qcTestStandard}
+              onChange={e => setQcTestStandard(e.target.value)}
+              rows={4}
+              className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y"
+              style={inputStyle()}
+              placeholder="补充测试标准（可选）"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>结果</label>
+            <textarea
+              value={qcResult}
+              onChange={e => setQcResult(e.target.value)}
+              rows={4}
+              className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y"
+              style={inputStyle()}
+              placeholder="如：合格 / 实测值"
+            />
+          </div>
         </div>
       </div>
     </div>

@@ -22,6 +22,7 @@ type FormState = {
   userId: string
   phone: string
   address: string
+  productionEquipmentParams: string
 }
 
 const card: React.CSSProperties = {
@@ -65,6 +66,7 @@ export default function AdminCosmoCoatCustomerDetailPage() {
     userId: '',
     phone: '',
     address: '',
+    productionEquipmentParams: '',
   })
 
   const fetchPlatformUsers = useCallback(async () => {
@@ -96,6 +98,7 @@ export default function AdminCosmoCoatCustomerDetailPage() {
         userId: row.userId ?? '',
         phone: row.phone ?? '',
         address: row.address ?? '',
+        productionEquipmentParams: row.productionEquipmentParams ?? '',
       })
     } catch {
       toast.error('加载客户详情失败')
@@ -131,6 +134,7 @@ export default function AdminCosmoCoatCustomerDetailPage() {
         userId: form.userId || null,
         phone: form.phone.trim() || null,
         address: form.address.trim() || null,
+        productionEquipmentParams: form.productionEquipmentParams.trim() || null,
       }
 
       const res = await fetch(
@@ -158,6 +162,7 @@ export default function AdminCosmoCoatCustomerDetailPage() {
           userId: data.customer.userId ?? '',
           phone: data.customer.phone ?? '',
           address: data.customer.address ?? '',
+          productionEquipmentParams: data.customer.productionEquipmentParams ?? '',
         })
       }
     } catch {
@@ -286,6 +291,21 @@ export default function AdminCosmoCoatCustomerDetailPage() {
               onChange={e => patch('address', e.target.value)}
               maxLength={500}
               rows={3}
+              className="w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-y"
+              style={inputStyle()}
+            />
+          </Field>
+
+          <Field
+            label="生产设备参数"
+            hint="记录客户的生产设备参数信息，便于管理生产设备数据"
+          >
+            <textarea
+              value={form.productionEquipmentParams}
+              onChange={e => patch('productionEquipmentParams', e.target.value)}
+              maxLength={5000}
+              rows={5}
+              placeholder="例如：喷涂设备型号、喷枪口径、烘烤温度与时间等"
               className="w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-y"
               style={inputStyle()}
             />
