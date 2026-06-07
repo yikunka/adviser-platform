@@ -1,6 +1,7 @@
 export const SFS_PREDEFINED_STEPS: Record<string, string[]> = {
   CHEM_TRANSFORM: [
     'Package Received',
+    'Package arrived production site',
     'Check Sample & Labeling',
     'Observe Sample Status & Check Weigh',
     'Rinse & Clean',
@@ -43,7 +44,7 @@ export const SFS_TOTAL_PREDEFINED_STEPS = Object.values(SFS_PREDEFINED_STEPS).re
 
 /** 0-based index of the weight-entry step in CHEM_TRANSFORM */
 export function sfsChemTransformWeightStepIndex() {
-  return 2
+  return 3
 }
 
 /** 0-based index of the single-photo CVD step */

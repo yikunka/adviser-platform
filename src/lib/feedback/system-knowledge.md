@@ -196,7 +196,7 @@ Order lifecycle management for memorial diamond commissions.
   7. Packaging
   8. Delivery
 - Edit order details, update milestone dates, add admin notes
-- Order steps: create / update / complete sub-tasks within phases; Chemical Transformation phase begins with **Package Received**, then Check Sample & Labeling and the remaining NL00001 workflow steps
+- Order steps: create / update / complete sub-tasks within phases; Chemical Transformation phase (12 steps) begins with **Package Received**, then **Package arrived production site**, Check Sample & Labeling, and the remaining NL00001 workflow steps
 - Completed step attachments: uploaded images display at 224×224px (4× the previous thumbnail size) for easier admin review
 
 ### SFS Invoices Admin (`/admin/sfs-invoices`)
