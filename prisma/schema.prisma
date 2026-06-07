@@ -1417,6 +1417,7 @@ model CosTableRecipe {
   productLinks CosTableProductRecipe[]
   currentForProducts CosTableFactoryProduct[] @relation("CurrentFactoryRecipe")
   productionOrders CosTableProductionOrder[]
+  componentInProductionOrderItems CosTableProductionOrderItem[] @relation("ProductionOrderItemComponentRecipe")
   sourceColorFormulas CosTableColorFormula[]
 
   @@index([categoryId, name])
@@ -1650,6 +1651,7 @@ model CosTableProductionOrderItem {
   id                    String   @id @default(cuid())
   orderId               String
   rawMaterialId         String?
+  componentRecipeId     String?
   productSemifinishedId String?
   sortOrder             Int      @default(0)
   productionCode        String
@@ -1663,9 +1665,11 @@ model CosTableProductionOrderItem {
 
   order               CosTableProductionOrder      @relation(fields: [orderId], references: [id], onDelete: Cascade)
   rawMaterial         CosTableRawMaterial?         @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  componentRecipe     CosTableRecipe?              @relation("ProductionOrderItemComponentRecipe", fields: [componentRecipeId], references: [id], onDelete: Restrict)
   productSemifinished CosTableProductSemifinished? @relation(fields: [productSemifinishedId], references: [id], onDelete: Restrict)
 
   @@index([orderId, sortOrder])
+  @@index([componentRecipeId])
   @@index([productSemifinishedId])
   @@map("cos_table_production_order_items")
 }

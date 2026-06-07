@@ -20,6 +20,7 @@ const recipeItemsInclude = {
   orderBy: [{ sortOrder: 'asc' as const }, { createdAt: 'asc' as const }],
   include: {
     rawMaterial: true,
+    componentRecipe: true,
     productSemifinished: true,
   },
 }
@@ -49,6 +50,9 @@ export const orderInclude = {
     include: {
       rawMaterial: {
         select: { id: true, productionCode: true, name: true, attributeCode: true },
+      },
+      componentRecipe: {
+        select: { id: true, code: true, name: true },
       },
       productSemifinished: {
         select: { id: true, code: true, name: true },
@@ -131,9 +135,14 @@ function serializeOrderItem(item: {
   actualWeight: unknown
   notes: string
   rawMaterial: { id: string; productionCode: string; name: string; attributeCode: string } | null
+  componentRecipe: { id: string; code: string; name: string } | null
   productSemifinished: { id: string; code: string; name: string } | null
 }) {
-  const itemType = item.productSemifinished ? 'product_semifinished' as const : 'raw_material' as const
+  const itemType = item.componentRecipe
+    ? 'component_recipe' as const
+    : item.productSemifinished
+      ? 'product_semifinished' as const
+      : 'raw_material' as const
   return {
     id: item.id,
     itemType,
@@ -145,6 +154,7 @@ function serializeOrderItem(item: {
     actualWeight: item.actualWeight != null ? Number(item.actualWeight) : null,
     notes: item.notes,
     rawMaterial: item.rawMaterial,
+    componentRecipe: item.componentRecipe,
     productSemifinished: item.productSemifinished,
   }
 }
@@ -207,6 +217,7 @@ function orderItemDraftToCreateData(
   return {
     orderId,
     rawMaterialId: item.rawMaterialId ?? null,
+    componentRecipeId: item.componentRecipeId ?? null,
     productSemifinishedId: item.productSemifinishedId ?? null,
     sortOrder: item.sortOrder,
     productionCode: item.productionCode,
@@ -225,6 +236,7 @@ export async function syncProductionOrderItemsFromRecipe(
   totalWeight: number,
   currentItems: Array<{
     rawMaterialId: string | null
+    componentRecipeId: string | null
     productSemifinishedId: string | null
     actualWeight: unknown
     notes: string
@@ -241,8 +253,13 @@ export async function syncProductionOrderItemsFromRecipe(
 
   const currentKeys = new Set(
     currentItems.map(item => productionOrderItemKey({
-      itemType: item.productSemifinishedId ? 'product_semifinished' : 'raw_material',
+      itemType: item.componentRecipeId
+        ? 'component_recipe'
+        : item.productSemifinishedId
+          ? 'product_semifinished'
+          : 'raw_material',
       rawMaterialId: item.rawMaterialId ?? undefined,
+      componentRecipeId: item.componentRecipeId ?? undefined,
       productSemifinishedId: item.productSemifinishedId ?? undefined,
     })),
   )
@@ -256,8 +273,13 @@ export async function syncProductionOrderItemsFromRecipe(
   for (const item of currentItems) {
     actualByKey.set(
       productionOrderItemKey({
-        itemType: item.productSemifinishedId ? 'product_semifinished' : 'raw_material',
+        itemType: item.componentRecipeId
+          ? 'component_recipe'
+          : item.productSemifinishedId
+            ? 'product_semifinished'
+            : 'raw_material',
         rawMaterialId: item.rawMaterialId ?? undefined,
+        componentRecipeId: item.componentRecipeId ?? undefined,
         productSemifinishedId: item.productSemifinishedId ?? undefined,
       }),
       item.actualWeight != null ? Number(item.actualWeight) : null,
@@ -306,6 +328,7 @@ export function createOrderItemRows(
     const input = inputByKey.get(productionOrderItemKey(item))
     return {
       rawMaterialId: item.rawMaterialId ?? null,
+      componentRecipeId: item.componentRecipeId ?? null,
       productSemifinishedId: item.productSemifinishedId ?? null,
       sortOrder: item.sortOrder,
       productionCode: item.productionCode,

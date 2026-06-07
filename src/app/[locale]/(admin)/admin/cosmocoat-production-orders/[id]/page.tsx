@@ -26,8 +26,9 @@ type FactoryProductOption = FactoryProductPickerOption
 type EditableItem = {
   key: string
   id?: string
-  itemType: 'raw_material' | 'product_semifinished'
+  itemType: 'raw_material' | 'component_recipe' | 'product_semifinished'
   rawMaterialId?: string
+  componentRecipeId?: string
   productSemifinishedId?: string
   sortOrder: number
   productionCode: string
@@ -348,7 +349,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       setStatus(order.status === 'completed' ? 'completed' : 'draft')
       setItems(order.items.map((item: {
         id: string
-        itemType?: 'raw_material' | 'product_semifinished'
+        itemType?: 'raw_material' | 'component_recipe' | 'product_semifinished'
         sortOrder: number
         productionCode: string
         materialName: string
@@ -357,12 +358,20 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
         actualWeight: number | null
         notes: string
         rawMaterial: { id: string } | null
+        componentRecipe: { id: string } | null
         productSemifinished: { id: string } | null
       }) => ({
         key: item.id,
         id: item.id,
-        itemType: item.itemType ?? (item.productSemifinished ? 'product_semifinished' : 'raw_material'),
+        itemType: item.itemType ?? (
+          item.componentRecipe
+            ? 'component_recipe'
+            : item.productSemifinished
+              ? 'product_semifinished'
+              : 'raw_material'
+        ),
         rawMaterialId: item.rawMaterial?.id,
+        componentRecipeId: item.componentRecipe?.id,
         productSemifinishedId: item.productSemifinished?.id,
         sortOrder: item.sortOrder,
         productionCode: item.productionCode,
@@ -426,6 +435,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
           key,
           itemType: item.itemType,
           rawMaterialId: item.rawMaterialId,
+          componentRecipeId: item.componentRecipeId,
           productSemifinishedId: item.productSemifinishedId,
           sortOrder: item.sortOrder,
           productionCode: item.productionCode,
@@ -469,9 +479,11 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
 
     setSaving(true)
     const itemPayload = items.map(item => ({
-      ...(item.itemType === 'product_semifinished'
-        ? { productSemifinishedId: item.productSemifinishedId }
-        : { rawMaterialId: item.rawMaterialId }),
+      ...(item.itemType === 'component_recipe'
+        ? { componentRecipeId: item.componentRecipeId }
+        : item.itemType === 'product_semifinished'
+          ? { productSemifinishedId: item.productSemifinishedId }
+          : { rawMaterialId: item.rawMaterialId }),
       actualWeight: item.actualWeight,
       notes: item.notes,
     }))
@@ -798,6 +810,11 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
                   <td style={td}>
                     <span className="inline-flex items-center gap-1">
                       {item.productionCode}
+                      {item.itemType === 'component_recipe' && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded" style={{ background: 'rgba(201,169,110,0.15)', color: '#C9A96E' }}>
+                          <FlaskConical size={10} /> 半成品
+                        </span>
+                      )}
                       {item.itemType === 'product_semifinished' && (
                         <span className="inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded" style={{ background: 'rgba(201,169,110,0.15)', color: '#C9A96E' }}>
                           <FlaskConical size={10} /> Sol.

@@ -148,8 +148,9 @@ export function formatWeight(value: number | null | undefined, digits = 2): stri
 }
 
 export type ProductionOrderItemDraft = {
-  itemType: 'raw_material' | 'product_semifinished'
+  itemType: 'raw_material' | 'component_recipe' | 'product_semifinished'
   rawMaterialId?: string
+  componentRecipeId?: string
   productSemifinishedId?: string
   sortOrder: number
   productionCode: string
@@ -170,6 +171,11 @@ export type RecipeItemForProduction = {
     productionCode: string
     name: string
   } | null
+  componentRecipe: {
+    id: string
+    code: string
+    name: string
+  } | null
   productSemifinished: {
     id: string
     code: string
@@ -182,10 +188,15 @@ export type ProductionRecipeItem = {
   quantity: number
   percentage: number | null
   notes: string
-  itemType: 'raw_material' | 'product_semifinished'
+  itemType: 'raw_material' | 'component_recipe' | 'product_semifinished'
   rawMaterial?: {
     id: string
     productionCode: string
+    name: string
+  }
+  componentRecipe?: {
+    id: string
+    code: string
     name: string
   }
   productSemifinished?: {
@@ -195,12 +206,17 @@ export type ProductionRecipeItem = {
   }
 }
 
-/** Keeps raw-material and Sol. semifinished lines; drops nested recipes and factory products. */
+/** Keeps raw-material, semi-finished recipe, and Sol. semifinished inventory lines; drops factory products. */
 export function recipeItemsForProduction(
   items: Array<Omit<RecipeItemForProduction, 'quantity' | 'percentage'> & {
     quantity: unknown
     percentage?: unknown | null
     itemType?: string
+    componentRecipe?: {
+      id: string
+      code: string
+      name: string
+    } | null
     productSemifinished?: {
       id: string
       code: string
@@ -221,6 +237,17 @@ export function recipeItemsForProduction(
       })
       continue
     }
+    if (item.componentRecipe) {
+      result.push({
+        sortOrder: item.sortOrder,
+        quantity: Number(item.quantity),
+        percentage: item.percentage != null ? Number(item.percentage) : null,
+        notes: item.notes,
+        itemType: 'component_recipe',
+        componentRecipe: item.componentRecipe,
+      })
+      continue
+    }
     if (item.productSemifinished) {
       result.push({
         sortOrder: item.sortOrder,
@@ -235,7 +262,10 @@ export function recipeItemsForProduction(
   return result
 }
 
-export function productionOrderItemKey(item: Pick<ProductionOrderItemDraft, 'itemType' | 'rawMaterialId' | 'productSemifinishedId'>): string {
+export function productionOrderItemKey(item: Pick<ProductionOrderItemDraft, 'itemType' | 'rawMaterialId' | 'componentRecipeId' | 'productSemifinishedId'>): string {
+  if (item.itemType === 'component_recipe' && item.componentRecipeId) {
+    return `component-recipe:${item.componentRecipeId}`
+  }
   if (item.itemType === 'product_semifinished' && item.productSemifinishedId) {
     return `semifinished:${item.productSemifinishedId}`
   }
@@ -269,8 +299,22 @@ export function buildProductionOrderItems(
       }
     }
 
+    if (item.itemType === 'component_recipe' && item.componentRecipe) {
+      return {
+        itemType: 'component_recipe' as const,
+        componentRecipeId: item.componentRecipe.id,
+        sortOrder: item.sortOrder,
+        productionCode: item.componentRecipe.code,
+        materialName: item.componentRecipe.name,
+        percentage,
+        requiredWeight: computeRequiredWeight(totalWeight, percentage),
+        actualWeight: null,
+        notes: item.notes,
+      }
+    }
+
     if (!item.rawMaterial) {
-      throw new Error('Production recipe item missing raw material')
+      throw new Error('Production recipe item missing supported material source')
     }
 
     return {

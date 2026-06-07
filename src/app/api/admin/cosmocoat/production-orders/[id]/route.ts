@@ -10,7 +10,6 @@ import {
   loadRecipeForProduction,
   productionOrderItemKey,
   recipeItemsForProduction,
-  serializeProductionOrder,
 } from '@/lib/cosmocoat/production-orders'
 
 const itemPatchSchema = z.object({
@@ -92,8 +91,13 @@ export async function PATCH(
       for (const item of current.items) {
         actualByKey.set(
           productionOrderItemKey({
-            itemType: item.productSemifinishedId ? 'product_semifinished' : 'raw_material',
+            itemType: item.componentRecipeId
+              ? 'component_recipe'
+              : item.productSemifinishedId
+                ? 'product_semifinished'
+                : 'raw_material',
             rawMaterialId: item.rawMaterialId ?? undefined,
+            componentRecipeId: item.componentRecipeId ?? undefined,
             productSemifinishedId: item.productSemifinishedId ?? undefined,
           }),
           item.actualWeight != null ? Number(item.actualWeight) : null,
@@ -106,8 +110,13 @@ export async function PATCH(
           if (!row) continue
           actualByKey.set(
             productionOrderItemKey({
-              itemType: row.productSemifinishedId ? 'product_semifinished' : 'raw_material',
+              itemType: row.componentRecipeId
+                ? 'component_recipe'
+                : row.productSemifinishedId
+                  ? 'product_semifinished'
+                  : 'raw_material',
               rawMaterialId: row.rawMaterialId ?? undefined,
+              componentRecipeId: row.componentRecipeId ?? undefined,
               productSemifinishedId: row.productSemifinishedId ?? undefined,
             }),
             patch.actualWeight,
@@ -126,6 +135,7 @@ export async function PATCH(
           data: itemDrafts.map(item => ({
             orderId: id,
             rawMaterialId: item.rawMaterialId ?? null,
+            componentRecipeId: item.componentRecipeId ?? null,
             productSemifinishedId: item.productSemifinishedId ?? null,
             sortOrder: item.sortOrder,
             productionCode: item.productionCode,

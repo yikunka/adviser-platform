@@ -264,7 +264,7 @@ Manufacturing batch tracking.
 - Product list auto-excludes factory products without a current recipe; optional `?recipeId=` URL param further limits choices to products linked to that recipe
 - Recipes containing only nested sub-recipes or semifinished components (no raw-material lines) show an empty materials table instead of crashing
 - Statuses: `DRAFT` → `IN_PROGRESS` → `COMPLETED`
-- Line items: raw materials and Sol. semifinished inventory components with required weight and actual weight used; material list matches the linked recipe (raw materials + standalone semifinished rows, excluding nested sub-recipes); opening an existing order auto-syncs missing semifinished rows from the recipe while preserving saved actual weights
+- Line items: raw materials, semifinished component recipes, and Sol. semifinished inventory components with required weight and actual weight used; material list matches the linked recipe, and opening an existing order auto-syncs missing semifinished rows from the recipe while preserving saved actual weights
 - Print production order: A4 sheet with enlarged text, no page header/footer, a material table constrained to page margins, and material names omitted while keeping material codes, ratios, required weight, and actual weight
 - Print output preserves production / quality / packaging notes and requirements
 - Output: creates semifinished product inventory entries on completion
