@@ -1937,16 +1937,17 @@ enum CosSampleOrderStatus {
 }
 
 model CosSampleOrder {
-  id          String               @id @default(cuid())
-  code        String               @unique
-  customerId  String
-  status      CosSampleOrderStatus @default(DRAFT)
-  notes       String               @default("")
-  startedAt   DateTime?
-  completedAt DateTime?
-  createdById String?
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
+  id                 String               @id @default(cuid())
+  code               String               @unique
+  customerId         String
+  status             CosSampleOrderStatus @default(DRAFT)
+  notes              String               @default("")
+  referenceImageUrl  String?
+  startedAt          DateTime?
+  completedAt        DateTime?
+  createdById        String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 
   customer      CosCustomer                  @relation(fields: [customerId], references: [id], onDelete: Restrict)
   createdBy     User?                        @relation("SampleOrderCreator", fields: [createdById], references: [id], onDelete: SetNull)
@@ -1971,7 +1972,7 @@ model CosSampleOrderProcessKit {
   sampleOrder CosSampleOrder @relation(fields: [sampleOrderId], references: [id], onDelete: Cascade)
   processKit  CosProcessKit  @relation(fields: [processKitId], references: [id], onDelete: Restrict)
 
-  @@index([sampleOrderId, sortOrder])
+  @@unique([sampleOrderId])
   @@index([processKitId])
   @@map("cos_sample_order_process_kits")
 }

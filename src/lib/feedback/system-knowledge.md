@@ -295,11 +295,12 @@ Unified customer registry for CosmoCoat manufacturing clients (raw material purc
 
 ### Sample Orders (`/admin/cosmocoat-sample-orders`)
 打样单（样品单）管理，用于客户打样需求的全流程跟踪。
-- List with search (order code / customer) and status filter; columns: customer, process-kit count, color-formula count, total weight (kg), status, creation date
+- List with search (order code / customer) and status filter; columns: reference sample thumbnail, customer, process kit (0 or 1), color-formula count, total weight (kg), status, creation date
 - Statuses: `DRAFT` → `IN_PROGRESS` → `COMPLETED`
 - Create at `/admin/cosmocoat-sample-orders/new`; detail at `/admin/cosmocoat-sample-orders/[id]`
 - Link to a CosmoCoat customer profile (required)
-- Line items: select existing Process Kits and/or Color Formulas, each with quantity in kg; no duplicate kits or formulas on the same order
+- **One process kit per order** (database unique constraint on `sampleOrderId`); line items also support multiple Color Formulas, each with quantity in kg; no duplicate formulas on the same order
+- Basic info includes optional **reference sample image** (max 1): upload to OSS via admin upload endpoint; list shows thumbnail; detail page shows full image
 - Auto-generated order codes: `YP####` (e.g. `YP0001`)
 - Progress tracking: step indicator (草稿 → 进行中 → 已完成), `startedAt` when moving to IN_PROGRESS, `completedAt` when marked COMPLETED
 - Actions: Save (DRAFT), 开始打样 (→ IN_PROGRESS), 标记完成 (→ COMPLETED); completed orders lock line items and customer but remain viewable

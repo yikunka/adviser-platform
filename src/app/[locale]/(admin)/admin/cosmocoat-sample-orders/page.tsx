@@ -13,6 +13,7 @@ type SampleOrderRow = {
   code: string
   status: 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED'
   notes: string
+  referenceImageUrl: string | null
   startedAt: string | null
   completedAt: string | null
   createdAt: string
@@ -183,6 +184,7 @@ export default function AdminCosmoCoatSampleOrdersPage() {
               <thead>
                 <tr>
                   <th style={th}>打样单号</th>
+                  <th style={th}>参考样品</th>
                   <th style={th}>客户</th>
                   <th style={th}>工艺书</th>
                   <th style={th}>调色配方</th>
@@ -200,6 +202,18 @@ export default function AdminCosmoCoatSampleOrdersPage() {
                     onClick={() => router.push(`/admin/cosmocoat-sample-orders/${order.id}`)}
                   >
                     <td style={{ ...td, color: 'var(--foreground)', fontWeight: 500 }}>{order.code}</td>
+                    <td style={td} onClick={e => e.stopPropagation()}>
+                      {order.referenceImageUrl ? (
+                        <img
+                          src={order.referenceImageUrl}
+                          alt={`${order.code} 参考样品`}
+                          className="h-10 w-10 rounded object-cover border"
+                          style={{ borderColor: '#2A2418' }}
+                        />
+                      ) : (
+                        <span className="text-xs" style={{ color: '#5A5040' }}>—</span>
+                      )}
+                    </td>
                     <td style={td}>
                       <span className="font-mono text-xs mr-1.5 opacity-70">{order.customer.code}</span>
                       {order.customer.name}

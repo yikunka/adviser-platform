@@ -18,12 +18,13 @@ const orderSchema = z.object({
   code: z.string().trim().min(1).max(32).optional(),
   customerId: z.string().trim().min(1),
   notes: z.string().trim().max(2000).optional().default(''),
+  referenceImageUrl: z.string().trim().max(2000).nullable().optional(),
   processKits: z.array(z.object({
     processKitId: z.string().trim().min(1),
     quantityKg: z.coerce.number().min(0.001),
     sortOrder: z.coerce.number().int().min(0).optional(),
     notes: z.string().trim().max(500).optional().default(''),
-  })).optional().default([]),
+  })).max(1, '每个打样单只能关联一个工艺套件').optional().default([]),
   colorFormulas: z.array(z.object({
     colorFormulaId: z.string().trim().min(1),
     quantityKg: z.coerce.number().min(0.001),
@@ -144,6 +145,7 @@ export async function POST(req: NextRequest) {
         code,
         customerId: parsed.data.customerId,
         notes: parsed.data.notes,
+        referenceImageUrl: parsed.data.referenceImageUrl?.trim() || null,
         status: parsed.data.status,
         startedAt: parsed.data.status === 'IN_PROGRESS' ? new Date() : null,
         createdById: session!.user.id,
@@ -159,6 +161,9 @@ export async function POST(req: NextRequest) {
     const full = await getSampleOrderById(order.id)
     return NextResponse.json({ order: full }, { status: 201 })
   } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      return NextResponse.json({ error: '每个打样单只能关联一个工艺套件' }, { status: 400 })
+    }
     if (err instanceof Error) {
       if (err.message === 'CUSTOMER_NOT_FOUND') {
         return NextResponse.json({ error: '客户不存在' }, { status: 400 })

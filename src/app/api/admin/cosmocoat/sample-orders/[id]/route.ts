@@ -15,13 +15,14 @@ import {
 const patchSchema = z.object({
   customerId: z.string().trim().min(1).optional(),
   notes: z.string().trim().max(2000).optional(),
+  referenceImageUrl: z.string().trim().max(2000).nullable().optional(),
   status: z.enum(['DRAFT', 'IN_PROGRESS', 'COMPLETED']).optional(),
   processKits: z.array(z.object({
     processKitId: z.string().trim().min(1),
     quantityKg: z.coerce.number().min(0.001),
     sortOrder: z.coerce.number().int().min(0).optional(),
     notes: z.string().trim().max(500).optional().default(''),
-  })).optional(),
+  })).max(1, '每个打样单只能关联一个工艺套件').optional(),
   colorFormulas: z.array(z.object({
     colorFormulaId: z.string().trim().min(1),
     quantityKg: z.coerce.number().min(0.001),
@@ -173,6 +174,9 @@ export async function PATCH(
         data: {
           ...(parsed.data.customerId ? { customerId: parsed.data.customerId } : {}),
           ...(parsed.data.notes !== undefined ? { notes: parsed.data.notes } : {}),
+          ...(parsed.data.referenceImageUrl !== undefined
+            ? { referenceImageUrl: parsed.data.referenceImageUrl?.trim() || null }
+            : {}),
           ...(parsed.data.status ? { status: parsed.data.status } : {}),
           startedAt,
           completedAt,
@@ -183,6 +187,9 @@ export async function PATCH(
     const order = await getSampleOrderById(id)
     return NextResponse.json({ order })
   } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      return NextResponse.json({ error: '每个打样单只能关联一个工艺套件' }, { status: 400 })
+    }
     if (isMissingTable(err)) {
       return NextResponse.json({ error: '打样单表不存在，请先运行数据库迁移' }, { status: 503 })
     }

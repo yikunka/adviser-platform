@@ -2,11 +2,11 @@
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, CheckCircle2, PlayCircle, Plus, Save, Search, X } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, ImagePlus, PlayCircle, Plus, Save, Search, X } from 'lucide-react'
 import { formatPercent, formatWeight } from '@/lib/cosmocoat/recipes'
 import type { SampleOrderRow } from '@/lib/cosmocoat/sample-orders'
 
@@ -141,6 +141,9 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
   const [order, setOrder] = useState<SampleOrderRow | null>(null)
   const [customerId, setCustomerId] = useState('')
   const [notes, setNotes] = useState('')
+  const [referenceImageUrl, setReferenceImageUrl] = useState('')
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [processKitLines, setProcessKitLines] = useState<ProcessKitLine[]>([])
   const [colorFormulaLines, setColorFormulaLines] = useState<ColorFormulaLine[]>([])
 
@@ -215,6 +218,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
       setOrder(loaded)
       setCustomerId(loaded.customer.id)
       setNotes(loaded.notes)
+      setReferenceImageUrl(loaded.referenceImageUrl ?? '')
       setProcessKitLines(loaded.processKits.map(line => ({
         key: line.id,
         processKitId: line.processKitId,
@@ -254,6 +258,10 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
   const selectedFormulaIds = useMemo(() => new Set(colorFormulaLines.map(l => l.colorFormulaId)), [colorFormulaLines])
 
   function addProcessKit(kit: ProcessKitOption) {
+    if (processKitLines.length >= 1) {
+      toast.error('每个打样单只能关联一个工艺套件')
+      return
+    }
     if (selectedKitIds.has(kit.id)) {
       toast.error('该工艺书已添加')
       return
@@ -300,15 +308,40 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
     return {
       customerId,
       notes,
+      referenceImageUrl: referenceImageUrl.trim() || null,
       processKits,
       colorFormulas,
       ...extra,
     }
   }
 
+  async function uploadReferenceImage(file: File) {
+    setUploadingImage(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/admin/cosmocoat/sample-orders/upload', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? '图片上传失败')
+        return
+      }
+      setReferenceImageUrl(data.imageUrl)
+      toast.success('参考样品图片已上传')
+    } catch {
+      toast.error('图片上传失败')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
   async function save(extra?: { status?: SampleOrderRow['status'] }) {
     if (!customerId) {
       toast.error('请选择客户')
+      return
+    }
+    if (processKitLines.length > 1) {
+      toast.error('每个打样单只能关联一个工艺套件')
       return
     }
     if (processKitLines.length === 0 && colorFormulaLines.length === 0) {
@@ -477,15 +510,78 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
             />
           </Field>
         </div>
+        <Field label="参考样品图片">
+          <div className="flex flex-wrap items-start gap-4">
+            <div
+              className={`rounded-lg border flex items-center justify-center overflow-hidden shrink-0 ${isReadOnly ? 'w-full max-w-lg min-h-[240px]' : 'w-40 h-40'}`}
+              style={{ borderColor: '#2A2418', background: '#0E0E0A' }}
+            >
+              {referenceImageUrl ? (
+                <img
+                  src={referenceImageUrl}
+                  alt="参考样品"
+                  className={`w-full object-contain p-2 ${isReadOnly ? 'max-h-[480px]' : 'h-full'}`}
+                />
+              ) : (
+                <ImagePlus size={28} style={{ color: '#5A5040' }} />
+              )}
+            </div>
+            <div className="space-y-2 flex-1 min-w-[200px]">
+              {!isReadOnly && (
+                <>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif"
+                    className="hidden"
+                    onChange={e => {
+                      const file = e.target.files?.[0]
+                      if (file) void uploadReferenceImage(file)
+                      e.target.value = ''
+                    }}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={uploadingImage}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-3 py-1.5 rounded-lg text-sm disabled:opacity-50"
+                      style={{ background: '#111108', border: '1px solid #2A2418', color: 'var(--foreground)' }}
+                    >
+                      {uploadingImage ? '上传中...' : '上传图片'}
+                    </button>
+                    {referenceImageUrl && (
+                      <button
+                        type="button"
+                        disabled={uploadingImage}
+                        onClick={() => setReferenceImageUrl('')}
+                        className="px-3 py-1.5 rounded-lg text-sm"
+                        style={{ background: '#1E1C15', color: 'var(--muted-foreground)' }}
+                      >
+                        移除
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                    限 1 张，支持 JPG / PNG / WEBP，最大 8MB，上传至 OSS
+                  </p>
+                </>
+              )}
+              {isReadOnly && !referenceImageUrl && (
+                <p className="text-sm" style={{ color: '#5A5040' }}>未上传参考样品图片</p>
+              )}
+            </div>
+          </div>
+        </Field>
       </div>
 
       <div style={card} className="p-5 space-y-4">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>工艺书明细</h2>
-          {!isReadOnly && <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>从现有工艺书中选择并填写打样数量（kg）</span>}
+          {!isReadOnly && <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>每个打样单仅可关联一个工艺套件，从现有工艺书中选择并填写打样数量（kg）</span>}
         </div>
 
-        {!isReadOnly && (
+        {!isReadOnly && processKitLines.length === 0 && (
           <div className="space-y-2">
             <div className="relative max-w-md">
               <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
