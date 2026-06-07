@@ -12,16 +12,35 @@ import type { SampleOrderRow } from '@/lib/cosmocoat/sample-orders'
 
 type CustomerOption = { id: string; code: string; name: string }
 type ProcessKitOption = { id: string; code: string; name: string; status: string }
-type ColorFormulaOption = { id: string; code: string; name: string; categoryLabel: string; targetColor: string }
+
+type ProcessKitProductRow = {
+  id: string
+  productName: string
+  irMinutes: string | null
+  irTemperature: string | null
+  uvEnergy: string | null
+  filmThickness: string | null
+  sprayViscosity: string | null
+}
+
+type ProcessKitDetail = {
+  materials: string[]
+  performanceStandards: string[]
+  processFlowDocument: string
+  products: ProcessKitProductRow[]
+}
 
 type ProcessKitLine = {
   key: string
   processKitId: string
   code: string
   name: string
-  quantityKg: string
   notes: string
+  detail: ProcessKitDetail | null
+  loading?: boolean
 }
+
+type ColorFormulaOption = { id: string; code: string; name: string; categoryLabel: string; targetColor: string }
 
 type ColorFormulaLine = {
   key: string
@@ -87,6 +106,163 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div className="space-y-1.5">
       <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{label}</label>
       {children}
+    </div>
+  )
+}
+
+type ProcessKitDetailSource = {
+  materials?: readonly string[] | null
+  performanceStandards?: readonly string[] | null
+  processFlowDocument?: string | null
+  products?: readonly {
+    id: string
+    productName: string
+    irMinutes?: string | null
+    irTemperature?: string | null
+    uvEnergy?: string | null
+    filmThickness?: string | null
+    sprayViscosity?: string | null
+  }[] | null
+}
+
+function extractProcessKitDetail(kit: ProcessKitDetailSource): ProcessKitDetail {
+  return {
+    materials: [...(kit.materials ?? [])],
+    performanceStandards: [...(kit.performanceStandards ?? [])],
+    processFlowDocument: kit.processFlowDocument ?? '',
+    products: (kit.products ?? []).map(p => ({
+      id: p.id,
+      productName: p.productName,
+      irMinutes: p.irMinutes ?? null,
+      irTemperature: p.irTemperature ?? null,
+      uvEnergy: p.uvEnergy ?? null,
+      filmThickness: p.filmThickness ?? null,
+      sprayViscosity: p.sprayViscosity ?? null,
+    })),
+  }
+}
+
+function ProcessKitLineCard({
+  line,
+  isReadOnly,
+  onNotesChange,
+  onRemove,
+}: {
+  line: ProcessKitLine
+  isReadOnly: boolean
+  onNotesChange: (notes: string) => void
+  onRemove: () => void
+}) {
+  const materialsLabel = line.detail?.materials.length
+    ? line.detail.materials.join('、')
+    : null
+
+  return (
+    <div className="rounded-lg border space-y-4 p-4" style={{ borderColor: '#2A2418', background: '#0A0A08' }}>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="space-y-1 min-w-0 flex-1">
+          <h3 className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>
+            <span className="font-mono text-xs opacity-70 mr-2">{line.code}</span>
+            {line.name}
+          </h3>
+          {materialsLabel && (
+            <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+              材料：{materialsLabel}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href={`/admin/cosmocoat-process-kits/${line.processKitId}`}
+            className="text-xs underline"
+            style={{ color: '#C9A96E' }}
+          >
+            打开工艺书
+          </Link>
+          {!isReadOnly && (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="p-1 rounded hover:bg-[#1E1C15]"
+              aria-label="移除工艺书"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {line.loading ? (
+        <p className="text-sm py-2" style={{ color: 'var(--muted-foreground)' }}>加载工艺流程...</p>
+      ) : line.detail ? (
+        <>
+          {line.detail.performanceStandards.length > 0 && (
+            <div>
+              <p className="text-xs font-medium mb-2" style={{ color: 'var(--muted-foreground)' }}>性能测试标准</p>
+              <div className="flex flex-wrap gap-1.5">
+                {line.detail.performanceStandards.map(std => (
+                  <span key={std} className="px-2 py-0.5 rounded text-xs" style={{ background: '#111108', color: 'var(--foreground)' }}>
+                    {std}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {line.detail.products.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr>
+                    <th style={th}>产品</th>
+                    <th style={th}>IR 时间</th>
+                    <th style={th}>IR 温度</th>
+                    <th style={th}>UV 能量</th>
+                    <th style={th}>膜厚</th>
+                    <th style={th}>喷涂粘度</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {line.detail.products.map(product => (
+                    <tr key={product.id}>
+                      <td style={{ ...td, color: 'var(--foreground)' }}>{product.productName}</td>
+                      <td style={td}>{product.irMinutes || '—'}</td>
+                      <td style={td}>{product.irTemperature || '—'}</td>
+                      <td style={td}>{product.uvEnergy || '—'}</td>
+                      <td style={td}>{product.filmThickness || '—'}</td>
+                      <td style={td}>{product.sprayViscosity || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {line.detail.processFlowDocument ? (
+            <div>
+              <p className="text-xs font-medium mb-2" style={{ color: 'var(--muted-foreground)' }}>完整工艺流程</p>
+              <pre className="text-xs whitespace-pre-wrap rounded-lg p-3 font-sans leading-relaxed" style={{ background: '#0E0E0A', color: 'var(--foreground)' }}>
+                {line.detail.processFlowDocument}
+              </pre>
+            </div>
+          ) : (
+            <p className="text-sm" style={{ color: '#5A5040' }}>该工艺书暂无工艺流程文档</p>
+          )}
+        </>
+      ) : (
+        <p className="text-sm" style={{ color: '#5A5040' }}>无法加载工艺书内容</p>
+      )}
+
+      <Field label="备注">
+        <input
+          disabled={isReadOnly}
+          value={line.notes}
+          onChange={e => onNotesChange(e.target.value)}
+          className="w-full px-2 py-1.5 rounded text-sm outline-none disabled:opacity-60"
+          style={inputStyle()}
+          placeholder="打样备注（可选）"
+        />
+      </Field>
     </div>
   )
 }
@@ -224,8 +400,8 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
         processKitId: line.processKitId,
         code: line.processKit.code,
         name: line.processKit.name,
-        quantityKg: String(line.quantityKg),
         notes: line.notes,
+        detail: extractProcessKitDetail(line.processKit),
       })))
       setColorFormulaLines(loaded.colorFormulas.map(line => ({
         key: line.id,
@@ -257,7 +433,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
   const selectedKitIds = useMemo(() => new Set(processKitLines.map(l => l.processKitId)), [processKitLines])
   const selectedFormulaIds = useMemo(() => new Set(colorFormulaLines.map(l => l.colorFormulaId)), [colorFormulaLines])
 
-  function addProcessKit(kit: ProcessKitOption) {
+  async function addProcessKit(kit: ProcessKitOption) {
     if (processKitLines.length >= 1) {
       toast.error('每个打样单只能关联一个工艺套件')
       return
@@ -266,14 +442,33 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
       toast.error('该工艺书已添加')
       return
     }
+
+    const key = newKey()
     setProcessKitLines(prev => [...prev, {
-      key: newKey(),
+      key,
       processKitId: kit.id,
       code: kit.code,
       name: kit.name,
-      quantityKg: '1',
       notes: '',
+      detail: null,
+      loading: true,
     }])
+
+    try {
+      const res = await fetch(`/api/admin/cosmocoat/sample-orders/picker/process-kits/${kit.id}`)
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? '加载工艺书失败')
+        setProcessKitLines(prev => prev.filter(row => row.key !== key))
+        return
+      }
+      setProcessKitLines(prev => prev.map(row => row.key === key
+        ? { ...row, loading: false, detail: extractProcessKitDetail(data.kit) }
+        : row))
+    } catch {
+      toast.error('加载工艺书失败')
+      setProcessKitLines(prev => prev.filter(row => row.key !== key))
+    }
   }
 
   function addColorFormula(formula: ColorFormulaOption) {
@@ -295,7 +490,6 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
   function buildPayload(extra?: { status?: SampleOrderRow['status'] }) {
     const processKits = processKitLines.map((line, index) => ({
       processKitId: line.processKitId,
-      quantityKg: Number(line.quantityKg),
       sortOrder: index,
       notes: line.notes,
     }))
@@ -348,11 +542,9 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
       toast.error('请至少添加一条工艺书或调色配方')
       return
     }
-    for (const line of processKitLines) {
-      if (!line.quantityKg || Number(line.quantityKg) <= 0) {
-        toast.error(`工艺书「${line.name}」数量无效`)
-        return
-      }
+    if (processKitLines.some(line => line.loading)) {
+      toast.error('工艺书内容仍在加载，请稍候')
+      return
     }
     for (const line of colorFormulaLines) {
       if (!line.quantityKg || Number(line.quantityKg) <= 0) {
@@ -578,7 +770,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
       <div style={card} className="p-5 space-y-4">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>工艺书明细</h2>
-          {!isReadOnly && <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>每个打样单仅可关联一个工艺套件，从现有工艺书中选择并填写打样数量（kg）</span>}
+          {!isReadOnly && <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>每个打样单仅可关联一个工艺套件；选择后自动展开完整工艺流程，材料显示在标题上</span>}
         </div>
 
         {!isReadOnly && processKitLines.length === 0 && (
@@ -615,59 +807,16 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
         {processKitLines.length === 0 ? (
           <p className="text-sm py-4 text-center" style={{ color: '#5A5040' }}>尚未添加工艺书</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <th style={th}>工艺书</th>
-                  <th style={th}>数量 (kg)</th>
-                  <th style={th}>备注</th>
-                  {!isReadOnly && <th style={{ ...th, width: 48 }} />}
-                </tr>
-              </thead>
-              <tbody>
-                {processKitLines.map(line => (
-                  <tr key={line.key}>
-                    <td style={{ ...td, color: 'var(--foreground)' }}>
-                      <span className="font-mono text-xs mr-2 opacity-70">{line.code}</span>
-                      {line.name}
-                    </td>
-                    <td style={td}>
-                      <input
-                        type="number"
-                        min="0.001"
-                        step="0.001"
-                        disabled={isReadOnly}
-                        value={line.quantityKg}
-                        onChange={e => setProcessKitLines(prev => prev.map(row => row.key === line.key ? { ...row, quantityKg: e.target.value } : row))}
-                        className="w-28 px-2 py-1 rounded text-sm outline-none disabled:opacity-60"
-                        style={inputStyle()}
-                      />
-                    </td>
-                    <td style={td}>
-                      <input
-                        disabled={isReadOnly}
-                        value={line.notes}
-                        onChange={e => setProcessKitLines(prev => prev.map(row => row.key === line.key ? { ...row, notes: e.target.value } : row))}
-                        className="w-full min-w-[160px] px-2 py-1 rounded text-sm outline-none disabled:opacity-60"
-                        style={inputStyle()}
-                      />
-                    </td>
-                    {!isReadOnly && (
-                      <td style={td}>
-                        <button
-                          type="button"
-                          onClick={() => setProcessKitLines(prev => prev.filter(row => row.key !== line.key))}
-                          className="p-1 rounded hover:bg-[#1E1C15]"
-                        >
-                          <X size={14} />
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-3">
+            {processKitLines.map(line => (
+              <ProcessKitLineCard
+                key={line.key}
+                line={line}
+                isReadOnly={isReadOnly}
+                onNotesChange={notes => setProcessKitLines(prev => prev.map(row => row.key === line.key ? { ...row, notes } : row))}
+                onRemove={() => setProcessKitLines(prev => prev.filter(row => row.key !== line.key))}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -775,82 +924,9 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
         )}
       </div>
 
-      {!isNew && order && (order.processKits.length > 0 || order.colorFormulas.length > 0) && (
+      {!isNew && order && order.colorFormulas.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>工艺参数与配方内容</h2>
-
-          {order.processKits.map(line => (
-            <div key={line.id} style={card} className="p-5 space-y-4">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <h3 className="font-medium" style={{ color: 'var(--foreground)' }}>
-                    工艺书 · {line.processKit.code} · {line.processKit.name}
-                  </h3>
-                  <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-                    打样数量：{formatWeight(line.quantityKg)} kg
-                  </p>
-                </div>
-                <Link
-                  href={`/admin/cosmocoat-process-kits/${line.processKitId}`}
-                  className="text-xs underline"
-                  style={{ color: '#C9A96E' }}
-                >
-                  打开工艺书
-                </Link>
-              </div>
-
-              {line.processKit.performanceStandards.length > 0 && (
-                <div>
-                  <p className="text-xs font-medium mb-2" style={{ color: 'var(--muted-foreground)' }}>性能测试标准</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {line.processKit.performanceStandards.map(std => (
-                      <span key={std} className="px-2 py-0.5 rounded text-xs" style={{ background: '#111108', color: 'var(--foreground)' }}>
-                        {std}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {line.processKit.products.length > 0 && (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr>
-                        <th style={th}>产品</th>
-                        <th style={th}>IR 时间</th>
-                        <th style={th}>IR 温度</th>
-                        <th style={th}>UV 能量</th>
-                        <th style={th}>膜厚</th>
-                        <th style={th}>喷涂粘度</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {line.processKit.products.map(product => (
-                        <tr key={product.id}>
-                          <td style={{ ...td, color: 'var(--foreground)' }}>{product.productName}</td>
-                          <td style={td}>{product.irMinutes || '—'}</td>
-                          <td style={td}>{product.irTemperature || '—'}</td>
-                          <td style={td}>{product.uvEnergy || '—'}</td>
-                          <td style={td}>{product.filmThickness || '—'}</td>
-                          <td style={td}>{product.sprayViscosity || '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {line.processKit.processFlowDocument && (
-                <div>
-                  <p className="text-xs font-medium mb-2" style={{ color: 'var(--muted-foreground)' }}>完整工艺流程</p>
-                  <pre className="text-xs whitespace-pre-wrap rounded-lg p-3 font-sans leading-relaxed" style={{ background: '#0E0E0A', color: 'var(--foreground)' }}>
-                    {line.processKit.processFlowDocument}
-                  </pre>
-                </div>
-              )}
-            </div>
-          ))}
+          <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>调色配方内容</h2>
 
           {order.colorFormulas.map(line => (
             <div key={line.id} style={card} className="p-5 space-y-4">

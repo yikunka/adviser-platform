@@ -21,7 +21,7 @@ const orderSchema = z.object({
   referenceImageUrl: z.string().trim().max(2000).nullable().optional(),
   processKits: z.array(z.object({
     processKitId: z.string().trim().min(1),
-    quantityKg: z.coerce.number().min(0.001),
+    quantityKg: z.coerce.number().min(0.001).optional().default(1),
     sortOrder: z.coerce.number().int().min(0).optional(),
     notes: z.string().trim().max(500).optional().default(''),
   })).max(1, '每个打样单只能关联一个工艺套件').optional().default([]),

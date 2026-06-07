@@ -69,13 +69,8 @@ export const sampleOrderDetailInclude = {
 type SampleOrderListRow = Prisma.CosSampleOrderGetPayload<{ include: typeof sampleOrderListInclude }>
 type SampleOrderDetailRow = Prisma.CosSampleOrderGetPayload<{ include: typeof sampleOrderDetailInclude }>
 
-function totalQuantityKg(
-  processKits: Array<{ quantityKg: unknown }>,
-  colorFormulas: Array<{ quantityKg: unknown }>,
-) {
-  const kitTotal = processKits.reduce((sum, row) => sum + Number(row.quantityKg), 0)
-  const formulaTotal = colorFormulas.reduce((sum, row) => sum + Number(row.quantityKg), 0)
-  return kitTotal + formulaTotal
+function totalQuantityKg(colorFormulas: Array<{ quantityKg: unknown }>) {
+  return colorFormulas.reduce((sum, row) => sum + Number(row.quantityKg), 0)
 }
 
 function serializeProcessKitLine(row: SampleOrderDetailRow['processKits'][number]) {
@@ -124,7 +119,7 @@ export function serializeSampleOrderListRow(order: SampleOrderListRow) {
     customer: order.customer,
     processKitCount: order.processKits.length,
     colorFormulaCount: order.colorFormulas.length,
-    totalQuantityKg: totalQuantityKg(order.processKits, order.colorFormulas),
+    totalQuantityKg: totalQuantityKg(order.colorFormulas),
   }
 }
 
@@ -150,7 +145,7 @@ export function serializeSampleOrder(order: SampleOrderDetailRow) {
     colorFormulas,
     processKitCount: processKits.length,
     colorFormulaCount: colorFormulas.length,
-    totalQuantityKg: totalQuantityKg(order.processKits, order.colorFormulas),
+    totalQuantityKg: totalQuantityKg(order.colorFormulas),
   }
 }
 
@@ -224,7 +219,7 @@ export async function validateCustomerId(customerId: string) {
 export type SampleOrderLineInput = {
   processKitId?: string
   colorFormulaId?: string
-  quantityKg: number
+  quantityKg?: number
   sortOrder?: number
   notes?: string
 }
@@ -238,11 +233,11 @@ export function buildLineCreates(lines: SampleOrderLineInput[]) {
     if (line.processKitId) {
       processKitCreates.push({
         processKitId: line.processKitId,
-        quantityKg: line.quantityKg,
+        quantityKg: line.quantityKg ?? 1,
         sortOrder,
         notes: line.notes?.trim() ?? '',
       })
-    } else if (line.colorFormulaId) {
+    } else if (line.colorFormulaId != null && line.quantityKg != null) {
       colorFormulaCreates.push({
         colorFormulaId: line.colorFormulaId,
         quantityKg: line.quantityKg,

@@ -134,7 +134,7 @@ export default function AdminCosmoCoatSampleOrdersPage() {
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>打样单管理</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-            关联客户，从工艺书与调色配方中选择打样项目并填写数量（kg），跟踪打样进度。
+            关联客户，从工艺书与调色配方中选择打样项目；工艺书自动展开工艺流程，调色配方填写数量（kg），跟踪打样进度。
           </p>
         </div>
         <Link
@@ -188,7 +188,7 @@ export default function AdminCosmoCoatSampleOrdersPage() {
                   <th style={th}>客户</th>
                   <th style={th}>工艺书</th>
                   <th style={th}>调色配方</th>
-                  <th style={th}>合计重量</th>
+                  <th style={th}>配方合计</th>
                   <th style={th}>状态</th>
                   <th style={th}>创建时间</th>
                   <th style={{ ...th, textAlign: 'right' }}>操作</th>
