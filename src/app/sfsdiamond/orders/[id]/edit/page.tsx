@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
 import OrderWizard, { type WizardFormData } from '@/app/sfsdiamond/components/OrderWizard'
 import { getSfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options'
+import { FeedbackWidget } from '@/components/feedback/FeedbackWidget'
 
 const EDITABLE_STATUSES = ['PENDING', 'QUOTED', 'CANCELLED']
 
@@ -54,5 +55,10 @@ export default async function EditOrderPage({
     })),
   }
 
-  return <OrderWizard mode="edit" orderId={id} initialData={initialData} specOptions={specOptions} />
+  return (
+    <>
+      <OrderWizard mode="edit" orderId={id} initialData={initialData} specOptions={specOptions} />
+      <FeedbackWidget locale="en" />
+    </>
+  )
 }

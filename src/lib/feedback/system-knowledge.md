@@ -164,6 +164,7 @@ Memorial diamond jewellery service (lab-grown diamonds from cremation remains). 
 - **Order Success** (`/order/success`): confirmation page
 - **Dashboard** (authenticated): client's orders with milestone progress
 - **Dashboard Detail** (`/dashboard/[id]`): specific order status and phase timeline
+- Authenticated SFS Dashboard pages and the order edit flow include an English AI request chat widget for submitting feature requests or improvement ideas
 
 ### SFS Customers Admin (`/admin/sfs-customers`)
 Customer registry for SFS Diamond.

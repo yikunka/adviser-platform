@@ -50,12 +50,83 @@ type UploadingFile = {
   result?: Attachment
 }
 
+type FeedbackWidgetLocale = 'zh' | 'en'
+
+type FeedbackWidgetCopy = {
+  triggerLabel: string
+  dialogTitle: string
+  greeting: string
+  resetLabel: string
+  removeAttachmentTitle: string
+  thinkingLabel: string
+  savedTitle: string
+  savedSubtitle: string
+  attachmentSectionLabel: string
+  uploadTitle: string
+  placeholder: string
+  savingLabel: string
+  confirmSaveLabel: string
+  saveSuccessToast: string
+  uploadFailedFallback: string
+  uploadFailedResponse: string
+  pageContextAriaLabel: string
+  attachmentMarker: string
+  priorityLabels: Record<string, string>
+}
+
 // ── Style constants ────────────────────────────────────────────────────────
 
-const PRIORITY_LABELS: Record<string, string> = {
-  low: '低优先级',
-  medium: '中优先级',
-  high: '高优先级',
+const FEEDBACK_COPY: Record<FeedbackWidgetLocale, FeedbackWidgetCopy> = {
+  zh: {
+    triggerLabel: '提交需求',
+    dialogTitle: '提交需求',
+    greeting: '你好！我在这里记录你的需求和改进建议。请告诉我你在使用这个页面时，有什么想调整或新增的功能？可以附上截图或文件来帮助说明。',
+    resetLabel: '重置',
+    removeAttachmentTitle: '移除',
+    thinkingLabel: '思考中…',
+    savedTitle: '需求已成功记录！',
+    savedSubtitle: '感谢你的反馈，窗口即将关闭',
+    attachmentSectionLabel: '附件',
+    uploadTitle: '上传附件（图片、PDF、Word、TXT）',
+    placeholder: '描述你的需求… (Enter 发送，Shift+Enter 换行)',
+    savingLabel: '保存中…',
+    confirmSaveLabel: '确认并保存需求',
+    saveSuccessToast: '需求已记录！感谢你的反馈。',
+    uploadFailedFallback: '文件上传失败',
+    uploadFailedResponse: '上传失败',
+    pageContextAriaLabel: '当前页面',
+    attachmentMarker: '附件',
+    priorityLabels: {
+      low: '低优先级',
+      medium: '中优先级',
+      high: '高优先级',
+    },
+  },
+  en: {
+    triggerLabel: 'Request Help',
+    dialogTitle: 'Request Help',
+    greeting: 'Hi! I can help record feature requests and improvement ideas for this dashboard. Tell me what you would like to change or add on this page. You can also attach screenshots or files for context.',
+    resetLabel: 'Reset',
+    removeAttachmentTitle: 'Remove',
+    thinkingLabel: 'Thinking…',
+    savedTitle: 'Request recorded!',
+    savedSubtitle: 'Thank you. This window will close shortly.',
+    attachmentSectionLabel: 'Attachments',
+    uploadTitle: 'Upload attachments (images, PDF, Word, TXT)',
+    placeholder: 'Describe your request… (Enter to send, Shift+Enter for a new line)',
+    savingLabel: 'Saving…',
+    confirmSaveLabel: 'Confirm and save request',
+    saveSuccessToast: 'Request recorded. Thank you for your feedback.',
+    uploadFailedFallback: 'File upload failed',
+    uploadFailedResponse: 'Upload failed',
+    pageContextAriaLabel: 'Current page',
+    attachmentMarker: 'Attachments',
+    priorityLabels: {
+      low: 'Low',
+      medium: 'Medium',
+      high: 'High',
+    },
+  },
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -77,7 +148,15 @@ function createUploadId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
-function AttachmentChip({ a, onRemove }: { a: Attachment; onRemove?: () => void }) {
+function AttachmentChip({
+  a,
+  onRemove,
+  removeTitle,
+}: {
+  a: Attachment
+  onRemove?: () => void
+  removeTitle: string
+}) {
   return (
     <div
       className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs max-w-[160px]"
@@ -102,7 +181,7 @@ function AttachmentChip({ a, onRemove }: { a: Attachment; onRemove?: () => void 
           type="button"
           onClick={onRemove}
           className="flex-shrink-0 hover:text-red-400 transition-colors"
-          title="移除"
+          title={removeTitle}
         >
           <X size={10} />
         </button>
@@ -113,8 +192,9 @@ function AttachmentChip({ a, onRemove }: { a: Attachment; onRemove?: () => void 
 
 // ── Main component ─────────────────────────────────────────────────────────
 
-export function FeedbackWidget() {
+export function FeedbackWidget({ locale = 'zh' }: { locale?: FeedbackWidgetLocale }) {
   const pathname = usePathname()
+  const copy = FEEDBACK_COPY[locale]
 
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -147,7 +227,7 @@ export function FeedbackWidget() {
 
   const GREETING: ChatMessage = {
     role: 'assistant',
-    content: '你好！我在这里记录你的需求和改进建议。请告诉我你在使用这个页面时，有什么想调整或新增的功能？可以附上截图或文件来帮助说明。',
+    content: copy.greeting,
   }
 
   function openDialog() {
@@ -195,7 +275,7 @@ export function FeedbackWidget() {
       formData.append('file', file)
       const res = await fetch('/api/feedback/upload', { method: 'POST', body: formData })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error ?? '上传失败')
+      if (!res.ok) throw new Error(data.error ?? copy.uploadFailedResponse)
 
       const attachment: Attachment = { url: data.url, name: data.name, type: data.type }
       setPendingAttachments(prev => [...prev, attachment])
@@ -204,7 +284,7 @@ export function FeedbackWidget() {
       // Remove done indicator after 1.5s
       setTimeout(() => setUploadingFiles(prev => prev.filter(f => f.id !== id)), 1500)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '文件上传失败')
+      toast.error(err instanceof Error ? err.message : copy.uploadFailedFallback)
       setUploadingFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'error' } : f))
       setTimeout(() => setUploadingFiles(prev => prev.filter(f => f.id !== id)), 2000)
     }
@@ -229,7 +309,7 @@ export function FeedbackWidget() {
 
       // Build the content string: user text + attachment links (for LLM to read)
       const attachmentLines = pendingAttachments.length > 0
-        ? `\n\n[附件]\n${pendingAttachments.map(a => `- ${a.name}: ${a.url}`).join('\n')}`
+        ? `\n\n[${copy.attachmentMarker}]\n${pendingAttachments.map(a => `- ${a.name}: ${a.url}`).join('\n')}`
         : ''
       const fullContent = (userText.trim() + attachmentLines).trim()
 
@@ -262,6 +342,7 @@ export function FeedbackWidget() {
               url: pathname,
               title: typeof document !== 'undefined' ? document.title : '',
             },
+            language: locale === 'en' ? 'en' : 'auto',
           }),
         })
 
@@ -322,7 +403,7 @@ export function FeedbackWidget() {
         })
       }
     },
-    [messages, pathname, streaming, pendingAttachments],
+    [copy.attachmentMarker, locale, messages, pathname, streaming, pendingAttachments],
   )
 
   async function handleSubmit(e: FormEvent) {
@@ -352,7 +433,7 @@ export function FeedbackWidget() {
 
       setSaved(true)
       setConfirmed(null)
-      toast.success('需求已记录！感谢你的反馈。')
+      toast.success(copy.saveSuccessToast)
       setTimeout(() => closeDialog(), 1500)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save requirement')
@@ -376,7 +457,7 @@ export function FeedbackWidget() {
       <button
         type="button"
         onClick={openDialog}
-        aria-label="Submit a feature request"
+        aria-label={copy.triggerLabel}
         className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium shadow-lg transition-all hover:scale-105 active:scale-95"
         style={{
           background: 'linear-gradient(135deg, #C9A96E 0%, #A07840 100%)',
@@ -385,7 +466,7 @@ export function FeedbackWidget() {
         }}
       >
         <MessageSquarePlus size={16} />
-        <span className="hidden sm:inline">提交需求</span>
+        <span className="hidden sm:inline">{copy.triggerLabel}</span>
       </button>
 
       {/* Dialog overlay */}
@@ -415,7 +496,7 @@ export function FeedbackWidget() {
               <div className="flex items-center gap-2">
                 <MessageSquarePlus size={16} style={{ color: '#C9A96E' }} />
                 <span className="text-sm font-semibold" style={{ color: '#FFF7E6' }}>
-                  提交需求
+                  {copy.dialogTitle}
                 </span>
               </div>
               <div className="flex items-center gap-1">
@@ -425,9 +506,9 @@ export function FeedbackWidget() {
                     onClick={reset}
                     className="p-1.5 rounded-md text-xs transition-colors hover:bg-white/5"
                     style={{ color: '#9F927B' }}
-                    title="New conversation"
+                    title={copy.resetLabel}
                   >
-                    重置
+                    {copy.resetLabel}
                   </button>
                 )}
                 <button
@@ -447,8 +528,8 @@ export function FeedbackWidget() {
               {saved ? (
                 <div className="flex flex-col items-center justify-center h-full gap-3">
                   <CheckCircle size={36} style={{ color: '#10b981' }} />
-                  <p className="text-sm font-medium" style={{ color: '#10b981' }}>需求已成功记录！</p>
-                  <p className="text-xs" style={{ color: '#5A5040' }}>感谢你的反馈，窗口即将关闭</p>
+                  <p className="text-sm font-medium" style={{ color: '#10b981' }}>{copy.savedTitle}</p>
+                  <p className="text-xs" style={{ color: '#5A5040' }}>{copy.savedSubtitle}</p>
                 </div>
               ) : (
                 <>
@@ -457,7 +538,7 @@ export function FeedbackWidget() {
                     if (!streaming && msg.role === 'assistant' && !msg.content) return null
 
                     // Strip the raw attachment lines from displayed content
-                    const displayContent = msg.content.replace(/\n\n\[附件\]\n[\s\S]*$/, '').trim()
+                    const displayContent = msg.content.replace(/\n\n\[(附件|Attachments)\]\n[\s\S]*$/, '').trim()
 
                     return (
                       <div
@@ -475,7 +556,7 @@ export function FeedbackWidget() {
                           {isStreamingPlaceholder ? (
                             <span className="flex items-center gap-1.5 opacity-60">
                               <Loader2 size={12} className="animate-spin" />
-                              <span>思考中…</span>
+                              <span>{copy.thinkingLabel}</span>
                             </span>
                           ) : displayContent || (!msg.attachments?.length ? msg.content : '')}
                         </div>
@@ -483,7 +564,7 @@ export function FeedbackWidget() {
                         {msg.attachments && msg.attachments.length > 0 && (
                           <div className="flex flex-wrap gap-1.5 max-w-[85%] justify-end">
                             {msg.attachments.map(a => (
-                              <AttachmentChip key={a.url} a={a} />
+                              <AttachmentChip key={a.url} a={a} removeTitle={copy.removeAttachmentTitle} />
                             ))}
                           </div>
                         )}
@@ -513,17 +594,17 @@ export function FeedbackWidget() {
                             border: `1px solid ${(PRIORITY_COLORS[confirmed.priority] ?? '#6B7280')}44`,
                           }}
                         >
-                          {PRIORITY_LABELS[confirmed.priority] ?? confirmed.priority}
+                          {copy.priorityLabels[confirmed.priority] ?? confirmed.priority}
                         </span>
                       </div>
                       <p style={{ color: '#C4B89A', lineHeight: 1.6 }}>{confirmed.summary}</p>
                       {sessionAttachments.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 pt-1" style={{ borderTop: '1px solid rgba(201,169,110,0.2)' }}>
                           <span className="text-xs w-full" style={{ color: '#7A6A50' }}>
-                            附件 ({sessionAttachments.length})
+                            {copy.attachmentSectionLabel} ({sessionAttachments.length})
                           </span>
                           {sessionAttachments.map(a => (
-                            <AttachmentChip key={a.url} a={a} />
+                            <AttachmentChip key={a.url} a={a} removeTitle={copy.removeAttachmentTitle} />
                           ))}
                         </div>
                       )}
@@ -535,9 +616,9 @@ export function FeedbackWidget() {
                         style={{ background: '#C9A96E', color: '#0A0805' }}
                       >
                         {saving ? (
-                          <><Loader2 size={13} className="animate-spin" /> 保存中…</>
+                          <><Loader2 size={13} className="animate-spin" /> {copy.savingLabel}</>
                         ) : (
-                          <><CheckCircle size={13} /> 确认并保存需求</>
+                          <><CheckCircle size={13} /> {copy.confirmSaveLabel}</>
                         )}
                       </button>
                     </div>
@@ -565,7 +646,12 @@ export function FeedbackWidget() {
                   </div>
                 ))}
                 {pendingAttachments.map(a => (
-                  <AttachmentChip key={a.url} a={a} onRemove={() => removePendingAttachment(a.url)} />
+                  <AttachmentChip
+                    key={a.url}
+                    a={a}
+                    removeTitle={copy.removeAttachmentTitle}
+                    onRemove={() => removePendingAttachment(a.url)}
+                  />
                 ))}
               </div>
             )}
@@ -594,7 +680,7 @@ export function FeedbackWidget() {
                   disabled={streaming || isUploading}
                   className="flex-shrink-0 flex items-center justify-center rounded-xl p-2.5 transition-opacity disabled:opacity-40"
                   style={{ border: '1px solid #2A2418', color: '#7A6A50' }}
-                  title="上传附件（图片、PDF、Word、TXT）"
+                  title={copy.uploadTitle}
                 >
                   {isUploading ? <Loader2 size={15} className="animate-spin" /> : <Paperclip size={15} />}
                 </button>
@@ -604,7 +690,7 @@ export function FeedbackWidget() {
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="描述你的需求… (Enter 发送，Shift+Enter 换行)"
+                  placeholder={copy.placeholder}
                   rows={1}
                   disabled={streaming}
                   className="flex-1 resize-none rounded-xl px-3 py-2 text-sm outline-none disabled:opacity-50"
@@ -646,7 +732,7 @@ export function FeedbackWidget() {
               }}
             >
               <ChevronDown size={11} className="-rotate-90 flex-shrink-0" />
-              <span className="truncate">{pathname}</span>
+              <span className="truncate">{copy.pageContextAriaLabel}: {pathname}</span>
             </div>
           </div>
         </div>

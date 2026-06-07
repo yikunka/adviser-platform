@@ -18,19 +18,29 @@ function getSystemKnowledge(): string {
   }
 }
 
-function buildSystemPrompt(pageUrl: string, pageTitle: string): string {
+function buildSystemPrompt(pageUrl: string, pageTitle: string, language: 'auto' | 'en'): string {
+  const confirmInstruction = language === 'en'
+    ? `2. Once you understand the request, summarize it clearly in English and ask: "Is this what you want? If it looks good, I will save this request."`
+    : `2. 理解清楚后，用与用户相同的语言整理一个清晰的需求摘要，然后询问："这是你想要的吗？如果没问题，我就保存这条需求。"（如果用户用英文，就用英文问；用中文就用中文问）`
+  const languageRule = language === 'en'
+    ? `【语言规则 - 严格执行】
+- You must reply in English only.
+- Ask clarification questions, summarize requirements, and confirmation prompts in English.
+- Do not use Chinese in this conversation.`
+    : `【语言规则 - 严格执行】
+- 检测用户最新一条消息使用的语言，整条回复必须用同一语言
+- 绝对禁止在同一条回复中混用中英文
+- 如果用户用中文，回复全程中文；用英文，回复全程英文`
+
   return `你是一个内嵌在 Web 平台中的需求分析助手。用户通过反馈入口描述他们想要的功能改进或新增需求。
 
 【对话流程】
 1. 理解用户的诉求，如有不清楚的地方，一次最多问 1-2 个问题
-2. 理解清楚后，用与用户相同的语言整理一个清晰的需求摘要，然后询问："这是你想要的吗？如果没问题，我就保存这条需求。"（如果用户用英文，就用英文问；用中文就用中文问）
+${confirmInstruction}
 3. 用户明确确认后（说"是"、"对"、"yes"、"correct"、"没问题" 等），立即调用 confirm_requirement 工具
 4. 用户未明确确认前，不得调用 confirm_requirement
 
-【语言规则 - 严格执行】
-- 检测用户最新一条消息使用的语言，整条回复必须用同一语言
-- 绝对禁止在同一条回复中混用中英文
-- 如果用户用中文，回复全程中文；用英文，回复全程英文
+${languageRule}
 
 【风格要求】
 - 回复简短（2-4 句话）
@@ -73,7 +83,8 @@ export async function POST(req: NextRequest) {
   }))
   const pageUrl: string = body.pageContext?.url ?? '/'
   const pageTitle: string = body.pageContext?.title ?? ''
-  const systemPrompt = buildSystemPrompt(pageUrl, pageTitle)
+  const language = body.language === 'en' ? 'en' : 'auto'
+  const systemPrompt = buildSystemPrompt(pageUrl, pageTitle, language)
 
   const encoder = new TextEncoder()
 
