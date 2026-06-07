@@ -132,19 +132,6 @@ const PERFORMANCE_STANDARD_GROUPS = [
     options: [...CHEMICAL_RESISTANCE_OPTIONS],
   },
   {
-    id: 'highTempHumidity',
-    options: [
-      { id: 'HIGH_TEMP_HUMIDITY_65C85_24H', label: '65C85%24H' },
-    ],
-  },
-  {
-    id: 'saltSpray',
-    options: [
-      { id: 'SALT_SPRAY_5_24H', label: '5%24H' },
-      { id: 'SALT_SPRAY_5_48H', label: '5%48H' },
-    ],
-  },
-  {
     id: 'highTempHumiditySaltSpray',
     options: [
       { id: 'HIGH_TEMP_HUMIDITY_SALT_SPRAY', label: '高温高湿/盐雾' },

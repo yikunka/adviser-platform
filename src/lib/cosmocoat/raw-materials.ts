@@ -41,7 +41,7 @@ const MEANINGFUL_KEYS = {
   category: CATEGORY_KEY,
   attributeCode: '属性',
   productionCode: '生产号',
-  huaxingCode: '华兴号',
+  huaxingCode: 'CAS',
   name: '名称',
   primarySupplierCode: '常用供应商',
   primarySupplierName: '供应商名称',
@@ -59,9 +59,19 @@ const MEANINGFUL_KEYS = {
   secondaryNotes: '备注_1',
 } as const
 
+const LEGACY_MEANINGFUL_KEYS = {
+  huaxingCode: '华兴号',
+} as const
+
 function str(value: unknown): string {
   if (value === null || value === undefined) return ''
   return String(value).trim()
+}
+
+function excelValue(row: Record<string, unknown>, key: string, legacyKey?: string): unknown {
+  const value = row[key]
+  if (value !== undefined && value !== '') return value
+  return legacyKey ? row[legacyKey] : value
 }
 
 function yn(value: unknown): string {
@@ -84,7 +94,7 @@ export function parseExcelRow(row: Record<string, unknown>): RawMaterialInput | 
     category: str(row[MEANINGFUL_KEYS.category]),
     attributeCode: str(row[MEANINGFUL_KEYS.attributeCode]),
     productionCode,
-    huaxingCode: str(row[MEANINGFUL_KEYS.huaxingCode]),
+    huaxingCode: str(excelValue(row, MEANINGFUL_KEYS.huaxingCode, LEGACY_MEANINGFUL_KEYS.huaxingCode)),
     name: str(row[MEANINGFUL_KEYS.name]),
     primarySupplierCode: str(row[MEANINGFUL_KEYS.primarySupplierCode]),
     primarySupplierName: str(row[MEANINGFUL_KEYS.primarySupplierName]),

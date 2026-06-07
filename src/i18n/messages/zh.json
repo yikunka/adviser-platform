@@ -954,8 +954,6 @@
         "rca": "RCA系列",
         "hardness": "硬度系列",
         "chemicalResistance": "耐化性",
-        "highTempHumidity": "高溫高濕",
-        "saltSpray": "鹽霧",
         "highTempHumiditySaltSpray": "高温高湿/盐雾"
       },
       "testTypes": {

@@ -954,8 +954,6 @@
         "rca": "RCA series",
         "hardness": "Hardness series",
         "chemicalResistance": "Chemical resistance",
-        "highTempHumidity": "High temperature and humidity",
-        "saltSpray": "Salt spray",
         "highTempHumiditySaltSpray": "High temp/humidity & salt spray"
       },
       "testTypes": {

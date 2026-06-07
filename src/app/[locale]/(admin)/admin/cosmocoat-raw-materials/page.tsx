@@ -232,7 +232,7 @@ function RawMaterialCreateModal({
               <Field label="生产号">
                 <input required value={form.productionCode} onChange={e => patch('productionCode', e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} placeholder="AD-0001" />
               </Field>
-              <Field label="华兴号">
+              <Field label="CAS">
                 <input value={form.huaxingCode} onChange={e => patch('huaxingCode', e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
               </Field>
               <Field label="名称" className="sm:col-span-2">
@@ -418,7 +418,7 @@ export default function AdminCosmoCoatRawMaterialsPage() {
         </select>
         <div className="relative flex-1 min-w-[14rem]">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索生产号、名称、供应商..." className="w-full pl-8 pr-3 py-2 rounded-lg text-sm outline-none" style={inputStyle()} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索生产号、CAS、名称、供应商..." className="w-full pl-8 pr-3 py-2 rounded-lg text-sm outline-none" style={inputStyle()} />
         </div>
       </div>
 
@@ -436,6 +436,7 @@ export default function AdminCosmoCoatRawMaterialsPage() {
               <thead>
                 <tr>
                   <th style={th}>生产号</th>
+                  <th style={th}>CAS</th>
                   <th style={th}>分类</th>
                   <th style={th}>属性</th>
                   <th style={th}>名称</th>
@@ -452,11 +453,11 @@ export default function AdminCosmoCoatRawMaterialsPage() {
                 {items.map(item => (
                   <tr key={item.id} className="cursor-pointer transition-colors hover:bg-[#111108]" onClick={() => openDetail(item)}>
                     <td style={{ ...td, color: 'var(--foreground)', fontWeight: 500 }}>{item.productionCode}</td>
+                    <td style={td}>{item.huaxingCode || '—'}</td>
                     <td style={td}>{item.category || '—'}</td>
                     <td style={td}>{item.attributeCode || '—'}</td>
                     <td style={{ ...td, minWidth: '14rem', maxWidth: '20rem' }}>
                       <p className="truncate" title={item.name}>{item.name}</p>
-                      {item.huaxingCode && <p className="text-xs truncate" style={{ color: '#7A7060' }}>华兴号：{item.huaxingCode}</p>}
                     </td>
                     <td style={td}>{item.primarySupplierName || '—'}</td>
                     <td style={td}>{numOrEmpty(item.primaryPackageKg)}</td>

@@ -227,7 +227,7 @@ Hierarchical category tree (up to 3 levels) for the website catalog.
 
 ### Raw Materials (`/admin/cosmocoat-raw-materials`)
 Purchasing and sourcing registry.
-- Fields: material code, production code, attribute code, category, name; detail page basic info labels the CAS field (stored as `huaxingCode`)
+- Fields: production code, CAS (stored as `huaxingCode`), attribute code, category, name; list and detail pages display the field as CAS
 - Dual supplier support: primary and secondary (name, package size kg, price/kg, tax flag, freight flag, notes)
 - Changing a raw material's primary price/kg (including via bulk import) automatically refreshes all referencing recipe and semifinished costs; no manual batch refresh is required
 - Attach and download TDS (Technical Data Sheet) and MSDS (Material Safety Data Sheet) files
@@ -280,7 +280,7 @@ Intermediate inventory from production.
 ### Process Kits (`/admin/cosmocoat-process-kits`)
 Product application method documentation (產品配套工藝書).
 - Fields: kit code, name, status, materials list, performance standards, usage notes
-- Performance standards are multi-select checkboxes: 百格(5B), water-boiling tests (80C30M/60M, 100C30M/60M/120M), RCA (30/50/100/150/200), hardness (B/HB/H/2H), chemical resistance (耐醇 99%/50, 耐醇 99%/100, 耐醇 99%/200, 耐 MEK/50, 耐 MEK/100), high temperature/humidity (65C85%24H), salt spray (5%24H/48H), combined high temp/humidity & salt spray (高温高湿/盐雾)
+- Performance standards are multi-select checkboxes: 百格(5B), water-boiling tests (80C30M/60M, 100C30M/60M/120M), RCA (30/50/100/150/200), hardness (B/HB/H/2H), chemical resistance (耐醇 99%/50, 耐醇 99%/100, 耐醇 99%/200, 耐 MEK/50, 耐 MEK/100), combined high temp/humidity & salt spray (高温高湿/盐雾)
 - Kit statuses: `DRAFT` → `ACTIVE` → `ARCHIVED`
 - Process flow module is available on the new/detail process-kit page below performance tests; admins can add multiple reference factory products and optionally set each product's IR minutes, IR temperature, UV energy (MJ/CM²), film thickness, spray viscosity (`噴塗粘度 2#杯/25C`, 2# flow cup at 25C), and notes — all process-parameter fields are optional and a product row can be saved without filling them; IR/UV/process values are text inputs so ranges and units such as `80-100`, `90-105°C`, or `12-14S` can be recorded when provided
 - After adding products to the process flow list, each row has Edit and Delete actions; Edit allows updating IR minutes, IR temperature, UV energy, film thickness, and notes for that product (works on both new and saved process kits); process parameters remain optional on edit as well

@@ -16,6 +16,9 @@ export const CHEMICAL_RESISTANCE_STANDARD_ID = 'CHEMICAL_RESISTANCE'
 const DEPRECATED_STANDARD_IDS = new Set([
   CHEMICAL_RESISTANCE_STANDARD_ID,
   'ALCOHOL_75_100',
+  'HIGH_TEMP_HUMIDITY_65C85_24H',
+  'SALT_SPRAY_5_24H',
+  'SALT_SPRAY_5_48H',
 ])
 
 export function normalizePerformanceStandards(standards: string[] = []) {
