@@ -61,6 +61,10 @@ export const orderInclude = {
   },
 } satisfies Prisma.CosTableProductionOrderInclude
 
+export type ProductionOrderWithIncludes = Prisma.CosTableProductionOrderGetPayload<{
+  include: typeof orderInclude
+}>
+
 export async function generateProductionOrderCode(): Promise<string> {
   const now = new Date()
   const prefix = `SC${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
@@ -159,41 +163,7 @@ function serializeOrderItem(item: {
   }
 }
 
-export function serializeProductionOrder(order: {
-  id: string
-  code: string
-  factoryProductId: string
-  recipeId: string
-  totalWeight: unknown
-  batchNo: string
-  startedAt: Date | null
-  finishedAt: Date | null
-  productionNotes: string
-  qualityNotes: string
-  packagingNotes: string
-  productionRequirements: string
-  qualityCheckRequirements: string
-  packagingRequirements: string
-  status: string
-  createdAt: Date
-  updatedAt: Date
-  factoryProduct: { id: string; productCode: string; name: string; unit: string }
-  recipe: {
-    id: string
-    code: string
-    name: string
-    productionSpeedRequirements?: string
-    productionTimeRequirements?: string
-    packagingRequirements?: string
-    productionNotes?: string
-    qcTestStandard?: string
-    qcTestItems?: string[]
-    qcResult?: string
-    viscosity?: string | null
-    viscosityUnit?: string | null
-  }
-  items: Array<Parameters<typeof serializeOrderItem>[0]>
-}) {
+export function serializeProductionOrder(order: ProductionOrderWithIncludes) {
   const items = order.items.map(serializeOrderItem)
   const requiredTotal = items.reduce((sum, item) => sum + item.requiredWeight, 0)
 
@@ -330,7 +300,7 @@ export async function getProductionOrderById(id: string) {
     include: orderInclude,
   })
   if (!synced) return null
-  return serializeProductionOrder(synced as Parameters<typeof serializeProductionOrder>[0])
+  return serializeProductionOrder(synced)
 }
 
 export function createOrderItemRows(
