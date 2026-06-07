@@ -268,7 +268,8 @@ Custom color formulations for specific customers or products.
 
 ### Production Orders (`/admin/cosmocoat-production-orders`)
 Manufacturing batch tracking.
-- Fields: order code, factory product, recipe, total weight
+- Fields: order code, factory product, recipe, total weight (detail page shows these only; batch number is not shown or editable on the detail page, though list view still has a 批次 column)
+- Detail page shows recipe code and name read-only; there is no link/button to open the linked recipe detail page
 - New order page: factory product picker supports type-to-search with fuzzy matching (product code, name, current recipe); loads options on demand via lightweight API instead of bulk-fetching all products
 - Product list auto-excludes factory products without a current recipe; optional `?recipeId=` URL param further limits choices to products linked to that recipe
 - Recipes containing only nested sub-recipes or semifinished components (no raw-material lines) show an empty materials table instead of crashing
