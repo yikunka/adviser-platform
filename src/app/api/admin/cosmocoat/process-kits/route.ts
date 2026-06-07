@@ -10,6 +10,13 @@ import {
   serializeProcessKit,
 } from '@/lib/cosmocoat/process-kits'
 import { normalizePerformanceStandards } from '@/lib/cosmocoat/process-kit-standards'
+import {
+  deriveProcessFlowItemsFromLegacy,
+  normalizeProcessFlowItems,
+  processFlowItemsForDb,
+  remapProcessFlowProductIds,
+  type ProcessFlowItem,
+} from '@/lib/cosmocoat/process-flow'
 
 const processParameterSchema = z.preprocess(
   value => (value === undefined || value === null ? value : String(value)),
@@ -35,6 +42,19 @@ const processBlockSchema = z.object({
   text: z.string().trim().min(1).max(2000),
 })
 
+const processFlowItemSchema = z.discriminatedUnion('type', [
+  z.object({
+    id: z.string().trim().min(1).max(80),
+    type: z.literal('product'),
+    kitProductId: z.string().trim().min(1),
+  }),
+  z.object({
+    id: z.string().trim().min(1).max(80),
+    type: z.literal('process'),
+    text: z.string().trim().min(1).max(2000),
+  }),
+])
+
 const kitSchema = z.object({
   code: z.string().trim().min(1).max(32).optional(),
   name: z.string().trim().min(1).max(160),
@@ -46,6 +66,7 @@ const kitSchema = z.object({
   processFlowNote: optionalTextSchema(2000),
   status: z.enum(['DRAFT', 'ACTIVE', 'ARCHIVED']).optional().default('DRAFT'),
   products: z.array(z.object({
+    clientId: z.string().trim().min(1).max(80).optional(),
     productId: z.string().trim().min(1),
     sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
     quantityRatio: optionalTextSchema(64),
@@ -62,6 +83,7 @@ const kitSchema = z.object({
     notes: optionalTextSchema(2000),
     processBlocks: z.array(processBlockSchema).max(50).optional().default([]),
   })).max(100).optional().default([]),
+  processFlowItems: z.array(processFlowItemSchema).max(200).optional().default([]),
 })
 
 function isMissingTable(error: unknown) {
@@ -87,6 +109,7 @@ async function resolveProductRows(products: z.infer<typeof kitSchema>['products'
   }
 
   return products.map((product, index) => ({
+    clientId: product.clientId?.trim() || `${product.sortOrder ?? index}`,
     productId: product.productId,
     productName: productNameById.get(product.productId)!,
     sortOrder: product.sortOrder ?? index,
@@ -106,6 +129,31 @@ async function resolveProductRows(products: z.infer<typeof kitSchema>['products'
     notes: product.notes || null,
     processBlocks: product.processBlocks,
   }))
+}
+
+function buildInitialProcessFlowItems(
+  productRows: Awaited<ReturnType<typeof resolveProductRows>>,
+  createdProducts: { id: string; sortOrder: number }[],
+  requestedItems: ProcessFlowItem[],
+): ProcessFlowItem[] {
+  const idMap = new Map<string, string>()
+  productRows.forEach((row, index) => {
+    const created = createdProducts.find(product => product.sortOrder === (row.sortOrder ?? index))
+      ?? createdProducts[index]
+    if (created) idMap.set(row.clientId, created.id)
+  })
+
+  const normalizedRequested = normalizeProcessFlowItems(requestedItems)
+  if (normalizedRequested.length > 0) {
+    return remapProcessFlowProductIds(normalizedRequested, idMap)
+  }
+
+  const legacyProducts = productRows.map((row, index) => ({
+    id: createdProducts[index]?.id ?? row.clientId,
+    productName: row.productName,
+    processBlocks: row.processBlocks,
+  }))
+  return deriveProcessFlowItemsFromLegacy(legacyProducts)
 }
 
 export async function GET(req: NextRequest) {
@@ -175,6 +223,7 @@ export async function POST(req: NextRequest) {
     const existing = await prisma.cosProcessKit.findUnique({ where: { code } })
     if (existing) return NextResponse.json({ error: '工艺书编号已存在' }, { status: 409 })
     const productRows = await resolveProductRows(parsed.data.products)
+    const requestedFlowItems = normalizeProcessFlowItems(parsed.data.processFlowItems)
 
     const kit = await prisma.cosProcessKit.create({
       data: {
@@ -190,10 +239,33 @@ export async function POST(req: NextRequest) {
         createdBy: session!.user.id,
         createdByName: session!.user.name ?? session!.user.email ?? null,
         ...(productRows.length > 0
-          ? { products: { create: productRows } }
+          ? {
+              products: {
+                create: productRows.map(({ clientId: _clientId, ...row }) => row),
+              },
+            }
           : {}),
       },
+      include: {
+        products: {
+          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+          select: { id: true, sortOrder: true },
+        },
+      },
     })
+
+    const processFlowItems = buildInitialProcessFlowItems(
+      productRows,
+      kit.products,
+      requestedFlowItems,
+    )
+
+    if (processFlowItems.length > 0) {
+      await prisma.cosProcessKit.update({
+        where: { id: kit.id },
+        data: { processFlowItems: processFlowItemsForDb(processFlowItems) },
+      })
+    }
 
     const full = await getProcessKitById(kit.id)
     return NextResponse.json({ kit: full }, { status: 201 })

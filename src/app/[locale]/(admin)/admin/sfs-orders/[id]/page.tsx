@@ -44,6 +44,7 @@ type Order = {
   diamonds: DiamondItem[]
   adminNotes?: string | null
   customerRemark?: string | null
+  customerInternalOrderCode?: string | null
   sampleReceivedAt?: string | null
   chemTransformStartAt?: string | null
   chemTransformEndAt?: string | null
@@ -701,6 +702,7 @@ export default function AdminSfsOrderDetailPage() {
             ['Phone', order.phone || '—'],
             ['Source', order.sourceType],
             ['Address', order.mailingAddress || '—'],
+            ['Customer ref.', order.customerInternalOrderCode || '—'],
           ].map(([k, v]) => (
             <div key={k} className="flex gap-2 text-sm">
               <span style={{ color: 'var(--muted-foreground)', minWidth: 60 }}>{k}</span>

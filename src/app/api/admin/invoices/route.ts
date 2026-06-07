@@ -41,6 +41,9 @@ function isInvoiceNumberConflict(error: unknown): boolean {
   if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
     return false
   }
+  if (error.meta?.modelName === 'Invoice') {
+    return true
+  }
   const target = error.meta?.target
   return Array.isArray(target) ? target.includes('invoiceNumber') : target === 'invoiceNumber'
 }

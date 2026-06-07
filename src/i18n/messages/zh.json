@@ -866,7 +866,7 @@
       "productsSection": "产品组合",
       "processFlowSection": "工艺流程",
       "processFlowDocument": "完整工艺流程文档",
-      "processFlowEmptyDocument": "添加产品、产品下方工艺或全局备注后自动生成完整工艺流程文档",
+      "processFlowEmptyDocument": "添加工艺步骤、参考产品或全局备注后自动生成完整工艺流程文档",
       "addProcess": "添加工艺",
       "addProcessPlaceholder": "填写单条工艺描述，与产品信息分开显示",
       "addToProcessDocument": "添加到完整工艺文档",

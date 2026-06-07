@@ -163,8 +163,8 @@ Memorial diamond jewellery service (lab-grown diamonds from cremation remains). 
 - **Q&A**: FAQ
 - **Order** (`/order`): public order placement form; Diamond Specs options are database-driven from SFS Diamond Specs admin, including image-backed Shape / Ring Design / Necklace Design options; anonymous submissions create an order and SFS customer record, while logged-in SFS clients also get the order linked to their account
 - **Order Success** (`/order/success`): confirmation page
-- **Dashboard** (authenticated): client's orders with milestone progress
-- **Dashboard Detail** (`/dashboard/[id]`): specific order status and phase timeline
+- **Dashboard** (authenticated): client's orders with milestone progress; each order includes an editable **Your Internal Order Code** field for the customer's own reference numbering (updatable at any time on My Orders and order detail)
+- **Dashboard Detail** (`/dashboard/[id]`): specific order status and phase timeline; internal order code field alongside order details
 - Authenticated SFS Dashboard pages and the order edit flow include an English AI request chat widget for submitting feature requests or improvement ideas
 
 ### SFS Customers Admin (`/admin/sfs-customers`)
@@ -184,6 +184,7 @@ Customer-facing order option management for SFS Diamond.
 ### SFS Orders Admin (`/admin/sfs-orders`)
 Order lifecycle management for memorial diamond commissions.
 - List with search (client name / email / order ID); columns: status, sample code, memorial name, client, source type, colour, diamond count, creation date
+- Order detail shows the customer's self-entered internal order reference (read-only) when set
 - Order statuses: `PENDING` → `QUOTED` → `CONFIRMED` → `COMPLETED` / `CANCELLED`
 - Production phase tracking with milestone dates:
   1. Sample received
@@ -292,7 +293,9 @@ Product application method documentation (產品配套工藝書).
 - Process flow module is available on the new/detail process-kit page below performance tests; admins can add multiple reference factory products and optionally set each product's IR minutes, IR temperature, UV energy (MJ/CM²), film thickness, spray viscosity (`噴塗粘度 2#杯/25C`, 2# flow cup at 25C), and notes — all process-parameter fields are optional and a product row can be saved without filling them; IR/UV/process values are text inputs so ranges and units such as `80-100`, `90-105°C`, or `12-14S` can be recorded when provided
 - After adding products to the process flow list, each row has Edit and Delete actions; Edit allows updating IR minutes, IR temperature, UV energy, film thickness, and notes for that product (works on both new and saved process kits); process parameters remain optional on edit as well
 - Each selected product can optionally include an HD Hardener product with ratio to the main product, and a Diluent thinner product with ratio to the main product
-- The process-kit page automatically combines all selected products, product-level process text blocks, and the independent global process-flow note into a complete process-flow document preview; hovering over a product in the complete document exposes "在该产品下方添加工艺", opening an inline input whose add action is "添加到完整工艺文档"; each saved process block under that product can be edited or deleted, and multiple process blocks per product are supported
+- The process-kit page builds a complete process-flow document from an ordered list of products and standalone process steps plus the global process-flow note; use **添加工艺** in the process-flow section header to add numbered process steps even when no reference product is selected
+- Products and standalone process steps share one continuous sequence (1, 2, 3…); hover any item in the document preview and use **在该产品下方添加工艺** to insert a new process at the next position (automatic renumbering); each process step can be edited or deleted
+- Legacy product-nested process blocks are migrated into the unified ordered list on read when stored `processFlowItems` is empty
 - Detail page actions include browser-based A4 printing and browser-generated Word document download for the current process-kit content; no backend export job is used
 - Test records: type (`PERFORMANCE`, `DURABILITY`, `ADHESION`, `COLOR_STABILITY`, `BOND_STRENGTH`, `OTHER`), result (`PASSED`, `FAILED`, `PENDING`), test date, tester name, report link
 

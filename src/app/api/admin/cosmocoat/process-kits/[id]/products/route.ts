@@ -4,6 +4,12 @@ import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { getProcessKitById } from '@/lib/cosmocoat/process-kits'
+import {
+  appendProductFlowItem,
+  processFlowItemsForDb,
+  removeProductFlowItems,
+  resolveProcessFlowItems,
+} from '@/lib/cosmocoat/process-flow'
 
 const processParameterSchema = z.preprocess(
   value => (value === undefined || value === null ? value : String(value)),
@@ -123,7 +129,7 @@ export async function POST(
     })
     const sortOrder = parsed.data.sortOrder ?? ((maxSort._max.sortOrder ?? -1) + 1)
 
-    await prisma.cosProcessKitProduct.create({
+    const created = await prisma.cosProcessKitProduct.create({
       data: {
         kitId,
         productId: parsed.data.productId,
@@ -146,6 +152,26 @@ export async function POST(
         processBlocks: parsed.data.processBlocks,
       },
     })
+
+    const currentKit = await prisma.cosProcessKit.findUnique({
+      where: { id: kitId },
+      include: { products: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] } },
+    })
+    if (currentKit) {
+      const currentItems = resolveProcessFlowItems(
+        currentKit.processFlowItems,
+        currentKit.products.map(product => ({
+          id: product.id,
+          productName: product.productName,
+          processBlocks: product.processBlocks,
+        })),
+      )
+      const nextItems = appendProductFlowItem(currentItems, created.id)
+      await prisma.cosProcessKit.update({
+        where: { id: kitId },
+        data: { processFlowItems: processFlowItemsForDb(nextItems) },
+      })
+    }
 
     const full = await getProcessKitById(kitId)
     return NextResponse.json({ kit: full }, { status: 201 })
@@ -221,6 +247,27 @@ export async function DELETE(
   if (!product) return NextResponse.json({ error: '产品明细不存在' }, { status: 404 })
 
   await prisma.cosProcessKitProduct.delete({ where: { id: parsed.data.id } })
+
+  const currentKit = await prisma.cosProcessKit.findUnique({
+    where: { id: kitId },
+    include: { products: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] } },
+  })
+  if (currentKit) {
+    const currentItems = resolveProcessFlowItems(
+      currentKit.processFlowItems,
+      currentKit.products.map(item => ({
+        id: item.id,
+        productName: item.productName,
+        processBlocks: item.processBlocks,
+      })),
+    )
+    const nextItems = removeProductFlowItems(currentItems, parsed.data.id)
+    await prisma.cosProcessKit.update({
+      where: { id: kitId },
+      data: { processFlowItems: processFlowItemsForDb(nextItems) },
+    })
+  }
+
   const full = await getProcessKitById(kitId)
   return NextResponse.json({ kit: full })
 }

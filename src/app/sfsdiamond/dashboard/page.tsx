@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
 import { SFS_TOTAL_PREDEFINED_STEPS } from '@/lib/sfs/order-predefined-steps'
+import CustomerInternalOrderCodeField from '@/app/sfsdiamond/components/CustomerInternalOrderCodeField'
 
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   PENDING:   { bg: 'rgba(201,169,110,0.12)', color: '#C9A96E'  },
@@ -129,6 +130,11 @@ export default async function SFSDashboardPage() {
                           Order ID: {order.sampleCode}
                         </p>
                       )}
+                      <CustomerInternalOrderCodeField
+                        orderId={order.id}
+                        initialValue={order.customerInternalOrderCode}
+                        compact
+                      />
                       <p className="text-xs mt-0.5 truncate" style={{ color: MUTED }}>{summary}{extra}</p>
                       {stepsDone > 0 && (
                         <div className="flex items-center gap-2 mt-1.5">

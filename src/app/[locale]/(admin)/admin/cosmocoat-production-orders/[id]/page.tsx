@@ -29,21 +29,7 @@ import type { FactoryProductPickerOption } from '@/lib/cosmocoat/factory-product
 
 type FactoryProductOption = FactoryProductPickerOption
 
-type EditableItem = {
-  key: string
-  id?: string
-  itemType: 'raw_material' | 'component_recipe' | 'product_semifinished'
-  rawMaterialId?: string
-  componentRecipeId?: string
-  productSemifinishedId?: string
-  sortOrder: number
-  productionCode: string
-  materialName: string
-  percentage: number
-  requiredWeight: number
-  actualWeight: number | null
-  notes: string
-}
+type EditableItem = ProductionOrderEditableItem
 
 const card: React.CSSProperties = {
   background: 'var(--card)',
@@ -416,7 +402,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       setFinishedAt(toDatetimeLocal(order.finishedAt))
       applyProcessFields(hydrateProductionOrderProcessFields(order, order.recipe))
       setStatus(order.status === 'completed' ? 'completed' : 'draft')
-      setItems(order.items.map((item: {
+      const loadedItems = order.items.map((item: {
         id: string
         itemType?: 'raw_material' | 'component_recipe' | 'product_semifinished'
         sortOrder: number
@@ -449,13 +435,17 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
         requiredWeight: item.requiredWeight,
         actualWeight: item.actualWeight,
         notes: item.notes,
-      })))
+      }))
+      setItems(loadedItems)
+      if (order.status !== 'completed') {
+        void loadRecipeItems(order.recipe.id)
+      }
     } catch {
       toast.error('加载生产单失败')
     } finally {
       setLoading(false)
     }
-  }, [orderId, isNew])
+  }, [orderId, isNew, loadRecipeItems])
 
   useEffect(() => {
     if (isNew) setLoading(false)
@@ -492,31 +482,13 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
   }, [code, isNew])
 
   useEffect(() => {
-    if (!isNew || recipeItems.length === 0 || totalWeight <= 0) {
+    if (recipeItems.length === 0 || totalWeight <= 0) {
       if (isNew && recipeItems.length === 0) setItems([])
       return
     }
-    setItems(prev => {
-      const actualByKey = new Map(prev.map(item => [item.key, item.actualWeight]))
-      return buildProductionOrderItems(recipeItems, totalWeight).map(item => {
-        const key = productionOrderItemKey(item)
-        return {
-          key,
-          itemType: item.itemType,
-          rawMaterialId: item.rawMaterialId,
-          componentRecipeId: item.componentRecipeId,
-          productSemifinishedId: item.productSemifinishedId,
-          sortOrder: item.sortOrder,
-          productionCode: item.productionCode,
-          materialName: item.materialName,
-          percentage: item.percentage,
-          requiredWeight: item.requiredWeight,
-          actualWeight: actualByKey.get(key) ?? null,
-          notes: item.notes,
-        }
-      })
-    })
-  }, [isNew, recipeItems, totalWeight])
+    if (!isNew && status !== 'draft') return
+    setItems(prev => mergeProductionOrderEditableItems(recipeItems, totalWeight, prev))
+  }, [isNew, status, recipeItems, totalWeight])
 
   useEffect(() => {
     if (isNew) return
@@ -861,8 +833,18 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       </div>
 
       <div style={{ ...card, overflow: 'hidden' }}>
-        <div className="px-4 py-3 border-b" style={{ borderColor: '#2A2418' }}>
+        <div className="px-4 py-3 border-b flex flex-wrap items-center justify-between gap-2" style={{ borderColor: '#2A2418' }}>
           <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>物料投料明细</h3>
+          {!isNew && linkedRecipeId && status === 'draft' && (
+            <button
+              type="button"
+              onClick={reloadFromRecipe}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
+              style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
+            >
+              <RefreshCw size={12} /> 从配方重新加载
+            </button>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">

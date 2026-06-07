@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
 import DiamondCards from '@/app/sfsdiamond/components/DiamondCards'
+import CustomerInternalOrderCodeField from '@/app/sfsdiamond/components/CustomerInternalOrderCodeField'
 import {
   groupSfsStepFilesByDiamond,
   sfsStepFileDiamondLabel,
@@ -162,6 +163,10 @@ export default async function SFSOrderDetailPage({
               </a>
             )}
           </div>
+          <CustomerInternalOrderCodeField
+            orderId={order.id}
+            initialValue={order.customerInternalOrderCode}
+          />
         </div>
 
         {/* Admin remark to customer */}

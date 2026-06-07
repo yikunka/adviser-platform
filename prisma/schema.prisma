@@ -1138,6 +1138,9 @@ model SfsOrder {
   adminNotes     String?
   customerRemark String?
 
+  // Customer-entered internal reference (editable by the client at any time)
+  customerInternalOrderCode String?
+
   steps    SfsOrderStep[]
   invoices SfsInvoice[]
 
@@ -1830,6 +1833,7 @@ model CosProcessKit {
   otherNote     String?
   processDescription String?
   processFlowNote String?
+  processFlowItems Json             @default("[]")
   status        ProcessKitStatus @default(DRAFT)
   createdBy     String?
   createdByName String?

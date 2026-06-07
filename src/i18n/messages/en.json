@@ -866,7 +866,7 @@
       "productsSection": "Product Combination",
       "processFlowSection": "Process Flow",
       "processFlowDocument": "Complete process flow document",
-      "processFlowEmptyDocument": "Add products, product-level process blocks, or a global note to generate the complete process flow document",
+      "processFlowEmptyDocument": "Add process steps, reference products, or a global note to generate the complete process flow document",
       "addProcess": "Add process",
       "addProcessPlaceholder": "Enter one process description shown separately from product information",
       "addToProcessDocument": "Add to complete process document",

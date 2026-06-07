@@ -1,6 +1,11 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
-import { buildProcessFlowDocument, normalizeProcessBlocks } from '@/lib/cosmocoat/process-flow'
+import {
+  buildProcessFlowDocumentFromItems,
+  normalizeProcessBlocks,
+  resolveProcessFlowItems,
+  type ProcessFlowProduct,
+} from '@/lib/cosmocoat/process-flow'
 import { normalizePerformanceStandards } from '@/lib/cosmocoat/process-kit-standards'
 
 export const kitInclude = {
@@ -20,6 +25,25 @@ export type ProcessKitWithRelations = Prisma.CosProcessKitGetPayload<{
 }>
 
 export function serializeProcessKit(kit: ProcessKitWithRelations) {
+  const products: ProcessFlowProduct[] = kit.products.map(p => ({
+    id: p.id,
+    productName: p.productName,
+    quantityRatio: p.quantityRatio,
+    usageMethod: p.usageMethod,
+    hardenerProductName: p.hardenerProductName,
+    hardenerRatio: p.hardenerRatio,
+    thinnerProductName: p.thinnerProductName,
+    thinnerRatio: p.thinnerRatio,
+    notes: p.notes,
+    irMinutes: p.irMinutes,
+    irTemperature: p.irTemperature,
+    uvEnergy: p.uvEnergy,
+    filmThickness: p.filmThickness,
+    sprayViscosity: p.sprayViscosity,
+    processBlocks: normalizeProcessBlocks(p.processBlocks),
+  }))
+  const processFlowItems = resolveProcessFlowItems(kit.processFlowItems, products)
+
   return {
     id: kit.id,
     code: kit.code,
@@ -30,6 +54,7 @@ export function serializeProcessKit(kit: ProcessKitWithRelations) {
     otherNote: kit.otherNote,
     processDescription: kit.processDescription,
     processFlowNote: kit.processFlowNote,
+    processFlowItems,
     status: kit.status,
     createdBy: kit.createdBy,
     createdByName: kit.createdByName,
@@ -39,23 +64,9 @@ export function serializeProcessKit(kit: ProcessKitWithRelations) {
     updatedAt: kit.updatedAt.toISOString(),
     productCount: kit.products.length,
     testCount: kit.tests.length,
-    processFlowDocument: buildProcessFlowDocument(
-      kit.products.map(p => ({
-        productName: p.productName,
-        quantityRatio: p.quantityRatio,
-        usageMethod: p.usageMethod,
-        hardenerProductName: p.hardenerProductName,
-        hardenerRatio: p.hardenerRatio,
-        thinnerProductName: p.thinnerProductName,
-        thinnerRatio: p.thinnerRatio,
-        notes: p.notes,
-        irMinutes: p.irMinutes,
-        irTemperature: p.irTemperature,
-        uvEnergy: p.uvEnergy,
-        filmThickness: p.filmThickness,
-        sprayViscosity: p.sprayViscosity,
-        processBlocks: normalizeProcessBlocks(p.processBlocks),
-      })),
+    processFlowDocument: buildProcessFlowDocumentFromItems(
+      processFlowItems,
+      products,
       kit.processFlowNote,
       kit.processDescription,
     ),

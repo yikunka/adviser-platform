@@ -211,23 +211,45 @@ export type ProductionRecipeItem = {
   }
 }
 
+type RecipeItemSourceForProduction = Omit<RecipeItemForProduction, 'quantity' | 'percentage'> & {
+  quantity: unknown
+  percentage?: unknown | null
+  itemType?: string
+  componentRecipe?: {
+    id: string
+    code: string
+    name: string
+  } | null
+  /** Serialized recipe API shape for nested semifinished component recipes. */
+  recipe?: {
+    id: string
+    code: string
+    name: string
+  } | null
+  productSemifinished?: {
+    id: string
+    code: string
+    name: string
+  } | null
+}
+
+function resolveComponentRecipeForProduction(
+  item: Pick<RecipeItemSourceForProduction, 'componentRecipe' | 'recipe' | 'itemType'>,
+): { id: string; code: string; name: string } | null {
+  if (item.componentRecipe) return item.componentRecipe
+  if (item.recipe && (!item.itemType || item.itemType === 'recipe')) {
+    return {
+      id: item.recipe.id,
+      code: item.recipe.code,
+      name: item.recipe.name,
+    }
+  }
+  return null
+}
+
 /** Keeps raw-material, semi-finished recipe, and Sol. semifinished inventory lines; drops factory products. */
 export function recipeItemsForProduction(
-  items: Array<Omit<RecipeItemForProduction, 'quantity' | 'percentage'> & {
-    quantity: unknown
-    percentage?: unknown | null
-    itemType?: string
-    componentRecipe?: {
-      id: string
-      code: string
-      name: string
-    } | null
-    productSemifinished?: {
-      id: string
-      code: string
-      name: string
-    } | null
-  }>,
+  items: Array<RecipeItemSourceForProduction>,
 ): ProductionRecipeItem[] {
   const result: ProductionRecipeItem[] = []
   for (const item of items) {
@@ -242,14 +264,15 @@ export function recipeItemsForProduction(
       })
       continue
     }
-    if (item.componentRecipe) {
+    const componentRecipe = resolveComponentRecipeForProduction(item)
+    if (componentRecipe) {
       result.push({
         sortOrder: item.sortOrder,
         quantity: Number(item.quantity),
         percentage: item.percentage != null ? Number(item.percentage) : null,
         notes: item.notes,
         itemType: 'component_recipe',
-        componentRecipe: item.componentRecipe,
+        componentRecipe,
       })
       continue
     }
@@ -265,6 +288,61 @@ export function recipeItemsForProduction(
     }
   }
   return result
+}
+
+export type ProductionOrderEditableItem = {
+  key: string
+  id?: string
+  itemType: ProductionOrderItemDraft['itemType']
+  rawMaterialId?: string
+  componentRecipeId?: string
+  productSemifinishedId?: string
+  sortOrder: number
+  productionCode: string
+  materialName: string
+  percentage: number
+  requiredWeight: number
+  actualWeight: number | null
+  notes: string
+}
+
+export function mergeProductionOrderEditableItems(
+  recipeItems: ProductionRecipeItem[],
+  totalWeight: number,
+  existingItems: ProductionOrderEditableItem[],
+): ProductionOrderEditableItem[] {
+  const existingByKey = new Map<string, ProductionOrderEditableItem>()
+  for (const item of existingItems) {
+    existingByKey.set(
+      productionOrderItemKey({
+        itemType: item.itemType,
+        rawMaterialId: item.rawMaterialId,
+        componentRecipeId: item.componentRecipeId,
+        productSemifinishedId: item.productSemifinishedId,
+      }),
+      item,
+    )
+  }
+
+  return buildProductionOrderItems(recipeItems, totalWeight).map(item => {
+    const materialKey = productionOrderItemKey(item)
+    const existing = existingByKey.get(materialKey)
+    return {
+      key: existing?.key ?? materialKey,
+      id: existing?.id,
+      itemType: item.itemType,
+      rawMaterialId: item.rawMaterialId,
+      componentRecipeId: item.componentRecipeId,
+      productSemifinishedId: item.productSemifinishedId,
+      sortOrder: item.sortOrder,
+      productionCode: item.productionCode,
+      materialName: item.materialName,
+      percentage: item.percentage,
+      requiredWeight: item.requiredWeight,
+      actualWeight: existing?.actualWeight ?? null,
+      notes: existing?.notes ?? item.notes,
+    }
+  })
 }
 
 export function productionOrderItemKey(item: Pick<ProductionOrderItemDraft, 'itemType' | 'rawMaterialId' | 'componentRecipeId' | 'productSemifinishedId'>): string {

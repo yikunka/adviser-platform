@@ -10,7 +10,16 @@ import { toast } from 'sonner'
 import { ArrowLeft, Download, Pencil, Plus, Printer, Save, Trash2 } from 'lucide-react'
 import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
 import { cn } from '@/lib/utils'
-import { buildProcessFlowDocument, type ProcessFlowBlock } from '@/lib/cosmocoat/process-flow'
+import {
+  appendProcessFlowItem,
+  appendProductFlowItem,
+  buildProcessFlowDocumentFromItems,
+  insertProcessFlowItemAfter,
+  removeProcessFlowItem,
+  updateProcessFlowItemText,
+  type ProcessFlowBlock,
+  type ProcessFlowItem,
+} from '@/lib/cosmocoat/process-flow'
 import { CHEMICAL_RESISTANCE_OPTIONS, normalizePerformanceStandards } from '@/lib/cosmocoat/process-kit-standards'
 
 type FactoryProductOption = {
@@ -64,6 +73,7 @@ type LoadedKit = {
   otherNote?: string | null
   processDescription?: string | null
   processFlowNote?: string | null
+  processFlowItems?: ProcessFlowItem[]
   status: KitStatus
   products?: KitProduct[]
   tests?: KitTest[]
@@ -579,13 +589,18 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   const [processFlowNote, setProcessFlowNote] = useState('')
   const [status, setStatus] = useState<KitStatus>('DRAFT')
   const [kitProducts, setKitProducts] = useState<KitProduct[]>([])
+  const [processFlowItems, setProcessFlowItems] = useState<ProcessFlowItem[]>([])
   const [tests, setTests] = useState<KitTest[]>([])
 
   const [showProductForm, setShowProductForm] = useState(false)
   const [addingProduct, setAddingProduct] = useState(false)
   const [editingProductId, setEditingProductId] = useState<string | null>(null)
   const [savingProductEdit, setSavingProductEdit] = useState(false)
-  const [processEditor, setProcessEditor] = useState<{ productId: string; blockId: string | null; text: string } | null>(null)
+  const [processEditor, setProcessEditor] = useState<{
+    itemId: string | null
+    insertAfterId: string | null
+    text: string
+  } | null>(null)
   const [savingProcessBlock, setSavingProcessBlock] = useState(false)
   const [editForm, setEditForm] = useState({
     irMinutes: '',
@@ -631,9 +646,24 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     [products],
   )
   const processFlowDocument = useMemo(
-    () => buildProcessFlowDocument(kitProducts, processFlowNote, processDescription),
-    [kitProducts, processFlowNote, processDescription],
+    () => buildProcessFlowDocumentFromItems(
+      processFlowItems,
+      kitProducts,
+      processFlowNote,
+      processDescription,
+    ),
+    [processFlowItems, kitProducts, processFlowNote, processDescription],
   )
+  const flowSequenceByItemId = useMemo(() => {
+    const map = new Map<string, number>()
+    let sequence = 0
+    processFlowItems.forEach(item => {
+      if (item.type === 'product' && !kitProducts.some(product => product.id === item.kitProductId)) return
+      sequence += 1
+      map.set(item.id, sequence)
+    })
+    return map
+  }, [processFlowItems, kitProducts])
   const materialLabels = useMemo(() => {
     const labels = selectedMaterials
       .filter(id => id !== 'OTHER')
@@ -761,6 +791,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       setProcessFlowNote(kit.processFlowNote ?? '')
       setStatus(kit.status)
       setKitProducts(kit.products ?? [])
+      setProcessFlowItems(kit.processFlowItems ?? [])
       setTests(kit.tests ?? [])
     } catch {
       toast.error(t('loadFailed'))
@@ -806,6 +837,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       ...(isNew
         ? {
             products: kitProducts.map((product, index) => ({
+              clientId: product.id,
               productId: product.productId,
               sortOrder: index,
               hardenerProductId: product.hardenerProductId,
@@ -818,8 +850,8 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
               filmThickness: product.filmThickness,
               sprayViscosity: product.sprayViscosity,
               notes: product.notes,
-              processBlocks: product.processBlocks ?? [],
             })),
+            processFlowItems,
           }
         : {}),
       ...(!isNew ? { status } : {}),
@@ -946,10 +978,11 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       ? products.find(product => product.id === productForm.thinnerProductId)
       : null
     if (isNew) {
+      const draftId = `draft-${Date.now()}-${kitProducts.length}`
       setKitProducts(prev => [
         ...prev,
         {
-          id: `draft-${Date.now()}-${prev.length}`,
+          id: draftId,
           productId: productForm.productId,
           productName: selectedProduct ? `${selectedProduct.productCode} · ${selectedProduct.name}` : productForm.productId,
           sortOrder: prev.length,
@@ -970,6 +1003,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
           processBlocks: [],
         },
       ])
+      setProcessFlowItems(prev => appendProductFlowItem(prev, draftId))
       resetProductForm()
       setShowProductForm(false)
       return
@@ -1001,6 +1035,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       }
       toast.success(t('productAdded'))
       setKitProducts(data.kit?.products ?? [])
+      setProcessFlowItems(data.kit?.processFlowItems ?? [])
       resetProductForm()
       setShowProductForm(false)
     } catch {
@@ -1091,9 +1126,11 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   async function removeProduct(productId: string) {
     if (!window.confirm(t('removeProductConfirm'))) return
     if (editingProductId === productId) resetEditForm()
-    if (processEditor?.productId === productId) setProcessEditor(null)
     if (isNew) {
       setKitProducts(prev => prev.filter(product => product.id !== productId))
+      setProcessFlowItems(prev => prev.filter(item =>
+        !(item.type === 'product' && item.kitProductId === productId),
+      ))
       return
     }
     try {
@@ -1109,44 +1146,37 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       }
       toast.success(t('productRemoved'))
       setKitProducts(data.kit?.products ?? [])
+      setProcessFlowItems(data.kit?.processFlowItems ?? [])
     } catch {
       toast.error(t('removeProductFailed'))
     }
   }
 
-  function createProcessBlockId() {
-    return `process-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  function startAddProcessFlowItem(insertAfterId: string | null = null) {
+    setProcessEditor({ itemId: null, insertAfterId, text: '' })
   }
 
-  function startAddProcessBlock(productId: string) {
-    setProcessEditor({ productId, blockId: null, text: '' })
+  function startEditProcessFlowItem(item: Extract<ProcessFlowItem, { type: 'process' }>) {
+    setProcessEditor({ itemId: item.id, insertAfterId: null, text: item.text })
   }
 
-  function startEditProcessBlock(productId: string, block: ProcessFlowBlock) {
-    setProcessEditor({ productId, blockId: block.id, text: block.text })
-  }
-
-  async function persistProductProcessBlocks(productId: string, processBlocks: ProcessFlowBlock[]) {
-    if (isNew) {
-      setKitProducts(prev => prev.map(product =>
-        product.id === productId ? { ...product, processBlocks } : product,
-      ))
-      return true
-    }
+  async function persistProcessFlowItems(nextItems: ProcessFlowItem[]) {
+    setProcessFlowItems(nextItems)
+    if (isNew) return true
 
     setSavingProcessBlock(true)
     try {
-      const res = await fetch(`/api/admin/cosmocoat/process-kits/${kitId}/products`, {
+      const res = await fetch(`/api/admin/cosmocoat/process-kits/${kitId}/process-flow-items`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: productId, processBlocks }),
+        body: JSON.stringify({ items: nextItems }),
       })
       const data = await res.json()
       if (!res.ok) {
         toast.error(data.error ?? t('processBlockSaveFailed'))
         return false
       }
-      setKitProducts(data.kit?.products ?? [])
+      setProcessFlowItems(data.kit?.processFlowItems ?? nextItems)
       return true
     } catch {
       toast.error(t('processBlockSaveFailed'))
@@ -1156,7 +1186,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     }
   }
 
-  async function saveProcessBlock() {
+  async function saveProcessFlowItem() {
     if (!processEditor) return
     const text = processEditor.text.trim()
     if (!text) {
@@ -1164,30 +1194,24 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       return
     }
 
-    const product = kitProducts.find(item => item.id === processEditor.productId)
-    if (!product) return
+    const nextItems = processEditor.itemId
+      ? updateProcessFlowItemText(processFlowItems, processEditor.itemId, text)
+      : processEditor.insertAfterId
+        ? insertProcessFlowItemAfter(processFlowItems, processEditor.insertAfterId, text)
+        : appendProcessFlowItem(processFlowItems, text)
 
-    const currentBlocks = product.processBlocks ?? []
-    const nextBlocks = processEditor.blockId
-      ? currentBlocks.map(block =>
-          block.id === processEditor.blockId ? { ...block, text } : block,
-        )
-      : [...currentBlocks, { id: createProcessBlockId(), text }]
-
-    const saved = await persistProductProcessBlocks(product.id, nextBlocks)
+    const saved = await persistProcessFlowItems(nextItems)
     if (!saved) return
-    toast.success(processEditor.blockId ? t('processBlockUpdated') : t('processBlockAdded'))
+    toast.success(processEditor.itemId ? t('processBlockUpdated') : t('processBlockAdded'))
     setProcessEditor(null)
   }
 
-  async function removeProcessBlock(productId: string, blockId: string) {
+  async function removeProcessFlowItemEntry(itemId: string) {
     if (!window.confirm(t('removeProcessBlockConfirm'))) return
-    const product = kitProducts.find(item => item.id === productId)
-    if (!product) return
-    const nextBlocks = (product.processBlocks ?? []).filter(block => block.id !== blockId)
-    const saved = await persistProductProcessBlocks(productId, nextBlocks)
+    const nextItems = removeProcessFlowItem(processFlowItems, itemId)
+    const saved = await persistProcessFlowItems(nextItems)
     if (!saved) return
-    if (processEditor?.productId === productId && processEditor.blockId === blockId) setProcessEditor(null)
+    if (processEditor?.itemId === itemId) setProcessEditor(null)
     toast.success(t('processBlockRemoved'))
   }
 
@@ -1429,17 +1453,27 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       <div style={{ ...card, overflow: 'hidden' }}>
         <div className="px-4 py-3 border-b flex flex-wrap items-center justify-between gap-2" style={{ borderColor: '#2A2418' }}>
           <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>{t('processFlowSection')}</h3>
-          <button
-            type="button"
-            onClick={() => {
-              resetEditForm()
-              setShowProductForm(v => !v)
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-            style={{ background: '#1A1A12', border: '1px solid #2A2418', color: 'var(--foreground)' }}
-          >
-            <Plus size={13} /> {t('addProduct')}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => startAddProcessFlowItem(null)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+              style={{ background: '#1A1A12', border: '1px solid #C9A96E', color: '#C9A96E' }}
+            >
+              <Plus size={13} /> {t('addProcess')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                resetEditForm()
+                setShowProductForm(v => !v)
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+              style={{ background: '#1A1A12', border: '1px solid #2A2418', color: 'var(--foreground)' }}
+            >
+              <Plus size={13} /> {t('addProduct')}
+            </button>
+          </div>
         </div>
 
         {showProductForm && (
@@ -1791,7 +1825,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
           <div className="space-y-1.5">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('processFlowDocument')}</label>
             <div className="rounded-lg p-3 text-sm" style={{ ...inputStyle(), minHeight: 160 }}>
-              {!processFlowDocument ? (
+              {processFlowItems.length === 0 && !processFlowNote.trim() && !processDescription.trim() && !processEditor ? (
                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>{t('processFlowEmptyDocument')}</p>
               ) : (
                 <div className="space-y-3">
@@ -1801,19 +1835,142 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                       工艺：{processDescription.trim()}
                     </p>
                   )}
-                  {kitProducts.map((product, index) => {
-                    const processBlocks = product.processBlocks ?? []
-                    const isEditingThisProduct = processEditor?.productId === product.id
-                    const activeProcessEditor = isEditingThisProduct ? processEditor : null
+                  {processFlowItems.map(item => {
+                    const sequence = flowSequenceByItemId.get(item.id)
+                    if (sequence === undefined) return null
+
+                    if (item.type === 'process') {
+                      const editingProcess = processEditor?.itemId === item.id ? processEditor : null
+                      const insertingProcess = processEditor && !processEditor.itemId && processEditor.insertAfterId === item.id
+                        ? processEditor
+                        : null
+                      return (
+                        <div
+                          key={item.id}
+                          className="group relative rounded-lg p-3 transition-colors"
+                          style={{ background: '#15150F', border: '1px solid #2A2418' }}
+                        >
+                          {editingProcess ? (
+                            <div className="space-y-2">
+                              <textarea
+                                value={editingProcess.text}
+                                onChange={e => setProcessEditor(editor => editor ? { ...editor, text: e.target.value } : editor)}
+                                rows={3}
+                                className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y"
+                                style={inputStyle()}
+                                placeholder={t('addProcessPlaceholder')}
+                              />
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={saveProcessFlowItem}
+                                  disabled={savingProcessBlock}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
+                                  style={{ background: '#C9A96E', color: '#0A0805' }}
+                                >
+                                  <Save size={13} /> {savingProcessBlock ? t('saving') : t('confirmEdit')}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setProcessEditor(null)}
+                                  className="px-3 py-1.5 rounded-lg text-xs"
+                                  style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}
+                                >
+                                  {t('cancel')}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-start justify-between gap-3">
+                                <p className="whitespace-pre-wrap text-sm" style={{ color: 'var(--foreground)' }}>
+                                  {sequence}. 工艺：{item.text}
+                                </p>
+                                <div className="flex shrink-0 items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => startEditProcessFlowItem(item)}
+                                    title={t('editProcessBlock')}
+                                    className="p-1.5 rounded-md transition-colors"
+                                    style={{ color: 'var(--muted-foreground)' }}
+                                  >
+                                    <Pencil size={14} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeProcessFlowItemEntry(item.id)}
+                                    title={t('removeProcessBlock')}
+                                    className="p-1.5 rounded-md transition-colors"
+                                    style={{ color: '#ef4444' }}
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </div>
+                              {insertingProcess && (
+                                <div className="mt-3 space-y-2 rounded-lg p-3" style={{ background: '#111108', border: '1px solid #2A2418' }}>
+                                  <textarea
+                                    value={insertingProcess.text}
+                                    onChange={e => setProcessEditor(editor => editor ? { ...editor, text: e.target.value } : editor)}
+                                    rows={3}
+                                    className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y"
+                                    style={inputStyle()}
+                                    placeholder={t('processBlockPlaceholder')}
+                                  />
+                                  <div className="flex flex-wrap gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={saveProcessFlowItem}
+                                      disabled={savingProcessBlock}
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
+                                      style={{ background: '#C9A96E', color: '#0A0805' }}
+                                    >
+                                      <Save size={13} /> {savingProcessBlock ? t('saving') : t('addToProcessDocument')}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setProcessEditor(null)}
+                                      className="px-3 py-1.5 rounded-lg text-xs"
+                                      style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}
+                                    >
+                                      {t('cancel')}
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                              {!insertingProcess && (
+                                <div className="mt-3 flex justify-end opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                                  <button
+                                    type="button"
+                                    onClick={() => startAddProcessFlowItem(item.id)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+                                    style={{ background: '#1A1A12', border: '1px solid #C9A96E', color: '#C9A96E' }}
+                                  >
+                                    <Plus size={13} /> {t('addProcessUnderProduct')}
+                                  </button>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )
+                    }
+
+                    const product = kitProducts.find(entry => entry.id === item.kitProductId)
+                    if (!product) return null
+                    const insertingProcess = processEditor && !processEditor.itemId && processEditor.insertAfterId === item.id
+                      ? processEditor
+                      : null
+
                     return (
                       <div
-                        key={product.id}
+                        key={item.id}
                         className="group relative rounded-lg p-3 transition-colors"
                         style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
                       >
                         <div className="space-y-1 pr-0 sm:pr-44">
                           <p className="font-medium" style={{ color: 'var(--foreground)' }}>
-                            {index + 1}. 产品：{product.productName}
+                            {sequence}. 产品：{product.productName}
                           </p>
                           {product.hardenerProductName && (
                             <p style={{ color: 'var(--muted-foreground)' }}>
@@ -1836,46 +1993,10 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                           {product.notes && <p style={{ color: 'var(--muted-foreground)' }}>备注：{product.notes}</p>}
                         </div>
 
-                        {processBlocks.length > 0 && (
-                          <div className="mt-3 space-y-2">
-                            {processBlocks.map((block, blockIndex) => (
-                              <div
-                                key={block.id}
-                                className="flex items-start justify-between gap-3 rounded-lg px-3 py-2"
-                                style={{ background: '#15150F', border: '1px solid #2A2418' }}
-                              >
-                                <p className="whitespace-pre-wrap text-sm" style={{ color: 'var(--foreground)' }}>
-                                  工艺{blockIndex + 1}：{block.text}
-                                </p>
-                                <div className="flex shrink-0 items-center gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => startEditProcessBlock(product.id, block)}
-                                    title={t('editProcessBlock')}
-                                    className="p-1.5 rounded-md transition-colors"
-                                    style={{ color: 'var(--muted-foreground)' }}
-                                  >
-                                    <Pencil size={14} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => removeProcessBlock(product.id, block.id)}
-                                    title={t('removeProcessBlock')}
-                                    className="p-1.5 rounded-md transition-colors"
-                                    style={{ color: '#ef4444' }}
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {isEditingThisProduct ? (
+                        {insertingProcess && (
                           <div className="mt-3 space-y-2 rounded-lg p-3" style={{ background: '#111108', border: '1px solid #2A2418' }}>
                             <textarea
-                              value={activeProcessEditor?.text ?? ''}
+                              value={insertingProcess.text}
                               onChange={e => setProcessEditor(editor => editor ? { ...editor, text: e.target.value } : editor)}
                               rows={3}
                               className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y"
@@ -1885,16 +2006,12 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                             <div className="flex flex-wrap gap-2">
                               <button
                                 type="button"
-                                onClick={saveProcessBlock}
+                                onClick={saveProcessFlowItem}
                                 disabled={savingProcessBlock}
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
                                 style={{ background: '#C9A96E', color: '#0A0805' }}
                               >
-                                <Save size={13} /> {savingProcessBlock
-                                  ? t('saving')
-                                  : activeProcessEditor?.blockId
-                                    ? t('confirmEdit')
-                                    : t('addToProcessDocument')}
+                                <Save size={13} /> {savingProcessBlock ? t('saving') : t('addToProcessDocument')}
                               </button>
                               <button
                                 type="button"
@@ -1906,11 +2023,13 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                               </button>
                             </div>
                           </div>
-                        ) : (
+                        )}
+
+                        {!insertingProcess && (
                           <div className="mt-3 flex justify-end opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                             <button
                               type="button"
-                              onClick={() => startAddProcessBlock(product.id)}
+                              onClick={() => startAddProcessFlowItem(item.id)}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
                               style={{ background: '#1A1A12', border: '1px solid #C9A96E', color: '#C9A96E' }}
                             >
@@ -1921,6 +2040,38 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                       </div>
                     )
                   })}
+                  {processEditor && !processEditor.itemId && processEditor.insertAfterId === null && (
+                    <div className="space-y-2 rounded-lg p-3" style={{ background: '#111108', border: '1px solid #2A2418' }}>
+                      <textarea
+                        value={processEditor.text}
+                        onChange={e => setProcessEditor(editor => editor ? { ...editor, text: e.target.value } : editor)}
+                        rows={3}
+                        className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y"
+                        style={inputStyle()}
+                        placeholder={t('addProcessPlaceholder')}
+                        autoFocus
+                      />
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={saveProcessFlowItem}
+                          disabled={savingProcessBlock}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
+                          style={{ background: '#C9A96E', color: '#0A0805' }}
+                        >
+                          <Save size={13} /> {savingProcessBlock ? t('saving') : t('addToProcessDocument')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setProcessEditor(null)}
+                          className="px-3 py-1.5 rounded-lg text-xs"
+                          style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}
+                        >
+                          {t('cancel')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   {processFlowNote.trim() && (
                     <p className="whitespace-pre-wrap" style={{ color: 'var(--foreground)' }}>
                       全局备注：{processFlowNote.trim()}
