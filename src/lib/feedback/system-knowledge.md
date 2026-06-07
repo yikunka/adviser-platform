@@ -159,7 +159,7 @@ Memorial diamond jewellery service (lab-grown diamonds from cremation remains). 
 - **Technology**: diamond creation process (CVD growth explained)
 - **Memorial Diamonds**: product showcase
 - **Q&A**: FAQ
-- **Order** (`/order`): order placement form; Diamond Specs options are database-driven from SFS Diamond Specs admin, including image-backed Shape / Ring Design / Necklace Design options
+- **Order** (`/order`): public order placement form; Diamond Specs options are database-driven from SFS Diamond Specs admin, including image-backed Shape / Ring Design / Necklace Design options; anonymous submissions create an order and SFS customer record, while logged-in SFS clients also get the order linked to their account
 - **Order Success** (`/order/success`): confirmation page
 - **Dashboard** (authenticated): client's orders with milestone progress
 - **Dashboard Detail** (`/dashboard/[id]`): specific order status and phase timeline

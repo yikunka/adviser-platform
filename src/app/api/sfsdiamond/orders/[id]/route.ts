@@ -1,33 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
-import { z } from 'zod'
+import { sfsOrderInputSchema, validateSfsOrderSpecOptions } from '@/lib/sfs/order-input'
 
 const EDITABLE_STATUSES = ['PENDING', 'QUOTED', 'CANCELLED'] as const
-
-const diamondItemSchema = z.object({
-  carat:    z.enum(['0.5', '1.0', '1.5', '2.0', '2.5', '3.0']),
-  shape:    z.enum(['Round', 'Oval', 'Heart', 'Octagon', 'Cushion Square', 'Princess', 'Emerald']),
-  type:     z.enum(['Ring', 'Necklace', 'Diamond only']),
-  ringSize: z.string().optional(),
-  design:   z.string().optional(),
-  metal:    z.enum(['Platinum', 'Yellow Gold', 'Rose Gold', 'White Gold']).optional(),
-})
-
-const patchSchema = z.object({
-  memorialName:  z.string().min(1),
-  relationship:  z.string().min(1),
-  clientName:    z.string().min(1),
-  contactNumber: z.string().min(1),
-  email:         z.string().email(),
-  mailingAddress:z.string().min(1),
-  sourceType:    z.string().min(1),
-  sourceOther:   z.string().optional(),
-  remarks:       z.string().optional(),
-  mailingPackage:z.string().min(1),
-  color:         z.string().min(1),
-  diamonds:      z.array(diamondItemSchema).min(1).max(8),
-})
 
 export async function PATCH(
   req: NextRequest,
@@ -49,9 +25,13 @@ export async function PATCH(
   }
 
   const body = await req.json().catch(() => null)
-  const parsed = patchSchema.safeParse(body)
+  const parsed = sfsOrderInputSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
+  }
+  const specError = await validateSfsOrderSpecOptions(parsed.data)
+  if (specError) {
+    return NextResponse.json({ error: specError }, { status: 400 })
   }
 
   // Re-attach diamond codes using the original sampleCode
