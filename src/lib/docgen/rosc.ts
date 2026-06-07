@@ -4,6 +4,7 @@ import {
 } from 'docx'
 import type { IRunOptions } from 'docx'
 import { prisma } from '@/lib/db/prisma'
+import { appendBirthInfoLines, resolveKycBirthInfo } from '@/lib/docgen/kyc-birth-info'
 
 const thinBorder = { style: BorderStyle.SINGLE, size: 4, color: '000000' }
 const borders = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder }
@@ -70,7 +71,17 @@ export async function generateROSC(companyId: string): Promise<Buffer> {
   const company = await prisma.company.findUniqueOrThrow({
     where: { id: companyId },
     include: {
-      significantControllers: { orderBy: { entryDate: 'asc' } },
+      significantControllers: {
+        orderBy: { entryDate: 'asc' },
+        include: {
+          keyPerson: {
+            select: {
+              dateOfBirth: true,
+              placeOfBirth: true,
+            },
+          },
+        },
+      },
       designatedReps: { orderBy: { entryDate: 'asc' } },
     },
   })
@@ -93,11 +104,20 @@ export async function generateROSC(companyId: string): Promise<Buffer> {
     ],
   })
 
-  const ctrlRows = company.significantControllers.map(sc =>
-    new TableRow({
+  const ctrlRows = company.significantControllers.map(sc => {
+    const name = `${sc.nameEn}${sc.nameZh ? '\n' + sc.nameZh : ''}`
+    const nameWithBirthInfo = sc.isLegalEntity
+      ? name
+      : appendBirthInfoLines(
+        name,
+        resolveKycBirthInfo({ keyPerson: sc.keyPerson }),
+        d,
+      )
+
+    return new TableRow({
       children: [
         dCell(d(sc.entryDate), CW[0]),
-        dCell(`${sc.nameEn}${sc.nameZh ? '\n' + sc.nameZh : ''}`, CW[1]),
+        dCell(nameWithBirthInfo, CW[1]),
         dCell(sc.correspondenceAddress ?? '', CW[2]),
         dCell(idWithCountry(sc.idType, sc.idPassportNo, sc.issuingCountry, sc.legalEntityRegNo, sc.legalEntityGovLaw, sc.isLegalEntity), CW[3]),
         dCell(sc.natureOfControl ?? '', CW[4]),
@@ -105,7 +125,7 @@ export async function generateROSC(companyId: string): Promise<Buffer> {
         dCell(sc.remarks ?? '', CW[6]),
       ],
     })
-  )
+  })
 
   const ctrlBlank = new TableRow({ children: CW.map(w => dCell('', w)) })
 

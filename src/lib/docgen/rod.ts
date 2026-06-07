@@ -4,6 +4,7 @@ import {
 } from 'docx'
 import type { IRunOptions } from 'docx'
 import { prisma } from '@/lib/db/prisma'
+import { resolveKycBirthInfo } from '@/lib/docgen/kyc-birth-info'
 
 const thinBorder = { style: BorderStyle.SINGLE, size: 4, color: '000000' }
 const borders = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder }
@@ -55,7 +56,19 @@ function dCell(text: string, width: number) {
 export async function generateROD(companyId: string): Promise<Buffer> {
   const company = await prisma.company.findUniqueOrThrow({
     where: { id: companyId },
-    include: { directors: { orderBy: { dateOfAppointment: 'asc' } } },
+    include: {
+      directors: {
+        orderBy: { dateOfAppointment: 'asc' },
+        include: {
+          keyPerson: {
+            select: {
+              dateOfBirth: true,
+              placeOfBirth: true,
+            },
+          },
+        },
+      },
+    },
   })
 
   const today = new Date().toLocaleDateString('en-HK')
@@ -78,21 +91,27 @@ export async function generateROD(companyId: string): Promise<Buffer> {
     ],
   })
 
-  const dataRows = company.directors.map(dir =>
-    new TableRow({
+  const dataRows = company.directors.map(dir => {
+    const birthInfo = resolveKycBirthInfo({
+      keyPerson: dir.keyPerson,
+      fallback: dir,
+      naturalPerson: !dir.isCorporation,
+    })
+
+    return new TableRow({
       children: [
         dCell(`${dir.nameEn}${dir.nameZh ? '\n' + dir.nameZh : ''}`, W[0]),
         dCell(d(dir.dateOfAppointment), W[1]),
         dCell(d(dir.dateAsReserve), W[2]),
         dCell(d(dir.dateOfCessation), W[3]),
         dCell(dir.addressForService, W[4]),
-        dCell(d(dir.dateOfBirth), W[5]),
-        dCell(dir.placeOfBirth ?? '', W[6]),
+        dCell(d(birthInfo.dateOfBirth), W[5]),
+        dCell(birthInfo.placeOfBirth ?? '', W[6]),
         dCell(dir.nationality ?? '', W[7]),
         dCell(idStr(dir.idType, dir.idNumber, dir.corpRegNumber, dir.countryOfIssuance), W[8]),
       ],
     })
-  )
+  })
 
   // Add one blank continuation row like the reference template.
   const blankRow = new TableRow({

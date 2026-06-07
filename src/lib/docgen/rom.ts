@@ -3,6 +3,7 @@ import {
   AlignmentType, BorderStyle, WidthType, ShadingType, VerticalAlign, VerticalMergeType, PageBreak,
 } from 'docx'
 import { prisma } from '@/lib/db/prisma'
+import { resolveKycBirthInfo } from '@/lib/docgen/kyc-birth-info'
 
 const thinBorder = { style: BorderStyle.SINGLE, size: 4, color: '000000' }
 const borders = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder }
@@ -149,7 +150,15 @@ export async function generateROM(companyId: string): Promise<Buffer> {
     include: {
       members: {
         orderBy: { createdAt: 'asc' },
-        include: { shareTransactions: { orderBy: { transactionDate: 'asc' } } },
+        include: {
+          keyPerson: {
+            select: {
+              dateOfBirth: true,
+              placeOfBirth: true,
+            },
+          },
+          shareTransactions: { orderBy: { transactionDate: 'asc' } },
+        },
       },
     },
   })
@@ -163,6 +172,8 @@ export async function generateROM(companyId: string): Promise<Buffer> {
       children.push(new Paragraph({ children: [new PageBreak()] }))
     }
 
+    const birthInfo = resolveKycBirthInfo({ keyPerson: member.keyPerson })
+
     const infoRows = [
       new TableRow({ children: [
         lCell('Full Name', W[0]),
@@ -173,6 +184,18 @@ export async function generateROM(companyId: string): Promise<Buffer> {
       new TableRow({ children: [
         lCell('Registered address', W[0]),
         vCell(member.registeredAddress, W.slice(1, 8).reduce((a, b) => a + b, 0), 7),
+        lCell('', W[8], undefined, VerticalMergeType.CONTINUE),
+        vCell('', W.slice(9, 16).reduce((a, b) => a + b, 0), 7, VerticalMergeType.CONTINUE),
+      ] }),
+      new TableRow({ children: [
+        lCell('Date of Birth', W[0]),
+        vCell(d(birthInfo.dateOfBirth), W.slice(1, 8).reduce((a, b) => a + b, 0), 7),
+        lCell('', W[8], undefined, VerticalMergeType.CONTINUE),
+        vCell('', W.slice(9, 16).reduce((a, b) => a + b, 0), 7, VerticalMergeType.CONTINUE),
+      ] }),
+      new TableRow({ children: [
+        lCell('Place of Birth', W[0]),
+        vCell(birthInfo.placeOfBirth ?? '', W.slice(1, 8).reduce((a, b) => a + b, 0), 7),
         lCell('', W[8], undefined, VerticalMergeType.CONTINUE),
         vCell('', W.slice(9, 16).reduce((a, b) => a + b, 0), 7, VerticalMergeType.CONTINUE),
       ] }),

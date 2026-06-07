@@ -110,7 +110,7 @@ export async function renderInvoicePdf(invoice: InvoicePdfPayload): Promise<Uint
 
   page.drawText(safe(ISSUER.name), { x: ML, y, size: 10, font: bold, color: BLACK })
   y -= 14
-  drawText(ISSUER.address, ML, 9, reg, GREY)
+  drawText(ISSUER.address, ML, 9, reg, GREY, CW * 0.55)
   drawText(ISSUER.phone, ML, 9, reg, GREY)
 
   const rightX = W - MR
@@ -165,8 +165,9 @@ export async function renderInvoicePdf(invoice: InvoicePdfPayload): Promise<Uint
   for (const c of cols) {
     page.drawText(c.label, { x: c.x, y, size: 8, font: bold, color: GREY })
   }
-  y -= 14
-  page.drawLine({ start: { x: ML, y: y + 4 }, end: { x: W - MR, y: y + 4 }, thickness: 0.3, color: GREY })
+  y -= 10
+  page.drawLine({ start: { x: ML, y }, end: { x: W - MR, y }, thickness: 0.3, color: GREY })
+  y -= 12
 
   const sorted = [...invoice.lineItems].sort((a, b) => a.sortOrder - b.sortOrder)
   for (const line of sorted) {

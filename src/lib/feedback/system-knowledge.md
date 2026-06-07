@@ -36,6 +36,7 @@ Manages the full portfolio of client companies.
 - **Members** — Register of Members (ROM): shareholders with share class, share count, transfer history
 - **Significant Controllers** — ROSC entries
 - **Designated Representatives** — company representatives
+- Generated ROD / ROM / ROSC documents automatically use linked KYC records as the source for natural persons' date of birth and place of birth
 - **File Cases** — document groupings; upload / download documents (CI, BR, AA, NNC1, ROD, ROM, ROSC, AR, NAR1, AUDIT_TAX, DDR, RESOLUTION, MINUTES, KYC, OTHER)
 - **Address Changes** — registered address change tracking; NND1 filing status
 - **Shareholder Changes** — ownership change tracking with filing status
