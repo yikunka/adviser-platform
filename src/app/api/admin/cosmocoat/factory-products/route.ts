@@ -4,7 +4,6 @@ import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { getFactoryProductById, productInclude, serializeFactoryProduct, syncProductRecipes } from '@/lib/cosmocoat/factory-products'
-import { syncFactoryProductViscosityFromCurrentRecipe } from '@/lib/cosmocoat/factory-product-viscosity-sync'
 import { factoryViscosityFieldsSchema, toFactoryViscosityDbData } from '@/lib/cosmocoat/factory-product-viscosity'
 
 const productSchema = z.object({
