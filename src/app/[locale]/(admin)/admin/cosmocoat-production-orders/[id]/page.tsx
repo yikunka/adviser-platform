@@ -105,7 +105,6 @@ interface PrintViewProps {
   recipeName: string
   totalWeight: number
   productUnit: string
-  batchNo: string
   startedAt: string
   finishedAt: string
   status: string
@@ -115,7 +114,7 @@ interface PrintViewProps {
 
 function PrintView({
   code, productName, recipeCode, recipeName, totalWeight, productUnit,
-  batchNo, startedAt, finishedAt, status, items,
+  startedAt, finishedAt, status, items,
   processFields,
 }: PrintViewProps) {
   const {
@@ -138,9 +137,7 @@ function PrintView({
         <tbody>
           <tr>
             <td style={{ width: '15%', padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>生产单号</td>
-            <td style={{ width: '35%', padding: '3px 6px', border: '1px solid #ccc' }}>{code || '（草稿）'}</td>
-            <td style={{ width: '15%', padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>生产批次</td>
-            <td style={{ width: '35%', padding: '3px 6px', border: '1px solid #ccc' }}>{batchNo || '—'}</td>
+            <td colSpan={3} style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{code || '（草稿）'}</td>
           </tr>
           <tr>
             <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>产品名称</td>
@@ -728,7 +725,6 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
         recipeName={recipeName}
         totalWeight={totalWeight}
         productUnit={productUnit}
-        batchNo={batchNo}
         startedAt={startedAt}
         finishedAt={finishedAt}
         status={status}
@@ -803,26 +799,11 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
           </div>
           <div className="space-y-1.5 sm:col-span-2">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>配方名称</label>
-            <div className="flex flex-wrap items-center gap-2">
-              <input value={recipeName} readOnly className="flex-1 min-w-[12rem] rounded-lg px-3 py-2.5 text-sm outline-none opacity-70" style={inputStyle()} />
-              {linkedRecipeId && (
-                <Link
-                  href={`/admin/cosmocoat-recipes/${linkedRecipeId}`}
-                  className="text-xs px-2.5 py-1.5 rounded-md"
-                  style={{ border: '1px solid #2A2418', color: '#C9A96E' }}
-                >
-                  查看配方
-                </Link>
-              )}
-            </div>
+            <input value={recipeName} readOnly className="w-full rounded-lg px-3 py-2.5 text-sm outline-none opacity-70" style={inputStyle()} />
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>生产重量 ({productUnit})</label>
             <input type="number" min={0.001} step="0.001" value={totalWeight} onChange={e => setTotalWeight(Number(e.target.value) || 0)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>生产批次</label>
-            <input value={batchNo} onChange={e => setBatchNo(e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
           </div>
           <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>开始时间</label>

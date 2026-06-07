@@ -34,7 +34,6 @@ export default function NewInvoicePage() {
   const [billToEmail, setBillToEmail] = useState('')
   const [issueDate, setIssueDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [dueDate, setDueDate] = useState('')
-  const [taxRatePct, setTaxRatePct] = useState('0')
   const [notes, setNotes] = useState('')
   const [lines, setLines] = useState<LineRow[]>([emptyLine()])
   const [saving, setSaving] = useState(false)
@@ -46,7 +45,6 @@ export default function NewInvoicePage() {
       .catch(() => toast.error(t('loadFailed')))
   }, [t])
 
-  const taxRate = useMemo(() => Math.max(0, parseFloat(taxRatePct) || 0) / 100, [taxRatePct])
   const customerOptions = useMemo(
     () => customers.filter(customer => customer.type === customerType),
     [customerType, customers],
@@ -62,8 +60,8 @@ export default function NewInvoicePage() {
       }))
       .filter(l => l.quantity > 0)
     if (parsed.length === 0) return { subtotal: 0, taxAmount: 0, total: 0 }
-    return computeTotals(parsed, taxRate)
-  }, [lines, taxRate])
+    return computeTotals(parsed, 0)
+  }, [lines])
 
   function updateLine(i: number, patch: Partial<LineRow>) {
     setLines(prev => prev.map((row, idx) => (idx === i ? { ...row, ...patch } : row)))
@@ -107,7 +105,7 @@ export default function NewInvoicePage() {
           keyPersonId: customerType === 'INDIVIDUAL' ? customerId : null,
           issueDate,
           dueDate: dueDate || null,
-          taxRate,
+          taxRate: 0,
           billToName: billToName || undefined,
           billToAddress: billToAddress || null,
           billToEmail: billToEmail || null,
@@ -189,7 +187,7 @@ export default function NewInvoicePage() {
             <label className="text-sm font-medium block mb-1">{t('billToAddress')}</label>
             <Input value={billToAddress} onChange={e => setBillToAddress(e.target.value)} />
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="text-sm font-medium block mb-1">{t('issueDate')}</label>
               <Input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)} />
@@ -197,10 +195,6 @@ export default function NewInvoicePage() {
             <div>
               <label className="text-sm font-medium block mb-1">{t('dueDate')}</label>
               <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm font-medium block mb-1">{t('taxRate')}</label>
-              <Input type="number" min="0" step="0.1" value={taxRatePct} onChange={e => setTaxRatePct(e.target.value)} />
             </div>
           </div>
         </CardContent>

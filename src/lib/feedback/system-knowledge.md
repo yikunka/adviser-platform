@@ -87,7 +87,7 @@ Financial module can be enabled/disabled per company via the `financialEnabled` 
 Service invoicing for TCSP professional fees.
 - List with search, status filter
 - Invoice statuses: `DRAFT` → `SENT` → `PAID` / `CANCELLED`
-- Create invoices for either a linked client company or an approved personal KYC identity; billing fields are auto-filled from the selected customer and can be manually adjusted; multiple line items support description, quantity, unit price, tax
+- Create invoices for either a linked client company or an approved personal KYC identity; billing fields are auto-filled from the selected customer and can be manually adjusted; multiple line items support description, quantity, unit price; tax rate is not editable on the create form (defaults to 0%)
 - Edit DRAFT invoices; status changes
 - Generate and download PDF; the PDF uses global 6AM Advisory sender contact details in the header and Bank of China (Hong Kong) / FPS payment instructions in the footer
 - Link invoices to client companies or approved individual KYC records
@@ -267,7 +267,7 @@ Custom color formulations for specific customers or products.
 
 ### Production Orders (`/admin/cosmocoat-production-orders`)
 Manufacturing batch tracking.
-- Fields: order code, factory product, recipe, total weight, batch number
+- Fields: order code, factory product, recipe, total weight
 - New order page: factory product picker supports type-to-search with fuzzy matching (product code, name, current recipe); loads options on demand via lightweight API instead of bulk-fetching all products
 - Product list auto-excludes factory products without a current recipe; optional `?recipeId=` URL param further limits choices to products linked to that recipe
 - Recipes containing only nested sub-recipes or semifinished components (no raw-material lines) show an empty materials table instead of crashing
@@ -275,7 +275,6 @@ Manufacturing batch tracking.
 - Line items: raw materials, semifinished component recipes, and Sol. semifinished inventory components with required weight and actual weight used; selecting a product on new order or opening a draft order loads the full linked recipe material list and preserves saved actual weights when rows are synced; draft orders have **从配方重新加载** on both the materials table and 生产工艺 sections to refresh material lines and process/QC fields from the current recipe
 - Detail page **生产工艺** section: selecting a product on new order (or opening an existing order) auto-loads the linked recipe's production speed, production time, packaging requirements, and production notes; fields are editable on the order, with a **从配方重新加载** action on draft orders to reset from the current recipe
 - Detail page **QC** section: auto-loads recipe QC test checkboxes (黏度, 百格, 水煮80C/30M, 湿油外观, 干板外观 — viscosity checkbox shows recipe viscosity when set), optional custom test standard, and per-item result inputs (only for checked tests); all editable on the order
-- Recipe name row links to the linked recipe detail page
 - Print production order: A4 sheet with enlarged text, no page header/footer, a material table constrained to page margins, and material names omitted while keeping material codes, ratios, required weight, and actual weight
 - Print output includes structured 生产工艺 and QC sections from the order's saved process/QC fields
 - Output: creates semifinished product inventory entries on completion
@@ -288,7 +287,7 @@ Intermediate inventory from production.
 ### Process Kits (`/admin/cosmocoat-process-kits`)
 Product application method documentation (產品配套工藝書).
 - Fields: kit code, name, status, materials list, performance standards, usage notes
-- Performance standards are multi-select checkboxes: 百格(5B), water-boiling tests (80C30M/60M, 100C30M/60M/120M), RCA (30/50/100/150/200), hardness (B/HB/H/2H), chemical resistance (耐醇 99%/50, 耐醇 99%/100, 耐醇 99%/200, 耐 MEK/50, 耐 MEK/100), combined high temp/humidity & salt spray (高温高湿/盐雾)
+- Performance standards are multi-select checkboxes: 百格(5B), water-boiling tests (80C30M/60M, 100C30M/60M/120M), RCA (30/50/100/150/200), hardness (B/HB/H/2H), chemical resistance (耐醇 99%/50, 耐醇 99%/100, 耐醇 99%/200, 耐 MEK/50, 耐 MEK/100), high temp/humidity & salt spray (高温高湿/盐雾, 65°C/85%RH 24H, 65°C/85%RH 48H, 5% NaCl盐雾24H, 5% NaCl盐雾48H)
 - Kit statuses: `DRAFT` → `ACTIVE` → `ARCHIVED`
 - Process flow module is available on the new/detail process-kit page below performance tests; admins can add multiple reference factory products and optionally set each product's IR minutes, IR temperature, UV energy (MJ/CM²), film thickness, spray viscosity (`噴塗粘度 2#杯/25C`, 2# flow cup at 25C), and notes — all process-parameter fields are optional and a product row can be saved without filling them; IR/UV/process values are text inputs so ranges and units such as `80-100`, `90-105°C`, or `12-14S` can be recorded when provided
 - After adding products to the process flow list, each row has Edit and Delete actions; Edit allows updating IR minutes, IR temperature, UV energy, film thickness, and notes for that product (works on both new and saved process kits); process parameters remain optional on edit as well

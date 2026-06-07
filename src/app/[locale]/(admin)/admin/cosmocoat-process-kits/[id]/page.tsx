@@ -20,7 +20,11 @@ import {
   type ProcessFlowBlock,
   type ProcessFlowItem,
 } from '@/lib/cosmocoat/process-flow'
-import { CHEMICAL_RESISTANCE_OPTIONS, normalizePerformanceStandards } from '@/lib/cosmocoat/process-kit-standards'
+import {
+  CHEMICAL_RESISTANCE_OPTIONS,
+  HIGH_TEMP_HUMIDITY_SALT_SPRAY_OPTIONS,
+  normalizePerformanceStandards,
+} from '@/lib/cosmocoat/process-kit-standards'
 
 type FactoryProductOption = {
   id: string
@@ -143,9 +147,7 @@ const PERFORMANCE_STANDARD_GROUPS = [
   },
   {
     id: 'highTempHumiditySaltSpray',
-    options: [
-      { id: 'HIGH_TEMP_HUMIDITY_SALT_SPRAY', label: '高温高湿/盐雾' },
-    ],
+    options: [...HIGH_TEMP_HUMIDITY_SALT_SPRAY_OPTIONS],
   },
 ]
 
