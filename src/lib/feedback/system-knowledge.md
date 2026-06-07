@@ -242,6 +242,7 @@ Purchasing and sourcing registry.
 Product formulation management.
 - Fields: recipe code, name, category, batch quantity, unit cost, product viscosity (free-text range e.g. `9.7-9.8`, unit S or KU — in basic info above notes)
 - Line items: raw materials, factory finished products (from factory products module), component recipes (nested semifinished), or Sol semifinished inventory, with quantity, unit price, percentage
+- Material list on recipe detail: rows with type 成品 show an extra read-only column **工厂产品单价(实时)** sourced from `cos_factory_products.unit_price` (refreshes when factory-product line items change and when the page becomes visible again); the editable 单价 column remains the recipe line's saved cost
 - Material picker on new/edit recipe page: tabs for 原材料, 半成品, and 成品; finished-product tab loads live `unitPrice` from factory products via a dedicated recipe picker API (always fresh from DB, refreshes when switching to the 成品 tab or when the page becomes visible again), with category filter and search, same click-to-select and "添加选中" flow as raw materials
 - Unit cost is calculated by percentage: each line contributes `(quantity ÷ total quantity) × unit price`; accurate even when material quantities do not sum to 100
 - Automatic cost calculation; line prices can be refreshed from latest source pricing, and raw-material primary price or factory-product unit price changes automatically cascade through dependent production recipes, nested semifinished recipes, and source-linked semifinished inventory unit prices
