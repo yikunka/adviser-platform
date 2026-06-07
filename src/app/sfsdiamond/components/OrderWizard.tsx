@@ -315,11 +315,16 @@ function Step3({ data, update, specOptions }: {
         sub="Each memorial diamond is cultivated from the carbon extracted from your loved one's hair or ashes. We reject any artificial color modification to fully preserve the elemental composition of the raw material."
       />
       <Field label="Select Color" required>
-        <div className="flex flex-wrap gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {specOptions.colors.map(c => (
-            <CheckCard key={c.id} checked={data.color === c.value} onChange={() => update({ color: c.value })}>
-              {c.label}
-            </CheckCard>
+            <ImageCard
+              key={c.id}
+              label={c.label}
+              src={c.imageUrl}
+              selected={data.color === c.value}
+              onClick={() => update({ color: c.value })}
+              tall
+            />
           ))}
         </div>
       </Field>

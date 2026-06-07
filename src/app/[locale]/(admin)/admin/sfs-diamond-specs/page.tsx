@@ -39,7 +39,7 @@ type FormValues = {
 }
 
 const CATEGORIES: { value: Category; label: string; needsImage?: boolean }[] = [
-  { value: 'COLOR', label: 'Color' },
+  { value: 'COLOR', label: 'Color', needsImage: true },
   { value: 'CARAT', label: 'Carat' },
   { value: 'SHAPE', label: 'Shape', needsImage: true },
   { value: 'SETTING_TYPE', label: 'Setting Type' },
@@ -241,7 +241,7 @@ function SpecModal({
                   Upload image
                 </Button>
                 <span className="text-xs" style={{ color: showImageHint ? '#C9A96E' : 'var(--muted-foreground)' }}>
-                  Images are used for Shape, Ring Design, and Necklace Design.
+                  Images are used for Color, Shape, Ring Design, and Necklace Design.
                 </span>
               </div>
             </div>

@@ -161,7 +161,7 @@ Memorial diamond jewellery service (lab-grown diamonds from cremation remains). 
 - **Technology**: diamond creation process (CVD growth explained)
 - **Memorial Diamonds**: product showcase
 - **Q&A**: FAQ
-- **Order** (`/order`): public order placement form; Diamond Specs options are database-driven from SFS Diamond Specs admin, including image-backed Shape / Ring Design / Necklace Design options; anonymous submissions create an order and SFS customer record, while logged-in SFS clients also get the order linked to their account
+- **Order** (`/order`): public order placement form; Diamond Specs options are database-driven from SFS Diamond Specs admin, including image-backed Color / Shape / Ring Design / Necklace Design options (color step shows admin-uploaded preview thumbnails); anonymous submissions create an order and SFS customer record, while logged-in SFS clients also get the order linked to their account
 - **Order Success** (`/order/success`): confirmation page
 - **Dashboard** (authenticated): client's orders with milestone progress; each order includes an editable **Your Internal Order Code** field for the customer's own reference numbering (updatable at any time on My Orders and order detail)
 - **Dashboard Detail** (`/dashboard/[id]`): specific order status and phase timeline; internal order code field alongside order details
@@ -178,7 +178,7 @@ Customer registry for SFS Diamond.
 ### SFS Diamond Specs Admin (`/admin/sfs-diamond-specs`)
 Customer-facing order option management for SFS Diamond.
 - Maintains active/inactive options for Color, Carat, Shape, Setting Type, Ring Design, Necklace Design, and Metal
-- Shape, Ring Design, and Necklace Design options can store preview image URLs; admin can upload images to OSS/local storage or paste an existing URL
+- Color, Shape, Ring Design, and Necklace Design options can store preview image URLs; admin can upload images to OSS/local storage or paste an existing URL
 - Active options are shown on `/sfsdiamond/order`; submitted orders keep saved text values
 
 ### SFS Orders Admin (`/admin/sfs-orders`)
