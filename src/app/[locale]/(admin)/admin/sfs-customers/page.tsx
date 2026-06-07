@@ -1,12 +1,12 @@
 'use client'
 
-import { type FormEvent, useCallback, useEffect, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Link } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { ContactRound, Mail, MapPin, Pencil, Phone, Search, UserPlus, X } from 'lucide-react'
+import { ContactRound, Download, FileText, Mail, MapPin, Pencil, Phone, Search, Trash2, Upload, UserPlus, X } from 'lucide-react'
 
 type CustomerRow = {
   id: string
@@ -63,6 +63,212 @@ function formatDate(value: string | null) {
   return new Date(value).toLocaleDateString('en-HK', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function contractFileUrl(storageKey: string) {
+  return `/api/files?key=${encodeURIComponent(storageKey)}`
+}
+
+type CustomerContract = {
+  id: string
+  fileName: string
+  storageKey: string
+  mimeType: string
+  fileSize: number
+  notes: string | null
+  createdAt: string
+  uploadedBy: { nameEn: string | null; email: string }
+}
+
+function CustomerContractsSection({
+  customer,
+  onCustomerBound,
+}: {
+  customer: CustomerRow
+  onCustomerBound: (customerId: string) => void
+}) {
+  const [contracts, setContracts] = useState<CustomerContract[]>([])
+  const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [notes, setNotes] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
+  const resolvedCustomerId = customer.customerId
+
+  const fetchContracts = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/admin/sfs-customers/${encodeURIComponent(customer.id)}/contracts`)
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error ?? 'Failed to load contracts')
+      if (json.customerId && !resolvedCustomerId) onCustomerBound(json.customerId)
+      setContracts(json.contracts ?? [])
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to load contracts.')
+      setContracts([])
+    } finally {
+      setLoading(false)
+    }
+  }, [customer.id, onCustomerBound, resolvedCustomerId])
+
+  useEffect(() => {
+    fetchContracts()
+  }, [fetchContracts])
+
+  async function handleUpload(fileList: FileList | null) {
+    const file = fileList?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      if (notes.trim()) fd.append('notes', notes.trim())
+      const res = await fetch(`/api/admin/sfs-customers/${encodeURIComponent(customer.id)}/contracts`, {
+        method: 'POST',
+        body: fd,
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error ?? 'Upload failed')
+      if (json.contract?.customerId) onCustomerBound(json.contract.customerId)
+      toast.success('Contract uploaded.')
+      setNotes('')
+      if (fileRef.current) fileRef.current.value = ''
+      await fetchContracts()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Upload failed.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function handleDelete(contractId: string) {
+    if (!window.confirm('Delete this contract file?')) return
+    setDeletingId(contractId)
+    try {
+      const res = await fetch(
+        `/api/admin/sfs-customers/${encodeURIComponent(customer.id)}/contracts/${encodeURIComponent(contractId)}`,
+        { method: 'DELETE' },
+      )
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error ?? 'Delete failed')
+      toast.success('Contract deleted.')
+      setContracts(prev => prev.filter(item => item.id !== contractId))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Delete failed.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  return (
+    <div className="space-y-3 rounded-md p-4" style={{ background: '#0A0A0A', border: '1px solid #2A2418' }}>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Cooperation contracts</h3>
+          <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
+            Upload, view, and download partnership agreements with this customer.
+          </p>
+        </div>
+        <FileText size={16} style={{ color: '#C9A96E' }} />
+      </div>
+
+      {!resolvedCustomerId && (
+        <p className="text-xs rounded-md px-3 py-2" style={{ background: 'rgba(201,169,110,0.08)', color: '#C9A96E' }}>
+          Save the customer profile first to enable contract uploads.
+        </p>
+      )}
+
+      <div className="space-y-2">
+        <label className="space-y-1.5 block">
+          <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Notes optional</span>
+          <Input value={notes} onChange={e => setNotes(e.target.value)} maxLength={500} placeholder="Contract version, effective date, etc." />
+        </label>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={e => handleUpload(e.target.files)}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={uploading || !resolvedCustomerId}
+            onClick={() => fileRef.current?.click()}
+          >
+            <Upload size={13} />
+            {uploading ? 'Uploading...' : 'Upload contract'}
+          </Button>
+        </div>
+      </div>
+
+      {loading ? (
+        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Loading contracts...</p>
+      ) : contracts.length === 0 ? (
+        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>No contract files yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {contracts.map(contract => (
+            <div
+              key={contract.id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-md px-3 py-2"
+              style={{ border: '1px solid #2A2418' }}
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium truncate" style={{ color: 'var(--foreground)' }}>{contract.fileName}</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+                  {formatFileSize(contract.fileSize)} · {formatDate(contract.createdAt)}
+                  {contract.uploadedBy?.nameEn || contract.uploadedBy?.email
+                    ? ` · ${contract.uploadedBy.nameEn ?? contract.uploadedBy.email}`
+                    : ''}
+                </p>
+                {contract.notes && (
+                  <p className="text-xs mt-1 whitespace-pre-wrap" style={{ color: 'var(--muted-foreground)' }}>{contract.notes}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={contractFileUrl(contract.storageKey)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex"
+                >
+                  <Button type="button" variant="outline" size="sm">
+                    <FileText size={13} />
+                    View
+                  </Button>
+                </a>
+                <a href={contractFileUrl(contract.storageKey)} download={contract.fileName} className="inline-flex">
+                  <Button type="button" variant="outline" size="sm">
+                    <Download size={13} />
+                    Download
+                  </Button>
+                </a>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={deletingId === contract.id}
+                  onClick={() => handleDelete(contract.id)}
+                >
+                  <Trash2 size={13} />
+                  {deletingId === contract.id ? 'Deleting...' : 'Delete'}
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function CustomerModal({
   customer,
   onClose,
@@ -81,6 +287,11 @@ function CustomerModal({
     notes: customer?.notes ?? '',
   })
   const [saving, setSaving] = useState(false)
+  const [boundCustomerId, setBoundCustomerId] = useState<string | null>(customer?.customerId ?? null)
+
+  const displayCustomer: CustomerRow | undefined = customer
+    ? { ...customer, customerId: boundCustomerId ?? customer.customerId }
+    : undefined
 
   function updateField<K extends keyof CustomerFormValues>(key: K, value: CustomerFormValues[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -100,6 +311,7 @@ function CustomerModal({
       )
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json.error ?? (isEdit ? 'Failed to update customer' : 'Failed to create customer'))
+      if (json.customer?.id) setBoundCustomerId(json.customer.id)
       toast.success(isEdit ? 'Customer updated.' : 'Customer created.')
       onSaved()
       onClose()
@@ -179,6 +391,13 @@ function CustomerModal({
               style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: 'var(--foreground)' }}
             />
           </label>
+
+          {isEdit && displayCustomer && (
+            <CustomerContractsSection
+              customer={displayCustomer}
+              onCustomerBound={setBoundCustomerId}
+            />
+          )}
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>

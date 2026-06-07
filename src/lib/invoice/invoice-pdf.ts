@@ -9,8 +9,16 @@ export type InvoicePdfPayload = Invoice & {
 
 const ISSUER = {
   name: '6AM Advisory Limited',
-  address: 'Hong Kong',
-  email: 'info@6amadvisory.com',
+  address: 'RM7 20F BOSS COMMERCIAL CENTRE 28 FERRY STREET YAU MA TEI KOWLOON HONG KONG',
+  phone: '+852 65600073',
+}
+
+const PAYMENT_INFO = {
+  bank: 'Bank of China (Hong Kong) Limited',
+  swift: 'SWIFT: BKCHHKHH',
+  accountNumber: 'Account No.: 01239420444288',
+  accountName: 'Account Name: 6AM ADVISORY LIMITED',
+  fps: 'FPS#126001833',
 }
 
 function safe(s: string | null | undefined): string {
@@ -45,6 +53,7 @@ export async function renderInvoicePdf(invoice: InvoicePdfPayload): Promise<Uint
   const ML = 50
   const MR = 50
   const CW = W - ML - MR
+  const CONTENT_BOTTOM_Y = 146
 
   const GOLD = rgb(0.788, 0.663, 0.431)
   const BLACK = rgb(0.1, 0.1, 0.1)
@@ -52,6 +61,15 @@ export async function renderInvoicePdf(invoice: InvoicePdfPayload): Promise<Uint
 
   let page = doc.addPage([W, H])
   let y = H - 48
+
+  function addPage() {
+    page = doc.addPage([W, H])
+    y = H - 48
+  }
+
+  function ensureSpace(lineHeight = 14) {
+    if (y - lineHeight < CONTENT_BOTTOM_Y) addPage()
+  }
 
   function drawText(
     text: string,
@@ -67,6 +85,7 @@ export async function renderInvoicePdf(invoice: InvoicePdfPayload): Promise<Uint
       for (const word of t.split(' ')) {
         const test = line ? `${line} ${word}` : word
         if (font.widthOfTextAtSize(test, size) > maxWidth && line) {
+          ensureSpace(size + 4)
           page.drawText(line, { x, y, size, font, color })
           y -= size + 4
           line = word
@@ -75,10 +94,12 @@ export async function renderInvoicePdf(invoice: InvoicePdfPayload): Promise<Uint
         }
       }
       if (line) {
+        ensureSpace(size + 4)
         page.drawText(line, { x, y, size, font, color })
         y -= size + 4
       }
     } else {
+      ensureSpace(size + 6)
       page.drawText(t, { x, y, size, font, color })
       y -= size + 6
     }
@@ -90,7 +111,7 @@ export async function renderInvoicePdf(invoice: InvoicePdfPayload): Promise<Uint
   page.drawText(safe(ISSUER.name), { x: ML, y, size: 10, font: bold, color: BLACK })
   y -= 14
   drawText(ISSUER.address, ML, 9, reg, GREY)
-  drawText(ISSUER.email, ML, 9, reg, GREY)
+  drawText(ISSUER.phone, ML, 9, reg, GREY)
 
   const rightX = W - MR
   const metaLines = [
@@ -149,10 +170,7 @@ export async function renderInvoicePdf(invoice: InvoicePdfPayload): Promise<Uint
 
   const sorted = [...invoice.lineItems].sort((a, b) => a.sortOrder - b.sortOrder)
   for (const line of sorted) {
-    if (y < 120) {
-      page = doc.addPage([W, H])
-      y = H - 48
-    }
+    ensureSpace(18)
     const qty = Number(line.quantity.toString())
     const unit = Number(line.unitPrice.toString())
     const amt = Number(line.amount.toString())
@@ -163,6 +181,7 @@ export async function renderInvoicePdf(invoice: InvoicePdfPayload): Promise<Uint
     y -= 16
   }
 
+  ensureSpace(84)
   y -= 8
   page.drawLine({ start: { x: ML + CW * 0.5, y }, end: { x: W - MR, y }, thickness: 0.5, color: GOLD })
   y -= 18
@@ -192,6 +211,7 @@ export async function renderInvoicePdf(invoice: InvoicePdfPayload): Promise<Uint
   }
 
   if (invoice.notes?.trim()) {
+    ensureSpace(46)
     y -= 10
     page.drawText('Notes', { x: ML, y, size: 9, font: bold, color: GREY })
     y -= 14
@@ -200,8 +220,34 @@ export async function renderInvoicePdf(invoice: InvoicePdfPayload): Promise<Uint
 
   const pages = doc.getPages()
   const last = pages[pages.length - 1]
-  last.drawText('Thank you for your business.', {
+  const paymentLines = [
+    PAYMENT_INFO.bank,
+    PAYMENT_INFO.swift,
+    PAYMENT_INFO.accountNumber,
+    PAYMENT_INFO.accountName,
+    PAYMENT_INFO.fps,
+  ]
+  last.drawLine({ start: { x: ML, y: 126 }, end: { x: W - MR, y: 126 }, thickness: 0.5, color: GOLD })
+  last.drawText('Payment information', {
     x: ML,
+    y: 108,
+    size: 9,
+    font: bold,
+    color: GOLD,
+  })
+  let paymentY = 94
+  for (const line of paymentLines) {
+    last.drawText(safe(line), {
+      x: ML,
+      y: paymentY,
+      size: 8,
+      font: reg,
+      color: GREY,
+    })
+    paymentY -= 12
+  }
+  last.drawText('Thank you for your business.', {
+    x: W - MR - reg.widthOfTextAtSize('Thank you for your business.', 8),
     y: 36,
     size: 8,
     font: reg,

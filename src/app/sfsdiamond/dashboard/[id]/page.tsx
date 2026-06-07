@@ -9,6 +9,7 @@ import {
   sfsStepRequiresDiamondImages,
   splitSfsStepNotes,
 } from '@/lib/sfs/order-step-display'
+import { SFS_PREDEFINED_STEPS, SFS_PHASE_LABELS, SFS_PHASE_ORDER } from '@/lib/sfs/order-predefined-steps'
 
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   PENDING:   { bg: 'rgba(201,169,110,0.12)', color: '#C9A96E'  },
@@ -17,44 +18,6 @@ const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   COMPLETED: { bg: 'rgba(120,113,108,0.15)', color: '#7A7060'  },
   CANCELLED: { bg: 'rgba(239,68,68,0.12)',   color: '#ef4444'  },
 }
-
-const PHASE_LABELS: Record<string, string> = {
-  CHEM_TRANSFORM: 'Chemical Transformation',
-  CVD:            'CVD Growth',
-  CRAFTING:       'Crafting & Jewelry Setting',
-}
-
-// ─── Predefined steps from NL00001 production workflow ────────────────────────
-const PREDEFINED_STEPS: Record<string, string[]> = {
-  CHEM_TRANSFORM: [
-    'Check Sample & Labeling',
-    'Observe Sample Status & Check Weigh',
-    'Rinse & Clean',
-    'Drying with Oven',
-    'Transform to dust',
-    'Grinding',
-    'Check Status',
-    'Chemical Transformation from dust to gas bag',
-    'Double Check Label of gas dust bag & gas bottle',
-    'Transfer sample from gas bag to gas bottle',
-  ],
-  CVD: [
-    'Gas bottle to connect with CVD machine',
-    '1st Check Status (Day 0)',
-    '2nd Check Status (Day 7)',
-    '3rd Check Status (Day 14)',
-    '4th Check Status (Day 21)',
-    'Labeling',
-  ],
-  CRAFTING: [
-    'Crafting Start',
-    'Crafting End',
-    'Certification',
-    'Packaging',
-  ],
-}
-
-const PHASE_ORDER = ['CHEM_TRANSFORM', 'CVD', 'CRAFTING']
 
 function fileUrl(key: string) {
   return `/api/files?key=${encodeURIComponent(key)}`
@@ -137,11 +100,11 @@ export default async function SFSOrderDetailPage({
   const diamonds = order.diamonds as { code?: string; carat?: string; shape?: string; type?: string; design?: string; metal?: string; ringSize?: string }[]
 
   // Use predefined step labels for consistent display across customer and admin
-  const getStepsForPhase = (phase: string) => PREDEFINED_STEPS[phase] || []
+  const getStepsForPhase = (phase: string) => SFS_PREDEFINED_STEPS[phase] || []
 
-  const phaseGroups = PHASE_ORDER.map(phase => ({
+  const phaseGroups = SFS_PHASE_ORDER.map(phase => ({
     phase,
-    label: PHASE_LABELS[phase],
+    label: SFS_PHASE_LABELS[phase],
     total: getStepsForPhase(phase).length,
     steps: order.steps.filter(s => s.phase === phase),
   }))

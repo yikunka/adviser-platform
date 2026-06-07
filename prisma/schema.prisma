@@ -276,7 +276,8 @@ model User {
   updatedProcessKits CosProcessKit[]  @relation("ProcessKitUpdater")
   testedProcessKits  CosProcessTest[] @relation("ProcessTestTester")
   createdSampleOrders CosSampleOrder[] @relation("SampleOrderCreator")
-  featureRequests    FeatureRequest[] @relation("FeatureRequestSubmitter")
+  featureRequests           FeatureRequest[]      @relation("FeatureRequestSubmitter")
+  sfsCustomerContractsUploaded SfsCustomerContract[] @relation("SfsCustomerContractUploader")
 
   @@map("users")
 }
@@ -1162,10 +1163,29 @@ model SfsCustomer {
   user      User? @relation("SfsCustomerUser", fields: [userId], references: [id], onDelete: SetNull)
   createdBy User? @relation("SfsCustomerCreator", fields: [createdById], references: [id], onDelete: SetNull)
   orders    SfsOrder[]
+  contracts SfsCustomerContract[]
 
   @@index([email])
   @@index([createdAt])
   @@map("sfs_customers")
+}
+
+model SfsCustomerContract {
+  id           String   @id @default(cuid())
+  customerId   String
+  fileName     String
+  storageKey   String
+  mimeType     String
+  fileSize     Int
+  notes        String?
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  customer   SfsCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  uploadedBy User        @relation("SfsCustomerContractUploader", fields: [uploadedById], references: [id])
+
+  @@index([customerId])
+  @@map("sfs_customer_contracts")
 }
 
 model SfsOrderStep {

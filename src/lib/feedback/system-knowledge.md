@@ -88,7 +88,7 @@ Service invoicing for TCSP professional fees.
 - Invoice statuses: `DRAFT` → `SENT` → `PAID` / `CANCELLED`
 - Create invoices for either a linked client company or an approved personal KYC identity; billing fields are auto-filled from the selected customer and can be manually adjusted; multiple line items support description, quantity, unit price, tax
 - Edit DRAFT invoices; status changes
-- Generate and download PDF
+- Generate and download PDF; the PDF uses global 6AM Advisory sender contact details in the header and Bank of China (Hong Kong) / FPS payment instructions in the footer
 - Link invoices to client companies or approved individual KYC records
 
 ### 7. Team Management (`/admin/team`)
@@ -170,6 +170,7 @@ Customer registry for SFS Diamond.
 - Shows customer name, email, phone, mailing address, source type, order count, and latest order link/status
 - Create manual SFS customer records without creating or binding an official platform login account/email
 - Edit SFS customer profile fields (name, email, phone, mailing address, notes); order-only contacts are converted to bound customer profiles when edited
+- Each bound customer profile includes a cooperation-contract attachments module on the edit dialog: upload, view, download, and delete partnership agreement files (PDF, Word, JPG, PNG, WEBP; max 10 MB)
 
 ### SFS Diamond Specs Admin (`/admin/sfs-diamond-specs`)
 Customer-facing order option management for SFS Diamond.
@@ -191,7 +192,7 @@ Order lifecycle management for memorial diamond commissions.
   7. Packaging
   8. Delivery
 - Edit order details, update milestone dates, add admin notes
-- Order steps: create / update / complete sub-tasks within phases
+- Order steps: create / update / complete sub-tasks within phases; Chemical Transformation phase begins with **Package Received**, then Check Sample & Labeling and the remaining NL00001 workflow steps
 
 ### SFS Invoices Admin (`/admin/sfs-invoices`)
 - Invoices linked to SFS orders

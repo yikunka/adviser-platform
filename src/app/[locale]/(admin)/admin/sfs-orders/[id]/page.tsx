@@ -7,43 +7,12 @@ import Link from 'next/link'
 import DiamondCards from '@/app/sfsdiamond/components/DiamondCards'
 import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
 import { sfsDiamondLabel, sfsStepFileDiamondLabel, sfsStepRequiresDiamondImages } from '@/lib/sfs/order-step-display'
-
-// ─── Predefined steps from NL00001 production workflow ────────────────────────
-
-const PREDEFINED_STEPS: Record<string, string[]> = {
-  CHEM_TRANSFORM: [
-    'Check Sample & Labeling',
-    'Observe Sample Status & Check Weigh',
-    'Rinse & Clean',
-    'Drying with Oven',
-    'Transform to dust',
-    'Grinding',
-    'Check Status',
-    'Chemical Transformation from dust to gas bag',
-    'Double Check Label of gas dust bag & gas bottle',
-    'Transfer sample from gas bag to gas bottle',
-  ],
-  CVD: [
-    'Gas bottle to connect with CVD machine',
-    '1st Check Status (Day 0)',
-    '2nd Check Status (Day 7)',
-    '3rd Check Status (Day 14)',
-    '4th Check Status (Day 21)',
-    'Labeling',
-  ],
-  CRAFTING: [
-    'Crafting Start',
-    'Crafting End',
-    'Certification',
-    'Packaging',
-  ],
-}
-
-const PHASE_LABELS: Record<string, string> = {
-  CHEM_TRANSFORM: 'Chemical Transformation',
-  CVD:            'CVD Growth',
-  CRAFTING:       'Crafting & Jewelry Setting',
-}
+import {
+  SFS_PREDEFINED_STEPS,
+  SFS_PHASE_LABELS,
+  sfsChemTransformWeightStepIndex,
+  sfsCvdSinglePhotoStepIndex,
+} from '@/lib/sfs/order-predefined-steps'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -131,7 +100,7 @@ function requiresDiamondImages(phase: string, stepIndex: number) {
 }
 
 function requiresSinglePhoto(phase: string, stepIndex: number) {
-  return phase === 'CVD' && stepIndex === 4
+  return phase === 'CVD' && stepIndex === sfsCvdSinglePhotoStepIndex()
 }
 
 type PendingUploadFile = {
@@ -170,7 +139,7 @@ function StepRow({
   const fileRef = useRef<HTMLInputElement>(null)
 
   const isDone = !!doneStep
-  const isWeightStep = phase === 'CHEM_TRANSFORM' && stepIndex === 1
+  const isWeightStep = phase === 'CHEM_TRANSFORM' && stepIndex === sfsChemTransformWeightStepIndex()
   const isDiamondImageStep = requiresDiamondImages(phase, stepIndex)
   const isSinglePhotoStep = requiresSinglePhoto(phase, stepIndex)
 
@@ -520,7 +489,7 @@ function PhasePanel({
   diamonds: DiamondItem[]
   onRefresh: () => void
 }) {
-  const descriptions = PREDEFINED_STEPS[phase]
+  const descriptions = SFS_PREDEFINED_STEPS[phase]
   const doneMap = new Map(steps.map(s => [s.stepNumber, s]))
   const doneCount = steps.length
   const total = descriptions.length
@@ -532,7 +501,7 @@ function PhasePanel({
         style={{ background: 'rgba(201,169,110,0.04)', borderBottom: '1px solid var(--border)' }}
       >
         <h3 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>
-          {PHASE_LABELS[phase]}
+          {SFS_PHASE_LABELS[phase]}
         </h3>
         <div className="flex items-center gap-3">
           {/* Progress bar */}

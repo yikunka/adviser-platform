@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
+import { SFS_TOTAL_PREDEFINED_STEPS } from '@/lib/sfs/order-predefined-steps'
+
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   PENDING:   { bg: 'rgba(201,169,110,0.12)', color: '#C9A96E'  },
   QUOTED:    { bg: 'rgba(59,130,246,0.12)',  color: '#3b82f6'  },
@@ -9,37 +11,7 @@ const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   CANCELLED: { bg: 'rgba(239,68,68,0.12)',   color: '#ef4444'  },
 }
 
-// ─── Predefined steps from NL00001 production workflow ────────────────────────
-const PREDEFINED_STEPS: Record<string, string[]> = {
-  CHEM_TRANSFORM: [
-    'Check Sample & Labeling',
-    'Observe Sample Status & Check Weigh',
-    'Rinse & Clean',
-    'Drying with Oven',
-    'Transform to dust',
-    'Grinding',
-    'Check Status',
-    'Chemical Transformation from dust to gas bag',
-    'Double Check Label of gas dust bag & gas bottle',
-    'Transfer sample from gas bag to gas bottle',
-  ],
-  CVD: [
-    'Gas bottle to connect with CVD machine',
-    '1st Check Status (Day 0)',
-    '2nd Check Status (Day 7)',
-    '3rd Check Status (Day 14)',
-    '4th Check Status (Day 21)',
-    'Labeling',
-  ],
-  CRAFTING: [
-    'Crafting Start',
-    'Crafting End',
-    'Certification',
-    'Packaging',
-  ],
-}
-
-const TOTAL_STEPS = Object.values(PREDEFINED_STEPS).reduce((sum, steps) => sum + steps.length, 0)
+const TOTAL_STEPS = SFS_TOTAL_PREDEFINED_STEPS
 
 export default async function SFSDashboardPage() {
   const session = await auth()
