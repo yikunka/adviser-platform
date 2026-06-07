@@ -2,6 +2,8 @@ import { prisma } from '@/lib/db/prisma'
 
 type SfsInvoiceNumberClient = Pick<typeof prisma, '$executeRaw' | '$queryRaw'>
 
+const MAX_SEQUENCE_SCAN = 1000
+
 /** Next sequential SFS invoice number: YY + 6-digit sequence, e.g. 26000001 */
 export async function nextSfsInvoiceNumber(
   issueDate: Date,
@@ -20,6 +22,19 @@ export async function nextSfsInvoiceNumber(
     FROM sfs_invoices
     WHERE "invoiceNumber" ~ ${pattern}
   `
-  const next = (rows[0]?.max_no ?? 0) + 1
-  return `${yy}${String(next).padStart(6, '0')}`
+  let next = (rows[0]?.max_no ?? 0) + 1
+
+  for (let attempt = 0; attempt < MAX_SEQUENCE_SCAN; attempt += 1) {
+    const invoiceNumber = `${yy}${String(next).padStart(6, '0')}`
+    const existing = await db.$queryRaw<Array<{ exists: number }>>`
+      SELECT 1 AS exists
+      FROM sfs_invoices
+      WHERE "invoiceNumber" = ${invoiceNumber}
+      LIMIT 1
+    `
+    if (existing.length === 0) return invoiceNumber
+    next += 1
+  }
+
+  throw new Error(`Unable to allocate SFS invoice number for ${yy}`)
 }

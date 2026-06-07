@@ -92,7 +92,7 @@ export default function SFSHeader() {
                 Login
               </Link>
               <a
-                href="mailto:sfsdiamonds@gmail.com"
+                href="mailto:kenny@sfsdiamonds.com"
                 className="text-sm font-semibold px-5 py-1.5 rounded-full transition-opacity duration-150 hover:opacity-90"
                 style={{ background: '#C9A96E', color: '#0A0805' }}
               >
@@ -159,7 +159,7 @@ export default function SFSHeader() {
                   Login
                 </Link>
                 <a
-                  href="mailto:sfsdiamonds@gmail.com"
+                  href="mailto:kenny@sfsdiamonds.com"
                   className="text-sm font-semibold px-4 py-2 rounded-full text-center"
                   style={{ background: '#C9A96E', color: '#0A0805' }}
                 >

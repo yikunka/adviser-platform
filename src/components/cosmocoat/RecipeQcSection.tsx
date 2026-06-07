@@ -1,12 +1,13 @@
 'use client'
 
+import type { CSSProperties } from 'react'
 import {
   RECIPE_QC_TEST_ITEMS,
   type RecipeQcTestItemId,
   type QcTestItemResults,
 } from '@/lib/cosmocoat/recipe-qc-tests'
 
-type InputStyle = React.CSSProperties
+type InputStyle = CSSProperties
 
 type RecipeQcSectionProps = {
   qcTestItems: RecipeQcTestItemId[]

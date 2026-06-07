@@ -282,7 +282,7 @@ export default function SFSHomePage() {
               Call (852) 6560 0073
             </a>
             <a
-              href="mailto:sfsdiamonds@gmail.com"
+              href="mailto:kenny@sfsdiamonds.com"
               className="px-8 py-3.5 rounded-full font-medium text-sm border transition-all hover:bg-black/5"
               style={{ border: '1px solid #C9A96E', color: '#1A1A1A' }}
             >

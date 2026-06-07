@@ -69,8 +69,8 @@ export default function SFSFooter() {
           <a href="tel:+85265600073" className="text-sm hover:opacity-80" style={{ color: '#A89880' }}>
             (852) 6560 0073
           </a>
-          <a href="mailto:sfsdiamonds@gmail.com" className="text-sm hover:opacity-80" style={{ color: '#A89880' }}>
-            sfsdiamonds@gmail.com
+          <a href="mailto:kenny@sfsdiamonds.com" className="text-sm hover:opacity-80" style={{ color: '#A89880' }}>
+            kenny@sfsdiamonds.com
           </a>
         </div>
       </div>

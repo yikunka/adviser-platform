@@ -141,8 +141,8 @@ export default function AboutPage() {
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wider mb-1.5" style={{ color: '#C9A96E' }}>Email</p>
-                <a href="mailto:sfsdiamonds@gmail.com" className="text-sm hover:opacity-70 transition-opacity" style={{ color: '#1A1A1A' }}>
-                  sfsdiamonds@gmail.com
+                <a href="mailto:kenny@sfsdiamonds.com" className="text-sm hover:opacity-70 transition-opacity" style={{ color: '#1A1A1A' }}>
+                  kenny@sfsdiamonds.com
                 </a>
               </div>
               <div>

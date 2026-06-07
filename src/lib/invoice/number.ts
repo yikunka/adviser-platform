@@ -2,6 +2,8 @@ import { prisma } from '@/lib/db/prisma'
 
 type InvoiceNumberClient = Pick<typeof prisma, '$executeRaw' | '$queryRaw'>
 
+const MAX_SEQUENCE_SCAN = 1000
+
 /** Next sequential invoice number: INV-YYYY-NNNNN */
 export async function nextInvoiceNumber(
   issueDate: Date,
@@ -20,6 +22,19 @@ export async function nextInvoiceNumber(
     FROM invoices
     WHERE "invoiceNumber" ~ ${`^INV-${year}-[0-9]{5}$`}
   `
-  const next = (rows[0]?.max_no ?? 0) + 1
-  return `${prefix}${String(next).padStart(5, '0')}`
+  let next = (rows[0]?.max_no ?? 0) + 1
+
+  for (let attempt = 0; attempt < MAX_SEQUENCE_SCAN; attempt += 1) {
+    const invoiceNumber = `${prefix}${String(next).padStart(5, '0')}`
+    const existing = await db.$queryRaw<Array<{ exists: number }>>`
+      SELECT 1 AS exists
+      FROM invoices
+      WHERE "invoiceNumber" = ${invoiceNumber}
+      LIMIT 1
+    `
+    if (existing.length === 0) return invoiceNumber
+    next += 1
+  }
+
+  throw new Error(`Unable to allocate invoice number for ${year}`)
 }

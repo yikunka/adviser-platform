@@ -472,41 +472,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       setFinishedAt(toDatetimeLocal(order.finishedAt))
       applyProcessFields(hydrateProductionOrderProcessFields(order, order.recipe))
       setStatus(order.status === 'completed' ? 'completed' : 'draft')
-      const loadedItems = order.items.map((item: {
-        id: string
-        itemType?: 'raw_material' | 'component_recipe' | 'product_semifinished'
-        sortOrder: number
-        productionCode: string
-        materialName: string
-        percentage: number
-        requiredWeight: number
-        actualWeight: number | null
-        notes: string
-        rawMaterial: { id: string } | null
-        componentRecipe: { id: string } | null
-        productSemifinished: { id: string } | null
-      }) => ({
-        key: item.id,
-        id: item.id,
-        itemType: item.itemType ?? (
-          item.componentRecipe
-            ? 'component_recipe'
-            : item.productSemifinished
-              ? 'product_semifinished'
-              : 'raw_material'
-        ),
-        rawMaterialId: item.rawMaterial?.id,
-        componentRecipeId: item.componentRecipe?.id,
-        productSemifinishedId: item.productSemifinished?.id,
-        sortOrder: item.sortOrder,
-        productionCode: item.productionCode,
-        materialName: item.materialName,
-        percentage: item.percentage,
-        requiredWeight: item.requiredWeight,
-        actualWeight: item.actualWeight,
-        notes: item.notes,
-      }))
-      setItems(loadedItems)
+      setItems(mapOrderItemsToEditable(order.items))
       if (order.status !== 'completed') {
         void loadRecipeItems(order.recipe.id)
       }
