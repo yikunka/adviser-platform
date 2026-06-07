@@ -40,11 +40,18 @@ export async function POST(req: NextRequest) {
   const { clientName, contactNumber, email, mailingAddress } = parsed.data
 
   const order = await prisma.$transaction(async tx => {
-    const customer = linkedUserId
+    const linkedUser = linkedUserId
+      ? await tx.user.findUnique({
+          where: { id: linkedUserId },
+          select: { id: true },
+        })
+      : null
+
+    const customer = linkedUser
       ? await tx.sfsCustomer.upsert({
-          where: { userId: linkedUserId },
+          where: { userId: linkedUser.id },
           create: {
-            userId: linkedUserId,
+            userId: linkedUser.id,
             name: clientName,
             email,
             phone: contactNumber,
@@ -72,15 +79,15 @@ export async function POST(req: NextRequest) {
         date: new Date().toISOString().slice(0, 10),
         sampleCode,
         diamonds,
-        userId: linkedUserId,
+        userId: linkedUser?.id ?? null,
         customerId: customer.id,
       },
     })
 
     // Save phone + address back to the user for future pre-fill
-    if (linkedUserId) {
+    if (linkedUser) {
       await tx.user.update({
-        where: { id: linkedUserId },
+        where: { id: linkedUser.id },
         data: { phone: contactNumber, mailingAddress },
       })
     }

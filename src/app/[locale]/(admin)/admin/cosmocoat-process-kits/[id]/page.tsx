@@ -710,7 +710,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     )
   }
 
-  function parseRequiredText(value: string) {
+  function parseOptionalText(value: string) {
     const trimmed = value.trim()
     return trimmed || null
   }
@@ -932,13 +932,13 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   }
 
   async function addProduct() {
-    const irMinutes = parseRequiredText(productForm.irMinutes)
-    const irTemperature = parseRequiredText(productForm.irTemperature)
-    const uvEnergy = parseRequiredText(productForm.uvEnergy)
-    const filmThickness = parseRequiredText(productForm.filmThickness)
-    const sprayViscosity = parseRequiredText(productForm.sprayViscosity)
+    const irMinutes = parseOptionalText(productForm.irMinutes)
+    const irTemperature = parseOptionalText(productForm.irTemperature)
+    const uvEnergy = parseOptionalText(productForm.uvEnergy)
+    const filmThickness = parseOptionalText(productForm.filmThickness)
+    const sprayViscosity = parseOptionalText(productForm.sprayViscosity)
 
-    if (!productForm.productId || irMinutes === null || irTemperature === null || uvEnergy === null) {
+    if (!productForm.productId) {
       toast.error(t('productFormRequired'))
       return
     }
@@ -1049,15 +1049,10 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   async function saveProductEdit() {
     if (!editingProductId) return
 
-    const irMinutes = parseRequiredText(editForm.irMinutes)
-    const irTemperature = parseRequiredText(editForm.irTemperature)
-    const uvEnergy = parseRequiredText(editForm.uvEnergy)
-    const filmThickness = parseRequiredText(editForm.filmThickness)
-
-    if (irMinutes === null || irTemperature === null || uvEnergy === null) {
-      toast.error(t('editProductFormRequired'))
-      return
-    }
+    const irMinutes = parseOptionalText(editForm.irMinutes)
+    const irTemperature = parseOptionalText(editForm.irTemperature)
+    const uvEnergy = parseOptionalText(editForm.uvEnergy)
+    const filmThickness = parseOptionalText(editForm.filmThickness)
 
     if (isNew) {
       setKitProducts(prev => prev.map(product =>

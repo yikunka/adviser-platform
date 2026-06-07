@@ -914,7 +914,7 @@
       "productName": "Product name",
       "noProducts": "No products yet. Click \"Add Reference Product\".",
       "noTests": "No test records yet",
-      "productFormRequired": "Select a product and enter IR minutes, IR temperature, and UV energy",
+      "productFormRequired": "Select a product",
       "accessoryFormRequired": "When hardener or thinner is enabled, select the product and enter its ratio",
       "addProductFailed": "Failed to add product",
       "productAdded": "Product added",

@@ -914,7 +914,7 @@
       "productName": "产品名称",
       "noProducts": "暂无产品，点击「添加参考产品」",
       "noTests": "暂无测试记录",
-      "productFormRequired": "请选择产品，并填写 IR 分钟、IR 温度和 UV 能量",
+      "productFormRequired": "请选择产品",
       "accessoryFormRequired": "勾选固化剂或稀释剂后，请选择对应产品并填写比例",
       "addProductFailed": "添加产品失败",
       "productAdded": "产品已添加",
