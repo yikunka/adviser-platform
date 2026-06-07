@@ -246,14 +246,14 @@ Product formulation management.
 Custom color formulations for specific customers or products.
 - Categories shown to users: PU, 色漆, 烤漆; stored enum identifiers remain `PU`, `BAKING_PAINT`, `HT_BAKING_PAINT` (legacy `LT_BAKING_PAINT` records may still exist)
 - Scope: product-specific (linked to a factory product) or category-wide
-- Fields: formula code, name, source recipe, color code (real-time PANTONE / hex color preview — 3× enlarged swatch beside the input for easier color comparison), customer name, target color, batch quantity
-- Line items: raw material library entries, Sol semifinished inventory entries, or manual blank/custom material rows, with quantity, percentage, unit price
+- Fields: formula code, name, source recipe, customer name, batch quantity (color code / target color / PANTONE preview are stored in DB but hidden from list, detail, and print UI)
+- Line items: raw material library entries, Sol semifinished inventory entries, or manual blank/custom material rows, with quantity, actual weight (实投), percentage, unit price
 - List page: only the header "新建配方" button; empty state shows message only (no duplicate create button)
 - First line item is always the pinned "适用产品" row when a factory product is linked; it cannot be deleted but quantity is editable; unit price auto-fills from the linked factory product's `unitPrice` (read-only in the UI)
 - Material details use the same split layout as recipe management: selected item table above, candidate material table below with click-to-select and "添加选中"; picker category filter is single-select (default none — user picks one of AD, SO, Sol semifinished, DY, CO, CA, CC)
 - Category tabs filter the factory-product sub-filters below: PU tab shows only factory products whose product category name is exactly「PU漆」; 色漆 and 烤漆 tabs use inferred category matching
 - Clicking "新建配方" while a product filter is active pre-fills that product in the new formula form
-- Detail page has a "打印文件" action: opens a dialog to enter target production weight (kg), scales product and raw-material line quantities proportionally, then triggers browser PDF print (A4, no page header/footer). Print header shows 调色单号 (formula code), name, category, target color, linked factory product, production weight, and notes. Material table shows 序号 / 生产编号 / 原料·产品名称 / 用量(kg) / 占比 / 备注 only (hides attribute, color code, source recipe, customer, unit price, and amount columns). Production instructions from the linked source recipe are not included in print output.
+- Detail page has a "打印文件" action: opens a dialog to enter target production weight (kg), scales product and raw-material line quantities proportionally, then triggers browser PDF print (A4, no page header/footer). Print header shows 调色单号 (formula code), name, category, linked factory product, production weight, and notes. Material table shows 序号 / 生产编号 / 原料·产品名称 / 用量(kg) / 占比 / 实投(kg) / 备注 only (hides attribute, color code, target color, source recipe, customer, unit price, and amount columns); 实投 scales with the entered production weight from each line's saved actual-weight value. Production instructions from the linked source recipe are not included in print output.
 
 ### Production Orders (`/admin/cosmocoat-production-orders`)
 Manufacturing batch tracking.

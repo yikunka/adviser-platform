@@ -23,6 +23,7 @@ const itemSchema = z.object({
   attributeCode: z.string().trim().max(64).optional().default(''),
   sortOrder: z.coerce.number().int().min(0).optional().default(0),
   quantity: z.coerce.number().min(0),
+  actualWeight: z.coerce.number().min(0).nullable().optional(),
   unitPrice: z.coerce.number().nullable().optional(),
   notes: z.string().trim().max(500).optional().default(''),
 }).refine(item => !(item.rawMaterialId && item.productSemifinishedId), {

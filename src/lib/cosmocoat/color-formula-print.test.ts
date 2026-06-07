@@ -4,8 +4,8 @@ import { scaleColorFormulaItemsForProduction } from '@/lib/cosmocoat/color-formu
 describe('scaleColorFormulaItemsForProduction', () => {
   it('scales item quantities to the target production weight', () => {
     const items = [
-      { productionCode: 'P-001', name: 'Base Product', quantity: 80, notes: '' },
-      { productionCode: 'AD-01', name: 'Pigment', quantity: 20, notes: 'slow add' },
+      { productionCode: 'P-001', name: 'Base Product', quantity: 80, actualWeight: 78, notes: '' },
+      { productionCode: 'AD-01', name: 'Pigment', quantity: 20, actualWeight: 22, notes: 'slow add' },
     ]
 
     const scaled = scaleColorFormulaItemsForProduction(items, 100, 50)
@@ -14,11 +14,20 @@ describe('scaleColorFormulaItemsForProduction', () => {
     expect(scaled[1]?.quantity).toBe(10)
     expect(scaled[0]?.percentage).toBe(80)
     expect(scaled[1]?.percentage).toBe(20)
+    expect(scaled[0]?.actualWeight).toBe(39)
+    expect(scaled[1]?.actualWeight).toBe(11)
   })
 
   it('returns zero quantities when target weight is invalid', () => {
     const items = [{ productionCode: 'AD-01', name: 'Pigment', quantity: 20, notes: '' }]
     const scaled = scaleColorFormulaItemsForProduction(items, 100, 0)
     expect(scaled[0]?.quantity).toBe(0)
+    expect(scaled[0]?.actualWeight).toBeNull()
+  })
+
+  it('leaves actual weight null when not provided', () => {
+    const items = [{ productionCode: 'AD-01', name: 'Pigment', quantity: 20, notes: '' }]
+    const scaled = scaleColorFormulaItemsForProduction(items, 100, 50)
+    expect(scaled[0]?.actualWeight).toBeNull()
   })
 })

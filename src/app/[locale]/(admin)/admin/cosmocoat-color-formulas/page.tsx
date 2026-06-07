@@ -20,9 +20,7 @@ type FormulaRow = {
   name: string
   category: CosColorFormulaCategory
   categoryLabel: string
-  colorCode: string
   customerName: string
-  targetColor: string
   itemCount: number
   unitCost: number
   updatedAt: string
@@ -253,7 +251,7 @@ export default function CosmocoatColorFormulasPage() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="搜索编号、名称、色号、客户..."
+            placeholder="搜索编号、名称、客户..."
             className="w-full pl-8 pr-3 py-2 rounded-lg text-sm outline-none"
             style={inputStyle()}
           />
@@ -277,7 +275,6 @@ export default function CosmocoatColorFormulasPage() {
                   <th style={th}>名称</th>
                   <th style={th}>类别</th>
                   <th style={th}>关联产品</th>
-                  <th style={th}>色号</th>
                   <th style={th}>原料数</th>
                   <th style={th}>成本单价</th>
                   <th style={th}>更新时间</th>
@@ -299,7 +296,6 @@ export default function CosmocoatColorFormulasPage() {
                         ? `${row.factoryProduct.productCode} · ${row.factoryProduct.name}`
                         : '—'}
                     </td>
-                    <td style={td}>{row.colorCode || '—'}</td>
                     <td style={td}>{row.itemCount}</td>
                     <td style={td}>{formatMoney(row.unitCost)}</td>
                     <td style={td}>{new Date(row.updatedAt).toLocaleDateString('zh-CN')}</td>

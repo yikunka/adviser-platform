@@ -20,7 +20,7 @@ const PAGE_WIDTH = 16838
 const PAGE_HEIGHT = 11906
 const PAGE_MARGIN = 1440
 const CONTENT_WIDTH = PAGE_WIDTH - PAGE_MARGIN * 2
-const TABLE_COLUMNS = [700, 1500, 2800, 1200, 1000, 900, 1000, 1000, 2858]
+const TABLE_COLUMNS = [650, 1400, 2600, 1100, 950, 850, 850, 950, 950, 2558]
 const THIN_BORDER = { style: BorderStyle.SINGLE, size: 4, color: '000000' }
 const BORDERS = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER }
 const CELL_MARGINS = { top: 90, bottom: 90, left: 90, right: 90 }
@@ -132,12 +132,6 @@ function infoTable(formula: PrintColorFormula) {
     }),
     new TableRow({
       children: [
-        cell(`色号 (PANTONE/HEX): ${text(formula.colorCode)}`, half, { size: 18 }),
-        cell(`目标色: ${text(formula.targetColor)}`, half, { size: 18 }),
-      ],
-    }),
-    new TableRow({
-      children: [
         cell(`适用产品: ${text(factoryProduct)}`, half, { size: 18 }),
         cell(`来源配方: ${sourceRecipe}`, half, { size: 18 }),
       ],
@@ -164,9 +158,10 @@ function formulaRows(formula: PrintColorFormula) {
         '序号',
         '生产编号',
         '原料/产品名称',
-        '属性/色号',
+        '属性',
         '用量(kg)',
         '占比',
+        '实投(kg)',
         '单价(元)',
         '金额(元)',
         '备注',
@@ -188,6 +183,10 @@ function formulaRows(formula: PrintColorFormula) {
     return rows
   }
 
+  const totalActual = formula.items.some(item => item.actualWeight != null)
+    ? formula.items.reduce((sum, item) => sum + (item.actualWeight ?? 0), 0)
+    : null
+
   formula.items.forEach((item, index) => {
     const percentage = computeItemPercentage(item.quantity, formula.totalQuantity)
     rows.push(new TableRow({
@@ -195,12 +194,13 @@ function formulaRows(formula: PrintColorFormula) {
         cell(String(index + 1), TABLE_COLUMNS[0]!, { align: AlignmentType.CENTER }),
         cell(text(item.productionCode), TABLE_COLUMNS[1]!),
         cell(text(item.name), TABLE_COLUMNS[2]!),
-        cell(text(item.attributeCode || formula.colorCode), TABLE_COLUMNS[3]!),
+        cell(text(item.attributeCode), TABLE_COLUMNS[3]!),
         cell(fixed(item.quantity), TABLE_COLUMNS[4]!, { align: AlignmentType.RIGHT }),
         cell(`${fixed(percentage, 2)}%`, TABLE_COLUMNS[5]!, { align: AlignmentType.RIGHT }),
-        cell(money(item.unitPrice), TABLE_COLUMNS[6]!, { align: AlignmentType.RIGHT }),
-        cell(money(item.amount), TABLE_COLUMNS[7]!, { align: AlignmentType.RIGHT }),
-        cell(text(item.notes), TABLE_COLUMNS[8]!),
+        cell(item.actualWeight != null ? fixed(item.actualWeight) : '', TABLE_COLUMNS[6]!, { align: AlignmentType.RIGHT }),
+        cell(money(item.unitPrice), TABLE_COLUMNS[7]!, { align: AlignmentType.RIGHT }),
+        cell(money(item.amount), TABLE_COLUMNS[8]!, { align: AlignmentType.RIGHT }),
+        cell(text(item.notes), TABLE_COLUMNS[9]!),
       ],
     }))
   })
@@ -214,9 +214,10 @@ function formulaRows(formula: PrintColorFormula) {
       }),
       cell(fixed(formula.totalQuantity), TABLE_COLUMNS[4]!, { bold: true, align: AlignmentType.RIGHT }),
       cell('100%', TABLE_COLUMNS[5]!, { bold: true, align: AlignmentType.RIGHT }),
-      cell('成本单价', TABLE_COLUMNS[6]!, { bold: true, align: AlignmentType.RIGHT }),
-      cell(money(formula.unitCost), TABLE_COLUMNS[7]!, { bold: true, align: AlignmentType.RIGHT }),
-      cell('', TABLE_COLUMNS[8]!),
+      cell(totalActual != null ? fixed(totalActual) : '', TABLE_COLUMNS[6]!, { bold: true, align: AlignmentType.RIGHT }),
+      cell('成本单价', TABLE_COLUMNS[7]!, { bold: true, align: AlignmentType.RIGHT }),
+      cell(money(formula.unitCost), TABLE_COLUMNS[8]!, { bold: true, align: AlignmentType.RIGHT }),
+      cell('', TABLE_COLUMNS[9]!),
     ],
   }))
 

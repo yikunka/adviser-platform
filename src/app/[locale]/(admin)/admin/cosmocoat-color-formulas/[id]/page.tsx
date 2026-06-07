@@ -23,7 +23,6 @@ import {
   scaleColorFormulaItemsForProduction,
   type ColorFormulaPrintItem,
 } from '@/lib/cosmocoat/color-formula-print'
-import { pantoneToHex } from '@/lib/cosmocoat/pantone-colors'
 import {
   Dialog,
   DialogContent,
@@ -55,6 +54,7 @@ type EditableItem = {
   name: string
   attributeCode: string
   quantity: number
+  actualWeight: number | null
   unitPrice: number | null
   amount: number
   notes: string
@@ -118,6 +118,7 @@ function toEditableItem(item: FullColorFormula['items'][number], index: number):
     name: item.name,
     attributeCode: item.attributeCode,
     quantity: item.quantity,
+    actualWeight: item.actualWeight,
     unitPrice: item.unitPrice,
     amount: item.amount ?? 0,
     notes: item.notes,
@@ -137,6 +138,7 @@ function toEditableFromPicker(m: PickerMaterial): EditableItem {
     name: m.name,
     attributeCode: m.attributeCode,
     quantity,
+    actualWeight: null,
     unitPrice,
     amount: 0,
     notes: '',
@@ -154,6 +156,7 @@ function toManualItem(): EditableItem {
     name: '',
     attributeCode: '',
     quantity: 0,
+    actualWeight: null,
     unitPrice: null,
     amount: 0,
     notes: '',
@@ -174,6 +177,7 @@ function makeApplicableProductRow(
     name: product.name,
     attributeCode: '适用产品',
     quantity: 0,
+    actualWeight: null,
     unitPrice: product.unitPrice ?? null,
     amount: 0,
     notes: recipeCode ? `当前配方：${recipeCode}` : '',
@@ -285,7 +289,6 @@ interface ColorFormulaPrintViewProps {
   orderCode: string
   name: string
   categoryLabel: string
-  targetColor: string
   factoryProductLabel: string
   targetKg: number
   notes: string
@@ -296,13 +299,15 @@ function ColorFormulaPrintView({
   orderCode,
   name,
   categoryLabel,
-  targetColor,
   factoryProductLabel,
   targetKg,
   notes,
   items,
 }: ColorFormulaPrintViewProps) {
   const totalScaled = items.reduce((sum, item) => sum + item.quantity, 0)
+  const totalActual = items.some(item => item.actualWeight != null)
+    ? items.reduce((sum, item) => sum + (item.actualWeight ?? 0), 0)
+    : null
 
   return (
     <div id="cosmocoat-print-area">
@@ -321,14 +326,12 @@ function ColorFormulaPrintView({
           <tr>
             <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>类别</td>
             <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(categoryLabel)}</td>
-            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>目标色</td>
-            <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(targetColor)}</td>
+            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>生产重量</td>
+            <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{formatWeight(targetKg, 3)} kg</td>
           </tr>
           <tr>
             <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>适用产品</td>
-            <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(factoryProductLabel)}</td>
-            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>生产重量</td>
-            <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{formatWeight(targetKg, 3)} kg</td>
+            <td colSpan={3} style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(factoryProductLabel)}</td>
           </tr>
           <tr>
             <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>备注</td>
@@ -346,15 +349,16 @@ function ColorFormulaPrintView({
             <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'center', width: '8%' }}>序号</th>
             <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '18%' }}>生产编号</th>
             <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '34%' }}>原料/产品名称</th>
-            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'right', width: '16%' }}>用量(kg)</th>
-            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'right', width: '12%' }}>占比</th>
-            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '12%' }}>备注</th>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'right', width: '14%' }}>用量(kg)</th>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'right', width: '10%' }}>占比</th>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'right', width: '12%' }}>实投(kg)</th>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '10%' }}>备注</th>
           </tr>
         </thead>
         <tbody>
           {items.length === 0 ? (
             <tr>
-              <td colSpan={6} style={{ padding: '8px 6px', border: '1px solid #ccc', textAlign: 'center' }}>暂无原材料明细</td>
+              <td colSpan={7} style={{ padding: '8px 6px', border: '1px solid #ccc', textAlign: 'center' }}>暂无原材料明细</td>
             </tr>
           ) : (
             items.map((item, index) => (
@@ -364,6 +368,9 @@ function ColorFormulaPrintView({
                 <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(item.name)}</td>
                 <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>{formatWeight(item.quantity, 3)}</td>
                 <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>{formatPercent(item.percentage)}</td>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>
+                  {item.actualWeight != null ? formatWeight(item.actualWeight, 3) : ''}
+                </td>
                 <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(item.notes)}</td>
               </tr>
             ))
@@ -373,6 +380,9 @@ function ColorFormulaPrintView({
               <td colSpan={3} style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>合计</td>
               <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>{formatWeight(totalScaled, 3)}</td>
               <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>100%</td>
+              <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>
+                {totalActual != null ? formatWeight(totalActual, 3) : ''}
+              </td>
               <td style={{ padding: '3px 6px', border: '1px solid #ccc' }} />
             </tr>
           )}
@@ -676,6 +686,7 @@ export default function CosmocoatColorFormulaDetailPage() {
         attributeCode: item.attributeCode,
         sortOrder: index + 1,
         quantity: item.quantity,
+        actualWeight: item.actualWeight,
         unitPrice: item.unitPrice,
         notes: item.notes,
       })),
@@ -708,9 +719,6 @@ export default function CosmocoatColorFormulaDetailPage() {
     }
   }
 
-  // Task 3: Pantone color preview
-  const pantoneHex = useMemo(() => pantoneToHex(colorCode), [colorCode])
-
   if (loading) {
     return <div className="p-6 text-sm" style={{ color: 'var(--muted-foreground)' }}>加载中...</div>
   }
@@ -724,7 +732,6 @@ export default function CosmocoatColorFormulaDetailPage() {
           orderCode={code}
           name={name}
           categoryLabel={categoryLabel}
-          targetColor={targetColor}
           factoryProductLabel={factoryProductLabel}
           targetKg={activePrintKg}
           notes={notes}
@@ -844,30 +851,6 @@ export default function CosmocoatColorFormulaDetailPage() {
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>基准批量 (kg)</label>
             <input type="number" min={0.001} step={0.001} value={batchQuantity} onChange={e => setBatchQuantity(Number(e.target.value) || 100)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
           </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>色号 (PANTONE / HEX)</label>
-            <div className="flex items-center gap-2">
-              <input
-                value={colorCode}
-                onChange={e => setColorCode(e.target.value)}
-                placeholder="如 186 C 或 #C8102E"
-                className="flex-1 rounded-lg px-3 py-2.5 text-sm outline-none"
-                style={inputStyle()}
-              />
-              <div
-                className="w-[10.5rem] h-[10.5rem] flex-shrink-0 rounded-xl border-2 shadow-sm"
-                style={{
-                  background: pantoneHex ?? 'transparent',
-                  border: pantoneHex ? '2px solid rgba(255,255,255,0.2)' : '2px dashed #3A3020',
-                }}
-                title={pantoneHex ? `≈ ${pantoneHex}` : colorCode ? '未知色号（可直接输入 #RRGGBB）' : '输入色号预览颜色'}
-              />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>目标色</label>
-            <input value={targetColor} onChange={e => setTargetColor(e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
-          </div>
           <div className="space-y-1.5 sm:col-span-2">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>客户</label>
             <input value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
@@ -901,6 +884,7 @@ export default function CosmocoatColorFormulaDetailPage() {
                 <th style={th}>属性</th>
                 <th style={th}>数量</th>
                 <th style={th}>占比</th>
+                <th style={th}>实投(kg)</th>
                 <th style={th}>单价(元)</th>
                 <th style={th}>金额(元)</th>
                 <th style={th}>备注</th>
@@ -910,7 +894,7 @@ export default function CosmocoatColorFormulaDetailPage() {
             <tbody>
               {itemsWithAmounts.length === 0 ? (
                 <tr>
-                  <td colSpan={10} style={{ ...td, textAlign: 'center', padding: '2rem' }}>请从下方选择原料、Sol. 半成品或添加空白行</td>
+                  <td colSpan={11} style={{ ...td, textAlign: 'center', padding: '2rem' }}>请从下方选择原料、Sol. 半成品或添加空白行</td>
                 </tr>
               ) : (
                 itemsWithAmounts.map((item, index) => (
@@ -974,6 +958,23 @@ export default function CosmocoatColorFormulaDetailPage() {
                       />
                     </td>
                     <td style={td}>{formatPercent(item.percentage)}</td>
+                    <td style={td}>
+                      {item.isLocked ? (
+                        '—'
+                      ) : (
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.001}
+                          value={item.actualWeight ?? ''}
+                          onChange={e => updateItem(item.key, {
+                            actualWeight: e.target.value === '' ? null : Number(e.target.value),
+                          })}
+                          className="w-24 rounded px-2 py-1 text-sm outline-none"
+                          style={inputStyle()}
+                        />
+                      )}
+                    </td>
                     <td style={td}>
                       {item.isLocked ? (
                         <span title="取自工厂产品单价">{formatMoney(item.unitPrice)}</span>

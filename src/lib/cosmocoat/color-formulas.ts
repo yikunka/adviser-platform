@@ -17,6 +17,7 @@ export type ColorFormulaItemInput = {
   attributeCode?: string
   sortOrder: number
   quantity: number
+  actualWeight?: number | null
   unitPrice: number | null
   notes: string
 }
@@ -65,6 +66,7 @@ function serializeItem(item: {
   id: string
   sortOrder: number
   quantity: unknown
+  actualWeight?: unknown
   unitPrice: unknown
   amount: unknown
   percentage: unknown
@@ -120,6 +122,7 @@ function serializeItem(item: {
     manualName: item.manualName,
     manualAttributeCode: item.manualAttributeCode,
     quantity: Number(item.quantity),
+    actualWeight: item.actualWeight != null ? Number(item.actualWeight) : null,
     unitPrice: item.unitPrice != null ? Number(item.unitPrice) : null,
     amount: item.amount != null ? Number(item.amount) : null,
     percentage: item.percentage != null ? Number(item.percentage) : null,
@@ -280,6 +283,7 @@ export async function saveColorFormulaItems(
         manualAttributeCode: source.attributeCode?.trim() ?? '',
         sortOrder: item.sortOrder,
         quantity: item.quantity,
+        actualWeight: source.actualWeight ?? null,
         unitPrice: item.unitPrice,
         amount: item.amount,
         percentage: item.percentage,

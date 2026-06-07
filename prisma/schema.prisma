@@ -1575,6 +1575,7 @@ model CosTableColorFormulaItem {
   manualAttributeCode    String   @default("") @map("manual_attribute_code")
   sortOrder              Int      @default(0)
   quantity               Decimal  @db.Decimal(12, 3)
+  actualWeight           Decimal? @db.Decimal(12, 3)
   unitPrice              Decimal? @db.Decimal(12, 4)
   amount                 Decimal? @db.Decimal(14, 4)
   percentage             Decimal? @db.Decimal(8, 4)
