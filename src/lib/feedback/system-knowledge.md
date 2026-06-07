@@ -194,6 +194,7 @@ Order lifecycle management for memorial diamond commissions.
   8. Delivery
 - Edit order details, update milestone dates, add admin notes
 - Order steps: create / update / complete sub-tasks within phases; Chemical Transformation phase begins with **Package Received**, then Check Sample & Labeling and the remaining NL00001 workflow steps
+- Completed step attachments: uploaded images display at 224×224px (4× the previous thumbnail size) for easier admin review
 
 ### SFS Invoices Admin (`/admin/sfs-invoices`)
 - Invoices linked to SFS orders
@@ -201,6 +202,8 @@ Order lifecycle management for memorial diamond commissions.
 - Auto-generated invoice numbers: 8-digit pure numeric format `YY######` (e.g. `26000001`, `26000002`), sequential within each calendar year; shown in the list table column and in the page header (top-right) on new and detail pages
 - Create from order; edit DRAFT; generate and download PDF
 - Admin invoice screens keep line-item display focused on description, quantity, unit price, and amount; due date and tax-rate display are hidden from the SFS invoice UI
+- PDF issuer header: **SFS Technical Group Co., Limited / 瑞福生科技集團有限公司**, with fixed address **RM7 20F BOSS COMMERCIAL CENTRE 28 FERRY STREET YAU MA TEI KOWLOON** below the company name
+- PDF payment block (footer): DBS BANK (HONG KONG), SWIFT DHBKHKHH, Bank Code 016, Account Number 478002236556, A/C Name SFS TECHNOLOGY GROUP CO., LIMITED
 
 ---
 

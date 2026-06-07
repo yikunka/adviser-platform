@@ -1,5 +1,6 @@
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
+import { PDFDocument, rgb } from 'pdf-lib'
 import type { SfsInvoice, SfsInvoiceLineItem, SfsOrder } from '@prisma/client'
+import { loadPdfFonts } from '@/lib/pdf/cjk-font'
 
 export type SfsInvoicePdfPayload = SfsInvoice & {
   lineItems: SfsInvoiceLineItem[]
@@ -7,17 +8,26 @@ export type SfsInvoicePdfPayload = SfsInvoice & {
 }
 
 const ISSUER = {
-  name: 'SFS Diamond Limited',
-  address: 'Hong Kong',
+  name: 'SFS Technical Group Co., Limited / 瑞福生科技集團有限公司',
+  address: 'RM7 20F BOSS COMMERCIAL CENTRE 28 FERRY STREET YAU MA TEI KOWLOON',
   email: 'info@sfsdiamond.com',
 }
 
-function safe(s: string | null | undefined): string {
+const PAYMENT_INFO = {
+  bank: 'DBS BANK (HONG KONG)',
+  swift: 'SWIFT: DHBKHKHH',
+  bankCode: 'Bank Code: 016',
+  accountNumber: 'Account Number: 478002236556',
+  accountName: 'A/C Name: SFS TECHNOLOGY GROUP CO., LIMITED',
+}
+
+function pdfText(s: string | null | undefined, supportsUnicode: boolean): string {
   if (!s) return '-'
-  return s
+  const normalized = s
     .replace(/[—–]/g, '-')
     .replace(/·/g, '.')
-    .replace(/[^\x00-\xFF]/g, '?')
+  if (supportsUnicode) return normalized
+  return normalized.replace(/[^\x00-\xFF]/g, '?')
 }
 
 function fmtDate(d: Date | string | null | undefined): string {
@@ -31,19 +41,19 @@ function fmtMoney(n: { toString(): string } | number, currency: string): string 
 }
 
 export function sfsInvoicePdfFilename(invoice: Pick<SfsInvoice, 'invoiceNumber'>): string {
-  return `${safe(invoice.invoiceNumber).replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`
+  return `${pdfText(invoice.invoiceNumber, false).replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`
 }
 
 export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promise<Uint8Array> {
   const doc = await PDFDocument.create()
-  const bold = await doc.embedFont(StandardFonts.HelveticaBold)
-  const reg = await doc.embedFont(StandardFonts.Helvetica)
+  const { bold, regular: reg, supportsUnicode } = await loadPdfFonts(doc)
 
   const W = 595
   const H = 842
   const ML = 50
   const MR = 50
   const CW = W - ML - MR
+  const CONTENT_BOTTOM_Y = 146
 
   const GOLD = rgb(0.788, 0.663, 0.431)
   const BLACK = rgb(0.1, 0.1, 0.1)
@@ -51,6 +61,13 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
 
   let page = doc.addPage([W, H])
   let y = H - 48
+
+  function ensureSpace(lineHeight = 14) {
+    if (y - lineHeight < CONTENT_BOTTOM_Y) {
+      page = doc.addPage([W, H])
+      y = H - 48
+    }
+  }
 
   function drawText(
     text: string,
@@ -60,12 +77,13 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
     color = BLACK,
     maxWidth?: number,
   ) {
-    const t = safe(text)
+    const t = pdfText(text, supportsUnicode)
     if (maxWidth) {
       let line = ''
       for (const word of t.split(' ')) {
         const test = line ? `${line} ${word}` : word
         if (font.widthOfTextAtSize(test, size) > maxWidth && line) {
+          ensureSpace(size + 4)
           page.drawText(line, { x, y, size, font, color })
           y -= size + 4
           line = word
@@ -74,10 +92,12 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
         }
       }
       if (line) {
+        ensureSpace(size + 4)
         page.drawText(line, { x, y, size, font, color })
         y -= size + 4
       }
     } else {
+      ensureSpace(size + 6)
       page.drawText(t, { x, y, size, font, color })
       y -= size + 6
     }
@@ -86,9 +106,9 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
   page.drawText('INVOICE', { x: ML, y, size: 22, font: bold, color: GOLD })
   y -= 28
 
-  page.drawText(safe(ISSUER.name), { x: ML, y, size: 10, font: bold, color: BLACK })
+  page.drawText(pdfText(ISSUER.name, supportsUnicode), { x: ML, y, size: 10, font: bold, color: BLACK })
   y -= 14
-  drawText(ISSUER.address, ML, 9, reg, GREY)
+  drawText(ISSUER.address, ML, 9, reg, GREY, CW * 0.55)
   drawText(ISSUER.email, ML, 9, reg, GREY)
 
   const rightX = W - MR
@@ -102,7 +122,7 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
   for (const [label, value] of metaLines) {
     const lw = bold.widthOfTextAtSize(label, 9)
     page.drawText(label, { x: rightX - 160, y: metaY, size: 9, font: bold, color: GREY })
-    page.drawText(safe(value), { x: rightX - lw - 4, y: metaY, size: 9, font: reg, color: BLACK })
+    page.drawText(pdfText(value, supportsUnicode), { x: rightX - lw - 4, y: metaY, size: 9, font: reg, color: BLACK })
     metaY -= 14
   }
 
@@ -145,14 +165,11 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
 
   const sorted = [...invoice.lineItems].sort((a, b) => a.sortOrder - b.sortOrder)
   for (const line of sorted) {
-    if (y < 120) {
-      page = doc.addPage([W, H])
-      y = H - 48
-    }
+    ensureSpace(16)
     const qty = Number(line.quantity.toString())
     const unit = Number(line.unitPrice.toString())
     const amt = Number(line.amount.toString())
-    page.drawText(safe(line.description), { x: cols[0].x, y, size: 9, font: reg, color: BLACK })
+    page.drawText(pdfText(line.description, supportsUnicode), { x: cols[0].x, y, size: 9, font: reg, color: BLACK })
     page.drawText(String(qty), { x: cols[1].x, y, size: 9, font: reg, color: BLACK })
     page.drawText(fmtMoney(unit, ''), { x: cols[2].x, y, size: 9, font: reg, color: BLACK })
     page.drawText(fmtMoney(amt, invoice.currency), { x: cols[3].x, y, size: 9, font: reg, color: BLACK })
@@ -160,6 +177,7 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
   }
 
   y -= 8
+  ensureSpace(18)
   page.drawLine({ start: { x: ML + CW * 0.5, y }, end: { x: W - MR, y }, thickness: 0.5, color: GOLD })
   y -= 18
 
@@ -169,6 +187,7 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
     ['Total', fmtMoney(invoice.total, invoice.currency)],
   ]
   for (const [label, value] of totals) {
+    ensureSpace(18)
     const isTotal = label === 'Total'
     page.drawText(label, {
       x: W - MR - 140,
@@ -188,6 +207,7 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
   }
 
   if (invoice.notes?.trim()) {
+    ensureSpace(46)
     y -= 10
     page.drawText('Notes', { x: ML, y, size: 9, font: bold, color: GREY })
     y -= 14
@@ -196,7 +216,33 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
 
   const pages = doc.getPages()
   const last = pages[pages.length - 1]
-  last.drawText('Thank you for choosing SFS Diamond.', {
+  const paymentLines = [
+    PAYMENT_INFO.bank,
+    PAYMENT_INFO.swift,
+    PAYMENT_INFO.bankCode,
+    PAYMENT_INFO.accountNumber,
+    PAYMENT_INFO.accountName,
+  ]
+  last.drawLine({ start: { x: ML, y: 126 }, end: { x: W - MR, y: 126 }, thickness: 0.5, color: GOLD })
+  last.drawText('Payment information', {
+    x: ML,
+    y: 108,
+    size: 9,
+    font: bold,
+    color: GOLD,
+  })
+  let paymentY = 94
+  for (const line of paymentLines) {
+    last.drawText(pdfText(line, supportsUnicode), {
+      x: ML,
+      y: paymentY,
+      size: 8,
+      font: reg,
+      color: GREY,
+    })
+    paymentY -= 12
+  }
+  last.drawText('Thank you for choosing SFS Technical Group.', {
     x: ML,
     y: 36,
     size: 8,

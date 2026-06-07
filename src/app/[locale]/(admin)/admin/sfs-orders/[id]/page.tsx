@@ -241,11 +241,11 @@ function StepRow({
                       <img
                         src={fileUrl(key)}
                         alt={fileDiamondLabel(key) ? `${fileDiamondLabel(key)} ${name}` : name}
-                        className="w-14 h-14 object-cover rounded-lg"
+                        className="w-56 h-56 object-cover rounded-lg"
                         style={{ border: '1px solid rgba(16,185,129,0.2)' }}
                       />
                       {fileDiamondLabel(key) && (
-                        <span className="mt-0.5 block max-w-14 truncate text-[10px] font-mono text-center" style={{ color: '#10b981' }}>
+                        <span className="mt-0.5 block max-w-56 truncate text-[10px] font-mono text-center" style={{ color: '#10b981' }}>
                           {fileDiamondLabel(key)}
                         </span>
                       )}
