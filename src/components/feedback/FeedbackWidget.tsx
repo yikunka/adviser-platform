@@ -23,6 +23,8 @@ type Attachment = {
   url: string
   name: string
   type: string
+  key?: string
+  storage?: 'oss' | 'local'
 }
 
 type ChatMessage = {
@@ -277,7 +279,13 @@ export function FeedbackWidget({ locale = 'zh' }: { locale?: FeedbackWidgetLocal
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error ?? copy.uploadFailedResponse)
 
-      const attachment: Attachment = { url: data.url, name: data.name, type: data.type }
+      const attachment: Attachment = {
+        url: data.url,
+        name: data.name,
+        type: data.type,
+        key: data.key,
+        storage: data.storage,
+      }
       setPendingAttachments(prev => [...prev, attachment])
       setSessionAttachments(prev => [...prev, attachment])
       setUploadingFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'done', result: attachment } : f))

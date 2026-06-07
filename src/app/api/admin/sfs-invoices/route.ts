@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
@@ -6,6 +7,8 @@ import { computeTotals, toMoney, toQuantity, toTaxRate } from '@/lib/invoice/cal
 import { sfsOrderBillingSnapshot } from '@/lib/sfs-invoice/order-billing'
 import { nextSfsInvoiceNumber } from '@/lib/sfs-invoice/number'
 import { z } from 'zod'
+
+const SFS_INVOICE_CREATE_MAX_ATTEMPTS = 3
 
 const lineSchema = z.object({
   description: z.string().min(1).max(500),
@@ -27,6 +30,14 @@ const createSchema = z.object({
   status: z.enum(['DRAFT', 'SENT', 'PAID', 'CANCELLED']).optional(),
   lineItems: z.array(lineSchema).min(1),
 })
+
+function isInvoiceNumberConflict(error: unknown): boolean {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
+    return false
+  }
+  const target = error.meta?.target
+  return Array.isArray(target) ? target.includes('invoiceNumber') : target === 'invoiceNumber'
+}
 
 export async function GET(req: NextRequest) {
   const { error } = await requireRole('STAFF', { adminMenu: 'sfsInvoices' })
@@ -102,45 +113,62 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Bill to name is required' }, { status: 400 })
   }
 
-  const invoiceNumber = await nextSfsInvoiceNumber(issueDate)
+  let invoice: Awaited<ReturnType<typeof prisma.sfsInvoice.create>> | null = null
+  for (let attempt = 1; attempt <= SFS_INVOICE_CREATE_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      invoice = await prisma.$transaction(async tx => {
+        const invoiceNumber = await nextSfsInvoiceNumber(issueDate, tx, { lockSequence: true })
 
-  const invoice = await prisma.sfsInvoice.create({
-    data: {
-      invoiceNumber,
-      orderId: parsed.data.orderId ?? null,
-      status: parsed.data.status ?? 'DRAFT',
-      issueDate,
-      dueDate,
-      currency: parsed.data.currency,
-      billToName,
-      billToAddress: parsed.data.billToAddress ?? billing?.billToAddress ?? null,
-      billToEmail:
-        (parsed.data.billToEmail && parsed.data.billToEmail !== ''
-          ? parsed.data.billToEmail
-          : null) ?? billing?.billToEmail ?? null,
-      billToPhone: parsed.data.billToPhone ?? billing?.billToPhone ?? null,
-      subtotal: toMoney(subtotal),
-      taxRate: toTaxRate(parsed.data.taxRate),
-      taxAmount: toMoney(taxAmount),
-      total: toMoney(total),
-      notes: parsed.data.notes ?? null,
-      createdById: session!.user.id,
-      lineItems: {
-        create: parsed.data.lineItems.map((line, i) => ({
-          sortOrder: i,
-          description: line.description,
-          quantity: toQuantity(line.quantity),
-          unitPrice: toMoney(line.unitPrice),
-          amount: toMoney(lineAmounts[i]!),
-        })),
-      },
-    },
-    include: {
-      lineItems: { orderBy: { sortOrder: 'asc' } },
-      order: { select: { id: true, memorialName: true, sampleCode: true, clientName: true } },
-      createdBy: { select: { nameEn: true } },
-    },
-  })
+        return tx.sfsInvoice.create({
+          data: {
+            invoiceNumber,
+            orderId: parsed.data.orderId ?? null,
+            status: parsed.data.status ?? 'DRAFT',
+            issueDate,
+            dueDate,
+            currency: parsed.data.currency,
+            billToName,
+            billToAddress: parsed.data.billToAddress ?? billing?.billToAddress ?? null,
+            billToEmail:
+              (parsed.data.billToEmail && parsed.data.billToEmail !== ''
+                ? parsed.data.billToEmail
+                : null) ?? billing?.billToEmail ?? null,
+            billToPhone: parsed.data.billToPhone ?? billing?.billToPhone ?? null,
+            subtotal: toMoney(subtotal),
+            taxRate: toTaxRate(parsed.data.taxRate),
+            taxAmount: toMoney(taxAmount),
+            total: toMoney(total),
+            notes: parsed.data.notes ?? null,
+            createdById: session!.user.id,
+            lineItems: {
+              create: parsed.data.lineItems.map((line, i) => ({
+                sortOrder: i,
+                description: line.description,
+                quantity: toQuantity(line.quantity),
+                unitPrice: toMoney(line.unitPrice),
+                amount: toMoney(lineAmounts[i]!),
+              })),
+            },
+          },
+          include: {
+            lineItems: { orderBy: { sortOrder: 'asc' } },
+            order: { select: { id: true, memorialName: true, sampleCode: true, clientName: true } },
+            createdBy: { select: { nameEn: true } },
+          },
+        })
+      })
+      break
+    } catch (err) {
+      if (attempt < SFS_INVOICE_CREATE_MAX_ATTEMPTS && isInvoiceNumberConflict(err)) {
+        continue
+      }
+      throw err
+    }
+  }
+
+  if (!invoice) {
+    return NextResponse.json({ error: 'Failed to create invoice number' }, { status: 409 })
+  }
 
   await logAudit(session!.user.id, 'CREATE', 'SfsInvoice', invoice.id, null, invoice)
   return NextResponse.json(invoice, { status: 201 })

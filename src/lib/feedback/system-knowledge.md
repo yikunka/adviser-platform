@@ -113,6 +113,7 @@ AI-powered feature request management. **SUPER_ADMIN only.**
 - View full conversation history for each submission
 - **Model Config** tab: configure the LLM provider (Anthropic / DeepSeek / 阿里百炼), model, and API key used for the "提交需求" widget
 - The "提交需求" floating button appears on every admin page; it opens a chat dialog that clarifies the request and saves a structured summary
+- Requirement chat attachments upload through the storage adapter to OSS in production and save stable OSS/CDN links plus storage keys in the feature request attachments JSON
 
 ---
 

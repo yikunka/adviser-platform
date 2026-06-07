@@ -71,6 +71,22 @@ function getAppBaseUrl(): string {
   return url.replace(/\/$/, '')
 }
 
+function encodeStorageKeyPath(key: string): string {
+  return key.split('/').map(part => encodeURIComponent(part)).join('/')
+}
+
+function getOssBaseUrl(): string {
+  const configured = (
+    process.env['NEXT_PUBLIC_OSS_CDN_URL']
+    ?? process.env['OSS_CDN_URL']
+    ?? ''
+  ).trim()
+  if (configured) return configured.replace(/\/$/, '')
+
+  const region = (process.env['OSS_REGION'] ?? 'cn-hangzhou').trim()
+  return `https://${bucket()}.oss-${region}.aliyuncs.com`
+}
+
 export function getOssConfigError(): string | null {
   if (isLocalStorageEnabled()) return null
   const region = (process.env['OSS_REGION'] ?? '').trim()
@@ -201,6 +217,18 @@ export async function getSignedDownloadUrl(
   }
 
   return signOssDownloadUrl(key, expiresIn, opts)
+}
+
+/**
+ * Stable object URL for records that need to persist links.
+ * In OSS mode this is the CDN/public bucket URL; in local mode it points at /api/files.
+ */
+export function getStoredObjectUrl(key: string): string {
+  if (isLocalStorageEnabled()) {
+    const params = new URLSearchParams({ key })
+    return `${getAppBaseUrl()}/api/files?${params.toString()}`
+  }
+  return `${getOssBaseUrl()}/${encodeStorageKeyPath(key)}`
 }
 
 async function signOssDownloadUrl(

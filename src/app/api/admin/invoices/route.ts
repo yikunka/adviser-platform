@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import type { Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
@@ -12,6 +12,8 @@ import { companyBillingSnapshot, keyPersonBillingSnapshot } from '@/lib/invoice/
 import { computeTotals, toMoney, toQuantity, toTaxRate } from '@/lib/invoice/calc'
 import { nextInvoiceNumber } from '@/lib/invoice/number'
 import { z } from 'zod'
+
+const INVOICE_CREATE_MAX_ATTEMPTS = 3
 
 const lineSchema = z.object({
   description: z.string().min(1).max(500),
@@ -34,6 +36,14 @@ const createSchema = z.object({
   status: z.enum(['DRAFT', 'SENT', 'PAID', 'CANCELLED']).optional(),
   lineItems: z.array(lineSchema).min(1),
 })
+
+function isInvoiceNumberConflict(error: unknown): boolean {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
+    return false
+  }
+  const target = error.meta?.target
+  return Array.isArray(target) ? target.includes('invoiceNumber') : target === 'invoiceNumber'
+}
 
 export async function GET(req: NextRequest) {
   const { session, error } = await requireRole('STAFF', { adminMenu: 'invoices' })
@@ -129,46 +139,63 @@ export async function POST(req: NextRequest) {
     parsed.data.taxRate,
   )
 
-  const invoiceNumber = await nextInvoiceNumber(issueDate)
+  let invoice: Awaited<ReturnType<typeof prisma.invoice.create>> | null = null
+  for (let attempt = 1; attempt <= INVOICE_CREATE_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      invoice = await prisma.$transaction(async tx => {
+        const invoiceNumber = await nextInvoiceNumber(issueDate, tx, { lockSequence: true })
 
-  const invoice = await prisma.invoice.create({
-    data: {
-      invoiceNumber,
-      customerType,
-      companyId,
-      keyPersonId,
-      status: parsed.data.status ?? 'DRAFT',
-      issueDate,
-      dueDate,
-      currency: parsed.data.currency,
-      billToName: parsed.data.billToName ?? billing.billToName,
-      billToAddress: parsed.data.billToAddress ?? billing.billToAddress,
-      billToEmail: (parsed.data.billToEmail && parsed.data.billToEmail !== ''
-        ? parsed.data.billToEmail
-        : null) ?? billing.billToEmail,
-      subtotal: toMoney(subtotal),
-      taxRate: toTaxRate(parsed.data.taxRate),
-      taxAmount: toMoney(taxAmount),
-      total: toMoney(total),
-      notes: parsed.data.notes ?? null,
-      createdById: session!.user.id,
-      lineItems: {
-        create: parsed.data.lineItems.map((line, i) => ({
-          sortOrder: i,
-          description: line.description,
-          quantity: toQuantity(line.quantity),
-          unitPrice: toMoney(line.unitPrice),
-          amount: toMoney(lineAmounts[i]!),
-        })),
-      },
-    },
-    include: {
-      lineItems: { orderBy: { sortOrder: 'asc' } },
-      company: { select: { id: true, nameEn: true, companyCode: true, companyNumber: true } },
-      keyPerson: { select: { id: true, nameEn: true, kycCode: true, idType: true, idNumber: true } },
-      createdBy: { select: { nameEn: true } },
-    },
-  })
+        return tx.invoice.create({
+          data: {
+            invoiceNumber,
+            customerType,
+            companyId,
+            keyPersonId,
+            status: parsed.data.status ?? 'DRAFT',
+            issueDate,
+            dueDate,
+            currency: parsed.data.currency,
+            billToName: parsed.data.billToName ?? billing.billToName,
+            billToAddress: parsed.data.billToAddress ?? billing.billToAddress,
+            billToEmail: (parsed.data.billToEmail && parsed.data.billToEmail !== ''
+              ? parsed.data.billToEmail
+              : null) ?? billing.billToEmail,
+            subtotal: toMoney(subtotal),
+            taxRate: toTaxRate(parsed.data.taxRate),
+            taxAmount: toMoney(taxAmount),
+            total: toMoney(total),
+            notes: parsed.data.notes ?? null,
+            createdById: session!.user.id,
+            lineItems: {
+              create: parsed.data.lineItems.map((line, i) => ({
+                sortOrder: i,
+                description: line.description,
+                quantity: toQuantity(line.quantity),
+                unitPrice: toMoney(line.unitPrice),
+                amount: toMoney(lineAmounts[i]!),
+              })),
+            },
+          },
+          include: {
+            lineItems: { orderBy: { sortOrder: 'asc' } },
+            company: { select: { id: true, nameEn: true, companyCode: true, companyNumber: true } },
+            keyPerson: { select: { id: true, nameEn: true, kycCode: true, idType: true, idNumber: true } },
+            createdBy: { select: { nameEn: true } },
+          },
+        })
+      })
+      break
+    } catch (err) {
+      if (attempt < INVOICE_CREATE_MAX_ATTEMPTS && isInvoiceNumberConflict(err)) {
+        continue
+      }
+      throw err
+    }
+  }
+
+  if (!invoice) {
+    return NextResponse.json({ error: 'Failed to create invoice number' }, { status: 409 })
+  }
 
   await logAudit(session!.user.id, 'CREATE', 'Invoice', invoice.id, null, invoice)
   return NextResponse.json(invoice, { status: 201 })

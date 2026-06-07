@@ -12,6 +12,8 @@ const attachmentSchema = z.object({
   url: z.string().trim().min(1).max(2000),
   name: z.string().max(200),
   type: z.string().max(100),
+  key: z.string().max(500).optional(),
+  storage: z.enum(['oss', 'local']).optional(),
 })
 
 const submitSchema = z.object({

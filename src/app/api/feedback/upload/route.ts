@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { auth } from '@/lib/feedback/adapter'
-import { uploadToR2, getSignedDownloadUrl, isLocalStorageEnabled } from '@/lib/storage/r2'
+import { getStoredObjectUrl, isLocalStorageEnabled, uploadToR2 } from '@/lib/storage/r2'
 
 // ─────────────────────────────────────────────
 // Feedback Plugin — Attachment Upload
@@ -21,9 +21,6 @@ const ALLOWED_TYPES: Record<string, string> = {
   'text/plain': 'txt',
 }
 const MAX_SIZE = 10 * 1024 * 1024 // 10MB
-// 30 days — long enough for an agent to be assigned and work the ticket
-const SIGNED_URL_EXPIRY = 30 * 24 * 3600
-
 function resolveContentType(file: File): string | null {
   if (ALLOWED_TYPES[file.type]) return file.type
   const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
@@ -71,24 +68,14 @@ export async function POST(req: NextRequest) {
     cacheControl: 'public, max-age=2592000', // 30 days
   })
 
-  // Local storage: permanent URL via /api/files; OSS: long-lived signed URL
-  const url = isLocalStorageEnabled()
-    ? `${getAppBaseUrl()}/api/files?key=${encodeURIComponent(key)}`
-    : await getSignedDownloadUrl(key, SIGNED_URL_EXPIRY)
+  const isLocal = isLocalStorageEnabled()
+  const url = getStoredObjectUrl(key)
 
   return NextResponse.json({
     url,
     name: file.name,
     type: contentType,
     key,
+    storage: isLocal ? 'local' : 'oss',
   })
-}
-
-function getAppBaseUrl(): string {
-  return (
-    process.env['NEXT_PUBLIC_APP_URL'] ??
-    process.env['AUTH_URL'] ??
-    process.env['NEXTAUTH_URL'] ??
-    'http://localhost:3000'
-  ).replace(/\/$/, '')
 }

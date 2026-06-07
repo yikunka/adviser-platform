@@ -32,7 +32,7 @@ import { PROVIDER_OPTIONS, MODEL_OPTIONS, type Provider } from '@/lib/feedback/o
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string }
 
-type Attachment = { url: string; name: string; type: string }
+type Attachment = { url: string; name: string; type: string; key?: string; storage?: 'oss' | 'local' }
 
 type FeatureRequest = {
   id: string
