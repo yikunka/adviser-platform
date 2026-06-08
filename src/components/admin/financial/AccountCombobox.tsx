@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type KeyboardEvent, type Ref, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, Search } from 'lucide-react'
 
 export type AccountPickerOption = {
@@ -17,6 +17,8 @@ type AccountComboboxProps = {
   placeholder?: string
   inputClassName?: string
   disabled?: boolean
+  inputRef?: Ref<HTMLInputElement>
+  onInputKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void
 }
 
 function formatAccountLabel(account: AccountPickerOption): string {
@@ -30,6 +32,8 @@ export function AccountCombobox({
   placeholder = '搜索科目编码或名称...',
   inputClassName = '',
   disabled = false,
+  inputRef,
+  onInputKeyDown,
 }: AccountComboboxProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
@@ -131,6 +135,7 @@ export function AccountCombobox({
           style={{ color: 'var(--muted-foreground)' }}
         />
         <input
+          ref={inputRef}
           value={displayValue}
           onChange={e => {
             setSearch(e.target.value)
@@ -139,6 +144,12 @@ export function AccountCombobox({
           onFocus={() => {
             setOpen(true)
             setSearch('')
+          }}
+          onKeyDown={event => {
+            if (open && (event.key === 'Enter' || event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+              return
+            }
+            onInputKeyDown?.(event)
           }}
           placeholder={placeholder}
           disabled={disabled || !companyId}

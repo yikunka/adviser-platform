@@ -2,7 +2,7 @@
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { FormEvent, type KeyboardEvent as ReactKeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Plus, Save, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -98,6 +98,8 @@ function resetFormForNextEntry(
 
 export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, onSaved, onContinued }: Props) {
   const lastSavedEntryDateRef = useRef<string | null>(null)
+  const lineFirstFieldRefs = useRef<(HTMLInputElement | null)[]>([])
+  const pendingFocusLineIndex = useRef<number | null>(null)
   const [companies, setCompanies] = useState<ScopeCompany[]>([])
   const [entryDate, setEntryDate] = useState(todayYmd())
   const [companyId, setCompanyId] = useState('NONE')
@@ -167,6 +169,10 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
   function updateLine(index: number, patch: Partial<FormLine>) {
     setLines(current => current.map((line, lineIndex) => (lineIndex === index ? { ...line, ...patch } : line)))
   }
+
+  const focusLineRow = useCallback((index: number) => {
+    lineFirstFieldRefs.current[index]?.focus()
+  }, [])
 
   const saveEntry = useCallback(
     async (options?: { continue?: boolean }) => {
@@ -243,6 +249,44 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
     ],
   )
 
+  const handleLineKeyDown = useCallback(
+    (lineIndex: number, event: ReactKeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        if (lineIndex > 0) focusLineRow(lineIndex - 1)
+        return
+      }
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        if (lineIndex < lines.length - 1) {
+          focusLineRow(lineIndex + 1)
+        } else {
+          pendingFocusLineIndex.current = lines.length
+          setLines(current => [...current, blankLine()])
+        }
+        return
+      }
+
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault()
+        if (lineIndex < lines.length - 1) {
+          focusLineRow(lineIndex + 1)
+        } else if (!saving) {
+          void saveEntry()
+        }
+      }
+    },
+    [focusLineRow, lines.length, saveEntry, saving],
+  )
+
+  useEffect(() => {
+    if (pendingFocusLineIndex.current === null) return
+    const index = pendingFocusLineIndex.current
+    pendingFocusLineIndex.current = null
+    focusLineRow(index)
+  }, [focusLineRow, lines.length])
+
   useEffect(() => {
     if (!open) return
 
@@ -268,7 +312,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
         <DialogHeader>
           <DialogTitle className="text-[#FFF7E6]">{entry ? '编辑日记账' : '新增日记账'}</DialogTitle>
           <DialogDescription className="text-[#B8AD98]">
-            保存后状态为待过账，使用审核并过账生成总账记录。按 F1 可保存当前凭证并清空表单继续录入下一张，日期会保留为上一条分录日期。科目列支持编码或名称模糊搜索。
+            保存后状态为待过账，使用审核并过账生成总账记录。分录行内按 ↑/↓ 切换行（末行 ↓ 新增一行），Enter 确认并跳到下一行（末行 Enter 保存）。F1 保存并清空表单继续录入，日期保留为上一条分录日期。科目列支持编码或名称模糊搜索。
           </DialogDescription>
         </DialogHeader>
 
@@ -377,8 +421,12 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                   <TableRow key={index}>
                     <TableCell>
                       <Input
+                        ref={el => {
+                          lineFirstFieldRefs.current[index] = el
+                        }}
                         value={line.description}
                         onChange={event => updateLine(index, { description: event.target.value })}
+                        onKeyDown={event => handleLineKeyDown(index, event)}
                         placeholder="可选"
                         className={fieldClassName}
                       />
@@ -390,6 +438,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                         onChange={accountId => updateLine(index, { accountId: accountId || 'NONE' })}
                         inputClassName={fieldClassName}
                         disabled={!hasCompany}
+                        onInputKeyDown={event => handleLineKeyDown(index, event)}
                       />
                     </TableCell>
                     <TableCell>
@@ -399,6 +448,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                         step="0.01"
                         value={line.debit}
                         onChange={event => updateLine(index, { debit: event.target.value, credit: event.target.value ? '' : line.credit })}
+                        onKeyDown={event => handleLineKeyDown(index, event)}
                         className={`text-right ${fieldClassName}`}
                       />
                     </TableCell>
@@ -409,6 +459,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                         step="0.01"
                         value={line.credit}
                         onChange={event => updateLine(index, { credit: event.target.value, debit: event.target.value ? '' : line.debit })}
+                        onKeyDown={event => handleLineKeyDown(index, event)}
                         className={`text-right ${fieldClassName}`}
                       />
                     </TableCell>

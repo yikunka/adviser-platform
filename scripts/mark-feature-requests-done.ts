@@ -33,6 +33,7 @@ const items = await prisma.featureRequest.findMany({
       { pageUrl: { contains: '/admin/financial/cmpkppbnh0u0lqfw5350jraae/journal' } },
       { title: { contains: '日记账F1快捷键连续录入' } },
       { title: { contains: '日记账列表列顺序调整' } },
+      { title: { contains: '日记账编辑页面增加键盘快捷键导航与保存功能' } },
       { pageUrl: { contains: '/admin/financial/cmpuo422m00163iw5o0isz8e1/journal' } },
       { title: { contains: '配方页面产品选择控件优化与BUG修复' } },
       { pageUrl: { contains: 'cosmocoat-production-orders/new' } },

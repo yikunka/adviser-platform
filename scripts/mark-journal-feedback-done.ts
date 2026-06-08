@@ -10,6 +10,7 @@ const titles = [
   '会计凭证批量过账功能',
   '日记账科目自动提示功能',
   '日记账日期默认值改为上条分录日期',
+  '日记账编辑页面增加键盘快捷键导航与保存功能',
 ]
 
 const items = await prisma.featureRequest.findMany({

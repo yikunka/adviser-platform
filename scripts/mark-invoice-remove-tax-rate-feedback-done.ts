@@ -1,5 +1,5 @@
 /**
- * Mark "发票创建表单移除税率字段" feedback as DONE.
+ * Mark invoice tax-rate removal feedback as DONE.
  * Run: npx tsx scripts/mark-invoice-remove-tax-rate-feedback-done.ts
  */
 import { PrismaClient } from '@prisma/client'
@@ -11,6 +11,7 @@ const items = await prisma.featureRequest.findMany({
     status: { not: 'DONE' },
     OR: [
       { title: { contains: '发票创建表单移除税率字段' } },
+      { title: { contains: '新建发票明细移除税率字段' } },
       {
         AND: [
           { title: { contains: '发票' } },
