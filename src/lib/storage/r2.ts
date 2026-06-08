@@ -18,7 +18,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 function uploadsRoot(): string {
   const fromEnv = (process.env['LOCAL_UPLOADS_DIR'] ?? '').trim()
   if (fromEnv) return path.resolve(fromEnv)
-  return path.join(process.cwd(), 'uploads')
+  return path.join(/* turbopackIgnore: true */ process.cwd(), 'uploads')
 }
 
 function resolveLocalPath(key: string): string {
