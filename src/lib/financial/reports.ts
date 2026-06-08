@@ -15,6 +15,7 @@ import {
 } from '@/lib/financial/report-account-rollups'
 import { trialBalanceColumns } from '@/lib/financial/report-balances'
 import type { ReportAccountRow, StatementLineRow } from '@/lib/financial/report-line-types'
+import { shouldIncludeAccountInTrialBalance } from '@/lib/financial/trial-balance-inclusion'
 import { roundMoney } from '@/lib/financial/utils'
 
 export type { BalanceSheetSection } from '@/lib/financial/balance-sheet-sections'
@@ -26,6 +27,7 @@ type MovementTotals = {
 }
 
 export type TrialBalanceRow = ReportAccountRow & {
+  sortOrder: number
   periodDebit: number
   periodCredit: number
   closingDebit: number
@@ -398,18 +400,16 @@ export async function buildFinancialReports(
     }
 
     const tbCols = trialBalanceColumns(closingBalance, account.type, account.code)
-    const hasTrialBalanceActivity =
-      periodTotals.debit > 0
-      || periodTotals.credit > 0
-      || openingTotals.debit > 0
-      || openingTotals.credit > 0
-      || closingBalance !== 0
-      || (yearToDateTotals?.debit ?? 0) > 0
-      || (yearToDateTotals?.credit ?? 0) > 0
 
-    if (hasTrialBalanceActivity) {
+    if (shouldIncludeAccountInTrialBalance({
+      periodTotals,
+      openingTotals,
+      closingBalance,
+      yearToDateTotals,
+    })) {
       trialRows.push({
         ...reportRow,
+        sortOrder: account.sortOrder,
         periodDebit: periodTotals.debit,
         periodCredit: periodTotals.credit,
         ...tbCols,
@@ -462,7 +462,7 @@ export async function buildFinancialReports(
   const balanceSheetEquation = buildAccountingEquationCheck(totalAssets, totalLiabilities, totalEquityWithProfit)
   const trialBalanceEquation = buildAccountingEquationCheck(totalAssets, totalLiabilities, totalEquityWithProfit)
 
-  trialRows.sort((a, b) => a.code.localeCompare(b.code) || a.level - b.level)
+  trialRows.sort((a, b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code) || a.level - b.level)
 
   const cashFlow = buildIndirectCashFlow({
     period,

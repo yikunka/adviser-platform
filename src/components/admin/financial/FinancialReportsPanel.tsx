@@ -7,7 +7,7 @@ import { Download, FileBarChart, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import type { FinancialReportsBundle, AccountingEquationCheck, BalanceSheetSection } from '@/lib/financial/reports'
 import { formatReportAmount } from '@/lib/financial/utils'
-import { FINANCIAL_ACCOUNTS_CHANGED, type FinancialAccountsChangedDetail } from '@/lib/financial/events'
+import { subscribeFinancialAccountsChanged } from '@/lib/financial/events'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -143,15 +143,11 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
   }, [fetchReports])
 
   useEffect(() => {
-    function handleAccountsChanged(event: Event) {
-      const detail = (event as CustomEvent<FinancialAccountsChangedDetail>).detail
-      const scopedCompanyId = scope.params.companyId
+    const scopedCompanyId = scope.params.companyId
+    return subscribeFinancialAccountsChanged(detail => {
       if (scopedCompanyId && detail.companyId !== scopedCompanyId) return
       fetchReports()
-    }
-
-    window.addEventListener(FINANCIAL_ACCOUNTS_CHANGED, handleAccountsChanged)
-    return () => window.removeEventListener(FINANCIAL_ACCOUNTS_CHANGED, handleAccountsChanged)
+    })
   }, [fetchReports, scope.params.companyId])
 
   function exportTrialBalance() {
