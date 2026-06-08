@@ -558,6 +558,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
 
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
+  const [printing, setPrinting] = useState(false)
   const [order, setOrder] = useState<SampleOrderRow | null>(null)
   const [customerId, setCustomerId] = useState('')
   const [notes, setNotes] = useState('')
@@ -575,6 +576,14 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
 
   const isReadOnly = !isNew && order?.status === 'COMPLETED'
   const status = order?.status ?? 'DRAFT'
+
+  function handlePrint() {
+    setPrinting(true)
+    setTimeout(() => {
+      window.print()
+      setPrinting(false)
+    }, 100)
+  }
 
   const fetchCustomers = useCallback(async () => {
     try {
@@ -856,6 +865,103 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
   }
 
   return (
+    <>
+      <style>{`
+        @media print {
+          @page { size: A4 portrait; margin: 0; }
+
+          html,
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #fff !important;
+          }
+
+          .admin-console {
+            display: block !important;
+            min-height: auto !important;
+            background: #fff !important;
+          }
+
+          .admin-console > aside,
+          .admin-console > .flex-1 > header,
+          .cosmocoat-screen { display: none !important; }
+
+          .admin-console > .flex-1 {
+            display: block !important;
+            min-width: 0 !important;
+          }
+
+          .admin-console main {
+            display: block !important;
+            padding: 0 !important;
+            overflow: visible !important;
+            background: #fff !important;
+          }
+
+          #${SAMPLE_ORDER_PRINT_AREA_ID} {
+            display: block !important;
+            width: auto;
+            max-width: none;
+            box-sizing: border-box;
+            padding: 12mm 14mm;
+            font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.45;
+            color: #000 !important;
+            background: #fff !important;
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
+
+          #${SAMPLE_ORDER_PRINT_AREA_ID} * {
+            box-sizing: border-box;
+            max-width: 100%;
+          }
+
+          #${SAMPLE_ORDER_PRINT_AREA_ID} table {
+            table-layout: fixed;
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10pt !important;
+          }
+
+          #${SAMPLE_ORDER_PRINT_AREA_ID} td,
+          #${SAMPLE_ORDER_PRINT_AREA_ID} th {
+            word-break: break-all;
+            overflow-wrap: break-word;
+            overflow: hidden;
+            padding: 4px 6px !important;
+            font-size: 10pt !important;
+            line-height: 1.4;
+          }
+
+          #${SAMPLE_ORDER_PRINT_AREA_ID} .print-section-title {
+            font-size: 12pt !important;
+            margin-bottom: 6px !important;
+          }
+
+          #${SAMPLE_ORDER_PRINT_AREA_ID} .signature-cell {
+            padding: 18px 10px 6px !important;
+          }
+        }
+
+        @media screen {
+          #${SAMPLE_ORDER_PRINT_AREA_ID} { display: none; }
+        }
+      `}</style>
+
+      {!isNew && order && (
+        <SampleOrderPrintView
+          order={order}
+          notes={notes}
+          referenceImageUrl={referenceImageUrl}
+          processKitLines={processKitLines}
+          colorFormulaLines={colorFormulaLines}
+        />
+      )}
+
+      <div className="cosmocoat-screen">
     <div className="p-6 space-y-6 max-w-6xl">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -874,6 +980,17 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          {!isNew && order && (
+            <button
+              type="button"
+              onClick={handlePrint}
+              disabled={printing}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+              style={{ background: '#1A1A12', border: '1px solid #2A2418', color: 'var(--foreground)' }}
+            >
+              <Printer size={14} /> {printing ? '准备中...' : '打印'}
+            </button>
+          )}
           {!isReadOnly && (
             <button
               type="button"
@@ -1222,5 +1339,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
         </div>
       )}
     </div>
+      </div>
+    </>
   )
 }

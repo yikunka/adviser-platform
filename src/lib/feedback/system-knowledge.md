@@ -278,7 +278,7 @@ Manufacturing batch tracking.
 - Detail page **生产工艺** section: selecting a product on new order (or opening an existing order) auto-loads the linked recipe's production speed, production time, packaging requirements, and production notes; fields are editable on the order, with a **从配方重新加载** action on draft orders to reset from the current recipe
 - Detail page **QC** section: auto-loads recipe QC test checkboxes (黏度, 百格, 水煮80C/30M, 湿油外观, 干板外观 — viscosity checkbox shows recipe viscosity when set), optional custom test standard, and per-item result inputs (only for checked tests); all editable on the order
 - Print production order: A4 sheet with enlarged text, no page header/footer, a material table constrained to page margins, and material names omitted while keeping material codes, ratios, required weight, and actual weight
-- Print output includes structured 生产工艺 and QC sections from the order's saved process/QC fields
+- Print output includes structured 生产工艺 and QC sections from the order's saved process/QC fields; QC print layout lists each selected test item on its own row (测试项目 / 测试结果) with a bordered result box per item (pre-filled when saved, blank for handwriting on paper); optional custom test standard appears as an additional row
 - Output: creates semifinished product inventory entries on completion
 
 ### Semifinished Products (`/admin/cosmocoat-product-semifinished`)
@@ -321,6 +321,7 @@ Unified customer registry for CosmoCoat manufacturing clients (raw material purc
 - Progress tracking: step indicator (草稿 → 进行中 → 已完成), `startedAt` when moving to IN_PROGRESS, `completedAt` when marked COMPLETED
 - Actions: Save (DRAFT), 开始打样 (→ IN_PROGRESS), 标记完成 (→ COMPLETED); completed orders lock line items and customer but remain viewable
 - Detail page shows scaled color-formula material tables; process-kit content is shown inline in the 工艺书明细 section when creating or editing
+- **Print** on detail page (`/admin/cosmocoat-sample-orders/[id]`): browser print (A4) exports full order — customer profile, reference sample image, notes, process-kit details (materials, performance standards, product parameters, process flow), color-formula line items, and scaled material tables; signature row for 打样人员 / 质检确认 / 客户签收
 - Delete allowed for DRAFT and COMPLETED orders; IN_PROGRESS orders cannot be deleted
 
 ### CosmoCoat Financial Accounting

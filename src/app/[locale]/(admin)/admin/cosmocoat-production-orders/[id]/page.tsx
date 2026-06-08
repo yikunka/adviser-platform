@@ -213,8 +213,7 @@ function PrintView({
       </table>
 
       {/* ─── Process & QC sections ─── */}
-      {(productionSpeedRequirements || productionTimeRequirements || packagingRequirements || productionNotes
-        || qcLabels || qcTestStandard || qcResult) && (
+      {(hasProcessContent || hasQcContent) && (
         <table className="print-notes-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9, marginBottom: 14 }}>
           <thead>
             <tr style={{ background: '#f0f0f0' }}>
@@ -232,12 +231,39 @@ function PrintView({
                   productionNotes ? `生产注意事项:\n${productionNotes}` : '',
                 ].filter(Boolean).join('\n\n')}
               </td>
-              <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
-                {[
-                  qcLabels ? `测试项目: ${qcLabels}` : '',
-                  qcTestStandard ? `其他测试标准:\n${qcTestStandard}` : '',
-                  qcResult ? `结果:\n${qcResult}` : '',
-                ].filter(Boolean).join('\n\n')}
+              <td style={{ padding: '5px 6px', border: '1px solid #ccc', verticalAlign: 'top' }}>
+                {hasQcContent ? (
+                  <table className="print-qc-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9 }}>
+                    <thead>
+                      <tr style={{ background: '#fafafa' }}>
+                        <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '42%' }}>测试项目</th>
+                        <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '58%' }}>测试结果</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedQcTests.map(item => (
+                        <tr key={item.id}>
+                          <td style={{ padding: '4px 6px', border: '1px solid #ccc', verticalAlign: 'middle', lineHeight: 1.4 }}>
+                            {formatRecipeQcTestItemLine(item.id, recipeViscosity, recipeViscosityUnit)}
+                          </td>
+                          <td style={{ padding: '4px 6px', border: '1px solid #ccc', verticalAlign: 'middle' }}>
+                            <div className="print-qc-result-box">
+                              {qcTestItemResults[item.id]?.trim() || '\u00A0'}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {qcTestStandard ? (
+                        <tr>
+                          <td style={{ padding: '4px 6px', border: '1px solid #ccc', verticalAlign: 'top', lineHeight: 1.4 }}>其他测试标准</td>
+                          <td style={{ padding: '4px 6px', border: '1px solid #ccc', verticalAlign: 'top', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
+                            {qcTestStandard}
+                          </td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                ) : null}
               </td>
             </tr>
           </tbody>
@@ -709,6 +735,20 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
             white-space: pre-wrap;
           }
 
+          #cosmocoat-print-area .print-qc-table td,
+          #cosmocoat-print-area .print-qc-table th {
+            white-space: normal;
+          }
+
+          #cosmocoat-print-area .print-qc-result-box {
+            min-height: 22px;
+            padding: 2px 4px;
+            border: 1px solid #999;
+            border-radius: 2px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+          }
+
           #cosmocoat-print-area .print-section-title {
             font-size: 12pt !important;
             margin-bottom: 6px !important;
@@ -737,6 +777,9 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
         status={status}
         items={items}
         processFields={processFields}
+        recipeViscosity={recipeViscosity}
+        recipeViscosityUnit={recipeViscosityUnit}
+        qcTestItemResults={qcTestItemResults}
       />
 
       {/* ─── Screen UI wrapper (hidden during print) ─── */}
