@@ -288,6 +288,7 @@ Intermediate inventory from production.
 
 ### Process Kits (`/admin/cosmocoat-process-kits`)
 Product application method documentation (產品配套工藝書).
+- List page with search (code / name / description), status filter (`DRAFT` / `ACTIVE` / `ARCHIVED`), and paginated table; create, edit, and delete from the list
 - Fields: kit code, name, status, materials list, performance standards, usage notes
 - Performance standards are multi-select checkboxes: 百格(5B), water-boiling tests (80C30M/60M, 100C30M/60M/120M), RCA (30/50/100/150/200), hardness (B/HB/H/2H), chemical resistance (耐醇 99%/50, 耐醇 99%/100, 耐醇 99%/200, 耐 MEK/50, 耐 MEK/100), high temp/humidity & salt spray (高温高湿/盐雾, 65°C/85%RH 24H, 65°C/85%RH 48H, 5% NaCl盐雾24H, 5% NaCl盐雾48H)
 - Kit statuses: `DRAFT` → `ACTIVE` → `ARCHIVED`

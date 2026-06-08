@@ -86,8 +86,9 @@ const kitSchema = z.object({
   processFlowItems: z.array(processFlowItemSchema).max(200).optional().default([]),
 })
 
-function isMissingTable(error: unknown) {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021'
+function isMissingSchema(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError
+    && (error.code === 'P2021' || error.code === 'P2022')
 }
 
 async function resolveProductRows(products: z.infer<typeof kitSchema>['products']) {
@@ -201,10 +202,11 @@ export async function GET(req: NextRequest) {
       totalPages: Math.ceil(total / limit),
     })
   } catch (err) {
-    if (isMissingTable(err)) {
-      return NextResponse.json({ error: '工艺书表不存在，请先运行数据库迁移' }, { status: 503 })
+    if (isMissingSchema(err)) {
+      return NextResponse.json({ error: '工艺书表结构未同步，请先运行数据库迁移' }, { status: 503 })
     }
-    throw err
+    console.error('[process-kits GET]', err)
+    return NextResponse.json({ error: '加载工艺书列表失败' }, { status: 500 })
   }
 }
 
@@ -273,8 +275,8 @@ export async function POST(req: NextRequest) {
     if (err instanceof Error && err.message === 'FACTORY_PRODUCT_NOT_FOUND') {
       return NextResponse.json({ error: '工厂产品不存在' }, { status: 400 })
     }
-    if (isMissingTable(err)) {
-      return NextResponse.json({ error: '工艺书表不存在，请先运行数据库迁移' }, { status: 503 })
+    if (isMissingSchema(err)) {
+      return NextResponse.json({ error: '工艺书表结构未同步，请先运行数据库迁移' }, { status: 503 })
     }
     throw err
   }
