@@ -127,6 +127,14 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
       })
   }, [account, accounts])
 
+  const selectedParentLabel = useMemo(() => {
+    if (parentId === 'NONE') return undefined
+    const match = parentOptions.find(item => item.id === parentId)
+    if (match) return match.label
+    const fallback = accounts.find(item => item.id === parentId)
+    return fallback ? `${fallback.code} - ${fallback.name}` : undefined
+  }, [accounts, parentId, parentOptions])
+
   const selectedParent = parentId === 'NONE' ? null : accounts.find(item => item.id === parentId) ?? null
   const nextLevel = selectedParent ? selectedParent.level + 1 : 1
   const hasChildren = account ? accounts.some(item => item.parentId === account.id) : false
@@ -263,12 +271,29 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
               <Label className={labelClassName}>上级科目</Label>
               <Select value={parentId} onValueChange={value => setParentId(value ?? 'NONE')}>
                 <SelectTrigger className={`w-full ${fieldClassName}`}>
-                  <SelectValue placeholder="上级科目" />
+                  <SelectValue placeholder="选择上级科目">
+                    {selectedParentLabel}
+                  </SelectValue>
                 </SelectTrigger>
-                <SelectContent className={selectContentClassName}>
-                  <SelectItem value="NONE">无上级科目</SelectItem>
+                <SelectContent
+                  alignItemWithTrigger={false}
+                  className={`${selectContentClassName} min-w-80 max-h-72`}
+                >
+                  <SelectItem value="NONE" label="无上级科目">无上级科目</SelectItem>
                   {parentOptions.map(item => (
-                    <SelectItem key={item.id} value={item.id}>{item.label}</SelectItem>
+                    <SelectItem
+                      key={item.id}
+                      value={item.id}
+                      label={item.label}
+                      className="whitespace-normal *:whitespace-normal"
+                    >
+                      <span
+                        className="block font-sans leading-snug"
+                        style={{ paddingLeft: `${Math.max(0, item.level - 1) * 12}px` }}
+                      >
+                        {item.label}
+                      </span>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>

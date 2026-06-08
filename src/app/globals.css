@@ -264,6 +264,12 @@ html {
   background: #11110E !important;
   border-color: #2A2418 !important;
   color: #FFF7E6 !important;
+  font-family: var(--font-sans) !important;
+}
+
+.financial-select-content [data-slot="select-item"],
+.financial-select-content [data-slot="select-value"] {
+  font-family: var(--font-sans) !important;
 }
 
 @layer base {

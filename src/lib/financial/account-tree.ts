@@ -47,14 +47,23 @@ export function getChildrenForParent<T extends AccountTreeItem>(
     .sort((a, b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code))
 }
 
-export function flattenAccountHierarchy<T extends AccountTreeItem>(accounts: T[]) {
-  const rows: (T & { label: string })[] = []
+export function formatAccountOptionLabel(code: string, name: string) {
+  return `${code} - ${name}`
+}
+
+export type FlatAccountOption<T extends AccountTreeItem = AccountTreeItem> = T & {
+  label: string
+}
+
+export function flattenAccountHierarchy<T extends AccountTreeItem>(accounts: T[]): FlatAccountOption<T>[] {
+  const rows: FlatAccountOption<T>[] = []
 
   const visit = (items: AccountTreeNode<T>[]) => {
     for (const item of items) {
+      const { children: _children, ...account } = item
       rows.push({
-        ...item,
-        label: `${'  '.repeat(Math.max(0, item.level - 1))}${item.code} - ${item.name}`,
+        ...(account as unknown as T),
+        label: formatAccountOptionLabel(item.code, item.name),
       })
       if (item.children.length) visit(item.children)
     }
