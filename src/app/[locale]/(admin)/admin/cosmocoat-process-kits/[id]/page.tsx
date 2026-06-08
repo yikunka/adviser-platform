@@ -151,11 +151,6 @@ const PERFORMANCE_STANDARD_GROUPS = [
   },
 ]
 
-const MATERIAL_LABELS = new Map(MATERIALS.map(material => [material.id, material.label]))
-const PERFORMANCE_STANDARD_LABELS = new Map(
-  PERFORMANCE_STANDARD_GROUPS.flatMap(group => group.options.map(option => [option.id, option.label] as const)),
-)
-
 const card: React.CSSProperties = {
   background: 'var(--card)',
   border: '1px solid var(--border)',
@@ -333,13 +328,6 @@ function escapeHtml(value: string) {
     .replace(/'/g, '&#39;')
 }
 
-function formatPrintDateTime(value: string | null | undefined) {
-  if (!value) return '—'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '—'
-  return date.toLocaleString()
-}
-
 const TEST_TYPES = [
   'PERFORMANCE',
   'DURABILITY',
@@ -365,19 +353,22 @@ function ResultBadge({ result, label }: { result: string; label: string }) {
   )
 }
 
+interface PerformanceStandardPrintGroup {
+  groupLabel: string
+  itemLabels: string[]
+}
+
 interface ProcessKitPrintViewProps {
   code: string
   name: string
   description: string
   statusLabel: string
-  materialLabels: string[]
-  performanceStandardLabels: string[]
+  performanceStandardGroups: PerformanceStandardPrintGroup[]
   otherNote: string
   processDescription: string
   processFlowNote: string
   processFlowDocument: string
   kitProducts: KitProduct[]
-  tests: KitTest[]
   labels: {
     title: string
     basicInfo: string
@@ -385,8 +376,8 @@ interface ProcessKitPrintViewProps {
     name: string
     status: string
     description: string
-    materials: string
     performanceStandards: string
+    noPerformanceStandards: string
     processFlowSection: string
     addProcess: string
     globalProcessNote: string
@@ -400,16 +391,7 @@ interface ProcessKitPrintViewProps {
     filmThickness: string
     sprayViscosity: string
     notes: string
-    testsSection: string
-    testType: string
-    testResult: string
-    testDate: string
-    testerName: string
-    reportLink: string
     noProducts: string
-    noTests: string
-    testTypeLabel: (type: string) => string
-    testResultLabel: (result: string) => string
   }
 }
 
@@ -418,14 +400,12 @@ function ProcessKitPrintView({
   name,
   description,
   statusLabel,
-  materialLabels,
-  performanceStandardLabels,
+  performanceStandardGroups,
   otherNote,
   processDescription,
   processFlowNote,
   processFlowDocument,
   kitProducts,
-  tests,
   labels,
 }: ProcessKitPrintViewProps) {
   return (
@@ -447,13 +427,7 @@ function ProcessKitPrintView({
           </tr>
           <tr>
             <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.status}</td>
-            <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(statusLabel)}</td>
-            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.materials}</td>
-            <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(materialLabels.join('、'))}</td>
-          </tr>
-          <tr>
-            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.performanceStandards}</td>
-            <td colSpan={3} style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(performanceStandardLabels.join('、'))}</td>
+            <td colSpan={3} style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(statusLabel)}</td>
           </tr>
           <tr>
             <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.description}</td>
@@ -464,6 +438,26 @@ function ProcessKitPrintView({
               <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.notes}</td>
               <td colSpan={3} style={{ padding: '3px 6px', border: '1px solid #ccc', whiteSpace: 'pre-wrap' }}>{displayText(otherNote)}</td>
             </tr>
+          )}
+        </tbody>
+      </table>
+
+      <div className="print-section-title" style={{ fontWeight: 700, fontSize: 11, marginBottom: 5, borderLeft: '3px solid #000', paddingLeft: 6 }}>
+        {labels.performanceStandards}
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12, fontSize: 9 }}>
+        <tbody>
+          {performanceStandardGroups.length === 0 ? (
+            <tr>
+              <td style={{ padding: '8px 6px', border: '1px solid #ccc', textAlign: 'center' }}>{labels.noPerformanceStandards}</td>
+            </tr>
+          ) : (
+            performanceStandardGroups.map((group, index) => (
+              <tr key={group.groupLabel} style={{ background: index % 2 === 1 ? '#fafafa' : '#fff' }}>
+                <td style={{ width: '24%', padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{group.groupLabel}</td>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{group.itemLabels.join('、')}</td>
+              </tr>
+            ))
           )}
         </tbody>
       </table>
@@ -529,40 +523,6 @@ function ProcessKitPrintView({
             <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.processFlowDocument}</td>
             <td style={{ padding: '3px 6px', border: '1px solid #ccc', whiteSpace: 'pre-wrap' }}>{displayText(processFlowDocument)}</td>
           </tr>
-        </tbody>
-      </table>
-
-      <div className="print-section-title" style={{ fontWeight: 700, fontSize: 11, marginBottom: 5, borderLeft: '3px solid #000', paddingLeft: 6 }}>
-        {labels.testsSection}
-      </div>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9 }}>
-        <thead>
-          <tr style={{ background: '#f0f0f0' }}>
-            <th style={{ width: '16%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.testType}</th>
-            <th style={{ width: '14%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.testResult}</th>
-            <th style={{ width: '20%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.testDate}</th>
-            <th style={{ width: '16%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.testerName}</th>
-            <th style={{ width: '17%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.reportLink}</th>
-            <th style={{ width: '17%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.notes}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {tests.length === 0 ? (
-            <tr>
-              <td colSpan={6} style={{ padding: '8px 6px', border: '1px solid #ccc', textAlign: 'center' }}>{labels.noTests}</td>
-            </tr>
-          ) : (
-            tests.map((test, index) => (
-              <tr key={test.id} style={{ background: index % 2 === 1 ? '#fafafa' : '#fff' }}>
-                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{labels.testTypeLabel(test.testType)}</td>
-                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{labels.testResultLabel(test.testResult)}</td>
-                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{formatPrintDateTime(test.testDate)}</td>
-                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(test.testerName)}</td>
-                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(test.reportLink)}</td>
-                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(test.testNotes)}</td>
-              </tr>
-            ))
-          )}
         </tbody>
       </table>
     </div>
@@ -666,16 +626,16 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     })
     return map
   }, [processFlowItems, kitProducts])
-  const materialLabels = useMemo(() => {
-    const labels = selectedMaterials
-      .filter(id => id !== 'OTHER')
-      .map(id => MATERIAL_LABELS.get(id) ?? id)
-    if (hasOther && otherNote.trim()) labels.push(otherNote.trim())
-    return labels
-  }, [hasOther, otherNote, selectedMaterials])
-  const performanceStandardLabels = useMemo(
-    () => selectedPerformanceStandards.map(id => PERFORMANCE_STANDARD_LABELS.get(id) ?? id),
-    [selectedPerformanceStandards],
+  const performanceStandardGroupsForPrint = useMemo(
+    () => PERFORMANCE_STANDARD_GROUPS
+      .map(group => ({
+        groupLabel: t(`performanceGroups.${group.id}`),
+        itemLabels: group.options
+          .filter(option => selectedPerformanceStandards.includes(option.id))
+          .map(option => option.label),
+      }))
+      .filter(group => group.itemLabels.length > 0),
+    [selectedPerformanceStandards, t],
   )
   const printLabels = useMemo(() => ({
     title: t('printTitle'),
@@ -684,8 +644,8 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     name: t('name'),
     status: t('status'),
     description: t('description'),
-    materials: t('materials'),
     performanceStandards: t('performanceStandards'),
+    noPerformanceStandards: t('noPerformanceStandards'),
     processFlowSection: t('processFlowSection'),
     addProcess: t('addProcess'),
     globalProcessNote: t('globalProcessNote'),
@@ -699,16 +659,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     filmThickness: t('filmThickness'),
     sprayViscosity: t('sprayViscosity'),
     notes: t('notes'),
-    testsSection: t('testsSection'),
-    testType: t('testType'),
-    testResult: t('testResult'),
-    testDate: t('testDate'),
-    testerName: t('testerName'),
-    reportLink: t('reportLink'),
     noProducts: t('noProducts'),
-    noTests: t('noTests'),
-    testTypeLabel: (type: string) => t(`testTypes.${type}`),
-    testResultLabel: (result: string) => t(`testResults.${result}`),
   }), [t])
 
   function toggleMaterial(materialId: string) {
@@ -1278,14 +1229,12 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
           name={name}
           description={description}
           statusLabel={t(`statuses.${status}`)}
-          materialLabels={materialLabels}
-          performanceStandardLabels={performanceStandardLabels}
+          performanceStandardGroups={performanceStandardGroupsForPrint}
           otherNote={otherNote}
           processDescription={processDescription}
           processFlowNote={processFlowNote}
           processFlowDocument={processFlowDocument}
           kitProducts={kitProducts}
-          tests={tests}
           labels={printLabels}
         />
       )}

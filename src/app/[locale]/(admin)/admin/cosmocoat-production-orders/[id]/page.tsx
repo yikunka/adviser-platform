@@ -31,6 +31,7 @@ import { RecipeQcSection } from '@/components/cosmocoat/RecipeQcSection'
 import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
 import { FactoryProductCombobox } from '@/components/cosmocoat/FactoryProductCombobox'
 import type { FactoryProductPickerOption } from '@/lib/cosmocoat/factory-product-picker'
+import { serializeFactoryViscosity } from '@/lib/cosmocoat/factory-product-viscosity'
 
 type FactoryProductOption = FactoryProductPickerOption
 
@@ -425,6 +426,11 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
   const requiredTotal = useMemo(
     () => items.reduce((sum, item) => sum + item.requiredWeight, 0),
     [items],
+  )
+
+  const recipeViscosityLabel = useMemo(
+    () => serializeFactoryViscosity(recipeViscosity, recipeViscosityUnit) ?? '',
+    [recipeViscosity, recipeViscosityUnit],
   )
 
   const loadRecipeItems = useCallback(async (
@@ -850,6 +856,16 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
           <div className="space-y-1.5 sm:col-span-2">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>配方名称</label>
             <input value={recipeName} readOnly className="w-full rounded-lg px-3 py-2.5 text-sm outline-none opacity-70" style={inputStyle()} />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>配方黏度</label>
+            <input
+              value={recipeViscosityLabel}
+              readOnly
+              className="w-full rounded-lg px-3 py-2.5 text-sm outline-none opacity-70"
+              style={inputStyle()}
+              placeholder="—"
+            />
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>生产重量 ({productUnit})</label>

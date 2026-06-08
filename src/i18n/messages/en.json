@@ -913,6 +913,7 @@
       "notes": "Notes",
       "productName": "Product name",
       "noProducts": "No products yet. Click \"Add Reference Product\".",
+      "noPerformanceStandards": "No performance tests selected",
       "noTests": "No test records yet",
       "productFormRequired": "Select a product",
       "accessoryFormRequired": "When hardener or thinner is enabled, select the product and enter its ratio",

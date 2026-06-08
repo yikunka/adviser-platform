@@ -269,7 +269,7 @@ Custom color formulations for specific customers or products.
 ### Production Orders (`/admin/cosmocoat-production-orders`)
 Manufacturing batch tracking.
 - Fields: order code, factory product, recipe, total weight (detail page shows these only; batch number is not shown or editable on the detail page, though list view still has a 批次 column)
-- Detail page shows recipe code and name read-only; there is no link/button to open the linked recipe detail page
+- Detail page shows recipe code, name, and viscosity range (read-only, e.g. `9.7-9.8 S` or `9.7-9.8 KU` from the linked recipe); there is no link/button to open the linked recipe detail page
 - New order page: factory product picker supports type-to-search with fuzzy matching (product code, name, current recipe); loads options on demand via lightweight API instead of bulk-fetching all products
 - Product list auto-excludes factory products without a current recipe; optional `?recipeId=` URL param further limits choices to products linked to that recipe
 - Recipes containing only nested sub-recipes or semifinished components (no raw-material lines) show an empty materials table instead of crashing
@@ -299,7 +299,8 @@ Product application method documentation (產品配套工藝書).
 - Products and standalone process steps share one continuous sequence (1, 2, 3…); hover any item in the document preview and use **在该产品下方添加工艺** to insert a new process at the next position (automatic renumbering); each process step can be edited or deleted
 - Legacy product-nested process blocks are migrated into the unified ordered list on read when stored `processFlowItems` is empty
 - Detail page actions include browser-based A4 printing and browser-generated Word document download for the current process-kit content; no backend export job is used
-- Test records: type (`PERFORMANCE`, `DURABILITY`, `ADHESION`, `COLOR_STABILITY`, `BOND_STRENGTH`, `OTHER`), result (`PASSED`, `FAILED`, `PENDING`), test date, tester name, report link
+- Print and Word export include only core process information: basic info, performance standards (grouped by test category — 百格, 水煮测试, RCA, 硬度, 耐化学性, 高温高湿/盐雾 — listing selected test item names only, no test results), product parameters, and process flow; **产品材料清单** and **测试记录** are omitted from print/Word output
+- Test records (detail page only, not in print/Word): type (`PERFORMANCE`, `DURABILITY`, `ADHESION`, `COLOR_STABILITY`, `BOND_STRENGTH`, `OTHER`), result (`PASSED`, `FAILED`, `PENDING`), test date, tester name, report link
 
 ### Customers (`/admin/cosmocoat-customers`)
 Unified customer registry for CosmoCoat manufacturing clients (raw material purchases, recipe services, finished goods).
