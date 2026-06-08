@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, CheckCircle2, ImagePlus, PlayCircle, Plus, Save, Search, X } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, ImagePlus, PlayCircle, Plus, Printer, Save, Search, X } from 'lucide-react'
 import { formatPercent, formatWeight } from '@/lib/cosmocoat/recipes'
 import type { SampleOrderRow } from '@/lib/cosmocoat/sample-orders'
 
@@ -263,6 +263,250 @@ function ProcessKitLineCard({
           placeholder="打样备注（可选）"
         />
       </Field>
+    </div>
+  )
+}
+
+const SAMPLE_ORDER_PRINT_AREA_ID = 'cosmocoat-sample-order-print-area'
+
+const printCell: React.CSSProperties = { padding: '3px 6px', border: '1px solid #ccc' }
+const printLabelCell: React.CSSProperties = { ...printCell, background: '#f5f5f5', fontWeight: 600 }
+
+type SampleOrderPrintViewProps = {
+  order: SampleOrderRow
+  notes: string
+  referenceImageUrl: string
+  processKitLines: ProcessKitLine[]
+  colorFormulaLines: ColorFormulaLine[]
+}
+
+function SampleOrderPrintView({
+  order,
+  notes,
+  referenceImageUrl,
+  processKitLines,
+  colorFormulaLines,
+}: SampleOrderPrintViewProps) {
+  const { customer } = order
+  const formulaMaterialLines = order.colorFormulas
+
+  return (
+    <div id={SAMPLE_ORDER_PRINT_AREA_ID}>
+      <div style={{ fontWeight: 700, fontSize: 14, textAlign: 'center', marginBottom: 10 }}>
+        CosmoCoat 打样单
+      </div>
+
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12, fontSize: 9 }}>
+        <tbody>
+          <tr>
+            <td style={{ ...printLabelCell, width: '15%' }}>打样单号</td>
+            <td style={{ ...printCell, width: '35%' }}>{order.code}</td>
+            <td style={{ ...printLabelCell, width: '15%' }}>状态</td>
+            <td style={{ ...printCell, width: '35%' }}>{STATUS_LABEL[order.status]}</td>
+          </tr>
+          <tr>
+            <td style={printLabelCell}>客户编号</td>
+            <td style={printCell}>{customer.code}</td>
+            <td style={printLabelCell}>客户名称</td>
+            <td style={printCell}>{customer.name}</td>
+          </tr>
+          <tr>
+            <td style={printLabelCell}>联系电话</td>
+            <td style={printCell}>{customer.phone || '—'}</td>
+            <td style={printLabelCell}>地址</td>
+            <td style={printCell}>{customer.address || '—'}</td>
+          </tr>
+          {customer.productionEquipmentParams && (
+            <tr>
+              <td style={printLabelCell}>生产设备参数</td>
+              <td colSpan={3} style={{ ...printCell, whiteSpace: 'pre-wrap' }}>{customer.productionEquipmentParams}</td>
+            </tr>
+          )}
+          <tr>
+            <td style={printLabelCell}>创建时间</td>
+            <td style={printCell}>{formatDatetime(order.createdAt)}</td>
+            <td style={printLabelCell}>开始时间</td>
+            <td style={printCell}>{formatDatetime(order.startedAt)}</td>
+          </tr>
+          <tr>
+            <td style={printLabelCell}>完成时间</td>
+            <td style={printCell}>{formatDatetime(order.completedAt)}</td>
+            <td style={printLabelCell}>调色配方总重</td>
+            <td style={printCell}>{formatWeight(order.totalQuantityKg)} kg</td>
+          </tr>
+          {notes.trim() && (
+            <tr>
+              <td style={printLabelCell}>备注</td>
+              <td colSpan={3} style={{ ...printCell, whiteSpace: 'pre-wrap' }}>{notes.trim()}</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+
+      {referenceImageUrl && (
+        <>
+          <div className="print-section-title" style={{ fontWeight: 700, fontSize: 10, marginBottom: 4, borderLeft: '3px solid #000', paddingLeft: 6 }}>
+            参考样品
+          </div>
+          <div style={{ marginBottom: 14, textAlign: 'center' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={referenceImageUrl}
+              alt="参考样品"
+              style={{ maxWidth: '100%', maxHeight: 180, objectFit: 'contain' }}
+            />
+          </div>
+        </>
+      )}
+
+      {processKitLines.length > 0 && (
+        <>
+          <div className="print-section-title" style={{ fontWeight: 700, fontSize: 10, marginBottom: 4, borderLeft: '3px solid #000', paddingLeft: 6 }}>
+            工艺书明细
+          </div>
+          {processKitLines.map(line => (
+            <div key={line.key} style={{ marginBottom: 14 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 6, fontSize: 9 }}>
+                <tbody>
+                  <tr>
+                    <td style={{ ...printLabelCell, width: '15%' }}>工艺书编号</td>
+                    <td style={{ ...printCell, width: '35%' }}>{line.code}</td>
+                    <td style={{ ...printLabelCell, width: '15%' }}>工艺书名称</td>
+                    <td style={{ ...printCell, width: '35%' }}>{line.name}</td>
+                  </tr>
+                  {line.detail && line.detail.materials.length > 0 && (
+                    <tr>
+                      <td style={printLabelCell}>材料</td>
+                      <td colSpan={3} style={printCell}>{line.detail.materials.join('、')}</td>
+                    </tr>
+                  )}
+                  {line.notes.trim() && (
+                    <tr>
+                      <td style={printLabelCell}>备注</td>
+                      <td colSpan={3} style={{ ...printCell, whiteSpace: 'pre-wrap' }}>{line.notes.trim()}</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+
+              {line.detail && line.detail.performanceStandards.length > 0 && (
+                <div style={{ fontSize: 9, marginBottom: 6 }}>
+                  <span style={{ fontWeight: 600 }}>性能测试标准：</span>
+                  {line.detail.performanceStandards.join('、')}
+                </div>
+              )}
+
+              {line.detail && line.detail.products.length > 0 && (
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 6, fontSize: 9 }}>
+                  <thead>
+                    <tr style={{ background: '#f0f0f0' }}>
+                      {['产品', 'IR 时间', 'IR 温度', 'UV 能量', '膜厚', '喷涂粘度'].map(h => (
+                        <th key={h} style={{ ...printCell, fontWeight: 600, textAlign: 'left' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {line.detail.products.map((product, index) => (
+                      <tr key={product.id} style={{ background: index % 2 === 1 ? '#fafafa' : '#fff' }}>
+                        <td style={printCell}>{product.productName}</td>
+                        <td style={printCell}>{product.irMinutes || '—'}</td>
+                        <td style={printCell}>{product.irTemperature || '—'}</td>
+                        <td style={printCell}>{product.uvEnergy || '—'}</td>
+                        <td style={printCell}>{product.filmThickness || '—'}</td>
+                        <td style={printCell}>{product.sprayViscosity || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {line.detail?.processFlowDocument && (
+                <div style={{ fontSize: 9, marginBottom: 4 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 2 }}>完整工艺流程</div>
+                  <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit', lineHeight: 1.5 }}>{line.detail.processFlowDocument}</pre>
+                </div>
+              )}
+            </div>
+          ))}
+        </>
+      )}
+
+      {colorFormulaLines.length > 0 && (
+        <>
+          <div className="print-section-title" style={{ fontWeight: 700, fontSize: 10, marginBottom: 4, borderLeft: '3px solid #000', paddingLeft: 6 }}>
+            调色配方明细
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 14, fontSize: 9 }}>
+            <thead>
+              <tr style={{ background: '#f0f0f0' }}>
+                {['调色配方', '类别', '数量 (kg)', '备注'].map(h => (
+                  <th key={h} style={{ ...printCell, fontWeight: 600, textAlign: 'left' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {colorFormulaLines.map((line, index) => (
+                <tr key={line.key} style={{ background: index % 2 === 1 ? '#fafafa' : '#fff' }}>
+                  <td style={printCell}>
+                    <span style={{ fontFamily: 'monospace', marginRight: 4 }}>{line.code}</span>
+                    {line.name}
+                  </td>
+                  <td style={printCell}>{line.categoryLabel || '—'}</td>
+                  <td style={printCell}>{formatWeight(Number(line.quantityKg))}</td>
+                  <td style={printCell}>{line.notes || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {formulaMaterialLines.length > 0 && formulaMaterialLines.map(line => (
+        <div key={line.id} style={{ marginBottom: 14 }}>
+          <div className="print-section-title" style={{ fontWeight: 700, fontSize: 10, marginBottom: 4, borderLeft: '3px solid #000', paddingLeft: 6 }}>
+            调色配方材料表 · {line.colorFormula.code} · {line.colorFormula.name}
+          </div>
+          <div style={{ fontSize: 9, marginBottom: 4 }}>
+            目标色：{line.colorFormula.targetColor || '—'} · 打样数量：{formatWeight(line.quantityKg)} kg
+            {line.colorFormula.factoryProduct && (
+              <> · 适用产品：{line.colorFormula.factoryProduct.productCode} · {line.colorFormula.factoryProduct.name}</>
+            )}
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9 }}>
+            <thead>
+              <tr style={{ background: '#f0f0f0' }}>
+                {['序号', '生产编号', '原料/产品名称', '用量 (kg)', '占比'].map(h => (
+                  <th key={h} style={{ ...printCell, fontWeight: 600, textAlign: h === '序号' ? 'center' : 'left' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {line.scaledItems.map((item, index) => (
+                <tr key={item.id} style={{ background: index % 2 === 1 ? '#fafafa' : '#fff' }}>
+                  <td style={{ ...printCell, textAlign: 'center' }}>{index + 1}</td>
+                  <td style={printCell}>{item.productionCode || '—'}</td>
+                  <td style={printCell}>{item.name || '—'}</td>
+                  <td style={printCell}>{formatWeight(item.scaledQuantity)}</td>
+                  <td style={printCell}>{item.scaledPercentage != null ? formatPercent(item.scaledPercentage) : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 16, fontSize: 9 }}>
+        <tbody>
+          <tr>
+            {['打样人员', '质检确认', '客户签收'].map(label => (
+              <td key={label} className="signature-cell" style={{ padding: '12px 8px 4px', border: '1px solid #ccc', textAlign: 'center', width: '33%' }}>
+                <div>{label}</div>
+                <div style={{ borderBottom: '1px solid #999', marginTop: 16 }} />
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -692,14 +936,14 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
         <Field label="参考样品图片">
           <div className="flex flex-wrap items-start gap-4">
             <div
-              className={`rounded-lg border flex items-center justify-center overflow-hidden shrink-0 ${isReadOnly ? 'w-full max-w-lg min-h-[240px]' : 'w-40 h-40'}`}
+              className="rounded-lg border flex items-center justify-center overflow-hidden shrink-0 w-full max-w-lg min-h-[240px]"
               style={{ borderColor: '#2A2418', background: '#0E0E0A' }}
             >
               {referenceImageUrl ? (
                 <img
                   src={referenceImageUrl}
                   alt="参考样品"
-                  className={`w-full object-contain p-2 ${isReadOnly ? 'max-h-[480px]' : 'h-full'}`}
+                  className="w-full object-contain p-2 max-h-[480px]"
                 />
               ) : (
                 <ImagePlus size={28} style={{ color: '#5A5040' }} />

@@ -21,6 +21,7 @@ import {
 } from '@/lib/cosmocoat/recipes'
 import {
   formatQcTestItemResults,
+  formatRecipeQcTestItemLine,
   hydrateQcTestItemResults,
   RECIPE_QC_TEST_ITEMS,
   type QcTestItemResults,
@@ -110,12 +111,18 @@ interface PrintViewProps {
   status: string
   items: EditableItem[]
   processFields: ProductionOrderProcessFields
+  recipeViscosity: string | null
+  recipeViscosityUnit: string | null
+  qcTestItemResults: QcTestItemResults
 }
 
 function PrintView({
   code, productName, recipeCode, recipeName, totalWeight, productUnit,
   startedAt, finishedAt, status, items,
   processFields,
+  recipeViscosity,
+  recipeViscosityUnit,
+  qcTestItemResults,
 }: PrintViewProps) {
   const {
     productionSpeedRequirements,
@@ -124,12 +131,12 @@ function PrintView({
     productionNotes,
     qcTestItems,
     qcTestStandard,
-    qcResult,
   } = processFields
-  const qcLabels = RECIPE_QC_TEST_ITEMS
-    .filter(item => qcTestItems.includes(item.id))
-    .map(item => item.label)
-    .join('、')
+  const selectedQcTests = RECIPE_QC_TEST_ITEMS.filter(item => qcTestItems.includes(item.id))
+  const hasProcessContent = Boolean(
+    productionSpeedRequirements || productionTimeRequirements || packagingRequirements || productionNotes,
+  )
+  const hasQcContent = selectedQcTests.length > 0 || Boolean(qcTestStandard)
   return (
     <div id="cosmocoat-print-area">
       {/* ─── Basic info grid ─── */}

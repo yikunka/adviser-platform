@@ -242,7 +242,7 @@ Purchasing and sourcing registry.
 Product formulation management.
 - Fields: recipe code, name, category, batch quantity, unit cost, product viscosity (free-text range e.g. `9.7-9.8`, unit S or KU — in basic info above notes)
 - Line items: raw materials, factory finished products (from factory products module), component recipes (nested semifinished), or Sol semifinished inventory, with quantity, unit price, percentage
-- Material list on recipe detail: rows with type 成品 show an extra read-only column **工厂产品单价(实时)** sourced from `cos_factory_products.unit_price` (refreshes when factory-product line items change and when the page becomes visible again); the editable 单价 column remains the recipe line's saved cost
+- Material list on recipe detail: unified columns for all line types (raw material, semifinished, factory product); 单价 is the editable saved line cost for every row type
 - Material picker on new/edit recipe page: tabs for 原材料, 半成品, and 成品; finished-product tab loads live `unitPrice` from factory products via a dedicated recipe picker API (always fresh from DB, refreshes when switching to the 成品 tab or when the page becomes visible again), with category filter and search, same click-to-select and "添加选中" flow as raw materials
 - Unit cost is calculated by percentage: each line contributes `(quantity ÷ total quantity) × unit price`; accurate even when material quantities do not sum to 100
 - Automatic cost calculation; line prices can be refreshed from latest source pricing, and raw-material primary price or factory-product unit price changes automatically cascade through dependent production recipes, nested semifinished recipes, and source-linked semifinished inventory unit prices
@@ -310,13 +310,13 @@ Unified customer registry for CosmoCoat manufacturing clients (raw material purc
 
 ### Sample Orders (`/admin/cosmocoat-sample-orders`)
 打样单（样品单）管理，用于客户打样需求的全流程跟踪。
-- List with search (order code / customer) and status filter; columns: reference sample thumbnail (4× size for DRAFT and IN_PROGRESS, standard size for COMPLETED), customer, process kit (0 or 1), color-formula count, total color-formula weight (kg), status, creation date
+- List with search (order code / customer) and status filter; columns: reference sample thumbnail (4× enlarged in all statuses), customer, process kit (0 or 1), color-formula count, total color-formula weight (kg), status, creation date
 - Statuses: `DRAFT` → `IN_PROGRESS` → `COMPLETED`
 - Create at `/admin/cosmocoat-sample-orders/new`; detail at `/admin/cosmocoat-sample-orders/[id]`
 - Link to a CosmoCoat customer profile (required)
 - **One process kit per order** (database unique constraint on `sampleOrderId`); line items also support multiple Color Formulas, each with quantity in kg; no duplicate formulas on the same order
 - Process kit lines do not require a sample weight: adding a kit auto-expands the full process-flow document (performance standards, product parameters, complete process flow); kit **materials** are shown on the kit title; only color formulas use quantity (kg)
-- Basic info: customer (required), optional **reference sample image** (max 1, upload to OSS), then **notes** below the image; list shows thumbnail; detail page shows full image
+- Basic info: customer (required), optional **reference sample image** (max 1, upload to OSS), then **notes** below the image; list shows 4× enlarged thumbnail; detail page shows enlarged image (up to 480px height) in all statuses
 - Auto-generated order codes: `YP####` (e.g. `YP0001`)
 - Progress tracking: step indicator (草稿 → 进行中 → 已完成), `startedAt` when moving to IN_PROGRESS, `completedAt` when marked COMPLETED
 - Actions: Save (DRAFT), 开始打样 (→ IN_PROGRESS), 标记完成 (→ COMPLETED); completed orders lock line items and customer but remain viewable

@@ -86,8 +86,6 @@ type EditableItem = {
   sourceOrderCode?: string | null
   quantity: number
   unitPrice: number | null
-  /** Live unit price from cos_factory_products — read-only display for factory_product rows */
-  factoryProductUnitPrice?: number | null
   amount: number
   notes: string
 }
@@ -177,7 +175,6 @@ function toEditableItemFromFinishedProduct(
     unit: product.unit,
     quantity,
     unitPrice: product.unitPrice,
-    factoryProductUnitPrice: product.unitPrice,
     amount: 0,
     notes,
   }
@@ -316,7 +313,6 @@ export default function AdminCosmoCoatRecipeEditorPage() {
             unit: product.unit,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
-            factoryProductUnitPrice: product.unitPrice,
             amount: item.amount ?? 0,
             notes: item.notes,
           }
@@ -482,57 +478,6 @@ export default function AdminCosmoCoatRecipeEditorPage() {
       setPickerLoading(false)
     }
   }, [pickerSearch, finishedProductCategoryFilter])
-
-  const factoryProductIdsKey = useMemo(
-    () => items
-      .filter(item => item.itemType === 'factory_product' && item.factoryProductId)
-      .map(item => item.factoryProductId!)
-      .sort()
-      .join(','),
-    [items],
-  )
-
-  const refreshLiveFactoryProductPrices = useCallback(async () => {
-    const factoryProductIds = factoryProductIdsKey.split(',').filter(Boolean)
-    if (factoryProductIds.length === 0) return
-
-    try {
-      const res = await fetch(
-        `/api/admin/cosmocoat/recipes/factory-product-prices?ids=${factoryProductIds.join(',')}`,
-        { cache: 'no-store' },
-      )
-      const data = await res.json()
-      if (!res.ok) return
-      const prices = data.prices as Record<string, number | null>
-      setItems(prev => prev.map(item => {
-        if (item.itemType !== 'factory_product' || !item.factoryProductId) return item
-        return {
-          ...item,
-          factoryProductUnitPrice: prices[item.factoryProductId] ?? item.factoryProductUnitPrice ?? null,
-        }
-      }))
-    } catch {
-      // non-blocking
-    }
-  }, [factoryProductIdsKey])
-
-  useEffect(() => {
-    if (isNew || !factoryProductIdsKey) return
-    refreshLiveFactoryProductPrices()
-  }, [isNew, factoryProductIdsKey, refreshLiveFactoryProductPrices])
-
-  useEffect(() => {
-    if (isNew) return
-
-    function handleVisibilityChange() {
-      if (document.visibilityState === 'visible') {
-        refreshLiveFactoryProductPrices()
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }, [isNew, refreshLiveFactoryProductPrices])
 
   useEffect(() => {
     if (isNew) {
@@ -1008,7 +953,6 @@ export default function AdminCosmoCoatRecipeEditorPage() {
                 <th style={th}>数量</th>
                 <th style={th}>占比</th>
                 <th style={th}>单价(元)</th>
-                <th style={th}>工厂产品单价(实时)</th>
                 <th style={th}>金额(元)</th>
                 <th style={th}>备注</th>
                 <th style={{ ...th, textAlign: 'right' }}>操作</th>
@@ -1017,7 +961,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
             <tbody>
               {itemsWithPercentage.length === 0 ? (
                 <tr>
-                  <td colSpan={12} style={{ ...td, textAlign: 'center', padding: '2rem' }}>请从下方选择原材料、半成品或成品</td>
+                  <td colSpan={11} style={{ ...td, textAlign: 'center', padding: '2rem' }}>请从下方选择原材料、半成品或成品</td>
                 </tr>
               ) : itemsWithPercentage.map((item, index) => (
                 <tr
@@ -1086,24 +1030,6 @@ export default function AdminCosmoCoatRecipeEditorPage() {
                       className="w-24 rounded px-2 py-1 text-sm outline-none"
                       style={inputStyle()}
                     />
-                  </td>
-                  <td style={td}>
-                    {item.itemType === 'factory_product'
-                      ? (
-                        <span
-                          title="从工厂产品表实时读取"
-                          style={{
-                            color: item.factoryProductUnitPrice != null
-                              && item.unitPrice != null
-                              && item.factoryProductUnitPrice !== item.unitPrice
-                              ? '#C9A96E'
-                              : 'var(--muted-foreground)',
-                          }}
-                        >
-                          {formatMoney(item.factoryProductUnitPrice)}
-                        </span>
-                      )
-                      : '—'}
                   </td>
                   <td style={td}>{formatMoney(item.amount, 3)}</td>
                   <td style={td}>

@@ -207,7 +207,7 @@ export default function AdminCosmoCoatSampleOrdersPage() {
                         <img
                           src={order.referenceImageUrl}
                           alt={`${order.code} 参考样品`}
-                          className={`rounded object-cover border ${order.status === 'COMPLETED' ? 'h-10 w-10' : 'h-40 w-40'}`}
+                          className="rounded object-cover border h-40 w-40"
                           style={{ borderColor: '#2A2418' }}
                         />
                       ) : (
