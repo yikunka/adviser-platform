@@ -5,8 +5,9 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Download, FileBarChart, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
-import type { FinancialReportsBundle, AccountingEquationCheck } from '@/lib/financial/reports'
+import type { FinancialReportsBundle, AccountingEquationCheck, BalanceSheetSection } from '@/lib/financial/reports'
 import { formatReportAmount } from '@/lib/financial/utils'
+import { FINANCIAL_ACCOUNTS_CHANGED, type FinancialAccountsChangedDetail } from '@/lib/financial/events'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -141,6 +142,18 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
     fetchReports()
   }, [fetchReports])
 
+  useEffect(() => {
+    function handleAccountsChanged(event: Event) {
+      const detail = (event as CustomEvent<FinancialAccountsChangedDetail>).detail
+      const scopedCompanyId = scope.params.companyId
+      if (scopedCompanyId && detail.companyId !== scopedCompanyId) return
+      fetchReports()
+    }
+
+    window.addEventListener(FINANCIAL_ACCOUNTS_CHANGED, handleAccountsChanged)
+    return () => window.removeEventListener(FINANCIAL_ACCOUNTS_CHANGED, handleAccountsChanged)
+  }, [fetchReports, scope.params.companyId])
+
   function exportTrialBalance() {
     if (!reports) return
     exportCsv(
@@ -210,18 +223,33 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
         XLSX.utils.aoa_to_sheet(sheetRows('资产负债表', period, [
           ['截至日期', reports.balanceSheet.asOfDate],
           [],
-          ['分类', '科目编码', '科目名称', '金额'],
-          ...reports.balanceSheet.assets.map(row => ['资产', row.code, row.name, row.amount]),
-          ['资产合计', '', '', reports.balanceSheet.totalAssets],
+          ['分类', 'HKFRS 分组', '科目编码', '科目名称', '金额'],
+          ...reports.balanceSheet.assetSections.flatMap(section => [
+            ...section.lines.map(row => ['资产', section.label, row.code, row.name, row.amount]),
+            [`${section.label}合计`, section.label, '', '', section.total],
+            [],
+          ]),
+          ['资产合计', '', '', '', reports.balanceSheet.totalAssets],
           [],
-          ...reports.balanceSheet.liabilities.map(row => ['负债', row.code, row.name, row.amount]),
-          ['负债合计', '', '', reports.balanceSheet.totalLiabilities],
+          ...reports.balanceSheet.equitySection.lines.map(row => [
+            '权益',
+            reports.balanceSheet.equitySection.label,
+            row.code,
+            reportLineLabel(row.name),
+            row.amount,
+          ]),
+          [`${reports.balanceSheet.equitySection.label}合计`, reports.balanceSheet.equitySection.label, '', '', reports.balanceSheet.equitySection.total],
+          ['权益合计', '', '', '', reports.balanceSheet.totalEquity],
           [],
-          ...reports.balanceSheet.equity.map(row => ['权益', row.code, reportLineLabel(row.name), row.amount]),
-          ['权益合计', '', '', reports.balanceSheet.totalEquity],
-          ['负债和权益合计', '', '', reports.balanceSheet.totalLiabilitiesAndEquity],
-          ['会计恒等式是否平衡', '', '', reports.balanceSheet.equation.balanced ? '是' : '否'],
-          ['恒等式差异（资产 − 负债和权益）', '', '', reports.balanceSheet.equation.difference],
+          ...reports.balanceSheet.liabilitySections.flatMap(section => [
+            ...section.lines.map(row => ['负债', section.label, row.code, row.name, row.amount]),
+            [`${section.label}合计`, section.label, '', '', section.total],
+            [],
+          ]),
+          ['负债合计', '', '', '', reports.balanceSheet.totalLiabilities],
+          ['负债和权益合计', '', '', '', reports.balanceSheet.totalLiabilitiesAndEquity],
+          ['会计恒等式是否平衡', '', '', '', reports.balanceSheet.equation.balanced ? '是' : '否'],
+          ['恒等式差异（资产 − 负债和权益）', '', '', '', reports.balanceSheet.equation.difference],
         ])),
         '资产负债表',
       )
@@ -373,34 +401,24 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                 />
                 <AccountingEquationAlert equation={reports.balanceSheet.equation} />
                 <Section title="资产">
-                  <StatementTable
-                    headers={['编码', '科目', '金额']}
-                    rows={reports.balanceSheet.assets.map(row => [row.code, row.name, money(row.amount)])}
-                    emptyLabel="暂无资产余额"
-                  />
-                  <TotalsFooter left="资产合计" right={money(reports.balanceSheet.totalAssets)} />
+                  {reports.balanceSheet.assetSections.map(section => (
+                    <BalanceSheetSectionBlock key={section.label} section={section} />
+                  ))}
+                  <TotalsFooter left="资产合计" right={money(reports.balanceSheet.totalAssets)} highlight />
                 </Section>
-                <Section title="负债">
-                  <StatementTable
-                    headers={['编码', '科目', '金额']}
-                    rows={reports.balanceSheet.liabilities.map(row => [row.code, row.name, money(row.amount)])}
-                    emptyLabel="暂无负债余额"
-                  />
+                <Section title="负债及所有者权益">
+                  <BalanceSheetSectionBlock section={reports.balanceSheet.equitySection} />
+                  {reports.balanceSheet.liabilitySections.map(section => (
+                    <BalanceSheetSectionBlock key={section.label} section={section} />
+                  ))}
                   <TotalsFooter left="负债合计" right={money(reports.balanceSheet.totalLiabilities)} />
-                </Section>
-                <Section title="权益">
-                  <StatementTable
-                    headers={['编码', '科目', '金额']}
-                    rows={reports.balanceSheet.equity.map(row => [row.code, reportLineLabel(row.name), money(row.amount)])}
-                    emptyLabel="暂无权益余额"
-                  />
                   <TotalsFooter left="权益合计" right={money(reports.balanceSheet.totalEquity)} />
+                  <TotalsFooter
+                    left="负债和权益合计"
+                    right={money(reports.balanceSheet.totalLiabilitiesAndEquity)}
+                    highlight
+                  />
                 </Section>
-                <TotalsFooter
-                  left="负债和权益合计"
-                  right={money(reports.balanceSheet.totalLiabilitiesAndEquity)}
-                  highlight
-                />
               </TabsContent>
 
               <TabsContent value="cashflow" className="space-y-4">
@@ -416,6 +434,22 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
           )}
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+function BalanceSheetSectionBlock({ section }: { section: BalanceSheetSection }) {
+  return (
+    <div className="space-y-2">
+      <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{section.label}</h4>
+      <StatementTable
+        headers={['编码', '科目', '金额']}
+        rows={section.lines.map(row => [row.code, reportLineLabel(row.name), money(row.amount)])}
+        emptyLabel={`暂无${section.label}余额`}
+      />
+      {section.lines.length > 0 ? (
+        <TotalsFooter left={`${section.label}合计`} right={money(section.total)} />
+      ) : null}
     </div>
   )
 }

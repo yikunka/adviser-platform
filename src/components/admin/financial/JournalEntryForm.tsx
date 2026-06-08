@@ -98,7 +98,7 @@ function resetFormForNextEntry(
 
 export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, onSaved, onContinued }: Props) {
   const lastSavedEntryDateRef = useRef<string | null>(null)
-  const lineFirstFieldRefs = useRef<(HTMLInputElement | null)[]>([])
+  const lineFirstFieldRefs = useRef<(HTMLElement | null)[]>([])
   const pendingFocusLineIndex = useRef<number | null>(null)
   const [companies, setCompanies] = useState<ScopeCompany[]>([])
   const [entryDate, setEntryDate] = useState(todayYmd())

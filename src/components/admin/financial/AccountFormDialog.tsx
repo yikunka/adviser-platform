@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ACCOUNT_TYPE_OPTIONS } from '@/lib/financial/account-types'
 import { flattenAccountHierarchy, isDescendantAccount } from '@/lib/financial/account-tree'
 import { canEditEnteredBalances, openingBalanceEditBlockedMessage } from '@/lib/financial/opening-balance'
+import { notifyFinancialAccountsChanged } from '@/lib/financial/events'
 import { calculateYearToDateBalance, isCurrentYearProfitAccountName } from '@/lib/financial/year-to-date'
 import type { AccountType } from '@prisma/client'
 
@@ -224,6 +225,7 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
       if (!res.ok) throw new Error(data.toast || data.error || '保存科目失败。')
 
       toast.success(data.toast || (account ? '科目已更新。' : '科目已创建。'))
+      notifyFinancialAccountsChanged(companyId)
       onOpenChange(false)
       await onSaved()
     } catch (err) {

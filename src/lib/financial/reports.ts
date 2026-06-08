@@ -1,16 +1,24 @@
 import type { AccountType, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
 import { isDebitNormalAccountType, isProfitAndLossExpenseType } from '@/lib/financial/account-types'
+import {
+  buildBalanceSheetSections,
+  isCurrentAssetAccount,
+  isCurrentLiabilityAccount,
+  isNonCurrentAssetAccount,
+  type BalanceSheetSection,
+} from '@/lib/financial/balance-sheet-sections'
+import {
+  buildLeafAccountIdsByAccount,
+  buildYearToDateTotalsByAccount,
+  type ReportRollupAccount,
+} from '@/lib/financial/report-account-rollups'
 import { trialBalanceColumns } from '@/lib/financial/report-balances'
+import type { ReportAccountRow, StatementLineRow } from '@/lib/financial/report-line-types'
 import { roundMoney } from '@/lib/financial/utils'
 
-export type ReportAccountRow = {
-  accountId: string
-  code: string
-  name: string
-  type: AccountType
-  level: number
-}
+export type { BalanceSheetSection } from '@/lib/financial/balance-sheet-sections'
+export type { ReportAccountRow, StatementLineRow } from '@/lib/financial/report-line-types'
 
 type MovementTotals = {
   debit: number
@@ -22,10 +30,6 @@ export type TrialBalanceRow = ReportAccountRow & {
   periodCredit: number
   closingDebit: number
   closingCredit: number
-}
-
-export type StatementLineRow = ReportAccountRow & {
-  amount: number
 }
 
 export type IncomeStatementReport = {
@@ -53,6 +57,9 @@ export type BalanceSheetReport = {
   asOfDate: string
   currency: 'HKD'
   standard: 'HKFRS'
+  assetSections: BalanceSheetSection[]
+  liabilitySections: BalanceSheetSection[]
+  equitySection: BalanceSheetSection
   assets: StatementLineRow[]
   liabilities: StatementLineRow[]
   equity: StatementLineRow[]
@@ -136,30 +143,21 @@ function isCashAccount(account: { code: string; name: string }) {
   return /^(1001|1002|1010|1020)/.test(account.code) || /cash|bank|現金|銀行/i.test(account.name)
 }
 
-function isCurrentAsset(account: { code: string; type: AccountType }) {
-  return account.type === 'ASSET' && /^1[1-4]/.test(account.code)
-}
-
-function isCurrentLiability(account: { code: string; type: AccountType }) {
-  if (account.type === 'CURRENT_ACCOUNT') return /^2/.test(account.code)
-  return account.type === 'LIABILITY' && /^2[12]/.test(account.code)
-}
-
 function isCurrentAccountReceivable(account: { code: string; type: AccountType }) {
   return account.type === 'CURRENT_ACCOUNT' && /^1/.test(account.code)
 }
 
-function isWorkingCapitalAccount(account: { code: string; type: AccountType }) {
+function isWorkingCapitalAccount(account: { code: string; type: AccountType; name: string }) {
   return (
-    isCurrentAsset(account)
-    || isCurrentLiability(account)
+    isCurrentAssetAccount(account)
+    || isCurrentLiabilityAccount(account)
     || isCurrentAccountReceivable(account)
     || (account.type === 'CURRENT_ACCOUNT' && /^2/.test(account.code))
   )
 }
 
-function isNonCurrentAsset(account: ReportAccountRow) {
-  return account.type === 'ASSET' && !isCashAccount(account) && !isCurrentAsset(account)
+function isNonCurrentAsset(account: ReportAccountRow & { name: string }) {
+  return isNonCurrentAssetAccount(account)
 }
 
 function isFinancingAccount(account: { code: string; type: AccountType }) {
@@ -173,6 +171,7 @@ export type FinancialReportScope = {
 
 type InternalReportAccountRow = ReportAccountRow & {
   sourceAccountIds: string[]
+  sortOrder: number
 }
 
 function scopeCompanyIds(scope?: FinancialReportScope) {
@@ -298,10 +297,31 @@ export async function buildFinancialReports(
     where: {
       ...(companyIds ? { companyId: { in: companyIds } } : {}),
     },
-    orderBy: [{ type: 'asc' }, { code: 'asc' }],
-    select: { id: true, code: true, name: true, type: true, level: true },
+    orderBy: [{ type: 'asc' }, { sortOrder: 'asc' }, { code: 'asc' }],
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      type: true,
+      level: true,
+      parentId: true,
+      sortOrder: true,
+      yearToDateDebit: true,
+      yearToDateCredit: true,
+    },
   })
   const shouldConsolidateAccounts = (companyIds?.length ?? 0) > 1
+  const rollupAccounts: ReportRollupAccount[] = rawAccounts.map(account => ({
+    id: account.id,
+    parentId: account.parentId,
+    name: account.name,
+    type: account.type,
+    code: account.code,
+    yearToDateDebit: Number(account.yearToDateDebit),
+    yearToDateCredit: Number(account.yearToDateCredit),
+  }))
+  const { leafIdsByAccount } = buildLeafAccountIdsByAccount(rawAccounts)
+  const yearToDateTotalsByAccount = buildYearToDateTotalsByAccount(rollupAccounts)
   const accounts: InternalReportAccountRow[] = shouldConsolidateAccounts
     ? Array.from(rawAccounts.reduce<Map<string, InternalReportAccountRow>>((map, account) => {
         const key = `${account.type}:${account.code}`
@@ -316,14 +336,16 @@ export async function buildFinancialReports(
             name: account.name,
             type: account.type,
             level: account.level,
+            sortOrder: account.sortOrder,
             sourceAccountIds: [account.id],
           })
         }
         return map
       }, new Map()).values())
-    : rawAccounts.map(({ id, ...rest }) => ({
+    : rawAccounts.map(({ id, sortOrder, ...rest }) => ({
         accountId: id,
-        sourceAccountIds: [id],
+        sortOrder,
+        sourceAccountIds: leafIdsByAccount.get(id) ?? [id],
         ...rest,
       }))
 
@@ -357,15 +379,37 @@ export async function buildFinancialReports(
 
     const openingBalance = movementSignedBalance(openingTotals, account.type, account.code)
     const periodNet = movementSignedBalance(periodTotals, account.type, account.code)
-    const closingBalance = movementSignedBalance(closingTotals, account.type, account.code)
+    const ledgerClosingBalance = movementSignedBalance(closingTotals, account.type, account.code)
+    const yearToDateTotals = shouldConsolidateAccounts
+      ? undefined
+      : yearToDateTotalsByAccount.get(account.accountId)
+    const yearToDateBalance = yearToDateTotals?.balance ?? 0
+    const closingBalance = roundMoney(ledgerClosingBalance + yearToDateBalance)
 
     openingByAccount.set(account.accountId, openingBalance)
     closingByAccount.set(account.accountId, closingBalance)
 
+    const reportRow: ReportAccountRow = {
+      accountId: account.accountId,
+      code: account.code,
+      name: account.name,
+      type: account.type,
+      level: account.level,
+    }
+
     const tbCols = trialBalanceColumns(closingBalance, account.type, account.code)
-    if (periodTotals.debit > 0 || periodTotals.credit > 0 || closingBalance !== 0) {
+    const hasTrialBalanceActivity =
+      periodTotals.debit > 0
+      || periodTotals.credit > 0
+      || openingTotals.debit > 0
+      || openingTotals.credit > 0
+      || closingBalance !== 0
+      || (yearToDateTotals?.debit ?? 0) > 0
+      || (yearToDateTotals?.credit ?? 0) > 0
+
+    if (hasTrialBalanceActivity) {
       trialRows.push({
-        ...account,
+        ...reportRow,
         periodDebit: periodTotals.debit,
         periodCredit: periodTotals.credit,
         ...tbCols,
@@ -374,7 +418,7 @@ export async function buildFinancialReports(
       totalCredit = roundMoney(totalCredit + tbCols.closingCredit)
     }
 
-    const row = { ...account, amount: Math.abs(periodNet) }
+    const row: StatementLineRow = { ...reportRow, amount: Math.abs(periodNet) }
     if (account.type === 'REVENUE' && periodNet !== 0) revenueLines.push(row)
     if (isProfitAndLossExpenseType(account.type) && periodNet !== 0) expenseLines.push(row)
     if (account.type === 'ASSET' && closingBalance !== 0) assetLines.push({ ...row, amount: closingBalance })
@@ -392,17 +436,43 @@ export async function buildFinancialReports(
   const totalExpenses = roundMoney(expenseLines.reduce((sum, row) => sum + row.amount, 0))
   const netProfit = roundMoney(totalRevenue - totalExpenses)
 
-  const totalAssets = roundMoney(assetLines.reduce((sum, row) => sum + row.amount, 0))
-  const totalLiabilities = roundMoney(liabilityLines.reduce((sum, row) => sum + row.amount, 0))
-  const totalEquity = roundMoney(equityLines.reduce((sum, row) => sum + row.amount, 0))
-  const totalEquityWithProfit = roundMoney(totalEquity + netProfit)
+  const equityLinesWithProfit = [
+    ...equityLines,
+    ...(netProfit !== 0
+      ? [{
+          accountId: 'current-year-earnings',
+          code: '3999',
+          name: 'Profit for the period',
+          type: 'EQUITY' as AccountType,
+          level: 1,
+          amount: netProfit,
+        }]
+      : []),
+  ]
+
+  const balanceSheetLayout = buildBalanceSheetSections({
+    assetLines,
+    liabilityLines,
+    equityLines: equityLinesWithProfit,
+  })
+  const totalAssets = balanceSheetLayout.totalAssets
+  const totalLiabilities = balanceSheetLayout.totalLiabilities
+  const totalEquityWithProfit = roundMoney(balanceSheetLayout.totalEquity)
   const totalLiabilitiesAndEquity = roundMoney(totalLiabilities + totalEquityWithProfit)
   const balanceSheetEquation = buildAccountingEquationCheck(totalAssets, totalLiabilities, totalEquityWithProfit)
   const trialBalanceEquation = buildAccountingEquationCheck(totalAssets, totalLiabilities, totalEquityWithProfit)
 
+  trialRows.sort((a, b) => a.code.localeCompare(b.code) || a.level - b.level)
+
   const cashFlow = buildIndirectCashFlow({
     period,
-    accounts,
+    accounts: accounts.map(({ accountId, code, name, type, level }) => ({
+      accountId,
+      code,
+      name,
+      type,
+      level,
+    })),
     openingByAccount,
     closingByAccount,
     netProfit,
@@ -433,21 +503,12 @@ export async function buildFinancialReports(
       asOfDate: asOfDate.toISOString(),
       currency: 'HKD',
       standard: 'HKFRS',
-      assets: assetLines,
-      liabilities: liabilityLines,
-      equity: [
-        ...equityLines,
-        ...(netProfit !== 0
-          ? [{
-              accountId: 'current-year-earnings',
-              code: '3999',
-              name: 'Profit for the period',
-              type: 'EQUITY' as AccountType,
-              level: 1,
-              amount: netProfit,
-            }]
-          : []),
-      ],
+      assetSections: balanceSheetLayout.assetSections,
+      liabilitySections: balanceSheetLayout.liabilitySections,
+      equitySection: balanceSheetLayout.equitySection,
+      assets: balanceSheetLayout.assets,
+      liabilities: balanceSheetLayout.liabilities,
+      equity: balanceSheetLayout.equity,
       totalAssets,
       totalLiabilities,
       totalEquity: totalEquityWithProfit,

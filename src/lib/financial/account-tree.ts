@@ -51,18 +51,22 @@ export function formatAccountOptionLabel(code: string, name: string) {
   return `${code} - ${name}`
 }
 
-export type FlatAccountOption<T extends AccountTreeItem = AccountTreeItem> = T & {
+export type FlatAccountOption = AccountTreeItem & {
   label: string
 }
 
-export function flattenAccountHierarchy<T extends AccountTreeItem>(accounts: T[]): FlatAccountOption<T>[] {
-  const rows: FlatAccountOption<T>[] = []
+export function flattenAccountHierarchy(accounts: AccountTreeItem[]): FlatAccountOption[] {
+  const rows: FlatAccountOption[] = []
 
-  const visit = (items: AccountTreeNode<T>[]) => {
+  const visit = (items: AccountTreeNode<AccountTreeItem>[]) => {
     for (const item of items) {
-      const { children: _children, ...account } = item
       rows.push({
-        ...(account as unknown as T),
+        id: item.id,
+        code: item.code,
+        name: item.name,
+        parentId: item.parentId,
+        level: item.level,
+        sortOrder: item.sortOrder,
         label: formatAccountOptionLabel(item.code, item.name),
       })
       if (item.children.length) visit(item.children)

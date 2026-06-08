@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { AccountFormDialog, type FinancialAccount } from '@/components/admin/financial/AccountFormDialog'
 import { ACCOUNT_TYPE_COLORS, ACCOUNT_TYPE_LABELS } from '@/lib/financial/account-types'
+import { notifyFinancialAccountsChanged } from '@/lib/financial/events'
 import { FinancialBreadcrumbs } from '@/components/admin/financial/FinancialBreadcrumbs'
 import { useFinancialCompany } from '@/components/admin/financial/FinancialCompanyContext'
 
@@ -61,6 +62,7 @@ export default function AdminFinancialAccountsPage() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.toast || data.error || '删除科目失败')
       toast.success(data.toast || '科目已删除。')
+      notifyFinancialAccountsChanged(company.id)
       await fetchAccounts()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '删除科目失败')
