@@ -21,9 +21,8 @@ import {
   type ProcessFlowItem,
 } from '@/lib/cosmocoat/process-flow'
 import {
-  CHEMICAL_RESISTANCE_OPTIONS,
-  HIGH_TEMP_HUMIDITY_SALT_SPRAY_OPTIONS,
   normalizePerformanceStandards,
+  PERFORMANCE_STANDARD_GROUPS,
 } from '@/lib/cosmocoat/process-kit-standards'
 
 type FactoryProductOption = {
@@ -103,52 +102,6 @@ const MATERIALS = [
   { id: 'COPPER', label: '銅' },
   { id: 'GLASS', label: '玻璃' },
   { id: 'OTHER', label: '其他 (需註明)' },
-]
-
-const PERFORMANCE_STANDARD_GROUPS = [
-  {
-    id: 'crosshatch',
-    options: [
-      { id: 'CROSSHATCH_5B', label: '百格 5B' },
-    ],
-  },
-  {
-    id: 'boilingWater',
-    options: [
-      { id: 'BOILING_WATER_80C30M', label: '80C30M' },
-      { id: 'BOILING_WATER_80C60M', label: '80C60M' },
-      { id: 'BOILING_WATER_100C30M', label: '100C30M' },
-      { id: 'BOILING_WATER_100C60M', label: '100C60M' },
-      { id: 'BOILING_WATER_100C120M', label: '100C120M' },
-    ],
-  },
-  {
-    id: 'rca',
-    options: [
-      { id: 'RCA_30', label: '30' },
-      { id: 'RCA_50', label: '50' },
-      { id: 'RCA_100', label: '100' },
-      { id: 'RCA_150', label: '150' },
-      { id: 'RCA_200', label: '200' },
-    ],
-  },
-  {
-    id: 'hardness',
-    options: [
-      { id: 'HARDNESS_B', label: 'B' },
-      { id: 'HARDNESS_HB', label: 'HB' },
-      { id: 'HARDNESS_H', label: 'H' },
-      { id: 'HARDNESS_2H', label: '2H' },
-    ],
-  },
-  {
-    id: 'chemicalResistance',
-    options: [...CHEMICAL_RESISTANCE_OPTIONS],
-  },
-  {
-    id: 'highTempHumiditySaltSpray',
-    options: [...HIGH_TEMP_HUMIDITY_SALT_SPRAY_OPTIONS],
-  },
 ]
 
 const card: React.CSSProperties = {

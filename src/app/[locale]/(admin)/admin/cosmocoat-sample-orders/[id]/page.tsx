@@ -11,6 +11,10 @@ import {
   formatProcessKitMaterialsSummary,
   formatProcessKitProductsSummary,
 } from '@/lib/cosmocoat/process-kit-materials'
+import {
+  formatPerformanceStandardLabels,
+  getPerformanceStandardLabel,
+} from '@/lib/cosmocoat/process-kit-standards'
 import { formatPercent, formatWeight } from '@/lib/cosmocoat/recipes'
 import type { SampleOrderRow } from '@/lib/cosmocoat/sample-orders'
 
@@ -231,7 +235,7 @@ function ProcessKitLineCard({
               <div className="flex flex-wrap gap-1.5">
                 {line.detail.performanceStandards.map(std => (
                   <span key={std} className="px-2 py-0.5 rounded text-xs" style={{ background: '#111108', color: 'var(--foreground)' }}>
-                    {std}
+                    {getPerformanceStandardLabel(std)}
                   </span>
                 ))}
               </div>
@@ -431,7 +435,7 @@ function SampleOrderPrintView({
               {line.detail && line.detail.performanceStandards.length > 0 && (
                 <div style={{ fontSize: 9, marginBottom: 6 }}>
                   <span style={{ fontWeight: 600 }}>性能测试标准：</span>
-                  {line.detail.performanceStandards.join('、')}
+                  {formatPerformanceStandardLabels(line.detail.performanceStandards).join('、')}
                 </div>
               )}
 
