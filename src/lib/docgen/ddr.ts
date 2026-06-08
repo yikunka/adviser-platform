@@ -131,8 +131,8 @@ function loadFontkitBridge(): { fontkit: Fontkit; subset: boolean } | null {
 async function firstExistingFontPath(): Promise<string | null> {
   const candidates = [
     process.env.DDR_PDF_FONT_PATH,
-    path.join(process.cwd(), 'assets/fonts/NotoSansCJK-Regular.otf'),
-    path.join(process.cwd(), 'assets/fonts/NotoSansCJKsc-Regular.otf'),
+    path.join(/* turbopackIgnore: true */ process.cwd(), 'assets/fonts/NotoSansCJK-Regular.otf'),
+    path.join(/* turbopackIgnore: true */ process.cwd(), 'assets/fonts/NotoSansCJKsc-Regular.otf'),
     '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
     '/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf',
     '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',

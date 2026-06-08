@@ -10,7 +10,7 @@ import fs from 'fs'
 import path from 'path'
 
 const RETRY_DELAYS = [2000, 5000, 10000]
-const DOWNLOAD_DIR = path.join(process.cwd(), 'aml-downloads')
+const DOWNLOAD_DIR = path.join(/* turbopackIgnore: true */ process.cwd(), 'aml-downloads')
 const KEEP_DAYS = 2
 
 const FORMAT_EXT: Record<string, string> = { XML: 'xml', CSV: 'csv', XLSX: 'xlsx', JSON: 'json' }
