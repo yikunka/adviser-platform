@@ -32,6 +32,13 @@ export type TrialBalanceRow = ReportAccountRow & {
   periodCredit: number
   closingDebit: number
   closingCredit: number
+  /**
+   * When true this row is a computed summary (e.g. "本年利润") derived from
+   * other accounts rather than a directly posted journal-entry balance.
+   * It is shown for informational purposes only and is NOT counted in the
+   * trial-balance debit/credit totals (to avoid double-counting).
+   */
+  isComputed?: boolean
 }
 
 export type IncomeStatementReport = {
@@ -463,6 +470,28 @@ export async function buildFinancialReports(
   const trialBalanceEquation = buildAccountingEquationCheck(totalAssets, totalLiabilities, totalEquityWithProfit)
 
   trialRows.sort((a, b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code) || a.level - b.level)
+
+  // Append a computed "本年利润" row when net profit is non-zero.
+  // This row is purely informational — it is NOT counted in the debit/credit totals,
+  // because revenue and expense accounts are already included in the trial balance
+  // (adding profit again would double-count).  It shows at the very end so users can
+  // see where the balance-sheet equity figure comes from before period-end closing entries.
+  if (netProfit !== 0) {
+    const computedProfitRow: TrialBalanceRow = {
+      accountId: 'current-year-earnings',
+      code: '——',
+      name: '本年利润（期末计算，未结转）',
+      type: 'EQUITY' as AccountType,
+      level: 1,
+      sortOrder: 999999,
+      periodDebit: 0,
+      periodCredit: 0,
+      closingDebit: netProfit < 0 ? roundMoney(-netProfit) : 0,
+      closingCredit: netProfit > 0 ? netProfit : 0,
+      isComputed: true,
+    }
+    trialRows.push(computedProfitRow)
+  }
 
   const cashFlow = buildIndirectCashFlow({
     period,

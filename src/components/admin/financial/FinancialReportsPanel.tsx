@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Download, FileBarChart, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
-import type { FinancialReportsBundle, AccountingEquationCheck, BalanceSheetSection } from '@/lib/financial/reports'
+import type { FinancialReportsBundle, AccountingEquationCheck, BalanceSheetSection, TrialBalanceRow } from '@/lib/financial/reports'
 import { formatReportAmount } from '@/lib/financial/utils'
 import { subscribeFinancialAccountsChanged } from '@/lib/financial/events'
 import { Button } from '@/components/ui/button'
@@ -339,22 +339,15 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
               <TabsContent value="trial-balance" className="space-y-4">
                 <ReportHeader title="试算平衡表" period={period} balanced={reports.trialBalance.balanced} />
                 <AccountingEquationAlert equation={reports.trialBalance.equation} />
-                <StatementTable
-                  headers={['编码', '科目', '类型', '本期借方', '本期贷方', '期末借方', '期末贷方']}
-                  rows={reports.trialBalance.rows.map(row => [
-                    row.code,
-                    row.name,
-                    accountTypeLabel(row.type),
-                    money(row.periodDebit),
-                    money(row.periodCredit),
-                    money(row.closingDebit),
-                    money(row.closingCredit),
-                  ])}
-                />
+                <TrialBalanceTable rows={reports.trialBalance.rows} />
                 <TotalsFooter
                   left={`借方合计：${money(reports.trialBalance.totalDebit)}`}
                   right={`贷方合计：${money(reports.trialBalance.totalCredit)}`}
                 />
+                <p className="text-xs" style={{ color: '#7A7060' }}>
+                  ＊ 仅显示有余额或本期发生额的科目。零余额科目在过账分录后自动出现。
+                  带「期末计算」标注的行为汇总估算，不计入借贷合计。
+                </p>
                 {!reports.trialBalance.balanced ? (
                   <BalanceWarning
                     title="试算平衡表借贷不平衡"
@@ -614,5 +607,61 @@ function CashFlowSection({ title, items }: { title: string; items: { label: stri
         ))}
       </div>
     </Section>
+  )
+}
+
+/** Trial-balance table that handles computed rows (isComputed=true) with distinct styling. */
+function TrialBalanceTable({ rows }: { rows: TrialBalanceRow[] }) {
+  if (rows.length === 0) {
+    return <p className="text-sm text-muted-foreground py-2">本期间暂无科目余额</p>
+  }
+
+  const headers = ['编码', '科目', '类型', '本期借方', '本期贷方', '期末借方', '期末贷方']
+
+  return (
+    <div className="overflow-x-auto rounded-lg border border-[#2A2418]">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {headers.map(header => (
+              <TableHead
+                key={header}
+                className={
+                  header.includes('借方') || header.includes('贷方') ? 'text-right' : undefined
+                }
+              >
+                {header}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row, index) => (
+            <TableRow
+              key={index}
+              style={row.isComputed ? { background: 'rgba(201,169,110,0.06)', fontStyle: 'italic' } : undefined}
+            >
+              <TableCell className="font-mono">{row.code}</TableCell>
+              <TableCell>
+                <span>{row.name}</span>
+                {row.isComputed && (
+                  <span
+                    className="ml-2 rounded px-1 py-0.5 text-[10px] font-normal not-italic"
+                    style={{ background: 'rgba(201,169,110,0.2)', color: '#C9A96E' }}
+                  >
+                    期末计算
+                  </span>
+                )}
+              </TableCell>
+              <TableCell>{accountTypeLabel(row.type)}</TableCell>
+              <TableCell className="text-right font-mono">{money(row.periodDebit)}</TableCell>
+              <TableCell className="text-right font-mono">{money(row.periodCredit)}</TableCell>
+              <TableCell className="text-right font-mono">{money(row.closingDebit)}</TableCell>
+              <TableCell className="text-right font-mono">{money(row.closingCredit)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   )
 }

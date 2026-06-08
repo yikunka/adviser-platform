@@ -15,9 +15,17 @@ describe('balance sheet HKFRS sections', () => {
   })
 
   it('classifies trade payables, tax payable and bank loans into current and non-current liabilities', () => {
+    // 20xx, 21xx, 22xx, 23xx, 24xx → current liabilities (trade payables, accruals, tax payable)
     expect(isCurrentLiabilityAccount({ code: '2001', type: 'LIABILITY' })).toBe(true)
+    expect(isCurrentLiabilityAccount({ code: '2201', type: 'LIABILITY' })).toBe(true) // 应付账款 → current
+    expect(isCurrentLiabilityAccount({ code: '2211', type: 'LIABILITY' })).toBe(true) // 应交税费 → current
     expect(isCurrentLiabilityAccount({ code: '2300', type: 'LIABILITY' })).toBe(true)
-    expect(isNonCurrentLiabilityAccount({ code: '2200', type: 'LIABILITY' })).toBe(true)
+    // 25xx–29xx → non-current liabilities (long-term borrowings)
+    expect(isNonCurrentLiabilityAccount({ code: '2500', type: 'LIABILITY' })).toBe(true) // 长期借款 → non-current
+    expect(isNonCurrentLiabilityAccount({ code: '2600', type: 'LIABILITY' })).toBe(true)
+    // 22xx is NOT non-current
+    expect(isNonCurrentLiabilityAccount({ code: '2200', type: 'LIABILITY' })).toBe(false)
+    expect(isNonCurrentLiabilityAccount({ code: '2201', type: 'LIABILITY' })).toBe(false)
   })
 
   it('builds ordered HKFRS sections with subtotals', () => {

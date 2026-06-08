@@ -29,10 +29,17 @@ export function isNonCurrentAssetAccount(account: { code: string; type: AccountT
   return account.type === 'ASSET' && !isCurrentAssetAccount(account)
 }
 
-/** HKFRS non-current liabilities: long-term borrowings and similar (typically 22xx, 25xx+). */
+/**
+ * HKFRS non-current liabilities: long-term borrowings and other obligations
+ * not expected to be settled within 12 months (typically 25xx–29xx).
+ *
+ * Note: 22xx codes (应付账款, 应交税费, 应付职工薪酬 etc.) are SHORT-TERM
+ * trade payables and accruals — they are CURRENT liabilities under both
+ * Chinese GAAP and HKFRS, so they are intentionally excluded from this range.
+ */
 export function isNonCurrentLiabilityAccount(account: { code: string; type: AccountType }) {
   if (account.type !== 'LIABILITY') return false
-  return /^2(2|[5-9])\d/.test(account.code)
+  return /^2[5-9]/.test(account.code)
 }
 
 /** HKFRS current liabilities: trade payables, accruals, tax payable and other short-term obligations. */
