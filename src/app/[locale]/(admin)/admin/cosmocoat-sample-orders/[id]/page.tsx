@@ -6,7 +6,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, CheckCircle2, ImagePlus, PlayCircle, Plus, Printer, Save, Search, X } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, ChevronDown, ChevronUp, ImagePlus, PlayCircle, Plus, Printer, Save, Search, X } from 'lucide-react'
+import {
+  formatProcessKitMaterialsSummary,
+  formatProcessKitProductsSummary,
+} from '@/lib/cosmocoat/process-kit-materials'
 import { formatPercent, formatWeight } from '@/lib/cosmocoat/recipes'
 import type { SampleOrderRow } from '@/lib/cosmocoat/sample-orders'
 
@@ -25,6 +29,7 @@ type ProcessKitProductRow = {
 
 type ProcessKitDetail = {
   materials: string[]
+  otherNote: string | null
   performanceStandards: string[]
   processFlowDocument: string
   products: ProcessKitProductRow[]
@@ -112,6 +117,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 type ProcessKitDetailSource = {
   materials?: readonly string[] | null
+  otherNote?: string | null
   performanceStandards?: readonly string[] | null
   processFlowDocument?: string | null
   products?: readonly {
@@ -128,6 +134,7 @@ type ProcessKitDetailSource = {
 function extractProcessKitDetail(kit: ProcessKitDetailSource): ProcessKitDetail {
   return {
     materials: [...(kit.materials ?? [])],
+    otherNote: kit.otherNote ?? null,
     performanceStandards: [...(kit.performanceStandards ?? [])],
     processFlowDocument: kit.processFlowDocument ?? '',
     products: (kit.products ?? []).map(p => ({
@@ -153,23 +160,45 @@ function ProcessKitLineCard({
   onNotesChange: (notes: string) => void
   onRemove: () => void
 }) {
-  const materialsLabel = line.detail?.materials.length
-    ? line.detail.materials.join('、')
+  const [expanded, setExpanded] = useState(isReadOnly)
+  const materialsLabel = line.detail
+    ? formatProcessKitMaterialsSummary(line.detail.materials, line.detail.otherNote)
     : null
+  const productsLabel = line.detail ? formatProcessKitProductsSummary(line.detail.products) : null
 
   return (
     <div className="rounded-lg border space-y-4 p-4" style={{ borderColor: '#2A2418', background: '#0A0A08' }}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="space-y-1 min-w-0 flex-1">
-          <h3 className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>
-            <span className="font-mono text-xs opacity-70 mr-2">{line.code}</span>
-            {line.name}
-          </h3>
-          {materialsLabel && (
-            <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-              材料：{materialsLabel}
-            </p>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>
+              <span className="font-mono text-xs opacity-70 mr-2">{line.code}</span>
+              {line.name}
+            </h3>
+            {line.detail && !line.loading && (
+              <button
+                type="button"
+                onClick={() => setExpanded(prev => !prev)}
+                className="inline-flex items-center gap-1 text-xs rounded px-2 py-0.5 hover:bg-[#1E1C15]"
+                style={{ color: '#C9A96E' }}
+              >
+                {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                {expanded ? '收起工艺书内容' : '展开工艺书内容'}
+              </button>
+            )}
+          </div>
+          {line.loading ? (
+            <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>加载适用材料与产品...</p>
+          ) : line.detail ? (
+            <div className="space-y-0.5">
+              <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                适用材料：{materialsLabel ?? '—'}
+              </p>
+              <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                适用产品：{productsLabel ?? '—'}
+              </p>
+            </div>
+          ) : null}
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Link
@@ -194,7 +223,7 @@ function ProcessKitLineCard({
 
       {line.loading ? (
         <p className="text-sm py-2" style={{ color: 'var(--muted-foreground)' }}>加载工艺流程...</p>
-      ) : line.detail ? (
+      ) : line.detail && expanded ? (
         <>
           {line.detail.performanceStandards.length > 0 && (
             <div>
@@ -249,9 +278,9 @@ function ProcessKitLineCard({
             <p className="text-sm" style={{ color: '#5A5040' }}>该工艺书暂无工艺流程文档</p>
           )}
         </>
-      ) : (
+      ) : !line.detail ? (
         <p className="text-sm" style={{ color: '#5A5040' }}>无法加载工艺书内容</p>
-      )}
+      ) : null}
 
       <Field label="备注">
         <input
@@ -374,10 +403,20 @@ function SampleOrderPrintView({
                     <td style={{ ...printLabelCell, width: '15%' }}>工艺书名称</td>
                     <td style={{ ...printCell, width: '35%' }}>{line.name}</td>
                   </tr>
-                  {line.detail && line.detail.materials.length > 0 && (
+                  {line.detail && formatProcessKitMaterialsSummary(line.detail.materials, line.detail.otherNote) && (
                     <tr>
-                      <td style={printLabelCell}>材料</td>
-                      <td colSpan={3} style={printCell}>{line.detail.materials.join('、')}</td>
+                      <td style={printLabelCell}>适用材料</td>
+                      <td colSpan={3} style={printCell}>
+                        {formatProcessKitMaterialsSummary(line.detail.materials, line.detail.otherNote)}
+                      </td>
+                    </tr>
+                  )}
+                  {line.detail && formatProcessKitProductsSummary(line.detail.products) && (
+                    <tr>
+                      <td style={printLabelCell}>适用产品</td>
+                      <td colSpan={3} style={printCell}>
+                        {formatProcessKitProductsSummary(line.detail.products)}
+                      </td>
                     </tr>
                   )}
                   {line.notes.trim() && (
@@ -1129,7 +1168,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
       <div style={card} className="p-5 space-y-4">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>工艺书明细</h2>
-          {!isReadOnly && <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>每个打样单仅可关联一个工艺套件；选择后自动展开完整工艺流程，材料显示在标题上</span>}
+          {!isReadOnly && <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>每个打样单仅可关联一个工艺套件；添加后在标题区显示适用材料与适用产品，可展开查看完整工艺流程</span>}
         </div>
 
         {!isReadOnly && processKitLines.length === 0 && (

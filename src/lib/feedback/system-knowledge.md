@@ -316,13 +316,13 @@ Unified customer registry for CosmoCoat manufacturing clients (raw material purc
 - Create at `/admin/cosmocoat-sample-orders/new`; detail at `/admin/cosmocoat-sample-orders/[id]`
 - Link to a CosmoCoat customer profile (required)
 - **One process kit per order** (database unique constraint on `sampleOrderId`); line items also support multiple Color Formulas, each with quantity in kg; no duplicate formulas on the same order
-- Process kit lines do not require a sample weight: adding a kit auto-expands the full process-flow document (performance standards, product parameters, complete process flow); kit **materials** are shown on the kit title; only color formulas use quantity (kg)
+- Process kit lines do not require a sample weight: adding a kit loads the full process-flow document on expand (performance standards, product parameters, complete process flow); **适用材料** (substrate types with readable labels) and **适用产品** (reference factory product names) are always shown on the kit card header without expanding; kit **materials** checkbox selections and `otherNote` for「其他」are included in the applicable-materials summary; only color formulas use quantity (kg)
 - Basic info: customer (required), optional **reference sample image** (max 1, upload to OSS), then **notes** below the image; list shows 4× enlarged thumbnail; detail page shows enlarged image (up to 480px height) in all statuses
 - Auto-generated order codes: `YP####` (e.g. `YP0001`)
 - Progress tracking: step indicator (草稿 → 进行中 → 已完成), `startedAt` when moving to IN_PROGRESS, `completedAt` when marked COMPLETED
 - Actions: Save (DRAFT), 开始打样 (→ IN_PROGRESS), 标记完成 (→ COMPLETED); completed orders lock line items and customer but remain viewable
 - Detail page shows scaled color-formula material tables; process-kit content is shown inline in the 工艺书明细 section when creating or editing
-- **Print** on detail page (`/admin/cosmocoat-sample-orders/[id]`): browser print (A4) exports full order — customer profile, reference sample image, notes, process-kit details (materials, performance standards, product parameters, process flow), color-formula line items, and scaled material tables; signature row for 打样人员 / 质检确认 / 客户签收
+- **Print** on detail page (`/admin/cosmocoat-sample-orders/[id]`): browser print (A4) exports full order — customer profile, reference sample image, notes, process-kit details (applicable materials/products, performance standards, product parameters, process flow), color-formula line items, and scaled material tables; signature row for 打样人员 / 质检确认 / 客户签收
 - Delete allowed for DRAFT and COMPLETED orders; IN_PROGRESS orders cannot be deleted
 
 ### CosmoCoat Financial Accounting
