@@ -421,6 +421,7 @@ export default function SfsCustomersPage() {
   const [loading, setLoading] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<CustomerRow | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true)
@@ -446,6 +447,31 @@ export default function SfsCustomersPage() {
   }, [fetchCustomers, search])
 
   const pages = Math.max(1, Math.ceil(total / pageSize))
+
+  async function handleDelete(customer: CustomerRow) {
+    if (customer.orderCount > 0) {
+      toast.error('Customers with order history cannot be deleted.')
+      return
+    }
+    if (!customer.customerId) {
+      toast.error('No customer profile to delete.')
+      return
+    }
+    if (!window.confirm(`Delete customer "${customer.name}"? This cannot be undone.`)) return
+
+    setDeletingId(customer.id)
+    try {
+      const res = await fetch(`/api/admin/sfs-customers/${encodeURIComponent(customer.id)}`, { method: 'DELETE' })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error ?? 'Failed to delete customer')
+      toast.success('Customer deleted.')
+      fetchCustomers()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete customer.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -560,10 +586,23 @@ export default function SfsCustomersPage() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>{formatDate(customer.createdAt)}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
-                        <Button variant="outline" size="sm" onClick={() => setEditingCustomer(customer)}>
-                          <Pencil size={13} />
-                          Edit
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button variant="outline" size="sm" onClick={() => setEditingCustomer(customer)}>
+                            <Pencil size={13} />
+                            Edit
+                          </Button>
+                          {customer.customerId && customer.orderCount === 0 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={deletingId === customer.id}
+                              onClick={() => handleDelete(customer)}
+                            >
+                              <Trash2 size={13} />
+                              {deletingId === customer.id ? 'Deleting...' : 'Delete'}
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )

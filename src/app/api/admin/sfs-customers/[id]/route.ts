@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
+import { deleteSfsCustomerContractFile } from '@/lib/sfs/customer-contracts'
 
 const updateSchema = z.object({
   name: z.string().optional().nullable(),
@@ -145,4 +146,66 @@ export async function PATCH(
   }
 
   return NextResponse.json({ error: 'Unsupported customer row' }, { status: 400 })
+}
+
+async function resolveDeletableCustomerId(rowId: string): Promise<string | null> {
+  if (rowId.startsWith('customer:')) return rowId.slice('customer:'.length)
+
+  if (rowId.startsWith('user:')) {
+    const userId = rowId.slice('user:'.length)
+    const profile = await prisma.sfsCustomer.findUnique({ where: { userId }, select: { id: true } })
+    return profile?.id ?? null
+  }
+
+  return null
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'sfsCustomers' })
+  if (error) return error
+
+  const { id } = await params
+  const rowId = decodeURIComponent(id)
+  const customerId = await resolveDeletableCustomerId(rowId)
+
+  if (!customerId) {
+    if (rowId.startsWith('user:')) {
+      return NextResponse.json({ error: 'No customer profile to delete' }, { status: 404 })
+    }
+    return NextResponse.json({ error: 'This customer record cannot be deleted' }, { status: 400 })
+  }
+
+  const customer = await prisma.sfsCustomer.findUnique({
+    where: { id: customerId },
+    include: { contracts: { select: { id: true, storageKey: true } } },
+  })
+  if (!customer) return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
+
+  const orderCount = await prisma.sfsOrder.count({
+    where: {
+      OR: [
+        { customerId: customer.id },
+        ...(customer.userId ? [{ userId: customer.userId }] : []),
+      ],
+    },
+  })
+
+  if (orderCount > 0) {
+    return NextResponse.json(
+      { error: 'Cannot delete a customer with existing orders.' },
+      { status: 409 },
+    )
+  }
+
+  for (const contract of customer.contracts) {
+    await deleteSfsCustomerContractFile(contract.storageKey)
+  }
+
+  await prisma.sfsCustomer.delete({ where: { id: customer.id } })
+  await logAudit(session!.user.id, 'DELETE', 'SfsCustomer', customer.id, customer, null)
+
+  return NextResponse.json({ success: true })
 }
