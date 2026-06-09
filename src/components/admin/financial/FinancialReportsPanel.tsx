@@ -184,15 +184,21 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
     exportCsv(
       `trial_balance_${scope.exportKey}_${period}.csv`,
       ['科目编码', '科目名称', '类型', '本期借方', '本期贷方', '期末借方', '期末贷方'],
-      filteredTrialBalanceRows.map(row => [
-        row.code,
-        row.name,
-        accountTypeLabel(row.type),
-        row.periodDebit.toFixed(2),
-        row.periodCredit.toFixed(2),
-        row.closingDebit.toFixed(2),
-        row.closingCredit.toFixed(2),
-      ]),
+      [
+        ...filteredTrialBalanceRows.map(row => [
+          row.code,
+          row.name,
+          accountTypeLabel(row.type),
+          row.periodDebit.toFixed(2),
+          row.periodCredit.toFixed(2),
+          row.closingDebit.toFixed(2),
+          row.closingCredit.toFixed(2),
+        ]),
+        [],
+        ['借方合计', '', '', '', '', reports.trialBalance.totalDebit.toFixed(2), ''],
+        ['贷方合计', '', '', '', '', '', reports.trialBalance.totalCredit.toFixed(2)],
+        ['借贷是否平衡', '', '', '', '', reports.trialBalance.balanced ? '是' : '否', ''],
+      ],
     )
   }
 
@@ -217,14 +223,9 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
             row.closingCredit,
           ]),
           [],
-          ['合计', '', '', '', '', reports.trialBalance.totalDebit, reports.trialBalance.totalCredit],
+          ['借方合计', '', '', '', '', reports.trialBalance.totalDebit, ''],
+          ['贷方合计', '', '', '', '', '', reports.trialBalance.totalCredit],
           ['借贷是否平衡', '', '', '', '', reports.trialBalance.balanced ? '是' : '否'],
-          ['会计恒等式是否平衡', '', '', '', '', reports.trialBalance.equation.balanced ? '是' : '否'],
-          ['资产合计', '', '', '', '', reports.trialBalance.equation.totalAssets],
-          ['负债合计', '', '', '', '', reports.trialBalance.equation.totalLiabilities],
-          ['权益合计（含本期利润）', '', '', '', '', reports.trialBalance.equation.totalEquity],
-          ['负债和权益合计', '', '', '', '', reports.trialBalance.equation.totalLiabilitiesAndEquity],
-          ['恒等式差异（资产 − 负债和权益）', '', '', '', '', reports.trialBalance.equation.difference],
         ])),
         '试算平衡表',
       )
@@ -390,7 +391,6 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                     </Select>
                   </div>
                 </div>
-                <AccountingEquationAlert equation={reports.trialBalance.equation} />
                 <TrialBalanceTable rows={filteredTrialBalanceRows} />
                 <TotalsFooter
                   left={`借方合计：${money(reports.trialBalance.totalDebit)}`}
