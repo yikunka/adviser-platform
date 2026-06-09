@@ -177,7 +177,11 @@ function isNonCurrentAsset(account: ReportAccountRow & { name: string }) {
 }
 
 function isFinancingAccount(account: { code: string; type: AccountType }) {
-  return account.type === 'EQUITY' || (account.type === 'LIABILITY' && /^2[3-9]/.test(account.code))
+  return (
+    account.type === 'EQUITY'
+    || account.type === 'NON_CURRENT_LIABILITY'
+    || (account.type === 'LIABILITY' && /^2[3-9]/.test(account.code))
+  )
 }
 
 export type FinancialReportScope = {
@@ -475,8 +479,12 @@ export async function buildFinancialReports(
     if (isProfitAndLossExpenseType(account.type) && periodNet !== 0) expenseLines.push(row)
 
     if (shouldIncludeAccountInBalanceSheet(account.level)) {
-      if (account.type === 'ASSET' && closingBalance !== 0) assetLines.push({ ...row, amount: closingBalance })
-      if (account.type === 'LIABILITY' && closingBalance !== 0) liabilityLines.push({ ...row, amount: closingBalance })
+      if ((account.type === 'ASSET' || account.type === 'NON_CURRENT_ASSET') && closingBalance !== 0) {
+        assetLines.push({ ...row, amount: closingBalance })
+      }
+      if ((account.type === 'LIABILITY' || account.type === 'NON_CURRENT_LIABILITY') && closingBalance !== 0) {
+        liabilityLines.push({ ...row, amount: closingBalance })
+      }
       if (account.type === 'EQUITY' && closingBalance !== 0) equityLines.push({ ...row, amount: closingBalance })
       if (isCurrentAccountReceivable(account) && closingBalance !== 0) {
         assetLines.push({ ...row, amount: closingBalance })

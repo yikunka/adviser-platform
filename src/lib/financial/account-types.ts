@@ -1,8 +1,10 @@
 import type { AccountType } from '@prisma/client'
 
 export const ACCOUNT_TYPE_OPTIONS: ReadonlyArray<{ value: AccountType; label: string }> = [
-  { value: 'ASSET', label: '资产' },
-  { value: 'LIABILITY', label: '负债' },
+  { value: 'ASSET', label: '流动资产' },
+  { value: 'NON_CURRENT_ASSET', label: '长期资产' },
+  { value: 'LIABILITY', label: '流动负债' },
+  { value: 'NON_CURRENT_LIABILITY', label: '长期负债' },
   { value: 'EQUITY', label: '权益' },
   { value: 'REVENUE', label: '收入' },
   { value: 'CGS', label: '销售成本' },
@@ -18,7 +20,9 @@ export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = Object.fromEntri
 
 export const ACCOUNT_TYPE_COLORS: Record<AccountType, string> = {
   ASSET: '#38bdf8',
+  NON_CURRENT_ASSET: '#0ea5e9',
   LIABILITY: '#ef4444',
+  NON_CURRENT_LIABILITY: '#dc2626',
   EQUITY: '#a855f7',
   REVENUE: '#10b981',
   CGS: '#f97316',
@@ -26,13 +30,24 @@ export const ACCOUNT_TYPE_COLORS: Record<AccountType, string> = {
   CURRENT_ACCOUNT: '#06b6d4',
 }
 
-/** Debit-normal types (ASSET, EXPENSE, CGS, and receivable-style C/A). */
+const CREDIT_NORMAL_TYPES: ReadonlyArray<AccountType> = [
+  'LIABILITY',
+  'NON_CURRENT_LIABILITY',
+  'EQUITY',
+  'REVENUE',
+]
+
+/** Debit-normal types (assets, expenses, CGS, and receivable-style C/A). */
 export function isDebitNormalAccountType(type: AccountType, code?: string) {
   if (type === 'CURRENT_ACCOUNT' && code && /^2/.test(code)) return false
-  if (['LIABILITY', 'EQUITY', 'REVENUE'].includes(type)) return false
+  if (CREDIT_NORMAL_TYPES.includes(type)) return false
   return true
 }
 
 export function isProfitAndLossExpenseType(type: AccountType) {
   return type === 'EXPENSE' || type === 'CGS'
+}
+
+export function isCreditNormalAccountType(type: AccountType, code?: string) {
+  return !isDebitNormalAccountType(type, code)
 }

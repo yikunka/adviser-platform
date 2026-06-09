@@ -2,7 +2,9 @@ import { z } from 'zod'
 
 export const accountTypeSchema = z.enum([
   'ASSET',
+  'NON_CURRENT_ASSET',
   'LIABILITY',
+  'NON_CURRENT_LIABILITY',
   'EQUITY',
   'REVENUE',
   'EXPENSE',

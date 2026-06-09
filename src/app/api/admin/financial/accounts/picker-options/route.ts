@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
 import { getJournalAccountPickerAccounts } from '@/lib/financial/journal-account-picker'
+import { ensureDefaultChartOfAccounts } from '@/lib/financial/default-chart-of-accounts'
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
@@ -21,6 +22,8 @@ export async function GET(req: NextRequest) {
   const q = (req.nextUrl.searchParams.get('q') || '').trim()
   const id = req.nextUrl.searchParams.get('id')
   const limit = Math.min(Number(req.nextUrl.searchParams.get('limit') || 50), 100)
+
+  await ensureDefaultChartOfAccounts(companyId, prisma)
 
   if (id) {
     const accounts = await prisma.finAccount.findMany({

@@ -22,15 +22,20 @@ function isCurrentAccountReceivable(account: { code: string; type: AccountType }
 
 /** HKFRS current assets: cash, receivables, inventory (typically 10xx–12xx). */
 export function isCurrentAssetAccount(account: { code: string; type: AccountType; name: string }) {
+  if (account.type === 'NON_CURRENT_ASSET') return false
   if (isCurrentAccountReceivable(account)) return true
-  if (account.type !== 'ASSET') return false
-  if (isCashAccount(account)) return true
-  return /^1(0|1|2)\d/.test(account.code)
+  if (account.type === 'ASSET') {
+    if (isCashAccount(account)) return true
+    return /^1(0|1|2)\d/.test(account.code)
+  }
+  return false
 }
 
 /** HKFRS non-current assets: property, plant and equipment and other long-term assets. */
 export function isNonCurrentAssetAccount(account: { code: string; type: AccountType; name: string }) {
-  return account.type === 'ASSET' && !isCurrentAssetAccount(account)
+  if (account.type === 'NON_CURRENT_ASSET') return true
+  if (account.type !== 'ASSET') return false
+  return !isCurrentAssetAccount(account)
 }
 
 /**
@@ -42,14 +47,17 @@ export function isNonCurrentAssetAccount(account: { code: string; type: AccountT
  * Chinese GAAP and HKFRS, so they are intentionally excluded from this range.
  */
 export function isNonCurrentLiabilityAccount(account: { code: string; type: AccountType }) {
+  if (account.type === 'NON_CURRENT_LIABILITY') return true
   if (account.type !== 'LIABILITY') return false
   return /^2[5-9]/.test(account.code)
 }
 
 /** HKFRS current liabilities: trade payables, accruals, tax payable and other short-term obligations. */
 export function isCurrentLiabilityAccount(account: { code: string; type: AccountType }) {
+  if (account.type === 'NON_CURRENT_LIABILITY') return false
   if (account.type === 'CURRENT_ACCOUNT' && /^2/.test(account.code)) return true
-  return account.type === 'LIABILITY' && /^2/.test(account.code) && !isNonCurrentLiabilityAccount(account)
+  if (account.type !== 'LIABILITY') return false
+  return /^2/.test(account.code) && !isNonCurrentLiabilityAccount(account)
 }
 
 function sectionTotal(lines: BalanceSheetLineRow[]) {

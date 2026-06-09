@@ -11,6 +11,8 @@ import { canEditEnteredBalances } from '@/lib/financial/opening-balance'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
 import { roundMoney, signedLineAmount } from '@/lib/financial/utils'
 import { calculateYearToDateAmount } from '@/lib/financial/year-to-date'
+import { ensureDefaultChartOfAccounts } from '@/lib/financial/default-chart-of-accounts'
+import { isCreditNormalAccountType } from '@/lib/financial/account-types'
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
@@ -43,7 +45,7 @@ function yearToDateValues(input: {
   }
 
   const amount = roundMoney(input.yearToDateAmount ?? 0)
-  const creditNormal = ['LIABILITY', 'EQUITY', 'REVENUE'].includes(type) || (type === 'CURRENT_ACCOUNT' && /^2/.test(code))
+  const creditNormal = isCreditNormalAccountType(type, code)
   return {
     debit: creditNormal ? 0 : amount,
     credit: creditNormal ? amount : 0,
@@ -84,6 +86,8 @@ export async function GET(req: NextRequest) {
 
   const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
   if (!(await assertCompanyAccessible(access, companyId))) return apiError('Forbidden', 403)
+
+  await ensureDefaultChartOfAccounts(companyId, prisma)
 
   const accounts = await prisma.finAccount.findMany({
     where: { companyId },

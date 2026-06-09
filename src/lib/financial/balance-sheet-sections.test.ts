@@ -12,6 +12,8 @@ describe('balance sheet HKFRS sections', () => {
     expect(isCurrentAssetAccount({ code: '1001', type: 'ASSET', name: '现金' })).toBe(true)
     expect(isCurrentAssetAccount({ code: '1200', type: 'ASSET', name: '存货' })).toBe(true)
     expect(isNonCurrentAssetAccount({ code: '1300', type: 'ASSET', name: '固定资产' })).toBe(true)
+    expect(isNonCurrentAssetAccount({ code: '1300', type: 'NON_CURRENT_ASSET', name: '固定资产' })).toBe(true)
+    expect(isCurrentAssetAccount({ code: '1300', type: 'NON_CURRENT_ASSET', name: '固定资产' })).toBe(false)
   })
 
   it('classifies trade payables, tax payable and bank loans into current and non-current liabilities', () => {
@@ -23,6 +25,8 @@ describe('balance sheet HKFRS sections', () => {
     // 25xx–29xx → non-current liabilities (long-term borrowings)
     expect(isNonCurrentLiabilityAccount({ code: '2500', type: 'LIABILITY' })).toBe(true) // 长期借款 → non-current
     expect(isNonCurrentLiabilityAccount({ code: '2600', type: 'LIABILITY' })).toBe(true)
+    expect(isNonCurrentLiabilityAccount({ code: '2500', type: 'NON_CURRENT_LIABILITY' })).toBe(true)
+    expect(isCurrentLiabilityAccount({ code: '2500', type: 'NON_CURRENT_LIABILITY' })).toBe(false)
     // 22xx is NOT non-current
     expect(isNonCurrentLiabilityAccount({ code: '2200', type: 'LIABILITY' })).toBe(false)
     expect(isNonCurrentLiabilityAccount({ code: '2201', type: 'LIABILITY' })).toBe(false)

@@ -29,8 +29,10 @@ type LedgerEntry = {
 }
 
 const ACCOUNT_TYPE_LABELS: Record<string, string> = {
-  ASSET: '资产',
-  LIABILITY: '负债',
+  ASSET: '流动资产',
+  NON_CURRENT_ASSET: '长期资产',
+  LIABILITY: '流动负债',
+  NON_CURRENT_LIABILITY: '长期负债',
   EQUITY: '权益',
   REVENUE: '收入',
   CGS: '销售成本',

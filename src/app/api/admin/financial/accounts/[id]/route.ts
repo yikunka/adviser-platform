@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Prisma } from '@prisma/client'
+import { Prisma, type AccountType } from '@prisma/client'
 import { logAudit } from '@/lib/audit/logger'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
+import { isCreditNormalAccountType } from '@/lib/financial/account-types'
 import { isDescendantAccount } from '@/lib/financial/account-tree'
 import { accountUpdateSchema } from '@/lib/financial/schemas'
 import { serializeAccount } from '@/lib/financial/serializers'
@@ -28,8 +29,8 @@ function hasPayloadField(body: unknown, field: string) {
   )
 }
 
-function splitLegacyYearToDateAmount(amount: number, type: string, code: string) {
-  const creditNormal = ['LIABILITY', 'EQUITY', 'REVENUE'].includes(type) || (type === 'CURRENT_ACCOUNT' && /^2/.test(code))
+function splitLegacyYearToDateAmount(amount: number, type: AccountType, code: string) {
+  const creditNormal = isCreditNormalAccountType(type, code)
   return {
     debit: creditNormal ? 0 : amount,
     credit: creditNormal ? amount : 0,

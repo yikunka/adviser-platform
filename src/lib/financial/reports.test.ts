@@ -8,6 +8,8 @@ describe('trialBalanceColumns', () => {
 
   it('places credit-normal positive balances in closing credit', () => {
     expect(trialBalanceColumns(125, 'LIABILITY')).toEqual({ closingDebit: 0, closingCredit: 125 })
+    expect(trialBalanceColumns(125, 'NON_CURRENT_LIABILITY')).toEqual({ closingDebit: 0, closingCredit: 125 })
+    expect(trialBalanceColumns(125, 'NON_CURRENT_ASSET')).toEqual({ closingDebit: 125, closingCredit: 0 })
   })
 
   it('places negative credit-normal balances in closing debit', () => {

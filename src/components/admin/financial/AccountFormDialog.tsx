@@ -17,7 +17,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ACCOUNT_TYPE_OPTIONS } from '@/lib/financial/account-types'
+import { ACCOUNT_TYPE_OPTIONS, isCreditNormalAccountType } from '@/lib/financial/account-types'
 import { flattenAccountHierarchy, isDescendantAccount } from '@/lib/financial/account-tree'
 import { canEditEnteredBalances, openingBalanceEditBlockedMessage } from '@/lib/financial/opening-balance'
 import { notifyFinancialAccountsChanged } from '@/lib/financial/events'
@@ -81,8 +81,8 @@ function displayAmount(value: number) {
   return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-function normalBalanceSide(type: FinancialAccount['type']): OpeningBalanceSide {
-  return ['LIABILITY', 'EQUITY', 'REVENUE'].includes(type) ? 'CREDIT' : 'DEBIT'
+function normalBalanceSide(type: FinancialAccount['type'], code?: string): OpeningBalanceSide {
+  return isCreditNormalAccountType(type, code) ? 'CREDIT' : 'DEBIT'
 }
 
 export function AccountFormDialog({ open, onOpenChange, account, companyId, accounts, onSaved }: Props) {
@@ -113,7 +113,11 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
     setOpeningBalanceAmount(amountField(accountBalancesEditable
       ? Math.max(account?.openingDebit ?? 0, account?.openingCredit ?? 0)
       : account?.openingBalanceTotal ?? 0))
-    setOpeningBalanceSide((account?.openingCredit ?? 0) > 0 ? 'CREDIT' : normalBalanceSide(account?.type ?? 'ASSET'))
+    setOpeningBalanceSide(
+      (account?.openingCredit ?? 0) > 0
+        ? 'CREDIT'
+        : normalBalanceSide(account?.type ?? 'ASSET', account?.code),
+    )
     setYearToDateDebit(amountField(accountBalancesEditable ? account?.yearToDateDebit : account?.yearToDateDebitTotal))
     setYearToDateCredit(amountField(accountBalancesEditable ? account?.yearToDateCredit : account?.yearToDateCreditTotal))
   }, [account, accounts, open])
