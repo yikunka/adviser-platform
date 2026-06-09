@@ -329,7 +329,7 @@ export async function buildFinancialReports(
     yearToDateDebit: Number(account.yearToDateDebit),
     yearToDateCredit: Number(account.yearToDateCredit),
   }))
-  const { leafIdsByAccount } = buildLeafAccountIdsByAccount(rawAccounts)
+  const { childrenByParent, leafIdsByAccount } = buildLeafAccountIdsByAccount(rawAccounts)
   const yearToDateTotalsByAccount = buildYearToDateTotalsByAccount(rollupAccounts)
   const accounts: InternalReportAccountRow[] = shouldConsolidateAccounts
     ? Array.from(rawAccounts.reduce<Map<string, InternalReportAccountRow>>((map, account) => {
@@ -381,6 +381,17 @@ export async function buildFinancialReports(
   const openingByAccount = new Map<string, number>()
   const closingByAccount = new Map<string, number>()
 
+  function accountHasChildren(account: InternalReportAccountRow): boolean {
+    if (shouldConsolidateAccounts) {
+      return rawAccounts.some(
+        rawAccount => rawAccount.code === account.code
+          && rawAccount.type === account.type
+          && (childrenByParent.get(rawAccount.id) ?? []).length > 0,
+      )
+    }
+    return (childrenByParent.get(account.accountId) ?? []).length > 0
+  }
+
   for (const account of accounts) {
     const openingTotals = sumMovements(openingMovements, account.sourceAccountIds)
     const periodTotals = sumMovements(periodMovements, account.sourceAccountIds)
@@ -409,6 +420,8 @@ export async function buildFinancialReports(
     const tbCols = trialBalanceColumns(closingBalance, account.type, account.code)
 
     if (shouldIncludeAccountInTrialBalance({
+      level: account.level,
+      hasChildren: accountHasChildren(account),
       periodTotals,
       openingTotals,
       closingBalance,
