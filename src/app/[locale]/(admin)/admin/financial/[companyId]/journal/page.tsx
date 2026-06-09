@@ -77,18 +77,15 @@ function JournalEntryPrintArea({
   return (
     <div className="journal-print-area" aria-hidden={!entry}>
       <div className="journal-print-voucher">
-        <div className="journal-print-header">
-          <div>
-            <div className="journal-print-title">日记账凭证</div>
-            <div className="journal-print-subtitle">Journal Voucher</div>
-          </div>
-          <div className="journal-print-meta">
-            <div>凭证号：<strong>{entry.voucherNo}</strong></div>
-            <div>状态：{STATUS_LABELS[entry.status]}</div>
-          </div>
-        </div>
-
         <div className="journal-print-info">
+          <div>
+            <span>凭证号</span>
+            <strong>{entry.voucherNo}</strong>
+          </div>
+          <div>
+            <span>状态</span>
+            <strong>{STATUS_LABELS[entry.status]}</strong>
+          </div>
           <div>
             <span>公司名称</span>
             <strong>{companyName}</strong>
@@ -164,8 +161,41 @@ function JournalPrintStyles() {
 
       @media print {
         @page {
-          size: A4;
-          margin: 14mm;
+          size: A4 portrait;
+          margin: 0;
+        }
+
+        html,
+        body {
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #fff !important;
+        }
+
+        .admin-console {
+          display: block !important;
+          min-height: auto !important;
+          background: #fff !important;
+        }
+
+        .admin-console > aside,
+        .admin-console > .flex-1 > header,
+        [data-slot="dialog-portal"],
+        [data-slot="dialog-overlay"],
+        [data-slot="dialog-content"] {
+          display: none !important;
+        }
+
+        .admin-console > .flex-1 {
+          display: block !important;
+          min-width: 0 !important;
+        }
+
+        .admin-console main {
+          display: block !important;
+          padding: 0 !important;
+          overflow: visible !important;
+          background: #fff !important;
         }
 
         body * {
@@ -183,6 +213,8 @@ function JournalPrintStyles() {
           top: 0;
           left: 0;
           width: 100%;
+          box-sizing: border-box;
+          padding: 14mm;
           background: #fff !important;
           color: #111 !important;
           font-family: Arial, "Noto Sans SC", sans-serif;
@@ -193,37 +225,13 @@ function JournalPrintStyles() {
           font-size: 11px;
         }
 
-        .journal-print-header {
-          display: flex;
-          align-items: flex-start;
-          justify-content: space-between;
-          border-bottom: 2px solid #111;
-          padding-bottom: 12px;
-          margin-bottom: 14px;
-        }
-
-        .journal-print-title {
-          font-size: 24px;
-          font-weight: 700;
-          letter-spacing: 0;
-        }
-
-        .journal-print-subtitle {
-          margin-top: 3px;
-          font-size: 12px;
-          color: #444;
-        }
-
-        .journal-print-meta {
-          text-align: right;
-          line-height: 1.8;
-        }
-
         .journal-print-info {
           display: grid;
           grid-template-columns: 1.35fr 0.65fr;
           gap: 8px 18px;
           margin-bottom: 14px;
+          padding-bottom: 12px;
+          border-bottom: 1px solid #111;
         }
 
         .journal-print-info div {
