@@ -3,7 +3,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { FormEvent, type KeyboardEvent as ReactKeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Plus, Save, Trash2 } from 'lucide-react'
+import { Plus, Printer, Save, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -38,16 +38,22 @@ type FormLine = {
 
 export type JournalEntryForForm = {
   id: string
+  voucherNo?: string
   entryDate?: string
   date: string
   description: string
   companyId?: string | null
+  company?: { id: string; nameEn: string; companyCode: string | null } | null
   status: 'DRAFT' | 'POSTED' | 'CANCELLED'
+  totalAmount?: number
+  createdBy?: string | null
+  createdAt?: string | null
   lines: {
     accountId: string
     description: string
     debit: number
     credit: number
+    account?: { code: string; name: string } | null
   }[]
 }
 
@@ -57,7 +63,7 @@ type Props = {
   entry?: JournalEntryForForm | null
   /** When set, journal is locked to this client company (TCSP company workspace). */
   fixedCompanyId?: string
-  onSaved: () => void | Promise<void>
+  onSaved: (entry?: JournalEntryForForm, options?: { print?: boolean }) => void | Promise<void>
   /** Called after F1 save-and-continue so parent clears edit mode. */
   onContinued?: () => void
 }
@@ -175,7 +181,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
   }, [])
 
   const saveEntry = useCallback(
-    async (options?: { continue?: boolean }) => {
+    async (options?: { continue?: boolean; print?: boolean }) => {
       if (!description.trim()) {
         toast.error('请填写摘要。')
         return
@@ -221,13 +227,15 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
             (options?.continue ? '日记账已保存，可继续录入下一张。' : entry ? '日记账已更新。' : '日记账已创建。'),
         )
 
+        const savedEntry = data.entry as JournalEntryForForm | undefined
+
         if (options?.continue) {
           onContinued?.()
           resetFormForNextEntry(setDescription, setLines)
-          await onSaved()
+          await onSaved(savedEntry, { print: false })
         } else {
           onOpenChange(false)
-          await onSaved()
+          await onSaved(savedEntry, { print: options?.print })
         }
       } catch (err) {
         toast.error(err instanceof Error ? err.message : '保存日记账失败。')
@@ -493,6 +501,16 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
             )}
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving} className={secondaryButtonClassName}>
               取消
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!canSubmit}
+              onClick={() => void saveEntry({ print: true })}
+              className={secondaryButtonClassName}
+            >
+              <Printer size={14} />
+              {saving ? '保存中...' : '保存并打印'}
             </Button>
             <Button type="submit" disabled={!canSubmit} style={{ background: '#C9A96E', color: '#0A0805' }}>
               <Save size={14} />
