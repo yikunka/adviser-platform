@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { CheckCircle } from 'lucide-react'
+import { CheckCircle, Printer } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -23,8 +23,10 @@ export type JournalEntryDetails = {
   status: 'DRAFT' | 'POSTED' | 'CANCELLED'
   createdBy?: string | null
   createdAt?: string | null
+  company?: { id: string; nameEn: string; companyCode: string | null } | null
   lines: {
     description?: string
+    accountId?: string
     account?: { code: string; name: string } | null
     debit: number
     credit: number
@@ -36,6 +38,7 @@ type Props = {
   onOpenChange: (open: boolean) => void
   entry?: JournalEntryDetails | null
   onPosted?: () => void | Promise<void>
+  onPrint?: (entry: JournalEntryDetails) => void
 }
 
 const STATUS_COLORS: Record<JournalEntryDetails['status'], string> = {
@@ -51,7 +54,7 @@ function money(value: number) {
   return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-export function JournalViewModal({ open, onOpenChange, entry, onPosted }: Props) {
+export function JournalViewModal({ open, onOpenChange, entry, onPosted, onPrint }: Props) {
   const [posting, setPosting] = useState(false)
   const totalDebit = entry?.lines.reduce((sum, line) => sum + line.debit, 0) ?? 0
   const totalCredit = entry?.lines.reduce((sum, line) => sum + line.credit, 0) ?? 0
@@ -150,6 +153,12 @@ export function JournalViewModal({ open, onOpenChange, entry, onPosted }: Props)
         ) : null}
 
         <DialogFooter className={modalFooterClassName}>
+          {entry ? (
+            <Button type="button" variant="outline" onClick={() => onPrint?.(entry)} className={secondaryButtonClassName}>
+              <Printer size={15} className="mr-2" />
+              打印凭证
+            </Button>
+          ) : null}
           {entry?.status === 'DRAFT' ? (
             <Button
               type="button"

@@ -3,7 +3,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { type ChangeEvent, useCallback, useEffect, useRef, useState } from 'react'
-import { Ban, Eye, Pencil, Trash2, Plus, CheckCircle, Upload, CheckSquare } from 'lucide-react'
+import { Ban, Eye, Pencil, Trash2, Plus, CheckCircle, Upload, CheckSquare, Printer } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -35,6 +35,12 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELLED: '#ef4444',
 }
 
+const STATUS_LABELS: Record<JournalEntry['status'], string> = {
+  DRAFT: '待过账',
+  POSTED: '已过账',
+  CANCELLED: '已取消',
+}
+
 type ImportError = {
   row: number
   message: string
@@ -45,6 +51,238 @@ type ImportResult = {
   rows?: number
   errors?: ImportError[]
   errorCount?: number
+}
+
+function money(value: number) {
+  return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString('zh-HK')
+}
+
+function JournalEntryPrintArea({
+  entry,
+  fallbackCompanyName,
+}: {
+  entry: JournalEntry | null
+  fallbackCompanyName: string
+}) {
+  if (!entry) return null
+
+  const companyName = entry.company?.nameEn || fallbackCompanyName
+  const totalDebit = entry.lines.reduce((sum, line) => sum + line.debit, 0)
+  const totalCredit = entry.lines.reduce((sum, line) => sum + line.credit, 0)
+
+  return (
+    <div className="journal-print-area" aria-hidden={!entry}>
+      <div className="journal-print-voucher">
+        <div className="journal-print-header">
+          <div>
+            <div className="journal-print-title">日记账凭证</div>
+            <div className="journal-print-subtitle">Journal Voucher</div>
+          </div>
+          <div className="journal-print-meta">
+            <div>凭证号：<strong>{entry.voucherNo}</strong></div>
+            <div>状态：{STATUS_LABELS[entry.status]}</div>
+          </div>
+        </div>
+
+        <div className="journal-print-info">
+          <div>
+            <span>公司名称</span>
+            <strong>{companyName}</strong>
+          </div>
+          <div>
+            <span>日期</span>
+            <strong>{formatDate(entry.date)}</strong>
+          </div>
+          <div>
+            <span>摘要</span>
+            <strong>{entry.description}</strong>
+          </div>
+          <div>
+            <span>创建人</span>
+            <strong>{entry.createdBy || '系统'}</strong>
+          </div>
+        </div>
+
+        <table className="journal-print-table">
+          <thead>
+            <tr>
+              <th>行</th>
+              <th>行摘要</th>
+              <th>科目代码</th>
+              <th>科目名称</th>
+              <th>借贷方向</th>
+              <th className="amount">金额</th>
+              <th className="amount">借方</th>
+              <th className="amount">贷方</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entry.lines.map((line, index) => {
+              const isDebit = line.debit > 0
+              const amount = isDebit ? line.debit : line.credit
+              return (
+                <tr key={`${entry.id}-${index}`}>
+                  <td>{index + 1}</td>
+                  <td>{line.description || '-'}</td>
+                  <td>{line.account?.code ?? '-'}</td>
+                  <td>{line.account?.name ?? '-'}</td>
+                  <td>{isDebit ? '借方' : '贷方'}</td>
+                  <td className="amount">{money(amount)}</td>
+                  <td className="amount">{line.debit > 0 ? money(line.debit) : '-'}</td>
+                  <td className="amount">{line.credit > 0 ? money(line.credit) : '-'}</td>
+                </tr>
+              )
+            })}
+            <tr className="journal-print-total">
+              <td colSpan={6}>合计</td>
+              <td className="amount">{money(totalDebit)}</td>
+              <td className="amount">{money(totalCredit)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div className="journal-print-footer">
+          <div>制单：________________</div>
+          <div>审核：________________</div>
+          <div>打印日期：{formatDate(new Date().toISOString())}</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function JournalPrintStyles() {
+  return (
+    <style>{`
+      .journal-print-area {
+        display: none;
+      }
+
+      @media print {
+        @page {
+          size: A4;
+          margin: 14mm;
+        }
+
+        body * {
+          visibility: hidden !important;
+        }
+
+        .journal-print-area,
+        .journal-print-area * {
+          visibility: visible !important;
+        }
+
+        .journal-print-area {
+          display: block !important;
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          background: #fff !important;
+          color: #111 !important;
+          font-family: Arial, "Noto Sans SC", sans-serif;
+        }
+
+        .journal-print-voucher {
+          color: #111;
+          font-size: 11px;
+        }
+
+        .journal-print-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          border-bottom: 2px solid #111;
+          padding-bottom: 12px;
+          margin-bottom: 14px;
+        }
+
+        .journal-print-title {
+          font-size: 24px;
+          font-weight: 700;
+          letter-spacing: 0;
+        }
+
+        .journal-print-subtitle {
+          margin-top: 3px;
+          font-size: 12px;
+          color: #444;
+        }
+
+        .journal-print-meta {
+          text-align: right;
+          line-height: 1.8;
+        }
+
+        .journal-print-info {
+          display: grid;
+          grid-template-columns: 1.35fr 0.65fr;
+          gap: 8px 18px;
+          margin-bottom: 14px;
+        }
+
+        .journal-print-info div {
+          display: grid;
+          grid-template-columns: 58px 1fr;
+          gap: 8px;
+          min-height: 20px;
+        }
+
+        .journal-print-info span {
+          color: #555;
+        }
+
+        .journal-print-table {
+          width: 100%;
+          border-collapse: collapse;
+          table-layout: fixed;
+        }
+
+        .journal-print-table th,
+        .journal-print-table td {
+          border: 1px solid #111;
+          padding: 7px 6px;
+          vertical-align: top;
+          word-break: break-word;
+        }
+
+        .journal-print-table th {
+          background: #f1f1f1 !important;
+          font-weight: 700;
+          text-align: left;
+        }
+
+        .journal-print-table th:first-child,
+        .journal-print-table td:first-child {
+          width: 28px;
+          text-align: center;
+        }
+
+        .journal-print-table .amount {
+          text-align: right;
+          white-space: nowrap;
+        }
+
+        .journal-print-total td {
+          font-weight: 700;
+          background: #f7f7f7 !important;
+        }
+
+        .journal-print-footer {
+          display: flex;
+          justify-content: space-between;
+          gap: 24px;
+          margin-top: 28px;
+          font-size: 11px;
+        }
+      }
+    `}</style>
+  )
 }
 
 export default function AdminFinancialJournalPage() {
@@ -62,6 +300,7 @@ export default function AdminFinancialJournalPage() {
   const [viewOpen, setViewOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null)
   const [viewingEntry, setViewingEntry] = useState<JournalEntry | null>(null)
+  const [printEntry, setPrintEntry] = useState<JournalEntry | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [batchPosting, setBatchPosting] = useState(false)
   const pageSize = 10
@@ -91,6 +330,33 @@ export default function AdminFinancialJournalPage() {
     setSelectedIds(new Set())
     setPage(1)
   }, [filterPeriod, filterStatus, search, company.id])
+
+  useEffect(() => {
+    if (!printEntry) return
+    const timer = window.setTimeout(() => window.print(), 100)
+    return () => window.clearTimeout(timer)
+  }, [printEntry])
+
+  useEffect(() => {
+    function clearPrintedEntry() {
+      setPrintEntry(null)
+    }
+
+    window.addEventListener('afterprint', clearPrintedEntry)
+    return () => window.removeEventListener('afterprint', clearPrintedEntry)
+  }, [])
+
+  function printJournalEntry(entry: JournalEntry) {
+    setPrintEntry(null)
+    window.setTimeout(() => setPrintEntry(entry), 0)
+  }
+
+  async function handleFormSaved(entry?: JournalEntryForForm, options?: { print?: boolean }) {
+    await fetchEntries()
+    if (options?.print && entry) {
+      printJournalEntry(entry as JournalEntry)
+    }
+  }
 
   function openCreateForm() {
     setEditingEntry(null)
@@ -436,6 +702,15 @@ export default function AdminFinancialJournalPage() {
                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openViewModal(entry)}>
                           <Eye size={15} className="text-muted-foreground" />
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          title="打印凭证"
+                          onClick={() => printJournalEntry(entry)}
+                        >
+                          <Printer size={15} className="text-muted-foreground" />
+                        </Button>
                         {entry.status === 'DRAFT' ? (
                           <Button
                             variant="ghost"
@@ -519,10 +794,18 @@ export default function AdminFinancialJournalPage() {
         onOpenChange={setFormOpen}
         entry={editingEntry}
         fixedCompanyId={company.id}
-        onSaved={fetchEntries}
+        onSaved={handleFormSaved}
         onContinued={() => setEditingEntry(null)}
       />
-      <JournalViewModal open={viewOpen} onOpenChange={setViewOpen} entry={viewingEntry} onPosted={fetchEntries} />
+      <JournalViewModal
+        open={viewOpen}
+        onOpenChange={setViewOpen}
+        entry={viewingEntry}
+        onPosted={fetchEntries}
+        onPrint={entry => printJournalEntry(entry as JournalEntry)}
+      />
+      <JournalEntryPrintArea entry={printEntry} fallbackCompanyName={company.nameEn} />
+      <JournalPrintStyles />
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
+import { getJournalAccountPickerAccounts } from '@/lib/financial/journal-account-picker'
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
@@ -21,23 +22,28 @@ export async function GET(req: NextRequest) {
   const id = req.nextUrl.searchParams.get('id')
   const limit = Math.min(Number(req.nextUrl.searchParams.get('limit') || 50), 100)
 
+  if (id) {
+    const accounts = await prisma.finAccount.findMany({
+      where: { companyId, id },
+      select: { id: true, code: true, name: true, type: true, parentId: true, level: true, sortOrder: true },
+      take: 1,
+    })
+    return NextResponse.json({ items: accounts })
+  }
+
   const accounts = await prisma.finAccount.findMany({
-    where: {
-      companyId,
-      ...(id ? { id } : {}),
-      ...(q
-        ? {
-            OR: [
-              { code: { contains: q, mode: 'insensitive' } },
-              { name: { contains: q, mode: 'insensitive' } },
-            ],
-          }
-        : {}),
-    },
-    select: { id: true, code: true, name: true, type: true },
-    orderBy: [{ code: 'asc' }],
-    take: limit,
+    where: { companyId },
+    select: { id: true, code: true, name: true, type: true, parentId: true, level: true, sortOrder: true },
+    orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
   })
 
-  return NextResponse.json({ items: accounts })
+  const query = q.toLowerCase()
+  const items = getJournalAccountPickerAccounts(accounts)
+    .filter(account => {
+      if (!query) return true
+      return account.code.toLowerCase().includes(query) || account.name.toLowerCase().includes(query)
+    })
+    .slice(0, limit)
+
+  return NextResponse.json({ items })
 }
