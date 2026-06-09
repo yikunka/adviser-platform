@@ -15,7 +15,9 @@ import {
 } from '@/lib/financial/report-account-rollups'
 import { trialBalanceColumns } from '@/lib/financial/report-balances'
 import type { ReportAccountRow, StatementLineRow } from '@/lib/financial/report-line-types'
-import { shouldIncludeAccountInTrialBalance } from '@/lib/financial/trial-balance-inclusion'
+import { shouldIncludeAccountInBalanceSheet } from '@/lib/financial/balance-sheet-inclusion'
+import { shouldIncludeAccountInTrialBalance, shouldShowLevel1SummaryInTrialBalance } from '@/lib/financial/trial-balance-inclusion'
+import { assembleTrialBalanceRows, buildLevel1GroupingMaps } from '@/lib/financial/trial-balance-rows'
 import { roundMoney } from '@/lib/financial/utils'
 
 export type { BalanceSheetSection } from '@/lib/financial/balance-sheet-sections'
@@ -39,6 +41,11 @@ export type TrialBalanceRow = ReportAccountRow & {
    * trial-balance debit/credit totals (to avoid double-counting).
    */
   isComputed?: boolean
+  /**
+   * Level-1 grouping summary aggregating descendant detail accounts.
+   * Shown for hierarchy context only and is NOT counted in debit/credit totals.
+   */
+  isSummary?: boolean
 }
 
 export type IncomeStatementReport = {
@@ -368,7 +375,13 @@ export async function buildFinancialReports(
   const openingMovements = mergeMovementMaps(ledgerOpeningMovements, openingBalances)
   const closingMovements = mergeMovementMaps(ledgerClosingMovements, closingBalances)
 
+  const { level1AccountIdByReportAccountId, level1SortOrderById } = buildLevel1GroupingMaps(
+    rawAccounts,
+    accounts.map(({ accountId, code }) => ({ accountId, code })),
+  )
+
   const trialRows: TrialBalanceRow[] = []
+  const summaryRowsByLevel1Id = new Map<string, TrialBalanceRow>()
   let totalDebit = 0
   let totalCredit = 0
 
@@ -438,17 +451,39 @@ export async function buildFinancialReports(
       totalCredit = roundMoney(totalCredit + tbCols.closingCredit)
     }
 
+    const level1GroupId = level1AccountIdByReportAccountId.get(account.accountId) ?? account.accountId
+    if (shouldShowLevel1SummaryInTrialBalance({
+      level: account.level,
+      hasChildren: accountHasChildren(account),
+      periodTotals,
+      openingTotals,
+      closingBalance,
+      yearToDateTotals,
+    })) {
+      summaryRowsByLevel1Id.set(level1GroupId, {
+        ...reportRow,
+        sortOrder: account.sortOrder,
+        periodDebit: periodTotals.debit,
+        periodCredit: periodTotals.credit,
+        ...tbCols,
+        isSummary: true,
+      })
+    }
+
     const row: StatementLineRow = { ...reportRow, amount: Math.abs(periodNet) }
     if (account.type === 'REVENUE' && periodNet !== 0) revenueLines.push(row)
     if (isProfitAndLossExpenseType(account.type) && periodNet !== 0) expenseLines.push(row)
-    if (account.type === 'ASSET' && closingBalance !== 0) assetLines.push({ ...row, amount: closingBalance })
-    if (account.type === 'LIABILITY' && closingBalance !== 0) liabilityLines.push({ ...row, amount: closingBalance })
-    if (account.type === 'EQUITY' && closingBalance !== 0) equityLines.push({ ...row, amount: closingBalance })
-    if (isCurrentAccountReceivable(account) && closingBalance !== 0) {
-      assetLines.push({ ...row, amount: closingBalance })
-    }
-    if (account.type === 'CURRENT_ACCOUNT' && /^2/.test(account.code) && closingBalance !== 0) {
-      liabilityLines.push({ ...row, amount: closingBalance })
+
+    if (shouldIncludeAccountInBalanceSheet(account.level)) {
+      if (account.type === 'ASSET' && closingBalance !== 0) assetLines.push({ ...row, amount: closingBalance })
+      if (account.type === 'LIABILITY' && closingBalance !== 0) liabilityLines.push({ ...row, amount: closingBalance })
+      if (account.type === 'EQUITY' && closingBalance !== 0) equityLines.push({ ...row, amount: closingBalance })
+      if (isCurrentAccountReceivable(account) && closingBalance !== 0) {
+        assetLines.push({ ...row, amount: closingBalance })
+      }
+      if (account.type === 'CURRENT_ACCOUNT' && /^2/.test(account.code) && closingBalance !== 0) {
+        liabilityLines.push({ ...row, amount: closingBalance })
+      }
     }
   }
 
@@ -482,7 +517,12 @@ export async function buildFinancialReports(
   const balanceSheetEquation = buildAccountingEquationCheck(totalAssets, totalLiabilities, totalEquityWithProfit)
   const trialBalanceEquation = buildAccountingEquationCheck(totalAssets, totalLiabilities, totalEquityWithProfit)
 
-  trialRows.sort((a, b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code) || a.level - b.level)
+  let finalTrialRows = assembleTrialBalanceRows({
+    detailRows: trialRows,
+    summaryRowsByLevel1Id,
+    level1AccountIdByReportAccountId,
+    level1SortOrderById,
+  })
 
   // Append a computed "本年利润" row when net profit is non-zero.
   // This row is purely informational — it is NOT counted in the debit/credit totals,
@@ -490,20 +530,22 @@ export async function buildFinancialReports(
   // (adding profit again would double-count).  It shows at the very end so users can
   // see where the balance-sheet equity figure comes from before period-end closing entries.
   if (netProfit !== 0) {
-    const computedProfitRow: TrialBalanceRow = {
-      accountId: 'current-year-earnings',
-      code: '——',
-      name: '本年利润（期末计算，未结转）',
-      type: 'EQUITY' as AccountType,
-      level: 1,
-      sortOrder: 999999,
-      periodDebit: 0,
-      periodCredit: 0,
-      closingDebit: netProfit < 0 ? roundMoney(-netProfit) : 0,
-      closingCredit: netProfit > 0 ? netProfit : 0,
-      isComputed: true,
-    }
-    trialRows.push(computedProfitRow)
+    finalTrialRows = [
+      ...finalTrialRows,
+      {
+        accountId: 'current-year-earnings',
+        code: '——',
+        name: '本年利润（期末计算，未结转）',
+        type: 'EQUITY' as AccountType,
+        level: 1,
+        sortOrder: 999999,
+        periodDebit: 0,
+        periodCredit: 0,
+        closingDebit: netProfit < 0 ? roundMoney(-netProfit) : 0,
+        closingCredit: netProfit > 0 ? netProfit : 0,
+        isComputed: true,
+      },
+    ]
   }
 
   const cashFlow = buildIndirectCashFlow({
@@ -524,7 +566,7 @@ export async function buildFinancialReports(
     period,
     generatedAt: new Date().toISOString(),
     trialBalance: {
-      rows: trialRows,
+      rows: finalTrialRows,
       totalDebit,
       totalCredit,
       balanced: Math.abs(totalDebit - totalCredit) < EQUATION_TOLERANCE,

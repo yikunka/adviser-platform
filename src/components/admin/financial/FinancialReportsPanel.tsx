@@ -346,6 +346,7 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                 />
                 <p className="text-xs" style={{ color: '#7A7060' }}>
                   ＊ 仅显示有余额或本期发生额的科目。零余额科目在过账分录后自动出现。
+                  带「一级汇总」标注的行为一级科目汇总（含下级明细合计），不计入借贷合计。
                   带「期末计算」标注的行为汇总估算，不计入借贷合计。
                 </p>
                 {!reports.trialBalance.balanced ? (
@@ -618,6 +619,16 @@ function TrialBalanceTable({ rows }: { rows: TrialBalanceRow[] }) {
 
   const headers = ['编码', '科目', '类型', '本期借方', '本期贷方', '期末借方', '期末贷方']
 
+  function rowStyle(row: TrialBalanceRow) {
+    if (row.isComputed) {
+      return { background: 'rgba(201,169,110,0.06)', fontStyle: 'italic' as const }
+    }
+    if (row.isSummary) {
+      return { background: 'rgba(42,36,24,0.04)', fontWeight: 600 as const }
+    }
+    return undefined
+  }
+
   return (
     <div className="overflow-x-auto rounded-lg border border-[#2A2418]">
       <Table>
@@ -639,11 +650,19 @@ function TrialBalanceTable({ rows }: { rows: TrialBalanceRow[] }) {
           {rows.map((row, index) => (
             <TableRow
               key={index}
-              style={row.isComputed ? { background: 'rgba(201,169,110,0.06)', fontStyle: 'italic' } : undefined}
+              style={rowStyle(row)}
             >
               <TableCell className="font-mono">{row.code}</TableCell>
               <TableCell>
                 <span>{row.name}</span>
+                {row.isSummary && (
+                  <span
+                    className="ml-2 rounded px-1 py-0.5 text-[10px] font-normal"
+                    style={{ background: 'rgba(42,36,24,0.08)', color: '#2A2418' }}
+                  >
+                    一级汇总
+                  </span>
+                )}
                 {row.isComputed && (
                   <span
                     className="ml-2 rounded px-1 py-0.5 text-[10px] font-normal not-italic"

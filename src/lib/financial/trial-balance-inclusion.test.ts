@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isLevel1AccountWithChildren, shouldIncludeAccountInTrialBalance } from './trial-balance-inclusion'
+import { isLevel1AccountWithChildren, shouldIncludeAccountInTrialBalance, shouldShowLevel1SummaryInTrialBalance } from './trial-balance-inclusion'
 
 describe('isLevel1AccountWithChildren', () => {
   it('identifies level-1 accounts with sub-accounts', () => {
@@ -59,6 +59,36 @@ describe('shouldIncludeAccountInTrialBalance', () => {
       openingTotals: empty,
       closingBalance: 0,
       yearToDateTotals: { debit: 0, credit: 0, balance: 0 },
+    })).toBe(false)
+  })
+})
+
+describe('shouldShowLevel1SummaryInTrialBalance', () => {
+  const empty = { debit: 0, credit: 0 }
+  const active = {
+    level: 1,
+    hasChildren: true,
+    periodTotals: { debit: 50, credit: 150 },
+    openingTotals: empty,
+    closingBalance: 100,
+    yearToDateTotals: { debit: 50, credit: 150, balance: 100 },
+  }
+
+  it('includes level-1 accounts with sub-accounts when rolled-up activity exists', () => {
+    expect(shouldShowLevel1SummaryInTrialBalance(active)).toBe(true)
+  })
+
+  it('excludes level-1 leaf accounts', () => {
+    expect(shouldShowLevel1SummaryInTrialBalance({
+      ...active,
+      hasChildren: false,
+    })).toBe(false)
+  })
+
+  it('excludes lower-level parent accounts', () => {
+    expect(shouldShowLevel1SummaryInTrialBalance({
+      ...active,
+      level: 2,
     })).toBe(false)
   })
 })
