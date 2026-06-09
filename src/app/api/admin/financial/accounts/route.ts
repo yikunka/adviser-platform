@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
   const openingDebit = parsed.data.openingDebit ?? 0
   const openingCredit = parsed.data.openingCredit ?? 0
   if ((openingBalanceRequested || yearToDateRequested) && !enteredBalancesEditable) {
-    return apiError('一级科目不支持单独录入期初余额或本年累计发生数，请在其下级科目中录入。', 400)
+    return apiError('此科目不支持单独录入期初余额或本年累计发生数，请在下级科目中录入。', 400)
   }
 
   try {
