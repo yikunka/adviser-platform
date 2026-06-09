@@ -272,6 +272,28 @@ html {
   font-family: var(--font-sans) !important;
 }
 
+.financial-account-combobox-dropdown {
+  background: #11110E !important;
+  border-color: #2A2418 !important;
+  color: #FFF7E6 !important;
+}
+
+.financial-account-combobox-dropdown button {
+  color: #FFF7E6 !important;
+}
+
+.financial-account-combobox-dropdown button[data-selected='true'] {
+  color: #C9A96E !important;
+}
+
+.financial-account-combobox-dropdown button:hover {
+  background: #1E1A12 !important;
+}
+
+.financial-account-combobox-dropdown button .text-xs {
+  color: #B8AD98 !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

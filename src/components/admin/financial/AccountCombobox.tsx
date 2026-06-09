@@ -131,8 +131,7 @@ export function AccountCombobox({
       <div className="relative">
         <Search
           size={13}
-          className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-          style={{ color: 'var(--muted-foreground)' }}
+          className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#9F927B]"
         />
         <input
           ref={inputRef}
@@ -157,18 +156,14 @@ export function AccountCombobox({
         />
         <ChevronDown
           size={14}
-          className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
-          style={{ color: 'var(--muted-foreground)' }}
+          className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#9F927B]"
         />
       </div>
 
       {open && (
-        <div
-          className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-lg shadow-lg"
-          style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
-        >
+        <div className="financial-account-combobox-dropdown absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-lg border border-[#2A2418] bg-[#11110E] text-[#FFF7E6] shadow-lg">
           {options.length === 0 ? (
-            <div className="px-3 py-4 text-sm text-center" style={{ color: 'var(--muted-foreground)' }}>
+            <div className="px-3 py-4 text-center text-sm text-[#B8AD98]">
               {emptyMessage}
             </div>
           ) : (
@@ -176,16 +171,13 @@ export function AccountCombobox({
               <button
                 key={account.id}
                 type="button"
+                data-selected={account.id === value ? 'true' : undefined}
                 onMouseDown={e => e.preventDefault()}
                 onClick={() => selectAccount(account)}
-                className="w-full px-3 py-2.5 text-left text-sm transition-colors hover:bg-[#111108]"
-                style={{
-                  borderBottom: '1px solid #1E1C15',
-                  color: account.id === value ? '#C9A96E' : 'var(--foreground)',
-                }}
+                className="w-full border-b border-[#1E1C15] px-3 py-2.5 text-left text-sm text-[#FFF7E6] transition-colors hover:bg-[#1E1A12]"
               >
                 <div className="font-medium">{formatAccountLabel(account)}</div>
-                <div className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+                <div className="mt-0.5 text-xs text-[#B8AD98]">
                   {account.type}
                 </div>
               </button>
