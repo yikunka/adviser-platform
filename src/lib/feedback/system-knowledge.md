@@ -178,6 +178,7 @@ Customer registry for SFS Diamond.
 
 ### SFS Diamond Specs Admin (`/admin/sfs-diamond-specs`)
 Customer-facing order option management for SFS Diamond.
+- Page opens with the **Color** category filter selected by default; admins can switch to All or any other category tab
 - Maintains active/inactive options for Color, Carat, Shape, Setting Type, Ring Design, Necklace Design, and Metal
 - Color, Shape, Ring Design, and Necklace Design options can store preview image URLs; admin can upload images to OSS/local storage or paste an existing URL
 - Active options are shown on `/sfsdiamond/order`; submitted orders keep saved text values

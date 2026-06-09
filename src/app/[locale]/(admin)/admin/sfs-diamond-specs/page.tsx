@@ -273,7 +273,7 @@ function SpecModal({
 export default function SfsDiamondSpecsPage() {
   const [options, setOptions] = useState<SpecOption[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<Category | 'ALL'>('ALL')
+  const [filter, setFilter] = useState<Category | 'ALL'>('COLOR')
   const [editing, setEditing] = useState<SpecOption | null>(null)
   const [creating, setCreating] = useState(false)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
