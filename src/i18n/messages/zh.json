@@ -1007,6 +1007,7 @@
       "addLine": "新增行",
       "description": "描述",
       "quantity": "數量",
+      "weight": "重量",
       "unitPrice": "單價",
       "amount": "金額",
       "subtotal": "小計",

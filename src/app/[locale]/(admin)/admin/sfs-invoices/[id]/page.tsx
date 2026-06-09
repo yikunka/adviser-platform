@@ -16,6 +16,7 @@ type LineItem = {
   id: string
   description: string
   quantity: string
+  weight?: string | null
   unitPrice: string
   amount: string
 }
@@ -173,6 +174,7 @@ export default function SfsInvoiceDetailPage() {
               <tr>
                 <th className="px-4 py-3 text-left">{t('description')}</th>
                 <th className="px-4 py-3 text-right">{t('quantity')}</th>
+                <th className="px-4 py-3 text-right">{t('weight')}</th>
                 <th className="px-4 py-3 text-right">{t('unitPrice')}</th>
                 <th className="px-4 py-3 text-right">{t('amount')}</th>
               </tr>
@@ -182,6 +184,9 @@ export default function SfsInvoiceDetailPage() {
                 <tr key={line.id}>
                   <td className="px-4 py-3">{line.description}</td>
                   <td className="px-4 py-3 text-right">{Number(line.quantity)}</td>
+                  <td className="px-4 py-3 text-right">
+                    {line.weight != null && line.weight !== '' ? Number(line.weight) : '—'}
+                  </td>
                   <td className="px-4 py-3 text-right">{invoice.currency} {Number(line.unitPrice).toFixed(2)}</td>
                   <td className="px-4 py-3 text-right">{invoice.currency} {Number(line.amount).toFixed(2)}</td>
                 </tr>

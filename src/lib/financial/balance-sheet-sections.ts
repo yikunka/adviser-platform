@@ -1,10 +1,14 @@
 import type { AccountType } from '@prisma/client'
+import type { BalanceSheetLineRow } from '@/lib/financial/balance-sheet-line-hierarchy'
+import { attachBalanceSheetChildren } from '@/lib/financial/balance-sheet-line-hierarchy'
 import type { StatementLineRow } from '@/lib/financial/report-line-types'
 import { roundMoney } from '@/lib/financial/utils'
 
+export type { BalanceSheetLineRow } from '@/lib/financial/balance-sheet-line-hierarchy'
+
 export type BalanceSheetSection = {
   label: string
-  lines: StatementLineRow[]
+  lines: BalanceSheetLineRow[]
   total: number
 }
 
@@ -48,24 +52,37 @@ export function isCurrentLiabilityAccount(account: { code: string; type: Account
   return account.type === 'LIABILITY' && /^2/.test(account.code) && !isNonCurrentLiabilityAccount(account)
 }
 
-function sectionTotal(lines: StatementLineRow[]) {
+function sectionTotal(lines: BalanceSheetLineRow[]) {
   return roundMoney(lines.reduce((sum, row) => sum + row.amount, 0))
 }
 
-function sortLines(lines: StatementLineRow[]) {
+function sortLines(lines: BalanceSheetLineRow[]) {
   return [...lines].sort((a, b) => a.code.localeCompare(b.code))
+}
+
+function buildSectionLines(
+  lines: StatementLineRow[],
+  classify: (row: StatementLineRow) => boolean,
+  level1AccountIdByReportAccountId?: Map<string, string>,
+) {
+  const topLevel = lines.filter(classify).filter(row => row.level === 1)
+  if (level1AccountIdByReportAccountId) {
+    return attachBalanceSheetChildren(topLevel, lines, level1AccountIdByReportAccountId)
+  }
+  return sortLines(topLevel.map(line => ({ ...line })))
 }
 
 export function buildBalanceSheetSections(input: {
   assetLines: StatementLineRow[]
   liabilityLines: StatementLineRow[]
   equityLines: StatementLineRow[]
+  level1AccountIdByReportAccountId?: Map<string, string>
 }) {
-  const currentAssets = sortLines(input.assetLines.filter(row => isCurrentAssetAccount(row)))
-  const nonCurrentAssets = sortLines(input.assetLines.filter(row => isNonCurrentAssetAccount(row)))
-  const currentLiabilities = sortLines(input.liabilityLines.filter(row => isCurrentLiabilityAccount(row)))
-  const nonCurrentLiabilities = sortLines(input.liabilityLines.filter(row => isNonCurrentLiabilityAccount(row)))
-  const equity = sortLines(input.equityLines)
+  const currentAssets = buildSectionLines(input.assetLines, isCurrentAssetAccount, input.level1AccountIdByReportAccountId)
+  const nonCurrentAssets = buildSectionLines(input.assetLines, isNonCurrentAssetAccount, input.level1AccountIdByReportAccountId)
+  const currentLiabilities = buildSectionLines(input.liabilityLines, isCurrentLiabilityAccount, input.level1AccountIdByReportAccountId)
+  const nonCurrentLiabilities = buildSectionLines(input.liabilityLines, isNonCurrentLiabilityAccount, input.level1AccountIdByReportAccountId)
+  const equity = buildSectionLines(input.equityLines, () => true, input.level1AccountIdByReportAccountId)
 
   const assetSections: BalanceSheetSection[] = [
     { label: '非流动资产', lines: nonCurrentAssets, total: sectionTotal(nonCurrentAssets) },

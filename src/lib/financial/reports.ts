@@ -509,6 +509,7 @@ export async function buildFinancialReports(
     assetLines,
     liabilityLines,
     equityLines: equityLinesWithProfit,
+    level1AccountIdByReportAccountId,
   })
   const totalAssets = balanceSheetLayout.totalAssets
   const totalLiabilities = balanceSheetLayout.totalLiabilities

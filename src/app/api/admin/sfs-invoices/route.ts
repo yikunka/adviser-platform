@@ -13,6 +13,7 @@ const SFS_INVOICE_CREATE_MAX_ATTEMPTS = 3
 const lineSchema = z.object({
   description: z.string().min(1).max(500),
   quantity: z.number().positive().max(999999),
+  weight: z.number().min(0).max(999999).optional().nullable(),
   unitPrice: z.number().min(0).max(999999999),
 })
 
@@ -148,6 +149,7 @@ export async function POST(req: NextRequest) {
                 sortOrder: i,
                 description: line.description,
                 quantity: toQuantity(line.quantity),
+                weight: line.weight != null ? toQuantity(line.weight) : null,
                 unitPrice: toMoney(line.unitPrice),
                 amount: toMoney(lineAmounts[i]!),
               })),

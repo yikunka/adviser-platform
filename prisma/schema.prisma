@@ -1261,13 +1261,14 @@ model SfsInvoice {
 }
 
 model SfsInvoiceLineItem {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   invoiceId   String
-  sortOrder   Int     @default(0)
+  sortOrder   Int      @default(0)
   description String
-  quantity    Decimal @default(1) @db.Decimal(12, 4)
-  unitPrice   Decimal @db.Decimal(18, 2)
-  amount      Decimal @db.Decimal(18, 2)
+  quantity    Decimal  @default(1) @db.Decimal(12, 4)
+  weight      Decimal? @db.Decimal(12, 4)
+  unitPrice   Decimal  @db.Decimal(18, 2)
+  amount      Decimal  @db.Decimal(18, 2)
 
   invoice SfsInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 

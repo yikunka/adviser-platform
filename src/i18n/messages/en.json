@@ -1007,6 +1007,7 @@
       "addLine": "Add line",
       "description": "Description",
       "quantity": "Qty",
+      "weight": "Weight",
       "unitPrice": "Unit price",
       "amount": "Amount",
       "subtotal": "Subtotal",

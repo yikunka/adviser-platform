@@ -29,25 +29,39 @@ describe('balance sheet HKFRS sections', () => {
   })
 
   it('builds ordered HKFRS sections with subtotals', () => {
+    const level1Map = new Map([
+      ['a1', 'a1'],
+      ['a2', 'a1'],
+      ['b1', 'b1'],
+      ['b2', 'b1'],
+      ['l1', 'l1'],
+      ['l2', 'l1'],
+      ['e1', 'e1'],
+    ])
+
     const layout = buildBalanceSheetSections({
       assetLines: [
-        { accountId: 'a1', code: '1300', name: '固定资产', type: 'ASSET', level: 2, amount: 500 },
-        { accountId: 'a2', code: '1001', name: '现金', type: 'ASSET', level: 2, amount: 100 },
+        { accountId: 'a1', code: '1300', name: '固定资产', type: 'ASSET', level: 1, amount: 500 },
+        { accountId: 'a2', code: '1301', name: '厂房', type: 'ASSET', level: 2, amount: 500 },
+        { accountId: 'b1', code: '1000', name: '流动资产', type: 'ASSET', level: 1, amount: 100 },
+        { accountId: 'b2', code: '1001', name: '现金', type: 'ASSET', level: 2, amount: 100 },
       ],
       liabilityLines: [
-        { accountId: 'l1', code: '2200', name: '银行贷款', type: 'LIABILITY', level: 2, amount: 300 },
+        { accountId: 'l1', code: '2500', name: '长期借款', type: 'LIABILITY', level: 1, amount: 300 },
         { accountId: 'l2', code: '2001', name: '应付账款', type: 'LIABILITY', level: 2, amount: 50 },
       ],
       equityLines: [
-        { accountId: 'e1', code: '3001', name: '实收资本', type: 'EQUITY', level: 2, amount: 250 },
+        { accountId: 'e1', code: '3001', name: '实收资本', type: 'EQUITY', level: 1, amount: 250 },
       ],
+      level1AccountIdByReportAccountId: level1Map,
     })
 
     expect(layout.assetSections.map(section => section.label)).toEqual(['非流动资产', '流动资产'])
     expect(layout.liabilitySections.map(section => section.label)).toEqual(['非流动负债', '流动负债'])
     expect(layout.equitySection.label).toBe('所有者权益')
     expect(layout.totalAssets).toBe(600)
-    expect(layout.totalLiabilities).toBe(350)
+    expect(layout.totalLiabilities).toBe(300)
     expect(layout.totalEquity).toBe(250)
+    expect(layout.assetSections[0]?.lines[0]?.children?.map(child => child.code)).toEqual(['1301'])
   })
 })

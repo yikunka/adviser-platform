@@ -18,9 +18,9 @@ type OrderOption = {
   status: string
 }
 
-type LineRow = { description: string; quantity: string; unitPrice: string }
+type LineRow = { description: string; quantity: string; weight: string; unitPrice: string }
 
-const emptyLine = (): LineRow => ({ description: '', quantity: '1', unitPrice: '0' })
+const emptyLine = (): LineRow => ({ description: '', quantity: '1', weight: '', unitPrice: '0' })
 
 export default function NewSfsInvoicePage() {
   const t = useTranslations('admin.sfsInvoices')
@@ -83,6 +83,7 @@ export default function NewSfsInvoicePage() {
             json.suggestedLines.map((l: { description: string; quantity: number; unitPrice: number }) => ({
               description: l.description,
               quantity: String(l.quantity),
+              weight: '',
               unitPrice: String(l.unitPrice),
             })),
           )
@@ -115,11 +116,16 @@ export default function NewSfsInvoicePage() {
     }
     const lineItems = lines
       .filter(l => l.description.trim())
-      .map(l => ({
-        description: l.description.trim(),
-        quantity: parseFloat(l.quantity) || 0,
-        unitPrice: parseFloat(l.unitPrice) || 0,
-      }))
+      .map(l => {
+        const weightRaw = l.weight.trim()
+        const weight = weightRaw ? parseFloat(weightRaw) : null
+        return {
+          description: l.description.trim(),
+          quantity: parseFloat(l.quantity) || 0,
+          weight: weight != null && !Number.isNaN(weight) ? weight : null,
+          unitPrice: parseFloat(l.unitPrice) || 0,
+        }
+      })
       .filter(l => l.quantity > 0 && l.description)
     if (lineItems.length === 0) {
       toast.error(t('linesRequired'))
@@ -232,7 +238,7 @@ export default function NewSfsInvoicePage() {
         <CardContent className="space-y-3">
           {lines.map((line, i) => (
             <div key={i} className="grid gap-2 sm:grid-cols-12 items-end">
-              <div className="sm:col-span-5">
+              <div className="sm:col-span-4">
                 <Input
                   placeholder={t('description')}
                   value={line.description}
@@ -254,12 +260,22 @@ export default function NewSfsInvoicePage() {
                   type="number"
                   min="0"
                   step="0.01"
+                  placeholder={t('weight')}
+                  value={line.weight}
+                  onChange={e => updateLine(i, { weight: e.target.value })}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
                   placeholder={t('unitPrice')}
                   value={line.unitPrice}
                   onChange={e => updateLine(i, { unitPrice: e.target.value })}
                 />
               </div>
-              <div className="sm:col-span-2 text-sm py-2" style={{ color: 'var(--muted-foreground)' }}>
+              <div className="sm:col-span-1 text-sm py-2" style={{ color: 'var(--muted-foreground)' }}>
                 HKD {((parseFloat(line.quantity) || 0) * (parseFloat(line.unitPrice) || 0)).toFixed(2)}
               </div>
               <div className="sm:col-span-1">

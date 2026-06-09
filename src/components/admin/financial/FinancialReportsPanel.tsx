@@ -2,10 +2,16 @@
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { Download, FileBarChart, AlertTriangle } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Download, FileBarChart, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import type { FinancialReportsBundle, AccountingEquationCheck, BalanceSheetSection, TrialBalanceRow } from '@/lib/financial/reports'
+import type { BalanceSheetLineRow } from '@/lib/financial/balance-sheet-line-hierarchy'
+import {
+  filterTrialBalanceRowsByLevel,
+  TRIAL_BALANCE_LEVEL_OPTIONS,
+  type TrialBalanceLevelFilter,
+} from '@/lib/financial/trial-balance-level-filter'
 import { formatReportAmount } from '@/lib/financial/utils'
 import { subscribeFinancialAccountsChanged } from '@/lib/financial/events'
 import { Button } from '@/components/ui/button'
@@ -14,6 +20,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FinancialBreadcrumbs } from '@/components/admin/financial/FinancialBreadcrumbs'
 import { useFinancialCompany } from '@/components/admin/financial/FinancialCompanyContext'
 
@@ -121,6 +128,22 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
   const [period, setPeriod] = useState(currentPeriod)
   const [reports, setReports] = useState<FinancialReportsBundle | null>(null)
   const [loading, setLoading] = useState(false)
+  const [trialBalanceLevel, setTrialBalanceLevel] = useState<TrialBalanceLevelFilter>('all')
+  const [expandedBalanceSheetAccounts, setExpandedBalanceSheetAccounts] = useState<Set<string>>(new Set())
+
+  const filteredTrialBalanceRows = useMemo(
+    () => (reports ? filterTrialBalanceRowsByLevel(reports.trialBalance.rows, trialBalanceLevel) : []),
+    [reports, trialBalanceLevel],
+  )
+
+  const toggleBalanceSheetExpand = useCallback((accountId: string) => {
+    setExpandedBalanceSheetAccounts(previous => {
+      const next = new Set(previous)
+      if (next.has(accountId)) next.delete(accountId)
+      else next.add(accountId)
+      return next
+    })
+  }, [])
 
   const fetchReports = useCallback(async () => {
     setLoading(true)
@@ -143,6 +166,10 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
   }, [fetchReports])
 
   useEffect(() => {
+    setExpandedBalanceSheetAccounts(new Set())
+  }, [reports?.generatedAt])
+
+  useEffect(() => {
     const scopedCompanyId = scope.params.companyId
     return subscribeFinancialAccountsChanged(detail => {
       if (scopedCompanyId && detail.companyId !== scopedCompanyId) return
@@ -155,7 +182,7 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
     exportCsv(
       `trial_balance_${scope.exportKey}_${period}.csv`,
       ['科目编码', '科目名称', '类型', '本期借方', '本期贷方', '期末借方', '期末贷方'],
-      reports.trialBalance.rows.map(row => [
+      filteredTrialBalanceRows.map(row => [
         row.code,
         row.name,
         accountTypeLabel(row.type),
@@ -178,7 +205,7 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
         workbook,
         XLSX.utils.aoa_to_sheet(sheetRows('试算平衡表', period, [
           ['科目编码', '科目名称', '类型', '本期借方', '本期贷方', '期末借方', '期末贷方'],
-          ...reports.trialBalance.rows.map(row => [
+          ...filteredTrialBalanceRows.map(row => [
             row.code,
             row.name,
             accountTypeLabel(row.type),
@@ -337,15 +364,39 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
               </TabsList>
 
               <TabsContent value="trial-balance" className="space-y-4">
-                <ReportHeader title="试算平衡表" period={period} balanced={reports.trialBalance.balanced} />
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <ReportHeader title="试算平衡表" period={period} balanced={reports.trialBalance.balanced} />
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">科目层级</span>
+                    <Select
+                      value={trialBalanceLevel}
+                      onValueChange={value => setTrialBalanceLevel(value as TrialBalanceLevelFilter)}
+                    >
+                      <SelectTrigger
+                        className="min-w-[140px]"
+                        style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="border-[#2A2418] bg-card">
+                        {TRIAL_BALANCE_LEVEL_OPTIONS.map(option => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
                 <AccountingEquationAlert equation={reports.trialBalance.equation} />
-                <TrialBalanceTable rows={reports.trialBalance.rows} />
+                <TrialBalanceTable rows={filteredTrialBalanceRows} />
                 <TotalsFooter
                   left={`借方合计：${money(reports.trialBalance.totalDebit)}`}
                   right={`贷方合计：${money(reports.trialBalance.totalCredit)}`}
                 />
                 <p className="text-xs" style={{ color: '#7A7060' }}>
-                  ＊ 仅显示有余额或本期发生额的科目。零余额科目在过账分录后自动出现。
+                  ＊ 可通过「科目层级」筛选仅一级、前两级或全量明细展示范围；借贷合计始终基于全部明细科目计算。
+                  仅显示有余额或本期发生额的科目。零余额科目在过账分录后自动出现。
                   带「一级汇总」标注的行为一级科目汇总（含下级明细合计），不计入借贷合计。
                   带「期末计算」标注的行为汇总估算，不计入借贷合计。
                 </p>
@@ -390,16 +441,33 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                   subtitle={`截至 ${new Date(reports.balanceSheet.asOfDate).toLocaleDateString('zh-HK')}`}
                 />
                 <AccountingEquationAlert equation={reports.balanceSheet.equation} />
+                <p className="text-xs text-muted-foreground">
+                  默认仅展示一级科目汇总；点击有下级明细的一级科目可展开查看二、三、四级明细。
+                </p>
                 <Section title="资产">
                   {reports.balanceSheet.assetSections.map(section => (
-                    <BalanceSheetSectionBlock key={section.label} section={section} />
+                    <BalanceSheetSectionBlock
+                      key={section.label}
+                      section={section}
+                      expandedAccountIds={expandedBalanceSheetAccounts}
+                      onToggleExpand={toggleBalanceSheetExpand}
+                    />
                   ))}
                   <TotalsFooter left="资产合计" right={money(reports.balanceSheet.totalAssets)} highlight />
                 </Section>
                 <Section title="负债及所有者权益">
-                  <BalanceSheetSectionBlock section={reports.balanceSheet.equitySection} />
+                  <BalanceSheetSectionBlock
+                    section={reports.balanceSheet.equitySection}
+                    expandedAccountIds={expandedBalanceSheetAccounts}
+                    onToggleExpand={toggleBalanceSheetExpand}
+                  />
                   {reports.balanceSheet.liabilitySections.map(section => (
-                    <BalanceSheetSectionBlock key={section.label} section={section} />
+                    <BalanceSheetSectionBlock
+                      key={section.label}
+                      section={section}
+                      expandedAccountIds={expandedBalanceSheetAccounts}
+                      onToggleExpand={toggleBalanceSheetExpand}
+                    />
                   ))}
                   <TotalsFooter left="负债合计" right={money(reports.balanceSheet.totalLiabilities)} />
                   <TotalsFooter left="权益合计" right={money(reports.balanceSheet.totalEquity)} />
@@ -428,18 +496,99 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
   )
 }
 
-function BalanceSheetSectionBlock({ section }: { section: BalanceSheetSection }) {
+function BalanceSheetSectionBlock({
+  section,
+  expandedAccountIds,
+  onToggleExpand,
+}: {
+  section: BalanceSheetSection
+  expandedAccountIds: Set<string>
+  onToggleExpand: (accountId: string) => void
+}) {
   return (
     <div className="space-y-2">
       <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{section.label}</h4>
-      <StatementTable
-        headers={['编码', '科目', '金额']}
-        rows={section.lines.map(row => [row.code, reportLineLabel(row.name), money(row.amount)])}
+      <ExpandableBalanceSheetTable
+        lines={section.lines}
+        expandedAccountIds={expandedAccountIds}
+        onToggleExpand={onToggleExpand}
         emptyLabel={`暂无${section.label}余额`}
       />
       {section.lines.length > 0 ? (
         <TotalsFooter left={`${section.label}合计`} right={money(section.total)} />
       ) : null}
+    </div>
+  )
+}
+
+function ExpandableBalanceSheetTable({
+  lines,
+  expandedAccountIds,
+  onToggleExpand,
+  emptyLabel,
+}: {
+  lines: BalanceSheetLineRow[]
+  expandedAccountIds: Set<string>
+  onToggleExpand: (accountId: string) => void
+  emptyLabel: string
+}) {
+  if (lines.length === 0) {
+    return <p className="text-sm text-muted-foreground py-2">{emptyLabel}</p>
+  }
+
+  const rows: { line: BalanceSheetLineRow; depth: number }[] = []
+
+  for (const line of lines) {
+    rows.push({ line, depth: 0 })
+    if (line.children?.length && expandedAccountIds.has(line.accountId)) {
+      for (const child of line.children) {
+        rows.push({ line: child, depth: child.level - 1 })
+      }
+    }
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-lg border border-[#2A2418]">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>编码</TableHead>
+            <TableHead>科目</TableHead>
+            <TableHead className="text-right">金额</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map(({ line, depth }) => {
+            const hasChildren = (line.children?.length ?? 0) > 0
+            const expanded = expandedAccountIds.has(line.accountId)
+            const indent = depth > 0 ? `${depth * 1.25}rem` : undefined
+
+            return (
+              <TableRow key={`${line.accountId}-${depth}`}>
+                <TableCell className="font-mono">{line.code}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1" style={{ paddingLeft: indent }}>
+                    {hasChildren ? (
+                      <button
+                        type="button"
+                        onClick={() => onToggleExpand(line.accountId)}
+                        className="inline-flex shrink-0 rounded p-0.5 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                        aria-label={expanded ? '收起明细' : '展开明细'}
+                      >
+                        {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                      </button>
+                    ) : (
+                      <span className="inline-block w-[22px] shrink-0" />
+                    )}
+                    <span>{reportLineLabel(line.name)}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right font-mono">{money(line.amount)}</TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
     </div>
   )
 }
