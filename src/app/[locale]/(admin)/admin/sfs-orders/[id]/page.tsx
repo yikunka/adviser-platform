@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { ArrowLeft, CheckCircle, RotateCcw, Upload, X, Download } from 'lucide-react'
 import Link from 'next/link'
 import DiamondCards from '@/app/sfsdiamond/components/DiamondCards'
@@ -152,6 +153,7 @@ function StepRow({
   doneStep,     // the saved Step record if completed, else undefined
   diamonds,
   onRefresh,
+  canReviewAttachments,
 }: {
   orderId: string
   phase: string
@@ -160,6 +162,7 @@ function StepRow({
   doneStep?: Step
   diamonds: DiamondItem[]
   onRefresh: () => void
+  canReviewAttachments: boolean
 }) {
   const [uploading, setUploading] = useState(false)
   const [undoing, setUndoing] = useState(false)
@@ -304,7 +307,7 @@ function StepRow({
                         <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: reviewMeta.bg, color: reviewMeta.color }}>
                           {reviewMeta.label}
                         </span>
-                        {attachment.id && (
+                        {attachment.id && canReviewAttachments && (
                           <>
                             <button
                               type="button"
@@ -560,12 +563,14 @@ function PhasePanel({
   steps,
   diamonds,
   onRefresh,
+  canReviewAttachments,
 }: {
   orderId: string
   phase: string
   steps: Step[]
   diamonds: DiamondItem[]
   onRefresh: () => void
+  canReviewAttachments: boolean
 }) {
   const descriptions = SFS_PREDEFINED_STEPS[phase]
   const doneMap = new Map(steps.map(s => [s.stepNumber, s]))
@@ -605,6 +610,7 @@ function PhasePanel({
             doneStep={doneMap.get(i + 1)}
             diamonds={diamonds}
             onRefresh={onRefresh}
+            canReviewAttachments={canReviewAttachments}
           />
         ))}
       </div>
@@ -617,6 +623,8 @@ function PhasePanel({
 export default function AdminSfsOrderDetailPage() {
   const params = useParams()
   const id = params.id as string
+  const { data: session } = useSession()
+  const canReviewAttachments = session?.user?.role === 'SUPER_ADMIN'
 
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
@@ -856,6 +864,7 @@ export default function AdminSfsOrderDetailPage() {
           steps={order.steps.filter(s => s.phase === phase)}
           diamonds={diamonds}
           onRefresh={() => load(true)}
+          canReviewAttachments={canReviewAttachments}
         />
       ))}
     </div>

@@ -12,7 +12,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; stepId: string; attachmentId: string }> },
 ) {
-  const { session, error } = await requireRole('STAFF', { adminMenu: 'sfsOrders' })
+  const { session, error } = await requireRole('SUPER_ADMIN')
   if (error) return error
 
   const { id, stepId, attachmentId } = await params

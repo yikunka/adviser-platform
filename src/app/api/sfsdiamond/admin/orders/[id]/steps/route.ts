@@ -56,7 +56,9 @@ export async function POST(
     const key = `sfs-orders/${orderId}/steps/${label ? `${label}-` : ''}${crypto.randomUUID()}.${ext}`
     const buf = Buffer.from(await file.arrayBuffer())
     await uploadToR2(key, buf, file.type)
-    const reviewStatus = sfsStepImageRequiresApproval(phase, key, file.type) ? 'PENDING' : 'APPROVED'
+    const needsReview = sfsStepImageRequiresApproval(phase, key, file.type)
+    const reviewStatus =
+      !needsReview || session.user.role === 'SUPER_ADMIN' ? 'APPROVED' : 'PENDING'
     attachments.push({
       fileKey: key,
       fileName: file.name || key.split('/').pop() || key,
