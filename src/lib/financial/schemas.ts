@@ -78,10 +78,16 @@ export const journalEntryFilterSchema = z.object({
 
 export const ledgerFilterSchema = z.object({
   accountId: z.string().trim().min(1).optional(),
+  accountIds: z.array(z.string().trim().min(1)).max(500).optional(),
   accountType: accountTypeSchema.optional(),
   period: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   voucherNo: z.string().trim().max(100).optional(),
   companyId: z.string().cuid().optional(),
+}).refine(data => !data.startDate || !data.endDate || data.startDate <= data.endDate, {
+  message: 'Start date must be earlier than or equal to end date.',
+  path: ['endDate'],
 })
 
 export const financialReportFilterSchema = z.object({

@@ -20,15 +20,56 @@ function periodRange(period: string) {
   return { start, end }
 }
 
+function parseYmdDate(value: string) {
+  const [year, month, day] = value.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, day))
+}
+
+function nextUtcDay(value: string) {
+  const date = parseYmdDate(value)
+  date.setUTCDate(date.getUTCDate() + 1)
+  return date
+}
+
+function ledgerDateFilter(input: { period?: string; startDate?: string; endDate?: string }) {
+  const period = input.period ? periodRange(input.period) : null
+  let gte = period?.start
+  let lt = period?.end
+
+  if (input.startDate) {
+    const start = parseYmdDate(input.startDate)
+    gte = gte && gte > start ? gte : start
+  }
+
+  if (input.endDate) {
+    const end = nextUtcDay(input.endDate)
+    lt = lt && lt < end ? lt : end
+  }
+
+  if (!gte && !lt) return undefined
+  return {
+    ...(gte ? { gte } : {}),
+    ...(lt ? { lt } : {}),
+  }
+}
+
 export async function GET(req: NextRequest) {
   const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
   if (error) return error
 
   const rawAccountId = req.nextUrl.searchParams.get('accountId') || undefined
+  const rawAccountIds = req.nextUrl.searchParams.get('accountIds') || ''
+  const accountIds = rawAccountIds
+    .split(',')
+    .map(id => id.trim())
+    .filter(id => id && id !== 'ALL')
   const parsed = ledgerFilterSchema.safeParse({
     accountId: rawAccountId === 'ALL' ? undefined : rawAccountId,
+    accountIds: accountIds.length > 0 ? accountIds : undefined,
     accountType: req.nextUrl.searchParams.get('accountType') || undefined,
     period: req.nextUrl.searchParams.get('period') || undefined,
+    startDate: req.nextUrl.searchParams.get('startDate') || undefined,
+    endDate: req.nextUrl.searchParams.get('endDate') || undefined,
     voucherNo: req.nextUrl.searchParams.get('voucherNo') || undefined,
     companyId: req.nextUrl.searchParams.get('companyId') || undefined,
   })
@@ -38,14 +79,19 @@ export async function GET(req: NextRequest) {
   if (parsed.data.companyId && !(await assertCompanyAccessible(access, parsed.data.companyId))) {
     return apiError('Forbidden', 403)
   }
-  const range = parsed.data.period ? periodRange(parsed.data.period) : null
+  const dateFilter = ledgerDateFilter(parsed.data)
+  const selectedAccountIds = parsed.data.accountIds?.length
+    ? parsed.data.accountIds
+    : parsed.data.accountId
+      ? [parsed.data.accountId]
+      : null
   const where: Prisma.LedgerWhereInput = {
-    ...(parsed.data.accountId ? { accountId: parsed.data.accountId } : {}),
+    ...(selectedAccountIds ? { accountId: { in: selectedAccountIds } } : {}),
     ...(parsed.data.accountType ? { account: { type: parsed.data.accountType } } : {}),
     ...(parsed.data.voucherNo ? { voucherNo: { contains: parsed.data.voucherNo, mode: 'insensitive' } } : {}),
     ...(parsed.data.companyId ? { companyId: parsed.data.companyId } : {}),
     ...(!parsed.data.companyId && access.kind === 'restricted' ? { companyId: { in: access.companyIds } } : {}),
-    ...(range ? { date: { gte: range.start, lt: range.end } } : {}),
+    ...(dateFilter ? { date: dateFilter } : {}),
     entry: { status: 'POSTED' },
   }
 
