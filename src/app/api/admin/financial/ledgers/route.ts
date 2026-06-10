@@ -5,7 +5,12 @@ import { prisma } from '@/lib/db/prisma'
 import { ledgerFilterSchema } from '@/lib/financial/schemas'
 import { serializeLedgerEntry } from '@/lib/financial/serializers'
 import { trialBalanceColumns } from '@/lib/financial/report-balances'
-import { roundMoney, signedLineAmount } from '@/lib/financial/utils'
+import { roundMoney } from '@/lib/financial/utils'
+import {
+  addLedgerMovementsToOpeningBalances,
+  calculateLedgerRunningBalances,
+  signedOpeningBalance,
+} from '@/lib/financial/ledger-balances'
 import {
   assertCompanyAccessible,
   resolveCompanyAccess,
@@ -64,6 +69,11 @@ function periodForDate(date: Date) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
 }
 
+function periodStartDate(period: string) {
+  const [year, month] = period.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, 1))
+}
+
 export async function GET(req: NextRequest) {
   const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
   if (error) return error
@@ -107,16 +117,19 @@ export async function GET(req: NextRequest) {
     ...(parsed.data.accountType ? { type: parsed.data.accountType } : {}),
     ...companyScopeWhere,
   }
-  const where: Prisma.LedgerWhereInput = {
+  const ledgerBalanceWhere: Prisma.LedgerWhereInput = {
     ...(selectedAccountIds ? { accountId: { in: selectedAccountIds } } : {}),
     ...(parsed.data.accountType ? { account: { type: parsed.data.accountType } } : {}),
-    ...(parsed.data.voucherNo ? { voucherNo: { contains: parsed.data.voucherNo, mode: 'insensitive' } } : {}),
     ...companyScopeWhere,
     ...(dateFilter ? { date: dateFilter } : {}),
     entry: { status: 'POSTED' },
   }
+  const where: Prisma.LedgerWhereInput = {
+    ...ledgerBalanceWhere,
+    ...(parsed.data.voucherNo ? { voucherNo: { contains: parsed.data.voucherNo, mode: 'insensitive' } } : {}),
+  }
 
-  const [accounts, ledgers] = await Promise.all([
+  const [accounts, ledgers, balanceLedgers] = await Promise.all([
     prisma.finAccount.findMany({
       where: accountWhere,
       include: {
@@ -139,6 +152,18 @@ export async function GET(req: NextRequest) {
       },
       orderBy: [{ date: 'asc' }, { lineNum: 'asc' }, { voucherNo: 'asc' }],
     }),
+    parsed.data.voucherNo
+      ? prisma.ledger.findMany({
+          where: ledgerBalanceWhere,
+          orderBy: [{ date: 'asc' }, { lineNum: 'asc' }, { voucherNo: 'asc' }],
+          select: {
+            id: true,
+            accountId: true,
+            debit: true,
+            credit: true,
+          },
+        })
+      : Promise.resolve(null),
   ])
 
   const accountsById = new Map(accounts.map(account => [account.id, account]))
@@ -158,7 +183,9 @@ export async function GET(req: NextRequest) {
         orderBy: [{ date: 'asc' }, { lineNum: 'asc' }, { voucherNo: 'asc' }],
         select: {
           accountId: true,
-          balance: true,
+          date: true,
+          debit: true,
+          credit: true,
         },
       }),
       prisma.accountBalance.findMany({
@@ -180,33 +207,39 @@ export async function GET(req: NextRequest) {
       if (openingBalanceByAccount.has(row.accountId)) continue
       const account = accountsById.get(row.accountId)
       if (!account) continue
-      openingBalanceByAccount.set(row.accountId, signedLineAmount({
-        accountId: row.accountId,
-        accountType: account.type,
-        accountCode: account.code,
-        debit: row.openingDebit,
-        credit: row.openingCredit,
-      }))
+      openingBalanceByAccount.set(row.accountId, signedOpeningBalance(row, account))
       openingPeriodByAccount.set(row.accountId, row.period)
     }
 
-    for (const row of previousLedgers) {
-      openingBalanceByAccount.set(row.accountId, Number(row.balance))
+    const previousMovements = previousLedgers.filter(row => {
+      const openingPeriod = openingPeriodByAccount.get(row.accountId)
+      return !openingPeriod || row.date >= periodStartDate(openingPeriod)
+    })
+    const balancesWithPreviousMovements = addLedgerMovementsToOpeningBalances(
+      openingBalanceByAccount,
+      previousMovements,
+      accountsById,
+    )
+    openingBalanceByAccount.clear()
+    for (const [accountId, balance] of balancesWithPreviousMovements) {
+      openingBalanceByAccount.set(accountId, balance)
     }
   } else {
     for (const account of accounts) {
       const opening = account.accountBalances[0]
       if (!opening) continue
-      openingBalanceByAccount.set(account.id, signedLineAmount({
+      openingBalanceByAccount.set(account.id, signedOpeningBalance({
         accountId: account.id,
-        accountType: account.type,
-        accountCode: account.code,
-        debit: opening.openingDebit,
-        credit: opening.openingCredit,
-      }))
+        openingDebit: opening.openingDebit,
+        openingCredit: opening.openingCredit,
+      }, account))
       openingPeriodByAccount.set(account.id, opening.period)
     }
   }
+
+  const runningSourceLedgers = balanceLedgers ?? ledgers
+  const runningLedgers = calculateLedgerRunningBalances(runningSourceLedgers, accountsById, openingBalanceByAccount)
+  const runningLedgerById = new Map(runningLedgers.map(entry => [entry.id, entry]))
 
   const entriesByAccount = new Map<string, typeof ledgers>()
   for (const entry of ledgers) {
@@ -229,7 +262,8 @@ export async function GET(req: NextRequest) {
         openingDate: dateBounds.gte?.toISOString() ?? null,
         openingPeriod: openingPeriodByAccount.get(account.id) ?? null,
         entries: entries.map(entry => {
-          const serialized = serializeLedgerEntry(entry)
+          const calculatedBalance = runningLedgerById.get(entry.id)?.calculatedBalance ?? Number(entry.balance)
+          const serialized = serializeLedgerEntry({ ...entry, balance: new Prisma.Decimal(calculatedBalance) })
           const entryBalanceColumns = trialBalanceColumns(serialized.balance, account.type, account.code)
           return {
             ...serialized,
@@ -252,7 +286,8 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     ledgers: ledgers.map(entry => {
-      const serialized = serializeLedgerEntry(entry)
+      const calculatedBalance = runningLedgerById.get(entry.id)?.calculatedBalance ?? Number(entry.balance)
+      const serialized = serializeLedgerEntry({ ...entry, balance: new Prisma.Decimal(calculatedBalance) })
       const balanceColumns = trialBalanceColumns(serialized.balance, serialized.accountType, serialized.accountCode)
       return {
         ...serialized,

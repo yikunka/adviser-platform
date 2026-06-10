@@ -237,6 +237,10 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
           ...reports.incomeStatement.revenue.map(row => ['收入', row.code, row.name, row.amount]),
           ['收入合计', '', '', reports.incomeStatement.totalRevenue],
           [],
+          ...reports.incomeStatement.costOfSales.map(row => ['主营业务成本', row.code, row.name, row.amount]),
+          ['主营业务成本合计', '', '', reports.incomeStatement.totalCostOfSales],
+          ['毛利', '', '', reports.incomeStatement.grossProfit],
+          [],
           ...reports.incomeStatement.expenses.map(row => ['费用', row.code, row.name, row.amount]),
           ['费用合计', '', '', reports.incomeStatement.totalExpenses],
           ['本期利润', '', '', reports.incomeStatement.netProfit],
@@ -330,7 +334,12 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
               value={period}
               onChange={e => setPeriod(e.target.value)}
               className="max-w-[180px]"
-              style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
+              style={{
+                background: '#FFFFFF',
+                border: '1px solid #C9A96E',
+                color: '#0A0805',
+                colorScheme: 'light',
+              }}
             />
             <Button size="sm" onClick={fetchReports} disabled={loading} style={{ background: '#C9A96E', color: '#0A0805' }}>
               <FileBarChart size={15} className="mr-2" />
@@ -420,6 +429,15 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                   />
                   <TotalsFooter left="收入合计" right={money(reports.incomeStatement.totalRevenue)} />
                 </Section>
+                <Section title="主营业务成本">
+                  <StatementTable
+                    headers={['编码', '科目', '金额']}
+                    rows={reports.incomeStatement.costOfSales.map(row => [row.code, row.name, money(row.amount)])}
+                    emptyLabel="本期间暂无主营业务成本"
+                  />
+                  <TotalsFooter left="主营业务成本合计" right={money(reports.incomeStatement.totalCostOfSales)} />
+                </Section>
+                <TotalsFooter left="毛利" right={money(reports.incomeStatement.grossProfit)} />
                 <Section title="费用">
                   <StatementTable
                     headers={['编码', '科目', '金额']}

@@ -48,6 +48,14 @@ export function isProfitAndLossExpenseType(type: AccountType) {
   return type === 'EXPENSE' || type === 'CGS'
 }
 
+export function shouldIncludeProfitAndLossExpenseLine(input: {
+  type: AccountType
+  hasChildren: boolean
+  periodNet: number
+}) {
+  return isProfitAndLossExpenseType(input.type) && !input.hasChildren && input.periodNet !== 0
+}
+
 export function isCreditNormalAccountType(type: AccountType, code?: string) {
   return !isDebitNormalAccountType(type, code)
 }

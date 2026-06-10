@@ -1,6 +1,6 @@
 import type { AccountType, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
-import { isDebitNormalAccountType, isProfitAndLossExpenseType } from '@/lib/financial/account-types'
+import { isDebitNormalAccountType, shouldIncludeProfitAndLossExpenseLine } from '@/lib/financial/account-types'
 import {
   buildBalanceSheetSections,
   isCurrentAssetAccount,
@@ -40,8 +40,11 @@ export type IncomeStatementReport = {
   currency: 'HKD'
   standard: 'HKFRS'
   revenue: StatementLineRow[]
+  costOfSales: StatementLineRow[]
   expenses: StatementLineRow[]
   totalRevenue: number
+  totalCostOfSales: number
+  grossProfit: number
   totalExpenses: number
   netProfit: number
 }
@@ -375,6 +378,7 @@ export async function buildFinancialReports(
   const summaryRowsByLevel1Id = new Map<string, TrialBalanceRow>()
 
   const revenueLines: StatementLineRow[] = []
+  const costOfSalesLines: StatementLineRow[] = []
   const expenseLines: StatementLineRow[] = []
   const assetLines: StatementLineRow[] = []
   const liabilityLines: StatementLineRow[] = []
@@ -457,9 +461,13 @@ export async function buildFinancialReports(
       })
     }
 
+    const hasChildren = accountHasChildren(account)
     const row: StatementLineRow = { ...reportRow, amount: Math.abs(periodNet) }
     if (account.type === 'REVENUE' && periodNet !== 0) revenueLines.push(row)
-    if (isProfitAndLossExpenseType(account.type) && periodNet !== 0) expenseLines.push(row)
+    if (shouldIncludeProfitAndLossExpenseLine({ type: account.type, hasChildren, periodNet })) {
+      if (account.type === 'CGS') costOfSalesLines.push(row)
+      else expenseLines.push(row)
+    }
 
     if (shouldIncludeAccountInBalanceSheet(account.level)) {
       if ((account.type === 'ASSET' || account.type === 'NON_CURRENT_ASSET') && closingBalance !== 0) {
@@ -479,8 +487,10 @@ export async function buildFinancialReports(
   }
 
   const totalRevenue = roundMoney(revenueLines.reduce((sum, row) => sum + row.amount, 0))
+  const totalCostOfSales = roundMoney(costOfSalesLines.reduce((sum, row) => sum + row.amount, 0))
+  const grossProfit = roundMoney(totalRevenue - totalCostOfSales)
   const totalExpenses = roundMoney(expenseLines.reduce((sum, row) => sum + row.amount, 0))
-  const netProfit = roundMoney(totalRevenue - totalExpenses)
+  const netProfit = roundMoney(grossProfit - totalExpenses)
 
   const equityLinesWithProfit = [
     ...equityLines,
@@ -571,8 +581,11 @@ export async function buildFinancialReports(
       currency: 'HKD',
       standard: 'HKFRS',
       revenue: revenueLines,
+      costOfSales: costOfSalesLines,
       expenses: expenseLines,
       totalRevenue,
+      totalCostOfSales,
+      grossProfit,
       totalExpenses,
       netProfit,
     },
