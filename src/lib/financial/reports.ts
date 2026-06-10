@@ -21,6 +21,7 @@ import {
   assembleTrialBalanceRows,
   buildLevel1GroupingMaps,
   calculateTrialBalanceLevel1Totals,
+  type TrialBalanceDisplayRow,
 } from '@/lib/financial/trial-balance-rows'
 import { roundMoney } from '@/lib/financial/utils'
 
@@ -32,25 +33,7 @@ type MovementTotals = {
   credit: number
 }
 
-export type TrialBalanceRow = ReportAccountRow & {
-  sortOrder: number
-  periodDebit: number
-  periodCredit: number
-  closingDebit: number
-  closingCredit: number
-  /**
-   * When true this row is a computed summary (e.g. "本年利润") derived from
-   * other accounts rather than a directly posted journal-entry balance.
-   * It is shown for informational purposes only and is NOT counted in the
-   * trial-balance debit/credit totals (to avoid double-counting).
-   */
-  isComputed?: boolean
-  /**
-   * Level-1 grouping summary aggregating descendant detail accounts.
-   * Counted in the trial-balance debit/credit totals as the level-1 rollup.
-   */
-  isSummary?: boolean
-}
+export type TrialBalanceRow = TrialBalanceDisplayRow
 
 export type IncomeStatementReport = {
   period: string

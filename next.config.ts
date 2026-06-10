@@ -26,6 +26,7 @@ const nodeBuiltinClientFallbacks = ["dns", "net", "tls"] as const;
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  outputFileTracingRoot: turbopackRoot,
   assetPrefix: cdnUrl,
   turbopack: {
     root: turbopackRoot,

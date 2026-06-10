@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { Prisma } from '@prisma/client'
+import { Prisma, type CosEmployeeType } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
     ]
   }
   if (employeeType && ['INTERNAL', 'SALES', 'PRODUCTION', 'TECHNICAL'].includes(employeeType)) {
-    where.employeeType = employeeType as Prisma.EnumCosEmployeeTypeFilter['equals']
+    where.employeeType = employeeType as CosEmployeeType
   }
   if (activeOnly) where.isActive = true
 

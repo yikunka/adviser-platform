@@ -12,7 +12,10 @@ import { join } from 'path'
 
 function getSystemKnowledge(): string {
   try {
-    return readFileSync(join(process.cwd(), 'src/lib/feedback/system-knowledge.md'), 'utf-8')
+    return readFileSync(
+      join(/* turbopackIgnore: true */ process.cwd(), 'src/lib/feedback/system-knowledge.md'),
+      'utf-8',
+    )
   } catch {
     return '(System knowledge file not found — add src/lib/feedback/system-knowledge.md)'
   }
