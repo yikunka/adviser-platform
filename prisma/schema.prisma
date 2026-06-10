@@ -271,6 +271,7 @@ model User {
   financialJournalEntries        JournalEntry[]           @relation("FinancialJournalCreatedBy")
   invoicesCreated                Invoice[]                @relation("InvoiceCreatedBy")
   sfsInvoicesCreated             SfsInvoice[]             @relation("SfsInvoiceCreatedBy")
+  sfsStepAttachmentsReviewed     SfsOrderStepAttachment[] @relation("SfsStepAttachmentReviewer")
 
   createdProcessKits           CosProcessKit[]       @relation("ProcessKitCreator")
   updatedProcessKits           CosProcessKit[]       @relation("ProcessKitUpdater")
@@ -1084,6 +1085,12 @@ enum SfsDiamondSpecCategory {
   METAL
 }
 
+enum SfsOrderStepAttachmentReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model SfsOrder {
   id        String         @id @default(cuid())
   createdAt DateTime       @default(now())
@@ -1204,10 +1211,31 @@ model SfsOrderStep {
   fileKeys   String[]
   createdAt  DateTime @default(now())
 
-  order SfsOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order       SfsOrder                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  attachments SfsOrderStepAttachment[]
 
   @@index([orderId, phase])
   @@map("sfs_order_steps")
+}
+
+model SfsOrderStepAttachment {
+  id           String                             @id @default(cuid())
+  stepId       String
+  fileKey      String                             @unique
+  fileName     String
+  mimeType     String
+  fileSize     Int
+  reviewStatus SfsOrderStepAttachmentReviewStatus @default(APPROVED)
+  reviewedById String?
+  reviewedAt   DateTime?
+  createdAt    DateTime                           @default(now())
+  updatedAt    DateTime                           @updatedAt
+
+  step       SfsOrderStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  reviewedBy User?        @relation("SfsStepAttachmentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([stepId, reviewStatus])
+  @@map("sfs_order_step_attachments")
 }
 
 model SfsDiamondSpecOption {
@@ -1404,6 +1432,7 @@ model CosTableRecipe {
   unitCost                    Decimal? @db.Decimal(12, 4)
   viscosity                   String?
   viscosityUnit               String?  @map("viscosity_unit")
+  shelfLifeDays               Int?     @map("shelf_life_days")
   notes                       String   @default("")
   productionSpeedRequirements String   @default("") @map("production_speed_requirements")
   productionTimeRequirements  String   @default("") @map("production_time_requirements")

@@ -221,6 +221,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
   const [batchQuantity, setBatchQuantity] = useState(100)
   const [viscosity, setViscosity] = useState('')
   const [viscosityUnit, setViscosityUnit] = useState<ViscosityUnit>('S')
+  const [shelfLifeDays, setShelfLifeDays] = useState('')
   const [notes, setNotes] = useState('')
   const [productionSpeedRequirements, setProductionSpeedRequirements] = useState('')
   const [productionTimeRequirements, setProductionTimeRequirements] = useState('')
@@ -291,6 +292,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
       setBatchQuantity(recipe.batchQuantity)
       setViscosity(recipe.viscosity ?? '')
       setViscosityUnit((recipe.viscosityUnit as ViscosityUnit | null) ?? 'S')
+      setShelfLifeDays(recipe.shelfLifeDays != null ? String(recipe.shelfLifeDays) : '')
       setNotes(recipe.notes)
       setProductionSpeedRequirements(recipe.productionSpeedRequirements)
       setProductionTimeRequirements(recipe.productionTimeRequirements)
@@ -477,7 +479,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
     } finally {
       setPickerLoading(false)
     }
-  }, [pickerSearch, finishedProductCategoryFilter])
+  }, [pickerSearch, finishedProductCategoryFilter, setFinishedProductCategoryFilter])
 
   useEffect(() => {
     if (isNew) {
@@ -612,6 +614,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
       batchQuantity,
       viscosity,
       viscosityUnit,
+      shelfLifeDays: shelfLifeDays.trim() ? Number(shelfLifeDays) : null,
       notes,
       productionSpeedRequirements,
       productionTimeRequirements,
@@ -823,29 +826,53 @@ export default function AdminCosmoCoatRecipeEditorPage() {
           <span style={{ color: 'var(--muted-foreground)' }}>材料数量合计：{formatMoney(totals.totalQuantity, 3)}</span>
           <span style={{ color: 'var(--muted-foreground)' }}>材料金额合计：{formatMoney(totals.totalAmount, 3)} 元</span>
         </div>
-        <div className="space-y-1.5 sm:col-span-2">
-          <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>产品黏度（可选）</label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={viscosity}
-              onChange={e => setViscosity(e.target.value)}
-              className="flex-1 min-w-0 rounded-lg px-3 py-2.5 text-sm outline-none"
-              style={inputStyle()}
-              placeholder="例如 9.7-9.8"
-            />
-            <select
-              value={viscosityUnit}
-              onChange={e => setViscosityUnit(e.target.value as ViscosityUnit)}
-              className="w-24 shrink-0 rounded-lg px-3 py-2.5 text-sm outline-none"
-              style={inputStyle()}
-            >
-              {VISCOSITY_UNITS.map(unit => (
-                <option key={unit} value={unit}>{unit === 'S' ? 'S（秒）' : 'KU'}</option>
-              ))}
-            </select>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>产品黏度（可选）</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={viscosity}
+                onChange={e => setViscosity(e.target.value)}
+                className="flex-1 min-w-0 rounded-lg px-3 py-2.5 text-sm outline-none"
+                style={inputStyle()}
+                placeholder="例如 9.7-9.8"
+              />
+              <select
+                value={viscosityUnit}
+                onChange={e => setViscosityUnit(e.target.value as ViscosityUnit)}
+                className="w-24 shrink-0 rounded-lg px-3 py-2.5 text-sm outline-none"
+                style={inputStyle()}
+              >
+                {VISCOSITY_UNITS.map(unit => (
+                  <option key={unit} value={unit}>{unit === 'S' ? 'S（秒）' : 'KU'}</option>
+                ))}
+              </select>
+            </div>
+            <p className="text-xs" style={{ color: '#5A5040' }}>支持输入范围值，单位可选 S 或 KU</p>
           </div>
-          <p className="text-xs" style={{ color: '#5A5040' }}>支持输入范围值，单位可选 S 或 KU</p>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>保质期（可选）</label>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={shelfLifeDays}
+                onChange={e => setShelfLifeDays(e.target.value)}
+                className="flex-1 min-w-0 rounded-lg px-3 py-2.5 text-sm outline-none"
+                style={inputStyle()}
+                placeholder="例如 365"
+              />
+              <span
+                className="inline-flex w-16 shrink-0 items-center justify-center rounded-lg px-3 py-2.5 text-sm"
+                style={{ ...inputStyle(), color: 'var(--muted-foreground)' }}
+              >
+                天
+              </span>
+            </div>
+            <p className="text-xs" style={{ color: '#5A5040' }}>记录配方产品的保质期天数</p>
+          </div>
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>备注</label>

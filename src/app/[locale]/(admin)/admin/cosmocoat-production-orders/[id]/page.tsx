@@ -809,6 +809,35 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
           #cosmocoat-print-area .signature-cell {
             padding: 18px 10px 6px !important;
           }
+
+          #cosmocoat-print-area,
+          #cosmocoat-print-area * {
+            color: #111 !important;
+          }
+
+          #cosmocoat-print-area td,
+          #cosmocoat-print-area th,
+          #cosmocoat-print-area .signature-cell,
+          #cosmocoat-print-area .print-qc-result-box {
+            border-color: #555 !important;
+          }
+
+          #cosmocoat-print-area td[style*="background"],
+          #cosmocoat-print-area th[style*="background"] {
+            background: #e0e0e0 !important;
+          }
+
+          #cosmocoat-print-area tr[style*="background"] {
+            background: #f1f1f1 !important;
+          }
+
+          #cosmocoat-print-area tr[style*="font-weight: 700"] {
+            background: #d4d4d4 !important;
+          }
+
+          #cosmocoat-print-area .signature-cell div:last-child {
+            border-bottom-color: #444 !important;
+          }
         }
 
         @media screen {

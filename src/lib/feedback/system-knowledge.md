@@ -200,6 +200,7 @@ Order lifecycle management for memorial diamond commissions.
 - Edit order details, update milestone dates, add admin notes
 - Order steps: create / update / complete sub-tasks within phases; Chemical Transformation phase (12 steps) begins with **Package Received**, then **Package arrived production site**, Check Sample & Labeling, and the remaining NL00001 workflow steps
 - Completed step attachments: uploaded images display at 224×224px (4× the previous thumbnail size) for easier admin review
+- Production step images uploaded in Chemical Transformation, CVD Growth, Crafting, and Jewelry Setting require manual review (`PENDING` / `APPROVED` / `REJECTED`); only approved images are visible to SFS clients and included in customer production reports, and approval creates a customer notification
 
 ### SFS Invoices Admin (`/admin/sfs-invoices`)
 - Invoices linked to SFS orders
@@ -242,7 +243,7 @@ Purchasing and sourcing registry.
 
 ### Recipes (`/admin/cosmocoat-recipes`)
 Product formulation management.
-- Fields: recipe code, name, category, batch quantity, unit cost, product viscosity (free-text range e.g. `9.7-9.8`, unit S or KU — in basic info above notes)
+- Fields: recipe code, name, category, batch quantity, unit cost, product viscosity (free-text range e.g. `9.7-9.8`, unit S or KU — in basic info above notes), optional shelf life in days
 - Line items: raw materials, factory finished products (from factory products module), component recipes (nested semifinished), or Sol semifinished inventory, with quantity, unit price, percentage
 - Material list on recipe detail: unified columns for all line types (raw material, semifinished, factory product); 单价 is the editable saved line cost for every row type
 - Material picker on new/edit recipe page: tabs for 原材料, 半成品, and 成品; finished-product tab loads live `unitPrice` from factory products via a dedicated recipe picker API (always fresh from DB, refreshes when switching to the 成品 tab or when the page becomes visible again), with category filter and search, same click-to-select and "添加选中" flow as raw materials
@@ -289,7 +290,7 @@ Manufacturing batch tracking.
 - Line items: raw materials, semifinished component recipes, and Sol. semifinished inventory components with required weight and actual weight used; selecting a product on new order or opening a draft order loads the full linked recipe material list and preserves saved actual weights when rows are synced; draft orders have **从配方重新加载** on both the materials table and 生产工艺 sections to refresh material lines and process/QC fields from the current recipe
 - Detail page **生产工艺** section: selecting a product on new order (or opening an existing order) auto-loads the linked recipe's production speed, production time, packaging requirements, and production notes; fields are editable on the order, with a **从配方重新加载** action on draft orders to reset from the current recipe
 - Detail page **QC** section: auto-loads recipe QC test checkboxes (黏度, 百格, 水煮80C/30M, 湿油外观, 干板外观 — viscosity checkbox shows recipe viscosity when set), optional custom test standard, and per-item result inputs (only for checked tests); all editable on the order
-- Print production order: A4 sheet with enlarged text, no page header/footer, a material table constrained to page margins, and material names omitted while keeping material codes, ratios, required weight, and actual weight
+- Print production order: A4 sheet with enlarged text, no page header/footer, darker high-contrast print colors, a material table constrained to page margins, and material names omitted while keeping material codes, ratios, required weight, and actual weight
 - Print output includes structured 生产工艺 and QC sections from the order's saved process/QC fields; QC print layout lists each selected test item on its own row (测试项目 / 测试结果) with a bordered result box per item (pre-filled when saved, blank for handwriting on paper); optional custom test standard appears as an additional row
 - Output: creates semifinished product inventory entries on completion
 

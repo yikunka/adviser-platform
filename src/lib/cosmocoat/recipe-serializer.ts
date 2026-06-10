@@ -203,6 +203,7 @@ export async function serializeFullRecipe(recipeId: string) {
     notes: recipe.notes,
     viscosity: recipe.viscosity,
     viscosityUnit: recipe.viscosityUnit,
+    shelfLifeDays: recipe.shelfLifeDays,
     productionSpeedRequirements: recipe.productionSpeedRequirements,
     productionTimeRequirements: recipe.productionTimeRequirements,
     packagingRequirements: recipe.packagingRequirements,

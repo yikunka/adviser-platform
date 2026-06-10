@@ -6,7 +6,7 @@ import { ArrowLeft, CheckCircle, RotateCcw, Upload, X, Download } from 'lucide-r
 import Link from 'next/link'
 import DiamondCards from '@/app/sfsdiamond/components/DiamondCards'
 import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
-import { sfsDiamondLabel, sfsStepFileDiamondLabel, sfsStepRequiresDiamondImages } from '@/lib/sfs/order-step-display'
+import { sfsDiamondLabel, sfsIsImageFile, sfsStepFileDiamondLabel, sfsStepRequiresDiamondImages } from '@/lib/sfs/order-step-display'
 import {
   SFS_PREDEFINED_STEPS,
   SFS_PHASE_LABELS,
@@ -24,6 +24,15 @@ type Step = {
   particular: string
   notes?: string | null
   fileKeys: string[]
+  attachments?: StepAttachment[]
+}
+
+type StepAttachment = {
+  id: string
+  fileKey: string
+  fileName: string
+  mimeType: string
+  reviewStatus: 'PENDING' | 'APPROVED' | 'REJECTED'
 }
 
 type DiamondItem = {
@@ -73,6 +82,12 @@ const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   CANCELLED: { bg: 'rgba(239,68,68,0.12)',   color: '#ef4444' },
 }
 
+const REVIEW_STATUS_STYLE: Record<StepAttachment['reviewStatus'], { label: string; bg: string; color: string }> = {
+  PENDING: { label: 'Pending review', bg: 'rgba(245,158,11,0.14)', color: '#f59e0b' },
+  APPROVED: { label: 'Approved', bg: 'rgba(16,185,129,0.14)', color: '#10b981' },
+  REJECTED: { label: 'Rejected', bg: 'rgba(239,68,68,0.14)', color: '#ef4444' },
+}
+
 function toDatetimeLocal(iso?: string | null): string {
   if (!iso) return ''
   const d = new Date(iso)
@@ -102,6 +117,23 @@ function requiresDiamondImages(phase: string, stepIndex: number) {
 
 function requiresSinglePhoto(phase: string, stepIndex: number) {
   return phase === 'CVD' && stepIndex === sfsCvdSinglePhotoStepIndex()
+}
+
+function stepAttachmentsForDisplay(step: Step) {
+  const attachments = step.attachments ?? []
+  const attachmentKeys = new Set(attachments.map(attachment => attachment.fileKey))
+  return [
+    ...attachments,
+    ...step.fileKeys
+      .filter(key => !attachmentKeys.has(key))
+      .map(key => ({
+        id: '',
+        fileKey: key,
+        fileName: fileName(key),
+        mimeType: '',
+        reviewStatus: 'APPROVED' as const,
+      })),
+  ]
 }
 
 type PendingUploadFile = {
@@ -137,6 +169,7 @@ function StepRow({
   const [showTimeEdit, setShowTimeEdit] = useState(false)
   const [remarks, setRemarks] = useState('')
   const [showRemarks, setShowRemarks] = useState(false)
+  const [reviewingId, setReviewingId] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const isDone = !!doneStep
@@ -195,6 +228,18 @@ function StepRow({
     onRefresh()
   }
 
+  const setAttachmentReview = async (attachmentId: string, reviewStatus: StepAttachment['reviewStatus']) => {
+    if (!doneStep || !attachmentId) return
+    setReviewingId(attachmentId)
+    await fetch(`/api/sfsdiamond/admin/orders/${orderId}/steps/${doneStep.id}/attachments/${attachmentId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reviewStatus }),
+    })
+    setReviewingId(null)
+    onRefresh()
+  }
+
   return (
     <div
       className="flex items-start gap-4 px-4 py-3 rounded-xl transition-all"
@@ -231,29 +276,60 @@ function StepRow({
                 {doneStep.notes}
               </p>
             )}
-            {doneStep.fileKeys.length > 0 && (
+            {stepAttachmentsForDisplay(doneStep).length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-1">
-                {doneStep.fileKeys.map((key, i) => {
-                  const name = fileName(key)
-                  const isImage = /\.(jpg|jpeg|png|webp)$/i.test(name)
+                {stepAttachmentsForDisplay(doneStep).map((attachment, i) => {
+                  const key = attachment.fileKey
+                  const name = attachment.fileName || fileName(key)
+                  const isImage = sfsIsImageFile(key, attachment.mimeType)
+                  const reviewMeta = REVIEW_STATUS_STYLE[attachment.reviewStatus]
                   return isImage ? (
-                    <a key={i} href={fileUrl(key)} target="_blank" rel="noreferrer">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={fileUrl(key)}
-                        alt={fileDiamondLabel(key) ? `${fileDiamondLabel(key)} ${name}` : name}
-                        className="w-56 h-56 object-cover rounded-lg"
-                        style={{ border: '1px solid rgba(16,185,129,0.2)' }}
-                      />
+                    <div key={`${key}-${i}`} className="max-w-56">
+                      <a href={fileUrl(key)} target="_blank" rel="noreferrer">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={fileUrl(key)}
+                          alt={fileDiamondLabel(key) ? `${fileDiamondLabel(key)} ${name}` : name}
+                          className="w-56 h-56 object-cover rounded-lg"
+                          style={{ border: `1px solid ${reviewMeta.color}` }}
+                        />
+                      </a>
                       {fileDiamondLabel(key) && (
                         <span className="mt-0.5 block max-w-56 truncate text-[10px] font-mono text-center" style={{ color: '#10b981' }}>
                           {fileDiamondLabel(key)}
                         </span>
                       )}
-                    </a>
+                      <div className="mt-1 flex flex-wrap items-center justify-center gap-1">
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: reviewMeta.bg, color: reviewMeta.color }}>
+                          {reviewMeta.label}
+                        </span>
+                        {attachment.id && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setAttachmentReview(attachment.id, 'APPROVED')}
+                              disabled={reviewingId === attachment.id || attachment.reviewStatus === 'APPROVED'}
+                              className="rounded px-1.5 py-0.5 text-[10px] font-semibold disabled:opacity-40"
+                              style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981' }}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setAttachmentReview(attachment.id, 'REJECTED')}
+                              disabled={reviewingId === attachment.id || attachment.reviewStatus === 'REJECTED'}
+                              className="rounded px-1.5 py-0.5 text-[10px] font-semibold disabled:opacity-40"
+                              style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   ) : (
                     <a
-                      key={i}
+                      key={`${key}-${i}`}
                       href={fileUrl(key)}
                       target="_blank"
                       rel="noreferrer"

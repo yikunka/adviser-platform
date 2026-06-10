@@ -42,7 +42,12 @@ export async function GET(
 
   const order = await prisma.sfsOrder.findUnique({
     where: { id },
-    include: { steps: { orderBy: [{ phase: 'asc' }, { stepNumber: 'asc' }] } },
+    include: {
+      steps: {
+        orderBy: [{ phase: 'asc' }, { stepNumber: 'asc' }],
+        include: { attachments: { orderBy: { createdAt: 'asc' } } },
+      },
+    },
   })
 
   if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 })

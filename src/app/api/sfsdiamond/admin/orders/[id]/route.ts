@@ -39,7 +39,10 @@ export async function GET(
   const order = await prisma.sfsOrder.findUnique({
     where: { id },
     include: {
-      steps: { orderBy: [{ phase: 'asc' }, { stepNumber: 'asc' }] },
+      steps: {
+        orderBy: [{ phase: 'asc' }, { stepNumber: 'asc' }],
+        include: { attachments: { orderBy: { createdAt: 'asc' } } },
+      },
       user: { select: { nameEn: true, email: true } },
     },
   })

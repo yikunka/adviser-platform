@@ -33,7 +33,7 @@ const STAFF_ROLES = ['STAFF', 'COMPLIANCE', 'SUPER_ADMIN']
 async function authorizeKey(key: string, userId: string, role: string): Promise<boolean> {
   if (STAFF_ROLES.includes(role)) return true
 
-  const [doc, kycDoc, sfsStep] = await Promise.all([
+  const [doc, kycDoc, sfsAttachment] = await Promise.all([
     prisma.document.findFirst({
       where: {
         storageKey: key,
@@ -46,10 +46,17 @@ async function authorizeKey(key: string, userId: string, role: string): Promise<
     prisma.kYCDocument.findFirst({
       where: { storageKey: key, keyPerson: { submittedByUserId: userId } },
     }),
-    prisma.sfsOrderStep.findFirst({
-      where: { fileKeys: { has: key }, order: { userId } },
+    prisma.sfsOrderStepAttachment.findFirst({
+      where: { fileKey: key, step: { order: { userId } } },
+      select: { reviewStatus: true },
     }),
   ])
+
+  if (sfsAttachment) return sfsAttachment.reviewStatus === 'APPROVED'
+
+  const sfsStep = await prisma.sfsOrderStep.findFirst({
+    where: { fileKeys: { has: key }, order: { userId } },
+  })
 
   return Boolean(doc || kycDoc || sfsStep)
 }

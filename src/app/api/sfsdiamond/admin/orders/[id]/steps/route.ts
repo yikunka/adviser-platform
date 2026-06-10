@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { uploadToR2 } from '@/lib/storage/r2'
+import { sfsStepImageRequiresApproval } from '@/lib/sfs/order-step-display'
 import crypto from 'crypto'
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
@@ -15,7 +16,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'sfsOrders' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'sfsOrders' })
   if (error) return error
 
   const { id: orderId } = await params
@@ -35,7 +36,15 @@ export async function POST(
   }
 
   // Upload any attached files
-  const fileKeys: string[] = []
+  const attachments: {
+    fileKey: string
+    fileName: string
+    mimeType: string
+    fileSize: number
+    reviewStatus: 'PENDING' | 'APPROVED'
+    reviewedById?: string
+    reviewedAt?: Date
+  }[] = []
   const files = formData.getAll('files') as File[]
   const fileLabels = formData.getAll('fileLabels').map(label => String(label ?? ''))
   for (const [index, file] of files.entries()) {
@@ -46,7 +55,17 @@ export async function POST(
     const key = `sfs-orders/${orderId}/steps/${label ? `${label}-` : ''}${crypto.randomUUID()}.${ext}`
     const buf = Buffer.from(await file.arrayBuffer())
     await uploadToR2(key, buf, file.type)
-    fileKeys.push(key)
+    const reviewStatus = sfsStepImageRequiresApproval(phase, key, file.type) ? 'PENDING' : 'APPROVED'
+    attachments.push({
+      fileKey: key,
+      fileName: file.name || key.split('/').pop() || key,
+      mimeType: file.type || 'application/octet-stream',
+      fileSize: file.size,
+      reviewStatus,
+      ...(reviewStatus === 'APPROVED'
+        ? { reviewedById: session.user.id, reviewedAt: new Date() }
+        : {}),
+    })
   }
 
   const step = await prisma.sfsOrderStep.create({
@@ -57,8 +76,10 @@ export async function POST(
       recordedAt: new Date(recordedAt),
       particular,
       notes: notes ?? undefined,
-      fileKeys,
+      fileKeys: attachments.map(attachment => attachment.fileKey),
+      attachments: attachments.length > 0 ? { create: attachments } : undefined,
     },
+    include: { attachments: { orderBy: { createdAt: 'asc' } } },
   })
 
   return NextResponse.json(step, { status: 201 })

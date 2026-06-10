@@ -6,6 +6,7 @@ import DiamondCards from '@/app/sfsdiamond/components/DiamondCards'
 import CustomerInternalOrderCodeField from '@/app/sfsdiamond/components/CustomerInternalOrderCodeField'
 import {
   groupSfsStepFilesByDiamond,
+  sfsCustomerVisibleStepFileKeys,
   sfsStepFileDiamondLabel,
   sfsStepRequiresDiamondImages,
   splitSfsStepNotes,
@@ -85,7 +86,12 @@ export default async function SFSOrderDetailPage({
   const { id } = await params
   const order = await prisma.sfsOrder.findUnique({
     where: { id },
-    include: { steps: { orderBy: [{ phase: 'asc' }, { stepNumber: 'asc' }] } },
+    include: {
+      steps: {
+        orderBy: [{ phase: 'asc' }, { stepNumber: 'asc' }],
+        include: { attachments: { orderBy: { createdAt: 'asc' } } },
+      },
+    },
   })
 
   if (!order || order.userId !== session.user.id) notFound()
@@ -244,7 +250,8 @@ export default async function SFSOrderDetailPage({
                     {group.steps.map(step => {
                       const notes = splitSfsStepNotes(step.notes)
                       const usesDiamondFiles = sfsStepRequiresDiamondImages(step.phase, step.stepNumber)
-                      const grouped = usesDiamondFiles ? groupSfsStepFilesByDiamond(step.fileKeys, diamonds) : null
+                      const visibleFileKeys = sfsCustomerVisibleStepFileKeys(step)
+                      const grouped = usesDiamondFiles ? groupSfsStepFilesByDiamond(visibleFileKeys, diamonds) : null
                       
                       // Get standardized step name from predefined list for consistent display
                       const predefinedSteps = getStepsForPhase(step.phase)
@@ -296,9 +303,9 @@ export default async function SFSOrderDetailPage({
                                     <StepFilePreview key={key} fileKey={key} label={sfsStepFileDiamondLabel(key)} borderColor={BORDER} gold={GOLD} />
                                   ))}
                                 </div>
-                              ) : step.fileKeys.length > 0 && (
+                              ) : visibleFileKeys.length > 0 && (
                                 <div className="flex flex-wrap gap-2 mt-2">
-                                  {step.fileKeys.map(key => (
+                                  {visibleFileKeys.map(key => (
                                     <StepFilePreview key={key} fileKey={key} label={sfsStepFileDiamondLabel(key)} borderColor={BORDER} gold={GOLD} />
                                   ))}
                                 </div>

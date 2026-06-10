@@ -5,12 +5,15 @@ import type { Prisma } from '@prisma/client'
 import { readLocalFile } from '@/lib/storage/r2'
 import {
   groupSfsStepFilesByDiamond,
+  sfsCustomerVisibleStepFileKeys,
   sfsStepFileDiamondLabel,
   sfsStepRequiresDiamondImages,
   splitSfsStepNotes,
 } from '@/lib/sfs/order-step-display'
 
-export type SfsOrderReportPayload = Prisma.SfsOrderGetPayload<{ include: { steps: true } }>
+export type SfsOrderReportPayload = Prisma.SfsOrderGetPayload<{
+  include: { steps: { include: { attachments: true } } }
+}>
 
 const PHASE_LABELS: Record<string, string> = {
   CHEM_TRANSFORM: 'Chemical Transformation',
@@ -100,7 +103,7 @@ export function reportFingerprint(order: SfsOrderReportPayload): string {
       recordedAt: s.recordedAt.toISOString(),
       particular: s.particular,
       notes: s.notes,
-      fileKeys: s.fileKeys,
+      fileKeys: sfsCustomerVisibleStepFileKeys(s),
     })),
   }
   return createHash('sha256').update(JSON.stringify(payload)).digest('hex')
@@ -124,7 +127,7 @@ export async function renderSfsOrderReportPdf(order: SfsOrderReportPayload): Pro
 
   await Promise.all(
     order.steps.map(async step => {
-      const images = await Promise.all(step.fileKeys.map(k => tryEmbedImage(doc, k)))
+      const images = await Promise.all(sfsCustomerVisibleStepFileKeys(step).map(k => tryEmbedImage(doc, k)))
       stepImageMap.set(step.id, images)
     }),
   )
@@ -238,9 +241,15 @@ export async function renderSfsOrderReportPdf(order: SfsOrderReportPayload): Pro
     y -= 13
   }
 
-  function drawStepFile(step: SfsOrderReportPayload['steps'][number], key: string, index: number, label?: string | null) {
+  function drawStepFile(
+    step: SfsOrderReportPayload['steps'][number],
+    visibleFileKeys: string[],
+    key: string,
+    index: number,
+    label?: string | null,
+  ) {
     const images   = stepImageMap.get(step.id) ?? []
-    const keyIndex = step.fileKeys.indexOf(key)
+    const keyIndex = visibleFileKeys.indexOf(key)
     const img      = keyIndex >= 0 ? images[keyIndex] : null
     const fileName = path.basename(key)
 
@@ -372,9 +381,10 @@ export async function renderSfsOrderReportPdf(order: SfsOrderReportPayload): Pro
         if (notes.weight) drawText(`Weight: ${safe(notes.weight)}`, { indent: 16, size: 8, font: bold, color: GREY })
         if (notes.remark) drawText(safe(notes.remark), { indent: 16, size: 8, color: GREY })
 
-        if (step.fileKeys.length > 0) {
+        const visibleFileKeys = sfsCustomerVisibleStepFileKeys(step)
+        if (visibleFileKeys.length > 0) {
           if (sfsStepRequiresDiamondImages(step.phase, step.stepNumber)) {
-            const grouped = groupSfsStepFilesByDiamond(step.fileKeys, diamonds)
+            const grouped = groupSfsStepFilesByDiamond(visibleFileKeys, diamonds)
             let fileNo = 0
 
             for (const group of grouped.groups) {
@@ -386,20 +396,20 @@ export async function renderSfsOrderReportPdf(order: SfsOrderReportPayload): Pro
                 drawText('No image uploaded.', { indent: 24, size: 8, color: GREY })
               } else {
                 for (const key of group.fileKeys) {
-                  drawStepFile(step, key, fileNo, group.label)
+                  drawStepFile(step, visibleFileKeys, key, fileNo, group.label)
                   fileNo += 1
                 }
               }
             }
 
             for (const key of grouped.unmatched) {
-              drawStepFile(step, key, fileNo, sfsStepFileDiamondLabel(key))
+              drawStepFile(step, visibleFileKeys, key, fileNo, sfsStepFileDiamondLabel(key))
               fileNo += 1
             }
           } else {
-            for (let fi = 0; fi < step.fileKeys.length; fi++) {
-              const key = step.fileKeys[fi]
-              drawStepFile(step, key, fi, sfsStepFileDiamondLabel(key))
+            for (let fi = 0; fi < visibleFileKeys.length; fi++) {
+              const key = visibleFileKeys[fi]
+              drawStepFile(step, visibleFileKeys, key, fi, sfsStepFileDiamondLabel(key))
             }
           }
         }

@@ -19,6 +19,38 @@ export function sfsStepRequiresDiamondImages(phase: string, stepNumber: number) 
   return (phase === 'CVD' && stepNumber === 6) || phase === 'CRAFTING'
 }
 
+const SFS_IMAGE_REVIEW_PHASES = new Set(['CHEM_TRANSFORM', 'CVD', 'CRAFTING', 'JEWELRY_SETTING'])
+
+export type SfsStepAttachmentDisplay = {
+  fileKey: string
+  mimeType?: string | null
+  reviewStatus?: string | null
+}
+
+export function sfsIsImageFile(fileKey: string, mimeType?: string | null) {
+  return Boolean(mimeType?.startsWith('image/')) || /\.(jpg|jpeg|png|webp)$/i.test(sfsStepFileName(fileKey))
+}
+
+export function sfsStepImageRequiresApproval(phase: string, fileKey: string, mimeType?: string | null) {
+  return SFS_IMAGE_REVIEW_PHASES.has(phase) && sfsIsImageFile(fileKey, mimeType)
+}
+
+export function sfsCustomerVisibleStepFileKeys(step: {
+  fileKeys: string[]
+  attachments?: SfsStepAttachmentDisplay[] | null
+}) {
+  const attachments = step.attachments ?? []
+  if (attachments.length === 0) return step.fileKeys
+
+  const attachmentKeys = new Set(attachments.map(attachment => attachment.fileKey))
+  return [
+    ...attachments
+      .filter(attachment => attachment.reviewStatus === 'APPROVED')
+      .map(attachment => attachment.fileKey),
+    ...step.fileKeys.filter(key => !attachmentKeys.has(key)),
+  ]
+}
+
 export function splitSfsStepNotes(notes: string | null | undefined) {
   if (!notes) return { weight: null as string | null, remark: null as string | null }
 
