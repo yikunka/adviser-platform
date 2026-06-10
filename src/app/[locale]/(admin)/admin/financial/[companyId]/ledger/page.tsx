@@ -19,6 +19,7 @@ type LedgerEntry = {
   accountId: string
   accountCode: string
   accountName: string
+  accountType: string
   lineNum: number
   date: string
   voucherNo: string
@@ -26,6 +27,23 @@ type LedgerEntry = {
   debit: number
   credit: number
   balance: number
+  balanceDebit: number
+  balanceCredit: number
+}
+
+type LedgerAccountGroup = {
+  accountId: string
+  accountCode: string
+  accountName: string
+  accountType: string
+  openingBalance: number
+  openingBalanceDebit: number
+  openingBalanceCredit: number
+  openingDate: string | null
+  openingPeriod: string | null
+  entries: LedgerEntry[]
+  totalDebit: number
+  totalCredit: number
 }
 
 type LedgerAccount = {
@@ -52,7 +70,7 @@ const ACCOUNT_TYPE_LABELS: Record<string, string> = {
 
 export default function AdminFinancialLedgerPage() {
   const company = useFinancialCompany()
-  const [ledgers, setLedgers] = useState<LedgerEntry[]>([])
+  const [ledgerAccounts, setLedgerAccounts] = useState<LedgerAccountGroup[]>([])
   const [accounts, setAccounts] = useState<LedgerAccount[]>([])
   const [loading, setLoading] = useState(true)
   const [filterAccountType, setFilterAccountType] = useState('ALL')
@@ -136,7 +154,11 @@ export default function AdminFinancialLedgerPage() {
       const res = await fetch(`/api/admin/financial/ledgers?${params}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || '载入总账失败')
-      setLedgers(data.ledgers || [])
+      if (Array.isArray(data.ledgerAccounts)) {
+        setLedgerAccounts(data.ledgerAccounts)
+      } else {
+        setLedgerAccounts(groupLedgerEntries(data.ledgers || []))
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '载入总账失败')
     } finally {
@@ -152,54 +174,32 @@ export default function AdminFinancialLedgerPage() {
     fetchLedgers()
   }, [fetchLedgers])
 
-  const groupedLedgers = useMemo(() => {
-    const sorted = ledgers.slice().sort((a, b) => (
-      a.accountCode.localeCompare(b.accountCode, undefined, { numeric: true })
-      || new Date(a.date).getTime() - new Date(b.date).getTime()
-      || a.voucherNo.localeCompare(b.voucherNo, undefined, { numeric: true })
-      || a.lineNum - b.lineNum
-    ))
-
-    return sorted.reduce<Array<{
-      accountId: string
-      accountCode: string
-      accountName: string
-      entries: LedgerEntry[]
-      totalDebit: number
-      totalCredit: number
-    }>>((groups, entry) => {
-      const current = groups[groups.length - 1]
-      if (current && current.accountId === entry.accountId) {
-        current.entries.push(entry)
-        current.totalDebit += entry.debit
-        current.totalCredit += entry.credit
-        return groups
-      }
-
-      groups.push({
-        accountId: entry.accountId,
-        accountCode: entry.accountCode,
-        accountName: entry.accountName,
-        entries: [entry],
-        totalDebit: entry.debit,
-        totalCredit: entry.credit,
-      })
-      return groups
-    }, [])
-  }, [ledgers])
-
   function exportToCSV() {
-    const headers = ['科目编码', '科目名称', '日期', '凭证号', '摘要', '借方', '贷方', '余额']
-    const rows = groupedLedgers.flatMap(group => group.entries.map(l => [
-      group.accountCode,
-      `"${group.accountName.replace(/"/g, '""')}"`,
-      l.date,
-      l.voucherNo,
-      `"${l.description.replace(/"/g, '""')}"`,
-      l.debit.toFixed(2),
-      l.credit.toFixed(2),
-      l.balance.toFixed(2),
-    ]))
+    const headers = ['科目编码', '科目名称', '日期', '凭证号', '摘要', '借方', '贷方', '余额借方', '余额贷方']
+    const rows = ledgerAccounts.flatMap(group => [
+      [
+        group.accountCode,
+        `"${group.accountName.replace(/"/g, '""')}"`,
+        openingDateLabel(group),
+        '',
+        '期初余额',
+        '0.00',
+        '0.00',
+        group.openingBalanceDebit.toFixed(2),
+        group.openingBalanceCredit.toFixed(2),
+      ],
+      ...group.entries.map(l => [
+        group.accountCode,
+        `"${group.accountName.replace(/"/g, '""')}"`,
+        l.date,
+        l.voucherNo,
+        `"${l.description.replace(/"/g, '""')}"`,
+        l.debit.toFixed(2),
+        l.credit.toFixed(2),
+        l.balanceDebit.toFixed(2),
+        l.balanceCredit.toFixed(2),
+      ]),
+    ])
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
@@ -351,7 +351,7 @@ export default function AdminFinancialLedgerPage() {
             <div className="p-8 text-center" style={{ color: 'var(--muted-foreground)' }}>
               载入中...
             </div>
-          ) : ledgers.length === 0 ? (
+          ) : ledgerAccounts.length === 0 ? (
             <div className="p-8 text-center" style={{ color: '#5A5040' }}>
               暂无总账记录
             </div>
@@ -364,26 +364,36 @@ export default function AdminFinancialLedgerPage() {
                   <TableHead>摘要</TableHead>
                   <TableHead>借方</TableHead>
                   <TableHead>贷方</TableHead>
-                  <TableHead className="text-right">余额</TableHead>
+                  <TableHead className="text-right">余额借方</TableHead>
+                  <TableHead className="text-right">余额贷方</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {groupedLedgers.map(group => (
+                {ledgerAccounts.map(group => (
                   <Fragment key={group.accountId}>
                     <TableRow className="bg-[#16130E] hover:bg-[#16130E]">
-                      <TableCell colSpan={6}>
+                      <TableCell colSpan={7}>
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div>
                             <span className="font-mono text-sm text-[#C9A96E]">{group.accountCode}</span>
                             <span className="ml-2 font-semibold">{group.accountName}</span>
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            借方 {group.totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            本期借方 {formatMoney(group.totalDebit)}
                             {' · '}
-                            贷方 {group.totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            本期贷方 {formatMoney(group.totalCredit)}
                           </div>
                         </div>
                       </TableCell>
+                    </TableRow>
+                    <TableRow className="bg-[#0E0E0A]">
+                      <TableCell className="text-muted-foreground">{openingDateLabel(group) || '-'}</TableCell>
+                      <TableCell className="text-muted-foreground">-</TableCell>
+                      <TableCell className="font-medium text-[#C9A96E]">期初余额</TableCell>
+                      <TableCell className="text-right font-mono">0.00</TableCell>
+                      <TableCell className="text-right font-mono">0.00</TableCell>
+                      <TableCell className="text-right font-mono">{formatMoney(group.openingBalanceDebit)}</TableCell>
+                      <TableCell className="text-right font-mono">{formatMoney(group.openingBalanceCredit)}</TableCell>
                     </TableRow>
                     {group.entries.map((entry, idx) => (
                       <TableRow key={entry.id} style={{ background: idx % 2 === 0 ? 'transparent' : '#0E0E0A' }}>
@@ -391,17 +401,13 @@ export default function AdminFinancialLedgerPage() {
                         <TableCell className="font-mono">{entry.voucherNo}</TableCell>
                         <TableCell className="max-w-[260px] truncate">{entry.description}</TableCell>
                         <TableCell className="text-right">
-                          {entry.debit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {formatMoney(entry.debit)}
                         </TableCell>
                         <TableCell className="text-right">
-                          {entry.credit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {formatMoney(entry.credit)}
                         </TableCell>
-                        <TableCell
-                          className="text-right font-medium"
-                          style={{ color: entry.balance >= 0 ? 'var(--foreground)' : '#ef4444' }}
-                        >
-                          {entry.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </TableCell>
+                        <TableCell className="text-right font-medium">{formatMoney(entry.balanceDebit)}</TableCell>
+                        <TableCell className="text-right font-medium">{formatMoney(entry.balanceCredit)}</TableCell>
                       </TableRow>
                     ))}
                   </Fragment>
@@ -413,4 +419,48 @@ export default function AdminFinancialLedgerPage() {
       </Card>
     </div>
   )
+}
+
+function formatMoney(value: number) {
+  return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function openingDateLabel(group: LedgerAccountGroup) {
+  if (group.openingDate) return new Date(group.openingDate).toLocaleDateString('zh-HK')
+  return group.openingPeriod ?? ''
+}
+
+function groupLedgerEntries(entries: LedgerEntry[]): LedgerAccountGroup[] {
+  const sorted = entries.slice().sort((a, b) => (
+    a.accountCode.localeCompare(b.accountCode, undefined, { numeric: true })
+    || new Date(a.date).getTime() - new Date(b.date).getTime()
+    || a.voucherNo.localeCompare(b.voucherNo, undefined, { numeric: true })
+    || a.lineNum - b.lineNum
+  ))
+
+  return sorted.reduce<LedgerAccountGroup[]>((groups, entry) => {
+    const current = groups[groups.length - 1]
+    if (current && current.accountId === entry.accountId) {
+      current.entries.push(entry)
+      current.totalDebit += entry.debit
+      current.totalCredit += entry.credit
+      return groups
+    }
+
+    groups.push({
+      accountId: entry.accountId,
+      accountCode: entry.accountCode,
+      accountName: entry.accountName,
+      accountType: entry.accountType,
+      openingBalance: 0,
+      openingBalanceDebit: 0,
+      openingBalanceCredit: 0,
+      openingDate: null,
+      openingPeriod: null,
+      entries: [entry],
+      totalDebit: entry.debit,
+      totalCredit: entry.credit,
+    })
+    return groups
+  }, [])
 }
