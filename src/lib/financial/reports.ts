@@ -17,7 +17,11 @@ import { trialBalanceColumns } from '@/lib/financial/report-balances'
 import type { ReportAccountRow, StatementLineRow } from '@/lib/financial/report-line-types'
 import { shouldIncludeAccountInBalanceSheet } from '@/lib/financial/balance-sheet-inclusion'
 import { shouldIncludeAccountInTrialBalance, shouldShowLevel1SummaryInTrialBalance } from '@/lib/financial/trial-balance-inclusion'
-import { assembleTrialBalanceRows, buildLevel1GroupingMaps } from '@/lib/financial/trial-balance-rows'
+import {
+  assembleTrialBalanceRows,
+  buildLevel1GroupingMaps,
+  calculateTrialBalanceLevel1Totals,
+} from '@/lib/financial/trial-balance-rows'
 import { roundMoney } from '@/lib/financial/utils'
 
 export type { BalanceSheetSection } from '@/lib/financial/balance-sheet-sections'
@@ -43,7 +47,7 @@ export type TrialBalanceRow = ReportAccountRow & {
   isComputed?: boolean
   /**
    * Level-1 grouping summary aggregating descendant detail accounts.
-   * Shown for hierarchy context only and is NOT counted in debit/credit totals.
+   * Counted in the trial-balance debit/credit totals as the level-1 rollup.
    */
   isSummary?: boolean
 }
@@ -386,8 +390,6 @@ export async function buildFinancialReports(
 
   const trialRows: TrialBalanceRow[] = []
   const summaryRowsByLevel1Id = new Map<string, TrialBalanceRow>()
-  let totalDebit = 0
-  let totalCredit = 0
 
   const revenueLines: StatementLineRow[] = []
   const expenseLines: StatementLineRow[] = []
@@ -451,8 +453,6 @@ export async function buildFinancialReports(
         periodCredit: periodTotals.credit,
         ...tbCols,
       })
-      totalDebit = roundMoney(totalDebit + tbCols.closingDebit)
-      totalCredit = roundMoney(totalCredit + tbCols.closingCredit)
     }
 
     const level1GroupId = level1AccountIdByReportAccountId.get(account.accountId) ?? account.accountId
@@ -556,6 +556,8 @@ export async function buildFinancialReports(
       },
     ]
   }
+
+  const { totalDebit, totalCredit } = calculateTrialBalanceLevel1Totals(finalTrialRows)
 
   const cashFlow = buildIndirectCashFlow({
     period,

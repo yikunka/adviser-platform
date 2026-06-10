@@ -1,0 +1,33 @@
+/**
+ * Mark "提交需求" floating button top-right feedback as DONE.
+ * Run: npx tsx scripts/mark-feedback-widget-top-right-done.ts
+ */
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
+
+const items = await prisma.featureRequest.findMany({
+  where: {
+    status: { not: 'DONE' },
+    OR: [
+      { title: { contains: '浮动按钮移至右上角' } },
+      {
+        AND: [
+          { title: { contains: '提交需求' } },
+          { title: { contains: '右上角' } },
+        ],
+      },
+    ],
+  },
+})
+
+for (const item of items) {
+  await prisma.featureRequest.update({
+    where: { id: item.id },
+    data: { status: 'DONE' },
+  })
+  console.log('DONE:', item.id, item.title)
+}
+
+console.log('Total updated:', items.length)
+await prisma.$disconnect()

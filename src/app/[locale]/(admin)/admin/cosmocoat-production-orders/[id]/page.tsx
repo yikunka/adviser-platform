@@ -6,7 +6,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, FlaskConical, Printer, RefreshCw, Save } from 'lucide-react'
+import { ArrowLeft, ExternalLink, FlaskConical, Printer, RefreshCw, Save } from 'lucide-react'
+import { COS_EMPLOYEE_TYPE_LABELS } from '@/lib/cosmocoat/employee-labels'
+import type { CosEmployeeType } from '@prisma/client'
 import {
   formatPercent,
   formatWeight,
@@ -34,6 +36,18 @@ import type { FactoryProductPickerOption } from '@/lib/cosmocoat/factory-product
 import { serializeFactoryViscosity } from '@/lib/cosmocoat/factory-product-viscosity'
 
 type FactoryProductOption = FactoryProductPickerOption
+
+type ProductionEmployeeOption = {
+  id: string
+  code: string
+  name: string
+  employeeType: CosEmployeeType
+  phone: string | null
+  email: string | null
+  position: string | null
+  department: string | null
+  isActive: boolean
+}
 
 type EditableItem = ProductionOrderEditableItem
 
@@ -368,6 +382,9 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
   const [recipeViscosityUnit, setRecipeViscosityUnit] = useState<string | null>(null)
   const [linkedRecipeId, setLinkedRecipeId] = useState('')
   const [status, setStatus] = useState<'draft' | 'completed'>('draft')
+  const [productionEmployeeId, setProductionEmployeeId] = useState('')
+  const [productionEmployee, setProductionEmployee] = useState<ProductionEmployeeOption | null>(null)
+  const [productionEmployeeOptions, setProductionEmployeeOptions] = useState<ProductionEmployeeOption[]>([])
   const [items, setItems] = useState<EditableItem[]>([])
 
   const qcResult = useMemo(
@@ -423,6 +440,14 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
 
   const selectedProduct = selectedProductSnapshot
 
+  const productionEmployeeSelectOptions = useMemo(() => {
+    if (!productionEmployee) return productionEmployeeOptions
+    if (productionEmployeeOptions.some(item => item.id === productionEmployee.id)) {
+      return productionEmployeeOptions
+    }
+    return [productionEmployee, ...productionEmployeeOptions]
+  }, [productionEmployee, productionEmployeeOptions])
+
   const requiredTotal = useMemo(
     () => items.reduce((sum, item) => sum + item.requiredWeight, 0),
     [items],
@@ -432,6 +457,21 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
     () => serializeFactoryViscosity(recipeViscosity, recipeViscosityUnit) ?? '',
     [recipeViscosity, recipeViscosityUnit],
   )
+
+  const fetchProductionEmployees = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/cosmocoat/employees?employeeType=PRODUCTION&activeOnly=true&limit=200')
+      const data = await res.json()
+      if (!res.ok) return
+      setProductionEmployeeOptions(data.employees ?? [])
+    } catch {
+      // optional picker — silent fail
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchProductionEmployees()
+  }, [fetchProductionEmployees])
 
   const loadRecipeItems = useCallback(async (
     recipeId: string,
@@ -508,6 +548,8 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       setFinishedAt(toDatetimeLocal(order.finishedAt))
       applyProcessFields(hydrateProductionOrderProcessFields(order, order.recipe))
       setStatus(order.status === 'completed' ? 'completed' : 'draft')
+      setProductionEmployeeId(order.productionEmployeeId ?? '')
+      setProductionEmployee(order.productionEmployee ?? null)
       setItems(mapOrderItemsToEditable(order.items))
       if (order.status !== 'completed') {
         void loadRecipeItems(order.recipe.id)
@@ -604,6 +646,8 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       actualWeight: item.actualWeight,
       notes: item.notes,
     }))
+    const employeePayload = { productionEmployeeId: productionEmployeeId || null }
+
     const payload = isNew
       ? {
           code: code.trim() || undefined,
@@ -613,6 +657,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
           startedAt: fromDatetimeLocal(startedAt),
           finishedAt: fromDatetimeLocal(finishedAt),
           ...processPayload,
+          ...employeePayload,
           status,
           items: itemPayload,
         }
@@ -622,6 +667,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
           startedAt: fromDatetimeLocal(startedAt),
           finishedAt: fromDatetimeLocal(finishedAt),
           ...processPayload,
+          ...employeePayload,
           status,
           items: items.map(item => ({
             id: item.id,
@@ -894,6 +940,27 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
             />
           </div>
           <div className="space-y-1.5">
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>生产人员</label>
+            <select
+              value={productionEmployeeId}
+              onChange={e => {
+                const id = e.target.value
+                setProductionEmployeeId(id)
+                const picked = productionEmployeeOptions.find(item => item.id === id)
+                setProductionEmployee(picked ?? null)
+              }}
+              className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+              style={inputStyle()}
+            >
+              <option value="">未指定</option>
+              {productionEmployeeSelectOptions.map(emp => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.code} · {emp.name}{emp.position ? ` · ${emp.position}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>状态</label>
             <select value={status} onChange={e => setStatus(e.target.value as 'draft' | 'completed')} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()}>
               <option value="draft">草稿</option>
@@ -914,6 +981,52 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
           )}
         </div>
       </div>
+
+      {productionEmployee && (
+        <div style={card} className="p-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>生产人员信息</h3>
+            <Link
+              href={`/admin/cosmocoat-employees/${productionEmployee.id}`}
+              className="inline-flex items-center gap-1 text-xs"
+              style={{ color: '#C9A96E' }}
+            >
+              <ExternalLink size={12} />
+              查看员工档案
+            </Link>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+            <div>
+              <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>员工编码</span>
+              <p style={{ color: 'var(--foreground)' }}>{productionEmployee.code}</p>
+            </div>
+            <div>
+              <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>姓名</span>
+              <p style={{ color: 'var(--foreground)' }}>{productionEmployee.name}</p>
+            </div>
+            <div>
+              <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>员工类型</span>
+              <p style={{ color: 'var(--foreground)' }}>{COS_EMPLOYEE_TYPE_LABELS[productionEmployee.employeeType]}</p>
+            </div>
+            <div>
+              <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>职位</span>
+              <p style={{ color: 'var(--foreground)' }}>{productionEmployee.position ?? '—'}</p>
+            </div>
+            <div>
+              <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>部门</span>
+              <p style={{ color: 'var(--foreground)' }}>{productionEmployee.department ?? '—'}</p>
+            </div>
+            <div>
+              <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>电话</span>
+              <p style={{ color: 'var(--foreground)' }}>{productionEmployee.phone ?? '—'}</p>
+            </div>
+            <div>
+              <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>邮箱</span>
+              <p style={{ color: 'var(--foreground)' }}>{productionEmployee.email ?? '—'}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{ ...card, overflow: 'hidden' }}>
         <div className="px-4 py-3 border-b flex flex-wrap items-center justify-between gap-2" style={{ borderColor: '#2A2418' }}>

@@ -39,7 +39,8 @@
     "cosmocoatProductionOrders": "Production Orders",
     "cosmocoatProcessKits": "Process Kits",
     "cosmocoatSampleOrders": "Sample Orders",
-    "cosmocoatCustomers": "Customer Management"
+    "cosmocoatCustomers": "Customer Management",
+    "cosmocoatEmployees": "Employee Management"
   },
   "home": {
     "heroTitleHighlight": "6AM Advisory",

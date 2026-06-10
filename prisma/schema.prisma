@@ -278,6 +278,8 @@ model User {
   createdSampleOrders CosSampleOrder[] @relation("SampleOrderCreator")
   featureRequests           FeatureRequest[]      @relation("FeatureRequestSubmitter")
   sfsCustomerContractsUploaded SfsCustomerContract[] @relation("SfsCustomerContractUploader")
+  cosEmployeesCreated          CosEmployee[]         @relation("CosEmployeeCreator")
+  cosEmployeeFilesUploaded     CosEmployeeFile[]     @relation("CosEmployeeFileUploader")
 
   @@map("users")
 }
@@ -1627,6 +1629,7 @@ model CosTableProductionOrder {
   code             String    @unique
   factoryProductId String
   recipeId         String
+  productionEmployeeId String?
   totalWeight      Decimal   @db.Decimal(12, 3)
   batchNo          String    @default("")
   startedAt        DateTime?
@@ -1643,10 +1646,12 @@ model CosTableProductionOrder {
 
   factoryProduct CosTableFactoryProduct @relation(fields: [factoryProductId], references: [id], onDelete: Restrict)
   recipe         CosTableRecipe         @relation(fields: [recipeId], references: [id], onDelete: Restrict)
+  productionEmployee CosEmployee?       @relation(fields: [productionEmployeeId], references: [id], onDelete: SetNull)
   items          CosTableProductionOrderItem[]
   semifinishedProducts CosTableProductSemifinished[]
 
   @@index([factoryProductId])
+  @@index([productionEmployeeId])
   @@index([createdAt])
   @@map("cos_table_production_orders")
 }
@@ -1936,6 +1941,67 @@ model CosCustomer {
   @@index([code])
   @@index([createdAt])
   @@map("cos_customers")
+}
+
+// ─────────────────────────────────────────────
+// CosmoCoat — Employees (员工管理)
+// ─────────────────────────────────────────────
+
+enum CosEmployeeType {
+  INTERNAL   // 内务人员
+  SALES      // 销售人员
+  PRODUCTION // 生产人员
+  TECHNICAL  // 技术人员
+}
+
+enum CosEmployeeFileType {
+  LABOR_CONTRACT // 劳动合同
+  RESUME         // 简历
+}
+
+model CosEmployee {
+  id           String          @id @default(cuid())
+  code         String          @unique
+  name         String
+  employeeType CosEmployeeType
+  phone        String?
+  email        String?
+  position     String?
+  department   String?
+  hireDate     DateTime?
+  notes        String          @default("")
+  isActive     Boolean         @default(true)
+  createdById  String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  createdBy        User?                      @relation("CosEmployeeCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  files            CosEmployeeFile[]
+  productionOrders CosTableProductionOrder[]
+
+  @@index([employeeType])
+  @@index([name])
+  @@index([code])
+  @@map("cos_employees")
+}
+
+model CosEmployeeFile {
+  id           String              @id @default(cuid())
+  employeeId   String
+  fileType     CosEmployeeFileType
+  fileName     String
+  storageKey   String
+  mimeType     String
+  fileSize     Int
+  notes        String?
+  uploadedById String
+  createdAt    DateTime            @default(now())
+
+  employee   CosEmployee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  uploadedBy User        @relation("CosEmployeeFileUploader", fields: [uploadedById], references: [id])
+
+  @@index([employeeId, fileType])
+  @@map("cos_employee_files")
 }
 
 // ─────────────────────────────────────────────

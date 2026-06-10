@@ -1,4 +1,5 @@
 import type { AccountType } from '@prisma/client'
+import { roundMoney } from '@/lib/financial/utils'
 
 export type TrialBalanceDisplayRow = {
   accountId: string
@@ -13,6 +14,11 @@ export type TrialBalanceDisplayRow = {
   closingCredit: number
   isComputed?: boolean
   isSummary?: boolean
+}
+
+export type TrialBalanceTotals = {
+  totalDebit: number
+  totalCredit: number
 }
 
 type HierarchyAccount = {
@@ -130,4 +136,15 @@ export function assembleTrialBalanceRows(input: {
   }
 
   return [...result, ...computedRows]
+}
+
+export function calculateTrialBalanceLevel1Totals(rows: TrialBalanceDisplayRow[]): TrialBalanceTotals {
+  return rows.reduce<TrialBalanceTotals>((totals, row) => {
+    if (row.isComputed || row.level !== 1) return totals
+
+    return {
+      totalDebit: roundMoney(totals.totalDebit + row.closingDebit),
+      totalCredit: roundMoney(totals.totalCredit + row.closingCredit),
+    }
+  }, { totalDebit: 0, totalCredit: 0 })
 }

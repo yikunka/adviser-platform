@@ -29,12 +29,26 @@ const patchSchema = z.object({
   productionRequirements: z.string().trim().max(2000).optional(),
   qualityCheckRequirements: z.string().trim().max(2000).optional(),
   packagingRequirements: z.string().trim().max(2000).optional(),
+  productionEmployeeId: z.union([z.string().trim().min(1), z.literal(''), z.null()]).optional(),
   status: z.enum(['draft', 'completed']).optional(),
   items: z.array(itemPatchSchema).optional(),
 })
 
 function isMissingTable(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021'
+}
+
+async function resolveProductionEmployeeId(raw: string | null | undefined) {
+  const id = (raw ?? '').trim()
+  if (!id) return null
+  const employee = await prisma.cosEmployee.findUnique({
+    where: { id },
+    select: { id: true, employeeType: true, isActive: true },
+  })
+  if (!employee) throw new Error('PRODUCTION_EMPLOYEE_NOT_FOUND')
+  if (employee.employeeType !== 'PRODUCTION') throw new Error('NOT_PRODUCTION_EMPLOYEE')
+  if (!employee.isActive) throw new Error('PRODUCTION_EMPLOYEE_INACTIVE')
+  return employee.id
 }
 
 export async function GET(
@@ -78,6 +92,11 @@ export async function PATCH(
   if (!current) return NextResponse.json({ error: '生产单不存在' }, { status: 404 })
 
   try {
+    let productionEmployeeId: string | null | undefined
+    if (parsed.data.productionEmployeeId !== undefined) {
+      productionEmployeeId = await resolveProductionEmployeeId(parsed.data.productionEmployeeId)
+    }
+
     const totalWeight = parsed.data.totalWeight ?? Number(current.totalWeight)
     const totalWeightChanged =
       parsed.data.totalWeight != null
@@ -179,6 +198,7 @@ export async function PATCH(
         productionRequirements: parsed.data.productionRequirements,
         qualityCheckRequirements: parsed.data.qualityCheckRequirements,
         packagingRequirements: parsed.data.packagingRequirements,
+        productionEmployeeId,
         status: parsed.data.status,
       },
     })
@@ -186,6 +206,17 @@ export async function PATCH(
     const order = await getProductionOrderById(id)
     return NextResponse.json({ order })
   } catch (err) {
+    if (err instanceof Error) {
+      if (err.message === 'PRODUCTION_EMPLOYEE_NOT_FOUND') {
+        return NextResponse.json({ error: '所选生产人员不存在' }, { status: 400 })
+      }
+      if (err.message === 'NOT_PRODUCTION_EMPLOYEE') {
+        return NextResponse.json({ error: '仅可关联「生产人员」类型的员工' }, { status: 400 })
+      }
+      if (err.message === 'PRODUCTION_EMPLOYEE_INACTIVE') {
+        return NextResponse.json({ error: '所选生产人员已停用' }, { status: 400 })
+      }
+    }
     if (isMissingTable(err)) {
       return NextResponse.json({ error: '生产单表不存在，请先运行数据库迁移' }, { status: 503 })
     }

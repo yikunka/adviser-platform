@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { TrialBalanceDisplayRow } from './trial-balance-rows'
-import { assembleTrialBalanceRows, buildLevel1GroupingMaps } from './trial-balance-rows'
+import {
+  assembleTrialBalanceRows,
+  buildLevel1GroupingMaps,
+  calculateTrialBalanceLevel1Totals,
+} from './trial-balance-rows'
 
 function detailRow(overrides: Partial<TrialBalanceDisplayRow> & Pick<TrialBalanceDisplayRow, 'accountId' | 'code' | 'name'>): TrialBalanceDisplayRow {
   return {
@@ -104,5 +108,47 @@ describe('assembleTrialBalanceRows', () => {
     })
 
     expect(rows.at(-1)?.isComputed).toBe(true)
+  })
+})
+
+describe('calculateTrialBalanceLevel1Totals', () => {
+  it('counts only level-1 rows and ignores descendant detail rows', () => {
+    const rows: TrialBalanceDisplayRow[] = [
+      detailRow({
+        accountId: 'a1',
+        code: '1000',
+        name: '流动资产',
+        level: 1,
+        closingDebit: 300,
+        closingCredit: 0,
+        isSummary: true,
+      }),
+      detailRow({ accountId: 'a2', code: '1001', name: '现金', level: 2, closingDebit: 100 }),
+      detailRow({ accountId: 'a3', code: '1002', name: '银行存款', level: 3, closingDebit: 200 }),
+      detailRow({
+        accountId: 'b1',
+        code: '2000',
+        name: '流动负债',
+        level: 1,
+        type: 'LIABILITY',
+        closingDebit: 0,
+        closingCredit: 300,
+      }),
+      detailRow({
+        accountId: 'current-year-earnings',
+        code: '——',
+        name: '本年利润（期末计算，未结转）',
+        level: 1,
+        type: 'EQUITY',
+        closingDebit: 0,
+        closingCredit: 100,
+        isComputed: true,
+      }),
+    ]
+
+    expect(calculateTrialBalanceLevel1Totals(rows)).toEqual({
+      totalDebit: 300,
+      totalCredit: 300,
+    })
   })
 })

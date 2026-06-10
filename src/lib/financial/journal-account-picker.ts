@@ -15,6 +15,10 @@ export function getJournalAccountPickerAccounts<T extends JournalAccountPickerAc
   )
 
   return accounts
-    .filter(account => account.level === 2 || (account.level === 1 && !accountIdsWithDirectChildren.has(account.id)))
+    .filter(account => (
+      account.level === 2
+      || account.level === 3
+      || (account.level === 1 && !accountIdsWithDirectChildren.has(account.id))
+    ))
     .sort((left, right) => left.sortOrder - right.sortOrder || left.code.localeCompare(right.code))
 }

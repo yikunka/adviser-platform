@@ -397,9 +397,9 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                   right={`贷方合计：${money(reports.trialBalance.totalCredit)}`}
                 />
                 <p className="text-xs" style={{ color: '#7A7060' }}>
-                  ＊ 可通过「科目层级」筛选仅一级、前两级或全量明细展示范围；借贷合计始终基于全部明细科目计算。
+                  ＊ 可通过「科目层级」筛选仅一级、前两级或全量明细展示范围；借贷合计始终只基于一级科目计算。
                   仅显示有余额或本期发生额的科目。零余额科目在过账分录后自动出现。
-                  带「一级汇总」标注的行为一级科目汇总（含下级明细合计），不计入借贷合计。
+                  带「一级汇总」标注的行为一级科目汇总（含下级明细合计），计入借贷合计。
                   带「期末计算」标注的行为汇总估算，不计入借贷合计。
                 </p>
                 {!reports.trialBalance.balanced ? (

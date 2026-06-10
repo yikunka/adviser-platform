@@ -26,6 +26,19 @@ const recipeItemsInclude = {
 }
 
 export const orderInclude = {
+  productionEmployee: {
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      employeeType: true,
+      phone: true,
+      email: true,
+      position: true,
+      department: true,
+      isActive: true,
+    },
+  },
   factoryProduct: {
     select: { id: true, productCode: true, name: true, unit: true },
   },
@@ -172,6 +185,7 @@ export function serializeProductionOrder(order: ProductionOrderWithIncludes) {
     code: order.code,
     factoryProductId: order.factoryProductId,
     recipeId: order.recipeId,
+    productionEmployeeId: order.productionEmployeeId,
     totalWeight: Number(order.totalWeight),
     batchNo: order.batchNo,
     startedAt: order.startedAt?.toISOString() ?? null,
@@ -187,6 +201,7 @@ export function serializeProductionOrder(order: ProductionOrderWithIncludes) {
     updatedAt: order.updatedAt.toISOString(),
     factoryProduct: order.factoryProduct,
     recipe: order.recipe,
+    productionEmployee: order.productionEmployee,
     items,
     requiredTotal,
   }

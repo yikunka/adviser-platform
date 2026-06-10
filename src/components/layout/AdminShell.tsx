@@ -37,6 +37,7 @@ import {
   FileBarChart,
   MessageSquarePlus,
   SlidersHorizontal,
+  UserRound,
 } from 'lucide-react'
 import type { AdminMenuKey } from '@/lib/auth/admin-access'
 import { pathnameToAdminMenuKey, adminMenusAllow } from '@/lib/auth/admin-access'
@@ -102,6 +103,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/cosmocoat-process-kits', key: 'cosmocoatProcessKits', Icon: BookOpen },
       { href: '/admin/cosmocoat-sample-orders', key: 'cosmocoatSampleOrders', Icon: FlaskConical },
       { href: '/admin/cosmocoat-customers', key: 'cosmocoatCustomers', Icon: ContactRound },
+      { href: '/admin/cosmocoat-employees', key: 'cosmocoatEmployees', Icon: UserRound },
     ],
   },
   {

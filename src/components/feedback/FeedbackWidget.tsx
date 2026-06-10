@@ -3,7 +3,7 @@
 /**
  * Feedback Plugin — FeedbackWidget
  *
- * A floating button (bottom-right) that opens an AI-assisted requirements dialog.
+ * A floating button (top-right) that opens an AI-assisted requirements dialog.
  * Users describe what they want to change; the LLM clarifies and confirms the
  * requirement before saving it to the backend.
  *
@@ -466,7 +466,7 @@ export function FeedbackWidget({ locale = 'zh' }: { locale?: FeedbackWidgetLocal
         type="button"
         onClick={openDialog}
         aria-label={copy.triggerLabel}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium shadow-lg transition-all hover:scale-105 active:scale-95"
+        className="fixed top-[4.5rem] right-6 z-50 flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium shadow-lg transition-all hover:scale-105 active:scale-95"
         style={{
           background: 'linear-gradient(135deg, #C9A96E 0%, #A07840 100%)',
           color: '#0A0805',
@@ -480,7 +480,7 @@ export function FeedbackWidget({ locale = 'zh' }: { locale?: FeedbackWidgetLocal
       {/* Dialog overlay */}
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-end p-4 sm:p-6"
+          className="fixed inset-0 z-50 flex items-start justify-end p-4 sm:p-6 pt-[4.5rem]"
           onClick={e => {
             if (e.target === e.currentTarget) closeDialog()
           }}

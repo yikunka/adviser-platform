@@ -39,7 +39,8 @@
     "cosmocoatProductionOrders": "生产单管理",
     "cosmocoatProcessKits": "工艺书管理",
     "cosmocoatSampleOrders": "打样单管理",
-    "cosmocoatCustomers": "客户管理"
+    "cosmocoatCustomers": "客户管理",
+    "cosmocoatEmployees": "员工管理"
   },
   "home": {
     "heroTitleHighlight": "6AM Advisory",
