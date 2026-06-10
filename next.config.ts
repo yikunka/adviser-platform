@@ -1,12 +1,11 @@
 import type { NextConfig } from "next";
 import path from "path";
-import { fileURLToPath } from "url";
 import createNextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 /** Parent dirs may contain another `package-lock.json`; lock Turbopack to this app. */
-const turbopackRoot = path.dirname(fileURLToPath(import.meta.url));
+const turbopackRoot = path.join(/*turbopackIgnore: true*/ process.cwd());
 
 // When OSS_CDN_URL is set at build time, Next.js loads _next/static/ chunks
 // from the CDN instead of the app server. Run scripts/sync-oss-static.mjs
