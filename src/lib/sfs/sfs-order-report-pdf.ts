@@ -10,17 +10,11 @@ import {
   sfsStepRequiresDiamondImages,
   splitSfsStepNotes,
 } from '@/lib/sfs/order-step-display'
+import { SFS_PHASE_LABELS, SFS_PHASE_ORDER } from '@/lib/sfs/order-predefined-steps'
 
 export type SfsOrderReportPayload = Prisma.SfsOrderGetPayload<{
   include: { steps: { include: { attachments: true } } }
 }>
-
-const PHASE_LABELS: Record<string, string> = {
-  CHEM_TRANSFORM: 'Chemical Transformation',
-  CVD:            'CVD Growth',
-  CRAFTING:       'Crafting & Jewelry Setting',
-}
-const PHASE_ORDER = ['CHEM_TRANSFORM', 'CVD', 'CRAFTING']
 
 function safe(s: string | null | undefined): string {
   if (!s) return '-'
@@ -360,13 +354,13 @@ export async function renderSfsOrderReportPdf(order: SfsOrderReportPayload): Pro
   if (order.steps.length === 0) {
     drawText('No production steps recorded.', { color: GREY })
   } else {
-    for (const phase of PHASE_ORDER) {
+    for (const phase of SFS_PHASE_ORDER) {
       const phaseSteps = order.steps.filter(s => s.phase === phase)
       if (phaseSteps.length === 0) continue
 
       ensureSpace(26)
       y -= 4
-      page.drawText(safe(PHASE_LABELS[phase] ?? phase), { x: ML, y, size: 10, font: bold, color: BLACK })
+      page.drawText(safe(SFS_PHASE_LABELS[phase] ?? phase), { x: ML, y, size: 10, font: bold, color: BLACK })
       y -= 14
 
       for (const step of phaseSteps) {

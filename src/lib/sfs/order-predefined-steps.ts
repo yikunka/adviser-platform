@@ -27,15 +27,20 @@ export const SFS_PREDEFINED_STEPS: Record<string, string[]> = {
     'Certification',
     'Packaging',
   ],
+  JEWELRY_SETTING: [
+    'Jewelry Setting Start',
+    'Jewelry Setting End',
+  ],
 }
 
 export const SFS_PHASE_LABELS: Record<string, string> = {
   CHEM_TRANSFORM: 'Chemical Transformation',
   CVD: 'CVD Growth',
-  CRAFTING: 'Crafting & Jewelry Setting',
+  CRAFTING: 'Crafting',
+  JEWELRY_SETTING: 'Jewelry Setting',
 }
 
-export const SFS_PHASE_ORDER = ['CHEM_TRANSFORM', 'CVD', 'CRAFTING'] as const
+export const SFS_PHASE_ORDER = ['CHEM_TRANSFORM', 'CVD', 'CRAFTING', 'JEWELRY_SETTING'] as const
 
 export const SFS_TOTAL_PREDEFINED_STEPS = Object.values(SFS_PREDEFINED_STEPS).reduce(
   (sum, steps) => sum + steps.length,

@@ -1203,7 +1203,7 @@ model SfsCustomerContract {
 model SfsOrderStep {
   id         String   @id @default(cuid())
   orderId    String
-  phase      String // CHEM_TRANSFORM | CVD | CRAFTING
+  phase      String // CHEM_TRANSFORM | CVD | CRAFTING | JEWELRY_SETTING
   stepNumber Int
   recordedAt DateTime
   particular String

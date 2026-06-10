@@ -10,6 +10,7 @@ import { sfsDiamondLabel, sfsIsImageFile, sfsStepFileDiamondLabel, sfsStepRequir
 import {
   SFS_PREDEFINED_STEPS,
   SFS_PHASE_LABELS,
+  SFS_PHASE_ORDER,
   sfsChemTransformWeightStepIndex,
   sfsCvdSinglePhotoStepIndex,
 } from '@/lib/sfs/order-predefined-steps'
@@ -847,7 +848,7 @@ export default function AdminSfsOrderDetailPage() {
       </div>
 
       {/* ── Phase step panels ── */}
-      {['CHEM_TRANSFORM', 'CVD', 'CRAFTING'].map(phase => (
+      {SFS_PHASE_ORDER.map(phase => (
         <PhasePanel
           key={phase}
           orderId={order.id}

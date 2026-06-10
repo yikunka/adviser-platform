@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { uploadToR2 } from '@/lib/storage/r2'
 import { sfsStepImageRequiresApproval } from '@/lib/sfs/order-step-display'
+import { SFS_PHASE_ORDER } from '@/lib/sfs/order-predefined-steps'
 import crypto from 'crypto'
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
@@ -28,7 +29,7 @@ export async function POST(
   const particular = formData.get('particular') as string
   const notes      = formData.get('notes') as string | null
 
-  if (!phase || !['CHEM_TRANSFORM', 'CVD', 'CRAFTING'].includes(phase)) {
+  if (!phase || !SFS_PHASE_ORDER.includes(phase as typeof SFS_PHASE_ORDER[number])) {
     return NextResponse.json({ error: 'Invalid phase' }, { status: 400 })
   }
   if (!recordedAt || !particular) {
