@@ -10,6 +10,7 @@ import { ArrowLeft, Plus, Printer, Save, Search, Trash2 } from 'lucide-react'
 import type { CosColorFormulaCategory } from '@prisma/client'
 import { ColorFormulaCategoryFields } from '@/components/cosmocoat/ColorFormulaCategoryFields'
 import type { ColorFormulaFactoryProductOption } from '@/lib/cosmocoat/color-formula-factory-products'
+import { computeNextColorFormulaCodeForProduct } from '@/lib/cosmocoat/color-formula-code-sequence'
 import type { FullColorFormula } from '@/lib/cosmocoat/color-formulas'
 import {
   computeItemAmount,
@@ -492,14 +493,10 @@ export default function CosmocoatColorFormulaDetailPage() {
         const data = await res.json()
         if (!res.ok || cancelled) return
 
-        const prefix = `${selectedFactoryProduct.productCode}-`
-        const maxNumber = (data.formulas ?? []).reduce((max: number, formula: { code?: string }) => {
-          if (!formula.code?.startsWith(prefix)) return max
-          const suffix = formula.code.slice(prefix.length)
-          if (!/^\d{4}$/.test(suffix)) return max
-          return Math.max(max, Number(suffix))
-        }, 0)
-        const nextCode = `${prefix}${String(maxNumber + 1).padStart(4, '0')}`
+        const nextCode = computeNextColorFormulaCodeForProduct(
+          selectedFactoryProduct.productCode,
+          (data.formulas ?? []).map((formula: { code?: string }) => formula.code ?? ''),
+        )
         setCode(nextCode)
         setLastAutoCode(nextCode)
         if (!name.trim()) setName(`${selectedFactoryProduct.name} 调色配方`)
