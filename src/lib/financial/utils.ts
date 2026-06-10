@@ -97,5 +97,6 @@ export function signedLineAmount(line: BalanceLine) {
 }
 
 export function roundMoney(value: number) {
-  return Math.round((value + Number.EPSILON) * 100) / 100
+  const rounded = Math.round((value + Number.EPSILON) * 100) / 100
+  return Object.is(rounded, -0) ? 0 : rounded
 }
