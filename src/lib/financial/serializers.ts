@@ -1,4 +1,9 @@
 import type { AccountType, JournalStatus } from '@prisma/client'
+import {
+  buildAccountLevelChain,
+  type AccountHierarchyNode,
+  type AccountLevelRef,
+} from '@/lib/financial/account-hierarchy'
 import { calculateYearToDateAmount } from '@/lib/financial/year-to-date'
 
 type Decimalish = { toString(): string }
@@ -74,43 +79,90 @@ export function serializeAccount(account: {
   }
 }
 
-export function serializeJournalEntry(entry: {
+export type SerializedJournalLineAccount = {
   id: string
-  voucherNo: string
-  entryDate: Date
-  description: string
-  period: string
-  status: JournalStatus
-  companyId?: string | null
-  company?: { id: string; nameEn: string; companyCode: string | null } | null
-  createdAt?: Date
-  postedAt: Date | null
-  reversedAt: Date | null
-  createdBy?: { id: string; nameEn: string; email: string } | null
-  lines: {
+  code: string
+  name: string
+  type: AccountType
+  level?: number
+  levelChain?: AccountLevelRef[]
+}
+
+export function serializeJournalEntry(
+  entry: {
     id: string
-    accountId: string
-    lineNum: number
+    voucherNo: string
+    entryDate: Date
     description: string
-    debit: Decimalish
-    credit: Decimalish
-    notes: string
-    account?: { id: string; code: string; name: string; type: AccountType } | null
-  }[]
-}) {
+    period: string
+    status: JournalStatus
+    companyId?: string | null
+    company?: { id: string; nameEn: string; companyCode: string | null } | null
+    createdAt?: Date
+    postedAt: Date | null
+    reversedAt: Date | null
+    createdBy?: { id: string; nameEn: string; email: string } | null
+    lines: {
+      id: string
+      accountId: string
+      lineNum: number
+      description: string
+      debit: Decimalish
+      credit: Decimalish
+      notes: string
+      account?: {
+        id: string
+        code: string
+        name: string
+        type: AccountType
+        level?: number
+        parentId?: string | null
+      } | null
+    }[]
+  },
+  options?: {
+    accountById?: Map<string, AccountHierarchyNode>
+  },
+) {
   const lines = entry.lines
     .slice()
     .sort((a, b) => a.lineNum - b.lineNum)
-    .map(line => ({
-      id: line.id,
-      accountId: line.accountId,
-      lineNum: line.lineNum,
-      description: line.description,
-      debit: money(line.debit),
-      credit: money(line.credit),
-      notes: line.notes,
-      account: line.account ?? null,
-    }))
+    .map(line => {
+      const account: SerializedJournalLineAccount | null = line.account
+        ? {
+            id: line.account.id,
+            code: line.account.code,
+            name: line.account.name,
+            type: line.account.type,
+            ...(line.account.level !== undefined ? { level: line.account.level } : {}),
+            ...(options?.accountById
+              ? {
+                  levelChain: buildAccountLevelChain(
+                    {
+                      id: line.account.id,
+                      code: line.account.code,
+                      name: line.account.name,
+                      level: line.account.level ?? 1,
+                      parentId: line.account.parentId ?? null,
+                    },
+                    options.accountById,
+                  ),
+                }
+              : {}),
+          }
+        : null
+
+      return {
+        id: line.id,
+        accountId: line.accountId,
+        lineNum: line.lineNum,
+        description: line.description,
+        debit: money(line.debit),
+        credit: money(line.credit),
+        notes: line.notes,
+        account,
+      }
+    })
 
   return {
     id: entry.id,

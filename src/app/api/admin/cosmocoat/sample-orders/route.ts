@@ -17,6 +17,10 @@ import {
 const orderSchema = z.object({
   code: z.string().trim().min(1).max(32).optional(),
   customerId: z.string().trim().min(1),
+  substrateType: z.string().trim().max(200).optional().default(''),
+  samplePanelRequirement: z.string().trim().max(1000).optional().default(''),
+  sampleOilRequirement: z.string().trim().max(1000).optional().default(''),
+  specialProcessRequirement: z.string().trim().max(1000).optional().default(''),
   notes: z.string().trim().max(2000).optional().default(''),
   referenceImageUrl: z.string().trim().max(2000).nullable().optional(),
   processKits: z.array(z.object({
@@ -59,6 +63,10 @@ export async function GET(req: NextRequest) {
       ? {
           OR: [
             { code: { contains: q, mode: 'insensitive' } },
+            { substrateType: { contains: q, mode: 'insensitive' } },
+            { samplePanelRequirement: { contains: q, mode: 'insensitive' } },
+            { sampleOilRequirement: { contains: q, mode: 'insensitive' } },
+            { specialProcessRequirement: { contains: q, mode: 'insensitive' } },
             { notes: { contains: q, mode: 'insensitive' } },
             { customer: { name: { contains: q, mode: 'insensitive' } } },
             { customer: { code: { contains: q, mode: 'insensitive' } } },
@@ -144,6 +152,10 @@ export async function POST(req: NextRequest) {
       data: {
         code,
         customerId: parsed.data.customerId,
+        substrateType: parsed.data.substrateType,
+        samplePanelRequirement: parsed.data.samplePanelRequirement,
+        sampleOilRequirement: parsed.data.sampleOilRequirement,
+        specialProcessRequirement: parsed.data.specialProcessRequirement,
         notes: parsed.data.notes,
         referenceImageUrl: parsed.data.referenceImageUrl?.trim() || null,
         status: parsed.data.status,

@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { formatJournalLineAccountLevels, type AccountLevelRef } from '@/lib/financial/account-hierarchy'
 
 export type JournalEntryDetails = {
   id: string
@@ -27,7 +28,12 @@ export type JournalEntryDetails = {
   lines: {
     description?: string
     accountId?: string
-    account?: { code: string; name: string } | null
+    account?: {
+      code: string
+      name: string
+      level?: number
+      levelChain?: AccountLevelRef[]
+    } | null
     debit: number
     credit: number
   }[]
@@ -114,24 +120,29 @@ export function JournalViewModal({ open, onOpenChange, entry, onPosted, onPrint 
                 <TableHeader>
                   <TableRow>
                     <TableHead>行摘要</TableHead>
-                    <TableHead>科目编码</TableHead>
-                    <TableHead>科目名称</TableHead>
+                    <TableHead>一级科目</TableHead>
+                    <TableHead>二级科目</TableHead>
+                    <TableHead>三级科目</TableHead>
                     <TableHead className="text-right">借方</TableHead>
                     <TableHead className="text-right">贷方</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {entry.lines.map((line, index) => (
+                  {entry.lines.map((line, index) => {
+                    const accountLevels = formatJournalLineAccountLevels(line.account ?? undefined)
+                    return (
                     <TableRow key={index}>
                       <TableCell className="max-w-[200px]">{line.description || '-'}</TableCell>
-                      <TableCell className="font-mono">{line.account?.code ?? '-'}</TableCell>
-                      <TableCell>{line.account?.name ?? '-'}</TableCell>
+                      <TableCell>{accountLevels.level1}</TableCell>
+                      <TableCell>{accountLevels.level2}</TableCell>
+                      <TableCell>{accountLevels.level3}</TableCell>
                       <TableCell className="text-right">{money(line.debit)}</TableCell>
                       <TableCell className="text-right">{money(line.credit)}</TableCell>
                     </TableRow>
-                  ))}
+                    )
+                  })}
                   <TableRow>
-                    <TableCell colSpan={3} className="text-right font-medium">合计</TableCell>
+                    <TableCell colSpan={4} className="text-right font-medium">合计</TableCell>
                     <TableCell className="text-right font-medium">{money(totalDebit)}</TableCell>
                     <TableCell className="text-right font-medium">{money(totalCredit)}</TableCell>
                   </TableRow>

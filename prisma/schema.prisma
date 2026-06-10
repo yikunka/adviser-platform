@@ -11,23 +11,23 @@ datasource db {
 // ─────────────────────────────────────────────
 
 enum ProcessKitStatus {
-  DRAFT    // 草稿
-  ACTIVE   // 已启用
+  DRAFT // 草稿
+  ACTIVE // 已启用
   ARCHIVED // 已归档
 }
 
 enum ProcessTestType {
-  PERFORMANCE       // 性能测试
-  DURABILITY        // 耐久性测试
-  ADHESION          // 附着力测试
-  COLOR_STABILITY   // 色牢度测试
-  BOND_STRENGTH     // 粘结强度测试
-  OTHER             // 其他
+  PERFORMANCE // 性能测试
+  DURABILITY // 耐久性测试
+  ADHESION // 附着力测试
+  COLOR_STABILITY // 色牢度测试
+  BOND_STRENGTH // 粘结强度测试
+  OTHER // 其他
 }
 
 enum ProcessTestResult {
-  PASSED  // 通过
-  FAILED  // 未通过
+  PASSED // 通过
+  FAILED // 未通过
   PENDING // 待测试
 }
 
@@ -227,56 +227,56 @@ enum InvoiceCustomerType {
 // ─────────────────────────────────────────────
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  passwordHash  String
+  id             String     @id @default(cuid())
+  email          String     @unique
+  passwordHash   String
   nameEn         String
   nameZh         String?
   phone          String?
   mailingAddress String?
-  role           UserRole  @default(CLIENT)
-  platform       Platform  @default(ADVISER)
+  role           UserRole   @default(CLIENT)
+  platform       Platform   @default(ADVISER)
   /// Admin Console: which commercial platforms this staff user may operate.
   adminPlatforms Platform[] @default([])
   /// Admin Console: granular menu keys (see src/lib/auth/admin-access.ts).
-  adminMenuKeys  String[]  @default([])
-  isActive       Boolean   @default(true)
+  adminMenuKeys  String[]   @default([])
+  isActive       Boolean    @default(true)
   emailVerified  DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
-  verificationTokens VerificationToken[]
-  clientCompanies    Company[]           @relation("ClientCompany")
-  assignedCompanies  Company[]           @relation("AssignedStaff")
-  companyStaffAssignments CompanyStaffAssignment[]
+  verificationTokens             VerificationToken[]
+  clientCompanies                Company[]                @relation("ClientCompany")
+  assignedCompanies              Company[]                @relation("AssignedStaff")
+  companyStaffAssignments        CompanyStaffAssignment[]
   createdCompanyStaffAssignments CompanyStaffAssignment[] @relation("CompanyStaffAssignmentCreator")
-  createdFinancialReportGroups FinancialReportGroup[] @relation("FinancialReportGroupCreator")
-  uploadedDocuments  Document[]
-  kycReviews         KeyPerson[]         @relation("KYCReviewer")
-  kycSubmissions     KeyPerson[]         @relation("ClientKycSubmissions")
-  amlChecksTriggered AMLCheck[]          @relation("AMLCheckTrigger")
-  amlAlertsReviewed  AMLAlert[]          @relation("AMLAlertReviewer")
-  auditLogs          AuditLog[]
-  notifications      Notification[]
-  processedChanges   ShareholderChange[]
-  processedAddress   AddressChange[]
-  processedFilings   AnnualFiling[]
-  orders             ServiceOrder[]
-  sfsOrders          SfsOrder[]
-  sfsCustomers       SfsCustomer[] @relation("SfsCustomerUser")
-  sfsCustomersCreated SfsCustomer[] @relation("SfsCustomerCreator")
-  cosCustomers       CosCustomer[] @relation("CosCustomerUser")
-  cosCustomersCreated CosCustomer[] @relation("CosCustomerCreator")
-  cosJournalEntries  CosTableJournalEntry[]
-  financialJournalEntries JournalEntry[] @relation("FinancialJournalCreatedBy")
-  invoicesCreated         Invoice[]     @relation("InvoiceCreatedBy")
-  sfsInvoicesCreated      SfsInvoice[]  @relation("SfsInvoiceCreatedBy")
+  createdFinancialReportGroups   FinancialReportGroup[]   @relation("FinancialReportGroupCreator")
+  uploadedDocuments              Document[]
+  kycReviews                     KeyPerson[]              @relation("KYCReviewer")
+  kycSubmissions                 KeyPerson[]              @relation("ClientKycSubmissions")
+  amlChecksTriggered             AMLCheck[]               @relation("AMLCheckTrigger")
+  amlAlertsReviewed              AMLAlert[]               @relation("AMLAlertReviewer")
+  auditLogs                      AuditLog[]
+  notifications                  Notification[]
+  processedChanges               ShareholderChange[]
+  processedAddress               AddressChange[]
+  processedFilings               AnnualFiling[]
+  orders                         ServiceOrder[]
+  sfsOrders                      SfsOrder[]
+  sfsCustomers                   SfsCustomer[]            @relation("SfsCustomerUser")
+  sfsCustomersCreated            SfsCustomer[]            @relation("SfsCustomerCreator")
+  cosCustomers                   CosCustomer[]            @relation("CosCustomerUser")
+  cosCustomersCreated            CosCustomer[]            @relation("CosCustomerCreator")
+  cosJournalEntries              CosTableJournalEntry[]
+  financialJournalEntries        JournalEntry[]           @relation("FinancialJournalCreatedBy")
+  invoicesCreated                Invoice[]                @relation("InvoiceCreatedBy")
+  sfsInvoicesCreated             SfsInvoice[]             @relation("SfsInvoiceCreatedBy")
 
-  createdProcessKits CosProcessKit[]  @relation("ProcessKitCreator")
-  updatedProcessKits CosProcessKit[]  @relation("ProcessKitUpdater")
-  testedProcessKits  CosProcessTest[] @relation("ProcessTestTester")
-  createdSampleOrders CosSampleOrder[] @relation("SampleOrderCreator")
-  featureRequests           FeatureRequest[]      @relation("FeatureRequestSubmitter")
+  createdProcessKits           CosProcessKit[]       @relation("ProcessKitCreator")
+  updatedProcessKits           CosProcessKit[]       @relation("ProcessKitUpdater")
+  testedProcessKits            CosProcessTest[]      @relation("ProcessTestTester")
+  createdSampleOrders          CosSampleOrder[]      @relation("SampleOrderCreator")
+  featureRequests              FeatureRequest[]      @relation("FeatureRequestSubmitter")
   sfsCustomerContractsUploaded SfsCustomerContract[] @relation("SfsCustomerContractUploader")
   cosEmployeesCreated          CosEmployee[]         @relation("CosEmployeeCreator")
   cosEmployeeFilesUploaded     CosEmployeeFile[]     @relation("CosEmployeeFileUploader")
@@ -327,8 +327,8 @@ model Company {
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 
-  clientUser    User?               @relation("ClientCompany", fields: [clientUserId], references: [id])
-  assignedStaff User?               @relation("AssignedStaff", fields: [assignedStaffId], references: [id])
+  clientUser    User? @relation("ClientCompany", fields: [clientUserId], references: [id])
+  assignedStaff User? @relation("AssignedStaff", fields: [assignedStaffId], references: [id])
 
   directors              Director[]
   members                Member[]
@@ -336,7 +336,7 @@ model Company {
   designatedReps         DesignatedRepresentative[]
   documents              Document[]
   fileCases              CompanyFileCase[]
-  amlChecks              AMLCheck[]                 @relation("CompanyAMLCheck")
+  amlChecks              AMLCheck[]                    @relation("CompanyAMLCheck")
   dueDiligenceReports    DueDiligenceReport[]
   riskAssessments        RiskAssessmentAnswer[]
   annualFilings          AnnualFiling[]
@@ -344,7 +344,7 @@ model Company {
   addressChanges         AddressChange[]
   keyPersonLinks         CompanyKeyPerson[]
   serviceOrders          ServiceOrder[]
-  auditLogs              AuditLog[]                 @relation("CompanyAuditLog")
+  auditLogs              AuditLog[]                    @relation("CompanyAuditLog")
   finAccounts            FinAccount[]
   journalEntries         JournalEntry[]
   ledgerEntries          Ledger[]
@@ -383,7 +383,7 @@ model FinancialReportGroup {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  createdBy User? @relation("FinancialReportGroupCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy User?                         @relation("FinancialReportGroupCreator", fields: [createdById], references: [id], onDelete: SetNull)
   companies FinancialReportGroupCompany[]
 
   @@index([name])
@@ -412,7 +412,7 @@ model FinancialReportGroupCompany {
 // ─────────────────────────────────────────────
 
 model Director {
-  id                String         @id @default(cuid())
+  id                String          @id @default(cuid())
   companyId         String
   keyPersonId       String?
   nameEn            String
@@ -427,12 +427,12 @@ model Director {
   idType            DirectorIDType?
   idNumber          String?
   countryOfIssuance String?
-  isCorporation     Boolean        @default(false)
+  isCorporation     Boolean         @default(false)
   corpRegNumber     String?
   corpRegPlace      String?
-  status            DirectorStatus @default(ACTIVE)
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  status            DirectorStatus  @default(ACTIVE)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
   company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   keyPerson KeyPerson? @relation(fields: [keyPersonId], references: [id], onDelete: SetNull)
@@ -467,18 +467,18 @@ model Member {
 }
 
 model ShareTransaction {
-  id                     String               @id @default(cuid())
-  memberId               String
-  transactionType        ShareTransactionType
-  transactionDate        DateTime
-  allotmentTransferNo    String?
-  sharesAcquired         Int?
-  sharesTransferred      Int?
-  sharesHeld             Int
-  certificateNo          String?
-  distinctiveNosFrom     Int?
-  distinctiveNosTo       Int?
-  amountPaid             Decimal?             @db.Decimal(18, 2)
+  id                           String               @id @default(cuid())
+  memberId                     String
+  transactionType              ShareTransactionType
+  transactionDate              DateTime
+  allotmentTransferNo          String?
+  sharesAcquired               Int?
+  sharesTransferred            Int?
+  sharesHeld                   Int
+  certificateNo                String?
+  distinctiveNosFrom           Int?
+  distinctiveNosTo             Int?
+  amountPaid                   Decimal?             @db.Decimal(18, 2)
   certificateSurrendered       String?
   certificateSurrenderedShares Int?
   balanceCertificateNo         String?
@@ -497,7 +497,7 @@ model ShareTransaction {
 // ─────────────────────────────────────────────
 
 model SignificantController {
-  id                    String    @id @default(cuid())
+  id                    String          @id @default(cuid())
   companyId             String
   keyPersonId           String?
   entryDate             DateTime
@@ -510,12 +510,12 @@ model SignificantController {
   natureOfControl       String?
   becomingDate          DateTime
   cessationDate         DateTime?
-  isLegalEntity         Boolean   @default(false)
+  isLegalEntity         Boolean         @default(false)
   legalEntityRegNo      String?
   legalEntityGovLaw     String?
   remarks               String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
 
   company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   keyPerson KeyPerson? @relation(fields: [keyPersonId], references: [id], onDelete: SetNull)
@@ -548,66 +548,66 @@ model DesignatedRepresentative {
 // ─────────────────────────────────────────────
 
 model KeyPerson {
-  id               String            @id @default(cuid())
-  kycCode          String?           @unique @map("kyc_code")
+  id                 String            @id @default(cuid())
+  kycCode            String?           @unique @map("kyc_code")
   /// Client who created this KYC (portal); distinct from company-linked key persons
-  submittedByUserId String?
-  titlePrefix      String?
-  firstName        String?
-  lastName         String?
-  otherName        String?
-  nameEn           String
-  nameZh           String?
-  idType           String?
-  idNumber         String?
-  placeOfIssue     String?
-  placeOfBirth     String?
-  idExpiryDate     DateTime?
-  dateOfBirth      DateTime?
-  nationality      String?
-  homeAddress      String?
-  contactAddress   String?
-  homePhone        String?
-  workPhone        String?
-  mobile           String?
-  wechat           String?
-  email            String?
-  isUsCitizen      Boolean?
-  isPep            Boolean?
-  emergencyContact String?
-  employmentStatus EmploymentStatus?
-  employerName     String?
-  employerAddress  String?
-  businessNatures  String[]
-  position         String?
-  workingYears     Int?
-  sourceOfFunds    String?
-  sourcesOfWealth  String[]
-  annualIncome     String?
-  netAssetValue    String?
-  assetItems       String[]
-  declarationSigned Boolean          @default(false)
-  signatureName    String?
-  declarationDate  DateTime?
-  kycStatus        KYCStatus         @default(DRAFT)
-  kycApprovedById  String?
-  kycApprovedAt    DateTime?
-  kycExpiryDate    DateTime?
+  submittedByUserId  String?
+  titlePrefix        String?
+  firstName          String?
+  lastName           String?
+  otherName          String?
+  nameEn             String
+  nameZh             String?
+  idType             String?
+  idNumber           String?
+  placeOfIssue       String?
+  placeOfBirth       String?
+  idExpiryDate       DateTime?
+  dateOfBirth        DateTime?
+  nationality        String?
+  homeAddress        String?
+  contactAddress     String?
+  homePhone          String?
+  workPhone          String?
+  mobile             String?
+  wechat             String?
+  email              String?
+  isUsCitizen        Boolean?
+  isPep              Boolean?
+  emergencyContact   String?
+  employmentStatus   EmploymentStatus?
+  employerName       String?
+  employerAddress    String?
+  businessNatures    String[]
+  position           String?
+  workingYears       Int?
+  sourceOfFunds      String?
+  sourcesOfWealth    String[]
+  annualIncome       String?
+  netAssetValue      String?
+  assetItems         String[]
+  declarationSigned  Boolean           @default(false)
+  signatureName      String?
+  declarationDate    DateTime?
+  kycStatus          KYCStatus         @default(DRAFT)
+  kycApprovedById    String?
+  kycApprovedAt      DateTime?
+  kycExpiryDate      DateTime?
   kycRejectionReason String?
-  amlLastChecked   DateTime?
-  amlRiskLevel     RiskLevel?
-  amlAlert         Boolean           @default(false)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  amlLastChecked     DateTime?
+  amlRiskLevel       RiskLevel?
+  amlAlert           Boolean           @default(false)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
-  submittedByUser User?              @relation("ClientKycSubmissions", fields: [submittedByUserId], references: [id])
-  kycApprovedBy User?              @relation("KYCReviewer", fields: [kycApprovedById], references: [id])
-  kycDocuments  KYCDocument[]
-  companyLinks  CompanyKeyPerson[]
-  invoices      Invoice[]
-  amlChecks     AMLCheck[]         @relation("KeyPersonAMLCheck")
-  directors     Director[]
-  members       Member[]
+  submittedByUser        User?                   @relation("ClientKycSubmissions", fields: [submittedByUserId], references: [id])
+  kycApprovedBy          User?                   @relation("KYCReviewer", fields: [kycApprovedById], references: [id])
+  kycDocuments           KYCDocument[]
+  companyLinks           CompanyKeyPerson[]
+  invoices               Invoice[]
+  amlChecks              AMLCheck[]              @relation("KeyPersonAMLCheck")
+  directors              Director[]
+  members                Member[]
   significantControllers SignificantController[]
 
   @@index([submittedByUserId])
@@ -615,16 +615,16 @@ model KeyPerson {
 }
 
 model KYCDocument {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   keyPersonId     String
   documentType    String
   fileName        String
   storageKey      String
   mimeType        String
   fileSize        Int
-  status          String   @default("PENDING")
+  status          String    @default("PENDING")
   rejectionReason String?
-  uploadedAt      DateTime @default(now())
+  uploadedAt      DateTime  @default(now())
   verifiedAt      DateTime?
 
   keyPerson KeyPerson @relation(fields: [keyPersonId], references: [id], onDelete: Cascade)
@@ -651,28 +651,28 @@ model CompanyKeyPerson {
 // ─────────────────────────────────────────────
 
 model Document {
-  id            String       @id @default(cuid())
-  companyId     String?
-  documentType  DocumentType
-  name          String
-  storageKey    String
-  mimeType      String
-  fileSize      Int
-  uploadedById  String
-  fileCaseId    String?
-  caseFileRole  String?
+  id                 String       @id @default(cuid())
+  companyId          String?
+  documentType       DocumentType
+  name               String
+  storageKey         String
+  mimeType           String
+  fileSize           Int
+  uploadedById       String
+  fileCaseId         String?
+  caseFileRole       String?
   customDocumentType String?
-  effectiveDate DateTime?
-  submissionDate DateTime?
-  expiryDate    DateTime?
-  version       Int          @default(1)
-  notes         String?
-  deletedAt     DateTime?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  effectiveDate      DateTime?
+  submissionDate     DateTime?
+  expiryDate         DateTime?
+  version            Int          @default(1)
+  notes              String?
+  deletedAt          DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 
-  company    Company? @relation(fields: [companyId], references: [id])
-  uploadedBy User     @relation(fields: [uploadedById], references: [id])
+  company    Company?         @relation(fields: [companyId], references: [id])
+  uploadedBy User             @relation(fields: [uploadedById], references: [id])
   fileCase   CompanyFileCase? @relation(fields: [fileCaseId], references: [id], onDelete: SetNull)
 
   shareholderChangeDocs ShareholderChangeDocument[]
@@ -691,7 +691,7 @@ model CompanyFileCase {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   documents Document[]
 
   @@index([companyId])
@@ -791,9 +791,9 @@ model AMLAlert {
 // ─────────────────────────────────────────────
 
 model DueDiligenceReport {
-  id                 String            @id @default(cuid())
+  id                 String             @id @default(cuid())
   companyId          String
-  reportDate         DateTime          @default(now())
+  reportDate         DateTime           @default(now())
   overallRiskLevel   RiskLevel?
   recommendation     DDRRecommendation?
   recommendationNote String?
@@ -804,8 +804,8 @@ model DueDiligenceReport {
   approvedById       String?
   approvedAt         DateTime?
   storageKey         String?
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
   company         Company                @relation(fields: [companyId], references: [id])
   riskAssessments RiskAssessmentAnswer[]
@@ -854,8 +854,8 @@ model ShareholderChange {
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
 
-  company     Company   @relation(fields: [companyId], references: [id])
-  processedBy User?     @relation(fields: [processedById], references: [id])
+  company     Company                     @relation(fields: [companyId], references: [id])
+  processedBy User?                       @relation(fields: [processedById], references: [id])
   documents   ShareholderChangeDocument[]
 
   @@map("shareholder_changes")
@@ -887,8 +887,8 @@ model AddressChange {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
-  company     Company @relation(fields: [companyId], references: [id])
-  processedBy User?   @relation(fields: [processedById], references: [id])
+  company     Company                 @relation(fields: [companyId], references: [id])
+  processedBy User?                   @relation(fields: [processedById], references: [id])
   documents   AddressChangeDocument[]
 
   @@map("address_changes")
@@ -923,8 +923,8 @@ model AnnualFiling {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
-  company     Company @relation(fields: [companyId], references: [id])
-  processedBy User?   @relation(fields: [processedById], references: [id])
+  company     Company                @relation(fields: [companyId], references: [id])
+  processedBy User?                  @relation(fields: [processedById], references: [id])
   documents   AnnualFilingDocument[]
 
   @@map("annual_filings")
@@ -967,26 +967,26 @@ model ServiceOrder {
 // ─────────────────────────────────────────────
 
 model Invoice {
-  id            String        @id @default(cuid())
-  invoiceNumber String        @unique
+  id            String              @id @default(cuid())
+  invoiceNumber String              @unique
   customerType  InvoiceCustomerType @default(COMPANY)
   companyId     String?
   keyPersonId   String?
-  status        InvoiceStatus @default(DRAFT)
+  status        InvoiceStatus       @default(DRAFT)
   issueDate     DateTime
   dueDate       DateTime?
-  currency      String        @default("HKD")
+  currency      String              @default("HKD")
   billToName    String
   billToAddress String?
   billToEmail   String?
-  subtotal      Decimal       @db.Decimal(18, 2)
-  taxRate       Decimal       @default(0) @db.Decimal(5, 4)
-  taxAmount     Decimal       @default(0) @db.Decimal(18, 2)
-  total         Decimal       @db.Decimal(18, 2)
+  subtotal      Decimal             @db.Decimal(18, 2)
+  taxRate       Decimal             @default(0) @db.Decimal(5, 4)
+  taxAmount     Decimal             @default(0) @db.Decimal(18, 2)
+  total         Decimal             @db.Decimal(18, 2)
   notes         String?
   createdById   String
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
 
   company   Company?          @relation(fields: [companyId], references: [id], onDelete: Restrict)
   keyPerson KeyPerson?        @relation(fields: [keyPersonId], references: [id], onDelete: Restrict)
@@ -1092,7 +1092,7 @@ model SfsOrder {
 
   // Linked user
   userId String?
-  user   User?  @relation(fields: [userId], references: [id])
+  user   User?   @relation(fields: [userId], references: [id])
 
   // Linked SFS customer profile (may be a registered account or a manual customer)
   customerId String?
@@ -1165,8 +1165,8 @@ model SfsCustomer {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  user      User? @relation("SfsCustomerUser", fields: [userId], references: [id], onDelete: SetNull)
-  createdBy User? @relation("SfsCustomerCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  user      User?                 @relation("SfsCustomerUser", fields: [userId], references: [id], onDelete: SetNull)
+  createdBy User?                 @relation("SfsCustomerCreator", fields: [createdById], references: [id], onDelete: SetNull)
   orders    SfsOrder[]
   contracts SfsCustomerContract[]
 
@@ -1196,7 +1196,7 @@ model SfsCustomerContract {
 model SfsOrderStep {
   id         String   @id @default(cuid())
   orderId    String
-  phase      String   // CHEM_TRANSFORM | CVD | CRAFTING
+  phase      String // CHEM_TRANSFORM | CVD | CRAFTING
   stepNumber Int
   recordedAt DateTime
   particular String
@@ -1294,8 +1294,8 @@ model CosTableProductCategory {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  parent   CosTableProductCategory?  @relation("ProductCategoryHierarchy", fields: [parentCategoryId], references: [id], onDelete: SetNull)
-  children CosTableProductCategory[] @relation("ProductCategoryHierarchy")
+  parent          CosTableProductCategory?  @relation("ProductCategoryHierarchy", fields: [parentCategoryId], references: [id], onDelete: SetNull)
+  children        CosTableProductCategory[] @relation("ProductCategoryHierarchy")
   factoryProducts CosTableFactoryProduct[]
 
   @@index([parentCategoryId])
@@ -1304,27 +1304,27 @@ model CosTableProductCategory {
 }
 
 model CosTableProduct {
-  id        String   @id @default(cuid())
-  pid       String   @unique
-  type      String
-  title     String
-  teaser    String   @default("")
-  detail    String   @db.Text
-  imagePath String
-  irCuringTime        Int?     @map("ir_curing_time")
-  irCuringTemp        Int?     @map("ir_curing_temp")
-  uvCuringIntensity   Decimal? @db.Decimal(8, 2) @map("uv_curing_intensity")
-  uvCuringUnit        String?  @map("uv_curing_unit")
-  viscosity           Decimal? @db.Decimal(10, 3) @map("viscosity")
-  viscosityUnit       String?  @map("viscosity_unit")
-  mixingRatio         String?  @map("mixing_ratio")
-  compatibleProducts  String?  @map("compatible_products")
-  requiresCompatibility Boolean @default(false) @map("requires_compatibility")
-  sortOrder Int      @default(0)
-  isFeatured Boolean @default(false)
-  isVisible  Boolean @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  pid                   String   @unique
+  type                  String
+  title                 String
+  teaser                String   @default("")
+  detail                String   @db.Text
+  imagePath             String
+  irCuringTime          Int?     @map("ir_curing_time")
+  irCuringTemp          Int?     @map("ir_curing_temp")
+  uvCuringIntensity     Decimal? @map("uv_curing_intensity") @db.Decimal(8, 2)
+  uvCuringUnit          String?  @map("uv_curing_unit")
+  viscosity             Decimal? @map("viscosity") @db.Decimal(10, 3)
+  viscosityUnit         String?  @map("viscosity_unit")
+  mixingRatio           String?  @map("mixing_ratio")
+  compatibleProducts    String?  @map("compatible_products")
+  requiresCompatibility Boolean  @default(false) @map("requires_compatibility")
+  sortOrder             Int      @default(0)
+  isFeatured            Boolean  @default(false)
+  isVisible             Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   @@index([type, sortOrder])
   @@index([isFeatured, sortOrder])
@@ -1337,28 +1337,28 @@ model CosTableProduct {
 // ─────────────────────────────────────────────
 
 model CosTableRawMaterial {
-  id        String   @id @default(cuid())
-  category  String
-  attributeCode String
+  id             String @id @default(cuid())
+  category       String
+  attributeCode  String
   productionCode String @unique
-  huaxingCode String @default("")
-  name      String
+  huaxingCode    String @default("")
+  name           String
 
-  primarySupplierCode    String  @default("")
-  primarySupplierName    String  @default("")
+  primarySupplierCode    String   @default("")
+  primarySupplierName    String   @default("")
   primaryPackageKg       Decimal? @db.Decimal(12, 2)
   primaryPricePerKg      Decimal? @db.Decimal(12, 4)
-  primaryTaxIncluded     String  @default("")
-  primaryFreightIncluded String  @default("")
-  primaryNotes           String  @default("")
+  primaryTaxIncluded     String   @default("")
+  primaryFreightIncluded String   @default("")
+  primaryNotes           String   @default("")
 
-  secondarySupplierCode    String  @default("")
-  secondarySupplierName    String  @default("")
+  secondarySupplierCode    String   @default("")
+  secondarySupplierName    String   @default("")
   secondaryPackageKg       Decimal? @db.Decimal(12, 2)
   secondaryPricePerKg      Decimal? @db.Decimal(12, 4)
-  secondaryTaxIncluded     String  @default("")
-  secondaryFreightIncluded String  @default("")
-  secondaryNotes           String  @default("")
+  secondaryTaxIncluded     String   @default("")
+  secondaryFreightIncluded String   @default("")
+  secondaryNotes           String   @default("")
 
   // TDS (Technical Data Sheet) and MSDS (Material Safety Data Sheet) file keys
   tdsFileKey  String? @map("tds_file_key")
@@ -1367,14 +1367,14 @@ model CosTableRawMaterial {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  recipeItems          CosTableRecipeItem[]
+  colorFormulaItems    CosTableColorFormulaItem[]
+  productionOrderItems CosTableProductionOrderItem[]
+
   @@index([category])
   @@index([attributeCode])
   @@index([name])
   @@map("cos_table_raw_materials")
-
-  recipeItems CosTableRecipeItem[]
-  colorFormulaItems CosTableColorFormulaItem[]
-  productionOrderItems CosTableProductionOrderItem[]
 }
 
 // ─────────────────────────────────────────────
@@ -1396,61 +1396,61 @@ model CosTableRecipeCategory {
 }
 
 model CosTableRecipe {
-  id            String   @id @default(cuid())
-  categoryId    String
-  code          String   @unique
-  name          String
-  batchQuantity Decimal  @default(100) @db.Decimal(12, 3)
-  unitCost      Decimal? @db.Decimal(12, 4)
-  viscosity     String?
-  viscosityUnit String?  @map("viscosity_unit")
-  notes         String   @default("")
-  productionSpeedRequirements String @default("") @map("production_speed_requirements")
-  productionTimeRequirements  String @default("") @map("production_time_requirements")
-  packagingRequirements String @default("") @map("packaging_requirements")
-  productionNotes       String @default("") @map("production_notes")
-  qcTestStandard        String   @default("") @map("qc_test_standard")
-  qcTestItems           String[] @default([]) @map("qc_test_items")
-  qcResult              String   @default("") @map("qc_result")
+  id                          String   @id @default(cuid())
+  categoryId                  String
+  code                        String   @unique
+  name                        String
+  batchQuantity               Decimal  @default(100) @db.Decimal(12, 3)
+  unitCost                    Decimal? @db.Decimal(12, 4)
+  viscosity                   String?
+  viscosityUnit               String?  @map("viscosity_unit")
+  notes                       String   @default("")
+  productionSpeedRequirements String   @default("") @map("production_speed_requirements")
+  productionTimeRequirements  String   @default("") @map("production_time_requirements")
+  packagingRequirements       String   @default("") @map("packaging_requirements")
+  productionNotes             String   @default("") @map("production_notes")
+  qcTestStandard              String   @default("") @map("qc_test_standard")
+  qcTestItems                 String[] @default([]) @map("qc_test_items")
+  qcResult                    String   @default("") @map("qc_result")
   /// Cached: true when linked to a factory product directly or as a nested component recipe.
-  formulaIsUsed         Boolean  @default(false) @map("formula_is_used")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  formulaIsUsed               Boolean  @default(false) @map("formula_is_used")
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
 
-  category CosTableRecipeCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  items    CosTableRecipeItem[]
-  componentInItems CosTableRecipeItem[] @relation("RecipeItemComponent")
-  productLinks CosTableProductRecipe[]
-  currentForProducts CosTableFactoryProduct[] @relation("CurrentFactoryRecipe")
-  productionOrders CosTableProductionOrder[]
+  category                        CosTableRecipeCategory        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  items                           CosTableRecipeItem[]
+  componentInItems                CosTableRecipeItem[]          @relation("RecipeItemComponent")
+  productLinks                    CosTableProductRecipe[]
+  currentForProducts              CosTableFactoryProduct[]      @relation("CurrentFactoryRecipe")
+  productionOrders                CosTableProductionOrder[]
   componentInProductionOrderItems CosTableProductionOrderItem[] @relation("ProductionOrderItemComponentRecipe")
-  sourceColorFormulas CosTableColorFormula[]
+  sourceColorFormulas             CosTableColorFormula[]
 
   @@index([categoryId, name])
   @@map("cos_table_recipes")
 }
 
 model CosTableRecipeItem {
-  id                     String   @id @default(cuid())
-  recipeId               String
-  rawMaterialId          String?
-  componentRecipeId      String?
-  productSemifinishedId  String?
-  factoryProductId       String?
-  sortOrder              Int      @default(0)
-  quantity               Decimal  @db.Decimal(12, 3)
-  unitPrice              Decimal? @db.Decimal(12, 4)
-  amount                 Decimal? @db.Decimal(14, 4)
-  percentage             Decimal? @db.Decimal(8, 4)
-  notes                  String   @default("")
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  recipeId              String
+  rawMaterialId         String?
+  componentRecipeId     String?
+  productSemifinishedId String?
+  factoryProductId      String?
+  sortOrder             Int      @default(0)
+  quantity              Decimal  @db.Decimal(12, 3)
+  unitPrice             Decimal? @db.Decimal(12, 4)
+  amount                Decimal? @db.Decimal(14, 4)
+  percentage            Decimal? @db.Decimal(8, 4)
+  notes                 String   @default("")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
-  recipe              CosTableRecipe              @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  rawMaterial         CosTableRawMaterial?        @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
-  componentRecipe     CosTableRecipe?             @relation("RecipeItemComponent", fields: [componentRecipeId], references: [id], onDelete: Restrict)
+  recipe              CosTableRecipe               @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  rawMaterial         CosTableRawMaterial?         @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  componentRecipe     CosTableRecipe?              @relation("RecipeItemComponent", fields: [componentRecipeId], references: [id], onDelete: Restrict)
   productSemifinished CosTableProductSemifinished? @relation(fields: [productSemifinishedId], references: [id], onDelete: Restrict)
-  factoryProduct      CosTableFactoryProduct?     @relation(fields: [factoryProductId], references: [id], onDelete: Restrict)
+  factoryProduct      CosTableFactoryProduct?      @relation(fields: [factoryProductId], references: [id], onDelete: Restrict)
 
   @@index([recipeId, sortOrder])
   @@index([componentRecipeId])
@@ -1476,7 +1476,7 @@ model CosTableProductSemifinished {
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
-  sourceProductionOrder CosTableProductionOrder? @relation(fields: [sourceProductionOrderId], references: [id], onDelete: SetNull)
+  sourceProductionOrder CosTableProductionOrder?      @relation(fields: [sourceProductionOrderId], references: [id], onDelete: SetNull)
   recipeItems           CosTableRecipeItem[]
   productionOrderItems  CosTableProductionOrderItem[]
   colorFormulaItems     CosTableColorFormulaItem[]
@@ -1499,19 +1499,19 @@ model CosTableFactoryProduct {
   unit            String   @default("kg")
   unitPrice       Decimal? @db.Decimal(12, 4)
   notes           String   @default("")
-  viscosity           String?  @map("viscosity")
-  viscosityUnit       String?  @map("viscosity_unit")
+  viscosity       String?  @map("viscosity")
+  viscosityUnit   String?  @map("viscosity_unit")
   currentRecipeId String?
   sortOrder       Int      @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  category      CosTableProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  currentRecipe CosTableRecipe? @relation("CurrentFactoryRecipe", fields: [currentRecipeId], references: [id], onDelete: SetNull)
-  recipeLinks   CosTableProductRecipe[]
+  category         CosTableProductCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  currentRecipe    CosTableRecipe?           @relation("CurrentFactoryRecipe", fields: [currentRecipeId], references: [id], onDelete: SetNull)
+  recipeLinks      CosTableProductRecipe[]
   productionOrders CosTableProductionOrder[]
-  colorFormulas CosTableColorFormula[]
-  recipeItems   CosTableRecipeItem[]
+  colorFormulas    CosTableColorFormula[]
+  recipeItems      CosTableRecipeItem[]
 
   @@index([name])
   @@index([sortOrder])
@@ -1580,10 +1580,10 @@ model CosTableColorFormula {
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
 
-  subcategory    CosTableColorFormulaSubcategory? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
-  factoryProduct CosTableFactoryProduct?        @relation(fields: [factoryProductId], references: [id], onDelete: SetNull)
-  sourceRecipe   CosTableRecipe?                @relation(fields: [sourceRecipeId], references: [id], onDelete: SetNull)
-  items          CosTableColorFormulaItem[]
+  subcategory      CosTableColorFormulaSubcategory? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+  factoryProduct   CosTableFactoryProduct?          @relation(fields: [factoryProductId], references: [id], onDelete: SetNull)
+  sourceRecipe     CosTableRecipe?                  @relation(fields: [sourceRecipeId], references: [id], onDelete: SetNull)
+  items            CosTableColorFormulaItem[]
   sampleOrderLines CosSampleOrderColorFormula[]
 
   @@index([category, updatedAt])
@@ -1593,22 +1593,22 @@ model CosTableColorFormula {
 }
 
 model CosTableColorFormulaItem {
-  id                     String   @id @default(cuid())
-  formulaId              String
-  rawMaterialId          String?
-  productSemifinishedId  String?
-  manualProductionCode   String   @default("") @map("manual_production_code")
-  manualName             String   @default("") @map("manual_name")
-  manualAttributeCode    String   @default("") @map("manual_attribute_code")
-  sortOrder              Int      @default(0)
-  quantity               Decimal  @db.Decimal(12, 3)
-  actualWeight           Decimal? @db.Decimal(12, 3)
-  unitPrice              Decimal? @db.Decimal(12, 4)
-  amount                 Decimal? @db.Decimal(14, 4)
-  percentage             Decimal? @db.Decimal(8, 4)
-  notes                  String   @default("")
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  formulaId             String
+  rawMaterialId         String?
+  productSemifinishedId String?
+  manualProductionCode  String   @default("") @map("manual_production_code")
+  manualName            String   @default("") @map("manual_name")
+  manualAttributeCode   String   @default("") @map("manual_attribute_code")
+  sortOrder             Int      @default(0)
+  quantity              Decimal  @db.Decimal(12, 3)
+  actualWeight          Decimal? @db.Decimal(12, 3)
+  unitPrice             Decimal? @db.Decimal(12, 4)
+  amount                Decimal? @db.Decimal(14, 4)
+  percentage            Decimal? @db.Decimal(8, 4)
+  notes                 String   @default("")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   formula             CosTableColorFormula         @relation(fields: [formulaId], references: [id], onDelete: Cascade)
   rawMaterial         CosTableRawMaterial?         @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
@@ -1625,29 +1625,29 @@ model CosTableColorFormulaItem {
 // ─────────────────────────────────────────────
 
 model CosTableProductionOrder {
-  id               String    @id @default(cuid())
-  code             String    @unique
-  factoryProductId String
-  recipeId         String
-  productionEmployeeId String?
-  totalWeight      Decimal   @db.Decimal(12, 3)
-  batchNo          String    @default("")
-  startedAt        DateTime?
-  finishedAt       DateTime?
-  productionNotes  String    @default("")
-  qualityNotes     String    @default("")
-  packagingNotes   String    @default("")
-  productionRequirements  String @default("") @map("production_requirements")
-  qualityCheckRequirements String @default("") @map("quality_check_requirements")
-  packagingRequirements   String @default("") @map("packaging_requirements")
-  status           String    @default("draft")
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                       String    @id @default(cuid())
+  code                     String    @unique
+  factoryProductId         String
+  recipeId                 String
+  productionEmployeeId     String?
+  totalWeight              Decimal   @db.Decimal(12, 3)
+  batchNo                  String    @default("")
+  startedAt                DateTime?
+  finishedAt               DateTime?
+  productionNotes          String    @default("")
+  qualityNotes             String    @default("")
+  packagingNotes           String    @default("")
+  productionRequirements   String    @default("") @map("production_requirements")
+  qualityCheckRequirements String    @default("") @map("quality_check_requirements")
+  packagingRequirements    String    @default("") @map("packaging_requirements")
+  status                   String    @default("draft")
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
-  factoryProduct CosTableFactoryProduct @relation(fields: [factoryProductId], references: [id], onDelete: Restrict)
-  recipe         CosTableRecipe         @relation(fields: [recipeId], references: [id], onDelete: Restrict)
-  productionEmployee CosEmployee?       @relation(fields: [productionEmployeeId], references: [id], onDelete: SetNull)
-  items          CosTableProductionOrderItem[]
+  factoryProduct       CosTableFactoryProduct        @relation(fields: [factoryProductId], references: [id], onDelete: Restrict)
+  recipe               CosTableRecipe                @relation(fields: [recipeId], references: [id], onDelete: Restrict)
+  productionEmployee   CosEmployee?                  @relation(fields: [productionEmployeeId], references: [id], onDelete: SetNull)
+  items                CosTableProductionOrderItem[]
   semifinishedProducts CosTableProductSemifinished[]
 
   @@index([factoryProductId])
@@ -1688,38 +1688,38 @@ model CosTableProductionOrderItem {
 // ─────────────────────────────────────────────
 
 enum AccountType {
-  ASSET                  // 流动资产
-  NON_CURRENT_ASSET      // 长期资产
-  LIABILITY              // 流动负债
-  NON_CURRENT_LIABILITY  // 长期负债
-  EQUITY                 // 权益
-  REVENUE                // 收入
-  EXPENSE                // 费用
-  CGS                    // 销售成本 Cost of Goods Sold
-  CURRENT_ACCOUNT        // 往来账 C/A Account (customer/supplier)
+  ASSET // 流动资产
+  NON_CURRENT_ASSET // 长期资产
+  LIABILITY // 流动负债
+  NON_CURRENT_LIABILITY // 长期负债
+  EQUITY // 权益
+  REVENUE // 收入
+  EXPENSE // 费用
+  CGS // 销售成本 Cost of Goods Sold
+  CURRENT_ACCOUNT // 往来账 C/A Account (customer/supplier)
 }
 
 enum JournalStatus {
-  DRAFT    // 草稿
-  POSTED   // 已过账
+  DRAFT // 草稿
+  POSTED // 已过账
   CANCELLED // 已取消
 }
 
 model CosTableAccount {
-  id            String      @id @default(cuid())
-  code          String      @unique // 科目编号：1001, 2001 等
-  name          String      // 科目名称
-  type          AccountType
-  parentId      String?     // 父科目（支持层级结构）
-  level         Int         @default(1) // 层级深度
-  sortOrder     Int         @default(0)
-  isSystem      Boolean     @default(false) // 系统科目锁定
-  notes         String      @default("")
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id        String      @id @default(cuid())
+  code      String      @unique // 科目编号：1001, 2001 等
+  name      String // 科目名称
+  type      AccountType
+  parentId  String? // 父科目（支持层级结构）
+  level     Int         @default(1) // 层级深度
+  sortOrder Int         @default(0)
+  isSystem  Boolean     @default(false) // 系统科目锁定
+  notes     String      @default("")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 
-  parent        CosTableAccount?      @relation("AccountHierarchy", fields: [parentId], references: [id])
-  children      CosTableAccount[]     @relation("AccountHierarchy")
+  parent        CosTableAccount?         @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children      CosTableAccount[]        @relation("AccountHierarchy")
   journalLines  CosTableJournalLine[]
   ledgerEntries CosTableLedger[]
   accountBalls  CosTableAccountBalance[]
@@ -1729,18 +1729,18 @@ model CosTableAccount {
 }
 
 model CosTableJournalEntry {
-  id            String      @id @default(cuid())
-  voucherNo     String      @unique // 凭证号
-  entryDate     DateTime    // 入账日期
-  description   String      // 摘要
-  period        String      // YYYY-MM 会计期间
-  status        JournalStatus @default(DRAFT)
-  attachments   String[]    // 附件 URL 数组
-  createdById   String?
-  postedAt      DateTime?
-  reversedAt    DateTime?
+  id          String        @id @default(cuid())
+  voucherNo   String        @unique // 凭证号
+  entryDate   DateTime // 入账日期
+  description String // 摘要
+  period      String // YYYY-MM 会计期间
+  status      JournalStatus @default(DRAFT)
+  attachments String[] // 附件 URL 数组
+  createdById String?
+  postedAt    DateTime?
+  reversedAt  DateTime?
 
-  createdBy     User?           @relation(fields: [createdById], references: [id])
+  createdBy     User?                 @relation(fields: [createdById], references: [id])
   lines         CosTableJournalLine[]
   ledgerEntries CosTableLedger[]
 
@@ -1750,17 +1750,17 @@ model CosTableJournalEntry {
 }
 
 model CosTableJournalLine {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   entryId     String
   accountId   String
-  lineNum     Int      @default(0) // 显示顺序
-  description String   // 行描述
-  debit       Decimal  @default(0.0) @db.Decimal(18, 4)
-  credit      Decimal  @default(0.0) @db.Decimal(18, 4)
-  notes       String   @default("")
+  lineNum     Int     @default(0) // 显示顺序
+  description String // 行描述
+  debit       Decimal @default(0.0) @db.Decimal(18, 4)
+  credit      Decimal @default(0.0) @db.Decimal(18, 4)
+  notes       String  @default("")
 
-  entry         CosTableJournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
-  account       CosTableAccount      @relation(fields: [accountId], references: [id])
+  entry   CosTableJournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  account CosTableAccount      @relation(fields: [accountId], references: [id])
 
   @@index([entryId, lineNum])
   @@index([accountId])
@@ -1770,19 +1770,19 @@ model CosTableJournalLine {
 model CosTableLedger {
   id          String   @id @default(cuid())
   accountId   String
-  entryId     String?  // 过账时关联 EntryID
+  entryId     String? // 过账时关联 EntryID
   date        DateTime
-  voucherNo   String?  // 凭证号引用
+  voucherNo   String? // 凭证号引用
   description String
   debit       Decimal  @default(0.0) @db.Decimal(18, 4)
   credit      Decimal  @default(0.0) @db.Decimal(18, 4)
   balance     Decimal  @default(0.0) @db.Decimal(18, 4) // 累计余额
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  account     CosTableAccount        @relation(fields: [accountId], references: [id])
-  entry       CosTableJournalEntry?  @relation(fields: [entryId], references: [id])
+  account CosTableAccount       @relation(fields: [accountId], references: [id])
+  entry   CosTableJournalEntry? @relation(fields: [entryId], references: [id])
 
   @@index([accountId, date])
   @@index([date])
@@ -1791,19 +1791,19 @@ model CosTableLedger {
 }
 
 model CosTableAccountBalance {
-  id            String   @id @default(cuid())
+  id            String  @id @default(cuid())
   accountId     String
-  period        String   // YYYY-MM
-  openingDebit  Decimal  @default(0.0) @db.Decimal(18, 4)
-  openingCredit Decimal  @default(0.0) @db.Decimal(18, 4)
-  closingDebit  Decimal  @default(0.0) @db.Decimal(18, 4)
-  closingCredit Decimal  @default(0.0) @db.Decimal(18, 4)
-  endingBalance Decimal  @default(0.0) @db.Decimal(18, 4) // 期末余额（带符号）
+  period        String // YYYY-MM
+  openingDebit  Decimal @default(0.0) @db.Decimal(18, 4)
+  openingCredit Decimal @default(0.0) @db.Decimal(18, 4)
+  closingDebit  Decimal @default(0.0) @db.Decimal(18, 4)
+  closingCredit Decimal @default(0.0) @db.Decimal(18, 4)
+  endingBalance Decimal @default(0.0) @db.Decimal(18, 4) // 期末余额（带符号）
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  account       CosTableAccount @relation(fields: [accountId], references: [id])
+  account CosTableAccount @relation(fields: [accountId], references: [id])
 
   @@unique([accountId, period])
   @@index([period])
@@ -1812,14 +1812,14 @@ model CosTableAccountBalance {
 
 model CosTableExchangeRate {
   id            String   @id @default(cuid())
-  fromCurrency  String   // HKD, USD, RMB
+  fromCurrency  String // HKD, USD, RMB
   toCurrency    String
   rate          Decimal  @db.Decimal(10, 6)
   effectiveDate DateTime
   isActive      Boolean  @default(true)
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([fromCurrency, toCurrency, effectiveDate])
   @@index([fromCurrency, toCurrency])
@@ -1832,29 +1832,29 @@ model CosTableExchangeRate {
 
 /// Process Kit - 产品配套工艺书（组合多个产品 + 使用方法）
 model CosProcessKit {
-  id            String           @id @default(cuid())
-  code          String           @unique
-  name          String
-  description   String?
-  materials     String[]
-  performanceStandards String[] @default([])
-  otherNote     String?
-  processDescription String?
-  processFlowNote String?
-  processFlowItems Json             @default("[]")
-  status        ProcessKitStatus @default(DRAFT)
-  createdBy     String?
-  createdByName String?
-  updatedBy     String?
-  updatedByName String?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id                   String           @id @default(cuid())
+  code                 String           @unique
+  name                 String
+  description          String?
+  materials            String[]
+  performanceStandards String[]         @default([])
+  otherNote            String?
+  processDescription   String?
+  processFlowNote      String?
+  processFlowItems     Json             @default("[]")
+  status               ProcessKitStatus @default(DRAFT)
+  createdBy            String?
+  createdByName        String?
+  updatedBy            String?
+  updatedByName        String?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
 
   createdByUser User? @relation("ProcessKitCreator", fields: [createdBy], references: [id])
   updatedByUser User? @relation("ProcessKitUpdater", fields: [updatedBy], references: [id])
 
-  products CosProcessKitProduct[]
-  tests    CosProcessTest[]
+  products         CosProcessKitProduct[]
+  tests            CosProcessTest[]
   sampleOrderLines CosSampleOrderProcessKit[]
 
   @@index([status])
@@ -1863,26 +1863,26 @@ model CosProcessKit {
 
 /// Product in a Process Kit - 工艺书中的产品组合
 model CosProcessKitProduct {
-  id            String  @id @default(cuid())
-  kitId         String
-  productId     String
-  productName   String
-  sortOrder     Int     @default(0)
-  quantityRatio String?
-  usageMethod   String
+  id                  String  @id @default(cuid())
+  kitId               String
+  productId           String
+  productName         String
+  sortOrder           Int     @default(0)
+  quantityRatio       String?
+  usageMethod         String
   hardenerProductId   String?
   hardenerProductName String?
   hardenerRatio       String?
   thinnerProductId    String?
   thinnerProductName  String?
   thinnerRatio        String?
-  irMinutes     String?
-  irTemperature String?
-  uvEnergy      String?
-  filmThickness String?
-  sprayViscosity String?
-  notes         String?
-  processBlocks Json    @default("[]")
+  irMinutes           String?
+  irTemperature       String?
+  uvEnergy            String?
+  filmThickness       String?
+  sprayViscosity      String?
+  notes               String?
+  processBlocks       Json    @default("[]")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1922,16 +1922,16 @@ model CosProcessTest {
 // ─────────────────────────────────────────────
 
 model CosCustomer {
-  id          String   @id @default(cuid())
-  code        String   @unique
-  name        String
-  userId      String?  @unique
-  phone                    String?
-  address                  String?
+  id                        String   @id @default(cuid())
+  code                      String   @unique
+  name                      String
+  userId                    String?  @unique
+  phone                     String?
+  address                   String?
   productionEquipmentParams String?
-  createdById              String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdById               String?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
 
   user         User?            @relation("CosCustomerUser", fields: [userId], references: [id], onDelete: SetNull)
   createdBy    User?            @relation("CosCustomerCreator", fields: [createdById], references: [id], onDelete: SetNull)
@@ -1948,15 +1948,15 @@ model CosCustomer {
 // ─────────────────────────────────────────────
 
 enum CosEmployeeType {
-  INTERNAL   // 内务人员
-  SALES      // 销售人员
+  INTERNAL // 内务人员
+  SALES // 销售人员
   PRODUCTION // 生产人员
-  TECHNICAL  // 技术人员
+  TECHNICAL // 技术人员
 }
 
 enum CosEmployeeFileType {
   LABOR_CONTRACT // 劳动合同
-  RESUME         // 简历
+  RESUME // 简历
 }
 
 model CosEmployee {
@@ -1975,7 +1975,7 @@ model CosEmployee {
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
-  createdBy        User?                      @relation("CosEmployeeCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy        User?                     @relation("CosEmployeeCreator", fields: [createdById], references: [id], onDelete: SetNull)
   files            CosEmployeeFile[]
   productionOrders CosTableProductionOrder[]
 
@@ -2015,17 +2015,21 @@ enum CosSampleOrderStatus {
 }
 
 model CosSampleOrder {
-  id                 String               @id @default(cuid())
-  code               String               @unique
-  customerId         String
-  status             CosSampleOrderStatus @default(DRAFT)
-  notes              String               @default("")
-  referenceImageUrl  String?
-  startedAt          DateTime?
-  completedAt        DateTime?
-  createdById        String?
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
+  id                        String               @id @default(cuid())
+  code                      String               @unique
+  customerId                String
+  status                    CosSampleOrderStatus @default(DRAFT)
+  substrateType             String               @default("")
+  samplePanelRequirement    String               @default("")
+  sampleOilRequirement      String               @default("")
+  specialProcessRequirement String               @default("")
+  notes                     String               @default("")
+  referenceImageUrl         String?
+  startedAt                 DateTime?
+  completedAt               DateTime?
+  createdById               String?
+  createdAt                 DateTime             @default(now())
+  updatedAt                 DateTime             @updatedAt
 
   customer      CosCustomer                  @relation(fields: [customerId], references: [id], onDelete: Restrict)
   createdBy     User?                        @relation("SampleOrderCreator", fields: [createdById], references: [id], onDelete: SetNull)
@@ -2078,27 +2082,27 @@ model CosSampleOrderColorFormula {
 // ─────────────────────────────────────────────
 
 model FinAccount {
-  id            String      @id @default(cuid())
-  code          String
-  name          String
-  type          AccountType
-  parentId      String?
-  companyId     String?
-  level         Int         @default(1)
-  sortOrder     Int         @default(0)
-  isSystem      Boolean     @default(false)
-  notes         String      @default("")
-  yearToDateAmount Decimal  @default(0.0) @db.Decimal(18, 4)
-  yearToDateDebit  Decimal  @default(0.0) @db.Decimal(18, 4)
-  yearToDateCredit Decimal  @default(0.0) @db.Decimal(18, 4)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id               String      @id @default(cuid())
+  code             String
+  name             String
+  type             AccountType
+  parentId         String?
+  companyId        String?
+  level            Int         @default(1)
+  sortOrder        Int         @default(0)
+  isSystem         Boolean     @default(false)
+  notes            String      @default("")
+  yearToDateAmount Decimal     @default(0.0) @db.Decimal(18, 4)
+  yearToDateDebit  Decimal     @default(0.0) @db.Decimal(18, 4)
+  yearToDateCredit Decimal     @default(0.0) @db.Decimal(18, 4)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
-  parent        FinAccount?      @relation("FinAccountHierarchy", fields: [parentId], references: [id])
-  children      FinAccount[]     @relation("FinAccountHierarchy")
-  company       Company?         @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  journalLines  JournalLine[]
-  ledgerEntries Ledger[]
+  parent          FinAccount?      @relation("FinAccountHierarchy", fields: [parentId], references: [id])
+  children        FinAccount[]     @relation("FinAccountHierarchy")
+  company         Company?         @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  journalLines    JournalLine[]
+  ledgerEntries   Ledger[]
   accountBalances AccountBalance[]
 
   @@unique([companyId, code])
@@ -2108,22 +2112,22 @@ model FinAccount {
 }
 
 model JournalEntry {
-  id            String        @id @default(cuid())
-  voucherNo     String        @unique
-  entryDate     DateTime
-  description   String
-  period        String
-  status        JournalStatus @default(DRAFT)
-  attachments   String[]      @default([])
-  companyId     String?
-  createdById   String?
-  postedAt      DateTime?
-  reversedAt    DateTime?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id          String        @id @default(cuid())
+  voucherNo   String        @unique
+  entryDate   DateTime
+  description String
+  period      String
+  status      JournalStatus @default(DRAFT)
+  attachments String[]      @default([])
+  companyId   String?
+  createdById String?
+  postedAt    DateTime?
+  reversedAt  DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
-  company       Company?           @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  createdBy     User?              @relation("FinancialJournalCreatedBy", fields: [createdById], references: [id])
+  company       Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  createdBy     User?         @relation("FinancialJournalCreatedBy", fields: [createdById], references: [id])
   lines         JournalLine[]
   ledgerEntries Ledger[]
 
@@ -2134,17 +2138,17 @@ model JournalEntry {
 }
 
 model JournalLine {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   entryId     String
   accountId   String
-  lineNum     Int      @default(0)
+  lineNum     Int     @default(0)
   description String
-  debit       Decimal  @default(0.0) @db.Decimal(18, 4)
-  credit      Decimal  @default(0.0) @db.Decimal(18, 4)
-  notes       String   @default("")
+  debit       Decimal @default(0.0) @db.Decimal(18, 4)
+  credit      Decimal @default(0.0) @db.Decimal(18, 4)
+  notes       String  @default("")
 
-  entry       JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
-  account     FinAccount   @relation(fields: [accountId], references: [id])
+  entry   JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  account FinAccount   @relation(fields: [accountId], references: [id])
 
   @@index([entryId, lineNum])
   @@index([accountId])
@@ -2164,9 +2168,9 @@ model Ledger {
   credit      Decimal  @default(0.0) @db.Decimal(18, 4)
   balance     Decimal  @default(0.0) @db.Decimal(18, 4)
 
-  account     FinAccount    @relation(fields: [accountId], references: [id])
-  entry       JournalEntry? @relation(fields: [entryId], references: [id])
-  company     Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  account FinAccount    @relation(fields: [accountId], references: [id])
+  entry   JournalEntry? @relation(fields: [entryId], references: [id])
+  company Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
 
   @@index([accountId, date, lineNum])
   @@index([companyId, accountId, date, lineNum])
@@ -2176,16 +2180,16 @@ model Ledger {
 }
 
 model AccountBalance {
-  id            String   @id @default(cuid())
+  id            String  @id @default(cuid())
   accountId     String
   period        String
-  openingDebit  Decimal  @default(0.0) @db.Decimal(18, 4)
-  openingCredit Decimal  @default(0.0) @db.Decimal(18, 4)
-  closingDebit  Decimal  @default(0.0) @db.Decimal(18, 4)
-  closingCredit Decimal  @default(0.0) @db.Decimal(18, 4)
-  endingBalance Decimal  @default(0.0) @db.Decimal(18, 4)
+  openingDebit  Decimal @default(0.0) @db.Decimal(18, 4)
+  openingCredit Decimal @default(0.0) @db.Decimal(18, 4)
+  closingDebit  Decimal @default(0.0) @db.Decimal(18, 4)
+  closingCredit Decimal @default(0.0) @db.Decimal(18, 4)
+  endingBalance Decimal @default(0.0) @db.Decimal(18, 4)
 
-  account       FinAccount @relation(fields: [accountId], references: [id])
+  account FinAccount @relation(fields: [accountId], references: [id])
 
   @@unique([accountId, period])
   @@index([period])
@@ -2219,16 +2223,16 @@ enum FeatureRequestStatus {
 }
 
 model FeedbackConfig {
-  id              String   @id @default("singleton") // always one row
-  provider        String   @default("anthropic")     // anthropic | deepseek | alibaba
-  model           String   @default("claude-opus-4-5")
+  id             String   @id @default("singleton") // always one row
+  provider       String   @default("anthropic") // anthropic | deepseek | alibaba
+  model          String   @default("claude-opus-4-5")
   // API keys stored in DB (overrides env vars when set)
-  anthropicKey    String   @default("")
-  deepseekKey     String   @default("")
-  alibabaKey      String   @default("")
+  anthropicKey   String   @default("")
+  deepseekKey    String   @default("")
+  alibabaKey     String   @default("")
   // Dev-tool access: SHA-256 hash of the generated bearer token
-  devtoolKeyHash  String   @default("")
-  updatedAt       DateTime @updatedAt
+  devtoolKeyHash String   @default("")
+  updatedAt      DateTime @updatedAt
 
   @@map("adv_feedback_config")
 }
@@ -2236,12 +2240,12 @@ model FeedbackConfig {
 model FeatureRequest {
   id           String               @id @default(cuid())
   number       Int                  @default(autoincrement())
-  pageUrl      String               // page where the request was submitted
+  pageUrl      String // page where the request was submitted
   pageTitle    String               @default("")
-  title        String               @default("")  // LLM-confirmed title
-  summary      String               // LLM-confirmed requirement summary
+  title        String               @default("") // LLM-confirmed title
+  summary      String // LLM-confirmed requirement summary
   priority     String               @default("medium") // low | medium | high
-  conversation Json                 // full chat history for reference
+  conversation Json // full chat history for reference
   attachments  Json                 @default("[]") // [{url, name, type}]
   status       FeatureRequestStatus @default(PENDING)
   userId       String?
@@ -2250,7 +2254,7 @@ model FeatureRequest {
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
 
-  user         User?                @relation("FeatureRequestSubmitter", fields: [userId], references: [id])
+  user User? @relation("FeatureRequestSubmitter", fields: [userId], references: [id])
 
   @@index([status, createdAt])
   @@index([userId])

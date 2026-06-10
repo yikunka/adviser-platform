@@ -8,6 +8,7 @@ import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { ArrowLeft, CheckCircle2, ChevronDown, ChevronUp, ImagePlus, PlayCircle, Plus, Printer, Save, Search, X } from 'lucide-react'
 import {
+  PROCESS_KIT_MATERIALS,
   formatProcessKitMaterialsSummary,
   formatProcessKitProductsSummary,
 } from '@/lib/cosmocoat/process-kit-materials'
@@ -60,6 +61,10 @@ type ColorFormulaLine = {
   quantityKg: string
   notes: string
 }
+
+const SUBSTRATE_OPTIONS = PROCESS_KIT_MATERIALS
+  .filter(material => material.id !== 'OTHER')
+  .map(material => material.label)
 
 const card: React.CSSProperties = {
   background: 'var(--card)',
@@ -307,6 +312,10 @@ const printLabelCell: React.CSSProperties = { ...printCell, background: '#f5f5f5
 
 type SampleOrderPrintViewProps = {
   order: SampleOrderRow
+  substrateType: string
+  samplePanelRequirement: string
+  sampleOilRequirement: string
+  specialProcessRequirement: string
   notes: string
   referenceImageUrl: string
   processKitLines: ProcessKitLine[]
@@ -315,6 +324,10 @@ type SampleOrderPrintViewProps = {
 
 function SampleOrderPrintView({
   order,
+  substrateType,
+  samplePanelRequirement,
+  sampleOilRequirement,
+  specialProcessRequirement,
   notes,
   referenceImageUrl,
   processKitLines,
@@ -367,6 +380,30 @@ function SampleOrderPrintView({
             <td style={printLabelCell}>调色配方总重</td>
             <td style={printCell}>{formatWeight(order.totalQuantityKg)} kg</td>
           </tr>
+          {substrateType.trim() && (
+            <tr>
+              <td style={printLabelCell}>素材选择</td>
+              <td colSpan={3} style={{ ...printCell, whiteSpace: 'pre-wrap' }}>{substrateType.trim()}</td>
+            </tr>
+          )}
+          {samplePanelRequirement.trim() && (
+            <tr>
+              <td style={printLabelCell}>样板要求</td>
+              <td colSpan={3} style={{ ...printCell, whiteSpace: 'pre-wrap' }}>{samplePanelRequirement.trim()}</td>
+            </tr>
+          )}
+          {sampleOilRequirement.trim() && (
+            <tr>
+              <td style={printLabelCell}>样油要求</td>
+              <td colSpan={3} style={{ ...printCell, whiteSpace: 'pre-wrap' }}>{sampleOilRequirement.trim()}</td>
+            </tr>
+          )}
+          {specialProcessRequirement.trim() && (
+            <tr>
+              <td style={printLabelCell}>特别工艺</td>
+              <td colSpan={3} style={{ ...printCell, whiteSpace: 'pre-wrap' }}>{specialProcessRequirement.trim()}</td>
+            </tr>
+          )}
           {notes.trim() && (
             <tr>
               <td style={printLabelCell}>备注</td>
@@ -604,6 +641,10 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
   const [printing, setPrinting] = useState(false)
   const [order, setOrder] = useState<SampleOrderRow | null>(null)
   const [customerId, setCustomerId] = useState('')
+  const [substrateType, setSubstrateType] = useState('')
+  const [samplePanelRequirement, setSamplePanelRequirement] = useState('')
+  const [sampleOilRequirement, setSampleOilRequirement] = useState('')
+  const [specialProcessRequirement, setSpecialProcessRequirement] = useState('')
   const [notes, setNotes] = useState('')
   const [referenceImageUrl, setReferenceImageUrl] = useState('')
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -689,6 +730,10 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
       const loaded = data.order as SampleOrderRow
       setOrder(loaded)
       setCustomerId(loaded.customer.id)
+      setSubstrateType(loaded.substrateType)
+      setSamplePanelRequirement(loaded.samplePanelRequirement)
+      setSampleOilRequirement(loaded.sampleOilRequirement)
+      setSpecialProcessRequirement(loaded.specialProcessRequirement)
       setNotes(loaded.notes)
       setReferenceImageUrl(loaded.referenceImageUrl ?? '')
       setProcessKitLines(loaded.processKits.map(line => ({
@@ -797,6 +842,10 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
     }))
     return {
       customerId,
+      substrateType,
+      samplePanelRequirement,
+      sampleOilRequirement,
+      specialProcessRequirement,
       notes,
       referenceImageUrl: referenceImageUrl.trim() || null,
       processKits,
@@ -997,6 +1046,10 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
       {!isNew && order && (
         <SampleOrderPrintView
           order={order}
+          substrateType={substrateType}
+          samplePanelRequirement={samplePanelRequirement}
+          sampleOilRequirement={sampleOilRequirement}
+          specialProcessRequirement={specialProcessRequirement}
           notes={notes}
           referenceImageUrl={referenceImageUrl}
           processKitLines={processKitLines}
@@ -1155,6 +1208,53 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
               )}
             </div>
           </div>
+        </Field>
+        <Field label="素材选择">
+          <input
+            list="sample-order-substrate-options"
+            value={substrateType}
+            disabled={isReadOnly}
+            onChange={e => setSubstrateType(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg text-sm outline-none disabled:opacity-60 max-w-md"
+            style={inputStyle()}
+            placeholder="选择或输入自定义素材"
+            autoComplete="off"
+          />
+          <datalist id="sample-order-substrate-options">
+            {SUBSTRATE_OPTIONS.map(material => (
+              <option key={material} value={material} />
+            ))}
+          </datalist>
+        </Field>
+        <Field label="样板要求">
+          <input
+            value={samplePanelRequirement}
+            disabled={isReadOnly}
+            onChange={e => setSamplePanelRequirement(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg text-sm outline-none disabled:opacity-60"
+            style={inputStyle()}
+            placeholder="例如：多少干板、干板规格等"
+          />
+        </Field>
+        <Field label="样油要求">
+          <input
+            value={sampleOilRequirement}
+            disabled={isReadOnly}
+            onChange={e => setSampleOilRequirement(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg text-sm outline-none disabled:opacity-60"
+            style={inputStyle()}
+            placeholder="记录样油相关要求"
+          />
+        </Field>
+        <Field label="特别工艺(常规不能满足)">
+          <input
+            value={specialProcessRequirement}
+            disabled={isReadOnly}
+            onChange={e => setSpecialProcessRequirement(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg text-sm outline-none disabled:opacity-60"
+            style={inputStyle()}
+            placeholder="记录超出标准工艺的定制制作要求"
+          />
         </Field>
         <Field label="备注">
           <textarea

@@ -4,7 +4,7 @@ import { logAudit } from '@/lib/audit/logger'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { journalEntryCreateSchema, journalEntryFilterSchema } from '@/lib/financial/schemas'
-import { serializeJournalEntry } from '@/lib/financial/serializers'
+import { serializeJournalEntriesWithHierarchy, serializeJournalEntryWithHierarchy, loadCompanyAccountMap } from '@/lib/financial/journal-entry-serialization'
 import { resolveJournalCompanyScope } from '@/lib/financial/company-scope'
 import {
   assertCompanyAccessible,
@@ -64,14 +64,14 @@ export async function GET(req: NextRequest) {
       company: { select: { id: true, nameEn: true, companyCode: true } },
       createdBy: { select: { id: true, nameEn: true, email: true } },
       lines: {
-        include: { account: { select: { id: true, code: true, name: true, type: true } } },
+        include: { account: { select: { id: true, code: true, name: true, type: true, level: true, parentId: true } } },
         orderBy: { lineNum: 'asc' },
       },
     },
     orderBy: [{ entryDate: 'desc' }, { voucherNo: 'desc' }],
   })
 
-  return NextResponse.json({ entries: entries.map(serializeJournalEntry) })
+  return NextResponse.json({ entries: await serializeJournalEntriesWithHierarchy(entries) })
 }
 
 export async function POST(req: NextRequest) {
@@ -133,7 +133,7 @@ export async function POST(req: NextRequest) {
           company: { select: { id: true, nameEn: true, companyCode: true } },
           createdBy: { select: { id: true, nameEn: true, email: true } },
           lines: {
-            include: { account: { select: { id: true, code: true, name: true, type: true } } },
+            include: { account: { select: { id: true, code: true, name: true, type: true, level: true, parentId: true } } },
             orderBy: { lineNum: 'asc' },
           },
         },
@@ -141,8 +141,13 @@ export async function POST(req: NextRequest) {
     })
 
     await logAudit(session.user.id, 'CREATE', 'JournalEntry', entry.id, null, entry)
+    const accountById = await loadCompanyAccountMap(companyScope.companyId)
     return NextResponse.json(
-      { entry: serializeJournalEntry(entry), message: 'Journal entry created.', toast: 'Journal entry created.' },
+      {
+        entry: serializeJournalEntryWithHierarchy(entry, accountById),
+        message: 'Journal entry created.',
+        toast: 'Journal entry created.',
+      },
       { status: 201 },
     )
   } catch (err) {

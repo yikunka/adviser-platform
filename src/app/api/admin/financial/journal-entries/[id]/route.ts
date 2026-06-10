@@ -3,20 +3,16 @@ import { Prisma } from '@prisma/client'
 import { logAudit } from '@/lib/audit/logger'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
+import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
+import { resolveJournalCompanyScope } from '@/lib/financial/company-scope'
+import {
+  journalEntryInclude,
+  loadCompanyAccountMap,
+  serializeJournalEntryWithHierarchy,
+} from '@/lib/financial/journal-entry-serialization'
 import { journalEntryUpdateSchema } from '@/lib/financial/schemas'
 import { serializeJournalEntry } from '@/lib/financial/serializers'
 import { parseYmdDate, periodFromDate, validateBalance } from '@/lib/financial/utils'
-import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
-import { resolveJournalCompanyScope } from '@/lib/financial/company-scope'
-
-const journalInclude = {
-  company: { select: { id: true, nameEn: true, companyCode: true } },
-  createdBy: { select: { id: true, nameEn: true, email: true } },
-  lines: {
-    include: { account: { select: { id: true, code: true, name: true, type: true } } },
-    orderBy: { lineNum: 'asc' as const },
-  },
-}
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
@@ -32,6 +28,14 @@ function validateJournalLines(lines: { debit: number; credit: number }[]) {
   return null
 }
 
+async function serializeEntryWithCompanyHierarchy(
+  entry: Parameters<typeof serializeJournalEntry>[0],
+) {
+  if (!entry.companyId) return serializeJournalEntry(entry)
+  const accountById = await loadCompanyAccountMap(entry.companyId)
+  return serializeJournalEntryWithHierarchy(entry, accountById)
+}
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -40,12 +44,12 @@ export async function GET(
   if (error) return error
 
   const { id } = await params
-  const entry = await prisma.journalEntry.findUnique({ where: { id }, include: journalInclude })
+  const entry = await prisma.journalEntry.findUnique({ where: { id }, include: journalEntryInclude })
   if (!entry) return apiError('Journal entry not found.', 404)
   const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
   if (!entry.companyId || !(await assertCompanyAccessible(access, entry.companyId))) return apiError('Forbidden', 403)
 
-  return NextResponse.json({ entry: serializeJournalEntry(entry) })
+  return NextResponse.json({ entry: await serializeEntryWithCompanyHierarchy(entry) })
 }
 
 export async function PATCH(
@@ -66,7 +70,7 @@ export async function PATCH(
     )
   }
 
-  const before = await prisma.journalEntry.findUnique({ where: { id }, include: journalInclude })
+  const before = await prisma.journalEntry.findUnique({ where: { id }, include: journalEntryInclude })
   if (!before) return apiError('Journal entry not found.', 404)
   if (before.status !== 'DRAFT') return apiError('Only draft journal entries can be edited.')
   const access = await resolveCompanyAccess(session.user.id, session.user.role)
@@ -126,12 +130,16 @@ export async function PATCH(
             }
           : {}),
       },
-      include: journalInclude,
+      include: journalEntryInclude,
     })
   })
 
   await logAudit(session.user.id, 'UPDATE', 'JournalEntry', id, serializeJournalEntry(before), serializeJournalEntry(entry))
-  return NextResponse.json({ entry: serializeJournalEntry(entry), message: 'Journal entry updated.', toast: 'Journal entry updated.' })
+  return NextResponse.json({
+    entry: await serializeEntryWithCompanyHierarchy(entry),
+    message: 'Journal entry updated.',
+    toast: 'Journal entry updated.',
+  })
 }
 
 export async function DELETE(
@@ -142,7 +150,7 @@ export async function DELETE(
   if (error) return error
 
   const { id } = await params
-  const before = await prisma.journalEntry.findUnique({ where: { id }, include: journalInclude })
+  const before = await prisma.journalEntry.findUnique({ where: { id }, include: journalEntryInclude })
   if (!before) return apiError('Journal entry not found.', 404)
   if (before.status === 'CANCELLED') return apiError('Journal entry is already cancelled.')
   const access = await resolveCompanyAccess(session.user.id, session.user.role)
@@ -153,10 +161,14 @@ export async function DELETE(
     return tx.journalEntry.update({
       where: { id },
       data: { status: 'CANCELLED', reversedAt: new Date() },
-      include: journalInclude,
+      include: journalEntryInclude,
     })
   })
 
   await logAudit(session.user.id, 'CANCEL', 'JournalEntry', id, serializeJournalEntry(before), serializeJournalEntry(entry))
-  return NextResponse.json({ entry: serializeJournalEntry(entry), message: 'Journal entry cancelled.', toast: 'Journal entry cancelled.' })
+  return NextResponse.json({
+    entry: await serializeEntryWithCompanyHierarchy(entry),
+    message: 'Journal entry cancelled.',
+    toast: 'Journal entry cancelled.',
+  })
 }
