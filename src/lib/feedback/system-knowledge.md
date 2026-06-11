@@ -261,7 +261,7 @@ Product formulation management.
 Custom color formulations for specific customers or products.
 - Categories shown to users: PU, 色漆, 烤漆; stored enum identifiers remain `PU`, `BAKING_PAINT`, `HT_BAKING_PAINT` (legacy `LT_BAKING_PAINT` records may still exist)
 - Scope: product-specific (linked to a factory product) or category-wide
-- Fields: formula code, name, source recipe, customer name, batch quantity (color code / target color / PANTONE preview are stored in DB but hidden from list, detail, and print UI)
+- Fields: formula code, name, source recipe, customer name, batch quantity, notes, and Pantone target color input with an approximate preview swatch on the formula form (color code / target color remain hidden from list and print UI)
 - Auto-generated formula codes use `{factoryProductCode}-{4-digit suffix}`; legacy formulas keep existing suffixes (e.g. `-0001`); newly created formulas start at `-5001` and increment within the 5001+ sequence per factory product
 - Line items: raw material library entries, Sol semifinished inventory entries, or manual blank/custom material rows, with quantity, actual weight (实投), percentage, unit price
 - List page: only the header "新建配方" button; empty state shows message only (no duplicate create button)

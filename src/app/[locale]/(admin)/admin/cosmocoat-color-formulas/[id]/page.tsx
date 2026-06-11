@@ -12,6 +12,7 @@ import { ColorFormulaCategoryFields } from '@/components/cosmocoat/ColorFormulaC
 import type { ColorFormulaFactoryProductOption } from '@/lib/cosmocoat/color-formula-factory-products'
 import { computeNextColorFormulaCodeForProduct } from '@/lib/cosmocoat/color-formula-code-sequence'
 import type { FullColorFormula } from '@/lib/cosmocoat/color-formulas'
+import { pantoneToHex } from '@/lib/cosmocoat/pantone-colors'
 import {
   computeItemAmount,
   computeItemPercentage,
@@ -97,6 +98,19 @@ function inputStyle(): React.CSSProperties {
     border: '1px solid #2A2418',
     color: 'var(--foreground)',
   }
+}
+
+function swatchTextColor(hex: string | null): string {
+  if (!hex) return 'var(--muted-foreground)'
+  const raw = hex.replace('#', '')
+  const value = raw.length === 3
+    ? raw.split('').map(char => char + char).join('')
+    : raw
+  const red = Number.parseInt(value.slice(0, 2), 16)
+  const green = Number.parseInt(value.slice(2, 4), 16)
+  const blue = Number.parseInt(value.slice(4, 6), 16)
+  const luminance = (red * 299 + green * 587 + blue * 114) / 1000
+  return luminance > 150 ? '#0A0805' : '#FFFFFF'
 }
 
 function printDialogInputStyle(): React.CSSProperties {
@@ -587,6 +601,8 @@ export default function CosmocoatColorFormulaDetailPage() {
     return categoryLabel
   }, [selectedFactoryProduct, categoryLabel])
 
+  const pantonePreviewHex = useMemo(() => pantoneToHex(targetColor), [targetColor])
+
   const activePrintKg = printTargetKg ?? batchQuantity
 
   const printItems = useMemo(() => {
@@ -851,6 +867,30 @@ export default function CosmocoatColorFormulaDetailPage() {
           <div className="space-y-1.5 sm:col-span-2">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>客户</label>
             <input value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2 lg:col-span-4">
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Pantone 颜色</label>
+            <div className="grid sm:grid-cols-[minmax(0,1fr)_7rem] gap-3">
+              <input
+                value={targetColor}
+                onChange={e => setTargetColor(e.target.value)}
+                placeholder="例如 Pantone 185 C、Cool Gray 7 C 或 #E4002B"
+                className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+                style={inputStyle()}
+              />
+              <div
+                className="rounded-lg border flex items-center justify-center text-[11px] font-medium"
+                title={pantonePreviewHex ? `Pantone 预览 ${pantonePreviewHex}` : '未匹配到 Pantone 预览色'}
+                style={{
+                  minHeight: '2.625rem',
+                  borderColor: '#2A2418',
+                  background: pantonePreviewHex ?? '#0E0E0A',
+                  color: swatchTextColor(pantonePreviewHex),
+                }}
+              >
+                {pantonePreviewHex ? pantonePreviewHex.toUpperCase() : '无预览'}
+              </div>
+            </div>
           </div>
           <div className="space-y-1.5 sm:col-span-2 lg:col-span-4">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>备注</label>
