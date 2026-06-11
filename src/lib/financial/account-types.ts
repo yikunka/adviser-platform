@@ -50,10 +50,13 @@ export function isProfitAndLossExpenseType(type: AccountType) {
 
 export function shouldIncludeProfitAndLossExpenseLine(input: {
   type: AccountType
-  hasChildren: boolean
+  level: number
+  topLevelHasChildren: boolean
   periodNet: number
 }) {
-  return isProfitAndLossExpenseType(input.type) && !input.hasChildren && input.periodNet !== 0
+  if (!isProfitAndLossExpenseType(input.type) || input.periodNet === 0) return false
+  if (input.level === 1) return !input.topLevelHasChildren
+  return input.level === 2 && input.topLevelHasChildren
 }
 
 export function isCreditNormalAccountType(type: AccountType, code?: string) {

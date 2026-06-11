@@ -398,6 +398,19 @@ export async function buildFinancialReports(
     return (childrenByParent.get(account.accountId) ?? []).length > 0
   }
 
+  function topLevelAccountHasChildren(account: InternalReportAccountRow, level1GroupId: string): boolean {
+    if (shouldConsolidateAccounts) {
+      const rawLevel1Ids = rawAccounts
+        .filter(rawAccount => rawAccount.type === account.type && rawAccount.level === 1)
+        .filter(rawAccount => rawAccount.id === level1GroupId || rawAccount.code === account.code)
+        .map(rawAccount => rawAccount.id)
+
+      return rawLevel1Ids.some(rawLevel1Id => (childrenByParent.get(rawLevel1Id) ?? []).length > 0)
+    }
+
+    return (childrenByParent.get(level1GroupId) ?? []).length > 0
+  }
+
   for (const account of accounts) {
     const openingTotals = sumMovements(openingMovements, account.sourceAccountIds)
     const periodTotals = sumMovements(periodMovements, account.sourceAccountIds)
@@ -462,9 +475,15 @@ export async function buildFinancialReports(
     }
 
     const hasChildren = accountHasChildren(account)
+    const topLevelHasChildren = topLevelAccountHasChildren(account, level1GroupId)
     const row: StatementLineRow = { ...reportRow, amount: Math.abs(periodNet) }
     if (account.type === 'REVENUE' && periodNet !== 0) revenueLines.push(row)
-    if (shouldIncludeProfitAndLossExpenseLine({ type: account.type, hasChildren, periodNet })) {
+    if (shouldIncludeProfitAndLossExpenseLine({
+      type: account.type,
+      level: account.level,
+      topLevelHasChildren,
+      periodNet,
+    })) {
       if (account.type === 'CGS') costOfSalesLines.push(row)
       else expenseLines.push(row)
     }

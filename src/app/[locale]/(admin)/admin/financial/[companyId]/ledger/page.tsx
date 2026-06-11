@@ -3,14 +3,17 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
-import { Download } from 'lucide-react'
+import { Download, ExternalLink, Search } from 'lucide-react'
+import { Link } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ACCOUNT_TYPE_OPTIONS } from '@/lib/financial/account-types'
+import type { AccountType } from '@prisma/client'
+import { ACCOUNT_TYPE_COLORS, ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_OPTIONS } from '@/lib/financial/account-types'
+import { formatAccountOptionLabel } from '@/lib/financial/account-tree'
 import { FinancialBreadcrumbs } from '@/components/admin/financial/FinancialBreadcrumbs'
 import { useFinancialCompany } from '@/components/admin/financial/FinancialCompanyContext'
 
@@ -23,6 +26,7 @@ type LedgerEntry = {
   lineNum: number
   date: string
   voucherNo: string
+  entryId: string | null
   description: string
   debit: number
   credit: number
@@ -56,16 +60,9 @@ type LedgerAccount = {
   sortOrder: number
 }
 
-const ACCOUNT_TYPE_LABELS: Record<string, string> = {
-  ASSET: '流动资产',
-  NON_CURRENT_ASSET: '长期资产',
-  LIABILITY: '流动负债',
-  NON_CURRENT_LIABILITY: '长期负债',
-  EQUITY: '权益',
-  REVENUE: '收入',
-  CGS: '销售成本',
-  EXPENSE: '费用',
-  CURRENT_ACCOUNT: '往来科目',
+function formatAccountTypeLabel(type: string) {
+  const label = ACCOUNT_TYPE_LABELS[type as AccountType]
+  return label ? `${type} ${label}` : type
 }
 
 export default function AdminFinancialLedgerPage() {
@@ -81,6 +78,8 @@ export default function AdminFinancialLedgerPage() {
   const [level1AccountId, setLevel1AccountId] = useState('ALL')
   const [level2AccountId, setLevel2AccountId] = useState('ALL')
   const [level3AccountId, setLevel3AccountId] = useState('ALL')
+  const [accountCodeSearch, setAccountCodeSearch] = useState('')
+  const [codeSearchAccountIds, setCodeSearchAccountIds] = useState<string[] | null>(null)
 
   const sortAccounts = useCallback((items: LedgerAccount[]) => (
     items.slice().sort((a, b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code, undefined, { numeric: true }))
@@ -107,6 +106,18 @@ export default function AdminFinancialLedgerPage() {
     [childAccountsByParent, level2AccountId],
   )
 
+  const collectAccountDescendantIds = useCallback((accountId: string) => {
+    const ids = new Set<string>()
+    const visit = (id: string) => {
+      ids.add(id)
+      for (const child of childAccountsByParent.get(id) ?? []) {
+        visit(child.id)
+      }
+    }
+    visit(accountId)
+    return Array.from(ids)
+  }, [childAccountsByParent])
+
   const selectedAccountIds = useMemo(() => {
     const selectedId = level3AccountId !== 'ALL'
       ? level3AccountId
@@ -116,19 +127,12 @@ export default function AdminFinancialLedgerPage() {
           ? level1AccountId
           : null
     if (!selectedId) return []
+    return collectAccountDescendantIds(selectedId)
+  }, [collectAccountDescendantIds, level1AccountId, level2AccountId, level3AccountId])
 
-    const ids = new Set<string>()
-    const visit = (accountId: string) => {
-      ids.add(accountId)
-      for (const child of childAccountsByParent.get(accountId) ?? []) {
-        visit(child.id)
-      }
-    }
-    visit(selectedId)
-    return Array.from(ids)
-  }, [childAccountsByParent, level1AccountId, level2AccountId, level3AccountId])
+  const effectiveAccountIds = codeSearchAccountIds ?? selectedAccountIds
 
-  const formatAccountOption = useCallback((account: LedgerAccount) => `${account.code} - ${account.name}`, [])
+  const formatAccountOption = useCallback((account: LedgerAccount) => formatAccountOptionLabel(account.code, account.name), [])
 
   const fetchAccounts = useCallback(async () => {
     try {
@@ -149,7 +153,7 @@ export default function AdminFinancialLedgerPage() {
       if (filterPeriod) params.append('period', filterPeriod)
       if (startDate) params.append('startDate', startDate)
       if (endDate) params.append('endDate', endDate)
-      if (selectedAccountIds.length > 0) params.append('accountIds', selectedAccountIds.join(','))
+      if (effectiveAccountIds.length > 0) params.append('accountIds', effectiveAccountIds.join(','))
       if (voucherNo) params.append('voucherNo', voucherNo)
       const res = await fetch(`/api/admin/financial/ledgers?${params}`)
       const data = await res.json()
@@ -164,7 +168,44 @@ export default function AdminFinancialLedgerPage() {
     } finally {
       setLoading(false)
     }
-  }, [company.id, endDate, filterAccountType, filterPeriod, selectedAccountIds, startDate, voucherNo])
+  }, [company.id, effectiveAccountIds, endDate, filterAccountType, filterPeriod, startDate, voucherNo])
+
+  const searchByAccountCode = useCallback(() => {
+    const code = accountCodeSearch.trim()
+    if (!code) {
+      toast.error('请输入科目号')
+      return
+    }
+
+    const matches = accounts.filter(account => account.code === code)
+    if (matches.length === 0) {
+      toast.error(`未找到科目号「${code}」`)
+      return
+    }
+    if (matches.length > 1) {
+      toast.error(`科目号「${code}」存在多个匹配，请使用级联选择器`)
+      return
+    }
+
+    const account = matches[0]
+    const ancestors: LedgerAccount[] = []
+    let current: LedgerAccount | undefined = account
+    while (current?.parentId) {
+      const parent = accounts.find(item => item.id === current?.parentId)
+      if (!parent) break
+      ancestors.unshift(parent)
+      current = parent
+    }
+
+    setLevel1AccountId(ancestors[0]?.id ?? account.id)
+    setLevel2AccountId(ancestors[1]?.id ?? (account.level === 2 ? account.id : 'ALL'))
+    setLevel3AccountId(ancestors[2]?.id ?? (account.level === 3 ? account.id : 'ALL'))
+    setCodeSearchAccountIds(collectAccountDescendantIds(account.id))
+  }, [accountCodeSearch, accounts, collectAccountDescendantIds])
+
+  function clearCodeSearchFilter() {
+    setCodeSearchAccountIds(null)
+  }
 
   useEffect(() => {
     fetchAccounts()
@@ -285,22 +326,26 @@ export default function AdminFinancialLedgerPage() {
               </Button>
             </div>
 
-            <div className="ml-auto flex flex-wrap items-end gap-3">
+            <div className="ml-auto flex flex-col items-end gap-3">
+              <div className="flex flex-wrap items-end gap-3">
               <Select
                 value={level1AccountId}
                 onValueChange={value => {
+                  clearCodeSearchFilter()
                   setLevel1AccountId(value ?? 'ALL')
                   setLevel2AccountId('ALL')
                   setLevel3AccountId('ALL')
                 }}
               >
                 <SelectTrigger className="w-[190px]" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
-                  <SelectValue placeholder="一级科目" />
+                  <SelectValue placeholder="一级科目">
+                    {selectedAccountLabel(accounts, level1AccountId, '全部一级科目')}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">全部一级科目</SelectItem>
                   {level1Accounts.map(account => (
-                    <SelectItem key={account.id} value={account.id}>
+                    <SelectItem key={account.id} value={account.id} label={formatAccountOption(account)}>
                       {formatAccountOption(account)}
                     </SelectItem>
                   ))}
@@ -309,18 +354,21 @@ export default function AdminFinancialLedgerPage() {
               <Select
                 value={level2AccountId}
                 onValueChange={value => {
+                  clearCodeSearchFilter()
                   setLevel2AccountId(value ?? 'ALL')
                   setLevel3AccountId('ALL')
                 }}
                 disabled={level1AccountId === 'ALL' || level2Accounts.length === 0}
               >
                 <SelectTrigger className="w-[190px]" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
-                  <SelectValue placeholder="二级科目" />
+                  <SelectValue placeholder="二级科目">
+                    {selectedAccountLabel(accounts, level2AccountId, '全部二级科目')}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">全部二级科目</SelectItem>
                   {level2Accounts.map(account => (
-                    <SelectItem key={account.id} value={account.id}>
+                    <SelectItem key={account.id} value={account.id} label={formatAccountOption(account)}>
                       {formatAccountOption(account)}
                     </SelectItem>
                   ))}
@@ -328,21 +376,51 @@ export default function AdminFinancialLedgerPage() {
               </Select>
               <Select
                 value={level3AccountId}
-                onValueChange={value => setLevel3AccountId(value ?? 'ALL')}
+                onValueChange={value => {
+                  clearCodeSearchFilter()
+                  setLevel3AccountId(value ?? 'ALL')
+                }}
                 disabled={level2AccountId === 'ALL' || level3Accounts.length === 0}
               >
                 <SelectTrigger className="w-[190px]" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
-                  <SelectValue placeholder="三级科目" />
+                  <SelectValue placeholder="三级科目">
+                    {selectedAccountLabel(accounts, level3AccountId, '全部三级科目')}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">全部三级科目</SelectItem>
                   {level3Accounts.map(account => (
-                    <SelectItem key={account.id} value={account.id}>
+                    <SelectItem key={account.id} value={account.id} label={formatAccountOption(account)}>
                       {formatAccountOption(account)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              </div>
+              <div className="flex items-end gap-2">
+                <Input
+                  value={accountCodeSearch}
+                  onChange={e => setAccountCodeSearch(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      searchByAccountCode()
+                    }
+                  }}
+                  placeholder="输入科目号，如 1001"
+                  className="w-[190px]"
+                  aria-label="科目号搜索"
+                  style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
+                />
+                <Button
+                  size="sm"
+                  onClick={searchByAccountCode}
+                  style={{ background: '#C9A96E', color: '#0A0805' }}
+                >
+                  <Search size={15} className="mr-1.5" />
+                  搜索科目
+                </Button>
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -374,9 +452,20 @@ export default function AdminFinancialLedgerPage() {
                     <TableRow className="bg-[#16130E] hover:bg-[#16130E]">
                       <TableCell colSpan={7}>
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                             <span className="font-mono text-sm text-[#C9A96E]">{group.accountCode}</span>
-                            <span className="ml-2 font-semibold">{group.accountName}</span>
+                            <span className="font-semibold">{group.accountName}</span>
+                            {group.accountType ? (
+                              <span
+                                className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium"
+                                style={{
+                                  color: ACCOUNT_TYPE_COLORS[group.accountType as AccountType] ?? 'var(--muted-foreground)',
+                                  background: `${ACCOUNT_TYPE_COLORS[group.accountType as AccountType] ?? '#888888'}20`,
+                                }}
+                              >
+                                {formatAccountTypeLabel(group.accountType)}
+                              </span>
+                            ) : null}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             本期借方 {formatMoney(group.totalDebit)}
@@ -398,7 +487,21 @@ export default function AdminFinancialLedgerPage() {
                     {group.entries.map((entry, idx) => (
                       <TableRow key={entry.id} style={{ background: idx % 2 === 0 ? 'transparent' : '#0E0E0A' }}>
                         <TableCell>{new Date(entry.date).toLocaleDateString('zh-HK')}</TableCell>
-                        <TableCell className="font-mono">{entry.voucherNo}</TableCell>
+                        <TableCell className="font-mono">
+                          <div className="flex items-center gap-1">
+                            <span>{entry.voucherNo}</span>
+                            {entry.entryId ? (
+                              <Link
+                                href={`/admin/financial/${company.id}/journal?entryId=${entry.entryId}`}
+                                className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                title="查看会计凭证"
+                                aria-label={`查看凭证 ${entry.voucherNo}`}
+                              >
+                                <ExternalLink size={13} />
+                              </Link>
+                            ) : null}
+                          </div>
+                        </TableCell>
                         <TableCell className="max-w-[260px] truncate">{entry.description}</TableCell>
                         <TableCell className="text-right">
                           {formatMoney(entry.debit)}
@@ -428,6 +531,12 @@ function formatMoney(value: number) {
 function openingDateLabel(group: LedgerAccountGroup) {
   if (group.openingDate) return new Date(group.openingDate).toLocaleDateString('zh-HK')
   return group.openingPeriod ?? ''
+}
+
+function selectedAccountLabel(accounts: LedgerAccount[], accountId: string, allLabel: string) {
+  if (accountId === 'ALL') return allLabel
+  const account = accounts.find(item => item.id === accountId)
+  return account ? formatAccountOptionLabel(account.code, account.name) : '未知科目'
 }
 
 function groupLedgerEntries(entries: LedgerEntry[]): LedgerAccountGroup[] {

@@ -3,6 +3,8 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { type ChangeEvent, useCallback, useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { useRouter } from '@/i18n/navigation'
 import { Ban, Eye, Pencil, Trash2, Plus, CheckCircle, Upload, CheckSquare, Printer } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -299,7 +301,10 @@ function JournalPrintStyles() {
 
 export default function AdminFinancialJournalPage() {
   const company = useFinancialCompany()
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const openedEntryFromUrl = useRef<string | null>(null)
   const [entries, setEntries] = useState<JournalEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [importing, setImporting] = useState(false)
@@ -337,6 +342,37 @@ export default function AdminFinancialJournalPage() {
   useEffect(() => {
     fetchEntries()
   }, [fetchEntries])
+
+  useEffect(() => {
+    const entryId = searchParams.get('entryId')?.trim()
+    if (!entryId || openedEntryFromUrl.current === entryId) return
+
+    openedEntryFromUrl.current = entryId
+
+    async function openLinkedEntry() {
+      const localEntry = entries.find(row => row.id === entryId)
+      if (localEntry) {
+        setViewingEntry(localEntry)
+        setViewOpen(true)
+        router.replace(`/admin/financial/${company.id}/journal`)
+        return
+      }
+
+      try {
+        const res = await fetch(`/api/admin/financial/journal-entries/${entryId}`)
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || '载入会计凭证失败')
+        setViewingEntry(data.entry)
+        setViewOpen(true)
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : '载入会计凭证失败')
+      } finally {
+        router.replace(`/admin/financial/${company.id}/journal`)
+      }
+    }
+
+    void openLinkedEntry()
+  }, [company.id, entries, router, searchParams])
 
   useEffect(() => {
     setSelectedIds(new Set())

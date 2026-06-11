@@ -474,3 +474,21 @@ input[type="datetime-local"]:not(:valid)::-webkit-datetime-edit-minute-field,
 input[type="datetime-local"]:not(:valid)::-webkit-datetime-edit-text {
   color: transparent;
 }
+
+.admin-console input.financial-report-period-input,
+.admin-console input.financial-report-period-input[type="month"],
+.admin-console input.financial-report-period-input[type="date"] {
+  background: #FFFFFF !important;
+  color: #0A0805 !important;
+  color-scheme: light;
+}
+
+.admin-console input.financial-report-period-input::-webkit-calendar-picker-indicator,
+.admin-console input.financial-report-period-input[type="month"]::-webkit-calendar-picker-indicator,
+.admin-console input.financial-report-period-input[type="date"]::-webkit-calendar-picker-indicator {
+  background-color: #FFFFFF;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 1;
+  padding: 2px;
+}

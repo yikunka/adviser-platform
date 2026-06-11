@@ -17,17 +17,25 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 function uploadsRoot(): string {
   const fromEnv = (process.env['LOCAL_UPLOADS_DIR'] ?? '').trim()
-  if (fromEnv) return path.resolve(fromEnv)
+  if (fromEnv) return path.resolve(/*turbopackIgnore: true*/ fromEnv)
   return path.join(/*turbopackIgnore: true*/ process.cwd(), 'uploads')
 }
 
-function resolveLocalPath(key: string): string {
-  const filePath = path.join(uploadsRoot(), key)
-  const resolved = path.resolve(filePath)
-  if (!resolved.startsWith(path.resolve(uploadsRoot()))) {
+function storageKeyPathParts(key: string): string[] {
+  const normalized = key.replace(/\\/g, '/')
+  if (!normalized.trim() || path.isAbsolute(normalized)) {
     throw new Error('Invalid file path')
   }
-  return resolved
+
+  const parts = normalized.split('/').filter(Boolean)
+  if (parts.length === 0 || parts.some(part => part === '.' || part === '..')) {
+    throw new Error('Invalid file path')
+  }
+  return parts
+}
+
+function resolveLocalPath(key: string): string {
+  return path.join(uploadsRoot(), ...storageKeyPathParts(key))
 }
 
 function ossCredentialsMissing(): boolean {

@@ -1,9 +1,6 @@
 import cron from 'node-cron'
-import { ingestAllSources } from './ingester'
-import { screenAll } from './screener'
 import { prisma } from '@/lib/db/prisma'
 import { createNotification } from '@/lib/notifications'
-import { generateMonthlyDdrForActiveCompanies } from '@/lib/docgen/monthly-ddr'
 
 let started = false
 
@@ -35,6 +32,31 @@ async function checkAnnualReturnDeadlines() {
   }
 }
 
+function appBaseUrl() {
+  const url = (
+    process.env['NEXT_PUBLIC_APP_URL']
+    ?? process.env['AUTH_URL']
+    ?? process.env['NEXTAUTH_URL']
+    ?? `http://localhost:${process.env['PORT'] ?? '3000'}`
+  ).trim()
+  return url.replace(/\/$/, '')
+}
+
+async function runMonthlyDdrCronRoute(): Promise<{ generated: number; skipped: number; errors: string[] }> {
+  const headers: Record<string, string> = {}
+  if (process.env['CRON_SECRET']) headers['x-cron-secret'] = process.env['CRON_SECRET']
+
+  const res = await fetch(`${appBaseUrl()}/api/cron/ddr-monthly`, {
+    method: 'POST',
+    headers,
+  })
+  const data = await res.json().catch(() => null)
+  if (!res.ok) {
+    throw new Error(data?.error || `Monthly DDR route failed with HTTP ${res.status}`)
+  }
+  return data
+}
+
 export function startAMLScheduler() {
   if (started) return
   started = true
@@ -43,6 +65,8 @@ export function startAMLScheduler() {
   cron.schedule('0 18 * * *', async () => {
     console.log('[Scheduler] Starting daily jobs')
     try {
+      const { ingestAllSources } = await import('./ingester')
+      const { screenAll } = await import('./screener')
       const ingestResult = await ingestAllSources()
       console.log(`[Scheduler] Ingested ${ingestResult.total} records. Errors: ${ingestResult.errors.length}`)
 
@@ -59,7 +83,7 @@ export function startAMLScheduler() {
   cron.schedule('0 0 1 * *', async () => {
     console.log('[Scheduler] Starting monthly DDR generation')
     try {
-      const result = await generateMonthlyDdrForActiveCompanies()
+      const result = await runMonthlyDdrCronRoute()
       console.log(`[Scheduler] Monthly DDR complete. Generated: ${result.generated}. Skipped: ${result.skipped}. Errors: ${result.errors.length}`)
       for (const error of result.errors) console.error('[Scheduler] Monthly DDR error:', error)
     } catch (err) {

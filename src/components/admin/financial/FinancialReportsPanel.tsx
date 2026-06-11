@@ -333,7 +333,7 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
               type="month"
               value={period}
               onChange={e => setPeriod(e.target.value)}
-              className="max-w-[180px]"
+              className="financial-report-period-input max-w-[180px]"
               style={{
                 background: '#FFFFFF',
                 border: '1px solid #C9A96E',

@@ -187,6 +187,7 @@ export function serializeJournalEntry(
 export function serializeLedgerEntry(entry: {
   id: string
   accountId: string
+  entryId?: string | null
   companyId?: string | null
   lineNum?: number
   date: Date
@@ -201,6 +202,7 @@ export function serializeLedgerEntry(entry: {
   return {
     id: entry.id,
     accountId: entry.accountId,
+    entryId: entry.entryId ?? null,
     companyId: entry.companyId ?? null,
     company: entry.company ?? null,
     accountCode: entry.account.code,
