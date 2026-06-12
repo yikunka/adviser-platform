@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { FinancialBreadcrumbs } from '@/components/admin/financial/FinancialBreadcrumbs'
 import { useFinancialCompany } from '@/components/admin/financial/FinancialCompanyContext'
 import { inputStyle, money } from '@/components/admin/financial/subledger/config'
-import { DIMENSION_LABELS, type DimensionType } from '@/lib/financial/dimensions'
+import { DIMENSION_LABELS, type DimensionType } from '@/lib/financial/dimension-types'
 
 type Dimension = { id: string; code: string; name: string; isActive: boolean }
 

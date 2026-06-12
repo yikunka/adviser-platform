@@ -555,22 +555,30 @@ export default function CosmocoatColorFormulaDetailPage() {
       return
     }
 
+    let cancelled = false
+    const controller = new AbortController()
     const t = setTimeout(async () => {
       setPickerLoading(true)
       try {
         const p = new URLSearchParams({ limit: '40' })
         if (q) p.set('q', q)
         p.append('type', pickerType)
-        const res = await fetch(`/api/admin/cosmocoat/color-formulas/material-options?${p}`)
+        const res = await fetch(`/api/admin/cosmocoat/color-formulas/material-options?${p}`, {
+          signal: controller.signal,
+        })
         const data = await res.json()
-        if (res.ok) setPickerMaterials(data.items ?? [])
+        if (!cancelled && res.ok) setPickerMaterials(data.items ?? [])
       } catch {
         /* ignore */
       } finally {
-        setPickerLoading(false)
+        if (!cancelled) setPickerLoading(false)
       }
     }, q ? 250 : 0)
-    return () => clearTimeout(t)
+    return () => {
+      cancelled = true
+      controller.abort()
+      clearTimeout(t)
+    }
   }, [pickerQuery, pickerType])
 
   const totals = useMemo(() => {
@@ -666,8 +674,10 @@ export default function CosmocoatColorFormulaDetailPage() {
   }
 
   function selectPickerType(type: string) {
+    if (pickerType === type) return
     setSelectedPickerKey('')
-    setPickerType(prev => (prev === type ? prev : type))
+    setPickerMaterials([])
+    setPickerType(type)
   }
 
   function removeItem(key: string) {

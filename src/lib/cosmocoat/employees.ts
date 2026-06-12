@@ -31,6 +31,7 @@ export type CosEmployeeRow = {
   updatedAt: string
   laborContracts?: CosEmployeeFileRow[]
   resumes?: CosEmployeeFileRow[]
+  idCards?: CosEmployeeFileRow[]
 }
 
 const fileSelect = {
@@ -122,6 +123,9 @@ export function serializeEmployee(
       .map(serializeFile)
     row.resumes = files
       .filter(f => f.fileType === 'RESUME')
+      .map(serializeFile)
+    row.idCards = files
+      .filter(f => f.fileType === 'ID_CARD')
       .map(serializeFile)
   }
   return row

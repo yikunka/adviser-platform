@@ -1,16 +1,8 @@
 import { prisma } from '@/lib/db/prisma'
 
-/** 维度类型：成本中心 / 项目（结构相同，共用一套 CRUD） */
-export type DimensionType = 'cost-center' | 'project'
-
-export const DIMENSION_LABELS: Record<DimensionType, string> = {
-  'cost-center': '成本中心',
-  project: '项目',
-}
-
-export function isDimensionType(value: string | null | undefined): value is DimensionType {
-  return value === 'cost-center' || value === 'project'
-}
+export type { DimensionType } from '@/lib/financial/dimension-types'
+export { DIMENSION_LABELS, isDimensionType } from '@/lib/financial/dimension-types'
+import type { DimensionType } from '@/lib/financial/dimension-types'
 
 type DimensionDelegate = {
   findMany(args: unknown): Promise<Array<{ id: string; code: string; name: string; isActive: boolean; createdAt: Date }>>

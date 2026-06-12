@@ -61,12 +61,17 @@ export async function uploadCosEmployeeFile(
   else if (contentType === 'application/msword') ext = 'doc'
   else if (contentType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') ext = 'docx'
 
-  const folder = fileType === 'LABOR_CONTRACT' ? 'contracts' : 'resumes'
+  const folderByType: Record<CosEmployeeFileType, string> = {
+    LABOR_CONTRACT: 'contracts',
+    RESUME: 'resumes',
+    ID_CARD: 'id-cards',
+  }
+  const folder = folderByType[fileType]
   const key = `cosmocoat/employees/${employeeId}/${folder}/${crypto.randomUUID()}.${ext}`
   const buffer = Buffer.from(await file.arrayBuffer())
 
   await uploadToR2(key, buffer, contentType, {
-    contentDisposition: `attachment; filename="${file.name.replace(/"/g, '')}"`,
+    contentDisposition: `inline; filename="${file.name.replace(/"/g, '')}"`,
   })
 
   return { key, contentType }

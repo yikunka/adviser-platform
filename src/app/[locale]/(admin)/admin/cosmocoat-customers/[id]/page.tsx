@@ -2,11 +2,11 @@
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, Save, Trash2 } from 'lucide-react'
+import { ArrowLeft, Download, FileText, Save, Trash2, Upload } from 'lucide-react'
 import type { CosCustomerRow } from '@/lib/cosmocoat/customers'
 
 type PlatformUser = {
@@ -23,6 +23,188 @@ type FormState = {
   phone: string
   address: string
   productionEquipmentParams: string
+}
+
+type BusinessLicenseFile = {
+  id: string
+  fileName: string
+  storageKey: string
+  mimeType: string
+  fileSize: number
+  notes: string | null
+  createdAt: string
+  uploadedBy: { nameEn: string | null; email: string } | null
+}
+
+function fileUrl(storageKey: string) {
+  return `/api/files?key=${encodeURIComponent(storageKey)}`
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function BusinessLicensesSection({
+  customerId,
+  files,
+  onRefresh,
+}: {
+  customerId: string
+  files: BusinessLicenseFile[]
+  onRefresh: () => void
+}) {
+  const [uploading, setUploading] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [notes, setNotes] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  async function handleUpload(fileList: FileList | null) {
+    const file = fileList?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      if (notes.trim()) fd.append('notes', notes.trim())
+      const res = await fetch(`/api/admin/cosmocoat/customers/${customerId}/business-licenses`, {
+        method: 'POST',
+        body: fd,
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error ?? '上传失败')
+      toast.success('营业执照已上传')
+      setNotes('')
+      if (fileRef.current) fileRef.current.value = ''
+      onRefresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '上传失败')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function handleDelete(fileId: string) {
+    if (!window.confirm('确定删除此营业执照文件？')) return
+    setDeletingId(fileId)
+    try {
+      const res = await fetch(
+        `/api/admin/cosmocoat/customers/${customerId}/business-licenses/${fileId}`,
+        { method: 'DELETE' },
+      )
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error ?? '删除失败')
+      toast.success('文件已删除')
+      onRefresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '删除失败')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  return (
+    <div className="p-5 space-y-4" style={card}>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>营业执照</h2>
+          <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
+            上传、查看、下载与删除客户营业执照文件
+          </p>
+        </div>
+        <FileText size={16} style={{ color: '#C9A96E' }} />
+      </div>
+
+      <div className="space-y-2 rounded-md p-4" style={{ background: '#0A0A0A', border: '1px solid #2A2418' }}>
+        <Field label="备注（可选）">
+          <input
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            maxLength={500}
+            placeholder="版本、有效期等"
+            className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+            style={inputStyle()}
+          />
+        </Field>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={e => handleUpload(e.target.files)}
+          />
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={() => fileRef.current?.click()}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs disabled:opacity-50"
+            style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
+          >
+            <Upload size={13} />
+            {uploading ? '上传中...' : '上传营业执照'}
+          </button>
+          <span className="text-[11px]" style={{ color: '#756A58' }}>PDF、JPG、PNG、WEBP，最大 10 MB</span>
+        </div>
+      </div>
+
+      {files.length === 0 ? (
+        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>暂无营业执照文件</p>
+      ) : (
+        <div className="space-y-2">
+          {files.map(file => (
+            <div
+              key={file.id}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-md px-3 py-2"
+              style={{ background: '#111108', border: '1px solid #1E1C15' }}
+            >
+              <div className="min-w-0">
+                <div className="text-sm truncate" style={{ color: 'var(--foreground)' }}>{file.fileName}</div>
+                <div className="text-[11px] mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+                  {formatFileSize(file.fileSize)}
+                  {file.notes ? ` · ${file.notes}` : ''}
+                  {file.uploadedBy?.nameEn || file.uploadedBy?.email
+                    ? ` · ${file.uploadedBy.nameEn ?? file.uploadedBy.email}`
+                    : ''}
+                  · {new Date(file.createdAt).toLocaleDateString('zh-HK')}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={fileUrl(file.storageKey)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs"
+                  style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
+                >
+                  <FileText size={12} /> 查看
+                </a>
+                <a
+                  href={fileUrl(file.storageKey)}
+                  download={file.fileName}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs"
+                  style={{ border: '1px solid #2A2418', color: '#C9A96E' }}
+                >
+                  <Download size={12} /> 下载
+                </a>
+                <button
+                  type="button"
+                  disabled={deletingId === file.id}
+                  onClick={() => handleDelete(file.id)}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs disabled:opacity-50"
+                  style={{ border: '1px solid #5A3030', color: '#E57373' }}
+                >
+                  <Trash2 size={12} />
+                  {deletingId === file.id ? '删除中' : '删除'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 const card: React.CSSProperties = {
@@ -60,6 +242,7 @@ export default function AdminCosmoCoatCustomerDetailPage() {
   const [deleting, setDeleting] = useState(false)
   const [platformUsers, setPlatformUsers] = useState<PlatformUser[]>([])
   const [customer, setCustomer] = useState<CosCustomerRow | null>(null)
+  const [businessLicenses, setBusinessLicenses] = useState<BusinessLicenseFile[]>([])
   const [form, setForm] = useState<FormState>({
     code: '',
     name: '',
@@ -79,6 +262,18 @@ export default function AdminCosmoCoatCustomerDetailPage() {
       // optional field — silent fail
     }
   }, [])
+
+  const fetchBusinessLicenses = useCallback(async () => {
+    if (isNew) return
+    try {
+      const res = await fetch(`/api/admin/cosmocoat/customers/${customerId}/business-licenses`)
+      const data = await res.json()
+      if (!res.ok) return
+      setBusinessLicenses(data.files ?? [])
+    } catch {
+      setBusinessLicenses([])
+    }
+  }, [customerId, isNew])
 
   const fetchCustomer = useCallback(async () => {
     if (isNew) return
@@ -100,12 +295,13 @@ export default function AdminCosmoCoatCustomerDetailPage() {
         address: row.address ?? '',
         productionEquipmentParams: row.productionEquipmentParams ?? '',
       })
+      await fetchBusinessLicenses()
     } catch {
       toast.error('加载客户详情失败')
     } finally {
       setLoading(false)
     }
-  }, [customerId, isNew])
+  }, [customerId, fetchBusinessLicenses, isNew])
 
   useEffect(() => {
     fetchPlatformUsers()
@@ -311,6 +507,20 @@ export default function AdminCosmoCoatCustomerDetailPage() {
             />
           </Field>
         </div>
+
+        {!isNew && customer && (
+          <BusinessLicensesSection
+            customerId={customer.id}
+            files={businessLicenses}
+            onRefresh={fetchBusinessLicenses}
+          />
+        )}
+
+        {isNew && (
+          <div className="p-5 text-xs rounded-lg" style={{ ...card, color: '#C9A96E', background: 'rgba(201,169,110,0.08)' }}>
+            请先保存客户资料，再上传营业执照文件。
+          </div>
+        )}
 
         {!isNew && customer && (
           <div className="p-5 space-y-2 text-xs" style={card}>

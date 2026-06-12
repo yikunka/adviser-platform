@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import type { DimensionType } from '@/lib/financial/dimensions'
+import type { DimensionType } from '@/lib/financial/dimension-types'
 
 export type DimensionOption = { id: string; code: string; name: string }
 

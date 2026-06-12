@@ -231,6 +231,14 @@ export default function AdminCosmoCoatRecipeEditorPage() {
   const [qcTestStandard, setQcTestStandard] = useState('')
   const [qcTestItemResults, setQcTestItemResults] = useState<QcTestItemResults>({})
   const [formulaIsUsed, setFormulaIsUsed] = useState(false)
+  const [canDirectEdit, setCanDirectEdit] = useState(true)
+  const [pendingChangeRequest, setPendingChangeRequest] = useState<{
+    id: string
+    action: 'UPDATE' | 'DELETE'
+    status: string
+    createdAt: string
+    requestedBy: { id: string; nameEn: string | null; email: string }
+  } | null>(null)
   const [items, setItems] = useState<EditableItem[]>([])
 
   const totals = useMemo(() => {
@@ -284,6 +292,8 @@ export default function AdminCosmoCoatRecipeEditorPage() {
         return
       }
       const recipe = recipeData.recipe as FullRecipe
+      setCanDirectEdit(recipeData.canDirectEdit ?? true)
+      setPendingChangeRequest(recipeData.pendingChangeRequest ?? null)
       const cats: RecipeCategoryOption[] = (categoryData.categories ?? []).map(mapRecipeCategoryOption)
       setCategories(cats)
       setCategoryId(recipe.categoryId)
@@ -652,6 +662,11 @@ export default function AdminCosmoCoatRecipeEditorPage() {
         toast.error(data.error ?? '保存失败')
         return
       }
+      if (res.status === 202) {
+        toast.success(data.message ?? '变更已提交，等待超级管理员审批')
+        if (!isNew) loadRecipe()
+        return
+      }
       toast.success(isNew ? '配方已创建' : '配方已保存')
       if (isNew && data.recipe?.id) {
         router.replace(`/admin/cosmocoat-recipes/${data.recipe.id}`)
@@ -675,6 +690,11 @@ export default function AdminCosmoCoatRecipeEditorPage() {
         toast.error(data.error ?? '更新价格失败')
         return
       }
+      if (res.status === 202) {
+        toast.success(data.message ?? '价格刷新请求已提交，等待超级管理员审批')
+        loadRecipe()
+        return
+      }
       toast.success('已从原料表、成品和 Sol. 半成品更新价格')
       loadRecipe()
     } catch {
@@ -685,7 +705,7 @@ export default function AdminCosmoCoatRecipeEditorPage() {
   }
 
   async function autoSaveOrder(newItems: EditableItem[]) {
-    if (isNew) return
+    if (isNew || !canDirectEdit) return
     try {
       await fetch(`/api/admin/cosmocoat/recipes/${recipeId}`, {
         method: 'PATCH',
@@ -758,7 +778,9 @@ export default function AdminCosmoCoatRecipeEditorPage() {
               {isNew ? '新建配方' : '配方详情'}
             </h1>
             <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-              {isNew ? '填写基本信息并添加原料，保存后生效' : `${code} · ${name}`}
+              {isNew
+                ? '填写基本信息并添加原料，保存后生效'
+                : `${code} · ${name}${!canDirectEdit ? ' · 修改需超级管理员审批' : ''}`}
             </p>
             {!isNew && (
               <p className="text-xs mt-2">
@@ -791,11 +813,25 @@ export default function AdminCosmoCoatRecipeEditorPage() {
               </a>
             </>
           )}
-          <button type="button" onClick={saveRecipe} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50" style={{ background: '#C9A96E', color: '#0A0805' }}>
-            <Save size={14} /> {saving ? '保存中...' : (isNew ? '创建' : '保存')}
+          <button type="button" onClick={saveRecipe} disabled={saving || (!isNew && !!pendingChangeRequest && !canDirectEdit)} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50" style={{ background: '#C9A96E', color: '#0A0805' }}>
+            <Save size={14} /> {saving ? '提交中...' : (isNew ? '创建' : (canDirectEdit ? '保存' : '提交审批'))}
           </button>
         </div>
       </div>
+
+      {!isNew && pendingChangeRequest && !canDirectEdit && (
+        <div className="rounded-lg px-4 py-3 text-sm" style={{ background: 'rgba(201,169,110,0.12)', border: '1px solid rgba(201,169,110,0.25)', color: '#C9A96E' }}>
+          该配方已有待审批的{pendingChangeRequest.action === 'DELETE' ? '删除' : '修改'}请求（提交人：
+          {pendingChangeRequest.requestedBy.nameEn?.trim() || pendingChangeRequest.requestedBy.email}，
+          {new Date(pendingChangeRequest.createdAt).toLocaleString('zh-CN')}），请等待超级管理员处理后再提交新的变更。
+        </div>
+      )}
+
+      {!isNew && !canDirectEdit && !pendingChangeRequest && (
+        <div className="rounded-lg px-4 py-3 text-sm" style={{ background: 'rgba(201,169,110,0.08)', border: '1px solid rgba(201,169,110,0.2)', color: '#9A8060' }}>
+          您的角色修改或删除配方时需提交审批，由超级管理员批准后才会生效。拖拽排序将在提交审批时一并保存。
+        </div>
+      )}
 
       <div style={card} className="p-4 space-y-4">
         <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>基本信息</h3>

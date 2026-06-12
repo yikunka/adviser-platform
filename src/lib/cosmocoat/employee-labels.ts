@@ -10,4 +10,5 @@ export const COS_EMPLOYEE_TYPE_LABELS: Record<CosEmployeeType, string> = {
 export const COS_EMPLOYEE_FILE_TYPE_LABELS: Record<CosEmployeeFileType, string> = {
   LABOR_CONTRACT: '劳动合同',
   RESUME: '简历',
+  ID_CARD: '身份证',
 }

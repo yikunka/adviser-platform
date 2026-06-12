@@ -1,36 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
-import { computeItemAmount, computeRecipeTotals, normalizeRecipeItems } from '@/lib/cosmocoat/recipes'
-import { recipeItemToPrismaCreate } from '@/lib/cosmocoat/recipe-items'
-import { RecipeItemValidationError, validateAndEnrichRecipeItems } from '@/lib/cosmocoat/recipe-item-validation'
-import { recipeItemSchema } from '@/lib/cosmocoat/recipe-api-schemas'
-import { refreshAllFormulaIsUsedCache } from '@/lib/cosmocoat/recipe-usage'
+import {
+  applyRecipeDelete,
+  applyRecipeUpdate,
+  createRecipeChangeRequest,
+  findPendingRecipeChangeRequest,
+  RecipeChangeRequestError,
+  rejectPendingRecipeChangeRequests,
+  validateRecipePatch,
+} from '@/lib/cosmocoat/recipe-change-requests'
+import { RecipeItemValidationError } from '@/lib/cosmocoat/recipe-item-validation'
+import { recipePatchSchema } from '@/lib/cosmocoat/recipe-patch-schema'
 import { serializeFullRecipe } from '@/lib/cosmocoat/recipe-serializer'
-import { mergeRecipeViscosityPatch, recipeViscosityFieldsSchema } from '@/lib/cosmocoat/recipe-viscosity'
-import { syncFactoryProductsViscosityFromRecipe } from '@/lib/cosmocoat/factory-product-viscosity-sync'
-
-const itemSchema = recipeItemSchema
-
-const patchSchema = z.object({
-  categoryId: z.string().trim().min(1).optional(),
-  code: z.string().trim().min(1).max(32).optional(),
-  name: z.string().trim().min(1).max(160).optional(),
-  batchQuantity: z.coerce.number().min(0.001).optional(),
-  ...recipeViscosityFieldsSchema,
-  shelfLifeDays: z.coerce.number().int().min(1).nullable().optional(),
-  notes: z.string().trim().max(1000).optional(),
-  productionSpeedRequirements: z.string().trim().max(2000).optional(),
-  productionTimeRequirements: z.string().trim().max(2000).optional(),
-  packagingRequirements: z.string().trim().max(2000).optional(),
-  productionNotes: z.string().trim().max(2000).optional(),
-  qcTestStandard: z.string().trim().max(2000).optional(),
-  qcTestItems: z.array(z.enum(['VISCOSITY', 'CROSSHATCH', 'BOILING_WATER_80C30M', 'WET_OIL_APPEARANCE', 'DRY_PLATE_APPEARANCE'])).optional(),
-  qcResult: z.string().trim().max(2000).optional(),
-  items: z.array(itemSchema).optional(),
-})
 
 function isMissingTable(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021'
@@ -40,14 +23,29 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatRecipes' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'cosmocoatRecipes' })
   if (error) return error
 
   const { id } = await params
   try {
-    const recipe = await serializeFullRecipe(id)
+    const [recipe, pendingChangeRequest] = await Promise.all([
+      serializeFullRecipe(id),
+      findPendingRecipeChangeRequest(id),
+    ])
     if (!recipe) return NextResponse.json({ error: '配方不存在' }, { status: 404 })
-    return NextResponse.json({ recipe })
+    return NextResponse.json({
+      recipe,
+      canDirectEdit: session!.user.role === 'SUPER_ADMIN',
+      pendingChangeRequest: pendingChangeRequest
+        ? {
+            id: pendingChangeRequest.id,
+            action: pendingChangeRequest.action,
+            status: pendingChangeRequest.status,
+            createdAt: pendingChangeRequest.createdAt.toISOString(),
+            requestedBy: pendingChangeRequest.requestedBy,
+          }
+        : null,
+    })
   } catch (err) {
     if (isMissingTable(err)) {
       return NextResponse.json({ error: '配方表不存在，请先运行数据库迁移' }, { status: 503 })
@@ -60,12 +58,12 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatRecipes' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'cosmocoatRecipes' })
   if (error) return error
 
   const { id } = await params
   const body = await req.json().catch(() => null)
-  const parsed = patchSchema.safeParse(body)
+  const parsed = recipePatchSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
   }
@@ -73,82 +71,46 @@ export async function PATCH(
   const current = await prisma.cosTableRecipe.findUnique({ where: { id } })
   if (!current) return NextResponse.json({ error: '配方不存在' }, { status: 404 })
 
-  if (parsed.data.code && parsed.data.code !== current.code) {
-    const conflict = await prisma.cosTableRecipe.findUnique({ where: { code: parsed.data.code } })
-    if (conflict) return NextResponse.json({ error: '配方编号已存在' }, { status: 409 })
-  }
-
-  if (parsed.data.categoryId) {
-    const category = await prisma.cosTableRecipeCategory.findUnique({ where: { id: parsed.data.categoryId } })
-    if (!category) return NextResponse.json({ error: '目录不存在' }, { status: 404 })
+  if (session!.user.role !== 'SUPER_ADMIN') {
+    try {
+      await validateRecipePatch(id, parsed.data, current)
+      const changeRequest = await createRecipeChangeRequest({
+        recipeId: id,
+        action: 'UPDATE',
+        payload: parsed.data,
+        requestedById: session!.user.id,
+      })
+      return NextResponse.json(
+        {
+          changeRequest,
+          message: '变更已提交，等待超级管理员审批',
+        },
+        { status: 202 },
+      )
+    } catch (err) {
+      if (err instanceof RecipeChangeRequestError) {
+        return NextResponse.json({ error: err.message }, { status: err.status })
+      }
+      if (err instanceof RecipeItemValidationError) {
+        return NextResponse.json({ error: err.message }, { status: 400 })
+      }
+      if (isMissingTable(err)) {
+        return NextResponse.json({ error: '配方审批表不存在，请先运行数据库迁移' }, { status: 503 })
+      }
+      throw err
+    }
   }
 
   try {
-    if (parsed.data.items) {
-      const enriched = await validateAndEnrichRecipeItems(parsed.data.items, id)
-      const batchQty = parsed.data.batchQuantity ?? Number(current.batchQuantity)
-      const normalized = normalizeRecipeItems(enriched, batchQty)
-      await prisma.cosTableRecipeItem.deleteMany({ where: { recipeId: id } })
-      if (normalized.length > 0) {
-        await prisma.cosTableRecipeItem.createMany({
-          data: normalized.map(item => recipeItemToPrismaCreate(id, item)),
-        })
-      }
+    if (session!.user.role === 'SUPER_ADMIN') {
+      await rejectPendingRecipeChangeRequests(id, session!.user.id, '超级管理员已直接执行变更')
     }
-
-    const batchQuantity = parsed.data.batchQuantity ?? Number(current.batchQuantity)
-    const items = await prisma.cosTableRecipeItem.findMany({ where: { recipeId: id } })
-    const totalQuantity = items.reduce((sum, item) => sum + Number(item.quantity), 0)
-    const totals = computeRecipeTotals(
-      items.map(item => {
-        const quantity = Number(item.quantity)
-        const unitPrice = item.unitPrice != null ? Number(item.unitPrice) : null
-        return {
-          quantity,
-          unitPrice,
-          amount: computeItemAmount(quantity, unitPrice, totalQuantity, batchQuantity),
-        }
-      }),
-      batchQuantity,
-    )
-
-    const viscosityKeys = ['viscosity', 'viscosityUnit'] as const
-    const hasViscosityUpdate =
-      body != null
-      && typeof body === 'object'
-      && viscosityKeys.some(key => key in body)
-
-    await prisma.cosTableRecipe.update({
-      where: { id },
-      data: {
-        categoryId: parsed.data.categoryId,
-        code: parsed.data.code,
-        name: parsed.data.name,
-        batchQuantity: parsed.data.batchQuantity,
-        ...(parsed.data.viscosity !== undefined || parsed.data.viscosityUnit !== undefined
-          ? mergeRecipeViscosityPatch(current, parsed.data)
-          : {}),
-        shelfLifeDays: parsed.data.shelfLifeDays,
-        notes: parsed.data.notes,
-        productionSpeedRequirements: parsed.data.productionSpeedRequirements,
-        productionTimeRequirements: parsed.data.productionTimeRequirements,
-        packagingRequirements: parsed.data.packagingRequirements,
-        productionNotes: parsed.data.productionNotes,
-        qcTestStandard: parsed.data.qcTestStandard,
-        qcTestItems: parsed.data.qcTestItems,
-        qcResult: parsed.data.qcResult,
-        unitCost: totals.unitCost,
-      },
-    })
-
-    if (hasViscosityUpdate) {
-      await syncFactoryProductsViscosityFromRecipe(id)
-    }
-
-    await refreshAllFormulaIsUsedCache()
-    const recipe = await serializeFullRecipe(id)
+    const recipe = await applyRecipeUpdate(id, parsed.data, body)
     return NextResponse.json({ recipe })
   } catch (err) {
+    if (err instanceof RecipeChangeRequestError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
     if (err instanceof RecipeItemValidationError) {
       return NextResponse.json({ error: err.message }, { status: 400 })
     }
@@ -163,14 +125,51 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatRecipes' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'cosmocoatRecipes' })
   if (error) return error
 
   const { id } = await params
   const current = await prisma.cosTableRecipe.findUnique({ where: { id } })
   if (!current) return NextResponse.json({ error: '配方不存在' }, { status: 404 })
 
-  await prisma.cosTableRecipe.delete({ where: { id } })
-  await refreshAllFormulaIsUsedCache()
-  return NextResponse.json({ success: true })
+  if (session!.user.role !== 'SUPER_ADMIN') {
+    try {
+      const changeRequest = await createRecipeChangeRequest({
+        recipeId: id,
+        action: 'DELETE',
+        requestedById: session!.user.id,
+      })
+      return NextResponse.json(
+        {
+          changeRequest,
+          message: '删除请求已提交，等待超级管理员审批',
+        },
+        { status: 202 },
+      )
+    } catch (err) {
+      if (err instanceof RecipeChangeRequestError) {
+        return NextResponse.json({ error: err.message }, { status: err.status })
+      }
+      if (isMissingTable(err)) {
+        return NextResponse.json({ error: '配方审批表不存在，请先运行数据库迁移' }, { status: 503 })
+      }
+      throw err
+    }
+  }
+
+  try {
+    if (session!.user.role === 'SUPER_ADMIN') {
+      await rejectPendingRecipeChangeRequests(id, session!.user.id, '超级管理员已直接执行变更')
+    }
+    await applyRecipeDelete(id)
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    if (err instanceof RecipeChangeRequestError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
+    if (isMissingTable(err)) {
+      return NextResponse.json({ error: '配方表不存在，请先运行数据库迁移' }, { status: 503 })
+    }
+    throw err
+  }
 }

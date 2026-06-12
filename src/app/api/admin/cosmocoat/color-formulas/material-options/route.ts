@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
-
-const SEMIFINISHED_TYPE_KEYS = new Set(['Sol', 'Sol.', 'product_semifinished'])
+import { resolveColorFormulaMaterialOptionSources } from '@/lib/cosmocoat/color-formula-material-options'
 
 function isMissingTable(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021'
@@ -18,12 +17,16 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(120, Math.max(1, Number(req.nextUrl.searchParams.get('limit') ?? '60') || 60))
   const recipeId = req.nextUrl.searchParams.get('recipeId')?.trim() ?? ''
 
-  const rawTypes = types.filter(type => !SEMIFINISHED_TYPE_KEYS.has(type))
-  const includeSemifinished = types.length === 0 || types.some(type => SEMIFINISHED_TYPE_KEYS.has(type))
+  const { rawTypes, includeRawMaterials, includeSemifinished } =
+    resolveColorFormulaMaterialOptionSources(types)
 
   try {
     // When recipeId is provided, return only raw materials used in that recipe
     if (recipeId) {
+      if (!includeRawMaterials) {
+        return NextResponse.json({ items: [] })
+      }
+
       const recipeItems = await prisma.cosTableRecipeItem.findMany({
         where: {
           recipeId,
@@ -109,21 +112,23 @@ export async function GET(req: NextRequest) {
     }
 
     const [rawMaterials, semifinishedProducts] = await Promise.all([
-      prisma.cosTableRawMaterial.findMany({
-        where: rawWhere,
-        orderBy: [{ attributeCode: 'asc' }, { productionCode: 'asc' }],
-        take: limit,
-        select: {
-          id: true,
-          productionCode: true,
-          name: true,
-          attributeCode: true,
-          category: true,
-          primaryPackageKg: true,
-          primaryPricePerKg: true,
-          primaryNotes: true,
-        },
-      }),
+      includeRawMaterials
+        ? prisma.cosTableRawMaterial.findMany({
+            where: rawWhere,
+            orderBy: [{ attributeCode: 'asc' }, { productionCode: 'asc' }],
+            take: limit,
+            select: {
+              id: true,
+              productionCode: true,
+              name: true,
+              attributeCode: true,
+              category: true,
+              primaryPackageKg: true,
+              primaryPricePerKg: true,
+              primaryNotes: true,
+            },
+          })
+        : Promise.resolve([]),
       includeSemifinished
         ? prisma.cosTableProductSemifinished.findMany({
             where: semifinishedWhere,

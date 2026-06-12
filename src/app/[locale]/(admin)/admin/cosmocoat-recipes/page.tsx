@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { Beaker, CheckCircle, FolderCog, Pencil, Plus, Search, Trash2, XCircle } from 'lucide-react'
+import { Beaker, CheckCircle, ClipboardCheck, FolderCog, Pencil, Plus, Search, Trash2, XCircle } from 'lucide-react'
 import { formatMoney } from '@/lib/cosmocoat/recipes'
 
 type RecipeRow = {
@@ -26,6 +26,22 @@ type RecipeCategory = {
   code: string
   name: string
   sortOrder: number
+}
+
+type PendingChangeRequest = {
+  id: string
+  recipeId: string
+  action: 'UPDATE' | 'DELETE'
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  createdAt: string
+  requestNote: string
+  recipe: {
+    id: string
+    code: string
+    name: string
+    category: { id: string; code: string; name: string }
+  }
+  requestedBy: { id: string; nameEn: string | null; email: string }
 }
 
 const card: React.CSSProperties = {
@@ -247,6 +263,127 @@ function CategoryManageModal({
   )
 }
 
+function actionLabel(action: PendingChangeRequest['action']) {
+  return action === 'DELETE' ? '删除配方' : '修改配方'
+}
+
+function requesterLabel(request: PendingChangeRequest) {
+  return request.requestedBy.nameEn?.trim() || request.requestedBy.email
+}
+
+function PendingApprovalsPanel({
+  items,
+  onReviewed,
+}: {
+  items: PendingChangeRequest[]
+  onReviewed: () => void
+}) {
+  const [reviewingId, setReviewingId] = useState<string | null>(null)
+  const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({})
+
+  async function reviewRequest(request: PendingChangeRequest, action: 'APPROVE' | 'REJECT') {
+    const confirmText = action === 'APPROVE'
+      ? `确定批准「${request.recipe.name}」的${actionLabel(request.action)}请求？`
+      : `确定驳回「${request.recipe.name}」的${actionLabel(request.action)}请求？`
+    if (!window.confirm(confirmText)) return
+
+    setReviewingId(request.id)
+    try {
+      const res = await fetch(`/api/admin/cosmocoat/recipe-change-requests/${request.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, reviewNote: reviewNotes[request.id] ?? '' }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? '审批失败')
+        return
+      }
+      toast.success(action === 'APPROVE' ? '已批准' : '已驳回')
+      setReviewNotes(prev => {
+        const next = { ...prev }
+        delete next[request.id]
+        return next
+      })
+      onReviewed()
+    } catch {
+      toast.error('审批失败')
+    } finally {
+      setReviewingId(null)
+    }
+  }
+
+  if (items.length === 0) return null
+
+  return (
+    <div style={card} className="p-4 space-y-4">
+      <div className="flex items-center gap-2">
+        <ClipboardCheck size={18} style={{ color: '#C9A96E' }} />
+        <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>
+          待审批变更（{items.length}）
+        </h2>
+      </div>
+      <div className="space-y-3">
+        {items.map(request => (
+          <div key={request.id} className="rounded-lg p-4 space-y-3" style={{ background: '#111108', border: '1px solid #2A2418' }}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className="inline-flex px-2 py-0.5 rounded-md text-xs font-medium"
+                    style={{
+                      background: request.action === 'DELETE' ? 'rgba(239,68,68,0.12)' : 'rgba(201,169,110,0.12)',
+                      color: request.action === 'DELETE' ? '#ef4444' : '#C9A96E',
+                    }}
+                  >
+                    {actionLabel(request.action)}
+                  </span>
+                  <Link href={`/admin/cosmocoat-recipes/${request.recipe.id}`} className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
+                    {request.recipe.code} · {request.recipe.name}
+                  </Link>
+                </div>
+                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                  提交人：{requesterLabel(request)} · {new Date(request.createdAt).toLocaleString('zh-CN')}
+                </p>
+                {request.requestNote && (
+                  <p className="text-xs" style={{ color: '#9A8060' }}>说明：{request.requestNote}</p>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={reviewingId === request.id}
+                  onClick={() => reviewRequest(request, 'APPROVE')}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
+                  style={{ background: '#4A9F52', color: '#fff' }}
+                >
+                  批准
+                </button>
+                <button
+                  type="button"
+                  disabled={reviewingId === request.id}
+                  onClick={() => reviewRequest(request, 'REJECT')}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
+                  style={{ border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444' }}
+                >
+                  驳回
+                </button>
+              </div>
+            </div>
+            <input
+              value={reviewNotes[request.id] ?? ''}
+              onChange={e => setReviewNotes(prev => ({ ...prev, [request.id]: e.target.value }))}
+              placeholder="审批备注（可选）"
+              className="w-full rounded-lg px-3 py-2 text-xs outline-none"
+              style={inputStyle()}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function AdminCosmoCoatRecipesPage() {
   const router = useRouter()
   const [items, setItems] = useState<RecipeRow[]>([])
@@ -260,6 +397,8 @@ export default function AdminCosmoCoatRecipesPage() {
   const [usedByFactoryProduct, setUsedByFactoryProduct] = useState('')
   const [showCategoryManage, setShowCategoryManage] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [canDirectEdit, setCanDirectEdit] = useState(true)
+  const [pendingChangeRequests, setPendingChangeRequests] = useState<PendingChangeRequest[]>([])
 
   const fetchItems = useCallback(async () => {
     setLoading(true)
@@ -278,6 +417,8 @@ export default function AdminCosmoCoatRecipesPage() {
       setCategories(data.categories ?? [])
       setTotal(data.total ?? 0)
       setTotalPages(data.totalPages ?? 1)
+      setCanDirectEdit(data.canDirectEdit ?? true)
+      setPendingChangeRequests(data.pendingChangeRequests ?? [])
     } catch {
       toast.error('加载失败')
     } finally {
@@ -295,13 +436,21 @@ export default function AdminCosmoCoatRecipesPage() {
   }, [search, categoryId, usedByFactoryProduct])
 
   async function deleteRecipe(recipe: RecipeRow) {
-    if (!window.confirm(`确定删除配方「${recipe.name}」？`)) return
+    const confirmText = canDirectEdit
+      ? `确定删除配方「${recipe.name}」？`
+      : `确定提交删除配方「${recipe.name}」的审批请求？`
+    if (!window.confirm(confirmText)) return
     setDeletingId(recipe.id)
     try {
       const res = await fetch(`/api/admin/cosmocoat/recipes/${recipe.id}`, { method: 'DELETE' })
       const data = await res.json()
       if (!res.ok) {
         toast.error(data.error ?? '删除失败')
+        return
+      }
+      if (res.status === 202) {
+        toast.success(data.message ?? '删除请求已提交，等待超级管理员审批')
+        fetchItems()
         return
       }
       toast.success('已删除')
@@ -320,6 +469,7 @@ export default function AdminCosmoCoatRecipesPage() {
           <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>CosmoCoat 配方管理</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
             配方列表与详情编辑，支持原料明细与成本自动计算。
+            {!canDirectEdit && ' 修改与删除需超级管理员审批。'}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -340,6 +490,8 @@ export default function AdminCosmoCoatRecipesPage() {
           </Link>
         </div>
       </div>
+
+      <PendingApprovalsPanel items={pendingChangeRequests} onReviewed={fetchItems} />
 
       <div style={card} className="p-4 flex flex-wrap gap-3">
         <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="rounded-lg px-3 py-2 text-sm outline-none" style={inputStyle()}>

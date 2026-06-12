@@ -264,6 +264,7 @@ Product formulation management.
 - Packaging requirements: button quick-select presets (200目、300目、400目、色装机); clicking a preset fills the field; new recipes start with an empty packaging field (no default preset)
 - QC section (separate card): multi-select checkboxes for standard tests (黏度, 百格, 水煮80C/30M, 湿油外观, 干板外观) plus optional free-text test standard; each checked test shows its own result input on the same row (unchecked tests hide result inputs); selected tests and custom text are carried into production order quality-check requirements when creating orders (viscosity checkbox includes recipe viscosity value when set)
 - Material rows can be reordered by drag-and-drop; new order is auto-saved immediately
+- **Change approval workflow**: non–`SUPER_ADMIN` roles cannot directly modify or delete existing recipes; PATCH/DELETE (including refresh-prices) create a pending change request (`UPDATE` or `DELETE`) for super-admin review; `SUPER_ADMIN` applies changes immediately; recipe list page shows a **待审批变更** panel for super admins with approve/reject actions; non–super-admin users see **提交审批** on the detail page and get HTTP 202 when a request is queued; only one pending request per recipe at a time; creating new recipes does not require approval
 
 ### Color Matching Formulas (`/admin/cosmocoat-color-formulas`)
 Custom color formulations for specific customers or products.
@@ -274,7 +275,7 @@ Custom color formulations for specific customers or products.
 - Line items: raw material library entries, Sol semifinished inventory entries, or manual blank/custom material rows, with quantity, actual weight (实投), percentage, unit price
 - List page: only the header "新建配方" button; empty state shows message only (no duplicate create button)
 - First line item is always the pinned "适用产品" row when a factory product is linked; it cannot be deleted but quantity is editable; unit price auto-fills from the linked factory product's `unitPrice` (read-only in the UI)
-- Material details use the same split layout as recipe management: selected item table above, candidate material table below with click-to-select and "添加选中"; picker category filter is single-select (default none — user picks one of AD, SO, Sol semifinished, DY, CO, CA, CC)
+- Material details use the same split layout as recipe management: selected item table above, candidate material table below with click-to-select and "添加选中"; picker category filter is single-select (default none — user picks one of AD, SO, Sol semifinished, DY, CO, CA, CC); selecting Sol semifinished loads only Sol semifinished inventory records, not raw materials
 - Category tabs filter the factory-product sub-filters below: PU tab shows only factory products whose product category name is exactly「PU漆」; 色漆 and 烤漆 tabs use inferred category matching
 - Clicking "新建配方" while a product filter is active pre-fills that product in the new formula form
 - Detail page has a "打印文件" action: opens a dialog to enter target production weight (kg), scales product and raw-material line quantities proportionally, then triggers browser PDF print (A4, no page header/footer). Print header shows 调色单号 (formula code), name, category, linked factory product, production weight, and notes. Material table shows 序号 / 生产编号 / 原料·产品名称 / 用量(kg) / 占比 / 实投(kg) / 备注 only (hides attribute, color code, target color, source recipe, customer, unit price, and amount columns); 实投 scales with the entered production weight from each line's saved actual-weight value. Production instructions from the linked source recipe are not included in print output.
@@ -285,7 +286,7 @@ CosmoCoat factory staff registry (内务、销售、生产、技术人员).
 - Fields: employee code (auto `YG####` if omitted), name, type, phone, email, position, department, hire date, notes, active status
 - List with search (code / name / phone / email / position / department) and type filter; paginated table
 - Create, view, edit, and delete at `/admin/cosmocoat-employees/[id]`; new at `/admin/cosmocoat-employees/new`
-- Upload, view, download, and delete **劳动合同** and **简历** files (PDF, Word, JPG, PNG, WEBP; max 10 MB) on saved employee profiles
+- Upload, view, download, and delete **劳动合同**, **简历**, and **身份证** files (PDF, Word, JPG, PNG, WEBP; max 10 MB); new employee forms can select files before saving and upload them automatically after creation
 - Production orders can assign an active **生产人员**; assigned employee basic info is shown on the production order detail page with a link to the employee profile
 
 ### Production Orders (`/admin/cosmocoat-production-orders`)
@@ -329,6 +330,7 @@ Unified customer registry for CosmoCoat manufacturing clients (raw material purc
 - Fields: customer code (auto-generated `KH####` if omitted), name, optional linked CosmoCoat platform login account (from Customer Account Management), phone, address, production equipment parameters (free-text multi-line field below address on create/edit form)
 - List with search (code / name / phone / address / linked account email); paginated table
 - Create, view, edit, and delete customer profiles; detail page at `/admin/cosmocoat-customers/[id]`; new at `/admin/cosmocoat-customers/new`
+- Upload, view, download, and delete **营业执照** files on saved customer profiles (PDF, JPG, PNG, WEBP; max 10 MB); new customers must be saved before uploading
 - Each CosmoCoat platform account can be linked to at most one customer profile
 
 ### Sample Orders (`/admin/cosmocoat-sample-orders`)

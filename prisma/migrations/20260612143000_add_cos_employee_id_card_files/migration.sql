@@ -1,0 +1,1 @@
+ALTER TYPE "CosEmployeeFileType" ADD VALUE IF NOT EXISTS 'ID_CARD';

@@ -11,6 +11,7 @@ import { recipeItemSchema } from '@/lib/cosmocoat/recipe-api-schemas'
 import { refreshAllFormulaIsUsedCache } from '@/lib/cosmocoat/recipe-usage'
 import { serializeFullRecipe } from '@/lib/cosmocoat/recipe-serializer'
 import { recipeViscosityFieldsSchema, toRecipeViscosityDbData } from '@/lib/cosmocoat/recipe-viscosity'
+import { listRecipeChangeRequests } from '@/lib/cosmocoat/recipe-change-requests'
 
 const itemSchema = recipeItemSchema
 
@@ -49,8 +50,10 @@ async function saveRecipeItems(recipeId: string, items: RecipeItemInput[], batch
 }
 
 export async function GET(req: NextRequest) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatRecipes' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'cosmocoatRecipes' })
   if (error) return error
+
+  const isSuperAdmin = session!.user.role === 'SUPER_ADMIN'
 
   const q = req.nextUrl.searchParams.get('q')?.trim() ?? ''
   const categoryId = req.nextUrl.searchParams.get('categoryId')?.trim() ?? ''
@@ -117,6 +120,10 @@ export async function GET(req: NextRequest) {
       page,
       limit,
       totalPages: Math.ceil(total / limit),
+      canDirectEdit: isSuperAdmin,
+      pendingChangeRequests: isSuperAdmin
+        ? await listRecipeChangeRequests({ status: 'PENDING', limit: 100 })
+        : [],
     })
   } catch (err) {
     if (isMissingTable(err)) {

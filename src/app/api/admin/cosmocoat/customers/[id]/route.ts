@@ -9,6 +9,7 @@ import {
   getCustomerById,
   serializeCustomer,
 } from '@/lib/cosmocoat/customers'
+import { deleteCosCustomerBusinessLicenseFile } from '@/lib/cosmocoat/customer-business-licenses'
 
 const updateSchema = z.object({
   code: z.string().trim().min(1).max(32).optional(),
@@ -138,8 +139,15 @@ export async function DELETE(
   const { id } = await params
 
   try {
-    const before = await prisma.cosCustomer.findUnique({ where: { id } })
+    const before = await prisma.cosCustomer.findUnique({
+      where: { id },
+      include: { businessLicenses: { select: { storageKey: true } } },
+    })
     if (!before) return NextResponse.json({ error: '客户不存在' }, { status: 404 })
+
+    for (const file of before.businessLicenses) {
+      await deleteCosCustomerBusinessLicenseFile(file.storageKey)
+    }
 
     await prisma.cosCustomer.delete({ where: { id } })
     await logAudit(session!.user.id, 'DELETE', 'CosCustomer', id, before, null)

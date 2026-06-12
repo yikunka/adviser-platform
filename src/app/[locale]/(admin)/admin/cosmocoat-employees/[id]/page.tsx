@@ -6,7 +6,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, Download, FileText, Save, Trash2, Upload } from 'lucide-react'
+import { ArrowLeft, Download, Eye, FileText, Save, Trash2, Upload } from 'lucide-react'
+import { DatePickerPopover } from '@/components/ui/date-picker-popover'
 import type { CosEmployeeFileRow, CosEmployeeRow } from '@/lib/cosmocoat/employees'
 import { COS_EMPLOYEE_FILE_TYPE_LABELS, COS_EMPLOYEE_TYPE_LABELS } from '@/lib/cosmocoat/employee-labels'
 import type { CosEmployeeFileType, CosEmployeeType } from '@prisma/client'
@@ -23,6 +24,33 @@ type FormState = {
   notes: string
   isActive: boolean
 }
+
+type PendingEmployeeFile = {
+  file: File
+  notes: string
+}
+
+const EMPLOYEE_FILE_SECTIONS: Array<{
+  fileType: CosEmployeeFileType
+  title: string
+  hint: string
+}> = [
+  {
+    fileType: 'LABOR_CONTRACT',
+    title: '劳动合同',
+    hint: '上传、查看与下载员工劳动合同',
+  },
+  {
+    fileType: 'RESUME',
+    title: '简历',
+    hint: '上传、查看与下载员工简历',
+  },
+  {
+    fileType: 'ID_CARD',
+    title: '身份证',
+    hint: '上传、查看与下载身份证照片或扫描件',
+  },
+]
 
 const card: React.CSSProperties = {
   background: 'var(--card)',
@@ -48,14 +76,120 @@ function Field({ label, hint, children, className = '' }: { label: string; hint?
   )
 }
 
-function fileUrl(storageKey: string) {
-  return `/api/files?key=${encodeURIComponent(storageKey)}`
+function fileUrl(storageKey: string, fileName?: string, download = false) {
+  const params = new URLSearchParams({ key: storageKey })
+  if (download) params.set('download', '1')
+  if (fileName) params.set('filename', fileName)
+  return `/api/files?${params.toString()}`
 }
 
 function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+async function uploadEmployeeFileRequest(
+  employeeId: string,
+  fileType: CosEmployeeFileType,
+  file: File,
+  notes?: string,
+) {
+  const fd = new FormData()
+  fd.append('file', file)
+  fd.append('fileType', fileType)
+  if (notes?.trim()) fd.append('notes', notes.trim())
+  const res = await fetch(`/api/admin/cosmocoat/employees/${employeeId}/files`, {
+    method: 'POST',
+    body: fd,
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error ?? '上传失败')
+}
+
+function PendingEmployeeFilesSection({
+  fileType,
+  title,
+  hint,
+  value,
+  onChange,
+}: {
+  fileType: CosEmployeeFileType
+  title: string
+  hint: string
+  value: PendingEmployeeFile | null
+  onChange: (value: PendingEmployeeFile | null) => void
+}) {
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  return (
+    <div className="space-y-3 rounded-md p-4" style={{ background: '#0A0A0A', border: '1px solid #2A2418' }}>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{title}</h3>
+          <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>{hint}</p>
+        </div>
+        <FileText size={16} style={{ color: '#C9A96E' }} />
+      </div>
+
+      <Field label="备注（可选）">
+        <input
+          value={value?.notes ?? ''}
+          onChange={e => {
+            if (!value) return
+            onChange({ ...value, notes: e.target.value })
+          }}
+          disabled={!value}
+          maxLength={500}
+          placeholder="版本、生效日期等"
+          className="w-full rounded-lg px-3 py-2 text-sm outline-none disabled:opacity-50"
+          style={inputStyle()}
+        />
+      </Field>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+          className="hidden"
+          onChange={e => {
+            const file = e.target.files?.[0]
+            if (!file) return
+            onChange({ file, notes: value?.notes ?? '' })
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
+          style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
+        >
+          <Upload size={13} />
+          {value ? '更换文件' : '选择文件'}
+        </button>
+        {value && (
+          <button
+            type="button"
+            onClick={() => {
+              onChange(null)
+              if (fileRef.current) fileRef.current.value = ''
+            }}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs"
+            style={{ border: '1px solid #5A3030', color: '#E57373' }}
+          >
+            <Trash2 size={12} />
+            移除
+          </button>
+        )}
+        <span className="text-[11px]" style={{ color: '#756A58' }}>PDF、Word、JPG、PNG、WEBP，最大 10 MB</span>
+      </div>
+
+      <p className="text-xs" style={{ color: value ? 'var(--foreground)' : 'var(--muted-foreground)' }}>
+        {value ? `已选择：${value.file.name}（保存员工后上传）` : `尚未选择${COS_EMPLOYEE_FILE_TYPE_LABELS[fileType]}文件`}
+      </p>
+    </div>
+  )
 }
 
 function EmployeeFilesSection({
@@ -83,16 +217,7 @@ function EmployeeFilesSection({
     if (!file) return
     setUploading(true)
     try {
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('fileType', fileType)
-      if (notes.trim()) fd.append('notes', notes.trim())
-      const res = await fetch(`/api/admin/cosmocoat/employees/${employeeId}/files`, {
-        method: 'POST',
-        body: fd,
-      })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error ?? '上传失败')
+      await uploadEmployeeFileRequest(employeeId, fileType, file, notes)
       toast.success('文件已上传')
       setNotes('')
       if (fileRef.current) fileRef.current.value = ''
@@ -186,9 +311,17 @@ function EmployeeFilesSection({
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <a
-                  href={fileUrl(file.storageKey)}
+                  href={fileUrl(file.storageKey, file.fileName)}
                   target="_blank"
                   rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs"
+                  style={{ border: '1px solid #2A2418', color: '#C9A96E' }}
+                >
+                  <Eye size={12} /> 查看
+                </a>
+                <a
+                  href={fileUrl(file.storageKey, file.fileName, true)}
+                  download={file.fileName}
                   className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs"
                   style={{ border: '1px solid #2A2418', color: '#C9A96E' }}
                 >
@@ -223,6 +356,11 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [employee, setEmployee] = useState<CosEmployeeRow | null>(null)
+  const [pendingFiles, setPendingFiles] = useState<Record<CosEmployeeFileType, PendingEmployeeFile | null>>({
+    LABOR_CONTRACT: null,
+    RESUME: null,
+    ID_CARD: null,
+  })
   const [form, setForm] = useState<FormState>({
     code: '',
     name: '',
@@ -275,6 +413,10 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
     setForm(prev => ({ ...prev, [key]: value }))
   }
 
+  function patchPendingFile(fileType: CosEmployeeFileType, value: PendingEmployeeFile | null) {
+    setPendingFiles(prev => ({ ...prev, [fileType]: value }))
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.name.trim()) {
@@ -311,10 +453,30 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
         return
       }
 
-      toast.success(isNew ? '员工已创建' : '员工资料已更新')
       if (isNew) {
-        router.push(`/admin/cosmocoat-employees/${data.employee.id}`)
+        const createdId = data.employee.id as string
+        const pendingUploads = EMPLOYEE_FILE_SECTIONS
+          .map(section => ({
+            fileType: section.fileType,
+            pending: pendingFiles[section.fileType],
+          }))
+          .filter((item): item is { fileType: CosEmployeeFileType; pending: PendingEmployeeFile } => Boolean(item.pending))
+
+        if (pendingUploads.length > 0) {
+          try {
+            await Promise.all(pendingUploads.map(item => (
+              uploadEmployeeFileRequest(createdId, item.fileType, item.pending.file, item.pending.notes)
+            )))
+            toast.success('员工已创建，文件已上传')
+          } catch (err) {
+            toast.error(err instanceof Error ? `员工已创建，但文件上传失败：${err.message}` : '员工已创建，但文件上传失败')
+          }
+        } else {
+          toast.success('员工已创建')
+        }
+        router.push(`/admin/cosmocoat-employees/${createdId}`)
       } else {
+        toast.success('员工资料已更新')
         setEmployee(data.employee)
       }
     } catch {
@@ -478,10 +640,10 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
           </div>
 
           <Field label="入职日期">
-            <input
-              type="date"
+            <DatePickerPopover
               value={form.hireDate}
-              onChange={e => patch('hireDate', e.target.value)}
+              onChange={value => patch('hireDate', value)}
+              placeholder="选择入职日期"
               className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
               style={inputStyle()}
             />
@@ -499,7 +661,26 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
           </Field>
         </div>
 
-        {!isNew && employee && (
+        {isNew ? (
+          <div className="p-5 space-y-4" style={card}>
+            <div>
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>文件资料</h2>
+              <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
+                可先选择文件，创建员工成功后自动上传。
+              </p>
+            </div>
+            {EMPLOYEE_FILE_SECTIONS.map(section => (
+              <PendingEmployeeFilesSection
+                key={section.fileType}
+                fileType={section.fileType}
+                title={section.title}
+                hint={section.hint}
+                value={pendingFiles[section.fileType]}
+                onChange={value => patchPendingFile(section.fileType, value)}
+              />
+            ))}
+          </div>
+        ) : employee && (
           <div className="p-5 space-y-4" style={card}>
             <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>文件资料</h2>
             <EmployeeFilesSection
@@ -516,6 +697,14 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
               title="简历"
               hint="上传、查看与下载员工简历"
               files={employee.resumes ?? []}
+              onRefresh={fetchEmployee}
+            />
+            <EmployeeFilesSection
+              employeeId={employeeId}
+              fileType="ID_CARD"
+              title="身份证"
+              hint="上传、查看与下载身份证照片或扫描件"
+              files={employee.idCards ?? []}
               onRefresh={fetchEmployee}
             />
           </div>

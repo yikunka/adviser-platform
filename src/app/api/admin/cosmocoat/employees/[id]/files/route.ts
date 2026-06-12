@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
 import { uploadCosEmployeeFile } from '@/lib/cosmocoat/employee-files'
 
-const FILE_TYPES: CosEmployeeFileType[] = ['LABOR_CONTRACT', 'RESUME']
+const FILE_TYPES: CosEmployeeFileType[] = ['LABOR_CONTRACT', 'RESUME', 'ID_CARD']
 
 export async function GET(
   req: NextRequest,
