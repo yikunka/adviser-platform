@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -14,7 +14,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { FinancialBreadcrumbs } from '@/components/admin/financial/FinancialBreadcrumbs'
 import { useFinancialCompany } from '@/components/admin/financial/FinancialCompanyContext'
-import { inputStyle } from '@/components/admin/financial/subledger/config'
 
 type Party = {
   id: string
@@ -29,8 +28,24 @@ type Party = {
   address: string | null
   taxNumber: string | null
   paymentTermsDays: number
+  arAccountId: string | null
+  apAccountId: string | null
   notes: string
   isActive: boolean
+}
+
+type FinancialAccount = {
+  id: string
+  code: string
+  name: string
+  type: string
+  parentId: string | null
+  level: number
+  sortOrder: number
+}
+
+type AccountOption = FinancialAccount & {
+  label: string
 }
 
 const emptyForm = {
@@ -45,12 +60,106 @@ const emptyForm = {
   address: '',
   taxNumber: '',
   paymentTermsDays: '30',
+  arAccountId: 'AUTO',
+  apAccountId: 'AUTO',
   notes: '',
+}
+
+const fieldClassName = 'border-[#2A2418] bg-[#0E0E0A] text-[#FFF7E6] placeholder:text-[#9F927B] focus-visible:border-[#C9A96E] focus-visible:ring-[#C9A96E]/25'
+const selectContentClassName = 'financial-select-content border-[#2A2418] bg-[#11110E] text-[#FFF7E6]'
+const labelClassName = 'text-[#EADDC3]'
+const secondaryButtonClassName = 'border-[#3A3428] bg-[#0E0E0A] text-[#FFF7E6] hover:bg-[#1E1A12] hover:text-[#FFF7E6]'
+
+function accountOptionLabel(account: Pick<FinancialAccount, 'code' | 'name'>) {
+  return `${account.code} - ${account.name}`
+}
+
+function flattenAccountOptions(accounts: FinancialAccount[]) {
+  const childrenByParent = new Map<string | null, FinancialAccount[]>()
+  for (const account of accounts) {
+    childrenByParent.set(account.parentId, [...(childrenByParent.get(account.parentId) ?? []), account])
+  }
+  for (const [parentId, items] of childrenByParent) {
+    childrenByParent.set(
+      parentId,
+      items.slice().sort((left, right) => left.sortOrder - right.sortOrder || left.code.localeCompare(right.code)),
+    )
+  }
+
+  const rows: AccountOption[] = []
+  const visit = (parentId: string | null) => {
+    for (const account of childrenByParent.get(parentId) ?? []) {
+      rows.push({ ...account, label: accountOptionLabel(account) })
+      visit(account.id)
+    }
+  }
+  visit(null)
+  return rows
+}
+
+function AccountLinkSelect({
+  label,
+  value,
+  onChange,
+  options,
+  selectedLabel,
+  createMode,
+  autoLabel,
+  noneLabel,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  options: AccountOption[]
+  selectedLabel?: string
+  createMode: boolean
+  autoLabel: string
+  noneLabel: string
+}) {
+  const displayLabel = value === 'AUTO' ? autoLabel : value === 'NONE' ? noneLabel : selectedLabel
+
+  return (
+    <div className="space-y-1.5">
+      <Label className={labelClassName}>{label}</Label>
+      <Select value={value} onValueChange={next => onChange(next ?? (createMode ? 'AUTO' : 'NONE'))}>
+        <SelectTrigger className={`w-full ${fieldClassName}`}>
+          <SelectValue placeholder="选择关联科目">{displayLabel}</SelectValue>
+        </SelectTrigger>
+        <SelectContent alignItemWithTrigger={false} className={`${selectContentClassName} min-w-80 max-h-72`}>
+          {createMode ? (
+            <SelectItem value="AUTO" label={autoLabel}>{autoLabel}</SelectItem>
+          ) : (
+            <SelectItem value="NONE" label={noneLabel}>{noneLabel}</SelectItem>
+          )}
+          {options.length === 0 ? (
+            <div className="px-3 py-2 text-sm text-[#B8AD98]">暂无可选科目</div>
+          ) : (
+            options.map(option => (
+              <SelectItem
+                key={option.id}
+                value={option.id}
+                label={option.label}
+                className="whitespace-normal *:whitespace-normal"
+              >
+                <span
+                  className="block font-sans leading-snug"
+                  style={{ paddingLeft: `${Math.max(0, option.level - 1) * 12}px` }}
+                >
+                  {option.label}
+                </span>
+              </SelectItem>
+            ))
+          )}
+        </SelectContent>
+      </Select>
+    </div>
+  )
 }
 
 export default function AdminFinancialPartiesPage() {
   const company = useFinancialCompany()
   const [parties, setParties] = useState<Party[]>([])
+  const [accounts, setAccounts] = useState<FinancialAccount[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
@@ -58,6 +167,18 @@ export default function AdminFinancialPartiesPage() {
   const [editing, setEditing] = useState<Party | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+
+  const fetchAccounts = useCallback(async () => {
+    try {
+      const params = new URLSearchParams({ companyId: company.id })
+      const res = await fetch(`/api/admin/financial/accounts?${params}`)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '载入会计科目失败')
+      setAccounts(data.accounts ?? [])
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '载入会计科目失败')
+    }
+  }, [company.id])
 
   const fetchParties = useCallback(async () => {
     setLoading(true)
@@ -81,6 +202,25 @@ export default function AdminFinancialPartiesPage() {
     return () => clearTimeout(timer)
   }, [fetchParties, search])
 
+  useEffect(() => {
+    const timer = setTimeout(() => void fetchAccounts(), 0)
+    return () => clearTimeout(timer)
+  }, [fetchAccounts])
+
+  const accountOptions = useMemo(() => flattenAccountOptions(accounts).filter(account => account.level <= 3), [accounts])
+  const accountLabelById = useMemo(
+    () => new Map(accounts.map(account => [account.id, accountOptionLabel(account)])),
+    [accounts],
+  )
+  const arAccountOptions = useMemo(
+    () => accountOptions.filter(account => account.type === 'ASSET' || account.type === 'CURRENT_ACCOUNT'),
+    [accountOptions],
+  )
+  const apAccountOptions = useMemo(
+    () => accountOptions.filter(account => account.type === 'LIABILITY' || account.type === 'CURRENT_ACCOUNT'),
+    [accountOptions],
+  )
+
   function openForm(party: Party | null) {
     setEditing(party)
     setForm(
@@ -97,6 +237,8 @@ export default function AdminFinancialPartiesPage() {
             address: party.address ?? '',
             taxNumber: party.taxNumber ?? '',
             paymentTermsDays: String(party.paymentTermsDays),
+            arAccountId: party.arAccountId ?? 'NONE',
+            apAccountId: party.apAccountId ?? 'NONE',
             notes: party.notes,
           }
         : emptyForm,
@@ -128,6 +270,8 @@ export default function AdminFinancialPartiesPage() {
         address: form.address.trim() || null,
         taxNumber: form.taxNumber.trim() || null,
         paymentTermsDays: Number(form.paymentTermsDays) || 30,
+        arAccountId: form.isCustomer && form.arAccountId !== 'AUTO' && form.arAccountId !== 'NONE' ? form.arAccountId : null,
+        apAccountId: form.isSupplier && form.apAccountId !== 'AUTO' && form.apAccountId !== 'NONE' ? form.apAccountId : null,
         notes: form.notes,
       }
       const res = await fetch(
@@ -142,7 +286,7 @@ export default function AdminFinancialPartiesPage() {
       if (!res.ok) throw new Error(data.toast || data.error || '保存失败。')
       toast.success(data.toast || '已保存。')
       setFormOpen(false)
-      await fetchParties()
+      await Promise.all([fetchParties(), fetchAccounts()])
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '保存失败。')
     } finally {
@@ -187,7 +331,7 @@ export default function AdminFinancialPartiesPage() {
           <div>
             <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>往来单位</h1>
             <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-              {company.nameEn} · 客户、供应商与员工主数据，供应收/应付模块使用。
+              {company.nameEn} · 客户、供应商与员工主数据，用于应收/应付模块。
             </p>
           </div>
           <Button size="sm" onClick={() => openForm(null)} style={{ background: '#C9A96E', color: '#0A0805' }}>
@@ -203,14 +347,13 @@ export default function AdminFinancialPartiesPage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="搜索编号或名称..."
-              className="max-w-xs"
-              style={inputStyle}
+              className={`max-w-xs ${fieldClassName}`}
             />
             <Select value={roleFilter} onValueChange={value => setRoleFilter(value ?? 'all')}>
-              <SelectTrigger className="w-[140px]" style={inputStyle}>
+              <SelectTrigger className={`w-[140px] ${fieldClassName}`}>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className={selectContentClassName}>
                 <SelectItem value="all">全部角色</SelectItem>
                 <SelectItem value="customer">客户</SelectItem>
                 <SelectItem value="supplier">供应商</SelectItem>
@@ -231,6 +374,7 @@ export default function AdminFinancialPartiesPage() {
                   <TableHead>编号</TableHead>
                   <TableHead>名称</TableHead>
                   <TableHead>角色</TableHead>
+                  <TableHead>关联科目</TableHead>
                   <TableHead>联系方式</TableHead>
                   <TableHead>账期</TableHead>
                   <TableHead>状态</TableHead>
@@ -248,6 +392,27 @@ export default function AdminFinancialPartiesPage() {
                       ) : null}
                     </TableCell>
                     <TableCell>{roleBadges(party)}</TableCell>
+                    <TableCell className="text-xs">
+                      <div className="space-y-1">
+                        {party.isCustomer ? (
+                          <div>
+                            <span style={{ color: '#38bdf8' }}>AR</span>
+                            <span className="ml-1" style={{ color: 'var(--muted-foreground)' }}>
+                              {party.arAccountId ? accountLabelById.get(party.arAccountId) ?? '已关联科目' : '默认映射'}
+                            </span>
+                          </div>
+                        ) : null}
+                        {party.isSupplier ? (
+                          <div>
+                            <span style={{ color: '#f59e0b' }}>AP</span>
+                            <span className="ml-1" style={{ color: 'var(--muted-foreground)' }}>
+                              {party.apAccountId ? accountLabelById.get(party.apAccountId) ?? '已关联科目' : '默认映射'}
+                            </span>
+                          </div>
+                        ) : null}
+                        {!party.isCustomer && !party.isSupplier ? '-' : null}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
                       {[party.email, party.phone].filter(Boolean).join(' · ') || '-'}
                     </TableCell>
@@ -277,41 +442,41 @@ export default function AdminFinancialPartiesPage() {
       </Card>
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="max-w-xl max-h-[88vh] overflow-y-auto">
+        <DialogContent className="financial-modal max-w-2xl max-h-[88vh] overflow-y-auto border-[#2A2418] bg-[#11110E] text-[#FFF7E6] shadow-2xl ring-[#3A3428]">
           <DialogHeader>
-            <DialogTitle>{editing ? `编辑 ${editing.code}` : '新增往来单位'}</DialogTitle>
+            <DialogTitle className="text-[#FFF7E6]">{editing ? `编辑 ${editing.code}` : '新增往来单位'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>编号 *（如 C0001 / S0001）</Label>
-                <Input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} style={inputStyle} />
+                <Label className={labelClassName}>编号 *（如 C0001 / S0001）</Label>
+                <Input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} className={fieldClassName} />
               </div>
               <div className="space-y-1.5">
-                <Label>账期（天）</Label>
+                <Label className={labelClassName}>账期（天）</Label>
                 <Input
                   type="number"
                   min="0"
                   max="365"
                   value={form.paymentTermsDays}
                   onChange={e => setForm(f => ({ ...f, paymentTermsDays: e.target.value }))}
-                  style={inputStyle}
+                  className={fieldClassName}
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>名称 *</Label>
-                <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} style={inputStyle} />
+                <Label className={labelClassName}>名称 *</Label>
+                <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={fieldClassName} />
               </div>
               <div className="space-y-1.5">
-                <Label>中文名称</Label>
-                <Input value={form.nameZh} onChange={e => setForm(f => ({ ...f, nameZh: e.target.value }))} style={inputStyle} />
+                <Label className={labelClassName}>中文名称</Label>
+                <Input value={form.nameZh} onChange={e => setForm(f => ({ ...f, nameZh: e.target.value }))} className={fieldClassName} />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>角色 *</Label>
-              <div className="flex gap-4 text-sm">
+              <Label className={labelClassName}>角色 *</Label>
+              <div className="flex gap-4 text-sm text-[#EADDC3]">
                 {([
                   ['isCustomer', '客户'],
                   ['isSupplier', '供应商'],
@@ -322,39 +487,76 @@ export default function AdminFinancialPartiesPage() {
                       type="checkbox"
                       checked={form[key]}
                       onChange={e => setForm(f => ({ ...f, [key]: e.target.checked }))}
+                      className="size-4 accent-[#C9A96E]"
                     />
                     {label}
                   </label>
                 ))}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            {(form.isCustomer || form.isSupplier) ? (
+              <div className="rounded-lg border border-[#2A2418] bg-[#0E0E0A] p-4">
+                <div className="mb-3">
+                  <h3 className="text-sm font-semibold text-[#FFF7E6]">关联会计科目</h3>
+                  <p className="mt-1 text-xs text-[#B8AD98]">
+                    新增时可选择已有一级/二级/三级科目；未选择时系统会自动新建客户应收或供应商应付科目。
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {form.isCustomer ? (
+                    <AccountLinkSelect
+                      label="客户应收科目"
+                      value={form.arAccountId}
+                      onChange={value => setForm(f => ({ ...f, arAccountId: value }))}
+                      options={arAccountOptions}
+                      selectedLabel={accountLabelById.get(form.arAccountId)}
+                      createMode={!editing}
+                      autoLabel="自动新建客户应收科目"
+                      noneLabel="不关联（使用默认应收映射）"
+                    />
+                  ) : null}
+                  {form.isSupplier ? (
+                    <AccountLinkSelect
+                      label="供应商应付科目"
+                      value={form.apAccountId}
+                      onChange={value => setForm(f => ({ ...f, apAccountId: value }))}
+                      options={apAccountOptions}
+                      selectedLabel={accountLabelById.get(form.apAccountId)}
+                      createMode={!editing}
+                      autoLabel="自动新建供应商应付科目"
+                      noneLabel="不关联（使用默认应付映射）"
+                    />
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>邮箱</Label>
-                <Input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={inputStyle} />
+                <Label className={labelClassName}>邮箱</Label>
+                <Input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className={fieldClassName} />
               </div>
               <div className="space-y-1.5">
-                <Label>电话</Label>
-                <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} style={inputStyle} />
+                <Label className={labelClassName}>电话</Label>
+                <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className={fieldClassName} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>地址</Label>
-                <Input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} style={inputStyle} />
+                <Label className={labelClassName}>地址</Label>
+                <Input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} className={fieldClassName} />
               </div>
               <div className="space-y-1.5">
-                <Label>税号</Label>
-                <Input value={form.taxNumber} onChange={e => setForm(f => ({ ...f, taxNumber: e.target.value }))} style={inputStyle} />
+                <Label className={labelClassName}>税号</Label>
+                <Input value={form.taxNumber} onChange={e => setForm(f => ({ ...f, taxNumber: e.target.value }))} className={fieldClassName} />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>备注</Label>
-              <Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} style={inputStyle} />
+              <Label className={labelClassName}>备注</Label>
+              <Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} className={fieldClassName} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" style={{ borderColor: '#2A2418' }} onClick={() => setFormOpen(false)}>
+            <Button variant="outline" className={secondaryButtonClassName} onClick={() => setFormOpen(false)}>
               取消
             </Button>
             <Button onClick={() => void save()} disabled={saving} style={{ background: '#C9A96E', color: '#0A0805' }}>
