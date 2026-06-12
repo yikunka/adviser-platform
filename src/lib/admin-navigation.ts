@@ -1,4 +1,9 @@
-const FINANCIAL_NAV_SECTIONS = new Set(['accounts', 'journal', 'ledger', 'reports'])
+const FINANCIAL_NAV_SECTIONS = new Set([
+  'accounts', 'journal', 'ledger', 'reports',
+  'receivables', 'payables', 'banking', 'parties', 'dimensions',
+])
+
+type FinancialSection = 'selector' | 'accounts' | 'journal' | 'ledger' | 'reports' | 'receivables' | 'payables' | 'banking' | 'parties' | 'dimensions'
 
 export function normalizeAdminPathname(pathname: string): string {
   const [pathOnly = '/'] = pathname.split(/[?#]/)
@@ -7,7 +12,7 @@ export function normalizeAdminPathname(pathname: string): string {
   return withoutTrailingSlash || '/'
 }
 
-export function financialRouteSection(pathname: string): 'selector' | 'accounts' | 'journal' | 'ledger' | 'reports' | null {
+export function financialRouteSection(pathname: string): FinancialSection | null {
   const segments = normalizeAdminPathname(pathname).split('/').filter(Boolean)
   const adminIndex = segments.indexOf('admin')
   if (adminIndex < 0 || segments[adminIndex + 1] !== 'financial') return null
@@ -17,12 +22,12 @@ export function financialRouteSection(pathname: string): 'selector' | 'accounts'
 
   const directSection = financialSegments[0]
   if (FINANCIAL_NAV_SECTIONS.has(directSection)) {
-    return directSection as 'accounts' | 'journal' | 'ledger' | 'reports'
+    return directSection as FinancialSection
   }
 
   const companyScopedSection = financialSegments[1]
   if (FINANCIAL_NAV_SECTIONS.has(companyScopedSection)) {
-    return companyScopedSection as 'accounts' | 'journal' | 'ledger' | 'reports'
+    return companyScopedSection as FinancialSection
   }
 
   return null

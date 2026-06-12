@@ -38,6 +38,11 @@ import {
   MessageSquarePlus,
   SlidersHorizontal,
   UserRound,
+  ReceiptText,
+  HandCoins,
+  Landmark,
+  Contact,
+  Tags,
 } from 'lucide-react'
 import type { AdminMenuKey } from '@/lib/auth/admin-access'
 import { pathnameToAdminMenuKey, adminMenusAllow } from '@/lib/auth/admin-access'
@@ -79,6 +84,11 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/financial/journal', key: 'financial', labelKey: 'financialJournal', Icon: FileText },
       { href: '/admin/financial/ledger', key: 'financial', labelKey: 'financialLedger', Icon: Layers },
       { href: '/admin/financial/reports', key: 'financial', labelKey: 'financialReports', Icon: FileBarChart },
+      { href: '/admin/financial/[companyId]/receivables', key: 'financial', labelKey: 'financialReceivables', Icon: ReceiptText },
+      { href: '/admin/financial/[companyId]/payables', key: 'financial', labelKey: 'financialPayables', Icon: HandCoins },
+      { href: '/admin/financial/[companyId]/banking', key: 'financial', labelKey: 'financialBanking', Icon: Landmark },
+      { href: '/admin/financial/[companyId]/parties', key: 'financial', labelKey: 'financialParties', Icon: Contact },
+      { href: '/admin/financial/[companyId]/dimensions', key: 'financial', labelKey: 'financialDimensions', Icon: Tags },
     ],
   },
   {
@@ -172,8 +182,12 @@ export default function AdminShell({
   const navLocale = (params.locale as string) ?? locale
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
+  const financialCompanyId = pathname.match(/\/admin\/financial\/([^/]+)\//)?.[1] ?? null
+
   function resolveHref(item: NavItem) {
-    return item.href
+    if (!item.href.includes('[companyId]')) return item.href
+    if (financialCompanyId) return item.href.replace('[companyId]', financialCompanyId)
+    return '/admin/financial'
   }
 
   function isActive(item: NavItem) {
