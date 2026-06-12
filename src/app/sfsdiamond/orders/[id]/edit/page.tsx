@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
 import OrderWizard, { type WizardFormData } from '@/app/sfsdiamond/components/OrderWizard'
-import { getSfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options'
+import { getSfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options-server'
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget'
 
 const EDITABLE_STATUSES = ['PENDING', 'QUOTED', 'CANCELLED']

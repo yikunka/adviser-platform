@@ -73,6 +73,11 @@ type KitTest = {
 
 type KitStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED'
 
+type StandardizedOperationItem = {
+  title: string
+  body: string
+}
+
 type LoadedKit = {
   code: string
   name: string
@@ -334,6 +339,13 @@ const TEST_TYPES = [
 ] as const
 
 const TEST_RESULTS = ['PENDING', 'PASSED', 'FAILED'] as const
+const STANDARDIZED_OPERATION_ITEM_IDS = [
+  'pretreatment',
+  'filtering',
+  'sprayEnvironment',
+  'storage',
+  'disclaimer',
+] as const
 
 function ResultBadge({ result, label }: { result: string; label: string }) {
   const colors: Record<string, { bg: string; text: string }> = {
@@ -346,6 +358,30 @@ function ResultBadge({ result, label }: { result: string; label: string }) {
     <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: c.bg, color: c.text }}>
       {label}
     </span>
+  )
+}
+
+function StandardizedOperationInstructions({
+  title,
+  items,
+}: {
+  title: string
+  items: StandardizedOperationItem[]
+}) {
+  return (
+    <section style={card} className="p-4">
+      <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>{title}</h3>
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        {items.map(item => (
+          <div key={item.title} className="rounded-lg p-3" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
+            <p className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>{item.title}</p>
+            <p className="mt-1 whitespace-pre-wrap text-xs leading-5" style={{ color: 'var(--muted-foreground)' }}>
+              {item.body}
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -364,6 +400,10 @@ interface ProcessKitPrintViewProps {
   processDescription: string
   processFlowNote: string
   processFlowDocument: string
+  standardizedOperation: {
+    title: string
+    items: StandardizedOperationItem[]
+  }
   labels: {
     title: string
     basicInfo: string
@@ -391,6 +431,7 @@ function ProcessKitPrintView({
   processDescription,
   processFlowNote,
   processFlowDocument,
+  standardizedOperation,
   labels,
 }: ProcessKitPrintViewProps) {
   return (
@@ -466,6 +507,20 @@ function ProcessKitPrintView({
             <td style={printLabelCellStyle}>{labels.processFlowDocument}</td>
             <td style={{ ...printCellStyle, whiteSpace: 'pre-wrap' }}>{displayText(processFlowDocument)}</td>
           </tr>
+        </tbody>
+      </table>
+
+      <div className="print-section-title" style={printSectionTitleStyle}>
+        {standardizedOperation.title}
+      </div>
+      <table style={printTableStyle}>
+        <tbody>
+          {standardizedOperation.items.map((item, index) => (
+            <tr key={item.title} style={{ background: index % 2 === 1 ? PROCESS_KIT_PRINT_COLORS.altBg : '#fff' }}>
+              <td style={{ ...printLabelCellStyle, width: '24%' }}>{item.title}</td>
+              <td style={{ ...printCellStyle, whiteSpace: 'pre-wrap' }}>{item.body}</td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
@@ -604,6 +659,13 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     globalProcessNote: t('globalProcessNote'),
     processFlowDocument: t('processFlowDocument'),
     notes: t('notes'),
+  }), [t])
+  const standardizedOperation = useMemo(() => ({
+    title: t('standardizedOperation.title'),
+    items: STANDARDIZED_OPERATION_ITEM_IDS.map(id => ({
+      title: t(`standardizedOperation.items.${id}.title`),
+      body: t(`standardizedOperation.items.${id}.body`),
+    })),
   }), [t])
 
   function toggleMaterial(materialId: string) {
@@ -1223,6 +1285,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
           processDescription={processDescription}
           processFlowNote={processFlowNote}
           processFlowDocument={processFlowDocument}
+          standardizedOperation={standardizedOperation}
           labels={printLabels}
         />
       )}
@@ -2279,6 +2342,11 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       {isNew && (
         <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>{t('saveFirstHint')}</p>
       )}
+
+      <StandardizedOperationInstructions
+        title={standardizedOperation.title}
+        items={standardizedOperation.items}
+      />
       </div>
     </>
   )

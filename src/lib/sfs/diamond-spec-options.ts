@@ -1,5 +1,4 @@
-import { Prisma, type SfsDiamondSpecCategory } from '@prisma/client'
-import { prisma } from '@/lib/db/prisma'
+import { type SfsDiamondSpecCategory } from '@prisma/client'
 
 export type SfsSpecOption = {
   id: string
@@ -18,6 +17,8 @@ export type SfsOrderSpecOptions = {
   settingTypes: SfsSpecOption[]
   ringDesigns: SfsSpecOption[]
   necklaceDesigns: SfsSpecOption[]
+  earringDesigns: SfsSpecOption[]
+  braceletDesigns: SfsSpecOption[]
   metals: SfsSpecOption[]
 }
 
@@ -28,6 +29,8 @@ export const SFS_SPEC_CATEGORIES = [
   'SETTING_TYPE',
   'RING_DESIGN',
   'NECKLACE_DESIGN',
+  'EARRING_DESIGN',
+  'BRACELET_DESIGN',
   'METAL',
 ] as const satisfies readonly SfsDiamondSpecCategory[]
 
@@ -38,8 +41,19 @@ export const SFS_SPEC_CATEGORY_LABELS: Record<SfsDiamondSpecCategory, string> = 
   SETTING_TYPE: 'Setting Type',
   RING_DESIGN: 'Ring Design',
   NECKLACE_DESIGN: 'Necklace Design',
+  EARRING_DESIGN: 'Earring Design',
+  BRACELET_DESIGN: 'Bracelet Design',
   METAL: 'Metal',
 }
+
+export const SFS_DESIGN_IMAGE_CATEGORIES = new Set<SfsDiamondSpecCategory>([
+  'COLOR',
+  'SHAPE',
+  'RING_DESIGN',
+  'NECKLACE_DESIGN',
+  'EARRING_DESIGN',
+  'BRACELET_DESIGN',
+])
 
 const DEFAULT_SPEC_OPTIONS: SfsSpecOption[] = [
   option('COLOR', 'Natural Color', null, 10),
@@ -62,7 +76,9 @@ const DEFAULT_SPEC_OPTIONS: SfsSpecOption[] = [
 
   option('SETTING_TYPE', 'Ring', null, 10),
   option('SETTING_TYPE', 'Necklace', null, 20),
-  option('SETTING_TYPE', 'Diamond only', null, 30),
+  option('SETTING_TYPE', 'Earring', null, 25),
+  option('SETTING_TYPE', 'Bracelet', null, 30),
+  option('SETTING_TYPE', 'Diamond only', null, 40),
 
   option('RING_DESIGN', 'Solitaire', '/sfsdiamond/order/ring-solitaire.png', 10),
   option('RING_DESIGN', 'Pave', '/sfsdiamond/order/ring-pave.png', 20),
@@ -74,6 +90,15 @@ const DEFAULT_SPEC_OPTIONS: SfsSpecOption[] = [
   option('NECKLACE_DESIGN', 'Buddha', '/sfsdiamond/order/necklace-buddha.jpeg', 30),
   option('NECKLACE_DESIGN', 'Cross', '/sfsdiamond/order/necklace-cross.jpeg', 40),
   option('NECKLACE_DESIGN', 'Yinyang', '/sfsdiamond/order/necklace-yinyang.jpeg', 50),
+
+  option('EARRING_DESIGN', 'Stud', null, 10),
+  option('EARRING_DESIGN', 'Drop', null, 20),
+  option('EARRING_DESIGN', 'Hoop', null, 30),
+
+  option('BRACELET_DESIGN', 'Classic', '/sfsdiamond/order/necklace-classic.jpeg', 10),
+  option('BRACELET_DESIGN', 'Plain', '/sfsdiamond/order/necklace-plain.jpeg', 20),
+  option('BRACELET_DESIGN', 'Tennis', null, 30),
+  option('BRACELET_DESIGN', 'Chain', null, 40),
 
   option('METAL', 'Platinum', null, 10),
   option('METAL', 'Yellow Gold', null, 20),
@@ -98,11 +123,6 @@ function option(
   }
 }
 
-function isMissingSpecTable(error: unknown) {
-  return error instanceof Prisma.PrismaClientKnownRequestError
-    && (error.code === 'P2021' || error.code === 'P2022')
-}
-
 export function groupSfsSpecOptions(options: SfsSpecOption[]): SfsOrderSpecOptions {
   const byCategory = new Map<SfsDiamondSpecCategory, SfsSpecOption[]>()
   for (const category of SFS_SPEC_CATEGORIES) byCategory.set(category, [])
@@ -117,24 +137,30 @@ export function groupSfsSpecOptions(options: SfsSpecOption[]): SfsOrderSpecOptio
     settingTypes: byCategory.get('SETTING_TYPE') ?? [],
     ringDesigns: byCategory.get('RING_DESIGN') ?? [],
     necklaceDesigns: byCategory.get('NECKLACE_DESIGN') ?? [],
+    earringDesigns: byCategory.get('EARRING_DESIGN') ?? [],
+    braceletDesigns: byCategory.get('BRACELET_DESIGN') ?? [],
     metals: byCategory.get('METAL') ?? [],
+  }
+}
+
+export function getDesignOptionsForSettingType(
+  settingType: string,
+  options: SfsOrderSpecOptions,
+): SfsSpecOption[] {
+  switch (settingType) {
+    case 'Ring':
+      return options.ringDesigns
+    case 'Necklace':
+      return options.necklaceDesigns
+    case 'Earring':
+      return options.earringDesigns
+    case 'Bracelet':
+      return options.braceletDesigns
+    default:
+      return []
   }
 }
 
 export function getDefaultSfsOrderSpecOptions(): SfsOrderSpecOptions {
   return groupSfsSpecOptions(DEFAULT_SPEC_OPTIONS)
-}
-
-export async function getSfsOrderSpecOptions(): Promise<SfsOrderSpecOptions> {
-  try {
-    const rows = await prisma.sfsDiamondSpecOption.findMany({
-      where: { isActive: true },
-      orderBy: [{ category: 'asc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
-    })
-    if (rows.length === 0) return getDefaultSfsOrderSpecOptions()
-    return groupSfsSpecOptions(rows)
-  } catch (error) {
-    if (isMissingSpecTable(error)) return getDefaultSfsOrderSpecOptions()
-    throw error
-  }
 }

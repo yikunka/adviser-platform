@@ -198,34 +198,31 @@ function scopeCompanyIds(scope?: FinancialReportScope) {
   return undefined
 }
 
-async function aggregateLedgerMovements(
+async function aggregatePostedJournalMovements(
   beforeEnd?: Date,
   fromStart?: Date,
   scope?: FinancialReportScope,
 ) {
   const companyIds = scopeCompanyIds(scope)
-  const where: Prisma.LedgerWhereInput = {
-    entry: {
-      status: 'POSTED',
-      ...(companyIds ? { companyId: { in: companyIds } } : {}),
-    },
+  const entryWhere: Prisma.JournalEntryWhereInput = {
+    status: 'POSTED',
+    ...(companyIds ? { companyId: { in: companyIds } } : {}),
   }
 
   if (beforeEnd && fromStart) {
-    where.date = { gte: fromStart, lt: beforeEnd }
+    entryWhere.entryDate = { gte: fromStart, lt: beforeEnd }
   } else if (beforeEnd) {
-    where.date = { lt: beforeEnd }
+    entryWhere.entryDate = { lt: beforeEnd }
   } else if (fromStart) {
-    where.date = { gte: fromStart }
+    entryWhere.entryDate = { gte: fromStart }
   }
 
-  const lines = await prisma.ledger.findMany({
-    where,
+  const lines = await prisma.journalLine.findMany({
+    where: { entry: entryWhere },
     select: {
       accountId: true,
       debit: true,
       credit: true,
-      account: { select: { type: true } },
     },
   })
 
@@ -237,6 +234,42 @@ async function aggregateLedgerMovements(
     map.set(line.accountId, current)
   }
   return map
+}
+
+async function resolvePostedJournalAccountIdsWithAncestors(
+  beforeEnd: Date,
+  scope?: FinancialReportScope,
+) {
+  const companyIds = scopeCompanyIds(scope)
+  const entryWhere: Prisma.JournalEntryWhereInput = {
+    status: 'POSTED',
+    entryDate: { lt: beforeEnd },
+    ...(companyIds ? { companyId: { in: companyIds } } : {}),
+  }
+  const lineAccounts = await prisma.journalLine.findMany({
+    where: { entry: entryWhere },
+    distinct: ['accountId'],
+    select: { accountId: true },
+  })
+
+  const accountIds = new Set(lineAccounts.map(line => line.accountId))
+  let pendingParentIds = Array.from(accountIds)
+
+  while (pendingParentIds.length > 0) {
+    const accounts = await prisma.finAccount.findMany({
+      where: { id: { in: pendingParentIds } },
+      select: { id: true, parentId: true },
+    })
+    pendingParentIds = accounts
+      .map(account => account.parentId)
+      .filter((parentId): parentId is string => parentId !== null)
+      .filter(parentId => !accountIds.has(parentId))
+    for (const parentId of pendingParentIds) {
+      accountIds.add(parentId)
+    }
+  }
+
+  return Array.from(accountIds)
 }
 
 function movementSignedBalance(totals: MovementTotals, type: AccountType, code?: string) {
@@ -310,10 +343,20 @@ export async function buildFinancialReports(
 ): Promise<FinancialReportsBundle> {
   const { start, end, asOfDate } = periodRange(period)
   const companyIds = scopeCompanyIds(scope)
+  const referencedAccountIds = companyIds
+    ? await resolvePostedJournalAccountIdsWithAncestors(end, scope)
+    : []
 
   const rawAccounts = await prisma.finAccount.findMany({
     where: {
-      ...(companyIds ? { companyId: { in: companyIds } } : {}),
+      ...(companyIds
+        ? {
+            OR: [
+              { companyId: { in: companyIds } },
+              ...(referencedAccountIds.length ? [{ id: { in: referencedAccountIds } }] : []),
+            ],
+          }
+        : {}),
     },
     orderBy: [{ type: 'asc' }, { sortOrder: 'asc' }, { code: 'asc' }],
     select: {
@@ -368,9 +411,9 @@ export async function buildFinancialReports(
       }))
 
   const [ledgerOpeningMovements, periodMovements, ledgerClosingMovements, openingBalances, closingBalances] = await Promise.all([
-    aggregateLedgerMovements(start, undefined, scope),
-    aggregateLedgerMovements(end, start, scope),
-    aggregateLedgerMovements(end, undefined, scope),
+    aggregatePostedJournalMovements(start, undefined, scope),
+    aggregatePostedJournalMovements(end, start, scope),
+    aggregatePostedJournalMovements(end, undefined, scope),
     aggregateOpeningBalanceMovements(start, scope),
     aggregateOpeningBalanceMovements(end, scope),
   ])

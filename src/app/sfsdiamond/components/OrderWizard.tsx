@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import type { SfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options'
+import { getDesignOptionsForSettingType, type SfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -344,11 +344,7 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
   onRemove: () => void; showRemove: boolean; collapsed: boolean; onToggleCollapse: () => void
   specOptions: SfsOrderSpecOptions
 }) {
-  const designOptions = item.type === 'Ring'
-    ? specOptions.ringDesigns
-    : item.type === 'Necklace'
-      ? specOptions.necklaceDesigns
-      : []
+  const designOptions = getDesignOptionsForSettingType(item.type, specOptions)
   const summary = [item.carat ? `${item.carat} ct` : '', item.shape, item.type].filter(Boolean).join(' · ')
 
   if (collapsed) {

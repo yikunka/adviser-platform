@@ -950,6 +950,31 @@
       "cancel": "Cancel",
       "selectDate": "Select date",
       "saveFirstHint": "Save the process kit before adding test records.",
+      "standardizedOperation": {
+        "title": "Standardized Operation Notes",
+        "items": {
+          "pretreatment": {
+            "title": "Pretreatment Process",
+            "body": "Stir coating thoroughly before use; clean the substrate surface before spraying so it is free of oil, moisture, dust, and other contaminants."
+          },
+          "filtering": {
+            "title": "Filtering Notes",
+            "body": "Filter coating with a clean screen to prevent dust, debris, or gel particles from entering the spray system."
+          },
+          "sprayEnvironment": {
+            "title": "Recommended Spray Environment",
+            "body": "Recommended temperature: 15-30℃; relative humidity: <70%. Keep the spray area clean, ventilated, and away from obvious airflow disturbance."
+          },
+          "storage": {
+            "title": "Coating Storage Conditions",
+            "body": "Seal unused coating and store at 15-35℃ with 40-70% relative humidity; avoid direct sunlight, rain, and high-temperature heat sources."
+          },
+          "disclaimer": {
+            "title": "Disclaimer and First-Article Test",
+            "body": "This process kit is a standardized operation reference. Actual results depend on substrate, equipment, environment, and application conditions; complete first-article testing before mass production and confirm adhesion, appearance, and performance."
+          }
+        }
+      },
       "statuses": {
         "DRAFT": "Draft",
         "ACTIVE": "Active",

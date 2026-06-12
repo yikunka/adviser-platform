@@ -15,6 +15,8 @@ type Category =
   | 'SETTING_TYPE'
   | 'RING_DESIGN'
   | 'NECKLACE_DESIGN'
+  | 'EARRING_DESIGN'
+  | 'BRACELET_DESIGN'
   | 'METAL'
 
 type SpecOption = {
@@ -45,6 +47,8 @@ const CATEGORIES: { value: Category; label: string; needsImage?: boolean }[] = [
   { value: 'SETTING_TYPE', label: 'Setting Type' },
   { value: 'RING_DESIGN', label: 'Ring Design', needsImage: true },
   { value: 'NECKLACE_DESIGN', label: 'Necklace Design', needsImage: true },
+  { value: 'EARRING_DESIGN', label: 'Earring Design', needsImage: true },
+  { value: 'BRACELET_DESIGN', label: 'Bracelet Design', needsImage: true },
   { value: 'METAL', label: 'Metal' },
 ]
 
@@ -241,7 +245,7 @@ function SpecModal({
                   Upload image
                 </Button>
                 <span className="text-xs" style={{ color: showImageHint ? '#C9A96E' : 'var(--muted-foreground)' }}>
-                  Images are used for Color, Shape, Ring Design, and Necklace Design.
+                  Images are used for Color, Shape, Ring Design, Necklace Design, Earring Design, and Bracelet Design.
                 </span>
               </div>
             </div>

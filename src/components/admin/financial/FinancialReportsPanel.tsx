@@ -95,7 +95,7 @@ export function FinancialReportsPanel() {
     <FinancialReportsContent
       scope={{
         title: '财务报表',
-        subtitle: `${company.nameEn} · 基于已过账总账生成的 HKFRS 报表。`,
+        subtitle: `${company.nameEn} · 基于已过账凭证分录生成的 HKFRS 报表。`,
         exportKey: company.companyCode ?? company.id,
         params: { companyId: company.id },
         breadcrumbSection: '财务报表',

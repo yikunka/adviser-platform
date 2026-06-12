@@ -109,6 +109,15 @@ async function uploadEmployeeFileRequest(
   if (!res.ok) throw new Error(json.error ?? '上传失败')
 }
 
+function appendFormDataValue(
+  formData: FormData,
+  key: string,
+  value: string | boolean | null | undefined,
+) {
+  if (value === undefined) return
+  formData.append(key, value === null ? '' : String(value))
+}
+
 function PendingEmployeeFilesSection({
   fileType,
   title,
@@ -188,7 +197,7 @@ function PendingEmployeeFilesSection({
       </div>
 
       <p className="text-xs" style={{ color: value ? 'var(--foreground)' : 'var(--muted-foreground)' }}>
-        {value ? `已选择：${value.file.name}（保存员工后上传）` : `尚未选择${COS_EMPLOYEE_FILE_TYPE_LABELS[fileType]}文件`}
+        {value ? `已选择：${value.file.name}（随员工档案一并保存）` : `尚未选择${COS_EMPLOYEE_FILE_TYPE_LABELS[fileType]}文件`}
       </p>
     </div>
   )
@@ -446,13 +455,31 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
         isActive: form.isActive,
       }
 
+      const createFormData = isNew ? new FormData() : null
+      if (createFormData) {
+        for (const [key, value] of Object.entries(payload)) {
+          appendFormDataValue(createFormData, key, value)
+        }
+        for (const section of EMPLOYEE_FILE_SECTIONS) {
+          const pending = pendingFiles[section.fileType]
+          if (!pending) continue
+          createFormData.append(`file_${section.fileType}`, pending.file)
+          if (pending.notes.trim()) createFormData.append(`notes_${section.fileType}`, pending.notes.trim())
+        }
+      }
+
       const res = await fetch(
         isNew ? '/api/admin/cosmocoat/employees' : `/api/admin/cosmocoat/employees/${employeeId}`,
-        {
-          method: isNew ? 'POST' : 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        },
+        isNew
+          ? {
+              method: 'POST',
+              body: createFormData!,
+            }
+          : {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            },
       )
       const data = await res.json()
       if (!res.ok) {
@@ -462,25 +489,8 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
 
       if (isNew) {
         const createdId = data.employee.id as string
-        const pendingUploads = EMPLOYEE_FILE_SECTIONS
-          .map(section => ({
-            fileType: section.fileType,
-            pending: pendingFiles[section.fileType],
-          }))
-          .filter((item): item is { fileType: CosEmployeeFileType; pending: PendingEmployeeFile } => Boolean(item.pending))
-
-        if (pendingUploads.length > 0) {
-          try {
-            await Promise.all(pendingUploads.map(item => (
-              uploadEmployeeFileRequest(createdId, item.fileType, item.pending.file, item.pending.notes)
-            )))
-            toast.success('员工已创建，文件已上传')
-          } catch (err) {
-            toast.error(err instanceof Error ? `员工已创建，但文件上传失败：${err.message}` : '员工已创建，但文件上传失败')
-          }
-        } else {
-          toast.success('员工已创建')
-        }
+        const hasFiles = EMPLOYEE_FILE_SECTIONS.some(section => pendingFiles[section.fileType])
+        toast.success(hasFiles ? '员工已创建，文件已上传' : '员工已创建')
         router.push(`/admin/cosmocoat-employees/${createdId}`)
       } else {
         toast.success('员工资料已更新')
@@ -704,7 +714,7 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
             <div>
               <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>文件资料</h2>
               <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
-                可先选择文件，创建员工成功后自动上传。
+                可先选择文件，创建员工时会与员工档案一并保存。
               </p>
             </div>
             {EMPLOYEE_FILE_SECTIONS.map(section => (

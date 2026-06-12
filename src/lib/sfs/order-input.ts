@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { getSfsOrderSpecOptions, type SfsSpecOption } from '@/lib/sfs/diamond-spec-options'
+import { getSfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options-server'
+import { getDesignOptionsForSettingType, type SfsSpecOption } from '@/lib/sfs/diamond-spec-options'
 
 export const sfsDiamondItemInputSchema = z.object({
   carat: z.string().min(1),
@@ -37,8 +38,6 @@ export async function validateSfsOrderSpecOptions(input: SfsOrderInput): Promise
   const carats = optionValues(options.carats)
   const shapes = optionValues(options.shapes)
   const settingTypes = optionValues(options.settingTypes)
-  const ringDesigns = optionValues(options.ringDesigns)
-  const necklaceDesigns = optionValues(options.necklaceDesigns)
   const metals = optionValues(options.metals)
 
   if (!colors.has(input.color)) return 'Invalid diamond color'
@@ -50,8 +49,10 @@ export async function validateSfsOrderSpecOptions(input: SfsOrderInput): Promise
     if (!shapes.has(diamond.shape)) return `${label}: invalid shape`
     if (!settingTypes.has(diamond.type)) return `${label}: invalid setting type`
     if (diamond.type === 'Ring' && !diamond.ringSize?.trim()) return `${label}: ring size is required`
-    if (diamond.type === 'Ring' && !ringDesigns.has(diamond.design ?? '')) return `${label}: invalid ring design`
-    if (diamond.type === 'Necklace' && !necklaceDesigns.has(diamond.design ?? '')) return `${label}: invalid necklace design`
+    const designOptions = getDesignOptionsForSettingType(diamond.type, options)
+    if (designOptions.length > 0 && !optionValues(designOptions).has(diamond.design ?? '')) {
+      return `${label}: invalid ${diamond.type.toLowerCase()} design`
+    }
     if (diamond.type !== 'Diamond only' && !metals.has(diamond.metal ?? '')) return `${label}: invalid metal`
   }
 
