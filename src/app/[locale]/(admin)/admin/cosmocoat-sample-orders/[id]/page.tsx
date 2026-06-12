@@ -17,6 +17,13 @@ import {
   getPerformanceStandardLabel,
 } from '@/lib/cosmocoat/process-kit-standards'
 import { formatPercent, formatWeight } from '@/lib/cosmocoat/recipes'
+import {
+  displayProcessParameter,
+  formatFilmThickness,
+  formatIrMinutes,
+  formatIrTemperature,
+  formatUvEnergy,
+} from '@/lib/cosmocoat/process-kit-parameters'
 import type { SampleOrderRow } from '@/lib/cosmocoat/sample-orders'
 
 type CustomerOption = { id: string; code: string; name: string }
@@ -253,10 +260,10 @@ function ProcessKitLineCard({
                 <thead>
                   <tr>
                     <th style={th}>产品</th>
-                    <th style={th}>IR 时间</th>
-                    <th style={th}>IR 温度</th>
-                    <th style={th}>UV 能量</th>
-                    <th style={th}>膜厚</th>
+                    <th style={th}>IR 时间 (min)</th>
+                    <th style={th}>IR 温度 (°C)</th>
+                    <th style={th}>UV 能量 (MJ/CM²)</th>
+                    <th style={th}>膜厚 (μm)</th>
                     <th style={th}>喷涂粘度</th>
                   </tr>
                 </thead>
@@ -264,10 +271,10 @@ function ProcessKitLineCard({
                   {line.detail.products.map(product => (
                     <tr key={product.id}>
                       <td style={{ ...td, color: 'var(--foreground)' }}>{product.productName}</td>
-                      <td style={td}>{product.irMinutes || '—'}</td>
-                      <td style={td}>{product.irTemperature || '—'}</td>
-                      <td style={td}>{product.uvEnergy || '—'}</td>
-                      <td style={td}>{product.filmThickness || '—'}</td>
+                      <td style={td}>{displayProcessParameter(product.irMinutes, formatIrMinutes)}</td>
+                      <td style={td}>{displayProcessParameter(product.irTemperature, formatIrTemperature)}</td>
+                      <td style={td}>{displayProcessParameter(product.uvEnergy, formatUvEnergy)}</td>
+                      <td style={td}>{displayProcessParameter(product.filmThickness, formatFilmThickness)}</td>
                       <td style={td}>{product.sprayViscosity || '—'}</td>
                     </tr>
                   ))}
@@ -480,7 +487,7 @@ function SampleOrderPrintView({
                 <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 6, fontSize: 9 }}>
                   <thead>
                     <tr style={{ background: '#f0f0f0' }}>
-                      {['产品', 'IR 时间', 'IR 温度', 'UV 能量', '膜厚', '喷涂粘度'].map(h => (
+                      {['产品', 'IR 时间 (min)', 'IR 温度 (°C)', 'UV 能量 (MJ/CM²)', '膜厚 (μm)', '喷涂粘度'].map(h => (
                         <th key={h} style={{ ...printCell, fontWeight: 600, textAlign: 'left' }}>{h}</th>
                       ))}
                     </tr>
@@ -489,10 +496,10 @@ function SampleOrderPrintView({
                     {line.detail.products.map((product, index) => (
                       <tr key={product.id} style={{ background: index % 2 === 1 ? '#fafafa' : '#fff' }}>
                         <td style={printCell}>{product.productName}</td>
-                        <td style={printCell}>{product.irMinutes || '—'}</td>
-                        <td style={printCell}>{product.irTemperature || '—'}</td>
-                        <td style={printCell}>{product.uvEnergy || '—'}</td>
-                        <td style={printCell}>{product.filmThickness || '—'}</td>
+                        <td style={printCell}>{displayProcessParameter(product.irMinutes, formatIrMinutes)}</td>
+                        <td style={printCell}>{displayProcessParameter(product.irTemperature, formatIrTemperature)}</td>
+                        <td style={printCell}>{displayProcessParameter(product.uvEnergy, formatUvEnergy)}</td>
+                        <td style={printCell}>{displayProcessParameter(product.filmThickness, formatFilmThickness)}</td>
                         <td style={printCell}>{product.sprayViscosity || '—'}</td>
                       </tr>
                     ))}

@@ -24,6 +24,14 @@ import {
   normalizePerformanceStandards,
   PERFORMANCE_STANDARD_GROUPS,
 } from '@/lib/cosmocoat/process-kit-standards'
+import {
+  displayProcessParameter,
+  formatFilmThickness,
+  formatIrMinutes,
+  formatIrParametersDisplay,
+  formatIrTemperature,
+  formatUvEnergy,
+} from '@/lib/cosmocoat/process-kit-parameters'
 
 type FactoryProductOption = {
   id: string
@@ -447,9 +455,9 @@ function ProcessKitPrintView({
                 <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>
                   {product.thinnerProductName ? `${product.thinnerProductName}${product.thinnerRatio ? ` / ${product.thinnerRatio}` : ''}` : '—'}
                 </td>
-                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(product.irMinutes)} / {displayText(product.irTemperature)}</td>
-                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(product.uvEnergy)}</td>
-                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(product.filmThickness)}</td>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{formatIrParametersDisplay(product.irMinutes, product.irTemperature)}</td>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayProcessParameter(product.uvEnergy, formatUvEnergy)}</td>
+                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayProcessParameter(product.filmThickness, formatFilmThickness)}</td>
                 <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(product.sprayViscosity)}</td>
               </tr>
             ))
@@ -1826,9 +1834,9 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                   <td style={{ ...td, color: 'var(--foreground)' }}>{p.productName}</td>
                   <td style={td}>{p.hardenerProductName ? `${p.hardenerProductName}${p.hardenerRatio ? ` / ${p.hardenerRatio}` : ''}` : '-'}</td>
                   <td style={td}>{p.thinnerProductName ? `${p.thinnerProductName}${p.thinnerRatio ? ` / ${p.thinnerRatio}` : ''}` : '-'}</td>
-                  <td style={td}>{p.irMinutes ?? '-'} / {p.irTemperature ?? '-'}</td>
-                  <td style={td}>{p.uvEnergy ?? '-'}</td>
-                  <td style={td}>{p.filmThickness ?? '-'}</td>
+                  <td style={td}>{formatIrParametersDisplay(p.irMinutes, p.irTemperature, '-')}</td>
+                  <td style={td}>{displayProcessParameter(p.uvEnergy, formatUvEnergy, '-')}</td>
+                  <td style={td}>{displayProcessParameter(p.filmThickness, formatFilmThickness, '-')}</td>
                   <td style={td}>{p.sprayViscosity ?? '-'}</td>
                   <td style={td}>{p.notes || '-'}</td>
                   <td style={{ ...td, textAlign: 'right' }}>
@@ -2034,10 +2042,18 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                             </p>
                           )}
                           <p style={{ color: 'var(--muted-foreground)' }}>
-                            IR：{product.irMinutes ?? '-'} / {product.irTemperature ?? '-'}
+                            IR：{formatIrParametersDisplay(product.irMinutes, product.irTemperature)}
                           </p>
-                          {product.uvEnergy && <p style={{ color: 'var(--muted-foreground)' }}>UV能量：{product.uvEnergy}</p>}
-                          {product.filmThickness && <p style={{ color: 'var(--muted-foreground)' }}>膜厚：{product.filmThickness}</p>}
+                          {product.uvEnergy && (
+                            <p style={{ color: 'var(--muted-foreground)' }}>
+                              UV能量：{displayProcessParameter(product.uvEnergy, formatUvEnergy)}
+                            </p>
+                          )}
+                          {product.filmThickness && (
+                            <p style={{ color: 'var(--muted-foreground)' }}>
+                              膜厚：{displayProcessParameter(product.filmThickness, formatFilmThickness)}
+                            </p>
+                          )}
                           {product.sprayViscosity && <p style={{ color: 'var(--muted-foreground)' }}>噴塗粘度 2#杯/25C：{product.sprayViscosity}</p>}
                           {product.notes && <p style={{ color: 'var(--muted-foreground)' }}>备注：{product.notes}</p>}
                         </div>

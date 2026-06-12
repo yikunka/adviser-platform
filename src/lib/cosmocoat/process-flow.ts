@@ -1,4 +1,10 @@
 import type { Prisma } from '@prisma/client'
+import {
+  formatFilmThickness,
+  formatIrMinutes,
+  formatIrTemperature,
+  formatUvEnergy,
+} from '@/lib/cosmocoat/process-kit-parameters'
 
 export type ProcessFlowBlock = {
   id: string
@@ -205,17 +211,11 @@ function formatValue(value: number | string | null | undefined) {
   return String(value)
 }
 
-function formatWithUnit(value: number | string | null | undefined, unit: string, unitPattern: RegExp) {
-  const formatted = formatValue(value)
-  if (!formatted) return null
-  return unitPattern.test(formatted) ? formatted : `${formatted} ${unit}`
-}
-
 function formatProductLines(product: ProcessFlowProduct, sequence: number): string[] {
-  const irMinutes = formatWithUnit(product.irMinutes, '分钟', /(分钟|分|min|m\b)/i)
-  const irTemperature = formatWithUnit(product.irTemperature, '°C', /(°C|℃|\bC\b)/i)
-  const uvEnergy = formatWithUnit(product.uvEnergy, 'MJ/CM²', /(MJ\/?CM²|MJ\/?CM2|mJ\/?cm²|mJ\/?cm2)/i)
-  const filmThickness = formatValue(product.filmThickness)
+  const irMinutes = formatIrMinutes(product.irMinutes)
+  const irTemperature = formatIrTemperature(product.irTemperature)
+  const uvEnergy = formatUvEnergy(product.uvEnergy)
+  const filmThickness = formatFilmThickness(product.filmThickness)
   const sprayViscosity = formatValue(product.sprayViscosity)
 
   const lines = [`${sequence}. 产品：${product.productName}`]
