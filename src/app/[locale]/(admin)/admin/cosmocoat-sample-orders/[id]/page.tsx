@@ -16,7 +16,7 @@ import {
   formatPerformanceStandardLabels,
   getPerformanceStandardLabel,
 } from '@/lib/cosmocoat/process-kit-standards'
-import { formatPercent, formatWeight } from '@/lib/cosmocoat/recipes'
+import { formatMoney, formatPercent, formatWeight } from '@/lib/cosmocoat/recipes'
 import {
   displayProcessParameter,
   formatFilmThickness,
@@ -57,7 +57,14 @@ type ProcessKitLine = {
   loading?: boolean
 }
 
-type ColorFormulaOption = { id: string; code: string; name: string; categoryLabel: string; targetColor: string }
+type ColorFormulaOption = {
+  id: string
+  code: string
+  name: string
+  categoryLabel: string
+  targetColor: string
+  unitCost: number | null
+}
 
 type ColorFormulaLine = {
   key: string
@@ -65,6 +72,7 @@ type ColorFormulaLine = {
   code: string
   name: string
   categoryLabel: string
+  unitCost: number | null
   quantityKg: string
   notes: string
 }
@@ -120,6 +128,12 @@ function formatDatetime(iso: string | null): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return '—'
   return d.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+function formatFormulaLineTotalCost(line: ColorFormulaLine): string {
+  const quantityKg = Number(line.quantityKg)
+  if (line.unitCost == null || !Number.isFinite(quantityKg) || quantityKg <= 0) return '—'
+  return formatMoney(line.unitCost * quantityKg)
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -718,6 +732,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
         name: f.name,
         categoryLabel: f.categoryLabel,
         targetColor: f.targetColor,
+        unitCost: f.unitCost ?? null,
       })))
     } catch {
       // silent
@@ -757,6 +772,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
         code: line.colorFormula.code,
         name: line.colorFormula.name,
         categoryLabel: line.colorFormula.categoryLabel,
+        unitCost: line.colorFormula.unitCost,
         quantityKg: String(line.quantityKg),
         notes: line.notes,
       })))
@@ -830,6 +846,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
       code: formula.code,
       name: formula.name,
       categoryLabel: formula.categoryLabel,
+      unitCost: formula.unitCost,
       quantityKg: '1',
       notes: '',
     }])
@@ -1380,7 +1397,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
                 <tr>
                   <th style={th}>调色配方</th>
                   <th style={th}>类别</th>
-                  <th style={th}>数量 (kg)</th>
+                  <th style={{ ...th, textAlign: 'right' }}>总成本</th>
                   <th style={th}>备注</th>
                   {!isReadOnly && <th style={{ ...th, width: 48 }} />}
                 </tr>
@@ -1391,19 +1408,25 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
                     <td style={{ ...td, color: 'var(--foreground)' }}>
                       <span className="font-mono text-xs mr-2 opacity-70">{line.code}</span>
                       {line.name}
+                      {!isReadOnly && (
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                          <span>打样数量</span>
+                          <input
+                            type="number"
+                            min="0.001"
+                            step="0.001"
+                            value={line.quantityKg}
+                            onChange={e => setColorFormulaLines(prev => prev.map(row => row.key === line.key ? { ...row, quantityKg: e.target.value } : row))}
+                            className="w-24 px-2 py-1 rounded text-sm outline-none"
+                            style={inputStyle()}
+                          />
+                          <span>kg</span>
+                        </div>
+                      )}
                     </td>
                     <td style={td}>{line.categoryLabel || '—'}</td>
-                    <td style={td}>
-                      <input
-                        type="number"
-                        min="0.001"
-                        step="0.001"
-                        disabled={isReadOnly}
-                        value={line.quantityKg}
-                        onChange={e => setColorFormulaLines(prev => prev.map(row => row.key === line.key ? { ...row, quantityKg: e.target.value } : row))}
-                        className="w-28 px-2 py-1 rounded text-sm outline-none disabled:opacity-60"
-                        style={inputStyle()}
-                      />
+                    <td style={{ ...td, textAlign: 'right', color: '#C9A96E', fontVariantNumeric: 'tabular-nums' }}>
+                      {formatFormulaLineTotalCost(line)}
                     </td>
                     <td style={td}>
                       <input

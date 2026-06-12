@@ -241,7 +241,11 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
           ['主营业务成本合计', '', '', reports.incomeStatement.totalCostOfSales],
           ['毛利', '', '', reports.incomeStatement.grossProfit],
           [],
-          ...reports.incomeStatement.expenses.map(row => ['费用', row.code, row.name, row.amount]),
+          ...reports.incomeStatement.expenseCategories.flatMap(category => [
+            ...category.lines.map(row => [category.label, row.code, row.name, row.amount]),
+            [`${category.label}合计`, '', '', category.total],
+            [],
+          ]),
           ['费用合计', '', '', reports.incomeStatement.totalExpenses],
           ['本期利润', '', '', reports.incomeStatement.netProfit],
         ])),
@@ -438,12 +442,22 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                   <TotalsFooter left="主营业务成本合计" right={money(reports.incomeStatement.totalCostOfSales)} />
                 </Section>
                 <TotalsFooter left="毛利" right={money(reports.incomeStatement.grossProfit)} />
-                <Section title="费用">
-                  <StatementTable
-                    headers={['编码', '科目', '金额']}
-                    rows={reports.incomeStatement.expenses.map(row => [row.code, row.name, money(row.amount)])}
-                    emptyLabel="本期间暂无费用"
-                  />
+                <Section title="费用明细">
+                  <div className="space-y-4">
+                    {reports.incomeStatement.expenseCategories.map(category => (
+                      <div key={category.key} className="space-y-2">
+                        <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          {category.label}
+                        </h4>
+                        <StatementTable
+                          headers={['编码', '科目', '金额']}
+                          rows={category.lines.map(row => [row.code, row.name, money(row.amount)])}
+                          emptyLabel={`本期间暂无${category.label}`}
+                        />
+                        <TotalsFooter left={`${category.label}合计`} right={money(category.total)} />
+                      </div>
+                    ))}
+                  </div>
                   <TotalsFooter left="费用合计" right={money(reports.incomeStatement.totalExpenses)} />
                 </Section>
                 <TotalsFooter

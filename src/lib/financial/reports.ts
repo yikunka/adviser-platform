@@ -1,6 +1,6 @@
 import type { AccountType, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
-import { isDebitNormalAccountType, shouldIncludeProfitAndLossExpenseLine } from '@/lib/financial/account-types'
+import { isDebitNormalAccountType } from '@/lib/financial/account-types'
 import {
   buildBalanceSheetSections,
   isCurrentAssetAccount,
@@ -24,6 +24,13 @@ import {
   type TrialBalanceDisplayRow,
 } from '@/lib/financial/trial-balance-rows'
 import { roundMoney } from '@/lib/financial/utils'
+import {
+  buildIncomeStatementExpenseCategories,
+  classifyIncomeStatementExpenseCategory,
+  shouldIncludeIncomeStatementLine,
+  type IncomeStatementExpenseCategory,
+  type IncomeStatementExpenseCategoryKey,
+} from '@/lib/financial/income-statement'
 
 export type { BalanceSheetSection } from '@/lib/financial/balance-sheet-sections'
 export type { ReportAccountRow, StatementLineRow } from '@/lib/financial/report-line-types'
@@ -42,6 +49,7 @@ export type IncomeStatementReport = {
   revenue: StatementLineRow[]
   costOfSales: StatementLineRow[]
   expenses: StatementLineRow[]
+  expenseCategories: IncomeStatementExpenseCategory[]
   totalRevenue: number
   totalCostOfSales: number
   grossProfit: number
@@ -373,13 +381,14 @@ export async function buildFinancialReports(
     rawAccounts,
     accounts.map(({ accountId, code }) => ({ accountId, code })),
   )
+  const rawAccountsById = new Map(rawAccounts.map(account => [account.id, account]))
 
   const trialRows: TrialBalanceRow[] = []
   const summaryRowsByLevel1Id = new Map<string, TrialBalanceRow>()
 
   const revenueLines: StatementLineRow[] = []
   const costOfSalesLines: StatementLineRow[] = []
-  const expenseLines: StatementLineRow[] = []
+  const expenseEntries: Array<{ line: StatementLineRow; category: IncomeStatementExpenseCategoryKey }> = []
   const assetLines: StatementLineRow[] = []
   const liabilityLines: StatementLineRow[] = []
   const equityLines: StatementLineRow[] = []
@@ -411,13 +420,64 @@ export async function buildFinancialReports(
     return (childrenByParent.get(level1GroupId) ?? []).length > 0
   }
 
+  function ownSourceAccountIds(account: InternalReportAccountRow) {
+    if (shouldConsolidateAccounts) return account.sourceAccountIds
+    return [account.accountId]
+  }
+
+  function statementSourceAccountIds(account: InternalReportAccountRow) {
+    const sourceAccountIds = shouldConsolidateAccounts
+      ? account.sourceAccountIds
+      : [account.accountId, ...account.sourceAccountIds]
+    const accountIds = sourceAccountIds.flatMap(accountId => [
+      accountId,
+      ...(leafIdsByAccount.get(accountId) ?? [accountId]),
+    ])
+    return Array.from(new Set(accountIds))
+  }
+
+  function expenseCategoryForAccount(
+    account: InternalReportAccountRow,
+    level1GroupId: string,
+  ): IncomeStatementExpenseCategoryKey {
+    const topLevelAccount = rawAccountsById.get(level1GroupId)
+    return classifyIncomeStatementExpenseCategory({
+      account,
+      topLevelAccount,
+    })
+  }
+
+  function addProfitAndLossLine(input: {
+    account: InternalReportAccountRow
+    level1GroupId: string
+    line: StatementLineRow
+  }) {
+    if (input.account.type === 'REVENUE') {
+      revenueLines.push(input.line)
+      return
+    }
+    if (input.account.type === 'CGS') {
+      costOfSalesLines.push(input.line)
+      return
+    }
+    if (input.account.type === 'EXPENSE') {
+      expenseEntries.push({
+        line: input.line,
+        category: expenseCategoryForAccount(input.account, input.level1GroupId),
+      })
+    }
+  }
+
   for (const account of accounts) {
     const openingTotals = sumMovements(openingMovements, account.sourceAccountIds)
     const periodTotals = sumMovements(periodMovements, account.sourceAccountIds)
     const closingTotals = sumMovements(closingMovements, account.sourceAccountIds)
+    const statementPeriodTotals = sumMovements(periodMovements, statementSourceAccountIds(account))
+    const ownPeriodTotals = sumMovements(periodMovements, ownSourceAccountIds(account))
 
     const openingBalance = movementSignedBalance(openingTotals, account.type, account.code)
-    const periodNet = movementSignedBalance(periodTotals, account.type, account.code)
+    const statementPeriodNet = movementSignedBalance(statementPeriodTotals, account.type, account.code)
+    const ownPeriodNet = movementSignedBalance(ownPeriodTotals, account.type, account.code)
     const ledgerClosingBalance = movementSignedBalance(closingTotals, account.type, account.code)
     const yearToDateTotals = shouldConsolidateAccounts
       ? undefined
@@ -476,39 +536,45 @@ export async function buildFinancialReports(
 
     const hasChildren = accountHasChildren(account)
     const topLevelHasChildren = topLevelAccountHasChildren(account, level1GroupId)
-    const row: StatementLineRow = { ...reportRow, amount: Math.abs(periodNet) }
-    if (account.type === 'REVENUE' && periodNet !== 0) revenueLines.push(row)
-    if (shouldIncludeProfitAndLossExpenseLine({
+    const statementRow: StatementLineRow = { ...reportRow, amount: Math.abs(statementPeriodNet) }
+    if (shouldIncludeIncomeStatementLine({
       type: account.type,
       level: account.level,
       topLevelHasChildren,
-      periodNet,
+      periodNet: statementPeriodNet,
     })) {
-      if (account.type === 'CGS') costOfSalesLines.push(row)
-      else expenseLines.push(row)
+      addProfitAndLossLine({ account, level1GroupId, line: statementRow })
+    } else if (account.level === 1 && hasChildren && ownPeriodNet !== 0) {
+      addProfitAndLossLine({
+        account,
+        level1GroupId,
+        line: { ...reportRow, amount: Math.abs(ownPeriodNet) },
+      })
     }
 
     if (shouldIncludeAccountInBalanceSheet(account.level)) {
       if ((account.type === 'ASSET' || account.type === 'NON_CURRENT_ASSET') && closingBalance !== 0) {
-        assetLines.push({ ...row, amount: closingBalance })
+        assetLines.push({ ...reportRow, amount: closingBalance })
       }
       if ((account.type === 'LIABILITY' || account.type === 'NON_CURRENT_LIABILITY') && closingBalance !== 0) {
-        liabilityLines.push({ ...row, amount: closingBalance })
+        liabilityLines.push({ ...reportRow, amount: closingBalance })
       }
-      if (account.type === 'EQUITY' && closingBalance !== 0) equityLines.push({ ...row, amount: closingBalance })
+      if (account.type === 'EQUITY' && closingBalance !== 0) equityLines.push({ ...reportRow, amount: closingBalance })
       if (isCurrentAccountReceivable(account) && closingBalance !== 0) {
-        assetLines.push({ ...row, amount: closingBalance })
+        assetLines.push({ ...reportRow, amount: closingBalance })
       }
       if (account.type === 'CURRENT_ACCOUNT' && /^2/.test(account.code) && closingBalance !== 0) {
-        liabilityLines.push({ ...row, amount: closingBalance })
+        liabilityLines.push({ ...reportRow, amount: closingBalance })
       }
     }
   }
 
+  const expenseCategories = buildIncomeStatementExpenseCategories(expenseEntries)
+  const expenseLines = expenseEntries.map(entry => entry.line)
   const totalRevenue = roundMoney(revenueLines.reduce((sum, row) => sum + row.amount, 0))
   const totalCostOfSales = roundMoney(costOfSalesLines.reduce((sum, row) => sum + row.amount, 0))
   const grossProfit = roundMoney(totalRevenue - totalCostOfSales)
-  const totalExpenses = roundMoney(expenseLines.reduce((sum, row) => sum + row.amount, 0))
+  const totalExpenses = roundMoney(expenseCategories.reduce((sum, category) => sum + category.total, 0))
   const netProfit = roundMoney(grossProfit - totalExpenses)
 
   const equityLinesWithProfit = [
@@ -602,6 +668,7 @@ export async function buildFinancialReports(
       revenue: revenueLines,
       costOfSales: costOfSalesLines,
       expenses: expenseLines,
+      expenseCategories,
       totalRevenue,
       totalCostOfSales,
       grossProfit,

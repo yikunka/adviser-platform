@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { serializeColorFormula } from '@/lib/cosmocoat/color-formulas'
+import { computeUnitCostFromItems } from '@/lib/cosmocoat/recipes'
 
 function isMissingTable(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021'
@@ -40,6 +41,7 @@ export async function GET(req: NextRequest) {
           },
         },
         sourceRecipe: { select: { id: true, code: true, name: true } },
+        items: { select: { quantity: true, unitPrice: true } },
         _count: { select: { items: true } },
       },
       orderBy: [{ updatedAt: 'desc' }],
@@ -48,13 +50,19 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       items: rows.map(row => {
-        const serialized = serializeColorFormula(row)
+        const { items, ...formula } = row
+        const serialized = serializeColorFormula(formula)
+        const unitCost = computeUnitCostFromItems(items.map(item => ({
+          quantity: Number(item.quantity),
+          unitPrice: item.unitPrice != null ? Number(item.unitPrice) : null,
+        })))
         return {
           id: serialized.id,
           code: serialized.code,
           name: serialized.name,
           categoryLabel: serialized.categoryLabel,
           targetColor: serialized.targetColor,
+          unitCost,
         }
       }),
     })
