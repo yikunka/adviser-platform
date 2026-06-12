@@ -60,6 +60,10 @@ const deleteSchema = z.object({
 
 const updateSchema = z.object({
   id: z.string().trim().min(1),
+  hardenerProductId: optionalIdSchema,
+  hardenerRatio: optionalTextSchema(64),
+  thinnerProductId: optionalIdSchema,
+  thinnerRatio: optionalTextSchema(64),
   irMinutes: processParameterSchema,
   irTemperature: processParameterSchema,
   uvEnergy: processParameterSchema,
@@ -208,20 +212,51 @@ export async function PATCH(
   })
   if (!product) return NextResponse.json({ error: '产品明细不存在' }, { status: 404 })
 
-  await prisma.cosProcessKitProduct.update({
-    where: { id: parsed.data.id },
-    data: {
-      irMinutes: parsed.data.irMinutes !== undefined ? (parsed.data.irMinutes || null) : undefined,
-      irTemperature: parsed.data.irTemperature !== undefined ? (parsed.data.irTemperature || null) : undefined,
-      uvEnergy: parsed.data.uvEnergy !== undefined ? (parsed.data.uvEnergy || null) : undefined,
-      filmThickness: parsed.data.filmThickness !== undefined ? (parsed.data.filmThickness || null) : undefined,
-      notes: parsed.data.notes !== undefined ? (parsed.data.notes || null) : undefined,
-      processBlocks: parsed.data.processBlocks,
-    },
-  })
+  try {
+    const accessoryNames = await resolveAccessoryProducts([
+      parsed.data.hardenerProductId ?? '',
+      parsed.data.thinnerProductId ?? '',
+    ])
+    const hardenerProductIdChanged = parsed.data.hardenerProductId !== undefined
+    const thinnerProductIdChanged = parsed.data.thinnerProductId !== undefined
 
-  const full = await getProcessKitById(kitId)
-  return NextResponse.json({ kit: full })
+    await prisma.cosProcessKitProduct.update({
+      where: { id: parsed.data.id },
+      data: {
+        hardenerProductId: hardenerProductIdChanged ? (parsed.data.hardenerProductId || null) : undefined,
+        hardenerProductName: hardenerProductIdChanged
+          ? (parsed.data.hardenerProductId ? accessoryNames.get(parsed.data.hardenerProductId)! : null)
+          : undefined,
+        hardenerRatio: hardenerProductIdChanged
+          ? (parsed.data.hardenerProductId ? (parsed.data.hardenerRatio || null) : null)
+          : (parsed.data.hardenerRatio !== undefined ? (product.hardenerProductId ? (parsed.data.hardenerRatio || null) : null) : undefined),
+        thinnerProductId: thinnerProductIdChanged ? (parsed.data.thinnerProductId || null) : undefined,
+        thinnerProductName: thinnerProductIdChanged
+          ? (parsed.data.thinnerProductId ? accessoryNames.get(parsed.data.thinnerProductId)! : null)
+          : undefined,
+        thinnerRatio: thinnerProductIdChanged
+          ? (parsed.data.thinnerProductId ? (parsed.data.thinnerRatio || null) : null)
+          : (parsed.data.thinnerRatio !== undefined ? (product.thinnerProductId ? (parsed.data.thinnerRatio || null) : null) : undefined),
+        irMinutes: parsed.data.irMinutes !== undefined ? (parsed.data.irMinutes || null) : undefined,
+        irTemperature: parsed.data.irTemperature !== undefined ? (parsed.data.irTemperature || null) : undefined,
+        uvEnergy: parsed.data.uvEnergy !== undefined ? (parsed.data.uvEnergy || null) : undefined,
+        filmThickness: parsed.data.filmThickness !== undefined ? (parsed.data.filmThickness || null) : undefined,
+        notes: parsed.data.notes !== undefined ? (parsed.data.notes || null) : undefined,
+        processBlocks: parsed.data.processBlocks,
+      },
+    })
+
+    const full = await getProcessKitById(kitId)
+    return NextResponse.json({ kit: full })
+  } catch (err) {
+    if (err instanceof Error && err.message === 'FACTORY_PRODUCT_NOT_FOUND') {
+      return NextResponse.json({ error: '固化剂或稀释剂产品不存在' }, { status: 400 })
+    }
+    if (isMissingTable(err)) {
+      return NextResponse.json({ error: '工艺书表不存在，请先运行数据库迁移' }, { status: 503 })
+    }
+    throw err
+  }
 }
 
 export async function DELETE(

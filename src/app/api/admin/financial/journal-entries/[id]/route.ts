@@ -72,7 +72,10 @@ export async function PATCH(
 
   const before = await prisma.journalEntry.findUnique({ where: { id }, include: journalEntryInclude })
   if (!before) return apiError('Journal entry not found.', 404)
-  if (before.status !== 'DRAFT') return apiError('Only draft journal entries can be edited.')
+  if (before.status !== 'DRAFT' && before.status !== 'CANCELLED') {
+    return apiError('只有待过账或已取消的日记账可以编辑。')
+  }
+  const isReopeningCancelled = before.status === 'CANCELLED'
   const access = await resolveCompanyAccess(session.user.id, session.user.role)
   if (!before.companyId || !(await assertCompanyAccessible(access, before.companyId))) return apiError('Forbidden', 403)
 
@@ -112,6 +115,10 @@ export async function PATCH(
   }
 
   const entry = await prisma.$transaction(async tx => {
+    if (isReopeningCancelled) {
+      await tx.ledger.deleteMany({ where: { entryId: id } })
+    }
+
     if (parsed.data.lines) {
       await tx.journalLine.deleteMany({ where: { entryId: id } })
     }
@@ -125,6 +132,7 @@ export async function PATCH(
           ? { companyId: companyScope.companyId }
           : {}),
         ...(parsed.data.attachments !== undefined ? { attachments: parsed.data.attachments } : {}),
+        ...(isReopeningCancelled ? { status: 'DRAFT', postedAt: null, reversedAt: null } : {}),
         ...(parsed.data.lines
           ? {
               lines: {
@@ -149,8 +157,8 @@ export async function PATCH(
   await logAudit(session.user.id, 'UPDATE', 'JournalEntry', id, serializeJournalEntry(before), serializeJournalEntry(entry))
   return NextResponse.json({
     entry: await serializeEntryWithCompanyHierarchy(entry),
-    message: 'Journal entry updated.',
-    toast: 'Journal entry updated.',
+    message: isReopeningCancelled ? 'Journal entry reopened as draft.' : 'Journal entry updated.',
+    toast: isReopeningCancelled ? '日记账已恢复为待过账。' : '日记账已更新。',
   })
 }
 

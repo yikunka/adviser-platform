@@ -8,6 +8,7 @@ import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { ArrowLeft, Download, Eye, FileText, Save, Trash2, Upload } from 'lucide-react'
 import { DatePickerPopover } from '@/components/ui/date-picker-popover'
+import { resolveCosEmployeeBirthInfo } from '@/lib/cosmocoat/employee-birth-info'
 import type { CosEmployeeFileRow, CosEmployeeRow } from '@/lib/cosmocoat/employees'
 import { COS_EMPLOYEE_FILE_TYPE_LABELS, COS_EMPLOYEE_TYPE_LABELS } from '@/lib/cosmocoat/employee-labels'
 import type { CosEmployeeFileType, CosEmployeeType } from '@prisma/client'
@@ -20,6 +21,7 @@ type FormState = {
   email: string
   position: string
   department: string
+  birthDate: string
   hireDate: string
   notes: string
   isActive: boolean
@@ -369,10 +371,13 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
     email: '',
     position: '',
     department: '',
+    birthDate: '',
     hireDate: '',
     notes: '',
     isActive: true,
   })
+  const birthInfo = resolveCosEmployeeBirthInfo(form.birthDate)
+  const birthDateToYear = new Date().getFullYear()
 
   const fetchEmployee = useCallback(async () => {
     if (isNew) return
@@ -394,6 +399,7 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
         email: row.email ?? '',
         position: row.position ?? '',
         department: row.department ?? '',
+        birthDate: row.birthDate ? row.birthDate.slice(0, 10) : '',
         hireDate: row.hireDate ? row.hireDate.slice(0, 10) : '',
         notes: row.notes ?? '',
         isActive: row.isActive,
@@ -434,6 +440,7 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
         email: form.email.trim() || null,
         position: form.position.trim() || null,
         department: form.department.trim() || null,
+        birthDate: form.birthDate ? new Date(form.birthDate).toISOString() : null,
         hireDate: form.hireDate ? new Date(form.hireDate).toISOString() : null,
         notes: form.notes.trim(),
         isActive: form.isActive,
@@ -636,6 +643,37 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
                 className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
                 style={inputStyle()}
               />
+            </Field>
+          </div>
+
+          <div className="grid sm:grid-cols-3 gap-4">
+            <Field label="出生日期">
+              <DatePickerPopover
+                value={form.birthDate}
+                onChange={value => patch('birthDate', value)}
+                placeholder="选择出生日期"
+                toYear={birthDateToYear}
+                className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+                style={inputStyle()}
+              />
+            </Field>
+            <Field label="五行" hint="根据出生日期自动计算">
+              <div
+                className="w-full rounded-lg px-3 py-2.5 text-sm"
+                style={{ ...inputStyle(), color: birthInfo ? 'var(--foreground)' : 'var(--muted-foreground)' }}
+                aria-live="polite"
+              >
+                {birthInfo ? `${birthInfo.fiveElement}（${birthInfo.sexagenaryYear}年）` : '选择出生日期后显示'}
+              </div>
+            </Field>
+            <Field label="生肖" hint="只读系统生成">
+              <div
+                className="w-full rounded-lg px-3 py-2.5 text-sm"
+                style={{ ...inputStyle(), color: birthInfo ? 'var(--foreground)' : 'var(--muted-foreground)' }}
+                aria-live="polite"
+              >
+                {birthInfo ? birthInfo.zodiac : '选择出生日期后显示'}
+              </div>
             </Field>
           </div>
 

@@ -416,6 +416,12 @@ export default function AdminFinancialJournalPage() {
     setFormOpen(true)
   }
 
+  function openEditFormFromView(entry: JournalEntryDetails) {
+    setViewOpen(false)
+    setEditingEntry(entry as JournalEntry)
+    setFormOpen(true)
+  }
+
   function openViewModal(entry: JournalEntry) {
     setViewingEntry(entry)
     setViewOpen(true)
@@ -775,7 +781,8 @@ export default function AdminFinancialJournalPage() {
                           size="sm"
                           className="h-8 w-8 p-0"
                           onClick={() => openEditForm(entry)}
-                          disabled={entry.status !== 'DRAFT'}
+                          disabled={entry.status === 'POSTED'}
+                          title={entry.status === 'CANCELLED' ? '重新编辑并恢复为待过账' : '编辑'}
                         >
                           <Pencil size={15} className="text-muted-foreground" />
                         </Button>
@@ -851,6 +858,7 @@ export default function AdminFinancialJournalPage() {
         entry={viewingEntry}
         onPosted={fetchEntries}
         onPrint={entry => printJournalEntry(entry as JournalEntry)}
+        onEdit={openEditFormFromView}
       />
       <JournalEntryPrintArea entry={printEntry} fallbackCompanyName={company.nameEn} />
       <JournalPrintStyles />

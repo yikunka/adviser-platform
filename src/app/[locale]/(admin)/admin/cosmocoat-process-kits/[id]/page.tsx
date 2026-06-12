@@ -518,6 +518,12 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   } | null>(null)
   const [savingProcessBlock, setSavingProcessBlock] = useState(false)
   const [editForm, setEditForm] = useState({
+    useHardener: false,
+    hardenerProductId: '',
+    hardenerRatio: '',
+    useThinner: false,
+    thinnerProductId: '',
+    thinnerRatio: '',
     irMinutes: '',
     irTemperature: '',
     uvEnergy: '',
@@ -568,6 +574,10 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       processDescription,
     ),
     [processFlowItems, kitProducts, processFlowNote, processDescription],
+  )
+  const editingProduct = useMemo(
+    () => editingProductId ? kitProducts.find(product => product.id === editingProductId) ?? null : null,
+    [editingProductId, kitProducts],
   )
   const flowSequenceByItemId = useMemo(() => {
     const map = new Map<string, number>()
@@ -954,6 +964,12 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   function resetEditForm() {
     setEditingProductId(null)
     setEditForm({
+      useHardener: false,
+      hardenerProductId: '',
+      hardenerRatio: '',
+      useThinner: false,
+      thinnerProductId: '',
+      thinnerRatio: '',
       irMinutes: '',
       irTemperature: '',
       uvEnergy: '',
@@ -966,6 +982,12 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     setShowProductForm(false)
     setEditingProductId(product.id)
     setEditForm({
+      useHardener: Boolean(product.hardenerProductId),
+      hardenerProductId: product.hardenerProductId ?? '',
+      hardenerRatio: product.hardenerRatio ?? '',
+      useThinner: Boolean(product.thinnerProductId),
+      thinnerProductId: product.thinnerProductId ?? '',
+      thinnerRatio: product.thinnerRatio ?? '',
       irMinutes: product.irMinutes ?? '',
       irTemperature: product.irTemperature ?? '',
       uvEnergy: product.uvEnergy ?? '',
@@ -982,11 +1004,32 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     const uvEnergy = parseOptionalText(editForm.uvEnergy)
     const filmThickness = parseOptionalText(editForm.filmThickness)
 
+    if (
+      (editForm.useHardener && (!editForm.hardenerProductId || !editForm.hardenerRatio.trim())) ||
+      (editForm.useThinner && (!editForm.thinnerProductId || !editForm.thinnerRatio.trim()))
+    ) {
+      toast.error(t('accessoryFormRequired'))
+      return
+    }
+
+    const selectedHardener = editForm.useHardener
+      ? products.find(product => product.id === editForm.hardenerProductId)
+      : null
+    const selectedThinner = editForm.useThinner
+      ? products.find(product => product.id === editForm.thinnerProductId)
+      : null
+
     if (isNew) {
       setKitProducts(prev => prev.map(product =>
         product.id === editingProductId
           ? {
               ...product,
+              hardenerProductId: editForm.useHardener ? editForm.hardenerProductId : null,
+              hardenerProductName: selectedHardener ? `${selectedHardener.productCode} · ${selectedHardener.name}` : null,
+              hardenerRatio: editForm.useHardener ? editForm.hardenerRatio.trim() : null,
+              thinnerProductId: editForm.useThinner ? editForm.thinnerProductId : null,
+              thinnerProductName: selectedThinner ? `${selectedThinner.productCode} · ${selectedThinner.name}` : null,
+              thinnerRatio: editForm.useThinner ? editForm.thinnerRatio.trim() : null,
               irMinutes,
               irTemperature,
               uvEnergy,
@@ -1007,6 +1050,10 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: editingProductId,
+          hardenerProductId: editForm.useHardener ? editForm.hardenerProductId : null,
+          hardenerRatio: editForm.useHardener ? editForm.hardenerRatio.trim() : null,
+          thinnerProductId: editForm.useThinner ? editForm.thinnerProductId : null,
+          thinnerRatio: editForm.useThinner ? editForm.thinnerRatio.trim() : null,
           irMinutes,
           irTemperature,
           uvEnergy,
@@ -1575,9 +1622,107 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
         {editingProductId && (
           <div className="p-4 border-b space-y-3" style={{ borderColor: '#2A2418', background: '#0E0E0A' }}>
             <p className="text-xs font-medium" style={{ color: '#C9A96E' }}>
-              {t('editProductTitle')} — {kitProducts.find(p => p.id === editingProductId)?.productName}
+              {t('editProductTitle')} — {editingProduct?.productName}
             </p>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="space-y-3 sm:col-span-2 lg:col-span-4">
+                <label className="flex items-center gap-2 text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                  <input
+                    type="checkbox"
+                    checked={editForm.useHardener}
+                    onChange={e => setEditForm(f => ({
+                      ...f,
+                      useHardener: e.target.checked,
+                      hardenerProductId: e.target.checked ? f.hardenerProductId : '',
+                      hardenerRatio: e.target.checked ? f.hardenerRatio : '',
+                    }))}
+                    className="h-4 w-4 rounded border-[#2A2418]"
+                  />
+                  {t('useHardener')}
+                </label>
+                {editForm.useHardener && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('hardenerProduct')}</label>
+                      <select
+                        value={editForm.hardenerProductId}
+                        onChange={e => setEditForm(f => ({ ...f, hardenerProductId: e.target.value }))}
+                        className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                        style={inputStyle()}
+                      >
+                        <option value="">{t('selectHardenerPlaceholder')}</option>
+                        {editForm.hardenerProductId && !hardenerProducts.some(p => p.id === editForm.hardenerProductId) && (
+                          <option value={editForm.hardenerProductId}>
+                            {editingProduct?.hardenerProductName ?? editForm.hardenerProductId}
+                          </option>
+                        )}
+                        {hardenerProducts.map(p => (
+                          <option key={p.id} value={p.id}>{p.productCode} · {p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('hardenerRatio')}</label>
+                      <input
+                        value={editForm.hardenerRatio}
+                        onChange={e => setEditForm(f => ({ ...f, hardenerRatio: e.target.value }))}
+                        placeholder={t('ratioPlaceholder')}
+                        className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                        style={inputStyle()}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-3 sm:col-span-2 lg:col-span-4">
+                <label className="flex items-center gap-2 text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                  <input
+                    type="checkbox"
+                    checked={editForm.useThinner}
+                    onChange={e => setEditForm(f => ({
+                      ...f,
+                      useThinner: e.target.checked,
+                      thinnerProductId: e.target.checked ? f.thinnerProductId : '',
+                      thinnerRatio: e.target.checked ? f.thinnerRatio : '',
+                    }))}
+                    className="h-4 w-4 rounded border-[#2A2418]"
+                  />
+                  {t('useThinner')}
+                </label>
+                {editForm.useThinner && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('thinnerProduct')}</label>
+                      <select
+                        value={editForm.thinnerProductId}
+                        onChange={e => setEditForm(f => ({ ...f, thinnerProductId: e.target.value }))}
+                        className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                        style={inputStyle()}
+                      >
+                        <option value="">{t('selectThinnerPlaceholder')}</option>
+                        {editForm.thinnerProductId && !thinnerProducts.some(p => p.id === editForm.thinnerProductId) && (
+                          <option value={editForm.thinnerProductId}>
+                            {editingProduct?.thinnerProductName ?? editForm.thinnerProductId}
+                          </option>
+                        )}
+                        {thinnerProducts.map(p => (
+                          <option key={p.id} value={p.id}>{p.productCode} · {p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('thinnerRatio')}</label>
+                      <input
+                        value={editForm.thinnerRatio}
+                        onChange={e => setEditForm(f => ({ ...f, thinnerRatio: e.target.value }))}
+                        placeholder={t('ratioPlaceholder')}
+                        className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                        style={inputStyle()}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('irMinutes')}</label>
                 <input

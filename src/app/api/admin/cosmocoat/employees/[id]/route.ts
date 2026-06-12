@@ -15,6 +15,7 @@ const patchSchema = z.object({
   email: z.string().trim().max(200).optional().nullable(),
   position: z.string().trim().max(100).optional().nullable(),
   department: z.string().trim().max(100).optional().nullable(),
+  birthDate: z.string().datetime().nullable().optional(),
   hireDate: z.string().datetime().nullable().optional(),
   notes: z.string().trim().max(2000).optional(),
   isActive: z.boolean().optional(),
@@ -82,6 +83,9 @@ export async function PATCH(
         email: parsed.data.email !== undefined ? nullableText(parsed.data.email) : undefined,
         position: parsed.data.position !== undefined ? nullableText(parsed.data.position) : undefined,
         department: parsed.data.department !== undefined ? nullableText(parsed.data.department) : undefined,
+        birthDate: parsed.data.birthDate !== undefined
+          ? (parsed.data.birthDate ? new Date(parsed.data.birthDate) : null)
+          : undefined,
         hireDate: parsed.data.hireDate !== undefined
           ? (parsed.data.hireDate ? new Date(parsed.data.hireDate) : null)
           : undefined,

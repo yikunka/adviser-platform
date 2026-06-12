@@ -108,6 +108,7 @@ function resetFormForNextEntry(
 }
 
 export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, onSaved, onContinued }: Props) {
+  const isReopeningCancelled = entry?.status === 'CANCELLED'
   const lastSavedEntryDateRef = useRef<string | null>(null)
   const lineFirstFieldRefs = useRef<(HTMLElement | null)[]>([])
   const pendingFocusLineIndex = useRef<number | null>(null)
@@ -327,16 +328,21 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={modalContentClassName}>
         <DialogHeader>
-          <DialogTitle className="text-[#FFF7E6]">{entry ? '编辑日记账' : '新增日记账'}</DialogTitle>
+          <DialogTitle className="text-[#FFF7E6]">
+            {isReopeningCancelled ? '重新编辑已取消日记账' : entry ? '编辑日记账' : '新增日记账'}
+          </DialogTitle>
           <DialogDescription className="text-[#B8AD98]">
-            保存后状态为待过账，使用审核并过账生成总账记录。分录行内按 ↑/↓ 切换行（末行 ↓ 新增一行），Enter 确认并跳到下一行（末行 Enter 保存）。F1 保存并清空表单继续录入，日期保留为上一条分录日期。科目列支持编码或名称模糊搜索。
+            {isReopeningCancelled
+              ? '保存后凭证将恢复为待过账，可继续审核并过账生成总账记录。'
+              : '保存后状态为待过账，使用审核并过账生成总账记录。'}
+            分录行内按 ↑/↓ 切换行（末行 ↓ 新增一行），Enter 确认并跳到下一行（末行 Enter 保存）。F1 保存并清空表单继续录入，日期保留为上一条分录日期。科目列支持编码或名称模糊搜索。
           </DialogDescription>
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline" style={{ borderColor: '#f59e0b', color: '#f59e0b' }}>
-              状态：待过账
+              {isReopeningCancelled ? '状态：保存后恢复待过账' : '状态：待过账'}
             </Badge>
             {!hasCompany && (
               <Badge variant="outline" style={{ borderColor: '#f59e0b', color: '#f59e0b' }}>

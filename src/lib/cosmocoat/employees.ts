@@ -1,5 +1,6 @@
 import type { CosEmployeeFileType, CosEmployeeType } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
+import { resolveCosEmployeeBirthInfo, type CosEmployeeBirthInfo } from '@/lib/cosmocoat/employee-birth-info'
 export { COS_EMPLOYEE_FILE_TYPE_LABELS, COS_EMPLOYEE_TYPE_LABELS } from '@/lib/cosmocoat/employee-labels'
 
 export type CosEmployeeFileRow = {
@@ -23,6 +24,8 @@ export type CosEmployeeRow = {
   email: string | null
   position: string | null
   department: string | null
+  birthDate: string | null
+  birthInfo: CosEmployeeBirthInfo | null
   hireDate: string | null
   notes: string
   isActive: boolean
@@ -80,6 +83,7 @@ export function serializeEmployee(
     email: string | null
     position: string | null
     department: string | null
+    birthDate: Date | null
     hireDate: Date | null
     notes: string
     isActive: boolean
@@ -109,6 +113,8 @@ export function serializeEmployee(
     email: employee.email,
     position: employee.position,
     department: employee.department,
+    birthDate: employee.birthDate?.toISOString() ?? null,
+    birthInfo: resolveCosEmployeeBirthInfo(employee.birthDate?.toISOString() ?? null),
     hireDate: employee.hireDate?.toISOString() ?? null,
     notes: employee.notes,
     isActive: employee.isActive,

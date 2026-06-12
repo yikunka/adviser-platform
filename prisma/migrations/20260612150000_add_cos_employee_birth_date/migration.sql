@@ -1,0 +1,1 @@
+ALTER TABLE "cos_employees" ADD COLUMN IF NOT EXISTS "birthDate" TIMESTAMP(3);

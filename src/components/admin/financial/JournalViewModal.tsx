@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { CheckCircle, Printer } from 'lucide-react'
+import { CheckCircle, Pencil, Printer } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -45,6 +45,7 @@ type Props = {
   entry?: JournalEntryDetails | null
   onPosted?: () => void | Promise<void>
   onPrint?: (entry: JournalEntryDetails) => void
+  onEdit?: (entry: JournalEntryDetails) => void
 }
 
 const STATUS_COLORS: Record<JournalEntryDetails['status'], string> = {
@@ -60,7 +61,7 @@ function money(value: number) {
   return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-export function JournalViewModal({ open, onOpenChange, entry, onPosted, onPrint }: Props) {
+export function JournalViewModal({ open, onOpenChange, entry, onPosted, onPrint, onEdit }: Props) {
   const [posting, setPosting] = useState(false)
   const totalDebit = entry?.lines.reduce((sum, line) => sum + line.debit, 0) ?? 0
   const totalCredit = entry?.lines.reduce((sum, line) => sum + line.credit, 0) ?? 0
@@ -164,6 +165,17 @@ export function JournalViewModal({ open, onOpenChange, entry, onPosted, onPrint 
         ) : null}
 
         <DialogFooter className={modalFooterClassName}>
+          {entry?.status === 'DRAFT' || entry?.status === 'CANCELLED' ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onEdit?.(entry)}
+              className={secondaryButtonClassName}
+            >
+              <Pencil size={15} className="mr-2" />
+              {entry.status === 'CANCELLED' ? '重新编辑' : '编辑'}
+            </Button>
+          ) : null}
           {entry ? (
             <Button type="button" variant="outline" onClick={() => onPrint?.(entry)} className={secondaryButtonClassName}>
               <Printer size={15} className="mr-2" />
