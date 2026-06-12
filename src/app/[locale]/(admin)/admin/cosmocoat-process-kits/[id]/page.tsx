@@ -27,9 +27,7 @@ import {
 import {
   displayProcessParameter,
   formatFilmThickness,
-  formatIrMinutes,
   formatIrParametersDisplay,
-  formatIrTemperature,
   formatUvEnergy,
 } from '@/lib/cosmocoat/process-kit-parameters'
 
@@ -154,6 +152,41 @@ const dateTimePickerStyle: React.CSSProperties = {
 
 const PRINT_RESET_DELAY_MS = 180
 const PROCESS_KIT_PRINT_AREA_ID = 'cosmocoat-process-kit-print-area'
+const PROCESS_KIT_PRINT_COLORS = {
+  text: '#111827',
+  border: '#6B7280',
+  labelBg: '#E5E7EB',
+  altBg: '#F3F4F6',
+}
+
+const printSectionTitleStyle: React.CSSProperties = {
+  fontWeight: 700,
+  fontSize: 11,
+  marginBottom: 5,
+  borderLeft: `3px solid ${PROCESS_KIT_PRINT_COLORS.text}`,
+  paddingLeft: 6,
+  color: PROCESS_KIT_PRINT_COLORS.text,
+}
+
+const printTableStyle: React.CSSProperties = {
+  width: '100%',
+  borderCollapse: 'collapse',
+  marginBottom: 12,
+  fontSize: 9,
+  color: PROCESS_KIT_PRINT_COLORS.text,
+}
+
+const printCellStyle: React.CSSProperties = {
+  padding: '3px 6px',
+  border: `1px solid ${PROCESS_KIT_PRINT_COLORS.border}`,
+  color: PROCESS_KIT_PRINT_COLORS.text,
+}
+
+const printLabelCellStyle: React.CSSProperties = {
+  ...printCellStyle,
+  background: PROCESS_KIT_PRINT_COLORS.labelBg,
+  fontWeight: 700,
+}
 
 const PROCESS_KIT_PRINT_STYLES = `
   @media print {
@@ -174,6 +207,7 @@ const PROCESS_KIT_PRINT_STYLES = `
 
     .admin-console > aside,
     .admin-console > .flex-1 > header,
+    .feedback-widget,
     .cosmocoat-process-kit-screen { display: none !important; }
 
     .admin-console > .flex-1 {
@@ -197,7 +231,7 @@ const PROCESS_KIT_PRINT_STYLES = `
       font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
       font-size: 10pt;
       line-height: 1.45;
-      color: #000 !important;
+      color: ${PROCESS_KIT_PRINT_COLORS.text} !important;
       background: #fff !important;
       print-color-adjust: exact;
       -webkit-print-color-adjust: exact;
@@ -223,6 +257,7 @@ const PROCESS_KIT_PRINT_STYLES = `
       font-size: 9pt !important;
       line-height: 1.35;
       vertical-align: top;
+      color: ${PROCESS_KIT_PRINT_COLORS.text} !important;
     }
 
     #${PROCESS_KIT_PRINT_AREA_ID} .print-section-title {
@@ -329,7 +364,6 @@ interface ProcessKitPrintViewProps {
   processDescription: string
   processFlowNote: string
   processFlowDocument: string
-  kitProducts: KitProduct[]
   labels: {
     title: string
     basicInfo: string
@@ -343,16 +377,7 @@ interface ProcessKitPrintViewProps {
     addProcess: string
     globalProcessNote: string
     processFlowDocument: string
-    productsSection: string
-    productName: string
-    hardener: string
-    thinner: string
-    irParameters: string
-    uvEnergy: string
-    filmThickness: string
-    sprayViscosity: string
     notes: string
-    noProducts: string
   }
 }
 
@@ -366,123 +391,80 @@ function ProcessKitPrintView({
   processDescription,
   processFlowNote,
   processFlowDocument,
-  kitProducts,
   labels,
 }: ProcessKitPrintViewProps) {
   return (
     <div id={PROCESS_KIT_PRINT_AREA_ID}>
-      <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 16, marginBottom: 12 }}>
+      <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 16, marginBottom: 12, color: PROCESS_KIT_PRINT_COLORS.text }}>
         {labels.title}
       </div>
 
-      <div className="print-section-title" style={{ fontWeight: 700, fontSize: 11, marginBottom: 5, borderLeft: '3px solid #000', paddingLeft: 6 }}>
+      <div className="print-section-title" style={printSectionTitleStyle}>
         {labels.basicInfo}
       </div>
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12, fontSize: 9 }}>
+      <table style={printTableStyle}>
         <tbody>
           <tr>
-            <td style={{ width: '14%', padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.code}</td>
-            <td style={{ width: '36%', padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(code)}</td>
-            <td style={{ width: '14%', padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.name}</td>
-            <td style={{ width: '36%', padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(name)}</td>
+            <td style={{ ...printLabelCellStyle, width: '14%' }}>{labels.code}</td>
+            <td style={{ ...printCellStyle, width: '36%' }}>{displayText(code)}</td>
+            <td style={{ ...printLabelCellStyle, width: '14%' }}>{labels.name}</td>
+            <td style={{ ...printCellStyle, width: '36%' }}>{displayText(name)}</td>
           </tr>
           <tr>
-            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.status}</td>
-            <td colSpan={3} style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(statusLabel)}</td>
+            <td style={printLabelCellStyle}>{labels.status}</td>
+            <td colSpan={3} style={printCellStyle}>{displayText(statusLabel)}</td>
           </tr>
           <tr>
-            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.description}</td>
-            <td colSpan={3} style={{ padding: '3px 6px', border: '1px solid #ccc', whiteSpace: 'pre-wrap' }}>{displayText(description)}</td>
+            <td style={printLabelCellStyle}>{labels.description}</td>
+            <td colSpan={3} style={{ ...printCellStyle, whiteSpace: 'pre-wrap' }}>{displayText(description)}</td>
           </tr>
           {otherNote.trim() && (
             <tr>
-              <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.notes}</td>
-              <td colSpan={3} style={{ padding: '3px 6px', border: '1px solid #ccc', whiteSpace: 'pre-wrap' }}>{displayText(otherNote)}</td>
+              <td style={printLabelCellStyle}>{labels.notes}</td>
+              <td colSpan={3} style={{ ...printCellStyle, whiteSpace: 'pre-wrap' }}>{displayText(otherNote)}</td>
             </tr>
           )}
         </tbody>
       </table>
 
-      <div className="print-section-title" style={{ fontWeight: 700, fontSize: 11, marginBottom: 5, borderLeft: '3px solid #000', paddingLeft: 6 }}>
+      <div className="print-section-title" style={printSectionTitleStyle}>
         {labels.performanceStandards}
       </div>
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12, fontSize: 9 }}>
+      <table style={printTableStyle}>
         <tbody>
           {performanceStandardGroups.length === 0 ? (
             <tr>
-              <td style={{ padding: '8px 6px', border: '1px solid #ccc', textAlign: 'center' }}>{labels.noPerformanceStandards}</td>
+              <td style={{ ...printCellStyle, padding: '8px 6px', textAlign: 'center' }}>{labels.noPerformanceStandards}</td>
             </tr>
           ) : (
             performanceStandardGroups.map((group, index) => (
-              <tr key={group.groupLabel} style={{ background: index % 2 === 1 ? '#fafafa' : '#fff' }}>
-                <td style={{ width: '24%', padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{group.groupLabel}</td>
-                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{group.itemLabels.join('、')}</td>
+              <tr key={group.groupLabel} style={{ background: index % 2 === 1 ? PROCESS_KIT_PRINT_COLORS.altBg : '#fff' }}>
+                <td style={{ ...printLabelCellStyle, width: '24%' }}>{group.groupLabel}</td>
+                <td style={printCellStyle}>{group.itemLabels.join('、')}</td>
               </tr>
             ))
           )}
         </tbody>
       </table>
 
-      <div className="print-section-title" style={{ fontWeight: 700, fontSize: 11, marginBottom: 5, borderLeft: '3px solid #000', paddingLeft: 6 }}>
-        {labels.productsSection}
-      </div>
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12, fontSize: 9 }}>
-        <thead>
-          <tr style={{ background: '#f0f0f0' }}>
-            <th style={{ width: '6%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'center' }}>#</th>
-            <th style={{ width: '21%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.productName}</th>
-            <th style={{ width: '16%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.hardener}</th>
-            <th style={{ width: '16%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.thinner}</th>
-            <th style={{ width: '12%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.irParameters}</th>
-            <th style={{ width: '10%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.uvEnergy}</th>
-            <th style={{ width: '10%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.filmThickness}</th>
-            <th style={{ width: '9%', padding: '3px 6px', border: '1px solid #ccc', textAlign: 'left' }}>{labels.sprayViscosity}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {kitProducts.length === 0 ? (
-            <tr>
-              <td colSpan={8} style={{ padding: '8px 6px', border: '1px solid #ccc', textAlign: 'center' }}>{labels.noProducts}</td>
-            </tr>
-          ) : (
-            kitProducts.map((product, index) => (
-              <tr key={product.id} style={{ background: index % 2 === 1 ? '#fafafa' : '#fff' }}>
-                <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'center' }}>{index + 1}</td>
-                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(product.productName)}</td>
-                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>
-                  {product.hardenerProductName ? `${product.hardenerProductName}${product.hardenerRatio ? ` / ${product.hardenerRatio}` : ''}` : '—'}
-                </td>
-                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>
-                  {product.thinnerProductName ? `${product.thinnerProductName}${product.thinnerRatio ? ` / ${product.thinnerRatio}` : ''}` : '—'}
-                </td>
-                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{formatIrParametersDisplay(product.irMinutes, product.irTemperature)}</td>
-                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayProcessParameter(product.uvEnergy, formatUvEnergy)}</td>
-                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayProcessParameter(product.filmThickness, formatFilmThickness)}</td>
-                <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{displayText(product.sprayViscosity)}</td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-
-      <div className="print-section-title" style={{ fontWeight: 700, fontSize: 11, marginBottom: 5, borderLeft: '3px solid #000', paddingLeft: 6 }}>
+      <div className="print-section-title" style={printSectionTitleStyle}>
         {labels.processFlowSection}
       </div>
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12, fontSize: 9 }}>
+      <table style={printTableStyle}>
         <tbody>
           {processDescription.trim() && (
             <tr>
-              <td style={{ width: '16%', padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.addProcess}</td>
-              <td style={{ padding: '3px 6px', border: '1px solid #ccc', whiteSpace: 'pre-wrap' }}>{displayText(processDescription)}</td>
+              <td style={{ ...printLabelCellStyle, width: '16%' }}>{labels.addProcess}</td>
+              <td style={{ ...printCellStyle, whiteSpace: 'pre-wrap' }}>{displayText(processDescription)}</td>
             </tr>
           )}
           <tr>
-            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.globalProcessNote}</td>
-            <td style={{ padding: '3px 6px', border: '1px solid #ccc', whiteSpace: 'pre-wrap' }}>{displayText(processFlowNote)}</td>
+            <td style={printLabelCellStyle}>{labels.globalProcessNote}</td>
+            <td style={{ ...printCellStyle, whiteSpace: 'pre-wrap' }}>{displayText(processFlowNote)}</td>
           </tr>
           <tr>
-            <td style={{ padding: '3px 6px', background: '#f5f5f5', fontWeight: 600, border: '1px solid #ccc' }}>{labels.processFlowDocument}</td>
-            <td style={{ padding: '3px 6px', border: '1px solid #ccc', whiteSpace: 'pre-wrap' }}>{displayText(processFlowDocument)}</td>
+            <td style={printLabelCellStyle}>{labels.processFlowDocument}</td>
+            <td style={{ ...printCellStyle, whiteSpace: 'pre-wrap' }}>{displayText(processFlowDocument)}</td>
           </tr>
         </tbody>
       </table>
@@ -621,16 +603,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     addProcess: t('addProcess'),
     globalProcessNote: t('globalProcessNote'),
     processFlowDocument: t('processFlowDocument'),
-    productsSection: t('productsSection'),
-    productName: t('productName'),
-    hardener: t('hardener'),
-    thinner: t('thinner'),
-    irParameters: t('irParameters'),
-    uvEnergy: t('uvEnergy'),
-    filmThickness: t('filmThickness'),
-    sprayViscosity: t('sprayViscosity'),
     notes: t('notes'),
-    noProducts: t('noProducts'),
   }), [t])
 
   function toggleMaterial(materialId: string) {
@@ -839,11 +812,17 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
       font-size: 10pt;
       line-height: 1.45;
-      color: #000;
       background: #fff;
+      color: ${PROCESS_KIT_PRINT_COLORS.text};
     }
     * { box-sizing: border-box; max-width: 100%; }
-    table { table-layout: fixed; width: 100%; border-collapse: collapse; font-size: 9pt; }
+    table {
+      table-layout: fixed;
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9pt;
+      color: ${PROCESS_KIT_PRINT_COLORS.text};
+    }
     td, th {
       word-break: break-word;
       overflow-wrap: anywhere;
@@ -851,13 +830,15 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       font-size: 9pt;
       line-height: 1.35;
       vertical-align: top;
+      color: ${PROCESS_KIT_PRINT_COLORS.text};
     }
     .print-section-title {
       font-weight: 700;
       font-size: 11pt;
       margin-bottom: 5px;
-      border-left: 3px solid #000;
+      border-left: 3px solid ${PROCESS_KIT_PRINT_COLORS.text};
       padding-left: 6px;
+      color: ${PROCESS_KIT_PRINT_COLORS.text};
     }
   </style>
 </head>
@@ -1242,7 +1223,6 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
           processDescription={processDescription}
           processFlowNote={processFlowNote}
           processFlowDocument={processFlowDocument}
-          kitProducts={kitProducts}
           labels={printLabels}
         />
       )}

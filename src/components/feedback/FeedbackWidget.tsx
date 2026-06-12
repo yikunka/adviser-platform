@@ -460,7 +460,7 @@ export function FeedbackWidget({ locale = 'zh' }: { locale?: FeedbackWidgetLocal
   const isUploading = uploadingFiles.some(f => f.status === 'uploading')
 
   return (
-    <>
+    <div className="feedback-widget contents">
       {/* Floating trigger button */}
       <button
         type="button"
@@ -745,6 +745,6 @@ export function FeedbackWidget({ locale = 'zh' }: { locale?: FeedbackWidgetLocal
           </div>
         </div>
       )}
-    </>
+    </div>
   )
 }

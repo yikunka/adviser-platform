@@ -322,7 +322,7 @@ Product application method documentation (產品配套工藝書).
 - Products and standalone process steps share one continuous sequence (1, 2, 3…); hover any item in the document preview and use **在该产品下方添加工艺** to insert a new process at the next position (automatic renumbering); each process step can be edited or deleted
 - Legacy product-nested process blocks are migrated into the unified ordered list on read when stored `processFlowItems` is empty
 - Detail page actions include browser-based A4 printing and browser-generated Word document download for the current process-kit content; no backend export job is used
-- Print and Word export include only core process information: basic info, performance standards (grouped by test category — 百格, 水煮测试, RCA, 硬度, 耐化学性, 高温高湿/盐雾 — listing selected test item names only, no test results), product parameters, and process flow; **产品材料清单** and **测试记录** are omitted from print/Word output
+- Print and Word export use darker high-contrast colors and include only core process information: basic info, performance standards (grouped by test category — 百格, 水煮测试, RCA, 硬度, 耐化学性, 高温高湿/盐雾 — listing selected test item names only, no test results), and the process-flow document; the standalone **产品组合** / product-parameters table, **产品材料清单**, and **测试记录** are omitted because product details are already shown inside the process flow
 - Test records (detail page only, not in print/Word): type (`PERFORMANCE`, `DURABILITY`, `ADHESION`, `COLOR_STABILITY`, `BOND_STRENGTH`, `OTHER`), result (`PASSED`, `FAILED`, `PENDING`), test date, tester name, report link
 
 ### Customers (`/admin/cosmocoat-customers`)
