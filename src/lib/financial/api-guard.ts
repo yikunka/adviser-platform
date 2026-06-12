@@ -5,6 +5,7 @@ import { requireRole } from '@/lib/auth/rbac'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
 import { MappingNotFoundError } from '@/lib/financial/account-mappings'
 import { PeriodClosedError } from '@/lib/financial/fiscal-periods'
+import { PartyAccountError } from '@/lib/financial/party-accounts'
 import { PostingError } from '@/lib/financial/posting-engine'
 
 export function apiError(error: string, status = 400) {
@@ -30,7 +31,7 @@ export async function guardFinancialCompany(
 
 /** 业务错误 → 400（带中文 toast）；唯一键冲突 → 409；其余抛给全局。 */
 export function handleFinancialError(err: unknown): NextResponse {
-  if (err instanceof PostingError || err instanceof PeriodClosedError || err instanceof MappingNotFoundError) {
+  if (err instanceof PostingError || err instanceof PeriodClosedError || err instanceof MappingNotFoundError || err instanceof PartyAccountError) {
     return apiError(err.message)
   }
   if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {

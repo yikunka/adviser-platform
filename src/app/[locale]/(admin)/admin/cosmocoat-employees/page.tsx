@@ -47,6 +47,37 @@ function formatDate(value: string | null) {
   return new Date(value).toLocaleDateString('zh-HK', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+function parseDateParts(value: string | null) {
+  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!match) return null
+
+  return {
+    year: Number(match[1]),
+    month: Number(match[2]),
+    day: Number(match[3]),
+  }
+}
+
+function formatServiceYears(hireDate: string | null) {
+  const parts = parseDateParts(hireDate)
+  if (!parts) return '—'
+
+  const today = new Date()
+  let years = today.getFullYear() - parts.year
+  const currentMonth = today.getMonth() + 1
+  const hasReachedAnniversary = currentMonth > parts.month
+    || (currentMonth === parts.month && today.getDate() >= parts.day)
+
+  if (!hasReachedAnniversary) years -= 1
+
+  return `${Math.max(0, years)}年`
+}
+
+function formatFiveElement(employee: CosEmployeeRow) {
+  if (!employee.birthInfo) return '—'
+  return `${employee.birthInfo.fiveElement}（${employee.birthInfo.sexagenaryYear}年）`
+}
+
 export default function AdminCosmoCoatEmployeesPage() {
   const [employees, setEmployees] = useState<CosEmployeeRow[]>([])
   const [total, setTotal] = useState(0)
@@ -134,7 +165,7 @@ export default function AdminCosmoCoatEmployeesPage() {
           <table className="w-full">
             <thead>
               <tr>
-                {['员工编码', '姓名', '员工类型', '职位', '电话', '状态', '入职日期', '更新时间'].map(h => (
+                {['员工编码', '姓名', '员工类型', '职位', '电话', '状态', '入职日期', '工龄', '五行', '更新时间'].map(h => (
                   <th key={h} style={th}>{h}</th>
                 ))}
               </tr>
@@ -142,11 +173,11 @@ export default function AdminCosmoCoatEmployeesPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>加载中...</td>
+                  <td colSpan={10} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>加载中...</td>
                 </tr>
               ) : employees.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center">
+                  <td colSpan={10} className="px-4 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <UserRound size={28} style={{ color: '#C9A96E', opacity: 0.45 }} />
                       <span style={{ color: 'var(--muted-foreground)' }}>
@@ -182,6 +213,8 @@ export default function AdminCosmoCoatEmployeesPage() {
                     </span>
                   </td>
                   <td style={td}>{formatDate(employee.hireDate)}</td>
+                  <td style={td}>{formatServiceYears(employee.hireDate)}</td>
+                  <td style={td}>{formatFiveElement(employee)}</td>
                   <td style={td}>{formatDate(employee.updatedAt)}</td>
                 </tr>
               ))}

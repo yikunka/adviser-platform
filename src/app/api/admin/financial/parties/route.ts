@@ -3,6 +3,8 @@ import { Prisma } from '@prisma/client'
 import { logAudit } from '@/lib/audit/logger'
 import { prisma } from '@/lib/db/prisma'
 import { apiError, guardFinancialCompany, handleFinancialError } from '@/lib/financial/api-guard'
+import { ensureDefaultChartOfAccounts } from '@/lib/financial/default-chart-of-accounts'
+import { ensurePartyAccount } from '@/lib/financial/party-accounts'
 import { partySchema } from '@/lib/financial/schemas'
 import { serializeParty } from '@/lib/financial/subledger-serializers'
 
@@ -47,28 +49,50 @@ export async function POST(req: NextRequest) {
   if (guard.error) return guard.error
 
   try {
-    const party = await prisma.party.create({
-      data: {
-        companyId: parsed.data.companyId,
-        code: parsed.data.code,
-        name: parsed.data.name,
-        nameZh: parsed.data.nameZh ?? null,
-        isCustomer: parsed.data.isCustomer,
-        isSupplier: parsed.data.isSupplier,
-        isEmployee: parsed.data.isEmployee,
-        email: parsed.data.email ?? null,
-        phone: parsed.data.phone ?? null,
-        address: parsed.data.address ?? null,
-        taxNumber: parsed.data.taxNumber ?? null,
-        currency: parsed.data.currency,
-        paymentTermsDays: parsed.data.paymentTermsDays,
-        creditLimit: parsed.data.creditLimit ?? null,
-        arAccountId: parsed.data.arAccountId ?? null,
-        apAccountId: parsed.data.apAccountId ?? null,
-        notes: parsed.data.notes,
-        isActive: parsed.data.isActive,
-      },
+    await ensureDefaultChartOfAccounts(parsed.data.companyId, prisma)
+
+    const party = await prisma.$transaction(async tx => {
+      const arAccountId = parsed.data.isCustomer
+        ? await ensurePartyAccount(tx, {
+            companyId: parsed.data.companyId,
+            partyName: parsed.data.name,
+            side: 'ar',
+            selectedAccountId: parsed.data.arAccountId,
+          })
+        : null
+      const apAccountId = parsed.data.isSupplier
+        ? await ensurePartyAccount(tx, {
+            companyId: parsed.data.companyId,
+            partyName: parsed.data.name,
+            side: 'ap',
+            selectedAccountId: parsed.data.apAccountId,
+          })
+        : null
+
+      return tx.party.create({
+        data: {
+          companyId: parsed.data.companyId,
+          code: parsed.data.code,
+          name: parsed.data.name,
+          nameZh: parsed.data.nameZh ?? null,
+          isCustomer: parsed.data.isCustomer,
+          isSupplier: parsed.data.isSupplier,
+          isEmployee: parsed.data.isEmployee,
+          email: parsed.data.email ?? null,
+          phone: parsed.data.phone ?? null,
+          address: parsed.data.address ?? null,
+          taxNumber: parsed.data.taxNumber ?? null,
+          currency: parsed.data.currency,
+          paymentTermsDays: parsed.data.paymentTermsDays,
+          creditLimit: parsed.data.creditLimit ?? null,
+          arAccountId,
+          apAccountId,
+          notes: parsed.data.notes,
+          isActive: parsed.data.isActive,
+        },
+      })
     })
+
     await logAudit(guard.session.user.id, 'CREATE', 'Party', party.id, null, party)
     return NextResponse.json({ party: serializeParty(party), toast: '往来单位已创建。' }, { status: 201 })
   } catch (err) {

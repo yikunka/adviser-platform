@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { logAudit } from '@/lib/audit/logger'
 import { prisma } from '@/lib/db/prisma'
 import { apiError, guardFinancialCompany, handleFinancialError } from '@/lib/financial/api-guard'
+import { validatePartyAccount } from '@/lib/financial/party-accounts'
 import { partyUpdateSchema } from '@/lib/financial/schemas'
 import { serializeParty } from '@/lib/financial/subledger-serializers'
 
@@ -20,7 +21,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   try {
-    const party = await prisma.party.update({ where: { id }, data: parsed.data })
+    if (parsed.data.arAccountId) {
+      const account = await validatePartyAccount(prisma, before.companyId, parsed.data.arAccountId)
+      if (!account) return apiError('关联应收科目不存在或不属于该公司。')
+    }
+    if (parsed.data.apAccountId) {
+      const account = await validatePartyAccount(prisma, before.companyId, parsed.data.apAccountId)
+      if (!account) return apiError('关联应付科目不存在或不属于该公司。')
+    }
+
+    const data = {
+      ...parsed.data,
+      ...(parsed.data.isCustomer === false ? { arAccountId: null } : {}),
+      ...(parsed.data.isSupplier === false ? { apAccountId: null } : {}),
+    }
+    const party = await prisma.party.update({ where: { id }, data })
     await logAudit(guard.session.user.id, 'UPDATE', 'Party', id, before, party)
     return NextResponse.json({ party: serializeParty(party), toast: '往来单位已更新。' })
   } catch (err) {

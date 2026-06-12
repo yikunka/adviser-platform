@@ -284,7 +284,7 @@ Custom color formulations for specific customers or products.
 CosmoCoat factory staff registry (内务、销售、生产、技术人员).
 - Employee types: `INTERNAL` (内务人员), `SALES` (销售人员), `PRODUCTION` (生产人员), `TECHNICAL` (技术人员); sales staff data is stored for future customer-order and sample-order workflows
 - Fields: employee code (auto `YG####` if omitted), name, type, phone, email, position, department, birth date, system-calculated five element / zodiac, hire date, notes, active status
-- List with search (code / name / phone / email / position / department) and type filter; paginated table
+- List with search (code / name / phone / email / position / department) and type filter; paginated table shows hire date, complete-year service years, system-calculated five element, and update time
 - Create, view, edit, and delete at `/admin/cosmocoat-employees/[id]`; new at `/admin/cosmocoat-employees/new`
 - Upload, view, download, and delete **劳动合同**, **简历**, and **身份证** files (PDF, Word, JPG, PNG, WEBP; max 10 MB); new employee forms can select files before saving, and creation saves the employee record and selected files together (if file upload fails, the employee is not created)
 - Production orders can assign an active **生产人员**; assigned employee basic info is shown on the production order detail page with a link to the employee profile
