@@ -880,7 +880,7 @@ export default function CosmocoatColorFormulaDetailPage() {
           </div>
           <div className="space-y-1.5 sm:col-span-2 lg:col-span-4">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Pantone 颜色</label>
-            <div className="grid sm:grid-cols-[minmax(0,1fr)_7rem] gap-3">
+            <div className="grid sm:grid-cols-[minmax(0,1fr)_28rem] gap-3">
               <input
                 value={targetColor}
                 onChange={e => setTargetColor(e.target.value)}
@@ -889,10 +889,10 @@ export default function CosmocoatColorFormulaDetailPage() {
                 style={inputStyle()}
               />
               <div
-                className="rounded-lg border flex items-center justify-center text-[11px] font-medium"
+                className="rounded-lg border flex items-center justify-center text-sm font-medium"
                 title={pantonePreviewHex ? `Pantone 预览 ${pantonePreviewHex}` : '未匹配到 Pantone 预览色'}
                 style={{
-                  minHeight: '2.625rem',
+                  minHeight: '10.5rem',
                   borderColor: '#2A2418',
                   background: pantonePreviewHex ?? '#0E0E0A',
                   color: swatchTextColor(pantonePreviewHex),
