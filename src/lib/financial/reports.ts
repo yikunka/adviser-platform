@@ -432,6 +432,13 @@ export async function buildFinancialReports(
   const revenueLines: StatementLineRow[] = []
   const costOfSalesLines: StatementLineRow[] = []
   const expenseEntries: Array<{ line: StatementLineRow; category: IncomeStatementExpenseCategoryKey }> = []
+  const uncoveredProfitAndLossCandidates: Array<{
+    account: InternalReportAccountRow
+    level1GroupId: string
+    line: StatementLineRow
+    sourceAccountIds: string[]
+  }> = []
+  const coveredProfitAndLossSourceAccountIds = new Set<string>()
   const assetLines: StatementLineRow[] = []
   const liabilityLines: StatementLineRow[] = []
   const equityLines: StatementLineRow[] = []
@@ -494,20 +501,28 @@ export async function buildFinancialReports(
     account: InternalReportAccountRow
     level1GroupId: string
     line: StatementLineRow
+    sourceAccountIds: string[]
   }) {
+    let added = false
     if (input.account.type === 'REVENUE') {
       revenueLines.push(input.line)
-      return
+      added = true
     }
     if (input.account.type === 'CGS') {
       costOfSalesLines.push(input.line)
-      return
+      added = true
     }
     if (input.account.type === 'EXPENSE') {
       expenseEntries.push({
         line: input.line,
         category: expenseCategoryForAccount(input.account, input.level1GroupId),
       })
+      added = true
+    }
+    if (added) {
+      for (const accountId of input.sourceAccountIds) {
+        coveredProfitAndLossSourceAccountIds.add(accountId)
+      }
     }
   }
 
@@ -515,8 +530,10 @@ export async function buildFinancialReports(
     const openingTotals = sumMovements(openingMovements, account.sourceAccountIds)
     const periodTotals = sumMovements(periodMovements, account.sourceAccountIds)
     const closingTotals = sumMovements(closingMovements, account.sourceAccountIds)
-    const statementPeriodTotals = sumMovements(periodMovements, statementSourceAccountIds(account))
-    const ownPeriodTotals = sumMovements(periodMovements, ownSourceAccountIds(account))
+    const statementAccountIds = statementSourceAccountIds(account)
+    const ownAccountIds = ownSourceAccountIds(account)
+    const statementPeriodTotals = sumMovements(periodMovements, statementAccountIds)
+    const ownPeriodTotals = sumMovements(periodMovements, ownAccountIds)
 
     const openingBalance = movementSignedBalance(openingTotals, account.type, account.code)
     const statementPeriodNet = movementSignedBalance(statementPeriodTotals, account.type, account.code)
@@ -579,19 +596,33 @@ export async function buildFinancialReports(
 
     const hasChildren = accountHasChildren(account)
     const topLevelHasChildren = topLevelAccountHasChildren(account, level1GroupId)
-    const statementRow: StatementLineRow = { ...reportRow, amount: Math.abs(statementPeriodNet) }
+    const statementRow: StatementLineRow = { ...reportRow, amount: statementPeriodNet }
     if (shouldIncludeIncomeStatementLine({
       type: account.type,
       level: account.level,
       topLevelHasChildren,
       periodNet: statementPeriodNet,
     })) {
-      addProfitAndLossLine({ account, level1GroupId, line: statementRow })
+      addProfitAndLossLine({
+        account,
+        level1GroupId,
+        line: statementRow,
+        sourceAccountIds: statementAccountIds,
+      })
     } else if (account.level === 1 && hasChildren && ownPeriodNet !== 0) {
       addProfitAndLossLine({
         account,
         level1GroupId,
-        line: { ...reportRow, amount: Math.abs(ownPeriodNet) },
+        line: { ...reportRow, amount: ownPeriodNet },
+        sourceAccountIds: ownAccountIds,
+      })
+    }
+    if ((account.type === 'REVENUE' || account.type === 'CGS' || account.type === 'EXPENSE') && ownPeriodNet !== 0) {
+      uncoveredProfitAndLossCandidates.push({
+        account,
+        level1GroupId,
+        line: { ...reportRow, amount: ownPeriodNet },
+        sourceAccountIds: ownAccountIds,
       })
     }
 
@@ -610,6 +641,24 @@ export async function buildFinancialReports(
         liabilityLines.push({ ...reportRow, amount: closingBalance })
       }
     }
+  }
+
+  for (const candidate of uncoveredProfitAndLossCandidates) {
+    const uncoveredSourceAccountIds = candidate.sourceAccountIds.filter(
+      accountId => !coveredProfitAndLossSourceAccountIds.has(accountId),
+    )
+    if (uncoveredSourceAccountIds.length === 0) continue
+
+    const uncoveredTotals = sumMovements(periodMovements, uncoveredSourceAccountIds)
+    const amount = movementSignedBalance(uncoveredTotals, candidate.account.type, candidate.account.code)
+    if (amount === 0) continue
+
+    addProfitAndLossLine({
+      account: candidate.account,
+      level1GroupId: candidate.level1GroupId,
+      line: { ...candidate.line, amount },
+      sourceAccountIds: uncoveredSourceAccountIds,
+    })
   }
 
   const expenseCategories = buildIncomeStatementExpenseCategories(expenseEntries)

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { AccountType } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
 import { buildFinancialReports } from './reports'
 
@@ -14,7 +15,19 @@ const companyId = 'company-cos'
 const start = new Date('2026-05-01T00:00:00.000Z').getTime()
 const end = new Date('2026-06-01T00:00:00.000Z').getTime()
 
-const reportAccounts = [
+type ReportAccountFixture = {
+  id: string
+  code: string
+  name: string
+  type: AccountType
+  level: number
+  parentId: string | null
+  sortOrder: number
+  yearToDateDebit: number
+  yearToDateCredit: number
+}
+
+const baseReportAccounts: ReportAccountFixture[] = [
   {
     id: 'bank',
     code: '1002',
@@ -48,7 +61,12 @@ const reportAccounts = [
     yearToDateDebit: 0,
     yearToDateCredit: 0,
   },
-] as const
+]
+
+type MovementLineFixture = { accountId: string; debit: number; credit: number }
+
+let reportAccounts: readonly ReportAccountFixture[]
+let periodMovementLines: MovementLineFixture[]
 
 type MockFindManyArgs = {
   distinct?: string[]
@@ -68,6 +86,11 @@ function findManyArgs(args: unknown): MockFindManyArgs {
 describe('buildFinancialReports journal-line source', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    reportAccounts = baseReportAccounts
+    periodMovementLines = [
+      { accountId: 'bank', debit: 1000, credit: 0 },
+      { accountId: 'rev-child', debit: 0, credit: 1000 },
+    ]
 
     vi.mocked(prisma.accountBalance.findMany).mockResolvedValue([])
     vi.mocked(prisma.finAccount.findMany).mockImplementation((async (args?: unknown) => {
@@ -95,10 +118,7 @@ describe('buildFinancialReports journal-line source', () => {
 
       if (!isPeriodMovement && !isClosingMovement) return []
 
-      return [
-        { accountId: 'bank', debit: 1000, credit: 0 },
-        { accountId: 'rev-child', debit: 0, credit: 1000 },
-      ]
+      return periodMovementLines
     }) as never)
   })
 
@@ -131,5 +151,73 @@ describe('buildFinancialReports journal-line source', () => {
         ]),
       }),
     }))
+  })
+
+  it('falls back to active P&L accounts when the monthly movement is not covered by the normal statement level', async () => {
+    reportAccounts = [
+      baseReportAccounts[0],
+      {
+        id: 'rev-parent',
+        code: '4000',
+        name: '收入',
+        type: 'REVENUE',
+        level: 1,
+        parentId: null,
+        sortOrder: 10,
+        yearToDateDebit: 0,
+        yearToDateCredit: 0,
+      },
+      {
+        id: 'rev-direct-level3',
+        code: '400101',
+        name: '服務收入',
+        type: 'REVENUE',
+        level: 3,
+        parentId: 'rev-parent',
+        sortOrder: 12,
+        yearToDateDebit: 0,
+        yearToDateCredit: 0,
+      },
+    ]
+    periodMovementLines = [
+      { accountId: 'bank', debit: 888, credit: 0 },
+      { accountId: 'rev-direct-level3', debit: 0, credit: 888 },
+    ]
+
+    const reports = await buildFinancialReports('2026-05', { companyId })
+
+    expect(reports.trialBalance.rows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        accountId: 'rev-direct-level3',
+        periodCredit: 888,
+      }),
+    ]))
+    expect(reports.incomeStatement.revenue).toEqual([
+      expect.objectContaining({
+        accountId: 'rev-direct-level3',
+        code: '400101',
+        name: '服務收入',
+        amount: 888,
+      }),
+    ])
+    expect(reports.incomeStatement.totalRevenue).toBe(888)
+  })
+
+  it('keeps P&L movement direction when debit activity offsets revenue', async () => {
+    periodMovementLines = [
+      { accountId: 'bank', debit: 0, credit: 200 },
+      { accountId: 'rev-child', debit: 200, credit: 0 },
+    ]
+
+    const reports = await buildFinancialReports('2026-05', { companyId })
+
+    expect(reports.incomeStatement.revenue).toEqual([
+      expect.objectContaining({
+        accountId: 'rev-child',
+        amount: -200,
+      }),
+    ])
+    expect(reports.incomeStatement.totalRevenue).toBe(-200)
+    expect(reports.incomeStatement.netProfit).toBe(-200)
   })
 })
