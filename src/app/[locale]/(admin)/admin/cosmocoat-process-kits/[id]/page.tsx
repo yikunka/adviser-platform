@@ -7,7 +7,7 @@ import { useParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, Download, Pencil, Plus, Printer, Save, Trash2 } from 'lucide-react'
+import { ArrowLeft, Download, ImageIcon, Pencil, Plus, Printer, Save, Trash2, Upload, X } from 'lucide-react'
 import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
 import { cn } from '@/lib/utils'
 import {
@@ -39,6 +39,14 @@ type FactoryProductOption = {
   category?: { id: string; name: string; slug: string } | null
 }
 
+type TechnicalTesterOption = {
+  id: string
+  code: string
+  name: string
+  position: string | null
+  department: string | null
+}
+
 type KitProduct = {
   id: string
   productId: string
@@ -67,6 +75,8 @@ type KitTest = {
   testResult: string
   testDate: string
   testerName: string
+  testerId: string | null
+  tester?: { id: string; code: string; name: string } | null
   reportLink: string | null
   testNotes: string | null
   passedAt: string | null
@@ -316,6 +326,18 @@ function displayText(value: string | number | null | undefined) {
   return normalized.trim() || '—'
 }
 
+function reportLinkHref(value: string | null | undefined) {
+  const trimmed = value?.trim()
+  if (!trimmed) return null
+  if (/^(https?:)?\/\//i.test(trimmed) || trimmed.startsWith('/')) return trimmed
+  return `/api/files?key=${encodeURIComponent(trimmed)}`
+}
+
+function isImageReportLink(value: string | null | undefined) {
+  const trimmed = value?.split('?')[0]?.toLowerCase() ?? ''
+  return /\.(jpe?g|png|webp)$/.test(trimmed)
+}
+
 function sanitizeDownloadFilename(value: string) {
   const sanitized = value.trim().replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, '_')
   return sanitized || 'process-kit'
@@ -539,6 +561,8 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   const [saving, setSaving] = useState(false)
   const [printing, setPrinting] = useState(false)
   const [products, setProducts] = useState<FactoryProductOption[]>([])
+  const [technicalTesters, setTechnicalTesters] = useState<TechnicalTesterOption[]>([])
+  const [loadingTesters, setLoadingTesters] = useState(false)
 
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
@@ -595,11 +619,13 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
 
   const [showTestForm, setShowTestForm] = useState(false)
   const [addingTest, setAddingTest] = useState(false)
+  const [uploadingTestReport, setUploadingTestReport] = useState(false)
+  const [testReportFileName, setTestReportFileName] = useState('')
   const [testForm, setTestForm] = useState({
     testType: 'PERFORMANCE' as typeof TEST_TYPES[number],
     testResult: 'PENDING' as typeof TEST_RESULTS[number],
     testDate: toDatetimeLocal(new Date().toISOString()),
-    testerName: '',
+    testerId: '',
     reportLink: '',
     testNotes: '',
   })
@@ -727,6 +753,20 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     }
   }, [])
 
+  const loadTechnicalTesters = useCallback(async () => {
+    setLoadingTesters(true)
+    try {
+      const res = await fetch('/api/admin/cosmocoat/process-kits/testers')
+      const data = await res.json()
+      if (!res.ok) return
+      setTechnicalTesters(data.testers ?? [])
+    } catch {
+      // non-blocking
+    } finally {
+      setLoadingTesters(false)
+    }
+  }, [])
+
   const loadKit = useCallback(async () => {
     if (isNew) return
     setLoading(true)
@@ -763,8 +803,9 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
 
   useEffect(() => {
     loadProducts()
+    loadTechnicalTesters()
     if (isNew) setLoading(false)
-  }, [loadProducts, isNew])
+  }, [loadProducts, loadTechnicalTesters, isNew])
 
   useEffect(() => {
     if (!isNew) loadKit()
@@ -1226,8 +1267,46 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     toast.success(t('processBlockRemoved'))
   }
 
+  async function uploadTestReportImage(file: File) {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    setUploadingTestReport(true)
+    try {
+      const res = await fetch(`/api/admin/cosmocoat/process-kits/${kitId}/tests/upload`, {
+        method: 'POST',
+        body: formData,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data.error ?? t('reportImageUploadFailed'))
+        return
+      }
+      setTestForm(f => ({ ...f, reportLink: data.reportLink ?? data.key ?? '' }))
+      setTestReportFileName(file.name)
+      toast.success(t('reportImageUploaded'))
+    } catch {
+      toast.error(t('reportImageUploadFailed'))
+    } finally {
+      setUploadingTestReport(false)
+    }
+  }
+
+  function handleTestReportImageChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (file) {
+      uploadTestReportImage(file)
+    }
+  }
+
+  function clearTestReportImage() {
+    setTestForm(f => ({ ...f, reportLink: '' }))
+    setTestReportFileName('')
+  }
+
   async function addTest() {
-    if (!testForm.testerName.trim()) {
+    if (!testForm.testerId) {
       toast.error(t('testerRequired'))
       return
     }
@@ -1246,7 +1325,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
           testType: testForm.testType,
           testResult: testForm.testResult,
           testDate,
-          testerName: testForm.testerName.trim(),
+          testerId: testForm.testerId,
           reportLink: testForm.reportLink,
           testNotes: testForm.testNotes,
         }),
@@ -1262,10 +1341,11 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
         testType: 'PERFORMANCE',
         testResult: 'PENDING',
         testDate: toDatetimeLocal(new Date().toISOString()),
-        testerName: '',
+        testerId: '',
         reportLink: '',
         testNotes: '',
       })
+      setTestReportFileName('')
       setShowTestForm(false)
     } catch {
       toast.error(t('addTestFailed'))
@@ -2271,22 +2351,72 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('testerName')}</label>
-                    <input
-                      value={testForm.testerName}
-                      onChange={e => setTestForm(f => ({ ...f, testerName: e.target.value }))}
+                    <select
+                      value={testForm.testerId}
+                      onChange={e => setTestForm(f => ({ ...f, testerId: e.target.value }))}
+                      disabled={loadingTesters || technicalTesters.length === 0}
                       className="w-full rounded-lg px-3 py-2 text-sm outline-none"
                       style={inputStyle()}
-                    />
+                    >
+                      <option value="">{loadingTesters ? t('loadingTesters') : t('selectTester')}</option>
+                      {technicalTesters.map(tester => (
+                        <option key={tester.id} value={tester.id}>
+                          {tester.code} · {tester.name}{tester.position ? ` · ${tester.position}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    {!loadingTesters && technicalTesters.length === 0 && (
+                      <p className="text-xs" style={{ color: '#F59E0B' }}>{t('noTechnicalTesters')}</p>
+                    )}
                   </div>
                   <div className="space-y-1.5 sm:col-span-2">
                     <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('reportLink')}</label>
                     <input
-                      value={testForm.reportLink}
-                      onChange={e => setTestForm(f => ({ ...f, reportLink: e.target.value }))}
-                      placeholder="https://"
-                      className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                      style={inputStyle()}
+                      id="process-kit-test-report-upload"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleTestReportImageChange}
+                      disabled={uploadingTestReport}
+                      className="sr-only"
                     />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label
+                        htmlFor="process-kit-test-report-upload"
+                        className={cn(
+                          'inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium',
+                          uploadingTestReport ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
+                        )}
+                        style={{ background: 'rgba(201,169,110,0.12)', border: '1px solid rgba(201,169,110,0.35)', color: '#C9A96E' }}
+                      >
+                        <Upload size={14} />
+                        {testForm.reportLink ? t('replaceReportImage') : t('uploadReportImage')}
+                      </label>
+                      {testForm.reportLink && (
+                        <button
+                          type="button"
+                          onClick={clearTestReportImage}
+                          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs"
+                          style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}
+                        >
+                          <X size={13} />
+                          {t('removeReportImage')}
+                        </button>
+                      )}
+                    </div>
+                    {testForm.reportLink ? (
+                      <a
+                        href={reportLinkHref(testForm.reportLink) ?? '#'}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs underline"
+                        style={{ color: '#C9A96E' }}
+                      >
+                        <ImageIcon size={13} />
+                        {testReportFileName || t('viewReport')}
+                      </a>
+                    ) : (
+                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{t('reportImageHint')}</p>
+                    )}
                   </div>
                   <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
                     <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('testNotes')}</label>
@@ -2303,7 +2433,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                   <button
                     type="button"
                     onClick={addTest}
-                    disabled={addingTest}
+                    disabled={addingTest || uploadingTestReport}
                     className="px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
                     style={{ background: '#C9A96E', color: '#0A0805' }}
                   >
@@ -2347,9 +2477,26 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                       <td style={td}>{new Date(test.testDate).toLocaleString()}</td>
                       <td style={td}>{test.testerName}</td>
                       <td style={td}>
-                        {test.reportLink
-                          ? <a href={test.reportLink} target="_blank" rel="noreferrer" className="underline" style={{ color: '#C9A96E' }}>{t('viewReport')}</a>
-                          : '—'}
+                        {test.reportLink ? (() => {
+                          const href = reportLinkHref(test.reportLink)
+                          if (!href) return '—'
+                          return (
+                            <div className="flex items-center gap-2">
+                              {isImageReportLink(test.reportLink) && (
+                                <a href={href} target="_blank" rel="noreferrer" className="block shrink-0">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={href}
+                                    alt=""
+                                    className="h-10 w-10 rounded-md object-cover"
+                                    style={{ border: '1px solid #2A2418', background: '#0E0E0A' }}
+                                  />
+                                </a>
+                              )}
+                              <a href={href} target="_blank" rel="noreferrer" className="underline" style={{ color: '#C9A96E' }}>{t('viewReport')}</a>
+                            </div>
+                          )
+                        })() : '—'}
                       </td>
                       <td style={td}>{test.testNotes || '—'}</td>
                     </tr>

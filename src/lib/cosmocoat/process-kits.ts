@@ -14,6 +14,11 @@ export const kitInclude = {
   },
   tests: {
     orderBy: [{ testDate: 'desc' }, { id: 'desc' }],
+    include: {
+      tester: {
+        select: { id: true, code: true, name: true },
+      },
+    },
   },
   createdByUser: {
     select: { id: true, nameEn: true, email: true },
@@ -100,8 +105,9 @@ export function serializeProcessKit(kit: ProcessKitWithRelations) {
       testType: t.testType,
       testResult: t.testResult,
       testDate: t.testDate.toISOString(),
-      testerName: t.testerName,
+      testerName: t.tester?.name ?? t.testerName,
       testerId: t.testerId,
+      tester: t.tester ? { id: t.tester.id, code: t.tester.code, name: t.tester.name } : null,
       reportLink: t.reportLink,
       testNotes: t.testNotes,
       passedAt: t.passedAt?.toISOString() ?? null,

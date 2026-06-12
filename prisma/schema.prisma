@@ -283,7 +283,6 @@ model User {
 
   createdProcessKits           CosProcessKit[]       @relation("ProcessKitCreator")
   updatedProcessKits           CosProcessKit[]       @relation("ProcessKitUpdater")
-  testedProcessKits            CosProcessTest[]      @relation("ProcessTestTester")
   createdSampleOrders          CosSampleOrder[]      @relation("SampleOrderCreator")
   featureRequests              FeatureRequest[]      @relation("FeatureRequestSubmitter")
   sfsCustomerContractsUploaded SfsCustomerContract[] @relation("SfsCustomerContractUploader")
@@ -2090,10 +2089,11 @@ model CosProcessTest {
   testNotes  String?
   passedAt   DateTime?
 
-  kit          CosProcessKit @relation(fields: [kitId], references: [id], onDelete: Cascade)
-  testedByUser User?         @relation("ProcessTestTester", fields: [testerId], references: [id])
+  kit    CosProcessKit @relation(fields: [kitId], references: [id], onDelete: Cascade)
+  tester CosEmployee?  @relation("ProcessTestTechnicalEmployee", fields: [testerId], references: [id], onDelete: SetNull)
 
   @@index([kitId])
+  @@index([testerId])
   @@index([testType])
   @@index([testResult])
   @@index([testDate])
@@ -2184,6 +2184,7 @@ model CosEmployee {
   files            CosEmployeeFile[]
   productionOrders CosTableProductionOrder[]
   technicalColorFormulas CosTableColorFormula[] @relation("CosColorFormulaTechnicalOwner")
+  processTests     CosProcessTest[]          @relation("ProcessTestTechnicalEmployee")
 
   @@index([employeeType])
   @@index([name])

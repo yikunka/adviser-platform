@@ -458,7 +458,16 @@ export default function CosmocoatColorFormulaDetailPage() {
   const [factoryProducts, setFactoryProducts] = useState<ColorFormulaFactoryProductOption[]>([])
   const [lastAutoCode, setLastAutoCode] = useState('')
   const [colorCode, setColorCode] = useState('')
+  const [customerId, setCustomerId] = useState<string | null>(null)
   const [customerName, setCustomerName] = useState('')
+  const [legacyCustomerName, setLegacyCustomerName] = useState('')
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [customerOptions, setCustomerOptions] = useState<CustomerOption[]>([])
+  const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false)
+  const [technicalOwnerId, setTechnicalOwnerId] = useState<string | null>(null)
+  const [technicalOwnerSearch, setTechnicalOwnerSearch] = useState('')
+  const [technicalOwnerOptions, setTechnicalOwnerOptions] = useState<TechnicalOwnerOption[]>([])
+  const [technicalOwnerDropdownOpen, setTechnicalOwnerDropdownOpen] = useState(false)
   const [targetColor, setTargetColor] = useState('')
   const [batchQuantity, setBatchQuantity] = useState(100)
   const [notes, setNotes] = useState('')
@@ -488,7 +497,12 @@ export default function CosmocoatColorFormulaDetailPage() {
       setCategoryLabel(formula.categoryLabel)
       setFactoryProductId(formula.factoryProductId)
       setColorCode(formula.colorCode)
+      setCustomerId(formula.customerId)
       setCustomerName(formula.customerName)
+      setLegacyCustomerName(formula.customerId ? '' : formula.customerName)
+      setCustomerSearch(formula.customer ? formatCustomerOption(formula.customer) : formula.customerName)
+      setTechnicalOwnerId(formula.technicalOwnerId)
+      setTechnicalOwnerSearch(formula.technicalOwner ? formatTechnicalOwnerOption(formula.technicalOwner) : '')
       setTargetColor(formula.targetColor)
       setBatchQuantity(formula.batchQuantity)
       setNotes(formula.notes)
@@ -606,6 +620,56 @@ export default function CosmocoatColorFormulaDetailPage() {
     }
   }, [pickerQuery, pickerType])
 
+  useEffect(() => {
+    let cancelled = false
+    const controller = new AbortController()
+    const q = customerSearch.trim()
+    const t = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ limit: '30' })
+        if (q) params.set('q', q)
+        const res = await fetch(`/api/admin/cosmocoat/color-formulas/picker/customers?${params}`, {
+          signal: controller.signal,
+        })
+        const data = await res.json()
+        if (!cancelled && res.ok) setCustomerOptions(data.customers ?? [])
+      } catch {
+        /* ignore */
+      }
+    }, q ? 250 : 0)
+
+    return () => {
+      cancelled = true
+      controller.abort()
+      clearTimeout(t)
+    }
+  }, [customerSearch])
+
+  useEffect(() => {
+    let cancelled = false
+    const controller = new AbortController()
+    const q = technicalOwnerSearch.trim()
+    const t = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ limit: '30' })
+        if (q) params.set('q', q)
+        const res = await fetch(`/api/admin/cosmocoat/color-formulas/picker/technical-employees?${params}`, {
+          signal: controller.signal,
+        })
+        const data = await res.json()
+        if (!cancelled && res.ok) setTechnicalOwnerOptions(data.employees ?? [])
+      } catch {
+        /* ignore */
+      }
+    }, q ? 250 : 0)
+
+    return () => {
+      cancelled = true
+      controller.abort()
+      clearTimeout(t)
+    }
+  }, [technicalOwnerSearch])
+
   const totals = useMemo(() => {
     const totalQty = items.reduce((sum, item) => sum + item.quantity, 0)
     return computeRecipeTotals(
@@ -641,6 +705,32 @@ export default function CosmocoatColorFormulaDetailPage() {
   const printItems = useMemo(() => {
     return scaleColorFormulaItemsForProduction(items, totalQuantity, activePrintKg)
   }, [items, activePrintKg, totalQuantity])
+
+  function selectCustomer(customer: CustomerOption) {
+    setCustomerId(customer.id)
+    setCustomerName(customer.name)
+    setLegacyCustomerName('')
+    setCustomerSearch(formatCustomerOption(customer))
+    setCustomerDropdownOpen(false)
+  }
+
+  function clearCustomer() {
+    setCustomerId(null)
+    setCustomerName('')
+    setLegacyCustomerName('')
+    setCustomerSearch('')
+  }
+
+  function selectTechnicalOwner(employee: TechnicalOwnerOption) {
+    setTechnicalOwnerId(employee.id)
+    setTechnicalOwnerSearch(formatTechnicalOwnerOption(employee))
+    setTechnicalOwnerDropdownOpen(false)
+  }
+
+  function clearTechnicalOwner() {
+    setTechnicalOwnerId(null)
+    setTechnicalOwnerSearch('')
+  }
 
   function openPrintDialog() {
     setPrintKgInput(String(batchQuantity))
@@ -715,6 +805,17 @@ export default function CosmocoatColorFormulaDetailPage() {
       return
     }
 
+    const typedCustomer = customerSearch.trim()
+    const preservedLegacyCustomer = customerId ? '' : legacyCustomerName.trim()
+    if (!customerId && typedCustomer && typedCustomer !== preservedLegacyCustomer) {
+      toast.error('请从客户下拉列表选择已有客户')
+      return
+    }
+    if (!technicalOwnerId && technicalOwnerSearch.trim()) {
+      toast.error('请从负责人员下拉列表选择技术人员')
+      return
+    }
+
     setSaving(true)
     const payload = {
       code: code.trim() || undefined,
@@ -722,7 +823,9 @@ export default function CosmocoatColorFormulaDetailPage() {
       category,
       factoryProductId,
       colorCode,
-      customerName,
+      customerId,
+      customerName: customerId ? customerName : preservedLegacyCustomer,
+      technicalOwnerId,
       targetColor,
       batchQuantity,
       notes,
@@ -899,9 +1002,130 @@ export default function CosmocoatColorFormulaDetailPage() {
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>基准批量 (kg)</label>
             <input type="number" min={0.001} step={0.001} value={batchQuantity} onChange={e => setBatchQuantity(Number(e.target.value) || 100)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
           </div>
-          <div className="space-y-1.5 sm:col-span-2">
+          <div className="space-y-1.5 sm:col-span-1 lg:col-span-2">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>客户</label>
-            <input value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
+            <div className="relative">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
+              <input
+                value={customerSearch}
+                onFocus={() => setCustomerDropdownOpen(true)}
+                onBlur={() => setTimeout(() => setCustomerDropdownOpen(false), 120)}
+                onChange={e => {
+                  setCustomerSearch(e.target.value)
+                  setCustomerId(null)
+                  setCustomerName('')
+                  setLegacyCustomerName('')
+                  setCustomerDropdownOpen(true)
+                }}
+                placeholder="搜索客户编码或名称"
+                className="w-full rounded-lg pl-8 pr-9 py-2.5 text-sm outline-none"
+                style={inputStyle()}
+              />
+              {(customerId || customerSearch) && (
+                <button
+                  type="button"
+                  title="清除客户"
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={clearCustomer}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md"
+                  style={{ color: 'var(--muted-foreground)' }}
+                >
+                  <X size={13} />
+                </button>
+              )}
+              {customerDropdownOpen && (
+                <div
+                  className="absolute z-30 mt-1 w-full overflow-hidden rounded-lg shadow-xl"
+                  style={{ background: '#111108', border: '1px solid #2A2418' }}
+                >
+                  <div className="max-h-56 overflow-y-auto">
+                    {customerOptions.length === 0 ? (
+                      <div className="px-3 py-3 text-xs" style={{ color: '#5A5040' }}>未找到客户</div>
+                    ) : (
+                      customerOptions.map(option => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onMouseDown={e => e.preventDefault()}
+                          onClick={() => selectCustomer(option)}
+                          className="w-full px-3 py-2 text-left text-sm"
+                          style={{
+                            color: customerId === option.id ? '#C9A96E' : 'var(--foreground)',
+                            background: customerId === option.id ? 'rgba(201,169,110,0.1)' : 'transparent',
+                          }}
+                        >
+                          <span className="font-mono text-xs opacity-70 mr-2">{option.code}</span>
+                          {option.name}
+                          {option.phone && <span className="text-xs ml-2 opacity-60">{option.phone}</span>}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="space-y-1.5 sm:col-span-1 lg:col-span-2">
+            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>负责人员</label>
+            <div className="relative">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
+              <input
+                value={technicalOwnerSearch}
+                onFocus={() => setTechnicalOwnerDropdownOpen(true)}
+                onBlur={() => setTimeout(() => setTechnicalOwnerDropdownOpen(false), 120)}
+                onChange={e => {
+                  setTechnicalOwnerSearch(e.target.value)
+                  setTechnicalOwnerId(null)
+                  setTechnicalOwnerDropdownOpen(true)
+                }}
+                placeholder="搜索技术人员"
+                className="w-full rounded-lg pl-8 pr-9 py-2.5 text-sm outline-none"
+                style={inputStyle()}
+              />
+              {(technicalOwnerId || technicalOwnerSearch) && (
+                <button
+                  type="button"
+                  title="清除负责人员"
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={clearTechnicalOwner}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md"
+                  style={{ color: 'var(--muted-foreground)' }}
+                >
+                  <X size={13} />
+                </button>
+              )}
+              {technicalOwnerDropdownOpen && (
+                <div
+                  className="absolute z-30 mt-1 w-full overflow-hidden rounded-lg shadow-xl"
+                  style={{ background: '#111108', border: '1px solid #2A2418' }}
+                >
+                  <div className="max-h-56 overflow-y-auto">
+                    {technicalOwnerOptions.length === 0 ? (
+                      <div className="px-3 py-3 text-xs" style={{ color: '#5A5040' }}>未找到技术人员</div>
+                    ) : (
+                      technicalOwnerOptions.map(option => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onMouseDown={e => e.preventDefault()}
+                          onClick={() => selectTechnicalOwner(option)}
+                          className="w-full px-3 py-2 text-left text-sm"
+                          style={{
+                            color: technicalOwnerId === option.id ? '#C9A96E' : 'var(--foreground)',
+                            background: technicalOwnerId === option.id ? 'rgba(201,169,110,0.1)' : 'transparent',
+                          }}
+                        >
+                          <span className="font-mono text-xs opacity-70 mr-2">{option.code}</span>
+                          {option.name}
+                          {option.position && <span className="text-xs ml-2 opacity-60">{option.position}</span>}
+                          {!option.isActive && <span className="text-xs ml-2 opacity-60">停用</span>}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           <div className="space-y-1.5 sm:col-span-2 lg:col-span-4">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Pantone 颜色</label>

@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { Palette, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { Palette, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import {
   COLOR_FORMULA_CATEGORIES,
   factoryProductMatchesColorFormulaCategory,
@@ -20,11 +20,30 @@ type FormulaRow = {
   name: string
   category: CosColorFormulaCategory
   categoryLabel: string
+  customerId: string | null
   customerName: string
+  customer: { id: string; code: string; name: string; phone: string | null } | null
+  technicalOwnerId: string | null
+  technicalOwner: {
+    id: string
+    code: string
+    name: string
+    position: string | null
+    department: string | null
+    phone: string | null
+    isActive: boolean
+  } | null
   itemCount: number
   unitCost: number
   updatedAt: string
   factoryProduct: { id: string; productCode: string; name: string } | null
+}
+
+type CustomerOption = {
+  id: string
+  code: string
+  name: string
+  phone: string | null
 }
 
 const card: React.CSSProperties = {
@@ -59,6 +78,10 @@ function inputStyle(): React.CSSProperties {
   }
 }
 
+function formatCustomerOption(customer: CustomerOption) {
+  return `${customer.code} · ${customer.name}`
+}
+
 export default function CosmocoatColorFormulasPage() {
   const router = useRouter()
   const [items, setItems] = useState<FormulaRow[]>([])
@@ -67,6 +90,10 @@ export default function CosmocoatColorFormulasPage() {
   const [category, setCategory] = useState('')
   const [factoryProductId, setFactoryProductId] = useState('')
   const [factoryProducts, setFactoryProducts] = useState<ColorFormulaFactoryProductOption[]>([])
+  const [customerFilterId, setCustomerFilterId] = useState('')
+  const [customerFilterSearch, setCustomerFilterSearch] = useState('')
+  const [customerOptions, setCustomerOptions] = useState<CustomerOption[]>([])
+  const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false)
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
@@ -78,6 +105,7 @@ export default function CosmocoatColorFormulasPage() {
       if (search.trim()) params.set('q', search.trim())
       if (factoryProductId) params.set('factoryProductId', factoryProductId)
       else if (category) params.set('category', category)
+      if (customerFilterId) params.set('customerId', customerFilterId)
       const res = await fetch(`/api/admin/cosmocoat/color-formulas?${params}`)
       const data = await res.json()
       if (!res.ok) {
@@ -92,7 +120,7 @@ export default function CosmocoatColorFormulasPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search, category, factoryProductId])
+  }, [page, search, category, factoryProductId, customerFilterId])
 
   useEffect(() => {
     ;(async () => {
@@ -105,6 +133,31 @@ export default function CosmocoatColorFormulasPage() {
       }
     })()
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    const controller = new AbortController()
+    const q = customerFilterSearch.trim()
+    const t = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ limit: '30' })
+        if (q) params.set('q', q)
+        const res = await fetch(`/api/admin/cosmocoat/color-formulas/picker/customers?${params}`, {
+          signal: controller.signal,
+        })
+        const data = await res.json()
+        if (!cancelled && res.ok) setCustomerOptions(data.customers ?? [])
+      } catch {
+        /* ignore */
+      }
+    }, q ? 250 : 0)
+
+    return () => {
+      cancelled = true
+      controller.abort()
+      clearTimeout(t)
+    }
+  }, [customerFilterSearch])
 
   const filteredProducts = useMemo(
     () =>
@@ -126,11 +179,22 @@ export default function CosmocoatColorFormulasPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [search, category, factoryProductId])
+  }, [search, category, factoryProductId, customerFilterId])
 
   useEffect(() => {
     setFactoryProductId('')
   }, [category])
+
+  function selectCustomerFilter(customer: CustomerOption) {
+    setCustomerFilterId(customer.id)
+    setCustomerFilterSearch(formatCustomerOption(customer))
+    setCustomerDropdownOpen(false)
+  }
+
+  function clearCustomerFilter() {
+    setCustomerFilterId('')
+    setCustomerFilterSearch('')
+  }
 
   async function deleteFormula(row: FormulaRow) {
     if (!window.confirm(`确定删除调色配方「${row.name}」？`)) return
@@ -246,12 +310,70 @@ export default function CosmocoatColorFormulasPage() {
             ))}
           </div>
         )}
+        <div className="relative min-w-[16rem] flex-1">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
+          <input
+            value={customerFilterSearch}
+            onFocus={() => setCustomerDropdownOpen(true)}
+            onBlur={() => setTimeout(() => setCustomerDropdownOpen(false), 120)}
+            onChange={e => {
+              setCustomerFilterSearch(e.target.value)
+              setCustomerFilterId('')
+              setCustomerDropdownOpen(true)
+            }}
+            placeholder="按关联客户筛选"
+            className="w-full pl-8 pr-9 py-2 rounded-lg text-sm outline-none"
+            style={inputStyle()}
+          />
+          {(customerFilterId || customerFilterSearch) && (
+            <button
+              type="button"
+              title="清除客户筛选"
+              onMouseDown={e => e.preventDefault()}
+              onClick={clearCustomerFilter}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md"
+              style={{ color: 'var(--muted-foreground)' }}
+            >
+              <X size={13} />
+            </button>
+          )}
+          {customerDropdownOpen && (
+            <div
+              className="absolute z-30 mt-1 w-full overflow-hidden rounded-lg shadow-xl"
+              style={{ background: '#111108', border: '1px solid #2A2418' }}
+            >
+              <div className="max-h-56 overflow-y-auto">
+                {customerOptions.length === 0 ? (
+                  <div className="px-3 py-3 text-xs" style={{ color: '#5A5040' }}>未找到客户</div>
+                ) : (
+                  customerOptions.map(option => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => selectCustomerFilter(option)}
+                      className="w-full px-3 py-2 text-left text-sm"
+                      style={{
+                        color: customerFilterId === option.id ? '#C9A96E' : 'var(--foreground)',
+                        background: customerFilterId === option.id ? 'rgba(201,169,110,0.1)' : 'transparent',
+                      }}
+                    >
+                      <span className="font-mono text-xs opacity-70 mr-2">{option.code}</span>
+                      {option.name}
+                      {option.phone && <span className="text-xs ml-2 opacity-60">{option.phone}</span>}
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
         <div className="relative flex-1 min-w-[14rem]">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="搜索编号、名称、客户..."
+            placeholder="搜索编号、名称、客户、负责人..."
             className="w-full pl-8 pr-3 py-2 rounded-lg text-sm outline-none"
             style={inputStyle()}
           />
@@ -275,6 +397,8 @@ export default function CosmocoatColorFormulasPage() {
                   <th style={th}>名称</th>
                   <th style={th}>类别</th>
                   <th style={th}>关联产品</th>
+                  <th style={th}>客户</th>
+                  <th style={th}>负责人员</th>
                   <th style={th}>原料数</th>
                   <th style={th}>成本单价</th>
                   <th style={th}>更新时间</th>
@@ -294,6 +418,16 @@ export default function CosmocoatColorFormulasPage() {
                     <td style={td}>
                       {row.factoryProduct
                         ? `${row.factoryProduct.productCode} · ${row.factoryProduct.name}`
+                        : '—'}
+                    </td>
+                    <td style={td}>
+                      {row.customer
+                        ? `${row.customer.code} · ${row.customer.name}`
+                        : row.customerName || '—'}
+                    </td>
+                    <td style={td}>
+                      {row.technicalOwner
+                        ? `${row.technicalOwner.code} · ${row.technicalOwner.name}`
                         : '—'}
                     </td>
                     <td style={td}>{row.itemCount}</td>

@@ -16,8 +16,8 @@ const testSchema = z.object({
   ]),
   testResult: z.enum(['PASSED', 'FAILED', 'PENDING']).optional().default('PENDING'),
   testDate: z.string().datetime(),
-  testerName: z.string().trim().min(1).max(120),
-  testerId: z.string().trim().min(1).optional(),
+  testerName: z.string().trim().max(120).optional().default(''),
+  testerId: z.string().trim().min(1),
   reportLink: z.string().trim().max(500).optional().default(''),
   testNotes: z.string().trim().max(2000).optional().default(''),
   passedAt: z.string().datetime().nullable().optional(),
@@ -42,6 +42,11 @@ export async function GET(
     const tests = await prisma.cosProcessTest.findMany({
       where: { kitId },
       orderBy: [{ testDate: 'desc' }, { id: 'desc' }],
+      include: {
+        tester: {
+          select: { id: true, code: true, name: true },
+        },
+      },
     })
 
     return NextResponse.json({
@@ -51,8 +56,9 @@ export async function GET(
         testType: t.testType,
         testResult: t.testResult,
         testDate: t.testDate.toISOString(),
-        testerName: t.testerName,
+        testerName: t.tester?.name ?? t.testerName,
         testerId: t.testerId,
+        tester: t.tester ? { id: t.tester.id, code: t.tester.code, name: t.tester.name } : null,
         reportLink: t.reportLink,
         testNotes: t.testNotes,
         passedAt: t.passedAt?.toISOString() ?? null,
@@ -70,7 +76,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { session, error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
+  const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
   if (error) return error
 
   const { id: kitId } = await params
@@ -84,6 +90,18 @@ export async function POST(
   }
 
   try {
+    const tester = await prisma.cosEmployee.findFirst({
+      where: {
+        id: parsed.data.testerId,
+        employeeType: 'TECHNICAL',
+        isActive: true,
+      },
+      select: { id: true, name: true },
+    })
+    if (!tester) {
+      return NextResponse.json({ error: '请选择有效的技术人员' }, { status: 400 })
+    }
+
     const passedAt = parsed.data.passedAt !== undefined
       ? (parsed.data.passedAt ? new Date(parsed.data.passedAt) : null)
       : (parsed.data.testResult === 'PASSED' ? new Date(parsed.data.testDate) : null)
@@ -94,8 +112,8 @@ export async function POST(
         testType: parsed.data.testType,
         testResult: parsed.data.testResult,
         testDate: new Date(parsed.data.testDate),
-        testerName: parsed.data.testerName,
-        testerId: parsed.data.testerId ?? session!.user.id,
+        testerName: tester.name,
+        testerId: tester.id,
         reportLink: parsed.data.reportLink || null,
         testNotes: parsed.data.testNotes || null,
         passedAt,
