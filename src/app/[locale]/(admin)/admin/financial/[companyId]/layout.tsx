@@ -9,7 +9,17 @@ import { UrlBasedCompanyProvider } from '@/components/admin/financial/FinancialC
 
 export const dynamic = 'force-dynamic'
 
-const FINANCIAL_SUB_ROUTES = new Set(['accounts', 'journal', 'ledger', 'reports'])
+const FINANCIAL_SUB_ROUTES = new Set([
+  'accounts',
+  'journal',
+  'ledger',
+  'reports',
+  'receivables',
+  'payables',
+  'parties',
+  'banking',
+  'dimensions',
+])
 
 export default async function FinancialCompanyLayout({
   children,

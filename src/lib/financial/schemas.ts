@@ -55,6 +55,8 @@ export const journalLineSchema = z.object({
   debit: z.coerce.number().min(0).max(999999999999).optional().default(0),
   credit: z.coerce.number().min(0).max(999999999999).optional().default(0),
   notes: z.string().trim().max(500).optional().default(''),
+  costCenterId: z.string().trim().min(1).nullable().optional(),
+  projectId: z.string().trim().min(1).nullable().optional(),
 })
 
 export const journalEntryCreateSchema = z.object({
@@ -99,5 +101,171 @@ export const financialReportFilterSchema = z.object({
   path: ['reportGroupId'],
 })
 
+// ─────────────────────────────────────────────
+// 子分类账：往来单位 / AR / AP / 银行
+// ─────────────────────────────────────────────
+
+const ymdSchema = z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式须为 YYYY-MM-DD')
+const moneySchema = z.coerce.number().min(0).max(999999999999)
+
+const partyBaseSchema = z.object({
+  companyId: z.string().cuid('Company is required'),
+  code: z.string().trim().min(1, '编号必填').max(32),
+  name: z.string().trim().min(1, '名称必填').max(200),
+  nameZh: z.string().trim().max(200).optional().nullable(),
+  isCustomer: z.coerce.boolean().optional().default(false),
+  isSupplier: z.coerce.boolean().optional().default(false),
+  isEmployee: z.coerce.boolean().optional().default(false),
+  email: z.string().trim().email('邮箱格式无效').nullable().optional(),
+  phone: z.string().trim().max(50).optional().nullable(),
+  address: z.string().trim().max(500).optional().nullable(),
+  taxNumber: z.string().trim().max(100).optional().nullable(),
+  currency: z.string().trim().length(3).optional().default('HKD'),
+  paymentTermsDays: z.coerce.number().int().min(0).max(365).optional().default(30),
+  creditLimit: z.coerce.number().min(0).optional().nullable(),
+  arAccountId: z.string().trim().min(1).optional().nullable(),
+  apAccountId: z.string().trim().min(1).optional().nullable(),
+  notes: z.string().trim().max(1000).optional().default(''),
+  isActive: z.coerce.boolean().optional().default(true),
+})
+
+export const partySchema = partyBaseSchema.refine(
+  data => data.isCustomer || data.isSupplier || data.isEmployee,
+  { message: '至少选择一个角色（客户/供应商/员工）。', path: ['isCustomer'] },
+)
+
+export const partyUpdateSchema = partyBaseSchema.omit({ companyId: true }).partial()
+
+export const salesInvoiceLineInputSchema = z.object({
+  description: z.string().trim().min(1, '明细描述必填').max(500),
+  quantity: z.coerce.number().gt(0, '数量必须大于零').max(999999999),
+  unitPrice: moneySchema,
+  revenueAccountId: z.string().trim().min(1).optional().nullable(),
+})
+
+export const salesInvoiceCreateSchema = z.object({
+  companyId: z.string().cuid('Company is required'),
+  partyId: z.string().trim().min(1, '客户必选'),
+  issueDate: ymdSchema,
+  dueDate: ymdSchema.optional().nullable(),
+  taxRate: z.coerce.number().min(0).max(1).optional().default(0),
+  notes: z.string().trim().max(1000).optional().default(''),
+  lines: z.array(salesInvoiceLineInputSchema).min(1, '至少一行明细'),
+})
+
+export const purchaseBillLineInputSchema = z.object({
+  description: z.string().trim().min(1, '明细描述必填').max(500),
+  quantity: z.coerce.number().gt(0, '数量必须大于零').max(999999999),
+  unitPrice: moneySchema,
+  expenseAccountId: z.string().trim().min(1).optional().nullable(),
+})
+
+export const purchaseBillCreateSchema = z.object({
+  companyId: z.string().cuid('Company is required'),
+  partyId: z.string().trim().min(1, '供应商必选'),
+  billDate: ymdSchema,
+  dueDate: ymdSchema.optional().nullable(),
+  supplierRef: z.string().trim().max(100).optional().default(''),
+  taxRate: z.coerce.number().min(0).max(1).optional().default(0),
+  notes: z.string().trim().max(1000).optional().default(''),
+  lines: z.array(purchaseBillLineInputSchema).min(1, '至少一行明细'),
+})
+
+export const paymentAllocationInputSchema = z.object({
+  targetId: z.string().trim().min(1),
+  amount: z.coerce.number().gt(0, '核销金额必须大于零'),
+})
+
+export const paymentCreateSchema = z.object({
+  companyId: z.string().cuid('Company is required'),
+  partyId: z.string().trim().min(1, '往来单位必选'),
+  direction: z.enum(['RECEIPT', 'PAYMENT']),
+  paymentDate: ymdSchema,
+  method: z.enum(['BANK_TRANSFER', 'CASH', 'CHEQUE', 'CARD', 'OTHER']).optional().default('BANK_TRANSFER'),
+  bankAccountId: z.string().trim().min(1).optional().nullable(),
+  amount: z.coerce.number().gt(0, '金额必须大于零').max(999999999999),
+  reference: z.string().trim().max(200).optional().default(''),
+  notes: z.string().trim().max(1000).optional().default(''),
+  allocations: z.array(paymentAllocationInputSchema).optional().default([]),
+})
+
+export const creditNoteCreateSchema = z.object({
+  companyId: z.string().cuid('Company is required'),
+  partyId: z.string().trim().min(1, '往来单位必选'),
+  kind: z.enum(['CUSTOMER', 'SUPPLIER']),
+  issueDate: ymdSchema,
+  subtotal: z.coerce.number().gt(0, '金额必须大于零').max(999999999999),
+  taxRate: z.coerce.number().min(0).max(1).optional().default(0),
+  reason: z.string().trim().max(500).optional().default(''),
+  offsetAccountId: z.string().trim().min(1).optional().nullable(),
+})
+
+export const creditNoteApplySchema = z.object({
+  allocations: z.array(paymentAllocationInputSchema).min(1, '请至少选择一张单据'),
+})
+
+export const bankAccountSchema = z.object({
+  companyId: z.string().cuid('Company is required'),
+  glAccountId: z.string().trim().min(1, '请关联总账科目'),
+  name: z.string().trim().min(1, '账户名称必填').max(200),
+  bankName: z.string().trim().max(200).optional().default(''),
+  accountNumber: z.string().trim().max(100).optional().default(''),
+  currency: z.string().trim().length(3).optional().default('HKD'),
+  isActive: z.coerce.boolean().optional().default(true),
+  notes: z.string().trim().max(1000).optional().default(''),
+})
+
+export const bankAccountUpdateSchema = bankAccountSchema.partial().omit({ companyId: true })
+
+export const bankStatementImportSchema = z.object({
+  bankAccountId: z.string().trim().min(1, '银行账户必选'),
+  fileName: z.string().trim().max(300).optional().default(''),
+  openingBalance: z.coerce.number().optional().nullable(),
+  closingBalance: z.coerce.number().optional().nullable(),
+  lines: z.array(z.object({
+    date: ymdSchema,
+    description: z.string().trim().max(500).optional().default(''),
+    reference: z.string().trim().max(200).optional().default(''),
+    amount: z.coerce.number().refine(value => value !== 0, '金额不能为零'),
+  })).min(1, '至少一行流水'),
+})
+
+export const reconciliationCreateSchema = z.object({
+  bankAccountId: z.string().trim().min(1, '银行账户必选'),
+  statementDate: ymdSchema,
+  statementBalance: z.coerce.number(),
+  notes: z.string().trim().max(1000).optional().default(''),
+})
+
+export const dimensionCreateSchema = z.object({
+  companyId: z.string().cuid('Company is required'),
+  code: z.string().trim().min(1, '编号必填').max(32),
+  name: z.string().trim().min(1, '名称必填').max(200),
+  isActive: z.coerce.boolean().optional().default(true),
+})
+
+export const dimensionUpdateSchema = z.object({
+  code: z.string().trim().min(1).max(32).optional(),
+  name: z.string().trim().min(1).max(200).optional(),
+  isActive: z.coerce.boolean().optional(),
+})
+
+export const accountMappingUpsertSchema = z.object({
+  companyId: z.string().cuid('Company is required'),
+  mappings: z.array(z.object({
+    key: z.enum([
+      'AR_CONTROL', 'AP_CONTROL', 'SALES_REVENUE', 'OUTPUT_TAX', 'INPUT_TAX',
+      'BANK_DEFAULT', 'CASH_DEFAULT', 'PURCHASE_EXPENSE_DEFAULT', 'BANK_FEES',
+      'EXCHANGE_GAIN_LOSS', 'RETAINED_EARNINGS',
+    ]),
+    accountId: z.string().trim().min(1),
+  })),
+})
+
 export type AccountFormValues = z.infer<typeof accountCreateSchema>
 export type JournalEntryFormValues = z.infer<typeof journalEntryCreateSchema>
+export type PartyFormValues = z.infer<typeof partySchema>
+export type SalesInvoiceFormValues = z.infer<typeof salesInvoiceCreateSchema>
+export type PurchaseBillFormValues = z.infer<typeof purchaseBillCreateSchema>
+export type PaymentFormValues = z.infer<typeof paymentCreateSchema>
+export type CreditNoteFormValues = z.infer<typeof creditNoteCreateSchema>

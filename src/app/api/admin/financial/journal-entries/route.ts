@@ -64,7 +64,11 @@ export async function GET(req: NextRequest) {
       company: { select: { id: true, nameEn: true, companyCode: true } },
       createdBy: { select: { id: true, nameEn: true, email: true } },
       lines: {
-        include: { account: { select: { id: true, code: true, name: true, type: true, level: true, parentId: true } } },
+        include: {
+          account: { select: { id: true, code: true, name: true, type: true, level: true, parentId: true } },
+          costCenter: { select: { id: true, code: true, name: true } },
+          project: { select: { id: true, code: true, name: true } },
+        },
         orderBy: { lineNum: 'asc' },
       },
     },
@@ -105,6 +109,17 @@ export async function POST(req: NextRequest) {
     return apiError('One or more selected accounts do not belong to this company.', 400)
   }
 
+  const costCenterIds = [...new Set(parsed.data.lines.map(line => line.costCenterId).filter(Boolean))] as string[]
+  const projectIds = [...new Set(parsed.data.lines.map(line => line.projectId).filter(Boolean))] as string[]
+  if (costCenterIds.length > 0) {
+    const owned = await prisma.costCenter.count({ where: { companyId: companyScope.companyId, id: { in: costCenterIds } } })
+    if (owned !== costCenterIds.length) return apiError('部分成本中心不属于该公司。', 400)
+  }
+  if (projectIds.length > 0) {
+    const owned = await prisma.finProject.count({ where: { companyId: companyScope.companyId, id: { in: projectIds } } })
+    if (owned !== projectIds.length) return apiError('部分项目不属于该公司。', 400)
+  }
+
   try {
     const entry = await prisma.$transaction(async tx => {
       const entryDate = parseYmdDate(parsed.data.entryDate)
@@ -126,6 +141,8 @@ export async function POST(req: NextRequest) {
               debit: new Prisma.Decimal(line.debit),
               credit: new Prisma.Decimal(line.credit),
               notes: line.notes,
+              costCenterId: line.costCenterId ?? null,
+              projectId: line.projectId ?? null,
             })),
           },
         },
@@ -133,7 +150,11 @@ export async function POST(req: NextRequest) {
           company: { select: { id: true, nameEn: true, companyCode: true } },
           createdBy: { select: { id: true, nameEn: true, email: true } },
           lines: {
-            include: { account: { select: { id: true, code: true, name: true, type: true, level: true, parentId: true } } },
+            include: {
+              account: { select: { id: true, code: true, name: true, type: true, level: true, parentId: true } },
+              costCenter: { select: { id: true, code: true, name: true } },
+              project: { select: { id: true, code: true, name: true } },
+            },
             orderBy: { lineNum: 'asc' },
           },
         },

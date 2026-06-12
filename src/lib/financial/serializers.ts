@@ -110,6 +110,10 @@ export function serializeJournalEntry(
       debit: Decimalish
       credit: Decimalish
       notes: string
+      costCenterId?: string | null
+      projectId?: string | null
+      costCenter?: { id: string; code: string; name: string } | null
+      project?: { id: string; code: string; name: string } | null
       account?: {
         id: string
         code: string
@@ -160,6 +164,10 @@ export function serializeJournalEntry(
         debit: money(line.debit),
         credit: money(line.credit),
         notes: line.notes,
+        costCenterId: line.costCenterId ?? null,
+        projectId: line.projectId ?? null,
+        costCenter: line.costCenter ?? null,
+        project: line.project ?? null,
         account,
       }
     })

@@ -99,6 +99,16 @@ export async function PATCH(
     if (accountCount !== new Set(parsed.data.lines.map(line => line.accountId)).size) {
       return apiError('One or more selected accounts do not belong to this company.', 400)
     }
+    const costCenterIds = [...new Set(parsed.data.lines.map(line => line.costCenterId).filter(Boolean))] as string[]
+    const projectIds = [...new Set(parsed.data.lines.map(line => line.projectId).filter(Boolean))] as string[]
+    if (costCenterIds.length > 0) {
+      const owned = await prisma.costCenter.count({ where: { companyId: companyScope.companyId, id: { in: costCenterIds } } })
+      if (owned !== costCenterIds.length) return apiError('部分成本中心不属于该公司。', 400)
+    }
+    if (projectIds.length > 0) {
+      const owned = await prisma.finProject.count({ where: { companyId: companyScope.companyId, id: { in: projectIds } } })
+      if (owned !== projectIds.length) return apiError('部分项目不属于该公司。', 400)
+    }
   }
 
   const entry = await prisma.$transaction(async tx => {
@@ -125,6 +135,8 @@ export async function PATCH(
                   debit: new Prisma.Decimal(line.debit),
                   credit: new Prisma.Decimal(line.credit),
                   notes: line.notes,
+                  costCenterId: line.costCenterId ?? null,
+                  projectId: line.projectId ?? null,
                 })),
               },
             }

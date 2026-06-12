@@ -273,6 +273,14 @@ model User {
   sfsInvoicesCreated             SfsInvoice[]             @relation("SfsInvoiceCreatedBy")
   sfsStepAttachmentsReviewed     SfsOrderStepAttachment[] @relation("SfsStepAttachmentReviewer")
 
+  fiscalPeriodsClosed     FiscalPeriod[]       @relation("FiscalPeriodClosedBy")
+  salesInvoicesCreated    SalesInvoice[]       @relation("SalesInvoiceCreatedBy")
+  purchaseBillsCreated    PurchaseBill[]       @relation("PurchaseBillCreatedBy")
+  finPaymentsCreated      FinPayment[]         @relation("FinPaymentCreatedBy")
+  finCreditNotesCreated   FinCreditNote[]      @relation("FinCreditNoteCreatedBy")
+  bankStatementsImported  BankStatement[]      @relation("BankStatementImportedBy")
+  bankReconsCreated       BankReconciliation[] @relation("BankReconCreatedBy")
+
   createdProcessKits           CosProcessKit[]       @relation("ProcessKitCreator")
   updatedProcessKits           CosProcessKit[]       @relation("ProcessKitUpdater")
   testedProcessKits            CosProcessTest[]      @relation("ProcessTestTester")
@@ -352,6 +360,17 @@ model Company {
   invoices               Invoice[]
   staffAssignments       CompanyStaffAssignment[]
   reportGroupMemberships FinancialReportGroupCompany[]
+  parties                Party[]
+  fiscalPeriods          FiscalPeriod[]
+  accountMappings        AccountMapping[]
+  docSequences           DocSequence[]
+  costCenters            CostCenter[]
+  finProjects            FinProject[]
+  salesInvoices          SalesInvoice[]
+  purchaseBills          PurchaseBill[]
+  finPayments            FinPayment[]
+  finCreditNotes         FinCreditNote[]
+  bankAccounts           BankAccount[]
 
   @@index([pendingClientEmail])
   @@map("companies")
@@ -1734,6 +1753,95 @@ enum JournalStatus {
   CANCELLED // 已取消
 }
 
+enum JournalSourceType {
+  MANUAL // 手工凭证
+  SALES_INVOICE // 销售发票 (AR)
+  RECEIPT // 收款 (AR)
+  CREDIT_NOTE // 贷项/借项通知单
+  PURCHASE_BILL // 采购账单 (AP)
+  BILL_PAYMENT // 付款 (AP)
+  BANK // 银行调整
+  DEPRECIATION // 折旧 (预留)
+  CLOSING // 期末结转 (预留)
+  RECURRING // 周期凭证 (预留)
+}
+
+enum FiscalPeriodStatus {
+  OPEN // 开放
+  CLOSED // 已关账（可重开）
+  LOCKED // 已锁定（不可重开）
+}
+
+enum AccountMappingKey {
+  AR_CONTROL // 应收账款控制科目
+  AP_CONTROL // 应付账款控制科目
+  SALES_REVENUE // 默认销售收入
+  OUTPUT_TAX // 销项税
+  INPUT_TAX // 进项税
+  BANK_DEFAULT // 默认银行存款
+  CASH_DEFAULT // 默认现金
+  PURCHASE_EXPENSE_DEFAULT // 默认采购费用
+  BANK_FEES // 银行手续费
+  EXCHANGE_GAIN_LOSS // 汇兑损益 (预留)
+  RETAINED_EARNINGS // 留存收益 (预留, 年结)
+}
+
+enum SalesInvoiceStatus {
+  DRAFT // 草稿
+  ISSUED // 已开票（已过账）
+  PARTIALLY_PAID // 部分收款
+  PAID // 已收款
+  VOIDED // 已作废
+}
+
+enum PurchaseBillStatus {
+  DRAFT // 草稿
+  POSTED // 已入账
+  PARTIALLY_PAID // 部分付款
+  PAID // 已付款
+  VOIDED // 已作废
+}
+
+enum CreditNoteKind {
+  CUSTOMER // 贷项通知单（冲减应收）
+  SUPPLIER // 借项通知单（冲减应付）
+}
+
+enum CreditNoteStatus {
+  DRAFT // 草稿
+  POSTED // 已入账
+  VOIDED // 已作废
+}
+
+enum FinPaymentDirection {
+  RECEIPT // 收款（客户）
+  PAYMENT // 付款（供应商）
+}
+
+enum FinPaymentStatus {
+  POSTED // 已入账
+  VOIDED // 已作废
+}
+
+enum FinPaymentMethod {
+  BANK_TRANSFER // 银行转账
+  CASH // 现金
+  CHEQUE // 支票
+  CARD // 银行卡
+  OTHER // 其他
+}
+
+enum BankStatementLineStatus {
+  UNMATCHED // 未匹配
+  MATCHED // 已匹配
+  EXCLUDED // 已排除
+}
+
+enum BankReconciliationStatus {
+  IN_PROGRESS // 进行中
+  COMPLETED // 已完成
+}
+
 model CosTableAccount {
   id        String      @id @default(cuid())
   code      String      @unique // 科目编号：1001, 2001 等
@@ -2134,6 +2242,14 @@ model FinAccount {
   ledgerEntries   Ledger[]
   accountBalances AccountBalance[]
 
+  partyArOverrides     Party[]            @relation("PartyArAccount")
+  partyApOverrides     Party[]            @relation("PartyApAccount")
+  accountMappings      AccountMapping[]   @relation("AccountMappingAccount")
+  salesInvoiceLines    SalesInvoiceLine[] @relation("SalesLineRevenueAccount")
+  purchaseBillLines    PurchaseBillLine[] @relation("PurchaseLineExpenseAccount")
+  creditNoteOffsets    FinCreditNote[]    @relation("CreditNoteOffsetAccount")
+  bankAccounts         BankAccount[]      @relation("BankGlAccount")
+
   @@unique([companyId, code])
   @@index([companyId])
   @@index([type, sortOrder])
@@ -2141,28 +2257,42 @@ model FinAccount {
 }
 
 model JournalEntry {
-  id          String        @id @default(cuid())
-  voucherNo   String        @unique
-  entryDate   DateTime
-  description String
-  period      String
-  status      JournalStatus @default(DRAFT)
-  attachments String[]      @default([])
-  companyId   String?
-  createdById String?
-  postedAt    DateTime?
-  reversedAt  DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id           String            @id @default(cuid())
+  voucherNo    String            @unique
+  entryDate    DateTime
+  description  String
+  period       String
+  status       JournalStatus     @default(DRAFT)
+  attachments  String[]          @default([])
+  companyId    String?
+  createdById  String?
+  /// 源单据类型：MANUAL=手工，其余为子分类账自动过账
+  sourceType   JournalSourceType @default(MANUAL)
+  /// 源单据 ID（与 sourceType 配合定位发票/收款/账单等）
+  sourceId     String?
+  /// 红冲链：本凭证是哪张凭证的反向凭证
+  reversalOfId String?           @unique
+  postedAt     DateTime?
+  reversedAt   DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
   company       Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
   createdBy     User?         @relation("FinancialJournalCreatedBy", fields: [createdById], references: [id])
+  reversalOf    JournalEntry? @relation("JournalReversalChain", fields: [reversalOfId], references: [id])
+  reversedBy    JournalEntry? @relation("JournalReversalChain")
   lines         JournalLine[]
   ledgerEntries Ledger[]
+
+  salesInvoice  SalesInvoice?  @relation("SalesInvoiceJournal")
+  purchaseBill  PurchaseBill?  @relation("PurchaseBillJournal")
+  finPayment    FinPayment?    @relation("FinPaymentJournal")
+  finCreditNote FinCreditNote? @relation("FinCreditNoteJournal")
 
   @@index([period, status])
   @@index([entryDate])
   @@index([companyId])
+  @@index([sourceType, sourceId])
   @@map("adv_journal_entries")
 }
 
@@ -2176,11 +2306,26 @@ model JournalLine {
   credit      Decimal @default(0.0) @db.Decimal(18, 4)
   notes       String  @default("")
 
-  entry   JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
-  account FinAccount   @relation(fields: [accountId], references: [id])
+  // ── 辅助核算维度（预留，可空；UI 按阶段开放）──
+  partyId      String? // 往来单位（客户/供应商/员工）
+  costCenterId String? // 成本中心
+  projectId    String? // 项目
+
+  // ── 多币种（预留，可空；null = 本位币交易）──
+  currency     String? // 原币币种，null = 本位币
+  origDebit    Decimal? @db.Decimal(18, 4) // 原币借方
+  origCredit   Decimal? @db.Decimal(18, 4) // 原币贷方
+  exchangeRate Decimal? @db.Decimal(12, 6) // 交易汇率（原币→本位币）
+
+  entry      JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  account    FinAccount   @relation(fields: [accountId], references: [id])
+  party      Party?       @relation(fields: [partyId], references: [id], onDelete: SetNull)
+  costCenter CostCenter?  @relation(fields: [costCenterId], references: [id], onDelete: SetNull)
+  project    FinProject?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   @@index([entryId, lineNum])
   @@index([accountId])
+  @@index([partyId])
   @@map("adv_journal_lines")
 }
 
@@ -2197,9 +2342,10 @@ model Ledger {
   credit      Decimal  @default(0.0) @db.Decimal(18, 4)
   balance     Decimal  @default(0.0) @db.Decimal(18, 4)
 
-  account FinAccount    @relation(fields: [accountId], references: [id])
-  entry   JournalEntry? @relation(fields: [entryId], references: [id])
-  company Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  account             FinAccount          @relation(fields: [accountId], references: [id])
+  entry               JournalEntry?       @relation(fields: [entryId], references: [id])
+  company             Company?            @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  bankStatementMatches BankStatementLine[] @relation("StatementLineLedger")
 
   @@index([accountId, date, lineNum])
   @@index([companyId, accountId, date, lineNum])
@@ -2238,6 +2384,423 @@ model ExchangeRate {
   @@unique([fromCurrency, toCurrency, effectiveDate])
   @@index([fromCurrency, toCurrency])
   @@map("adv_exchange_rates")
+}
+
+// ─────────────────────────────────────────────
+// FINANCIAL SUBLEDGERS — Phase 0 骨架 + AR / AP / BANKING
+// 总账 (JournalEntry/Ledger) 是唯一事实来源；
+// 以下子分类账单据通过统一过账引擎生成凭证。
+// ─────────────────────────────────────────────
+
+/// 统一往来单位：客户 / 供应商 / 员工共用一张主表（角色用布尔标志区分）
+model Party {
+  id               String   @id @default(cuid())
+  companyId        String
+  code             String // C0001 / S0001 等
+  name             String
+  nameZh           String?
+  isCustomer       Boolean  @default(false)
+  isSupplier       Boolean  @default(false)
+  isEmployee       Boolean  @default(false)
+  email            String?
+  phone            String?
+  address          String?
+  taxNumber        String?
+  currency         String   @default("HKD")
+  paymentTermsDays Int      @default(30)
+  creditLimit      Decimal? @db.Decimal(18, 2)
+  arAccountId      String? // 覆盖默认应收控制科目
+  apAccountId      String? // 覆盖默认应付控制科目
+  notes            String   @default("")
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  company       Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  arAccount     FinAccount?     @relation("PartyArAccount", fields: [arAccountId], references: [id])
+  apAccount     FinAccount?     @relation("PartyApAccount", fields: [apAccountId], references: [id])
+  journalLines  JournalLine[]
+  salesInvoices SalesInvoice[]
+  purchaseBills PurchaseBill[]
+  payments      FinPayment[]
+  creditNotes   FinCreditNote[]
+
+  @@unique([companyId, code])
+  @@index([companyId, isCustomer, isActive])
+  @@index([companyId, isSupplier, isActive])
+  @@index([name])
+  @@map("adv_parties")
+}
+
+/// 会计期间锁：无记录 = OPEN；过账前校验
+model FiscalPeriod {
+  id         String             @id @default(cuid())
+  companyId  String
+  period     String // YYYY-MM
+  status     FiscalPeriodStatus @default(OPEN)
+  closedAt   DateTime?
+  closedById String?
+
+  company  Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  closedBy User?   @relation("FiscalPeriodClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+
+  @@unique([companyId, period])
+  @@index([companyId, status])
+  @@map("adv_fiscal_periods")
+}
+
+/// 过账科目映射：子分类账自动凭证使用哪些科目（无配置时按默认科目代码回退）
+model AccountMapping {
+  id        String            @id @default(cuid())
+  companyId String
+  key       AccountMappingKey
+  accountId String
+
+  company Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  account FinAccount @relation("AccountMappingAccount", fields: [accountId], references: [id])
+
+  @@unique([companyId, key])
+  @@map("adv_account_mappings")
+}
+
+/// 单号序列：并发安全的单据编号（事务内 upsert + increment）
+model DocSequence {
+  id         String @id @default(cuid())
+  companyId  String
+  docType    String // SALES_INVOICE / RECEIPT / CREDIT_NOTE / PURCHASE_BILL / BILL_PAYMENT ...
+  periodKey  String // YYYYMM
+  lastNumber Int    @default(0)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, docType, periodKey])
+  @@map("adv_doc_sequences")
+}
+
+/// 成本中心（维度主表；UI 后续阶段开放）
+model CostCenter {
+  id        String   @id @default(cuid())
+  companyId String
+  code      String
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  journalLines JournalLine[]
+
+  @@unique([companyId, code])
+  @@map("adv_cost_centers")
+}
+
+/// 项目（维度主表；UI 后续阶段开放）
+model FinProject {
+  id        String   @id @default(cuid())
+  companyId String
+  code      String
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  journalLines JournalLine[]
+
+  @@unique([companyId, code])
+  @@map("adv_fin_projects")
+}
+
+/// 销售发票（AR 子分类账；companyId = 账套所属公司，partyId = 该公司的客户）
+model SalesInvoice {
+  id             String             @id @default(cuid())
+  companyId      String
+  partyId        String
+  invoiceNo      String
+  status         SalesInvoiceStatus @default(DRAFT)
+  issueDate      DateTime
+  dueDate        DateTime?
+  currency       String             @default("HKD")
+  subtotal       Decimal            @db.Decimal(18, 2)
+  taxRate        Decimal            @default(0) @db.Decimal(5, 4)
+  taxAmount      Decimal            @default(0) @db.Decimal(18, 2)
+  total          Decimal            @db.Decimal(18, 2)
+  amountPaid     Decimal            @default(0) @db.Decimal(18, 2)
+  notes          String             @default("")
+  journalEntryId String?            @unique
+  createdById    String?
+  postedAt       DateTime?
+  voidedAt       DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  company      Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  party        Party               @relation(fields: [partyId], references: [id], onDelete: Restrict)
+  journalEntry JournalEntry?       @relation("SalesInvoiceJournal", fields: [journalEntryId], references: [id])
+  createdBy    User?               @relation("SalesInvoiceCreatedBy", fields: [createdById], references: [id])
+  lines        SalesInvoiceLine[]
+  allocations  PaymentAllocation[]
+
+  @@unique([companyId, invoiceNo])
+  @@index([companyId, status, dueDate])
+  @@index([partyId, status])
+  @@index([issueDate])
+  @@map("adv_sales_invoices")
+}
+
+model SalesInvoiceLine {
+  id               String  @id @default(cuid())
+  invoiceId        String
+  sortOrder        Int     @default(0)
+  description      String
+  quantity         Decimal @default(1) @db.Decimal(12, 4)
+  unitPrice        Decimal @db.Decimal(18, 2)
+  amount           Decimal @db.Decimal(18, 2)
+  revenueAccountId String? // 行级收入科目；null = 用映射默认
+
+  invoice        SalesInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  revenueAccount FinAccount?  @relation("SalesLineRevenueAccount", fields: [revenueAccountId], references: [id])
+
+  @@index([invoiceId, sortOrder])
+  @@map("adv_sales_invoice_lines")
+}
+
+/// 采购账单（AP 子分类账）
+model PurchaseBill {
+  id             String             @id @default(cuid())
+  companyId      String
+  partyId        String
+  billNo         String // 内部编号 BILL-YYYYMM-####
+  supplierRef    String             @default("") // 供应商发票号
+  status         PurchaseBillStatus @default(DRAFT)
+  billDate       DateTime
+  dueDate        DateTime?
+  currency       String             @default("HKD")
+  subtotal       Decimal            @db.Decimal(18, 2)
+  taxRate        Decimal            @default(0) @db.Decimal(5, 4)
+  taxAmount      Decimal            @default(0) @db.Decimal(18, 2)
+  total          Decimal            @db.Decimal(18, 2)
+  amountPaid     Decimal            @default(0) @db.Decimal(18, 2)
+  notes          String             @default("")
+  journalEntryId String?            @unique
+  createdById    String?
+  postedAt       DateTime?
+  voidedAt       DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  company      Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  party        Party               @relation(fields: [partyId], references: [id], onDelete: Restrict)
+  journalEntry JournalEntry?       @relation("PurchaseBillJournal", fields: [journalEntryId], references: [id])
+  createdBy    User?               @relation("PurchaseBillCreatedBy", fields: [createdById], references: [id])
+  lines        PurchaseBillLine[]
+  allocations  PaymentAllocation[]
+
+  @@unique([companyId, billNo])
+  @@index([companyId, status, dueDate])
+  @@index([partyId, status])
+  @@index([billDate])
+  @@map("adv_purchase_bills")
+}
+
+model PurchaseBillLine {
+  id               String  @id @default(cuid())
+  billId           String
+  sortOrder        Int     @default(0)
+  description      String
+  quantity         Decimal @default(1) @db.Decimal(12, 4)
+  unitPrice        Decimal @db.Decimal(18, 2)
+  amount           Decimal @db.Decimal(18, 2)
+  expenseAccountId String? // 行级费用/资产科目；null = 用映射默认
+
+  bill           PurchaseBill @relation(fields: [billId], references: [id], onDelete: Cascade)
+  expenseAccount FinAccount?  @relation("PurchaseLineExpenseAccount", fields: [expenseAccountId], references: [id])
+
+  @@index([billId, sortOrder])
+  @@map("adv_purchase_bill_lines")
+}
+
+/// 收付款（RECEIPT=客户收款，PAYMENT=供应商付款；创建即过账）
+model FinPayment {
+  id              String              @id @default(cuid())
+  companyId       String
+  partyId         String
+  direction       FinPaymentDirection
+  paymentNo       String // RCT-YYYYMM-#### / PAY-YYYYMM-####
+  status          FinPaymentStatus    @default(POSTED)
+  paymentDate     DateTime
+  method          FinPaymentMethod    @default(BANK_TRANSFER)
+  bankAccountId   String? // 收/付款银行账户；null = 现金（按映射）
+  currency        String              @default("HKD")
+  amount          Decimal             @db.Decimal(18, 2)
+  amountAllocated Decimal             @default(0) @db.Decimal(18, 2)
+  reference       String              @default("")
+  notes           String              @default("")
+  journalEntryId  String?             @unique
+  createdById     String?
+  voidedAt        DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  company      Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  party        Party               @relation(fields: [partyId], references: [id], onDelete: Restrict)
+  bankAccount  BankAccount?        @relation(fields: [bankAccountId], references: [id])
+  journalEntry JournalEntry?       @relation("FinPaymentJournal", fields: [journalEntryId], references: [id])
+  createdBy    User?               @relation("FinPaymentCreatedBy", fields: [createdById], references: [id])
+  allocations  PaymentAllocation[]
+
+  @@unique([companyId, paymentNo])
+  @@index([companyId, direction, paymentDate])
+  @@index([partyId])
+  @@map("adv_fin_payments")
+}
+
+/// 核销：收/付款或贷项/借项 ↔ 发票/账单 的金额分配
+model PaymentAllocation {
+  id             String   @id @default(cuid())
+  paymentId      String?
+  creditNoteId   String?
+  salesInvoiceId String?
+  purchaseBillId String?
+  amount         Decimal  @db.Decimal(18, 2)
+  createdAt      DateTime @default(now())
+
+  payment      FinPayment?    @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  creditNote   FinCreditNote? @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+  salesInvoice SalesInvoice?  @relation(fields: [salesInvoiceId], references: [id])
+  purchaseBill PurchaseBill?  @relation(fields: [purchaseBillId], references: [id])
+
+  @@index([paymentId])
+  @@index([creditNoteId])
+  @@index([salesInvoiceId])
+  @@index([purchaseBillId])
+  @@map("adv_payment_allocations")
+}
+
+/// 贷项通知单（CUSTOMER 冲减应收）/ 借项通知单（SUPPLIER 冲减应付）
+model FinCreditNote {
+  id             String           @id @default(cuid())
+  companyId      String
+  partyId        String
+  kind           CreditNoteKind
+  noteNo         String // CN-YYYYMM-#### / DN-YYYYMM-####
+  status         CreditNoteStatus @default(DRAFT)
+  issueDate      DateTime
+  currency       String           @default("HKD")
+  subtotal       Decimal          @db.Decimal(18, 2)
+  taxRate        Decimal          @default(0) @db.Decimal(5, 4)
+  taxAmount      Decimal          @default(0) @db.Decimal(18, 2)
+  total          Decimal          @db.Decimal(18, 2)
+  amountApplied  Decimal          @default(0) @db.Decimal(18, 2)
+  reason         String           @default("")
+  offsetAccountId String? // 冲减对方科目（收入/费用）；null = 用映射默认
+  journalEntryId String?          @unique
+  createdById    String?
+  postedAt       DateTime?
+  voidedAt       DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  company       Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  party         Party               @relation(fields: [partyId], references: [id], onDelete: Restrict)
+  offsetAccount FinAccount?         @relation("CreditNoteOffsetAccount", fields: [offsetAccountId], references: [id])
+  journalEntry  JournalEntry?       @relation("FinCreditNoteJournal", fields: [journalEntryId], references: [id])
+  createdBy     User?               @relation("FinCreditNoteCreatedBy", fields: [createdById], references: [id])
+  allocations   PaymentAllocation[]
+
+  @@unique([companyId, noteNo])
+  @@index([companyId, kind, status])
+  @@index([partyId])
+  @@map("adv_fin_credit_notes")
+}
+
+/// 银行账户（关联一个总账科目）
+model BankAccount {
+  id            String   @id @default(cuid())
+  companyId     String
+  glAccountId   String
+  name          String
+  bankName      String   @default("")
+  accountNumber String   @default("")
+  currency      String   @default("HKD")
+  isActive      Boolean  @default(true)
+  notes         String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  company         Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  glAccount       FinAccount           @relation("BankGlAccount", fields: [glAccountId], references: [id])
+  payments        FinPayment[]
+  statements      BankStatement[]
+  reconciliations BankReconciliation[]
+
+  @@unique([companyId, name])
+  @@index([companyId, isActive])
+  @@map("adv_bank_accounts")
+}
+
+/// 银行对账单（一次导入）
+model BankStatement {
+  id             String    @id @default(cuid())
+  bankAccountId  String
+  fileName       String    @default("")
+  periodStart    DateTime?
+  periodEnd      DateTime?
+  openingBalance Decimal?  @db.Decimal(18, 2)
+  closingBalance Decimal?  @db.Decimal(18, 2)
+  importedById   String?
+  createdAt      DateTime  @default(now())
+
+  bankAccount BankAccount         @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  importedBy  User?               @relation("BankStatementImportedBy", fields: [importedById], references: [id])
+  lines       BankStatementLine[]
+
+  @@index([bankAccountId])
+  @@map("adv_bank_statements")
+}
+
+model BankStatementLine {
+  id               String                  @id @default(cuid())
+  statementId      String
+  lineNum          Int                     @default(0)
+  date             DateTime
+  description      String                  @default("")
+  reference        String                  @default("")
+  amount           Decimal                 @db.Decimal(18, 2) // 有符号：+流入 -流出
+  status           BankStatementLineStatus @default(UNMATCHED)
+  matchedLedgerId  String?
+  reconciliationId String?
+
+  statement      BankStatement       @relation(fields: [statementId], references: [id], onDelete: Cascade)
+  matchedLedger  Ledger?             @relation("StatementLineLedger", fields: [matchedLedgerId], references: [id], onDelete: SetNull)
+  reconciliation BankReconciliation? @relation(fields: [reconciliationId], references: [id], onDelete: SetNull)
+
+  @@index([statementId, lineNum])
+  @@index([status])
+  @@index([matchedLedgerId])
+  @@map("adv_bank_statement_lines")
+}
+
+/// 银行对账（一次对账过程：截止日 + 对账单余额 vs 总账余额）
+model BankReconciliation {
+  id               String                   @id @default(cuid())
+  bankAccountId    String
+  statementDate    DateTime // 对账截止日
+  statementBalance Decimal                  @db.Decimal(18, 2)
+  glBalance        Decimal                  @db.Decimal(18, 2)
+  status           BankReconciliationStatus @default(IN_PROGRESS)
+  notes            String                   @default("")
+  createdById      String?
+  completedAt      DateTime?
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+
+  bankAccount    BankAccount         @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  createdBy      User?               @relation("BankReconCreatedBy", fields: [createdById], references: [id])
+  statementLines BankStatementLine[]
+
+  @@index([bankAccountId, status])
+  @@map("adv_bank_reconciliations")
 }
 
 // ─────────────────────────────────────────────

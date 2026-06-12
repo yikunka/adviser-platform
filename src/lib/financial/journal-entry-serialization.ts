@@ -10,6 +10,8 @@ export const journalEntryInclude = {
       account: {
         select: { id: true, code: true, name: true, type: true, level: true, parentId: true },
       },
+      costCenter: { select: { id: true, code: true, name: true } },
+      project: { select: { id: true, code: true, name: true } },
     },
     orderBy: { lineNum: 'asc' as const },
   },

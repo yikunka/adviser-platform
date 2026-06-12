@@ -1,9 +1,9 @@
-import { Prisma } from '@prisma/client'
 import type { Session } from 'next-auth'
 import { logAudit } from '@/lib/audit/logger'
 import { prisma } from '@/lib/db/prisma'
+import { assertPeriodOpen, PeriodClosedError } from '@/lib/financial/fiscal-periods'
+import { writeLedgerRows } from '@/lib/financial/ledger-writer'
 import { serializeJournalEntry } from '@/lib/financial/serializers'
-import { roundMoney, signedLineAmount } from '@/lib/financial/utils'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
 
 const journalInclude = {
@@ -33,80 +33,28 @@ export async function postJournalEntryById(id: string, session: Session): Promis
   if (!(await assertCompanyAccessible(access, before.companyId))) {
     return { ok: false, error: 'Forbidden', status: 403 }
   }
+  try {
+    await assertPeriodOpen(prisma, before.companyId, periodFromEntryDate(before.entryDate))
+  } catch (err) {
+    if (err instanceof PeriodClosedError) return { ok: false, error: err.message, status: 400 }
+    throw err
+  }
 
-  const sortedLines = before.lines.slice().sort((a, b) => a.lineNum - b.lineNum)
-
+  const companyId = before.companyId
   const entry = await prisma.$transaction(async tx => {
     await tx.ledger.deleteMany({ where: { entryId: id } })
 
-    const balances = new Map<string, number>()
-    for (const line of sortedLines) {
-      if (!balances.has(line.accountId)) {
-        const previous = await tx.ledger.findFirst({
-          where: {
-            accountId: line.accountId,
-            companyId: before.companyId,
-            OR: [
-              { date: { lt: before.entryDate } },
-              { date: before.entryDate, lineNum: { lt: line.lineNum } },
-            ],
-          },
-          orderBy: [{ date: 'desc' }, { lineNum: 'desc' }],
-          select: { balance: true },
-        })
-        if (previous) {
-          balances.set(line.accountId, Number(previous.balance))
-        } else {
-          const opening = await tx.accountBalance.findFirst({
-            where: {
-              accountId: line.accountId,
-              period: { lte: periodFromEntryDate(before.entryDate) },
-            },
-            orderBy: { period: 'desc' },
-            select: { openingDebit: true, openingCredit: true },
-          })
-          balances.set(
-            line.accountId,
-            opening
-              ? signedLineAmount({
-                  accountId: line.accountId,
-                  accountType: line.account.type,
-                  accountCode: line.account.code,
-                  debit: opening.openingDebit,
-                  credit: opening.openingCredit,
-                })
-              : 0,
-          )
-        }
-      }
-
-      const nextBalance = roundMoney(
-        (balances.get(line.accountId) ?? 0) +
-          signedLineAmount({
-            accountId: line.accountId,
-            accountType: line.account.type,
-            accountCode: line.account.code,
-            debit: line.debit,
-            credit: line.credit,
-          }),
-      )
-      balances.set(line.accountId, nextBalance)
-
-      await tx.ledger.create({
-        data: {
-          accountId: line.accountId,
-          entryId: id,
-          companyId: before.companyId,
-          lineNum: line.lineNum,
-          date: before.entryDate,
-          voucherNo: before.voucherNo,
-          description: line.description || before.description,
-          debit: new Prisma.Decimal(line.debit),
-          credit: new Prisma.Decimal(line.credit),
-          balance: new Prisma.Decimal(nextBalance),
-        },
-      })
-    }
+    await writeLedgerRows(
+      tx,
+      {
+        id,
+        companyId,
+        entryDate: before.entryDate,
+        voucherNo: before.voucherNo,
+        description: before.description,
+      },
+      before.lines,
+    )
 
     return tx.journalEntry.update({
       where: { id },
