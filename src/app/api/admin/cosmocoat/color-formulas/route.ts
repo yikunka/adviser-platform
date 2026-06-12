@@ -36,7 +36,9 @@ const formulaSchema = z.object({
   category: z.string().trim().min(1),
   factoryProductId: z.string().trim().min(1).nullable().optional(),
   colorCode: z.string().trim().max(64).optional().default(''),
+  customerId: z.string().trim().min(1).nullable().optional(),
   customerName: z.string().trim().max(120).optional().default(''),
+  technicalOwnerId: z.string().trim().min(1).nullable().optional(),
   targetColor: z.string().trim().max(120).optional().default(''),
   batchQuantity: z.coerce.number().min(0.001).optional().default(100),
   notes: z.string().trim().max(2000).optional().default(''),
@@ -55,12 +57,13 @@ export async function GET(req: NextRequest) {
   const categoryParam = req.nextUrl.searchParams.get('category')?.trim() ?? ''
   const category = isColorFormulaCategory(categoryParam) ? categoryParam : undefined
   const factoryProductId = req.nextUrl.searchParams.get('factoryProductId')?.trim() ?? undefined
+  const customerId = req.nextUrl.searchParams.get('customerId')?.trim() ?? undefined
   const subcategoryId = req.nextUrl.searchParams.get('subcategoryId')?.trim() ?? undefined
   const page = Math.max(1, Number(req.nextUrl.searchParams.get('page') ?? '1') || 1)
   const limit = Math.min(200, Math.max(1, Number(req.nextUrl.searchParams.get('limit') ?? '50') || 50))
   const skip = (page - 1) * limit
 
-  const where = buildColorFormulaListWhere({ q, category, factoryProductId, subcategoryId })
+  const where = buildColorFormulaListWhere({ q, category, factoryProductId, customerId, subcategoryId })
 
   try {
     const [total, rows] = await Promise.all([
@@ -78,6 +81,19 @@ export async function GET(req: NextRequest) {
             },
           },
           sourceRecipe: { select: { id: true, code: true, name: true } },
+          customer: { select: { id: true, code: true, name: true, phone: true } },
+          technicalOwner: {
+            select: {
+              id: true,
+              code: true,
+              name: true,
+              employeeType: true,
+              position: true,
+              department: true,
+              phone: true,
+              isActive: true,
+            },
+          },
           _count: { select: { items: true } },
         },
         orderBy: [{ updatedAt: 'desc' }],
@@ -128,6 +144,26 @@ export async function POST(req: NextRequest) {
     const existing = await prisma.cosTableColorFormula.findUnique({ where: { code } })
     if (existing) return NextResponse.json({ error: '配方编号已存在' }, { status: 409 })
 
+    const customer = parsed.data.customerId
+      ? await prisma.cosCustomer.findUnique({
+          where: { id: parsed.data.customerId },
+          select: { id: true, name: true },
+        })
+      : null
+    if (parsed.data.customerId && !customer) {
+      return NextResponse.json({ error: '所选客户不存在' }, { status: 400 })
+    }
+
+    const technicalOwner = parsed.data.technicalOwnerId
+      ? await prisma.cosEmployee.findFirst({
+          where: { id: parsed.data.technicalOwnerId, employeeType: 'TECHNICAL' },
+          select: { id: true },
+        })
+      : null
+    if (parsed.data.technicalOwnerId && !technicalOwner) {
+      return NextResponse.json({ error: '所选负责人员不是技术人员或不存在' }, { status: 400 })
+    }
+
     const enriched = await enrichColorFormulaItemsFromRawMaterials(parsed.data.items as ColorFormulaItemInput[])
 
     const formula = await prisma.cosTableColorFormula.create({
@@ -137,7 +173,9 @@ export async function POST(req: NextRequest) {
         category: parsed.data.category,
         factoryProductId: productCheck.factoryProductId,
         colorCode: parsed.data.colorCode,
-        customerName: parsed.data.customerName,
+        customerId: customer?.id ?? null,
+        customerName: customer?.name ?? parsed.data.customerName,
+        technicalOwnerId: technicalOwner?.id ?? null,
         targetColor: parsed.data.targetColor,
         batchQuantity: parsed.data.batchQuantity,
         notes: parsed.data.notes,

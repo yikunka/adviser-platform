@@ -30,6 +30,10 @@ export function formatFilmThickness(value: number | string | null | undefined): 
   return formatWithUnit(value, 'μm', /(μm|µm|um|UM)/i)
 }
 
+export function formatSprayViscosity(value: number | string | null | undefined): string | null {
+  return formatWithUnit(value, 'S', /(S\b|秒)/i)
+}
+
 export function displayProcessParameter(
   value: number | string | null | undefined,
   formatter: (v: number | string | null | undefined) => string | null,

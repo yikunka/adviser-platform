@@ -22,6 +22,7 @@ import {
   formatFilmThickness,
   formatIrMinutes,
   formatIrTemperature,
+  formatSprayViscosity,
   formatUvEnergy,
 } from '@/lib/cosmocoat/process-kit-parameters'
 import type { SampleOrderRow } from '@/lib/cosmocoat/sample-orders'
@@ -278,7 +279,7 @@ function ProcessKitLineCard({
                     <th style={th}>IR 温度 (°C)</th>
                     <th style={th}>UV 能量 (MJ/CM²)</th>
                     <th style={th}>膜厚 (μm)</th>
-                    <th style={th}>喷涂粘度</th>
+                    <th style={th}>喷涂粘度 (S)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -289,7 +290,7 @@ function ProcessKitLineCard({
                       <td style={td}>{displayProcessParameter(product.irTemperature, formatIrTemperature)}</td>
                       <td style={td}>{displayProcessParameter(product.uvEnergy, formatUvEnergy)}</td>
                       <td style={td}>{displayProcessParameter(product.filmThickness, formatFilmThickness)}</td>
-                      <td style={td}>{product.sprayViscosity || '—'}</td>
+                      <td style={td}>{displayProcessParameter(product.sprayViscosity, formatSprayViscosity)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -501,7 +502,7 @@ function SampleOrderPrintView({
                 <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 6, fontSize: 9 }}>
                   <thead>
                     <tr style={{ background: '#f0f0f0' }}>
-                      {['产品', 'IR 时间 (min)', 'IR 温度 (°C)', 'UV 能量 (MJ/CM²)', '膜厚 (μm)', '喷涂粘度'].map(h => (
+                      {['产品', 'IR 时间 (min)', 'IR 温度 (°C)', 'UV 能量 (MJ/CM²)', '膜厚 (μm)', '喷涂粘度 (S)'].map(h => (
                         <th key={h} style={{ ...printCell, fontWeight: 600, textAlign: 'left' }}>{h}</th>
                       ))}
                     </tr>
@@ -514,7 +515,7 @@ function SampleOrderPrintView({
                         <td style={printCell}>{displayProcessParameter(product.irTemperature, formatIrTemperature)}</td>
                         <td style={printCell}>{displayProcessParameter(product.uvEnergy, formatUvEnergy)}</td>
                         <td style={printCell}>{displayProcessParameter(product.filmThickness, formatFilmThickness)}</td>
-                        <td style={printCell}>{product.sprayViscosity || '—'}</td>
+                        <td style={printCell}>{displayProcessParameter(product.sprayViscosity, formatSprayViscosity)}</td>
                       </tr>
                     ))}
                   </tbody>

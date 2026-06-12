@@ -59,6 +59,19 @@ const formulaInclude = {
     },
   },
   sourceRecipe: { select: { id: true, code: true, name: true } },
+  customer: { select: { id: true, code: true, name: true, phone: true } },
+  technicalOwner: {
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      employeeType: true,
+      position: true,
+      department: true,
+      phone: true,
+      isActive: true,
+    },
+  },
   items: { orderBy: { sortOrder: 'asc' as const }, include: itemInclude },
 } as const
 
@@ -164,7 +177,9 @@ export function serializeColorFormula(formula: {
   factoryProductId: string | null
   sourceRecipeId: string | null
   colorCode: string
+  customerId?: string | null
   customerName: string
+  technicalOwnerId?: string | null
   targetColor: string
   batchQuantity: unknown
   notes: string
@@ -183,6 +198,17 @@ export function serializeColorFormula(formula: {
     category: { id: string; name: string; slug: string } | null
   } | null
   sourceRecipe?: { id: string; code: string; name: string } | null
+  customer?: { id: string; code: string; name: string; phone: string | null } | null
+  technicalOwner?: {
+    id: string
+    code: string
+    name: string
+    employeeType: string
+    position: string | null
+    department: string | null
+    phone: string | null
+    isActive: boolean
+  } | null
   items?: Array<Parameters<typeof serializeItem>[0]>
   _count?: { items: number }
 }) {
@@ -226,7 +252,9 @@ export function serializeColorFormula(formula: {
     factoryProductId: formula.factoryProductId,
     sourceRecipeId: formula.sourceRecipeId,
     colorCode: formula.colorCode,
-    customerName: formula.customerName,
+    customerId: formula.customerId ?? formula.customer?.id ?? null,
+    customerName: formula.customer?.name ?? formula.customerName,
+    technicalOwnerId: formula.technicalOwnerId ?? formula.technicalOwner?.id ?? null,
     targetColor: formula.targetColor,
     batchQuantity: Number(formula.batchQuantity),
     notes: formula.notes,
@@ -238,6 +266,8 @@ export function serializeColorFormula(formula: {
     totalAmount: totals.totalAmount,
     factoryProduct: formula.factoryProduct ?? null,
     sourceRecipe: formula.sourceRecipe ?? null,
+    customer: formula.customer ?? null,
+    technicalOwner: formula.technicalOwner ?? null,
     items,
   }
 }
@@ -335,6 +365,7 @@ export function buildColorFormulaListWhere(params: {
   q?: string
   category?: CosColorFormulaCategory
   factoryProductId?: string
+  customerId?: string
   /** @deprecated Legacy static subcategory filter */
   subcategoryId?: string
 }): Prisma.CosTableColorFormulaWhereInput {
@@ -347,6 +378,7 @@ export function buildColorFormulaListWhere(params: {
         : params.category
           ? { category: params.category }
           : {}),
+    ...(params.customerId ? { customerId: params.customerId } : {}),
     ...(q
       ? {
           OR: [
@@ -354,6 +386,10 @@ export function buildColorFormulaListWhere(params: {
             { name: { contains: q, mode: 'insensitive' } },
             { colorCode: { contains: q, mode: 'insensitive' } },
             { customerName: { contains: q, mode: 'insensitive' } },
+            { customer: { is: { code: { contains: q, mode: 'insensitive' } } } },
+            { customer: { is: { name: { contains: q, mode: 'insensitive' } } } },
+            { technicalOwner: { is: { code: { contains: q, mode: 'insensitive' } } } },
+            { technicalOwner: { is: { name: { contains: q, mode: 'insensitive' } } } },
             { targetColor: { contains: q, mode: 'insensitive' } },
             { notes: { contains: q, mode: 'insensitive' } },
           ],

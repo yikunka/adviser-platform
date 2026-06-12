@@ -1661,7 +1661,9 @@ model CosTableColorFormula {
   factoryProductId String?
   sourceRecipeId   String?
   colorCode        String                  @default("")
+  customerId        String?
   customerName     String                  @default("")
+  technicalOwnerId String?
   targetColor      String                  @default("")
   batchQuantity    Decimal                 @default(100) @db.Decimal(12, 3)
   notes            String                  @default("")
@@ -1671,12 +1673,16 @@ model CosTableColorFormula {
   subcategory      CosTableColorFormulaSubcategory? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
   factoryProduct   CosTableFactoryProduct?          @relation(fields: [factoryProductId], references: [id], onDelete: SetNull)
   sourceRecipe     CosTableRecipe?                  @relation(fields: [sourceRecipeId], references: [id], onDelete: SetNull)
+  customer         CosCustomer?                     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  technicalOwner   CosEmployee?                     @relation("CosColorFormulaTechnicalOwner", fields: [technicalOwnerId], references: [id], onDelete: SetNull)
   items            CosTableColorFormulaItem[]
   sampleOrderLines CosSampleOrderColorFormula[]
 
   @@index([category, updatedAt])
   @@index([subcategoryId])
   @@index([factoryProductId])
+  @@index([customerId])
+  @@index([technicalOwnerId])
   @@map("cos_table_color_formulas")
 }
 
@@ -2113,6 +2119,7 @@ model CosCustomer {
   user             User?                        @relation("CosCustomerUser", fields: [userId], references: [id], onDelete: SetNull)
   createdBy        User?                        @relation("CosCustomerCreator", fields: [createdById], references: [id], onDelete: SetNull)
   sampleOrders     CosSampleOrder[]
+  colorFormulas    CosTableColorFormula[]
   businessLicenses CosCustomerBusinessLicense[]
 
   @@index([name])
@@ -2176,6 +2183,7 @@ model CosEmployee {
   createdBy        User?                     @relation("CosEmployeeCreator", fields: [createdById], references: [id], onDelete: SetNull)
   files            CosEmployeeFile[]
   productionOrders CosTableProductionOrder[]
+  technicalColorFormulas CosTableColorFormula[] @relation("CosColorFormulaTechnicalOwner")
 
   @@index([employeeType])
   @@index([name])

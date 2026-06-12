@@ -33,7 +33,9 @@ const patchSchema = z.object({
   category: z.string().trim().min(1).optional(),
   factoryProductId: z.string().trim().min(1).nullable().optional(),
   colorCode: z.string().trim().max(64).optional(),
+  customerId: z.string().trim().min(1).nullable().optional(),
   customerName: z.string().trim().max(120).optional(),
+  technicalOwnerId: z.string().trim().min(1).nullable().optional(),
   targetColor: z.string().trim().max(120).optional(),
   batchQuantity: z.coerce.number().min(0.001).optional(),
   notes: z.string().trim().max(2000).optional(),
@@ -106,8 +108,30 @@ export async function PATCH(
     return NextResponse.json({ error: productCheck.error }, { status: 400 })
   }
 
+  const customer = parsed.data.customerId
+    ? await prisma.cosCustomer.findUnique({
+        where: { id: parsed.data.customerId },
+        select: { id: true, name: true },
+      })
+    : null
+  if (parsed.data.customerId && !customer) {
+    return NextResponse.json({ error: '所选客户不存在' }, { status: 400 })
+  }
+
+  const technicalOwner = parsed.data.technicalOwnerId
+    ? await prisma.cosEmployee.findFirst({
+        where: { id: parsed.data.technicalOwnerId, employeeType: 'TECHNICAL' },
+        select: { id: true },
+      })
+    : null
+  if (parsed.data.technicalOwnerId && !technicalOwner) {
+    return NextResponse.json({ error: '所选负责人员不是技术人员或不存在' }, { status: 400 })
+  }
+
   const shouldUpdateFactoryProduct =
     factoryProductProvided || (parsed.data.category !== undefined && parsed.data.category !== current.category)
+  const shouldUpdateCustomer = parsed.data.customerId !== undefined
+  const shouldUpdateTechnicalOwner = parsed.data.technicalOwnerId !== undefined
 
   try {
     const data: Prisma.CosTableColorFormulaUpdateInput = {
@@ -120,7 +144,21 @@ export async function PATCH(
           : { factoryProduct: { disconnect: true } }
         : {}),
       ...(parsed.data.colorCode !== undefined ? { colorCode: parsed.data.colorCode } : {}),
-      ...(parsed.data.customerName !== undefined ? { customerName: parsed.data.customerName } : {}),
+      ...(shouldUpdateCustomer
+        ? customer
+          ? { customer: { connect: { id: customer.id } }, customerName: customer.name }
+          : {
+              customer: { disconnect: true },
+              customerName: parsed.data.customerName ?? '',
+            }
+        : parsed.data.customerName !== undefined
+          ? { customerName: parsed.data.customerName }
+          : {}),
+      ...(shouldUpdateTechnicalOwner
+        ? technicalOwner
+          ? { technicalOwner: { connect: { id: technicalOwner.id } } }
+          : { technicalOwner: { disconnect: true } }
+        : {}),
       ...(parsed.data.targetColor !== undefined ? { targetColor: parsed.data.targetColor } : {}),
       ...(parsed.data.batchQuantity !== undefined ? { batchQuantity: parsed.data.batchQuantity } : {}),
       ...(parsed.data.notes !== undefined ? { notes: parsed.data.notes } : {}),

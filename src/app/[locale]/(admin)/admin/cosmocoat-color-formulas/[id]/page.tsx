@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, Plus, Printer, Save, Search, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus, Printer, Save, Search, Trash2, X } from 'lucide-react'
 import type { CosColorFormulaCategory } from '@prisma/client'
 import { ColorFormulaCategoryFields } from '@/components/cosmocoat/ColorFormulaCategoryFields'
 import type { ColorFormulaFactoryProductOption } from '@/lib/cosmocoat/color-formula-factory-products'
@@ -44,6 +44,23 @@ type PickerMaterial = {
   primaryPackageKg: number | null
   primaryPricePerKg: number | null
   primaryNotes: string
+}
+
+type CustomerOption = {
+  id: string
+  code: string
+  name: string
+  phone: string | null
+}
+
+type TechnicalOwnerOption = {
+  id: string
+  code: string
+  name: string
+  position: string | null
+  department: string | null
+  phone: string | null
+  isActive: boolean
 }
 
 type EditableItem = {
@@ -120,6 +137,14 @@ function printDialogInputStyle(): React.CSSProperties {
     color: '#11110E',
     caretColor: '#11110E',
   }
+}
+
+function formatCustomerOption(customer: CustomerOption) {
+  return `${customer.code} · ${customer.name}`
+}
+
+function formatTechnicalOwnerOption(employee: TechnicalOwnerOption) {
+  return `${employee.code} · ${employee.name}`
 }
 
 function toEditableItem(item: FullColorFormula['items'][number], index: number): EditableItem {

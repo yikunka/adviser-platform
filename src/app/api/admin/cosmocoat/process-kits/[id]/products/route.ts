@@ -68,6 +68,7 @@ const updateSchema = z.object({
   irTemperature: processParameterSchema,
   uvEnergy: processParameterSchema,
   filmThickness: processParameterSchema,
+  sprayViscosity: processParameterSchema,
   notes: optionalTextSchema(2000),
   processBlocks: z.array(processBlockSchema).max(50).optional(),
 })
@@ -241,6 +242,7 @@ export async function PATCH(
         irTemperature: parsed.data.irTemperature !== undefined ? (parsed.data.irTemperature || null) : undefined,
         uvEnergy: parsed.data.uvEnergy !== undefined ? (parsed.data.uvEnergy || null) : undefined,
         filmThickness: parsed.data.filmThickness !== undefined ? (parsed.data.filmThickness || null) : undefined,
+        sprayViscosity: parsed.data.sprayViscosity !== undefined ? (parsed.data.sprayViscosity || null) : undefined,
         notes: parsed.data.notes !== undefined ? (parsed.data.notes || null) : undefined,
         processBlocks: parsed.data.processBlocks,
       },

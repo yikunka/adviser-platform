@@ -3,6 +3,7 @@ import {
   formatFilmThickness,
   formatIrMinutes,
   formatIrTemperature,
+  formatSprayViscosity,
   formatUvEnergy,
 } from '@/lib/cosmocoat/process-kit-parameters'
 
@@ -206,17 +207,12 @@ export function remapProcessFlowProductIds(
   })
 }
 
-function formatValue(value: number | string | null | undefined) {
-  if (value === null || value === undefined || value === '') return null
-  return String(value)
-}
-
 function formatProductLines(product: ProcessFlowProduct, sequence: number): string[] {
   const irMinutes = formatIrMinutes(product.irMinutes)
   const irTemperature = formatIrTemperature(product.irTemperature)
   const uvEnergy = formatUvEnergy(product.uvEnergy)
   const filmThickness = formatFilmThickness(product.filmThickness)
-  const sprayViscosity = formatValue(product.sprayViscosity)
+  const sprayViscosity = formatSprayViscosity(product.sprayViscosity)
 
   const lines = [`${sequence}. 产品：${product.productName}`]
   if (product.hardenerProductName) {

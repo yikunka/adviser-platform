@@ -28,6 +28,7 @@ import {
   displayProcessParameter,
   formatFilmThickness,
   formatIrParametersDisplay,
+  formatSprayViscosity,
   formatUvEnergy,
 } from '@/lib/cosmocoat/process-kit-parameters'
 
@@ -573,6 +574,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     irTemperature: '',
     uvEnergy: '',
     filmThickness: '',
+    sprayViscosity: '',
     notes: '',
   })
   const [productForm, setProductForm] = useState({
@@ -1025,6 +1027,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       irTemperature: '',
       uvEnergy: '',
       filmThickness: '',
+      sprayViscosity: '',
       notes: '',
     })
   }
@@ -1043,6 +1046,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       irTemperature: product.irTemperature ?? '',
       uvEnergy: product.uvEnergy ?? '',
       filmThickness: product.filmThickness ?? '',
+      sprayViscosity: product.sprayViscosity ?? '',
       notes: product.notes ?? '',
     })
   }
@@ -1054,6 +1058,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     const irTemperature = parseOptionalText(editForm.irTemperature)
     const uvEnergy = parseOptionalText(editForm.uvEnergy)
     const filmThickness = parseOptionalText(editForm.filmThickness)
+    const sprayViscosity = parseOptionalText(editForm.sprayViscosity)
 
     if (
       (editForm.useHardener && (!editForm.hardenerProductId || !editForm.hardenerRatio.trim())) ||
@@ -1085,6 +1090,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
               irTemperature,
               uvEnergy,
               filmThickness,
+              sprayViscosity,
               notes: editForm.notes.trim() || null,
             }
           : product,
@@ -1109,6 +1115,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
           irTemperature,
           uvEnergy,
           filmThickness,
+          sprayViscosity,
           notes: editForm.notes,
         }),
       })
@@ -1818,6 +1825,17 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                   style={inputStyle()}
                 />
               </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('sprayViscosity')}</label>
+                <input
+                  type="text"
+                  value={editForm.sprayViscosity}
+                  onChange={e => setEditForm(f => ({ ...f, sprayViscosity: e.target.value }))}
+                  placeholder={t('sprayViscosityPlaceholder')}
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                  style={inputStyle()}
+                />
+              </div>
               <div className="space-y-1.5 sm:col-span-2 lg:col-span-4">
                 <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('notes')}</label>
                 <input
@@ -1880,7 +1898,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                   <td style={td}>{formatIrParametersDisplay(p.irMinutes, p.irTemperature, '-')}</td>
                   <td style={td}>{displayProcessParameter(p.uvEnergy, formatUvEnergy, '-')}</td>
                   <td style={td}>{displayProcessParameter(p.filmThickness, formatFilmThickness, '-')}</td>
-                  <td style={td}>{p.sprayViscosity ?? '-'}</td>
+                  <td style={td}>{displayProcessParameter(p.sprayViscosity, formatSprayViscosity, '-')}</td>
                   <td style={td}>{p.notes || '-'}</td>
                   <td style={{ ...td, textAlign: 'right' }}>
                     <div className="flex items-center justify-end gap-1">
@@ -2097,7 +2115,11 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                               膜厚：{displayProcessParameter(product.filmThickness, formatFilmThickness)}
                             </p>
                           )}
-                          {product.sprayViscosity && <p style={{ color: 'var(--muted-foreground)' }}>噴塗粘度 2#杯/25C：{product.sprayViscosity}</p>}
+                          {product.sprayViscosity && (
+                            <p style={{ color: 'var(--muted-foreground)' }}>
+                              噴塗粘度 2#杯/25C：{displayProcessParameter(product.sprayViscosity, formatSprayViscosity)}
+                            </p>
+                          )}
                           {product.notes && <p style={{ color: 'var(--muted-foreground)' }}>备注：{product.notes}</p>}
                         </div>
 
