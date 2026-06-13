@@ -92,6 +92,7 @@ type ColorFormulaLine = {
 const SUBSTRATE_OPTIONS = PROCESS_KIT_MATERIALS
   .filter(material => material.id !== 'OTHER')
   .map(material => material.label)
+const SAMPLE_KIND_OPTIONS = ['调色种类', 'UV种类', '性能测试'] as const
 
 const card: React.CSSProperties = {
   background: 'var(--card)',
@@ -356,6 +357,7 @@ const printLabelCell: React.CSSProperties = { ...printCell, background: '#f5f5f5
 type SampleOrderPrintViewProps = {
   order: SampleOrderRow
   isUrgent: boolean
+  sampleKind: string
   substrateType: string
   samplePanelRequirement: string
   sampleOilRequirement: string
@@ -369,6 +371,7 @@ type SampleOrderPrintViewProps = {
 function SampleOrderPrintView({
   order,
   isUrgent,
+  sampleKind,
   substrateType,
   samplePanelRequirement,
   sampleOilRequirement,
@@ -460,6 +463,12 @@ function SampleOrderPrintView({
             <tr>
               <td style={printLabelCell}>素材选择</td>
               <td colSpan={3} style={{ ...printCell, whiteSpace: 'pre-wrap' }}>{substrateType.trim()}</td>
+            </tr>
+          )}
+          {sampleKind.trim() && (
+            <tr>
+              <td style={printLabelCell}>打样种类</td>
+              <td colSpan={3} style={{ ...printCell, whiteSpace: 'pre-wrap' }}>{sampleKind.trim()}</td>
             </tr>
           )}
           {samplePanelRequirement.trim() && (
@@ -720,6 +729,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
   const [salesEmployeeId, setSalesEmployeeId] = useState('')
   const [technicalEmployeeId, setTechnicalEmployeeId] = useState('')
   const [isUrgent, setIsUrgent] = useState(false)
+  const [sampleKind, setSampleKind] = useState('')
   const [substrateType, setSubstrateType] = useState('')
   const [samplePanelRequirement, setSamplePanelRequirement] = useState('')
   const [sampleOilRequirement, setSampleOilRequirement] = useState('')
@@ -790,6 +800,8 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
         code: kit.code,
         name: kit.name,
         status: kit.status,
+        materials: kit.materials ?? [],
+        otherNote: kit.otherNote ?? null,
       })))
     } catch {
       // silent
@@ -834,6 +846,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
       setIsUrgent(loaded.isUrgent)
       setSalesEmployees(prev => mergeEmployeeOption(prev, loaded.salesEmployee))
       setTechnicalEmployees(prev => mergeEmployeeOption(prev, loaded.technicalEmployee))
+      setSampleKind(loaded.sampleKind ?? '')
       setSubstrateType(loaded.substrateType)
       setSamplePanelRequirement(loaded.samplePanelRequirement)
       setSampleOilRequirement(loaded.sampleOilRequirement)
@@ -955,6 +968,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
       salesEmployeeId: salesEmployeeId || null,
       technicalEmployeeId: technicalEmployeeId || null,
       isUrgent,
+      sampleKind,
       substrateType,
       samplePanelRequirement,
       sampleOilRequirement,
@@ -1160,6 +1174,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
         <SampleOrderPrintView
           order={order}
           isUrgent={isUrgent}
+          sampleKind={sampleKind}
           substrateType={substrateType}
           samplePanelRequirement={samplePanelRequirement}
           sampleOilRequirement={sampleOilRequirement}
@@ -1369,23 +1384,39 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
             </div>
           </div>
         </Field>
-        <Field label="素材选择">
-          <input
-            list="sample-order-substrate-options"
-            value={substrateType}
-            disabled={isReadOnly}
-            onChange={e => setSubstrateType(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg text-sm outline-none disabled:opacity-60 max-w-md"
-            style={inputStyle()}
-            placeholder="选择或输入自定义素材"
-            autoComplete="off"
-          />
-          <datalist id="sample-order-substrate-options">
-            {SUBSTRATE_OPTIONS.map(material => (
-              <option key={material} value={material} />
-            ))}
-          </datalist>
-        </Field>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="素材选择">
+            <input
+              list="sample-order-substrate-options"
+              value={substrateType}
+              disabled={isReadOnly}
+              onChange={e => setSubstrateType(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none disabled:opacity-60"
+              style={inputStyle()}
+              placeholder="选择或输入自定义素材"
+              autoComplete="off"
+            />
+            <datalist id="sample-order-substrate-options">
+              {SUBSTRATE_OPTIONS.map(material => (
+                <option key={material} value={material} />
+              ))}
+            </datalist>
+          </Field>
+          <Field label="打样种类">
+            <select
+              value={sampleKind}
+              disabled={isReadOnly}
+              onChange={e => setSampleKind(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none disabled:opacity-60"
+              style={inputStyle()}
+            >
+              <option value="">请选择打样种类...</option>
+              {SAMPLE_KIND_OPTIONS.map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
         <Field label="样板要求">
           <input
             value={samplePanelRequirement}

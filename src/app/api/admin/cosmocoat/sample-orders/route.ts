@@ -26,6 +26,7 @@ const orderSchema = z.object({
   salesEmployeeId: nullableIdSchema,
   technicalEmployeeId: nullableIdSchema,
   isUrgent: z.coerce.boolean().optional().default(false),
+  sampleKind: z.string().trim().max(50).optional().default(''),
   substrateType: z.string().trim().max(200).optional().default(''),
   samplePanelRequirement: z.string().trim().max(1000).optional().default(''),
   sampleOilRequirement: z.string().trim().max(1000).optional().default(''),
@@ -72,6 +73,7 @@ export async function GET(req: NextRequest) {
       ? {
           OR: [
             { code: { contains: q, mode: 'insensitive' } },
+            { sampleKind: { contains: q, mode: 'insensitive' } },
             { substrateType: { contains: q, mode: 'insensitive' } },
             { samplePanelRequirement: { contains: q, mode: 'insensitive' } },
             { sampleOilRequirement: { contains: q, mode: 'insensitive' } },
@@ -169,6 +171,7 @@ export async function POST(req: NextRequest) {
       salesEmployeeId,
       technicalEmployeeId,
       isUrgent: parsed.data.isUrgent,
+      sampleKind: parsed.data.sampleKind,
       substrateType: parsed.data.substrateType,
       samplePanelRequirement: parsed.data.samplePanelRequirement,
       sampleOilRequirement: parsed.data.sampleOilRequirement,

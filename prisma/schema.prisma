@@ -2279,6 +2279,7 @@ model CosSampleOrder {
   technicalEmployeeId       String?
   isUrgent                  Boolean              @default(false)
   status                    CosSampleOrderStatus @default(DRAFT)
+  sampleKind                String               @default("")
   substrateType             String               @default("")
   samplePanelRequirement    String               @default("")
   sampleOilRequirement      String               @default("")

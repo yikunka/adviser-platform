@@ -96,6 +96,20 @@ function formatFileSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+function isImageFile(file: Pick<CosEmployeeFileRow, 'mimeType' | 'fileName'>) {
+  return file.mimeType.startsWith('image/') || /\.(jpe?g|png|webp)$/i.test(file.fileName)
+}
+
+function isPdfFile(file: Pick<CosEmployeeFileRow, 'mimeType' | 'fileName'>) {
+  return file.mimeType === 'application/pdf' || /\.pdf$/i.test(file.fileName)
+}
+
+function isWordFile(file: Pick<CosEmployeeFileRow, 'mimeType' | 'fileName'>) {
+  return file.mimeType === 'application/msword'
+    || file.mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    || /\.docx?$/i.test(file.fileName)
+}
+
 async function uploadEmployeeFileRequest(
   employeeId: string,
   fileType: CosEmployeeFileType,
@@ -225,8 +239,47 @@ function EmployeeFilesSection({
 }) {
   const [uploading, setUploading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [previewFile, setPreviewFile] = useState<CosEmployeeFileRow | null>(null)
+  const [previewUrl, setPreviewUrl] = useState('')
+  const [officePreviewUrl, setOfficePreviewUrl] = useState('')
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewError, setPreviewError] = useState('')
   const [notes, setNotes] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+
+  async function openPreview(file: CosEmployeeFileRow) {
+    setPreviewFile(file)
+    setPreviewError('')
+    setOfficePreviewUrl('')
+    const inlineUrl = fileUrl(file.storageKey, file.fileName)
+    setPreviewUrl(inlineUrl)
+
+    if (!isWordFile(file)) return
+
+    setPreviewLoading(true)
+    try {
+      const res = await fetch(`/api/admin/cosmocoat/employees/${employeeId}/files/${file.id}/preview`)
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? '预览链接生成失败')
+      if (!data.isPublicPreviewUrl) {
+        setPreviewError('当前文件存储地址不是公开可访问链接，Word 在线预览不可用。请下载后查看。')
+        return
+      }
+      setOfficePreviewUrl(`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(data.url)}`)
+    } catch (err) {
+      setPreviewError(err instanceof Error ? err.message : '预览链接生成失败')
+    } finally {
+      setPreviewLoading(false)
+    }
+  }
+
+  function closePreview() {
+    setPreviewFile(null)
+    setPreviewUrl('')
+    setOfficePreviewUrl('')
+    setPreviewError('')
+    setPreviewLoading(false)
+  }
 
   async function handleUpload(fileList: FileList | null) {
     const file = fileList?.[0]
@@ -326,15 +379,14 @@ function EmployeeFilesSection({
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <a
-                  href={fileUrl(file.storageKey, file.fileName)}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={() => void openPreview(file)}
                   className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs"
                   style={{ border: '1px solid #2A2418', color: '#C9A96E' }}
                 >
                   <Eye size={12} /> 查看
-                </a>
+                </button>
                 <a
                   href={fileUrl(file.storageKey, file.fileName, true)}
                   download={file.fileName}
@@ -356,6 +408,70 @@ function EmployeeFilesSection({
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {previewFile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true">
+          <div className="flex h-[88vh] w-full max-w-5xl flex-col rounded-xl border bg-[#0A0A08]" style={{ borderColor: '#2A2418' }}>
+            <div className="flex items-center justify-between gap-3 border-b px-4 py-3" style={{ borderColor: '#2A2418' }}>
+              <div className="min-w-0">
+                <h4 className="truncate text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{previewFile.fileName}</h4>
+                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{formatFileSize(previewFile.fileSize)}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <a
+                  href={fileUrl(previewFile.storageKey, previewFile.fileName, true)}
+                  download={previewFile.fileName}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs"
+                  style={{ border: '1px solid #2A2418', color: '#C9A96E' }}
+                >
+                  <Download size={12} /> 下载
+                </a>
+                <button
+                  type="button"
+                  onClick={closePreview}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs"
+                  style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
+                >
+                  关闭
+                </button>
+              </div>
+            </div>
+            <div className="min-h-0 flex-1 overflow-auto p-4">
+              {isImageFile(previewFile) ? (
+                // eslint-disable-next-line @next/next/no-img-element -- uploaded staff files are arbitrary external assets.
+                <img src={previewUrl} alt={previewFile.fileName} className="mx-auto max-h-full max-w-full rounded-lg object-contain" />
+              ) : isPdfFile(previewFile) ? (
+                <iframe title={previewFile.fileName} src={previewUrl} className="h-full min-h-[70vh] w-full rounded-lg bg-white" />
+              ) : isWordFile(previewFile) ? (
+                previewLoading ? (
+                  <div className="flex h-full min-h-[60vh] items-center justify-center text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                    正在生成 Word 在线预览...
+                  </div>
+                ) : officePreviewUrl ? (
+                  <iframe title={previewFile.fileName} src={officePreviewUrl} className="h-full min-h-[70vh] w-full rounded-lg bg-white" />
+                ) : (
+                  <div className="flex h-full min-h-[60vh] flex-col items-center justify-center gap-3 text-center text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                    <FileText size={28} style={{ color: '#C9A96E' }} />
+                    <p>{previewError || '该 Word 文件暂时无法在线预览。'}</p>
+                    <a
+                      href={fileUrl(previewFile.storageKey, previewFile.fileName, true)}
+                      download={previewFile.fileName}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs"
+                      style={{ border: '1px solid #2A2418', color: '#C9A96E' }}
+                    >
+                      <Download size={12} /> 下载文件
+                    </a>
+                  </div>
+                )
+              ) : (
+                <div className="flex h-full min-h-[60vh] flex-col items-center justify-center gap-3 text-center text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                  <FileText size={28} style={{ color: '#C9A96E' }} />
+                  <p>该文件格式暂不支持在线预览。</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

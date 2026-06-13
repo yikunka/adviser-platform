@@ -67,6 +67,7 @@ type MovementLineFixture = { accountId: string; debit: number; credit: number }
 
 let reportAccounts: readonly ReportAccountFixture[]
 let periodMovementLines: MovementLineFixture[]
+let priorMovementLines: MovementLineFixture[]
 
 type MockFindManyArgs = {
   distinct?: string[]
@@ -91,6 +92,7 @@ describe('buildFinancialReports journal-line source', () => {
       { accountId: 'bank', debit: 1000, credit: 0 },
       { accountId: 'rev-child', debit: 0, credit: 1000 },
     ]
+    priorMovementLines = []
 
     vi.mocked(prisma.accountBalance.findMany).mockResolvedValue([])
     vi.mocked(prisma.finAccount.findMany).mockImplementation((async (args?: unknown) => {
@@ -113,12 +115,16 @@ describe('buildFinancialReports journal-line source', () => {
       const entryDate = query.where?.entry?.entryDate
       const isPeriodMovement =
         entryDate?.gte?.getTime() === start && entryDate?.lt?.getTime() === end
+      const isOpeningMovement =
+        !entryDate?.gte && entryDate?.lt?.getTime() === start
       const isClosingMovement =
         !entryDate?.gte && entryDate?.lt?.getTime() === end
 
-      if (!isPeriodMovement && !isClosingMovement) return []
+      if (isPeriodMovement) return periodMovementLines
+      if (isOpeningMovement) return priorMovementLines
+      if (isClosingMovement) return [...priorMovementLines, ...periodMovementLines]
 
-      return periodMovementLines
+      return []
     }) as never)
   })
 
@@ -219,5 +225,27 @@ describe('buildFinancialReports journal-line source', () => {
     ])
     expect(reports.incomeStatement.totalRevenue).toBe(-200)
     expect(reports.incomeStatement.netProfit).toBe(-200)
+  })
+
+  it('uses only the selected accounting period movement for the P&L, not cumulative balances', async () => {
+    priorMovementLines = [
+      { accountId: 'bank', debit: 5000, credit: 0 },
+      { accountId: 'rev-child', debit: 0, credit: 5000 },
+    ]
+    periodMovementLines = [
+      { accountId: 'bank', debit: 1200, credit: 0 },
+      { accountId: 'rev-child', debit: 0, credit: 1200 },
+    ]
+
+    const reports = await buildFinancialReports('2026-05', { companyId })
+
+    expect(reports.incomeStatement.totalRevenue).toBe(1200)
+    expect(reports.incomeStatement.netProfit).toBe(1200)
+    expect(reports.incomeStatement.revenue).toEqual([
+      expect.objectContaining({
+        accountId: 'rev-child',
+        amount: 1200,
+      }),
+    ])
   })
 })
