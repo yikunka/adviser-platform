@@ -5,6 +5,7 @@ import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
 import { resolveJournalCompanyScope } from '@/lib/financial/company-scope'
+import { assertFinancialManager } from '@/lib/financial/api-guard'
 import {
   journalEntryInclude,
   loadCompanyAccountMap,
@@ -78,6 +79,8 @@ export async function PATCH(
   const isReopeningCancelled = before.status === 'CANCELLED'
   const access = await resolveCompanyAccess(session.user.id, session.user.role)
   if (!before.companyId || !(await assertCompanyAccessible(access, before.companyId))) return apiError('Forbidden', 403)
+  const currentManagerError = await assertFinancialManager(session, before.companyId)
+  if (currentManagerError) return currentManagerError
 
   if (parsed.data.lines) {
     const lineError = validateJournalLines(parsed.data.lines)
@@ -94,6 +97,10 @@ export async function PATCH(
     if (!companyScope.companyId) return apiError('Selected company does not exist.', 400)
   }
   if (!companyScope.companyId) return apiError('Journal entry must be assigned to a company before editing lines.')
+  if (companyScope.companyId !== before.companyId) {
+    const targetManagerError = await assertFinancialManager(session, companyScope.companyId)
+    if (targetManagerError) return targetManagerError
+  }
 
   if (parsed.data.lines) {
     const accountCount = await prisma.finAccount.count({
@@ -175,6 +182,8 @@ export async function DELETE(
   if (before.status === 'CANCELLED') return apiError('Journal entry is already cancelled.')
   const access = await resolveCompanyAccess(session.user.id, session.user.role)
   if (!before.companyId || !(await assertCompanyAccessible(access, before.companyId))) return apiError('Forbidden', 403)
+  const managerError = await assertFinancialManager(session, before.companyId)
+  if (managerError) return managerError
 
   const entry = await prisma.$transaction(async tx => {
     await tx.ledger.deleteMany({ where: { entryId: id } })

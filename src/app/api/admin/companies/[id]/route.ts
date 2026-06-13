@@ -17,6 +17,7 @@ const updateSchema = z.object({
   serviceTier: z.enum(['BASIC', 'PROFESSIONAL', 'PREMIUM']).optional(),
   financialEnabled: z.boolean().optional(),
   assignedStaffId: z.string().cuid().optional().nullable(),
+  financialManagerId: z.string().cuid().optional().nullable(),
   staffUserIds: z.array(z.string().cuid()).optional(),
   clientUserId: z.string().cuid().optional().nullable(),
 })
@@ -48,6 +49,7 @@ export async function GET(
       },
       auditLogs: { orderBy: { createdAt: 'desc' }, take: 20 },
       assignedStaff: { select: { nameEn: true, email: true } },
+      financialManager: { select: { id: true, nameEn: true, email: true, role: true } },
       staffAssignments: {
         orderBy: { createdAt: 'asc' },
         include: { user: { select: { id: true, nameEn: true, email: true, role: true } } },
@@ -95,6 +97,20 @@ export async function PATCH(
     })
     if (staffCount !== uniqueStaffIds.length) {
       return NextResponse.json({ error: 'Invalid staff assignment' }, { status: 400 })
+    }
+  }
+
+  if (parsed.data.financialManagerId) {
+    const manager = await prisma.user.findFirst({
+      where: {
+        id: parsed.data.financialManagerId,
+        role: { in: ['STAFF', 'COMPLIANCE', 'SUPER_ADMIN'] },
+        isActive: true,
+      },
+      select: { id: true },
+    })
+    if (!manager) {
+      return NextResponse.json({ error: 'Invalid financial manager' }, { status: 400 })
     }
   }
 

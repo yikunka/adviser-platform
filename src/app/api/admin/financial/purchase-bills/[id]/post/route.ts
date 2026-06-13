@@ -10,7 +10,7 @@ export async function PUT(_req: NextRequest, { params }: { params: Promise<{ id:
   const before = await prisma.purchaseBill.findUnique({ where: { id }, select: { companyId: true } })
   if (!before) return apiError('账单不存在。', 404)
 
-  const guard = await guardFinancialCompany(before.companyId)
+  const guard = await guardFinancialCompany(before.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   try {

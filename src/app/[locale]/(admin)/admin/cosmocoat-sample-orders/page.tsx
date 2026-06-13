@@ -7,6 +7,7 @@ import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { FlaskConical, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { formatWeight } from '@/lib/cosmocoat/recipes'
+import { useSearchParams } from 'next/navigation'
 
 type EmployeeSummary = {
   id: string
@@ -73,6 +74,8 @@ const STATUS_STYLE: Record<SampleOrderRow['status'], { bg: string; text: string 
   COMPLETED: { bg: 'rgba(16,185,129,0.15)', text: '#10b981' },
 }
 
+const SAMPLE_ORDER_STATUS_FILTERS = new Set(['DRAFT', 'IN_PROGRESS', 'COMPLETED'])
+
 function inputStyle(): React.CSSProperties {
   return {
     background: '#0E0E0A',
@@ -88,14 +91,25 @@ function formatEmployee(employee: EmployeeSummary | null): string {
 
 export default function AdminCosmoCoatSampleOrdersPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [items, setItems] = useState<SampleOrderRow[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    const value = new URLSearchParams(window.location.search).get('status')?.trim() ?? ''
+    return SAMPLE_ORDER_STATUS_FILTERS.has(value) ? value : ''
+  })
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const value = searchParams.get('status')?.trim() ?? ''
+    const nextFilter = SAMPLE_ORDER_STATUS_FILTERS.has(value) ? value : ''
+    setStatusFilter(current => current === nextFilter ? current : nextFilter)
+  }, [searchParams])
 
   const fetchItems = useCallback(async () => {
     setLoading(true)

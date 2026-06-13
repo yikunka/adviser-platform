@@ -149,6 +149,8 @@ type Company = {
   clientUserId: string | null
   pendingClientEmail: string | null
   clientUser: { nameEn: string; email: string } | null
+  financialManagerId: string | null
+  financialManager: StaffOption | null
   staffAssignments: { user: StaffOption }[]
   dateOfIncorporation: string | null
   registeredAddress: string | null
@@ -347,6 +349,7 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
     status: company.status,
     serviceTier: '',
     financialEnabled: company.financialEnabled,
+    financialManagerId: company.financialManagerId ?? '',
     staffUserIds: company.staffAssignments?.map(assignment => assignment.user.id) ?? [],
   })
 
@@ -405,6 +408,7 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
         nameEn: form.nameEn,
         status: form.status,
         financialEnabled: form.financialEnabled,
+        financialManagerId: form.financialManagerId || null,
         staffUserIds: form.staffUserIds,
       }
       if (form.nameZh) body.nameZh = form.nameZh
@@ -551,6 +555,25 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
       <p className="text-xs" style={{ color: '#7A7060', marginTop: -8 }}>
         When disabled, this company is hidden from the financial admin scope.
       </p>
+      <div>
+        <label style={labelStyle}>Financial Manager</label>
+        <select
+          value={form.financialManagerId}
+          onChange={e => set('financialManagerId', e.target.value)}
+          disabled={staffLoading || saving || !form.financialEnabled}
+          style={fieldStyle}
+        >
+          <option value="" style={{ background: '#141414' }}>Assign later</option>
+          {staffOptions.map(staff => (
+            <option key={staff.id} value={staff.id} style={{ background: '#141414' }}>
+              {staff.nameEn} — {staff.role} · {staff.email}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-xs" style={{ color: '#7A7060' }}>
+          Only this assigned manager can perform financial operations for the company; Super Admin can still administer assignments.
+        </p>
+      </div>
       <div>
         <label style={labelStyle}>Staff Access</label>
         <div className="rounded-md border border-[#2A2418] bg-[#0A0A0A] p-3">

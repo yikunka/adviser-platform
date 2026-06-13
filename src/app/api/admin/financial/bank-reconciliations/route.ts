@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   })
   if (!bankAccount) return apiError('银行账户不存在。', 404)
 
-  const guard = await guardFinancialCompany(bankAccount.companyId)
+  const guard = await guardFinancialCompany(bankAccount.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const reconciliations = await prisma.bankReconciliation.findMany({
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   })
   if (!bankAccount) return apiError('银行账户不存在。', 404)
 
-  const guard = await guardFinancialCompany(bankAccount.companyId)
+  const guard = await guardFinancialCompany(bankAccount.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const inProgress = await prisma.bankReconciliation.findFirst({

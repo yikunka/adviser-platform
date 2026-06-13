@@ -10,6 +10,7 @@ import {
   assertCompanyAccessible,
   resolveCompanyAccess,
 } from '@/lib/company-access'
+import { assertFinancialManager } from '@/lib/financial/api-guard'
 import { generateVoucherNo, parseYmdDate, periodFromDate, validateBalance } from '@/lib/financial/utils'
 
 function apiError(error: string, status = 400) {
@@ -101,6 +102,8 @@ export async function POST(req: NextRequest) {
   }
   const companyScope = await resolveJournalCompanyScope(parsed.data.companyId)
   if (!companyScope.companyId) return apiError('Selected company does not exist.', 400)
+  const managerError = await assertFinancialManager(session!, companyScope.companyId)
+  if (managerError) return managerError
 
   const accountCount = await prisma.finAccount.count({
     where: { companyId: companyScope.companyId, id: { in: parsed.data.lines.map(line => line.accountId) } },

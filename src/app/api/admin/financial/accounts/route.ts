@@ -13,6 +13,7 @@ import { roundMoney, signedLineAmount } from '@/lib/financial/utils'
 import { calculateYearToDateAmount } from '@/lib/financial/year-to-date'
 import { ensureDefaultChartOfAccounts } from '@/lib/financial/default-chart-of-accounts'
 import { isCreditNormalAccountType } from '@/lib/financial/account-types'
+import { assertFinancialManager } from '@/lib/financial/api-guard'
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
@@ -125,6 +126,8 @@ export async function POST(req: NextRequest) {
   if (!(await assertCompanyAccessible(access, parsed.data.companyId))) return apiError('Forbidden', 403)
   const companyScope = await resolveJournalCompanyScope(parsed.data.companyId)
   if (!companyScope.companyId) return apiError('Selected company does not exist.', 400)
+  const managerError = await assertFinancialManager(session!, companyScope.companyId)
+  if (managerError) return managerError
 
   const existing = await prisma.finAccount.findFirst({
     where: { companyId: companyScope.companyId, code: parsed.data.code },

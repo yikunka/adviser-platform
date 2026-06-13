@@ -7,7 +7,7 @@ import { parseYmdDate, roundMoney } from '@/lib/financial/utils'
 /** AR / AP 账龄报表：?companyId=&side=ar|ap&asOf=YYYY-MM-DD */
 export async function GET(req: NextRequest) {
   const companyId = req.nextUrl.searchParams.get('companyId')
-  const guard = await guardFinancialCompany(companyId)
+  const guard = await guardFinancialCompany(companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const side = req.nextUrl.searchParams.get('side') === 'ap' ? 'ap' : 'ar'

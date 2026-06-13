@@ -19,6 +19,7 @@ type Company = {
   financialEnabled: boolean
   annualReturnDate?: string
   assignedStaff?: { nameEn: string }
+  financialManager?: { nameEn: string; email: string } | null
   clientUser?: { nameEn: string; email: string }
 }
 
@@ -163,6 +164,11 @@ export default function CompaniesPage() {
                         }}
                       />
                     </button>
+                    {c.financialEnabled && (
+                      <p className="mt-1 text-[11px]" style={{ color: c.financialManager ? '#7A7060' : '#ef4444' }}>
+                        {c.financialManager?.nameEn ?? '未指派财务管理员'}
+                      </p>
+                    )}
                   </td>
                   <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
                     {c.annualReturnDate ? new Date(c.annualReturnDate).toLocaleDateString() : '—'}

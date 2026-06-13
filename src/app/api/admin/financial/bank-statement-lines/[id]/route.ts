@@ -22,7 +22,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!line) return apiError('流水行不存在。', 404)
 
   const companyId = line.statement.bankAccount.companyId
-  const guard = await guardFinancialCompany(companyId)
+  const guard = await guardFinancialCompany(companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const body = await req.json().catch(() => null)

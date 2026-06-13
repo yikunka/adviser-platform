@@ -11,7 +11,7 @@ import { isDimensionType } from '@/lib/financial/dimensions'
  */
 export async function GET(req: NextRequest) {
   const companyId = req.nextUrl.searchParams.get('companyId')
-  const guard = await guardFinancialCompany(companyId)
+  const guard = await guardFinancialCompany(companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const type = req.nextUrl.searchParams.get('type')

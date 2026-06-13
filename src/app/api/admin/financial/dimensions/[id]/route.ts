@@ -13,7 +13,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const before = await delegate.findUnique({ where: { id } })
   if (!before) return apiError('维度不存在。', 404)
 
-  const guard = await guardFinancialCompany(before.companyId)
+  const guard = await guardFinancialCompany(before.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const body = await req.json().catch(() => null)
@@ -38,7 +38,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const before = await delegate.findUnique({ where: { id } })
   if (!before) return apiError('维度不存在。', 404)
 
-  const guard = await guardFinancialCompany(before.companyId)
+  const guard = await guardFinancialCompany(before.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   try {

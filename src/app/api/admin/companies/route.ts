@@ -99,6 +99,7 @@ export async function GET(req: NextRequest) {
         where: { id: { in: ids } },
         include: {
           assignedStaff: { select: { nameEn: true } },
+          financialManager: { select: { nameEn: true, email: true } },
           clientUser: { select: { nameEn: true, email: true } },
         },
       }),
@@ -117,6 +118,7 @@ export async function GET(req: NextRequest) {
       orderBy: [{ companyCode: 'asc' }, { createdAt: 'desc' }],
       include: {
         assignedStaff: { select: { nameEn: true } },
+        financialManager: { select: { nameEn: true, email: true } },
         clientUser: { select: { nameEn: true, email: true } },
       },
     }),

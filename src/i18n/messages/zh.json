@@ -715,6 +715,14 @@
           "CANCELLED": "已取消"
         }
       },
+      "cosmocoat": {
+        "title": "CosmoCoat 打樣與配方",
+        "subtitle": "快速查看待審批配方變更與打樣單進度。",
+        "viewOperations": "查看打樣單",
+        "pendingRecipeChanges": "待審批配方變更",
+        "draftSampleOrders": "草稿打樣單",
+        "inProgressSampleOrders": "進行中打樣單"
+      },
       "recentActivity": "最近活動",
       "noActivity": "暫無活動記錄。"
     },

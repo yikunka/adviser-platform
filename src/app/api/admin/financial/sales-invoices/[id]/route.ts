@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const invoice = await prisma.salesInvoice.findUnique({ where: { id }, include: salesInvoiceInclude })
   if (!invoice) return apiError('发票不存在。', 404)
 
-  const guard = await guardFinancialCompany(invoice.companyId)
+  const guard = await guardFinancialCompany(invoice.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   return NextResponse.json({ invoice: serializeSalesInvoice(invoice) })
@@ -26,7 +26,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const before = await prisma.salesInvoice.findUnique({ where: { id }, select: { companyId: true } })
   if (!before) return apiError('发票不存在。', 404)
 
-  const guard = await guardFinancialCompany(before.companyId)
+  const guard = await guardFinancialCompany(before.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const body = await req.json().catch(() => null)
@@ -49,7 +49,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const before = await prisma.salesInvoice.findUnique({ where: { id }, select: { companyId: true, invoiceNo: true } })
   if (!before) return apiError('发票不存在。', 404)
 
-  const guard = await guardFinancialCompany(before.companyId)
+  const guard = await guardFinancialCompany(before.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   try {

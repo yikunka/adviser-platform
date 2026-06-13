@@ -8,6 +8,7 @@ import { isDescendantAccount } from '@/lib/financial/account-tree'
 import { accountUpdateSchema } from '@/lib/financial/schemas'
 import { serializeAccount } from '@/lib/financial/serializers'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
+import { assertFinancialManager } from '@/lib/financial/api-guard'
 import { canEditEnteredBalances } from '@/lib/financial/opening-balance'
 import { signedLineAmount } from '@/lib/financial/utils'
 import { calculateYearToDateAmount } from '@/lib/financial/year-to-date'
@@ -80,6 +81,8 @@ export async function PATCH(
 
   const access = await resolveCompanyAccess(session.user.id, session.user.role)
   if (!(await assertCompanyAccessible(access, before.companyId))) return apiError('Forbidden', 403)
+  const managerError = await assertFinancialManager(session, before.companyId)
+  if (managerError) return managerError
 
   if (parsed.data.code && parsed.data.code !== before.code) {
     const conflict = await prisma.finAccount.findFirst({
@@ -246,6 +249,8 @@ export async function DELETE(
   if (!before.companyId) return apiError('Legacy shared accounts cannot be deleted from a company ledger.', 400)
   const access = await resolveCompanyAccess(session.user.id, session.user.role)
   if (!(await assertCompanyAccessible(access, before.companyId))) return apiError('Forbidden', 403)
+  const managerError = await assertFinancialManager(session, before.companyId)
+  if (managerError) return managerError
   if (before.isSystem) return apiError('System accounts cannot be deleted.', 400)
   if (before._count.journalLines > 0) {
     return apiError('Account has journal entries and cannot be deleted.', 409)

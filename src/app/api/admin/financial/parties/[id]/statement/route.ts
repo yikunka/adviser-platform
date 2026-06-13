@@ -12,7 +12,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   })
   if (!party) return apiError('往来单位不存在。', 404)
 
-  const guard = await guardFinancialCompany(party.companyId)
+  const guard = await guardFinancialCompany(party.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const side = req.nextUrl.searchParams.get('side') === 'ap' ? 'ap' : 'ar'

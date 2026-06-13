@@ -11,7 +11,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const before = await prisma.party.findUnique({ where: { id } })
   if (!before) return apiError('往来单位不存在。', 404)
 
-  const guard = await guardFinancialCompany(before.companyId)
+  const guard = await guardFinancialCompany(before.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const body = await req.json().catch(() => null)
@@ -48,7 +48,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const before = await prisma.party.findUnique({ where: { id } })
   if (!before) return apiError('往来单位不存在。', 404)
 
-  const guard = await guardFinancialCompany(before.companyId)
+  const guard = await guardFinancialCompany(before.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const [invoiceCount, billCount, paymentCount] = await Promise.all([

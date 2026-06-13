@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const type = req.nextUrl.searchParams.get('type')
   if (!isDimensionType(type)) return apiError('维度类型无效。')
   const companyId = req.nextUrl.searchParams.get('companyId')
-  const guard = await guardFinancialCompany(companyId)
+  const guard = await guardFinancialCompany(companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const includeInactive = req.nextUrl.searchParams.get('includeInactive') === '1'
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   const parsed = dimensionCreateSchema.safeParse(body)
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || '请检查维度表单。')
 
-  const guard = await guardFinancialCompany(parsed.data.companyId)
+  const guard = await guardFinancialCompany(parsed.data.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   try {

@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const bill = await prisma.purchaseBill.findUnique({ where: { id }, include: purchaseBillInclude })
   if (!bill) return apiError('账单不存在。', 404)
 
-  const guard = await guardFinancialCompany(bill.companyId)
+  const guard = await guardFinancialCompany(bill.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   return NextResponse.json({ bill: serializePurchaseBill(bill) })
@@ -26,7 +26,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const before = await prisma.purchaseBill.findUnique({ where: { id }, select: { companyId: true } })
   if (!before) return apiError('账单不存在。', 404)
 
-  const guard = await guardFinancialCompany(before.companyId)
+  const guard = await guardFinancialCompany(before.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const body = await req.json().catch(() => null)
@@ -49,7 +49,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const before = await prisma.purchaseBill.findUnique({ where: { id }, select: { companyId: true, billNo: true } })
   if (!before) return apiError('账单不存在。', 404)
 
-  const guard = await guardFinancialCompany(before.companyId)
+  const guard = await guardFinancialCompany(before.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   try {

@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client'
 import type { Session } from 'next-auth'
 import { requireRole } from '@/lib/auth/rbac'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
+import { prisma } from '@/lib/db/prisma'
 import { MappingNotFoundError } from '@/lib/financial/account-mappings'
 import { PeriodClosedError } from '@/lib/financial/fiscal-periods'
 import { PartyAccountError } from '@/lib/financial/party-accounts'
@@ -18,6 +19,7 @@ export function apiError(error: string, status = 400) {
  */
 export async function guardFinancialCompany(
   companyId: string | null | undefined,
+  options?: { requireManager?: boolean },
 ): Promise<{ session: Session; error?: undefined } | { session?: undefined; error: NextResponse }> {
   const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
   if (error) return { error }
@@ -26,7 +28,37 @@ export async function guardFinancialCompany(
   if (!(await assertCompanyAccessible(access, companyId))) {
     return { error: apiError('Forbidden', 403) }
   }
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { financialEnabled: true, financialManagerId: true },
+  })
+  if (!company) return { error: apiError('Company not found', 404) }
+  if (!company.financialEnabled) return { error: apiError('Financial module is not enabled for this company.', 403) }
+  if (
+    options?.requireManager
+    && session!.user.role !== 'SUPER_ADMIN'
+    && company.financialManagerId !== session!.user.id
+  ) {
+    return { error: apiError('Only the assigned financial manager can perform financial operations for this company.', 403) }
+  }
   return { session: session! }
+}
+
+export async function assertFinancialManager(
+  session: Session,
+  companyId: string | null | undefined,
+): Promise<NextResponse | null> {
+  if (!companyId) return apiError('companyId is required')
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { financialEnabled: true, financialManagerId: true },
+  })
+  if (!company) return apiError('Company not found', 404)
+  if (!company.financialEnabled) return apiError('Financial module is not enabled for this company.', 403)
+  if (session.user.role !== 'SUPER_ADMIN' && company.financialManagerId !== session.user.id) {
+    return apiError('Only the assigned financial manager can perform financial operations for this company.', 403)
+  }
+  return null
 }
 
 /** 业务错误 → 400（带中文 toast）；唯一键冲突 → 409；其余抛给全局。 */

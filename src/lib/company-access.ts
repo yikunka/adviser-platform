@@ -9,7 +9,7 @@ const ADMIN_ROLES: UserRole[] = ['SUPER_ADMIN', 'COMPLIANCE']
 export async function resolveCompanyAccess(userId: string, role: UserRole): Promise<CompanyAccess> {
   if (ADMIN_ROLES.includes(role)) return { kind: 'all' }
 
-  const [assignedCompanies, staffAssignments] = await Promise.all([
+  const [assignedCompanies, staffAssignments, financialManagedCompanies] = await Promise.all([
     prisma.company.findMany({
       where: { assignedStaffId: userId },
       select: { id: true },
@@ -18,11 +18,16 @@ export async function resolveCompanyAccess(userId: string, role: UserRole): Prom
       where: { userId },
       select: { companyId: true },
     }),
+    prisma.company.findMany({
+      where: { financialManagerId: userId },
+      select: { id: true },
+    }),
   ])
 
   const companyIds = Array.from(new Set([
     ...assignedCompanies.map(company => company.id),
     ...staffAssignments.map(assignment => assignment.companyId),
+    ...financialManagedCompanies.map(company => company.id),
   ]))
 
   if (companyIds.length === 0) return { kind: 'all' }

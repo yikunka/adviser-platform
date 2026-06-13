@@ -9,7 +9,7 @@ import { accountMappingUpsertSchema } from '@/lib/financial/schemas'
 /** 返回每个映射键的当前配置（显式配置 / 默认回退 / 缺失）。 */
 export async function GET(req: NextRequest) {
   const companyId = req.nextUrl.searchParams.get('companyId')
-  const guard = await guardFinancialCompany(companyId)
+  const guard = await guardFinancialCompany(companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const [mappings, accounts] = await Promise.all([
@@ -48,7 +48,7 @@ export async function PUT(req: NextRequest) {
     return apiError(parsed.error.issues[0]?.message || '请检查科目映射输入。')
   }
 
-  const guard = await guardFinancialCompany(parsed.data.companyId)
+  const guard = await guardFinancialCompany(parsed.data.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const accountIds = [...new Set(parsed.data.mappings.map(mapping => mapping.accountId))]

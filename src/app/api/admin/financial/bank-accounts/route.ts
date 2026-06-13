@@ -8,7 +8,7 @@ import { serializeBankAccount } from '@/lib/financial/subledger-serializers'
 
 export async function GET(req: NextRequest) {
   const companyId = req.nextUrl.searchParams.get('companyId')
-  const guard = await guardFinancialCompany(companyId)
+  const guard = await guardFinancialCompany(companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const accounts = await prisma.bankAccount.findMany({
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     return apiError(parsed.error.issues[0]?.message || '请检查银行账户表单。')
   }
 
-  const guard = await guardFinancialCompany(parsed.data.companyId)
+  const guard = await guardFinancialCompany(parsed.data.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const glAccount = await prisma.finAccount.findUnique({

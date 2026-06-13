@@ -715,6 +715,14 @@
           "CANCELLED": "Cancelled"
         }
       },
+      "cosmocoat": {
+        "title": "CosmoCoat Samples & Recipes",
+        "subtitle": "Track pending recipe approvals and sample-order progress.",
+        "viewOperations": "View sample orders",
+        "pendingRecipeChanges": "Pending recipe changes",
+        "draftSampleOrders": "Draft sample orders",
+        "inProgressSampleOrders": "In-progress sample orders"
+      },
       "recentActivity": "Recent Activity",
       "noActivity": "No recent activity."
     },

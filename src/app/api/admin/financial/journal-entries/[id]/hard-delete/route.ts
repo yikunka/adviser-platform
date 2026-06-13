@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/rbac'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
 import { prisma } from '@/lib/db/prisma'
+import { assertFinancialManager } from '@/lib/financial/api-guard'
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
@@ -24,6 +25,8 @@ export async function DELETE(
 
   const access = await resolveCompanyAccess(session.user.id, session.user.role)
   if (!entry.companyId || !(await assertCompanyAccessible(access, entry.companyId))) return apiError('无权操作该日记账。', 403)
+  const managerError = await assertFinancialManager(session, entry.companyId)
+  if (managerError) return managerError
 
   await prisma.$transaction(async tx => {
     await tx.ledger.deleteMany({ where: { entryId: id } })

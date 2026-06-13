@@ -92,7 +92,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const workspace = await loadReconciliationWorkspace(id)
   if (!workspace) return apiError('对账不存在。', 404)
 
-  const guard = await guardFinancialCompany(workspace.reconciliation.companyId)
+  const guard = await guardFinancialCompany(workspace.reconciliation.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   return NextResponse.json(workspace)
@@ -104,7 +104,7 @@ export async function PUT(_req: NextRequest, { params }: { params: Promise<{ id:
   const workspace = await loadReconciliationWorkspace(id)
   if (!workspace) return apiError('对账不存在。', 404)
 
-  const guard = await guardFinancialCompany(workspace.reconciliation.companyId)
+  const guard = await guardFinancialCompany(workspace.reconciliation.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   if (workspace.reconciliation.status === 'COMPLETED') return apiError('对账已完成。')

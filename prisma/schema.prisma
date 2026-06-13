@@ -250,6 +250,7 @@ model User {
   assignedCompanies              Company[]                @relation("AssignedStaff")
   companyStaffAssignments        CompanyStaffAssignment[]
   createdCompanyStaffAssignments CompanyStaffAssignment[] @relation("CompanyStaffAssignmentCreator")
+  financialManagedCompanies      Company[]                @relation("FinancialManager")
   createdFinancialReportGroups   FinancialReportGroup[]   @relation("FinancialReportGroupCreator")
   uploadedDocuments              Document[]
   kycReviews                     KeyPerson[]              @relation("KYCReviewer")
@@ -337,11 +338,13 @@ model Company {
   /// Lowercased email: company is pre-assigned until a CLIENT registers with this email
   pendingClientEmail    String?
   assignedStaffId       String?
+  financialManagerId    String?
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 
-  clientUser    User? @relation("ClientCompany", fields: [clientUserId], references: [id])
-  assignedStaff User? @relation("AssignedStaff", fields: [assignedStaffId], references: [id])
+  clientUser        User? @relation("ClientCompany", fields: [clientUserId], references: [id])
+  assignedStaff     User? @relation("AssignedStaff", fields: [assignedStaffId], references: [id])
+  financialManager  User? @relation("FinancialManager", fields: [financialManagerId], references: [id], onDelete: SetNull)
 
   directors              Director[]
   members                Member[]
@@ -377,6 +380,7 @@ model Company {
   bankAccounts           BankAccount[]
 
   @@index([pendingClientEmail])
+  @@index([financialManagerId])
   @@map("companies")
 }
 

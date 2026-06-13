@@ -5,6 +5,7 @@ import { assertPeriodOpen, PeriodClosedError } from '@/lib/financial/fiscal-peri
 import { writeLedgerRows } from '@/lib/financial/ledger-writer'
 import { serializeJournalEntry } from '@/lib/financial/serializers'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
+import { assertFinancialManager } from '@/lib/financial/api-guard'
 
 const journalInclude = {
   company: { select: { id: true, nameEn: true, companyCode: true } },
@@ -32,6 +33,14 @@ export async function postJournalEntryById(id: string, session: Session): Promis
   const access = await resolveCompanyAccess(session.user.id, session.user.role)
   if (!(await assertCompanyAccessible(access, before.companyId))) {
     return { ok: false, error: 'Forbidden', status: 403 }
+  }
+  const managerError = await assertFinancialManager(session, before.companyId)
+  if (managerError) {
+    return {
+      ok: false,
+      error: 'Only the assigned financial manager can perform financial operations for this company.',
+      status: 403,
+    }
   }
   try {
     await assertPeriodOpen(prisma, before.companyId, periodFromEntryDate(before.entryDate))
