@@ -267,28 +267,30 @@ model User {
   sfsCustomersCreated            SfsCustomer[]            @relation("SfsCustomerCreator")
   cosCustomers                   CosCustomer[]            @relation("CosCustomerUser")
   cosCustomersCreated            CosCustomer[]            @relation("CosCustomerCreator")
+  cosSuppliersCreated            CosSupplier[]            @relation("CosSupplierCreator")
   cosJournalEntries              CosTableJournalEntry[]
   financialJournalEntries        JournalEntry[]           @relation("FinancialJournalCreatedBy")
   invoicesCreated                Invoice[]                @relation("InvoiceCreatedBy")
   sfsInvoicesCreated             SfsInvoice[]             @relation("SfsInvoiceCreatedBy")
   sfsStepAttachmentsReviewed     SfsOrderStepAttachment[] @relation("SfsStepAttachmentReviewer")
 
-  fiscalPeriodsClosed     FiscalPeriod[]       @relation("FiscalPeriodClosedBy")
-  salesInvoicesCreated    SalesInvoice[]       @relation("SalesInvoiceCreatedBy")
-  purchaseBillsCreated    PurchaseBill[]       @relation("PurchaseBillCreatedBy")
-  finPaymentsCreated      FinPayment[]         @relation("FinPaymentCreatedBy")
-  finCreditNotesCreated   FinCreditNote[]      @relation("FinCreditNoteCreatedBy")
-  bankStatementsImported  BankStatement[]      @relation("BankStatementImportedBy")
-  bankReconsCreated       BankReconciliation[] @relation("BankReconCreatedBy")
+  fiscalPeriodsClosed    FiscalPeriod[]       @relation("FiscalPeriodClosedBy")
+  salesInvoicesCreated   SalesInvoice[]       @relation("SalesInvoiceCreatedBy")
+  purchaseBillsCreated   PurchaseBill[]       @relation("PurchaseBillCreatedBy")
+  finPaymentsCreated     FinPayment[]         @relation("FinPaymentCreatedBy")
+  finCreditNotesCreated  FinCreditNote[]      @relation("FinCreditNoteCreatedBy")
+  bankStatementsImported BankStatement[]      @relation("BankStatementImportedBy")
+  bankReconsCreated      BankReconciliation[] @relation("BankReconCreatedBy")
 
-  createdProcessKits           CosProcessKit[]       @relation("ProcessKitCreator")
-  updatedProcessKits           CosProcessKit[]       @relation("ProcessKitUpdater")
-  createdSampleOrders          CosSampleOrder[]      @relation("SampleOrderCreator")
-  featureRequests              FeatureRequest[]      @relation("FeatureRequestSubmitter")
-  sfsCustomerContractsUploaded SfsCustomerContract[] @relation("SfsCustomerContractUploader")
-  cosEmployeesCreated          CosEmployee[]         @relation("CosEmployeeCreator")
-  cosEmployeeFilesUploaded     CosEmployeeFile[]     @relation("CosEmployeeFileUploader")
-  cosCustomerBusinessLicensesUploaded CosCustomerBusinessLicense[] @relation("CosCustomerBusinessLicenseUploader")
+  createdProcessKits                  CosProcessKit[]               @relation("ProcessKitCreator")
+  updatedProcessKits                  CosProcessKit[]               @relation("ProcessKitUpdater")
+  createdSampleOrders                 CosSampleOrder[]              @relation("SampleOrderCreator")
+  featureRequests                     FeatureRequest[]              @relation("FeatureRequestSubmitter")
+  sfsCustomerContractsUploaded        SfsCustomerContract[]         @relation("SfsCustomerContractUploader")
+  cosEmployeesCreated                 CosEmployee[]                 @relation("CosEmployeeCreator")
+  cosEmployeeFilesUploaded            CosEmployeeFile[]             @relation("CosEmployeeFileUploader")
+  cosCustomerBusinessLicensesUploaded CosCustomerBusinessLicense[]  @relation("CosCustomerBusinessLicenseUploader")
+  cosSupplierFilesUploaded            CosSupplierFile[]             @relation("CosSupplierFileUploader")
   cosRecipeChangeRequestsSubmitted    CosTableRecipeChangeRequest[] @relation("CosRecipeChangeRequester")
   cosRecipeChangeRequestsReviewed     CosTableRecipeChangeRequest[] @relation("CosRecipeChangeReviewer")
 
@@ -1660,7 +1662,7 @@ model CosTableColorFormula {
   factoryProductId String?
   sourceRecipeId   String?
   colorCode        String                  @default("")
-  customerId        String?
+  customerId       String?
   customerName     String                  @default("")
   technicalOwnerId String?
   targetColor      String                  @default("")
@@ -2147,6 +2149,47 @@ model CosCustomerBusinessLicense {
 }
 
 // ─────────────────────────────────────────────
+// CosmoCoat — Suppliers (供应商管理)
+// ─────────────────────────────────────────────
+
+model CosSupplier {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  contactInfo String?
+  address     String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User?             @relation("CosSupplierCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  files     CosSupplierFile[]
+
+  @@index([name])
+  @@index([code])
+  @@index([createdAt])
+  @@map("cos_suppliers")
+}
+
+model CosSupplierFile {
+  id           String   @id @default(cuid())
+  supplierId   String
+  fileName     String
+  storageKey   String
+  mimeType     String
+  fileSize     Int
+  notes        String?
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  supplier   CosSupplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  uploadedBy User        @relation("CosSupplierFileUploader", fields: [uploadedById], references: [id])
+
+  @@index([supplierId])
+  @@map("cos_supplier_files")
+}
+
+// ─────────────────────────────────────────────
 // CosmoCoat — Employees (员工管理)
 // ─────────────────────────────────────────────
 
@@ -2181,11 +2224,13 @@ model CosEmployee {
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
-  createdBy        User?                     @relation("CosEmployeeCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  files            CosEmployeeFile[]
-  productionOrders CosTableProductionOrder[]
-  technicalColorFormulas CosTableColorFormula[] @relation("CosColorFormulaTechnicalOwner")
-  processTests     CosProcessTest[]          @relation("ProcessTestTechnicalEmployee")
+  createdBy              User?                     @relation("CosEmployeeCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  files                  CosEmployeeFile[]
+  productionOrders       CosTableProductionOrder[]
+  technicalColorFormulas CosTableColorFormula[]    @relation("CosColorFormulaTechnicalOwner")
+  processTests           CosProcessTest[]          @relation("ProcessTestTechnicalEmployee")
+  salesSampleOrders      CosSampleOrder[]          @relation("SampleOrderSalesEmployee")
+  technicalSampleOrders  CosSampleOrder[]          @relation("SampleOrderTechnicalEmployee")
 
   @@index([employeeType])
   @@index([name])
@@ -2226,6 +2271,8 @@ model CosSampleOrder {
   id                        String               @id @default(cuid())
   code                      String               @unique
   customerId                String
+  salesEmployeeId           String?
+  technicalEmployeeId       String?
   status                    CosSampleOrderStatus @default(DRAFT)
   substrateType             String               @default("")
   samplePanelRequirement    String               @default("")
@@ -2239,12 +2286,16 @@ model CosSampleOrder {
   createdAt                 DateTime             @default(now())
   updatedAt                 DateTime             @updatedAt
 
-  customer      CosCustomer                  @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  createdBy     User?                        @relation("SampleOrderCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  processKits   CosSampleOrderProcessKit[]
-  colorFormulas CosSampleOrderColorFormula[]
+  customer          CosCustomer                  @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  salesEmployee     CosEmployee?                 @relation("SampleOrderSalesEmployee", fields: [salesEmployeeId], references: [id], onDelete: SetNull)
+  technicalEmployee CosEmployee?                 @relation("SampleOrderTechnicalEmployee", fields: [technicalEmployeeId], references: [id], onDelete: SetNull)
+  createdBy         User?                        @relation("SampleOrderCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  processKits       CosSampleOrderProcessKit[]
+  colorFormulas     CosSampleOrderColorFormula[]
 
   @@index([customerId])
+  @@index([salesEmployeeId])
+  @@index([technicalEmployeeId])
   @@index([status, createdAt])
   @@map("cos_sample_orders")
 }
@@ -2313,13 +2364,13 @@ model FinAccount {
   ledgerEntries   Ledger[]
   accountBalances AccountBalance[]
 
-  partyArOverrides     Party[]            @relation("PartyArAccount")
-  partyApOverrides     Party[]            @relation("PartyApAccount")
-  accountMappings      AccountMapping[]   @relation("AccountMappingAccount")
-  salesInvoiceLines    SalesInvoiceLine[] @relation("SalesLineRevenueAccount")
-  purchaseBillLines    PurchaseBillLine[] @relation("PurchaseLineExpenseAccount")
-  creditNoteOffsets    FinCreditNote[]    @relation("CreditNoteOffsetAccount")
-  bankAccounts         BankAccount[]      @relation("BankGlAccount")
+  partyArOverrides  Party[]            @relation("PartyArAccount")
+  partyApOverrides  Party[]            @relation("PartyApAccount")
+  accountMappings   AccountMapping[]   @relation("AccountMappingAccount")
+  salesInvoiceLines SalesInvoiceLine[] @relation("SalesLineRevenueAccount")
+  purchaseBillLines PurchaseBillLine[] @relation("PurchaseLineExpenseAccount")
+  creditNoteOffsets FinCreditNote[]    @relation("CreditNoteOffsetAccount")
+  bankAccounts      BankAccount[]      @relation("BankGlAccount")
 
   @@unique([companyId, code])
   @@index([companyId])
@@ -2413,9 +2464,9 @@ model Ledger {
   credit      Decimal  @default(0.0) @db.Decimal(18, 4)
   balance     Decimal  @default(0.0) @db.Decimal(18, 4)
 
-  account             FinAccount          @relation(fields: [accountId], references: [id])
-  entry               JournalEntry?       @relation(fields: [entryId], references: [id])
-  company             Company?            @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  account              FinAccount          @relation(fields: [accountId], references: [id])
+  entry                JournalEntry?       @relation(fields: [entryId], references: [id])
+  company              Company?            @relation(fields: [companyId], references: [id], onDelete: SetNull)
   bankStatementMatches BankStatementLine[] @relation("StatementLineLedger")
 
   @@index([accountId, date, lineNum])
@@ -2750,27 +2801,27 @@ model PaymentAllocation {
 
 /// 贷项通知单（CUSTOMER 冲减应收）/ 借项通知单（SUPPLIER 冲减应付）
 model FinCreditNote {
-  id             String           @id @default(cuid())
-  companyId      String
-  partyId        String
-  kind           CreditNoteKind
-  noteNo         String // CN-YYYYMM-#### / DN-YYYYMM-####
-  status         CreditNoteStatus @default(DRAFT)
-  issueDate      DateTime
-  currency       String           @default("HKD")
-  subtotal       Decimal          @db.Decimal(18, 2)
-  taxRate        Decimal          @default(0) @db.Decimal(5, 4)
-  taxAmount      Decimal          @default(0) @db.Decimal(18, 2)
-  total          Decimal          @db.Decimal(18, 2)
-  amountApplied  Decimal          @default(0) @db.Decimal(18, 2)
-  reason         String           @default("")
+  id              String           @id @default(cuid())
+  companyId       String
+  partyId         String
+  kind            CreditNoteKind
+  noteNo          String // CN-YYYYMM-#### / DN-YYYYMM-####
+  status          CreditNoteStatus @default(DRAFT)
+  issueDate       DateTime
+  currency        String           @default("HKD")
+  subtotal        Decimal          @db.Decimal(18, 2)
+  taxRate         Decimal          @default(0) @db.Decimal(5, 4)
+  taxAmount       Decimal          @default(0) @db.Decimal(18, 2)
+  total           Decimal          @db.Decimal(18, 2)
+  amountApplied   Decimal          @default(0) @db.Decimal(18, 2)
+  reason          String           @default("")
   offsetAccountId String? // 冲减对方科目（收入/费用）；null = 用映射默认
-  journalEntryId String?          @unique
-  createdById    String?
-  postedAt       DateTime?
-  voidedAt       DateTime?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  journalEntryId  String?          @unique
+  createdById     String?
+  postedAt        DateTime?
+  voidedAt        DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   company       Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
   party         Party               @relation(fields: [partyId], references: [id], onDelete: Restrict)

@@ -8,6 +8,18 @@ import { toast } from 'sonner'
 import { FlaskConical, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { formatWeight } from '@/lib/cosmocoat/recipes'
 
+type EmployeeSummary = {
+  id: string
+  code: string
+  name: string
+  employeeType: string
+  position: string | null
+  department: string | null
+  phone: string | null
+  email: string | null
+  isActive: boolean
+}
+
 type SampleOrderRow = {
   id: string
   code: string
@@ -18,6 +30,8 @@ type SampleOrderRow = {
   completedAt: string | null
   createdAt: string
   customer: { id: string; code: string; name: string; phone: string | null }
+  salesEmployee: EmployeeSummary | null
+  technicalEmployee: EmployeeSummary | null
   processKitCount: number
   colorFormulaCount: number
   totalQuantityKg: number
@@ -65,6 +79,11 @@ function inputStyle(): React.CSSProperties {
     border: '1px solid #2A2418',
     color: 'var(--foreground)',
   }
+}
+
+function formatEmployee(employee: EmployeeSummary | null): string {
+  if (!employee) return '—'
+  return `${employee.code} · ${employee.name}${employee.isActive ? '' : '（停用）'}`
 }
 
 export default function AdminCosmoCoatSampleOrdersPage() {
@@ -134,7 +153,7 @@ export default function AdminCosmoCoatSampleOrdersPage() {
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>打样单管理</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-            关联客户，从工艺书与调色配方中选择打样项目；工艺书自动展开工艺流程，调色配方填写数量（kg），跟踪打样进度。
+            关联客户、销售人员与技术负责人员，从工艺书与调色配方中选择打样项目，跟踪打样进度。
           </p>
         </div>
         <Link
@@ -152,7 +171,7 @@ export default function AdminCosmoCoatSampleOrdersPage() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="搜索打样单号、客户..."
+            placeholder="搜索打样单号、客户、人员..."
             className="w-full pl-8 pr-3 py-2 rounded-lg text-sm outline-none"
             style={inputStyle()}
           />
@@ -186,6 +205,8 @@ export default function AdminCosmoCoatSampleOrdersPage() {
                   <th style={th}>打样单号</th>
                   <th style={th}>参考样品</th>
                   <th style={th}>客户</th>
+                  <th style={th}>销售人员</th>
+                  <th style={th}>负责人员</th>
                   <th style={th}>工艺书</th>
                   <th style={th}>调色配方</th>
                   <th style={th}>配方合计</th>
@@ -218,6 +239,8 @@ export default function AdminCosmoCoatSampleOrdersPage() {
                       <span className="font-mono text-xs mr-1.5 opacity-70">{order.customer.code}</span>
                       {order.customer.name}
                     </td>
+                    <td style={td}>{formatEmployee(order.salesEmployee)}</td>
+                    <td style={td}>{formatEmployee(order.technicalEmployee)}</td>
                     <td style={td}>{order.processKitCount}</td>
                     <td style={td}>{order.colorFormulaCount}</td>
                     <td style={td}>{formatWeight(order.totalQuantityKg)} kg</td>

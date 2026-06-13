@@ -12,11 +12,19 @@ import {
   validateColorFormulaIds,
   validateCustomerId,
   validateProcessKitIds,
+  validateSampleOrderEmployeeId,
 } from '@/lib/cosmocoat/sample-orders'
+
+const nullableIdSchema = z.preprocess(
+  value => value === '' ? null : value,
+  z.string().trim().min(1).nullable().optional(),
+)
 
 const orderSchema = z.object({
   code: z.string().trim().min(1).max(32).optional(),
   customerId: z.string().trim().min(1),
+  salesEmployeeId: nullableIdSchema,
+  technicalEmployeeId: nullableIdSchema,
   substrateType: z.string().trim().max(200).optional().default(''),
   samplePanelRequirement: z.string().trim().max(1000).optional().default(''),
   sampleOilRequirement: z.string().trim().max(1000).optional().default(''),
@@ -70,6 +78,10 @@ export async function GET(req: NextRequest) {
             { notes: { contains: q, mode: 'insensitive' } },
             { customer: { name: { contains: q, mode: 'insensitive' } } },
             { customer: { code: { contains: q, mode: 'insensitive' } } },
+            { salesEmployee: { is: { code: { contains: q, mode: 'insensitive' } } } },
+            { salesEmployee: { is: { name: { contains: q, mode: 'insensitive' } } } },
+            { technicalEmployee: { is: { code: { contains: q, mode: 'insensitive' } } } },
+            { technicalEmployee: { is: { name: { contains: q, mode: 'insensitive' } } } },
           ],
         }
       : {}),
@@ -124,6 +136,8 @@ export async function POST(req: NextRequest) {
 
   try {
     await validateCustomerId(parsed.data.customerId)
+    const salesEmployeeId = await validateSampleOrderEmployeeId(parsed.data.salesEmployeeId, 'SALES')
+    const technicalEmployeeId = await validateSampleOrderEmployeeId(parsed.data.technicalEmployeeId, 'TECHNICAL')
     await validateProcessKitIds(processKitIds)
     await validateColorFormulaIds(colorFormulaIds)
 
@@ -152,6 +166,8 @@ export async function POST(req: NextRequest) {
       data: {
         code,
         customerId: parsed.data.customerId,
+        salesEmployeeId,
+        technicalEmployeeId,
         substrateType: parsed.data.substrateType,
         samplePanelRequirement: parsed.data.samplePanelRequirement,
         sampleOilRequirement: parsed.data.sampleOilRequirement,
@@ -179,6 +195,12 @@ export async function POST(req: NextRequest) {
     if (err instanceof Error) {
       if (err.message === 'CUSTOMER_NOT_FOUND') {
         return NextResponse.json({ error: '客户不存在' }, { status: 400 })
+      }
+      if (err.message === 'SALES_EMPLOYEE_NOT_FOUND') {
+        return NextResponse.json({ error: '所选销售人员不是销售类型员工或不存在' }, { status: 400 })
+      }
+      if (err.message === 'TECHNICAL_EMPLOYEE_NOT_FOUND') {
+        return NextResponse.json({ error: '所选负责人员不是技术类型员工或不存在' }, { status: 400 })
       }
       if (err.message === 'PROCESS_KIT_NOT_FOUND') {
         return NextResponse.json({ error: '工艺书不存在' }, { status: 400 })

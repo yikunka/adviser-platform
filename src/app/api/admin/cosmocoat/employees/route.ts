@@ -9,6 +9,7 @@ import {
   getEmployeeById,
   serializeEmployee,
 } from '@/lib/cosmocoat/employees'
+import { COS_EMPLOYEE_FIVE_ELEMENTS, employeeMatchesFiveElement } from '@/lib/cosmocoat/employee-filters'
 import { deleteCosEmployeeFile, uploadCosEmployeeFile, validateCosEmployeeFile } from '@/lib/cosmocoat/employee-files'
 import {
   extractBirthDateFromCosEmployeeIdCard,
@@ -122,6 +123,8 @@ export async function GET(req: NextRequest) {
 
   const q = req.nextUrl.searchParams.get('q')?.trim() ?? ''
   const employeeType = req.nextUrl.searchParams.get('employeeType')?.trim() ?? ''
+  const fiveElement = req.nextUrl.searchParams.get('fiveElement')?.trim() ?? ''
+  const status = req.nextUrl.searchParams.get('status')?.trim() ?? ''
   const activeOnly = req.nextUrl.searchParams.get('activeOnly') === 'true'
   const page = Math.max(1, Number(req.nextUrl.searchParams.get('page') ?? '1') || 1)
   const limit = Math.min(200, Math.max(1, Number(req.nextUrl.searchParams.get('limit') ?? String(PAGE_SIZE)) || PAGE_SIZE))
@@ -141,21 +144,32 @@ export async function GET(req: NextRequest) {
   if (employeeType && ['INTERNAL', 'SALES', 'PRODUCTION', 'TECHNICAL'].includes(employeeType)) {
     where.employeeType = employeeType as CosEmployeeType
   }
-  if (activeOnly) where.isActive = true
+  if (status === 'active') {
+    where.isActive = true
+  } else if (status === 'inactive') {
+    where.isActive = false
+  } else if (activeOnly) {
+    where.isActive = true
+  }
+
+  const normalizedFiveElement = COS_EMPLOYEE_FIVE_ELEMENTS.includes(fiveElement as typeof COS_EMPLOYEE_FIVE_ELEMENTS[number])
+    ? fiveElement
+    : ''
 
   try {
-    const [total, items] = await Promise.all([
-      prisma.cosEmployee.count({ where }),
-      prisma.cosEmployee.findMany({
-        where,
-        orderBy: [{ updatedAt: 'desc' }],
-        skip,
-        take: limit,
-      }),
-    ])
+    const rows = await prisma.cosEmployee.findMany({
+      where,
+      orderBy: [{ updatedAt: 'desc' }],
+    })
+
+    const filtered = rows
+      .map(item => serializeEmployee(item))
+      .filter(item => employeeMatchesFiveElement(item, normalizedFiveElement))
+    const total = filtered.length
+    const items = filtered.slice(skip, skip + limit)
 
     return NextResponse.json({
-      employees: items.map(item => serializeEmployee(item)),
+      employees: items,
       total,
       page,
       pageSize: limit,

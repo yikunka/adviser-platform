@@ -10,10 +10,18 @@ import {
   validateColorFormulaIds,
   validateCustomerId,
   validateProcessKitIds,
+  validateSampleOrderEmployeeId,
 } from '@/lib/cosmocoat/sample-orders'
+
+const nullableIdSchema = z.preprocess(
+  value => value === '' ? null : value,
+  z.string().trim().min(1).nullable().optional(),
+)
 
 const patchSchema = z.object({
   customerId: z.string().trim().min(1).optional(),
+  salesEmployeeId: nullableIdSchema,
+  technicalEmployeeId: nullableIdSchema,
   substrateType: z.string().trim().max(200).optional(),
   samplePanelRequirement: z.string().trim().max(1000).optional(),
   sampleOilRequirement: z.string().trim().max(1000).optional(),
@@ -80,8 +88,10 @@ export async function PATCH(
     parsed.data.processKits !== undefined
     || parsed.data.colorFormulas !== undefined
     || parsed.data.customerId !== undefined
+    || parsed.data.salesEmployeeId !== undefined
+    || parsed.data.technicalEmployeeId !== undefined
   )) {
-    return NextResponse.json({ error: '已完成的打样单不可修改明细或客户' }, { status: 400 })
+    return NextResponse.json({ error: '已完成的打样单不可修改明细、客户或负责人' }, { status: 400 })
   }
 
   if (parsed.data.status && !isValidStatusTransition(current.status, parsed.data.status)) {
@@ -127,6 +137,27 @@ export async function PATCH(
     } catch {
       return NextResponse.json({ error: '客户不存在' }, { status: 400 })
     }
+  }
+
+  let salesEmployeeId: string | null | undefined
+  let technicalEmployeeId: string | null | undefined
+  try {
+    if (parsed.data.salesEmployeeId !== undefined) {
+      salesEmployeeId = await validateSampleOrderEmployeeId(parsed.data.salesEmployeeId, 'SALES')
+    }
+    if (parsed.data.technicalEmployeeId !== undefined) {
+      technicalEmployeeId = await validateSampleOrderEmployeeId(parsed.data.technicalEmployeeId, 'TECHNICAL')
+    }
+  } catch (err) {
+    if (err instanceof Error) {
+      if (err.message === 'SALES_EMPLOYEE_NOT_FOUND') {
+        return NextResponse.json({ error: '所选销售人员不是销售类型员工或不存在' }, { status: 400 })
+      }
+      if (err.message === 'TECHNICAL_EMPLOYEE_NOT_FOUND') {
+        return NextResponse.json({ error: '所选负责人员不是技术类型员工或不存在' }, { status: 400 })
+      }
+    }
+    throw err
   }
 
   const nextStatus = parsed.data.status ?? current.status
@@ -177,6 +208,8 @@ export async function PATCH(
         where: { id },
         data: {
           ...(parsed.data.customerId ? { customerId: parsed.data.customerId } : {}),
+          ...(parsed.data.salesEmployeeId !== undefined ? { salesEmployeeId } : {}),
+          ...(parsed.data.technicalEmployeeId !== undefined ? { technicalEmployeeId } : {}),
           ...(parsed.data.substrateType !== undefined ? { substrateType: parsed.data.substrateType } : {}),
           ...(parsed.data.samplePanelRequirement !== undefined ? { samplePanelRequirement: parsed.data.samplePanelRequirement } : {}),
           ...(parsed.data.sampleOilRequirement !== undefined ? { sampleOilRequirement: parsed.data.sampleOilRequirement } : {}),

@@ -7,6 +7,7 @@ import { Link } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { Plus, Search, UserRound } from 'lucide-react'
 import type { CosEmployeeRow } from '@/lib/cosmocoat/employees'
+import { COS_EMPLOYEE_FIVE_ELEMENTS } from '@/lib/cosmocoat/employee-filters'
 import { COS_EMPLOYEE_TYPE_LABELS } from '@/lib/cosmocoat/employee-labels'
 import type { CosEmployeeType } from '@prisma/client'
 
@@ -41,6 +42,17 @@ const TYPE_OPTIONS: { value: CosEmployeeType | ''; label: string }[] = [
   { value: 'PRODUCTION', label: COS_EMPLOYEE_TYPE_LABELS.PRODUCTION },
   { value: 'TECHNICAL', label: COS_EMPLOYEE_TYPE_LABELS.TECHNICAL },
 ]
+
+const FIVE_ELEMENT_OPTIONS = [
+  { value: '', label: '全部五行' },
+  ...COS_EMPLOYEE_FIVE_ELEMENTS.map(value => ({ value, label: value })),
+]
+
+const STATUS_OPTIONS = [
+  { value: '', label: '全部状态' },
+  { value: 'active', label: '活跃' },
+  { value: 'inactive', label: '停用' },
+] as const
 
 function formatDate(value: string | null) {
   if (!value) return '—'
@@ -86,6 +98,8 @@ export default function AdminCosmoCoatEmployeesPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [employeeType, setEmployeeType] = useState<CosEmployeeType | ''>('')
+  const [fiveElement, setFiveElement] = useState('')
+  const [status, setStatus] = useState('')
 
   const fetchEmployees = useCallback(async () => {
     setLoading(true)
@@ -93,6 +107,8 @@ export default function AdminCosmoCoatEmployeesPage() {
       const params = new URLSearchParams({ page: String(page) })
       if (search.trim()) params.set('q', search.trim())
       if (employeeType) params.set('employeeType', employeeType)
+      if (fiveElement) params.set('fiveElement', fiveElement)
+      if (status) params.set('status', status)
       const res = await fetch(`/api/admin/cosmocoat/employees?${params}`)
       const data = await res.json()
       if (!res.ok) {
@@ -107,7 +123,7 @@ export default function AdminCosmoCoatEmployeesPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search, employeeType])
+  }, [page, search, employeeType, fiveElement, status])
 
   useEffect(() => {
     const timer = setTimeout(fetchEmployees, search ? 300 : 0)
@@ -116,7 +132,7 @@ export default function AdminCosmoCoatEmployeesPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [search, employeeType])
+  }, [search, employeeType, fiveElement, status])
 
   return (
     <div className="p-6 space-y-6">
@@ -158,6 +174,26 @@ export default function AdminCosmoCoatEmployeesPage() {
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
+        <select
+          value={fiveElement}
+          onChange={e => setFiveElement(e.target.value)}
+          className="rounded-lg px-3 py-2.5 text-sm outline-none"
+          style={{ background: '#0E0E0A', border: '1px solid #2A2418', color: 'var(--foreground)' }}
+        >
+          {FIVE_ELEMENT_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        <select
+          value={status}
+          onChange={e => setStatus(e.target.value)}
+          className="rounded-lg px-3 py-2.5 text-sm outline-none"
+          style={{ background: '#0E0E0A', border: '1px solid #2A2418', color: 'var(--foreground)' }}
+        >
+          {STATUS_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
       </div>
 
       <div style={card}>
@@ -181,7 +217,7 @@ export default function AdminCosmoCoatEmployeesPage() {
                     <div className="flex flex-col items-center gap-2">
                       <UserRound size={28} style={{ color: '#C9A96E', opacity: 0.45 }} />
                       <span style={{ color: 'var(--muted-foreground)' }}>
-                        {search || employeeType ? '没有匹配的员工记录' : '暂无员工，点击「新建员工」添加'}
+                        {search || employeeType || fiveElement || status ? '没有匹配的员工记录' : '暂无员工，点击「新建员工」添加'}
                       </span>
                     </div>
                   </td>

@@ -1,6 +1,7 @@
 import type { CosEmployeeFileType, CosEmployeeType } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
 import { resolveCosEmployeeBirthInfo, type CosEmployeeBirthInfo } from '@/lib/cosmocoat/employee-birth-info'
+export { COS_EMPLOYEE_FIVE_ELEMENTS, type CosEmployeeFiveElement, employeeMatchesFiveElement } from '@/lib/cosmocoat/employee-filters'
 export { COS_EMPLOYEE_FILE_TYPE_LABELS, COS_EMPLOYEE_TYPE_LABELS } from '@/lib/cosmocoat/employee-labels'
 
 export type CosEmployeeFileRow = {

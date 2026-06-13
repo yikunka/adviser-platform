@@ -28,6 +28,17 @@ import {
 import type { SampleOrderRow } from '@/lib/cosmocoat/sample-orders'
 
 type CustomerOption = { id: string; code: string; name: string }
+type EmployeeOption = {
+  id: string
+  code: string
+  name: string
+  employeeType: string
+  position: string | null
+  department: string | null
+  phone: string | null
+  email: string | null
+  isActive: boolean
+}
 type ProcessKitOption = { id: string; code: string; name: string; status: string }
 
 type ProcessKitProductRow = {
@@ -135,6 +146,16 @@ function formatFormulaLineTotalCost(line: ColorFormulaLine): string {
   const quantityKg = Number(line.quantityKg)
   if (line.unitCost == null || !Number.isFinite(quantityKg) || quantityKg <= 0) return '—'
   return formatMoney(line.unitCost * quantityKg)
+}
+
+function formatEmployeeOption(employee: EmployeeOption | null | undefined): string {
+  if (!employee) return '—'
+  return `${employee.code} · ${employee.name}${employee.isActive ? '' : '（停用）'}`
+}
+
+function mergeEmployeeOption(options: EmployeeOption[], employee: EmployeeOption | null | undefined) {
+  if (!employee || options.some(option => option.id === employee.id)) return options
+  return [employee, ...options]
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -377,6 +398,12 @@ function SampleOrderPrintView({
             <td style={printCell}>{customer.code}</td>
             <td style={printLabelCell}>客户名称</td>
             <td style={printCell}>{customer.name}</td>
+          </tr>
+          <tr>
+            <td style={printLabelCell}>销售人员</td>
+            <td style={printCell}>{formatEmployeeOption(order.salesEmployee)}</td>
+            <td style={printLabelCell}>负责人员</td>
+            <td style={printCell}>{formatEmployeeOption(order.technicalEmployee)}</td>
           </tr>
           <tr>
             <td style={printLabelCell}>联系电话</td>
@@ -663,6 +690,8 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
   const [printing, setPrinting] = useState(false)
   const [order, setOrder] = useState<SampleOrderRow | null>(null)
   const [customerId, setCustomerId] = useState('')
+  const [salesEmployeeId, setSalesEmployeeId] = useState('')
+  const [technicalEmployeeId, setTechnicalEmployeeId] = useState('')
   const [substrateType, setSubstrateType] = useState('')
   const [samplePanelRequirement, setSamplePanelRequirement] = useState('')
   const [sampleOilRequirement, setSampleOilRequirement] = useState('')
@@ -675,6 +704,8 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
   const [colorFormulaLines, setColorFormulaLines] = useState<ColorFormulaLine[]>([])
 
   const [customers, setCustomers] = useState<CustomerOption[]>([])
+  const [salesEmployees, setSalesEmployees] = useState<EmployeeOption[]>([])
+  const [technicalEmployees, setTechnicalEmployees] = useState<EmployeeOption[]>([])
   const [kitOptions, setKitOptions] = useState<ProcessKitOption[]>([])
   const [formulaOptions, setFormulaOptions] = useState<ColorFormulaOption[]>([])
   const [kitSearch, setKitSearch] = useState('')
@@ -697,6 +728,23 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
       const data = await res.json()
       if (!res.ok) return
       setCustomers((data.customers ?? []).map((c: CustomerOption) => ({ id: c.id, code: c.code, name: c.name })))
+    } catch {
+      // silent
+    }
+  }, [])
+
+  const fetchEmployeeOptions = useCallback(async (employeeType: 'SALES' | 'TECHNICAL') => {
+    try {
+      const params = new URLSearchParams({ employeeType, limit: '100' })
+      const res = await fetch(`/api/admin/cosmocoat/sample-orders/picker/employees?${params}`)
+      const data = await res.json()
+      if (!res.ok) return
+      const employees = (data.employees ?? []) as EmployeeOption[]
+      if (employeeType === 'SALES') {
+        setSalesEmployees(employees)
+      } else {
+        setTechnicalEmployees(employees)
+      }
     } catch {
       // silent
     }
@@ -753,6 +801,10 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
       const loaded = data.order as SampleOrderRow
       setOrder(loaded)
       setCustomerId(loaded.customer.id)
+      setSalesEmployeeId(loaded.salesEmployeeId ?? '')
+      setTechnicalEmployeeId(loaded.technicalEmployeeId ?? '')
+      setSalesEmployees(prev => mergeEmployeeOption(prev, loaded.salesEmployee))
+      setTechnicalEmployees(prev => mergeEmployeeOption(prev, loaded.technicalEmployee))
       setSubstrateType(loaded.substrateType)
       setSamplePanelRequirement(loaded.samplePanelRequirement)
       setSampleOilRequirement(loaded.sampleOilRequirement)
@@ -785,6 +837,10 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
   }, [isNew, orderId])
 
   useEffect(() => { fetchCustomers() }, [fetchCustomers])
+  useEffect(() => {
+    fetchEmployeeOptions('SALES')
+    fetchEmployeeOptions('TECHNICAL')
+  }, [fetchEmployeeOptions])
   useEffect(() => { fetchOrder() }, [fetchOrder])
   useEffect(() => {
     const timer = setTimeout(() => fetchKitOptions(kitSearch), kitSearch ? 300 : 0)
@@ -867,6 +923,8 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
     }))
     return {
       customerId,
+      salesEmployeeId: salesEmployeeId || null,
+      technicalEmployeeId: technicalEmployeeId || null,
       substrateType,
       samplePanelRequirement,
       sampleOilRequirement,
@@ -1157,20 +1215,50 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
 
       <div style={card} className="p-5 space-y-4">
         <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>基本信息</h2>
-        <Field label="客户 *">
-          <select
-            value={customerId}
-            disabled={isReadOnly}
-            onChange={e => setCustomerId(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg text-sm outline-none disabled:opacity-60 max-w-md"
-            style={inputStyle()}
-          >
-            <option value="">选择客户...</option>
-            {customers.map(c => (
-              <option key={c.id} value={c.id}>{c.code} · {c.name}</option>
-            ))}
-          </select>
-        </Field>
+        <div className="grid gap-4 md:grid-cols-3">
+          <Field label="客户 *">
+            <select
+              value={customerId}
+              disabled={isReadOnly}
+              onChange={e => setCustomerId(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none disabled:opacity-60"
+              style={inputStyle()}
+            >
+              <option value="">选择客户...</option>
+              {customers.map(c => (
+                <option key={c.id} value={c.id}>{c.code} · {c.name}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="销售人员">
+            <select
+              value={salesEmployeeId}
+              disabled={isReadOnly}
+              onChange={e => setSalesEmployeeId(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none disabled:opacity-60"
+              style={inputStyle()}
+            >
+              <option value="">选择销售人员...</option>
+              {salesEmployees.map(employee => (
+                <option key={employee.id} value={employee.id}>{formatEmployeeOption(employee)}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="负责人员">
+            <select
+              value={technicalEmployeeId}
+              disabled={isReadOnly}
+              onChange={e => setTechnicalEmployeeId(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none disabled:opacity-60"
+              style={inputStyle()}
+            >
+              <option value="">选择负责人员...</option>
+              {technicalEmployees.map(employee => (
+                <option key={employee.id} value={employee.id}>{formatEmployeeOption(employee)}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
         <Field label="参考样品图片">
           <div className="flex flex-wrap items-start gap-4">
             <div

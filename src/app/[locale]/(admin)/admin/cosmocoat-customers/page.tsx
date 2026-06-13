@@ -2,10 +2,10 @@
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { ContactRound, Mail, MapPin, Phone, Plus, Search } from 'lucide-react'
+import { ContactRound, Mail, MapPin, Phone, Plus, Search, Upload } from 'lucide-react'
 import type { CosCustomerRow } from '@/lib/cosmocoat/customers'
 
 const card: React.CSSProperties = {
@@ -44,6 +44,8 @@ export default function AdminCosmoCoatCustomersPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [importing, setImporting] = useState(false)
+  const importInputRef = useRef<HTMLInputElement>(null)
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true)
@@ -75,6 +77,31 @@ export default function AdminCosmoCoatCustomersPage() {
     setPage(1)
   }, [search])
 
+  async function handleImport(fileList: FileList | null) {
+    const file = fileList?.[0]
+    if (!file) return
+
+    setImporting(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/admin/cosmocoat/customers/import', {
+        method: 'POST',
+        body: fd,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? '导入失败')
+      toast.success(`已导入 ${data.imported ?? 0} 位客户${data.skipped ? `，跳过 ${data.skipped} 行` : ''}`)
+      if (importInputRef.current) importInputRef.current.value = ''
+      setPage(1)
+      await fetchCustomers()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '导入失败')
+    } finally {
+      setImporting(false)
+    }
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -84,14 +111,33 @@ export default function AdminCosmoCoatCustomersPage() {
             共 {total} 位客户 · 统一管理原材料采购、配方服务与成品采购客户档案
           </p>
         </div>
-        <Link
-          href="/admin/cosmocoat-customers/new"
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
-          style={{ background: '#C9A96E', color: '#0A0805' }}
-        >
-          <Plus size={16} />
-          新建客户
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            className="hidden"
+            onChange={e => handleImport(e.target.files)}
+          />
+          <button
+            type="button"
+            disabled={importing}
+            onClick={() => importInputRef.current?.click()}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+            style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
+          >
+            <Upload size={16} />
+            {importing ? '导入中...' : '导入表格'}
+          </button>
+          <Link
+            href="/admin/cosmocoat-customers/new"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+            style={{ background: '#C9A96E', color: '#0A0805' }}
+          >
+            <Plus size={16} />
+            新建客户
+          </Link>
+        </div>
       </div>
 
       <div className="relative w-full max-w-md">

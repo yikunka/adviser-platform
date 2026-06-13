@@ -105,7 +105,7 @@ Service invoicing for TCSP professional fees.
 Staff access control.
 - Roles: `SUPER_ADMIN`, `COMPLIANCE`, `STAFF`
 - Per-staff platform access flags (Adviser / SFS Diamond / CosmoCoat)
-- Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, team, feedback, sfs-customers, sfs-orders, sfs-invoices, cosmocoat-* including cosmocoat-customers, cosmocoat-employees, cosmocoat-sample-orders)
+- Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, team, feedback, sfs-customers, sfs-orders, sfs-invoices, cosmocoat-* including cosmocoat-customers, cosmocoat-suppliers, cosmocoat-employees, cosmocoat-sample-orders)
 - Legacy mode: no restrictions; new mode: explicit per-menu grants
 - Create / edit / deactivate staff accounts
 
@@ -282,9 +282,9 @@ Custom color formulations for specific customers or products.
 
 ### Employees (`/admin/cosmocoat-employees`)
 CosmoCoat factory staff registry (内务、销售、生产、技术人员).
-- Employee types: `INTERNAL` (内务人员), `SALES` (销售人员), `PRODUCTION` (生产人员), `TECHNICAL` (技术人员); sales staff data is stored for future customer-order and sample-order workflows
+- Employee types: `INTERNAL` (内务人员), `SALES` (销售人员), `PRODUCTION` (生产人员), `TECHNICAL` (技术人员); sales and technical staff can be assigned to CosmoCoat sample orders
 - Fields: employee code (auto `YG####` if omitted), name, type, phone, email, position, department, ID card number (15- or 18-digit with checksum validation), birth date (auto-filled from ID card on create; manual birth-date edits take precedence over ID card thereafter), system-calculated five element / zodiac, hire date, notes, active status
-- List with search (code / name / phone / email / position / department) and type filter; paginated table shows hire date, complete-year service years (工龄), five element column (五行, auto-calculated from birth date, immediately left of 更新时间), and update time
+- List with search (code / name / phone / email / position / department) plus dropdown filters for employee type, five element (`金` / `木` / `水` / `火` / `土`), and status (active / inactive); results update immediately and the paginated table shows hire date, complete-year service years (工龄), five element column (五行, auto-calculated from birth date, immediately left of 更新时间), and update time
 - Create, view, edit, and delete at `/admin/cosmocoat-employees/[id]`; new at `/admin/cosmocoat-employees/new`
 - Upload, view, download, and delete **劳动合同**, **简历**, and **身份证** files (PDF, Word, JPG, PNG, WEBP; max 10 MB); new employee forms can select files before saving, and creation saves the employee record and selected files together (if file upload fails, the employee is not created)
 - Production orders can assign an active **生产人员**; assigned employee basic info is shown on the production order detail page with a link to the employee profile
@@ -330,24 +330,32 @@ Product application method documentation (產品配套工藝書).
 Unified customer registry for CosmoCoat manufacturing clients (raw material purchases, recipe services, finished goods).
 - Fields: customer code (auto-generated `KH####` if omitted), name, optional linked CosmoCoat platform login account (from Customer Account Management), phone, address, production equipment parameters (free-text multi-line field below address on create/edit form)
 - List with search (code / name / phone / address / linked account email); paginated table
+- Bulk import from Excel/CSV on the list page: upload a table containing customer names only; the system creates customer records and auto-generates `KH####` codes
 - Create, view, edit, and delete customer profiles; detail page at `/admin/cosmocoat-customers/[id]`; new at `/admin/cosmocoat-customers/new`
 - Upload, view, download, and delete **营业执照** files on saved customer profiles (PDF, JPG, PNG, WEBP; max 10 MB); new customers must be saved before uploading
 - Each CosmoCoat platform account can be linked to at most one customer profile
 
+### Suppliers (`/admin/cosmocoat-suppliers`)
+Independent supplier registry for CosmoCoat sourcing; data and permission key are separate from customer management.
+- Fields: supplier code (auto-generated `SC####` if omitted), name, contact information, address
+- List with search (code / name / contact information / address); paginated table
+- Create, view, edit, and delete supplier profiles; detail page at `/admin/cosmocoat-suppliers/[id]`; new at `/admin/cosmocoat-suppliers/new`
+- Upload, view, download, and delete supplier files on saved supplier profiles (PDF, Word, JPG, PNG, WEBP; max 10 MB); new suppliers must be saved before uploading
+
 ### Sample Orders (`/admin/cosmocoat-sample-orders`)
 打样单（样品单）管理，用于客户打样需求的全流程跟踪。
-- List with search (order code / customer) and status filter; columns: reference sample thumbnail (4× enlarged in all statuses), customer, process kit (0 or 1), color-formula count, total color-formula weight (kg), status, creation date
+- List with search (order code / customer / sales employee / technical responsible employee) and status filter; columns: reference sample thumbnail (4× enlarged in all statuses), customer, sales employee, responsible employee, process kit (0 or 1), color-formula count, total color-formula weight (kg), status, creation date
 - Statuses: `DRAFT` → `IN_PROGRESS` → `COMPLETED`
 - Create at `/admin/cosmocoat-sample-orders/new`; detail at `/admin/cosmocoat-sample-orders/[id]`
-- Link to a CosmoCoat customer profile (required)
+- Link to a CosmoCoat customer profile (required), optional sales employee (`SALES` type), and optional responsible employee (`TECHNICAL` type)
 - **One process kit per order** (database unique constraint on `sampleOrderId`); line items also support multiple Color Formulas, each with quantity in kg; no duplicate formulas on the same order
 - Process kit lines do not require a sample weight: adding a kit loads the full process-flow document on expand (performance standards shown with the same Chinese labels as Process Kits, product parameters, complete process flow); **适用材料** (substrate types with readable labels) and **适用产品** (reference factory product names) are always shown on the kit card header without expanding; kit **materials** checkbox selections and `otherNote` for「其他」are included in the applicable-materials summary; only color formulas use quantity (kg)
-- Basic info: customer (required), optional **reference sample image** (max 1, upload to OSS), then order-level fields for **素材选择** (single value from Process Kit substrate presets or custom text), **样板要求**, **样油要求**, **特别工艺(常规不能满足)**, and **notes**; list shows 4× enlarged thumbnail; detail page shows enlarged image (up to 480px height) in all statuses
+- Basic info: customer (required), sales employee dropdown from CosmoCoat Employee Management `SALES` employees, responsible employee dropdown from `TECHNICAL` employees, optional **reference sample image** (max 1, upload to OSS), then order-level fields for **素材选择** (single value from Process Kit substrate presets or custom text), **样板要求**, **样油要求**, **特别工艺(常规不能满足)**, and **notes**; list shows 4× enlarged thumbnail; detail page shows enlarged image (up to 480px height) in all statuses
 - Auto-generated order codes: `YP####` (e.g. `YP0001`)
 - Progress tracking: step indicator (草稿 → 进行中 → 已完成), `startedAt` when moving to IN_PROGRESS, `completedAt` when marked COMPLETED
-- Actions: Save (DRAFT), 开始打样 (→ IN_PROGRESS), 标记完成 (→ COMPLETED); completed orders lock line items and customer but remain viewable
+- Actions: Save (DRAFT), 开始打样 (→ IN_PROGRESS), 标记完成 (→ COMPLETED); completed orders lock line items, customer, and employee assignments but remain viewable
 - Detail page shows scaled color-formula material tables; the on-screen color-formula detail list shows each formula's total cost instead of a quantity column, while process-kit content is shown inline in the 工艺书明细 section when creating or editing
-- **Print** on detail page (`/admin/cosmocoat-sample-orders/[id]`): browser print (A4) exports full order — customer profile, reference sample image, substrate/sample-panel/sample-oil/special-process requirements, notes, process-kit details (applicable materials/products, performance standards, product parameters, process flow), color-formula line items, and scaled material tables; signature row for 打样人员 / 质检确认 / 客户签收
+- **Print** on detail page (`/admin/cosmocoat-sample-orders/[id]`): browser print (A4) exports full order — customer profile, sales and responsible employees, reference sample image, substrate/sample-panel/sample-oil/special-process requirements, notes, process-kit details (applicable materials/products, performance standards, product parameters, process flow), color-formula line items, and scaled material tables; signature row for 打样人员 / 质检确认 / 客户签收
 - Delete allowed for DRAFT and COMPLETED orders; IN_PROGRESS orders cannot be deleted
 
 ### CosmoCoat Financial Accounting

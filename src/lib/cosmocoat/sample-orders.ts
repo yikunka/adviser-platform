@@ -1,4 +1,4 @@
-import type { CosSampleOrderStatus, Prisma } from '@prisma/client'
+import type { CosEmployeeType, CosSampleOrderStatus, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
 import { customerInclude, serializeCustomer } from '@/lib/cosmocoat/customers'
 import { kitInclude, serializeProcessKit } from '@/lib/cosmocoat/process-kits'
@@ -43,14 +43,30 @@ const colorFormulaDetailInclude = {
   },
 } as const
 
+const sampleOrderEmployeeSelect = {
+  id: true,
+  code: true,
+  name: true,
+  employeeType: true,
+  position: true,
+  department: true,
+  phone: true,
+  email: true,
+  isActive: true,
+} as const
+
 export const sampleOrderListInclude = {
   customer: { select: { id: true, code: true, name: true, phone: true } },
+  salesEmployee: { select: sampleOrderEmployeeSelect },
+  technicalEmployee: { select: sampleOrderEmployeeSelect },
   processKits: { select: { quantityKg: true } },
   colorFormulas: { select: { quantityKg: true } },
 } satisfies Prisma.CosSampleOrderInclude
 
 export const sampleOrderDetailInclude = {
   customer: { include: customerInclude },
+  salesEmployee: { select: sampleOrderEmployeeSelect },
+  technicalEmployee: { select: sampleOrderEmployeeSelect },
   createdBy: { select: { id: true, nameEn: true, email: true } },
   processKits: {
     orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
@@ -68,6 +84,7 @@ export const sampleOrderDetailInclude = {
 
 type SampleOrderListRow = Prisma.CosSampleOrderGetPayload<{ include: typeof sampleOrderListInclude }>
 type SampleOrderDetailRow = Prisma.CosSampleOrderGetPayload<{ include: typeof sampleOrderDetailInclude }>
+type SampleOrderEmployee = NonNullable<SampleOrderDetailRow['salesEmployee']>
 
 function totalQuantityKg(colorFormulas: Array<{ quantityKg: unknown }>) {
   return colorFormulas.reduce((sum, row) => sum + Number(row.quantityKg), 0)
@@ -105,6 +122,22 @@ function serializeColorFormulaLine(row: SampleOrderDetailRow['colorFormulas'][nu
   }
 }
 
+function serializeSampleOrderEmployee(employee: SampleOrderEmployee | null) {
+  return employee
+    ? {
+        id: employee.id,
+        code: employee.code,
+        name: employee.name,
+        employeeType: employee.employeeType,
+        position: employee.position,
+        department: employee.department,
+        phone: employee.phone,
+        email: employee.email,
+        isActive: employee.isActive,
+      }
+    : null
+}
+
 export function serializeSampleOrderListRow(order: SampleOrderListRow) {
   return {
     id: order.id,
@@ -121,6 +154,8 @@ export function serializeSampleOrderListRow(order: SampleOrderListRow) {
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
     customer: order.customer,
+    salesEmployee: serializeSampleOrderEmployee(order.salesEmployee),
+    technicalEmployee: serializeSampleOrderEmployee(order.technicalEmployee),
     processKitCount: order.processKits.length,
     colorFormulaCount: order.colorFormulas.length,
     totalQuantityKg: totalQuantityKg(order.colorFormulas),
@@ -146,6 +181,10 @@ export function serializeSampleOrder(order: SampleOrderDetailRow) {
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
     customer: serializeCustomer(order.customer),
+    salesEmployeeId: order.salesEmployeeId,
+    salesEmployee: serializeSampleOrderEmployee(order.salesEmployee),
+    technicalEmployeeId: order.technicalEmployeeId,
+    technicalEmployee: serializeSampleOrderEmployee(order.technicalEmployee),
     createdBy: order.createdBy
       ? { id: order.createdBy.id, name: order.createdBy.nameEn, email: order.createdBy.email }
       : null,
@@ -222,6 +261,24 @@ export async function validateCustomerId(customerId: string) {
     select: { id: true },
   })
   if (!customer) throw new Error('CUSTOMER_NOT_FOUND')
+}
+
+export async function validateSampleOrderEmployeeId(
+  employeeId: string | null | undefined,
+  employeeType: CosEmployeeType,
+) {
+  if (!employeeId) return null
+
+  const employee = await prisma.cosEmployee.findFirst({
+    where: { id: employeeId, employeeType },
+    select: { id: true },
+  })
+
+  if (!employee) {
+    throw new Error(employeeType === 'SALES' ? 'SALES_EMPLOYEE_NOT_FOUND' : 'TECHNICAL_EMPLOYEE_NOT_FOUND')
+  }
+
+  return employee.id
 }
 
 export type SampleOrderLineInput = {
