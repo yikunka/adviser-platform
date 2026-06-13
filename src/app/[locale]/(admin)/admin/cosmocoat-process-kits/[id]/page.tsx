@@ -205,6 +205,11 @@ const printLabelCellStyle: React.CSSProperties = {
   fontWeight: 700,
 }
 
+const PROCESS_FLOW_PRINT_COLUMN_WIDTHS = {
+  label: '13%',
+  value: '87%',
+} as const
+
 const PROCESS_KIT_PRINT_STYLES = `
   @media print {
     @page { size: A4 portrait; margin: 0; }
@@ -516,19 +521,29 @@ function ProcessKitPrintView({
         {labels.processFlowSection}
       </div>
       <table style={printTableStyle}>
+        <colgroup>
+          <col style={{ width: PROCESS_FLOW_PRINT_COLUMN_WIDTHS.label }} />
+          <col style={{ width: PROCESS_FLOW_PRINT_COLUMN_WIDTHS.value }} />
+        </colgroup>
         <tbody>
           {processDescription.trim() && (
             <tr>
-              <td style={{ ...printLabelCellStyle, width: '16%' }}>{labels.addProcess}</td>
+              <td style={{ ...printLabelCellStyle, width: PROCESS_FLOW_PRINT_COLUMN_WIDTHS.label }}>
+                {labels.addProcess}
+              </td>
               <td style={{ ...printCellStyle, whiteSpace: 'pre-wrap' }}>{displayText(processDescription)}</td>
             </tr>
           )}
           <tr>
-            <td style={printLabelCellStyle}>{labels.globalProcessNote}</td>
+            <td style={{ ...printLabelCellStyle, width: PROCESS_FLOW_PRINT_COLUMN_WIDTHS.label }}>
+              {labels.globalProcessNote}
+            </td>
             <td style={{ ...printCellStyle, whiteSpace: 'pre-wrap' }}>{displayText(processFlowNote)}</td>
           </tr>
           <tr>
-            <td style={printLabelCellStyle}>{labels.processFlowDocument}</td>
+            <td style={{ ...printLabelCellStyle, width: PROCESS_FLOW_PRINT_COLUMN_WIDTHS.label }}>
+              {labels.processFlowDocument}
+            </td>
             <td style={{ ...printCellStyle, whiteSpace: 'pre-wrap' }}>{displayText(processFlowDocument)}</td>
           </tr>
         </tbody>
