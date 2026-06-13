@@ -25,6 +25,7 @@ const orderSchema = z.object({
   customerId: z.string().trim().min(1),
   salesEmployeeId: nullableIdSchema,
   technicalEmployeeId: nullableIdSchema,
+  isUrgent: z.coerce.boolean().optional().default(false),
   substrateType: z.string().trim().max(200).optional().default(''),
   samplePanelRequirement: z.string().trim().max(1000).optional().default(''),
   sampleOilRequirement: z.string().trim().max(1000).optional().default(''),
@@ -162,21 +163,27 @@ export async function POST(req: NextRequest) {
 
     const { processKitCreates, colorFormulaCreates } = buildLineCreates(lines)
 
+    const createData: Prisma.CosSampleOrderUncheckedCreateInput = {
+      code,
+      customerId: parsed.data.customerId,
+      salesEmployeeId,
+      technicalEmployeeId,
+      isUrgent: parsed.data.isUrgent,
+      substrateType: parsed.data.substrateType,
+      samplePanelRequirement: parsed.data.samplePanelRequirement,
+      sampleOilRequirement: parsed.data.sampleOilRequirement,
+      specialProcessRequirement: parsed.data.specialProcessRequirement,
+      notes: parsed.data.notes,
+      referenceImageUrl: parsed.data.referenceImageUrl?.trim() || null,
+      status: parsed.data.status,
+      startedAt: parsed.data.status === 'IN_PROGRESS' ? new Date() : null,
+      createdById: session!.user.id,
+    }
+
     const order = await prisma.cosSampleOrder.create({
       data: {
+        ...createData,
         code,
-        customerId: parsed.data.customerId,
-        salesEmployeeId,
-        technicalEmployeeId,
-        substrateType: parsed.data.substrateType,
-        samplePanelRequirement: parsed.data.samplePanelRequirement,
-        sampleOilRequirement: parsed.data.sampleOilRequirement,
-        specialProcessRequirement: parsed.data.specialProcessRequirement,
-        notes: parsed.data.notes,
-        referenceImageUrl: parsed.data.referenceImageUrl?.trim() || null,
-        status: parsed.data.status,
-        startedAt: parsed.data.status === 'IN_PROGRESS' ? new Date() : null,
-        createdById: session!.user.id,
         ...(processKitCreates.length > 0
           ? { processKits: { create: processKitCreates } }
           : {}),

@@ -82,8 +82,12 @@ export const sampleOrderDetailInclude = {
   },
 } satisfies Prisma.CosSampleOrderInclude
 
-type SampleOrderListRow = Prisma.CosSampleOrderGetPayload<{ include: typeof sampleOrderListInclude }>
-type SampleOrderDetailRow = Prisma.CosSampleOrderGetPayload<{ include: typeof sampleOrderDetailInclude }>
+type SampleOrderListRow = Prisma.CosSampleOrderGetPayload<{ include: typeof sampleOrderListInclude }> & {
+  isUrgent: boolean
+}
+type SampleOrderDetailRow = Prisma.CosSampleOrderGetPayload<{ include: typeof sampleOrderDetailInclude }> & {
+  isUrgent: boolean
+}
 type SampleOrderEmployee = NonNullable<SampleOrderDetailRow['salesEmployee']>
 
 function totalQuantityKg(colorFormulas: Array<{ quantityKg: unknown }>) {
@@ -142,6 +146,7 @@ export function serializeSampleOrderListRow(order: SampleOrderListRow) {
   return {
     id: order.id,
     code: order.code,
+    isUrgent: order.isUrgent,
     status: order.status,
     substrateType: order.substrateType,
     samplePanelRequirement: order.samplePanelRequirement,
@@ -169,6 +174,7 @@ export function serializeSampleOrder(order: SampleOrderDetailRow) {
   return {
     id: order.id,
     code: order.code,
+    isUrgent: order.isUrgent,
     status: order.status,
     substrateType: order.substrateType,
     samplePanelRequirement: order.samplePanelRequirement,

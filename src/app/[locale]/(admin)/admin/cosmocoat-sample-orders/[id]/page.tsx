@@ -355,6 +355,7 @@ const printLabelCell: React.CSSProperties = { ...printCell, background: '#f5f5f5
 
 type SampleOrderPrintViewProps = {
   order: SampleOrderRow
+  isUrgent: boolean
   substrateType: string
   samplePanelRequirement: string
   sampleOilRequirement: string
@@ -367,6 +368,7 @@ type SampleOrderPrintViewProps = {
 
 function SampleOrderPrintView({
   order,
+  isUrgent,
   substrateType,
   samplePanelRequirement,
   sampleOilRequirement,
@@ -378,6 +380,7 @@ function SampleOrderPrintView({
 }: SampleOrderPrintViewProps) {
   const { customer } = order
   const formulaMaterialLines = order.colorFormulas
+  const urgentTextColor = isUrgent ? '#DC2626' : '#000'
 
   return (
     <div id={SAMPLE_ORDER_PRINT_AREA_ID}>
@@ -400,16 +403,40 @@ function SampleOrderPrintView({
             <td style={printCell}>{customer.name}</td>
           </tr>
           <tr>
+            <td style={printLabelCell}>特急</td>
+            <td style={printCell}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 12,
+                    height: 12,
+                    border: '1px solid #000',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 10,
+                    lineHeight: 1,
+                    color: urgentTextColor,
+                  }}
+                >
+                  {isUrgent ? '✓' : ''}
+                </span>
+                <span style={{ color: urgentTextColor, fontWeight: isUrgent ? 700 : 400 }}>特急</span>
+              </span>
+            </td>
             <td style={printLabelCell}>销售人员</td>
             <td style={printCell}>{formatEmployeeOption(order.salesEmployee)}</td>
-            <td style={printLabelCell}>负责人员</td>
-            <td style={printCell}>{formatEmployeeOption(order.technicalEmployee)}</td>
           </tr>
           <tr>
+            <td style={printLabelCell}>负责人员</td>
+            <td style={printCell}>{formatEmployeeOption(order.technicalEmployee)}</td>
             <td style={printLabelCell}>联系电话</td>
             <td style={printCell}>{customer.phone || '—'}</td>
+          </tr>
+          <tr>
             <td style={printLabelCell}>地址</td>
-            <td style={printCell}>{customer.address || '—'}</td>
+            <td colSpan={3} style={printCell}>{customer.address || '—'}</td>
           </tr>
           {customer.productionEquipmentParams && (
             <tr>
@@ -692,6 +719,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
   const [customerId, setCustomerId] = useState('')
   const [salesEmployeeId, setSalesEmployeeId] = useState('')
   const [technicalEmployeeId, setTechnicalEmployeeId] = useState('')
+  const [isUrgent, setIsUrgent] = useState(false)
   const [substrateType, setSubstrateType] = useState('')
   const [samplePanelRequirement, setSamplePanelRequirement] = useState('')
   const [sampleOilRequirement, setSampleOilRequirement] = useState('')
@@ -803,6 +831,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
       setCustomerId(loaded.customer.id)
       setSalesEmployeeId(loaded.salesEmployeeId ?? '')
       setTechnicalEmployeeId(loaded.technicalEmployeeId ?? '')
+      setIsUrgent(loaded.isUrgent)
       setSalesEmployees(prev => mergeEmployeeOption(prev, loaded.salesEmployee))
       setTechnicalEmployees(prev => mergeEmployeeOption(prev, loaded.technicalEmployee))
       setSubstrateType(loaded.substrateType)
@@ -925,6 +954,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
       customerId,
       salesEmployeeId: salesEmployeeId || null,
       technicalEmployeeId: technicalEmployeeId || null,
+      isUrgent,
       substrateType,
       samplePanelRequirement,
       sampleOilRequirement,
@@ -1129,6 +1159,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
       {!isNew && order && (
         <SampleOrderPrintView
           order={order}
+          isUrgent={isUrgent}
           substrateType={substrateType}
           samplePanelRequirement={samplePanelRequirement}
           sampleOilRequirement={sampleOilRequirement}
@@ -1259,6 +1290,22 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
             </select>
           </Field>
         </div>
+        <label
+          className="inline-flex items-center gap-2 text-sm select-none"
+          style={{ color: 'var(--foreground)' }}
+        >
+          <input
+            type="checkbox"
+            checked={isUrgent}
+            disabled={isReadOnly}
+            onChange={e => setIsUrgent(e.target.checked)}
+            className="h-4 w-4 rounded border disabled:opacity-60"
+            style={{ accentColor: '#DC2626' }}
+          />
+          <span style={{ color: isUrgent ? '#DC2626' : 'var(--foreground)', fontWeight: isUrgent ? 700 : 500 }}>
+            特急
+          </span>
+        </label>
         <Field label="参考样品图片">
           <div className="flex flex-wrap items-start gap-4">
             <div
