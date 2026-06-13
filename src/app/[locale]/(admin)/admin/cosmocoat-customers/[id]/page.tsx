@@ -396,36 +396,53 @@ export default function AdminCosmoCoatCustomerDetailPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-3xl">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/admin/cosmocoat-customers"
-            className="inline-flex items-center gap-1.5 text-sm"
-            style={{ color: 'var(--muted-foreground)' }}
-          >
-            <ArrowLeft size={16} />
-            返回列表
-          </Link>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>
-            {isNew ? '新建客户' : `客户详情 · ${customer?.code ?? form.code}`}
-          </h1>
-        </div>
-        {!isNew && (
-          <button
-            type="button"
-            onClick={handleDelete}
-            disabled={deleting}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm disabled:opacity-50"
-            style={{ border: '1px solid #5A3030', color: '#E57373' }}
-          >
-            <Trash2 size={14} />
-            {deleting ? '删除中...' : '删除客户'}
-          </button>
-        )}
-      </div>
-
+    <div className="p-6 max-w-3xl">
       <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/admin/cosmocoat-customers"
+              className="inline-flex items-center gap-1.5 text-sm"
+              style={{ color: 'var(--muted-foreground)' }}
+            >
+              <ArrowLeft size={16} />
+              返回列表
+            </Link>
+            <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>
+              {isNew ? '新建客户' : `客户详情 · ${customer?.code ?? form.code}`}
+            </h1>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/admin/cosmocoat-customers"
+              className="px-4 py-2 rounded-lg text-sm"
+              style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
+            >
+              取消
+            </Link>
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+              style={{ background: '#C9A96E', color: '#0A0805' }}
+            >
+              <Save size={14} />
+              {saving ? '保存中...' : isNew ? '创建客户' : '保存更改'}
+            </button>
+            {!isNew && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm disabled:opacity-50"
+                style={{ border: '1px solid #5A3030', color: '#E57373' }}
+              >
+                <Trash2 size={14} />
+                {deleting ? '删除中...' : '删除客户'}
+              </button>
+            )}
+          </div>
+        </div>
         <div className="p-5 space-y-4" style={card}>
           <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>基本信息</h2>
 
@@ -532,25 +549,6 @@ export default function AdminCosmoCoatCustomerDetailPage() {
             </div>
           </div>
         )}
-
-        <div className="flex justify-end gap-2">
-          <Link
-            href="/admin/cosmocoat-customers"
-            className="px-4 py-2 rounded-lg text-sm"
-            style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
-          >
-            取消
-          </Link>
-          <button
-            type="submit"
-            disabled={saving}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
-            style={{ background: '#C9A96E', color: '#0A0805' }}
-          >
-            <Save size={14} />
-            {saving ? '保存中...' : isNew ? '创建客户' : '保存更改'}
-          </button>
-        </div>
       </form>
     </div>
   )
