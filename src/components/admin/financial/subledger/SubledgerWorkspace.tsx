@@ -3,7 +3,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useState } from 'react'
-import { Ban, CheckCircle, HandCoins, Link2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Ban, CheckCircle, Download, HandCoins, Link2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -54,6 +54,8 @@ type AgingReport = {
   totals: { notDue: number; d1to30: number; d31to60: number; d61to90: number; d90plus: number; total: number }
 }
 
+type SubledgerTab = 'docs' | 'payments' | 'notes' | 'aging'
+
 const METHOD_LABELS: Record<string, string> = {
   BANK_TRANSFER: '银行转账',
   CASH: '现金',
@@ -71,6 +73,14 @@ function statusBadge(status: string, labels: Record<string, string>) {
   )
 }
 
+function todayForFilename() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function safeFilenamePart(value: string) {
+  return value.replace(/[\\/:*?"<>|]/g, '-').trim()
+}
+
 export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
   const config = SIDE_CONFIG[side]
   const company = useFinancialCompany()
@@ -82,6 +92,8 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
   const [agingAsOf, setAgingAsOf] = useState(new Date().toISOString().slice(0, 10))
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [activeTab, setActiveTab] = useState<SubledgerTab>('docs')
+  const [exporting, setExporting] = useState(false)
 
   const [docFormOpen, setDocFormOpen] = useState(false)
   const [editingDoc, setEditingDoc] = useState<SubDoc | null>(null)
@@ -145,6 +157,129 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
       || doc.partyName.toLowerCase().includes(search.toLowerCase()),
   )
 
+  async function exportCurrentView() {
+    if (exporting) return
+
+    const viewRows = (() => {
+      if (activeTab === 'docs') {
+        return filteredDocs.map(doc => ({
+          单号: doc.docNo,
+          [config.partyLabel]: doc.partyName,
+          [config.docDateLabel]: doc.date,
+          到期日: doc.dueDate ?? '',
+          ...(config.hasSupplierRef ? { 供应商单号: doc.supplierRef } : {}),
+          金额: doc.total,
+          已结金额: doc.amountPaid,
+          未结金额: doc.outstanding,
+          状态: config.statusLabels[doc.displayStatus] ?? config.statusLabels[doc.status] ?? doc.displayStatus,
+          凭证号: doc.journalEntry?.voucherNo ?? '',
+        }))
+      }
+
+      if (activeTab === 'payments') {
+        return payments.map(payment => ({
+          单号: payment.paymentNo,
+          [config.partyLabel]: payment.party.name,
+          日期: payment.paymentDate,
+          方式: METHOD_LABELS[payment.method] ?? payment.method,
+          金额: payment.amount,
+          已核销: payment.amountAllocated,
+          未核销: payment.unallocated,
+          核销单据: payment.allocations.map(allocation => allocation.docNo).join(', '),
+          状态: payment.status === 'POSTED' ? '已过账' : payment.status === 'VOIDED' ? '已作废' : payment.status,
+          参考号: payment.reference,
+          银行账户: payment.bankAccount?.name ?? '',
+          凭证号: payment.journalEntry?.voucherNo ?? '',
+        }))
+      }
+
+      if (activeTab === 'notes') {
+        return notes.map(note => ({
+          单号: note.noteNo,
+          [config.partyLabel]: note.party.name,
+          日期: note.issueDate,
+          金额: note.total,
+          已核销: note.amountApplied,
+          未核销: note.remaining,
+          状态:
+            note.status === 'DRAFT' ? '草稿' : note.status === 'POSTED' ? '已过账' : note.status === 'VOIDED' ? '已作废' : note.status,
+          凭证号: note.journalEntry?.voucherNo ?? '',
+        }))
+      }
+
+      return (aging?.parties ?? []).map(row => ({
+        编码: row.partyCode,
+        [config.partyLabel]: row.partyName,
+        未到期: row.buckets.notDue,
+        '1-30 天': row.buckets.d1to30,
+        '31-60 天': row.buckets.d31to60,
+        '61-90 天': row.buckets.d61to90,
+        '90 天以上': row.buckets.d90plus,
+        合计: row.total,
+      }))
+    })()
+
+    if (viewRows.length === 0) {
+      toast.error('当前视图暂无可导出的数据。')
+      return
+    }
+
+    setExporting(true)
+    try {
+      const XLSX = await import('xlsx')
+      const sheet = XLSX.utils.json_to_sheet(viewRows)
+
+      if (activeTab === 'aging' && aging) {
+        XLSX.utils.sheet_add_json(
+          sheet,
+          [
+            {
+              编码: '合计',
+              [config.partyLabel]: '',
+              未到期: aging.totals.notDue,
+              '1-30 天': aging.totals.d1to30,
+              '31-60 天': aging.totals.d31to60,
+              '61-90 天': aging.totals.d61to90,
+              '90 天以上': aging.totals.d90plus,
+              合计: aging.totals.total,
+            },
+          ],
+          { origin: -1, skipHeader: true },
+        )
+      }
+
+      const workbook = XLSX.utils.book_new()
+      const sheetName =
+        activeTab === 'docs'
+          ? config.docTabLabel
+          : activeTab === 'payments'
+            ? config.payTabLabel
+            : activeTab === 'notes'
+              ? config.noteTabLabel
+              : '账龄分析'
+      XLSX.utils.book_append_sheet(workbook, sheet, sheetName)
+
+      const output = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+      const blob = new Blob([output], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      const filenameSuffix = activeTab === 'aging' ? agingAsOf : todayForFilename()
+      link.href = url
+      link.download = `${safeFilenamePart(config.title)}-${safeFilenamePart(sheetName)}-${safeFilenamePart(company.nameEn)}-${filenameSuffix}.xlsx`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      toast.success(`${sheetName} 已导出为 Excel。`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '导出失败。')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="space-y-2">
@@ -158,10 +293,19 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
               {company.nameEn} · {config.subtitle}
             </p>
           </div>
+          <Button
+            variant="outline"
+            onClick={() => void exportCurrentView()}
+            disabled={loading || exporting}
+            className="border-[#2A2418] bg-transparent text-[#FFF7E6] hover:bg-[#1A160F] hover:text-[#FFF7E6]"
+          >
+            <Download size={15} className="mr-2" />
+            {exporting ? '导出中...' : '导出 Excel'}
+          </Button>
         </div>
       </div>
 
-      <Tabs defaultValue="docs">
+      <Tabs value={activeTab} onValueChange={value => setActiveTab(value as SubledgerTab)}>
         <TabsList>
           <TabsTrigger value="docs">{config.docTabLabel}</TabsTrigger>
           <TabsTrigger value="payments">{config.payTabLabel}</TabsTrigger>
