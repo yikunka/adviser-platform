@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
+import { AccountCombobox } from '@/components/admin/financial/AccountCombobox'
 import { FinancialBreadcrumbs } from '@/components/admin/financial/FinancialBreadcrumbs'
 import { useFinancialCompany } from '@/components/admin/financial/FinancialCompanyContext'
 
@@ -102,7 +103,6 @@ function AccountLinkSelect({
   value,
   onChange,
   options,
-  selectedLabel,
   createMode,
   autoLabel,
   noneLabel,
@@ -111,47 +111,37 @@ function AccountLinkSelect({
   value: string
   onChange: (value: string) => void
   options: AccountOption[]
-  selectedLabel?: string
   createMode: boolean
   autoLabel: string
   noneLabel: string
 }) {
-  const displayLabel = value === 'AUTO' ? autoLabel : value === 'NONE' ? noneLabel : selectedLabel
-
   return (
     <div className="space-y-1.5">
       <Label className={labelClassName}>{label}</Label>
-      <Select value={value} onValueChange={next => onChange(next ?? (createMode ? 'AUTO' : 'NONE'))}>
-        <SelectTrigger className={`w-full ${fieldClassName}`}>
-          <SelectValue placeholder="选择关联科目">{displayLabel}</SelectValue>
-        </SelectTrigger>
-        <SelectContent alignItemWithTrigger={false} className={`${selectContentClassName} min-w-80 max-h-72`}>
-          {createMode ? (
-            <SelectItem value="AUTO" label={autoLabel}>{autoLabel}</SelectItem>
-          ) : (
-            <SelectItem value="NONE" label={noneLabel}>{noneLabel}</SelectItem>
-          )}
-          {options.length === 0 ? (
-            <div className="px-3 py-2 text-sm text-[#B8AD98]">暂无可选科目</div>
-          ) : (
-            options.map(option => (
-              <SelectItem
-                key={option.id}
-                value={option.id}
-                label={option.label}
-                className="whitespace-normal *:whitespace-normal"
-              >
-                <span
-                  className="block font-sans leading-snug"
-                  style={{ paddingLeft: `${Math.max(0, option.level - 1) * 12}px` }}
-                >
-                  {option.label}
-                </span>
-              </SelectItem>
-            ))
-          )}
-        </SelectContent>
-      </Select>
+      <AccountCombobox
+        value={value}
+        companyId="local"
+        onChange={next => onChange(next || (createMode ? 'AUTO' : 'NONE'))}
+        options={options}
+        specialOptions={[
+          createMode
+            ? {
+                id: 'AUTO',
+                label: autoLabel,
+                description: '系统按默认映射创建专属往来科目',
+                accent: '#C9A96E',
+              }
+            : {
+                id: 'NONE',
+                label: noneLabel,
+                description: '不指定专属科目，业务过账时使用默认映射',
+                accent: '#9CA3AF',
+              },
+        ]}
+        placeholder="搜索科目编码或名称..."
+        inputClassName={fieldClassName}
+        emptyMessage="暂无可选科目"
+      />
     </div>
   )
 }
@@ -509,7 +499,6 @@ export default function AdminFinancialPartiesPage() {
                       value={form.arAccountId}
                       onChange={value => setForm(f => ({ ...f, arAccountId: value }))}
                       options={arAccountOptions}
-                      selectedLabel={accountLabelById.get(form.arAccountId)}
                       createMode={!editing}
                       autoLabel="自动新建客户应收科目"
                       noneLabel="不关联（使用默认应收映射）"
@@ -521,7 +510,6 @@ export default function AdminFinancialPartiesPage() {
                       value={form.apAccountId}
                       onChange={value => setForm(f => ({ ...f, apAccountId: value }))}
                       options={apAccountOptions}
-                      selectedLabel={accountLabelById.get(form.apAccountId)}
                       createMode={!editing}
                       autoLabel="自动新建供应商应付科目"
                       noneLabel="不关联（使用默认应付映射）"

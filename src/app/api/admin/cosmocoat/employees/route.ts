@@ -10,6 +10,11 @@ import {
   serializeEmployee,
 } from '@/lib/cosmocoat/employees'
 import { deleteCosEmployeeFile, uploadCosEmployeeFile, validateCosEmployeeFile } from '@/lib/cosmocoat/employee-files'
+import {
+  extractBirthDateFromCosEmployeeIdCard,
+  normalizeCosEmployeeIdCardNumber,
+  validateCosEmployeeIdCardNumber,
+} from '@/lib/cosmocoat/employee-id-card'
 import { getOssConfigError } from '@/lib/storage/r2'
 
 const PAGE_SIZE = 20
@@ -29,6 +34,7 @@ const createSchema = z.object({
   email: z.string().trim().max(200).optional().nullable(),
   position: z.string().trim().max(100).optional().nullable(),
   department: z.string().trim().max(100).optional().nullable(),
+  idCardNumber: z.string().trim().max(18).optional().nullable(),
   birthDate: z.string().datetime().nullable().optional(),
   hireDate: z.string().datetime().nullable().optional(),
   notes: z.string().trim().max(2000).optional().default(''),
@@ -86,6 +92,7 @@ function parseCreateFormData(formData: FormData) {
       email: formString(formData, 'email') ?? null,
       position: formString(formData, 'position') ?? null,
       department: formString(formData, 'department') ?? null,
+      idCardNumber: formString(formData, 'idCardNumber') ?? null,
       birthDate: formString(formData, 'birthDate') || null,
       hireDate: formString(formData, 'hireDate') || null,
       notes: formString(formData, 'notes') ?? '',
@@ -185,6 +192,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
   }
 
+  const idCardError = validateCosEmployeeIdCardNumber(parsed.data.idCardNumber)
+  if (idCardError) return NextResponse.json({ error: idCardError }, { status: 400 })
+
   for (const pending of pendingFiles) {
     const validationError = validateCosEmployeeFile(pending.file)
     if (validationError) {
@@ -209,6 +219,12 @@ export async function POST(req: NextRequest) {
     const existing = await prisma.cosEmployee.findUnique({ where: { code } })
     if (existing) return NextResponse.json({ error: '员工编码已存在' }, { status: 409 })
 
+    const normalizedIdCardNumber = normalizeCosEmployeeIdCardNumber(parsed.data.idCardNumber)
+    const birthDateFromIdCard = extractBirthDateFromCosEmployeeIdCard(normalizedIdCardNumber)
+    const resolvedBirthDate = parsed.data.birthDate
+      ? new Date(parsed.data.birthDate)
+      : (birthDateFromIdCard ? new Date(birthDateFromIdCard) : null)
+
     const employee = await prisma.cosEmployee.create({
       data: {
         code,
@@ -218,7 +234,8 @@ export async function POST(req: NextRequest) {
         email: nullableText(parsed.data.email),
         position: nullableText(parsed.data.position),
         department: nullableText(parsed.data.department),
-        birthDate: parsed.data.birthDate ? new Date(parsed.data.birthDate) : null,
+        idCardNumber: normalizedIdCardNumber,
+        birthDate: resolvedBirthDate,
         hireDate: parsed.data.hireDate ? new Date(parsed.data.hireDate) : null,
         notes: parsed.data.notes ?? '',
         isActive: parsed.data.isActive ?? true,

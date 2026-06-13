@@ -6,6 +6,11 @@ import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
 import { deleteCosEmployeeFile } from '@/lib/cosmocoat/employee-files'
 import { getEmployeeById } from '@/lib/cosmocoat/employees'
+import {
+  extractBirthDateFromCosEmployeeIdCard,
+  normalizeCosEmployeeIdCardNumber,
+  validateCosEmployeeIdCardNumber,
+} from '@/lib/cosmocoat/employee-id-card'
 
 const patchSchema = z.object({
   code: z.string().trim().min(1).max(32).optional(),
@@ -15,6 +20,7 @@ const patchSchema = z.object({
   email: z.string().trim().max(200).optional().nullable(),
   position: z.string().trim().max(100).optional().nullable(),
   department: z.string().trim().max(100).optional().nullable(),
+  idCardNumber: z.string().trim().max(18).optional().nullable(),
   birthDate: z.string().datetime().nullable().optional(),
   hireDate: z.string().datetime().nullable().optional(),
   notes: z.string().trim().max(2000).optional(),
@@ -28,6 +34,10 @@ function nullableText(v: string | null | undefined) {
 
 function isMissingTable(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021'
+}
+
+function dateOnly(value: Date | null) {
+  return value?.toISOString().slice(0, 10) ?? null
 }
 
 export async function GET(
@@ -72,6 +82,26 @@ export async function PATCH(
     if (dup) return NextResponse.json({ error: '员工编码已存在' }, { status: 409 })
   }
 
+  if (parsed.data.idCardNumber !== undefined) {
+    const idCardError = validateCosEmployeeIdCardNumber(parsed.data.idCardNumber)
+    if (idCardError) return NextResponse.json({ error: idCardError }, { status: 400 })
+  }
+
+  const normalizedIdCardNumber = parsed.data.idCardNumber !== undefined
+    ? normalizeCosEmployeeIdCardNumber(parsed.data.idCardNumber)
+    : undefined
+  const birthDateFromUpdatedIdCard = normalizedIdCardNumber !== undefined
+    ? extractBirthDateFromCosEmployeeIdCard(normalizedIdCardNumber)
+    : null
+  const currentBirthDate = dateOnly(current.birthDate)
+  const currentBirthDateFromIdCard = extractBirthDateFromCosEmployeeIdCard(current.idCardNumber)
+  const shouldAutoUpdateBirthDate = parsed.data.birthDate === undefined
+    && birthDateFromUpdatedIdCard
+    && (!currentBirthDate || currentBirthDate === currentBirthDateFromIdCard)
+  const birthDateUpdate = parsed.data.birthDate !== undefined
+    ? (parsed.data.birthDate ? new Date(parsed.data.birthDate) : null)
+    : (shouldAutoUpdateBirthDate ? new Date(birthDateFromUpdatedIdCard) : undefined)
+
   try {
     const updated = await prisma.cosEmployee.update({
       where: { id },
@@ -83,9 +113,8 @@ export async function PATCH(
         email: parsed.data.email !== undefined ? nullableText(parsed.data.email) : undefined,
         position: parsed.data.position !== undefined ? nullableText(parsed.data.position) : undefined,
         department: parsed.data.department !== undefined ? nullableText(parsed.data.department) : undefined,
-        birthDate: parsed.data.birthDate !== undefined
-          ? (parsed.data.birthDate ? new Date(parsed.data.birthDate) : null)
-          : undefined,
+        idCardNumber: normalizedIdCardNumber,
+        birthDate: birthDateUpdate,
         hireDate: parsed.data.hireDate !== undefined
           ? (parsed.data.hireDate ? new Date(parsed.data.hireDate) : null)
           : undefined,

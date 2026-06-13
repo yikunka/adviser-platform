@@ -77,6 +77,10 @@ type ReconWorkspace = {
 
 type CsvRow = { date: string; description: string; reference: string; amount: number }
 
+const fieldClassName = 'border-[#2A2418] bg-[#0E0E0A] text-[#FFF7E6] placeholder:text-[#9F927B] focus-visible:border-[#C9A96E] focus-visible:ring-[#C9A96E]/25'
+const labelClassName = 'text-[#EADDC3]'
+const secondaryButtonClassName = 'border-[#3A3428] bg-[#0E0E0A] text-[#FFF7E6] hover:bg-[#1E1A12] hover:text-[#FFF7E6]'
+
 function parseCsvRows(rows: Record<string, string>[]): { lines: CsvRow[]; errors: string[] } {
   const lines: CsvRow[] = []
   const errors: string[] = []
@@ -744,41 +748,42 @@ export default function AdminFinancialBankingPage() {
 
       {/* 账户表单 */}
       <Dialog open={accountFormOpen} onOpenChange={setAccountFormOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="financial-modal max-w-lg border-[#2A2418] bg-[#11110E] text-[#FFF7E6] shadow-2xl ring-[#3A3428]">
           <DialogHeader>
-            <DialogTitle>{editingAccount ? `编辑 ${editingAccount.name}` : '新增银行账户'}</DialogTitle>
+            <DialogTitle className="text-[#FFF7E6]">{editingAccount ? `编辑 ${editingAccount.name}` : '新增银行账户'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label>账户名称 *（如「汇丰 HKD 户口」）</Label>
-              <Input value={accountForm.name} onChange={e => setAccountForm(f => ({ ...f, name: e.target.value }))} style={inputStyle} />
+              <Label className={labelClassName}>账户名称 *（如「汇丰 HKD 户口」）</Label>
+              <Input value={accountForm.name} onChange={e => setAccountForm(f => ({ ...f, name: e.target.value }))} className={fieldClassName} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>银行名称</Label>
-                <Input value={accountForm.bankName} onChange={e => setAccountForm(f => ({ ...f, bankName: e.target.value }))} style={inputStyle} />
+                <Label className={labelClassName}>银行名称</Label>
+                <Input value={accountForm.bankName} onChange={e => setAccountForm(f => ({ ...f, bankName: e.target.value }))} className={fieldClassName} />
               </div>
               <div className="space-y-1.5">
-                <Label>账号</Label>
+                <Label className={labelClassName}>账号</Label>
                 <Input
                   value={accountForm.accountNumber}
                   onChange={e => setAccountForm(f => ({ ...f, accountNumber: e.target.value }))}
-                  style={inputStyle}
+                  className={fieldClassName}
                 />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>关联总账科目 *（银行存款类科目）</Label>
+              <Label className={labelClassName}>关联总账科目 *（银行存款类科目）</Label>
               <AccountCombobox
                 value={accountForm.glAccountId}
                 companyId={company.id}
                 onChange={glAccountId => setAccountForm(f => ({ ...f, glAccountId }))}
-                inputClassName="bg-[#0E0E0A] border border-[#2A2418]"
+                inputClassName={fieldClassName}
+                placeholder="搜索银行存款、现金或科目编码..."
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" style={{ borderColor: '#2A2418' }} onClick={() => setAccountFormOpen(false)}>
+            <Button variant="outline" className={secondaryButtonClassName} onClick={() => setAccountFormOpen(false)}>
               取消
             </Button>
             <Button onClick={() => void saveAccount()} disabled={saving} style={{ background: '#C9A96E', color: '#0A0805' }}>

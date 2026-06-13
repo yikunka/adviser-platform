@@ -9,6 +9,10 @@ import { toast } from 'sonner'
 import { ArrowLeft, Download, Eye, FileText, Save, Trash2, Upload } from 'lucide-react'
 import { DatePickerPopover } from '@/components/ui/date-picker-popover'
 import { resolveCosEmployeeBirthInfo } from '@/lib/cosmocoat/employee-birth-info'
+import {
+  extractBirthDateFromCosEmployeeIdCard,
+  validateCosEmployeeIdCardNumber,
+} from '@/lib/cosmocoat/employee-id-card'
 import type { CosEmployeeFileRow, CosEmployeeRow } from '@/lib/cosmocoat/employees'
 import { COS_EMPLOYEE_FILE_TYPE_LABELS, COS_EMPLOYEE_TYPE_LABELS } from '@/lib/cosmocoat/employee-labels'
 import type { CosEmployeeFileType, CosEmployeeType } from '@prisma/client'
@@ -21,6 +25,7 @@ type FormState = {
   email: string
   position: string
   department: string
+  idCardNumber: string
   birthDate: string
   hireDate: string
   notes: string
@@ -372,6 +377,8 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
     RESUME: null,
     ID_CARD: null,
   })
+  const [birthDateManuallyEdited, setBirthDateManuallyEdited] = useState(false)
+  const [idCardError, setIdCardError] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>({
     code: '',
     name: '',
@@ -380,6 +387,7 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
     email: '',
     position: '',
     department: '',
+    idCardNumber: '',
     birthDate: '',
     hireDate: '',
     notes: '',
@@ -399,7 +407,13 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
         return
       }
       const row = data.employee as CosEmployeeRow
+      const savedBirthDate = row.birthDate ? row.birthDate.slice(0, 10) : ''
+      const extractedBirthDate = extractBirthDateFromCosEmployeeIdCard(row.idCardNumber)
       setEmployee(row)
+      setBirthDateManuallyEdited(
+        Boolean(savedBirthDate && (!extractedBirthDate || savedBirthDate !== extractedBirthDate)),
+      )
+      setIdCardError(null)
       setForm({
         code: row.code,
         name: row.name,
@@ -408,6 +422,7 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
         email: row.email ?? '',
         position: row.position ?? '',
         department: row.department ?? '',
+        idCardNumber: row.idCardNumber ?? '',
         birthDate: row.birthDate ? row.birthDate.slice(0, 10) : '',
         hireDate: row.hireDate ? row.hireDate.slice(0, 10) : '',
         notes: row.notes ?? '',
@@ -428,6 +443,24 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
     setForm(prev => ({ ...prev, [key]: value }))
   }
 
+  function handleIdCardNumberChange(value: string) {
+    const normalized = value.trim().toUpperCase()
+    setForm(prev => {
+      const next = { ...prev, idCardNumber: normalized }
+      if (!birthDateManuallyEdited) {
+        const extractedBirthDate = extractBirthDateFromCosEmployeeIdCard(normalized)
+        if (extractedBirthDate) next.birthDate = extractedBirthDate
+      }
+      return next
+    })
+    setIdCardError(normalized ? validateCosEmployeeIdCardNumber(normalized) : null)
+  }
+
+  function handleBirthDateChange(value: string) {
+    setBirthDateManuallyEdited(true)
+    patch('birthDate', value)
+  }
+
   function patchPendingFile(fileType: CosEmployeeFileType, value: PendingEmployeeFile | null) {
     setPendingFiles(prev => ({ ...prev, [fileType]: value }))
   }
@@ -436,6 +469,13 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
     e.preventDefault()
     if (!form.name.trim()) {
       toast.error('请填写员工姓名')
+      return
+    }
+
+    const idCardValidationError = validateCosEmployeeIdCardNumber(form.idCardNumber)
+    if (idCardValidationError) {
+      setIdCardError(idCardValidationError)
+      toast.error(idCardValidationError)
       return
     }
 
@@ -449,6 +489,7 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
         email: form.email.trim() || null,
         position: form.position.trim() || null,
         department: form.department.trim() || null,
+        idCardNumber: form.idCardNumber.trim() || null,
         birthDate: form.birthDate ? new Date(form.birthDate).toISOString() : null,
         hireDate: form.hireDate ? new Date(form.hireDate).toISOString() : null,
         notes: form.notes.trim(),
@@ -656,11 +697,28 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
             </Field>
           </div>
 
+          <Field label="身份证号" hint="支持 15 位或 18 位；填写后自动提取出生日期并计算五行、生肖">
+            <input
+              value={form.idCardNumber}
+              onChange={e => handleIdCardNumberChange(e.target.value)}
+              maxLength={18}
+              placeholder="请输入身份证号码"
+              className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+              style={{
+                ...inputStyle(),
+                borderColor: idCardError ? '#5A3030' : '#2A2418',
+              }}
+            />
+            {idCardError && (
+              <p className="text-[11px]" style={{ color: '#E57373' }}>{idCardError}</p>
+            )}
+          </Field>
+
           <div className="grid sm:grid-cols-3 gap-4">
-            <Field label="出生日期">
+            <Field label="出生日期" hint={birthDateManuallyEdited ? '已手动修改，不再随身份证号自动更新' : '可由身份证号自动填充'}>
               <DatePickerPopover
                 value={form.birthDate}
-                onChange={value => patch('birthDate', value)}
+                onChange={handleBirthDateChange}
                 placeholder="选择出生日期"
                 toYear={birthDateToYear}
                 className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
@@ -673,7 +731,7 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
                 style={{ ...inputStyle(), color: birthInfo ? 'var(--foreground)' : 'var(--muted-foreground)' }}
                 aria-live="polite"
               >
-                {birthInfo ? `${birthInfo.fiveElement}（${birthInfo.sexagenaryYear}年）` : '选择出生日期后显示'}
+                {birthInfo ? `${birthInfo.fiveElement}（${birthInfo.sexagenaryYear}年）` : '填写出生日期后显示'}
               </div>
             </Field>
             <Field label="生肖" hint="只读系统生成">
@@ -682,7 +740,7 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
                 style={{ ...inputStyle(), color: birthInfo ? 'var(--foreground)' : 'var(--muted-foreground)' }}
                 aria-live="polite"
               >
-                {birthInfo ? birthInfo.zodiac : '选择出生日期后显示'}
+                {birthInfo ? birthInfo.zodiac : '填写出生日期后显示'}
               </div>
             </Field>
           </div>

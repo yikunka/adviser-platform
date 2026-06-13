@@ -5,7 +5,7 @@
 # 用法概览
 #   ./deploy.sh bootstrap        # 在「控制机（笔记本）」运行：SSH 登录 DEPLOY_HOST 后在远端执行与本机 bootstrap-local 相同的初始化
 #   ./deploy.sh bootstrap-local  # 在「全新服务器」上直接运行（root/sudo）；勿设 DEPLOY_HOST — 装好系统栈后再配 .env 与 deploy-local
-#   ./deploy.sh deploy               # 未设 DEPLOY_HOST：与本机 ./deploy.sh deploy-local 相同（pull + 增量）；设 DEPLOY_HOST：本机构建后经 SSH/rsync 到远端
+#   ./deploy.sh deploy               # 未设 DEPLOY_HOST：与本机 ./deploy.sh deploy-local 相同（pull + 增量）；设 DEPLOY_HOST：本机构建后经 SSH/rsync 到远端（同样按 .adviser-deploy-rev 增量）
 #   ./deploy.sh deploy-local         # 与「未设 HOST 的 deploy」一致；可按习惯选用
 #   ./deploy.sh check            # 仅检查构建环境与仓库
 #
@@ -21,9 +21,13 @@
 # deploy-local（与未设 HOST 时的 deploy）：增量与 git（成功部署后在 $APP_DIR/.adviser-deploy-rev 写入当时 HEAD）：
 #   默认 git pull（--ff-only），再按「上次记录..当前 HEAD」变更只跑需要的步骤（无新同步内容则跳过 build / rsync / PM2）。
 #   DEPLOY_SKIP_GIT_PULL=1 — 跳过 pull，仍基于 .adviser-deploy-rev 与 HEAD 增量
-#   DEPLOY_FORCE_FULL=1 — 全流程（依赖 install、prisma generate、next build、同步、migrate、PM2）
+#   DEPLOY_FORCE_FULL=1 — 全流程（依赖 install、prisma generate、next build、同步、migrate、PM2）；对 deploy（SSH）同样有效
 #   DEPLOY_FF_ONLY_GIT=0 — 使用普通 git pull（默认 1 = --ff-only）
 #   DEPLOY_DISCARD_LOCKFILE=0 — 不自动丢弃服务器上 package-lock.json 本地改动（默认 1 = 丢弃后再 pull）
+#
+# deploy（设 DEPLOY_HOST）：同样基于 .adviser-deploy-rev 增量
+#   部署前从远端读取 $REMOTE_DIR/.adviser-deploy-rev，与本地 HEAD 比对，只构建 / rsync / migrate 变更涉及的部分。
+#   首次（远端无记录）自动全量；部署成功后将 HEAD 写回远端。
 #
 #   bootstrap 支持的系统：Ubuntu/Debian（apt）、Alibaba Cloud Linux / RHEL / CentOS / Amazon Linux（dnf 或 yum）
 #
@@ -169,6 +173,8 @@ cmd_build() {
   echo "▶ prisma generate..."
   npx prisma generate
   echo "▶ next build..."
+  # 限制 Node 堆内存，防止构建时被 OOM Killer 杀掉；可用 DEPLOY_NODE_MEM_MB 覆盖（默认 1536 MB）
+  export NODE_OPTIONS="${NODE_OPTIONS:+${NODE_OPTIONS} }--max-old-space-size=${DEPLOY_NODE_MEM_MB:-1536}"
   npm run build
   [[ -f .next/standalone/server.js ]] || die "未生成 .next/standalone/server.js，请确认 next.config 中 output: standalone"
   if [[ -n "${OSS_BUCKET:-}" ]]; then
@@ -227,25 +233,115 @@ cmd_deploy() {
   fi
 
   require_deploy_host
-  cmd_build
 
-  echo "▶ 同步文件到 ${REMOTE}:${REMOTE_DIR} ..."
+  # ── 增量判断：读取远端上次部署版本，与本地 HEAD 比对 ──────────────────────
+  local HEAD_NOW REV_FROM _df_commit DID_ANY=0
+  HEAD_NOW="$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null || true)"
+  NEED_DEPS=0 NEED_BUILD=0 NEED_PRISMA_GEN=0 NEED_MIGRATE=0 NEED_RSYNC_PUBLIC=0
+  _DL_N_ALL=0 _DL_N_REL=0
+
+  if [[ -z "$HEAD_NOW" ]] || [[ "${DEPLOY_FORCE_FULL:-}" == "1" ]]; then
+    echo "▶ 全量部署$([ "${DEPLOY_FORCE_FULL:-}" == "1" ] && echo "（DEPLOY_FORCE_FULL=1）" || echo "（非 git 目录）")"
+    NEED_DEPS=1 NEED_BUILD=1 NEED_PRISMA_GEN=1 NEED_MIGRATE=1 NEED_RSYNC_PUBLIC=1
+  else
+    REV_FROM="$(ssh_remote "cat '${REMOTE_DIR}/.adviser-deploy-rev' 2>/dev/null || true" 2>/dev/null | tr -d ' \t\r\n' || true)"
+
+    if [[ -z "$REV_FROM" ]]; then
+      echo "▶ 远端无部署记录（首次），全量"
+      NEED_DEPS=1 NEED_BUILD=1 NEED_PRISMA_GEN=1 NEED_MIGRATE=1 NEED_RSYNC_PUBLIC=1
+    else
+      _df_commit="${REV_FROM}^{commit}"
+      if ! git -C "$SCRIPT_DIR" rev-parse --verify -q "$_df_commit" >/dev/null 2>&1; then
+        echo "▶ 远端 .adviser-deploy-rev (${REV_FROM:0:7}…) 在本地不可见，全量"
+        NEED_DEPS=1 NEED_BUILD=1 NEED_PRISMA_GEN=1 NEED_MIGRATE=1 NEED_RSYNC_PUBLIC=1
+      elif ! git -C "$SCRIPT_DIR" merge-base --is-ancestor "$REV_FROM" "$HEAD_NOW" 2>/dev/null; then
+        echo "▶ 部署记录与当前历史不一致（rebase/amend），全量"
+        NEED_DEPS=1 NEED_BUILD=1 NEED_PRISMA_GEN=1 NEED_MIGRATE=1 NEED_RSYNC_PUBLIC=1
+      elif [[ "$REV_FROM" == "$HEAD_NOW" ]]; then
+        echo "✓ 远端已与当前提交一致（${HEAD_NOW:0:12}…），无需部署。"
+        return 0
+      else
+        git -C "$SCRIPT_DIR" diff --name-only "${REV_FROM}..${HEAD_NOW}" | _deploy_local_classify_diff_lines
+
+        if [[ "$_DL_N_ALL" -gt 0 ]] && [[ "$_DL_N_REL" -eq 0 ]]; then
+          echo "✓ 有新提交但仅文档等非运行路径，跳过构建。"
+          ssh_remote "printf '%s\n' '${HEAD_NOW}' > '${REMOTE_DIR}/.adviser-deploy-rev'"
+          echo "▶ 已写入远端 .adviser-deploy-rev (${HEAD_NOW:0:12}…)"
+          return 0
+        fi
+
+        if [[ "$NEED_DEPS$NEED_BUILD$NEED_PRISMA_GEN$NEED_MIGRATE$NEED_RSYNC_PUBLIC" == "00000" ]]; then
+          echo "✓ 无待发布变更。"
+          ssh_remote "printf '%s\n' '${HEAD_NOW}' > '${REMOTE_DIR}/.adviser-deploy-rev'"
+          return 0
+        fi
+
+        echo "▶ 增量 (${REV_FROM:0:7}…→${HEAD_NOW:0:7}…) deps=$NEED_DEPS build=$NEED_BUILD prisma_gen=$NEED_PRISMA_GEN migrate=$NEED_MIGRATE public=$NEED_RSYNC_PUBLIC"
+      fi
+    fi
+  fi
+
+  # ── 按需本地构建 ───────────────────────────────────────────────────────────
+  if [[ "$NEED_BUILD" == 1 ]]; then
+    cmd_build
+    DID_ANY=1
+  elif [[ "$NEED_PRISMA_GEN" == 1 ]] || [[ "$NEED_DEPS" == 1 ]]; then
+    cmd_check
+    if [[ "$NEED_DEPS" == 1 ]]; then
+      echo "▶ 安装依赖..."
+      if ! npm ci --no-audit --no-fund; then
+        echo "⚠ npm ci 失败。改用 npm install …" >&2
+        npm install --no-audit --no-fund
+      fi
+    fi
+    if [[ "$NEED_PRISMA_GEN" == 1 ]]; then
+      echo "▶ prisma generate..."
+      npx prisma generate
+    fi
+    DID_ANY=1
+  fi
+
+  # ── 按需同步到远端 ─────────────────────────────────────────────────────────
   ssh_remote "mkdir -p '${REMOTE_DIR}/.next/static' '${REMOTE_DIR}/public' '${REMOTE_DIR}/prisma'"
-
   RSYNC_E="$(rsync_rsh)"
-  rsync -az --delete -e "$RSYNC_E" .next/standalone/ "${REMOTE}:${REMOTE_DIR}/"
-  rsync -az --delete -e "$RSYNC_E" .next/static/ "${REMOTE}:${REMOTE_DIR}/.next/static/"
-  rsync -az --delete -e "$RSYNC_E" public/ "${REMOTE}:${REMOTE_DIR}/public/"
-  rsync -az -e "$RSYNC_E" scripts/ "${REMOTE}:${REMOTE_DIR}/scripts/"
-  rsync -az -e "$RSYNC_E" prisma/ "${REMOTE}:${REMOTE_DIR}/prisma/"
-  rsync -az -e "$RSYNC_E" prisma.config.mjs "${REMOTE}:${REMOTE_DIR}/prisma.config.mjs"
-  ssh_remote "rm -f '${REMOTE_DIR}/prisma.config.ts'"
+
+  if [[ "$NEED_BUILD" == 1 ]]; then
+    echo "▶ 同步构建产物到 ${REMOTE}:${REMOTE_DIR} ..."
+    rsync -az --delete -e "$RSYNC_E" .next/standalone/ "${REMOTE}:${REMOTE_DIR}/"
+    rsync -az --delete -e "$RSYNC_E" .next/static/ "${REMOTE}:${REMOTE_DIR}/.next/static/"
+    rsync -az --delete -e "$RSYNC_E" public/ "${REMOTE}:${REMOTE_DIR}/public/"
+    rsync -az -e "$RSYNC_E" scripts/ "${REMOTE}:${REMOTE_DIR}/scripts/"
+    rsync -az -e "$RSYNC_E" prisma/ "${REMOTE}:${REMOTE_DIR}/prisma/"
+    rsync -az -e "$RSYNC_E" prisma.config.mjs "${REMOTE}:${REMOTE_DIR}/prisma.config.mjs"
+    ssh_remote "rm -f '${REMOTE_DIR}/prisma.config.ts'"
+    DID_ANY=1
+  else
+    if [[ "$NEED_RSYNC_PUBLIC" == 1 ]]; then
+      echo "▶ 同步 public/ ..."
+      rsync -az --delete -e "$RSYNC_E" public/ "${REMOTE}:${REMOTE_DIR}/public/"
+      DID_ANY=1
+    fi
+    if [[ "$NEED_MIGRATE" == 1 ]]; then
+      echo "▶ 同步 prisma/ ..."
+      rsync -az -e "$RSYNC_E" prisma/ "${REMOTE}:${REMOTE_DIR}/prisma/"
+      rsync -az -e "$RSYNC_E" prisma.config.mjs "${REMOTE}:${REMOTE_DIR}/prisma.config.mjs"
+      ssh_remote "rm -f '${REMOTE_DIR}/prisma.config.ts'"
+      DID_ANY=1
+    fi
+    if [[ "$NEED_DEPS" == 1 ]]; then
+      echo "▶ 同步 scripts/ ..."
+      rsync -az -e "$RSYNC_E" scripts/ "${REMOTE}:${REMOTE_DIR}/scripts/"
+      DID_ANY=1
+    fi
+  fi
 
   _ensure_runtime_system_packages_remote "${REMOTE_DIR}"
 
-  echo "▶ 远端数据库迁移 (prisma migrate deploy)..."
-  # 使用 bash source 加载 .env（与 .env.example 中带引号的值兼容）；APP_DIR 由本地 REMOTE_DIR 传入
-  ssh_remote "bash -s" <<END_SSH
+  # ── 按需数据库迁移 ─────────────────────────────────────────────────────────
+  if [[ "$NEED_MIGRATE" == 1 ]] || [[ "$NEED_BUILD" == 1 ]]; then
+    echo "▶ 远端数据库迁移 (prisma migrate deploy)..."
+    # 使用 bash source 加载 .env（与 .env.example 中带引号的值兼容）；APP_DIR 由本地 REMOTE_DIR 传入
+    ssh_remote "bash -s" <<END_SSH
 set -euo pipefail
 APP_DIR='${REMOTE_DIR}'
 cd "\$APP_DIR"
@@ -269,9 +365,13 @@ psql "\${DATABASE_URL}" -q -c "
 " 2>/dev/null && echo "✓ 已清除滞留的失败迁移记录（如有）" || true
 prisma migrate deploy
 END_SSH
+    DID_ANY=1
+  fi
 
-  echo "▶ 写入启动脚本（加载 .env 后 exec node）..."
-  ssh_remote "bash -s" <<END_SSH
+  # ── 按需重写 start-prod.sh + PM2 重启 ─────────────────────────────────────
+  if [[ "$NEED_BUILD" == 1 ]] || [[ "$NEED_MIGRATE" == 1 ]] || [[ "$NEED_DEPS" == 1 ]]; then
+    echo "▶ 写入启动脚本（加载 .env 后 exec node）..."
+    ssh_remote "bash -s" <<END_SSH
 set -euo pipefail
 APP_DIR='${REMOTE_DIR}'
 cat > "\$APP_DIR/start-prod.sh" << 'EOS'
@@ -299,8 +399,8 @@ EOS
 chmod +x "\$APP_DIR/start-prod.sh"
 END_SSH
 
-  echo "▶ PM2 启动 / 重启..."
-  ssh_remote "bash -s" <<END_SSH
+    echo "▶ PM2 启动 / 重启..."
+    ssh_remote "bash -s" <<END_SSH
 set -euo pipefail
 APP_DIR='${REMOTE_DIR}'
 cd "\$APP_DIR"
@@ -311,6 +411,16 @@ else
   pm2 save
 fi
 END_SSH
+    DID_ANY=1
+  elif [[ "$DID_ANY" == 1 ]] && [[ "$NEED_RSYNC_PUBLIC" == 1 ]]; then
+    echo "ℹ️ 仅 public 已同步；按需执行: ssh ${REMOTE} pm2 restart adviser --update-env"
+  fi
+
+  # ── 写入远端版本记录 ───────────────────────────────────────────────────────
+  if [[ -n "$HEAD_NOW" ]]; then
+    ssh_remote "printf '%s\n' '${HEAD_NOW}' > '${REMOTE_DIR}/.adviser-deploy-rev'"
+    echo "▶ 已写入远端 .adviser-deploy-rev (${HEAD_NOW:0:12}…)"
+  fi
 
   echo "✓ 部署完成。请确认 Nginx / HTTPS 已指向本机 Node（默认 3000）。"
 }

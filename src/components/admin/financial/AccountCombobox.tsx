@@ -1,13 +1,24 @@
 'use client'
 
-import { type KeyboardEvent, type Ref, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type KeyboardEvent, type Ref, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { ChevronDown, Search } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export type AccountPickerOption = {
   id: string
   code: string
   name: string
   type: string
+  level?: number
+  parentId?: string | null
+  sortOrder?: number
+}
+
+export type AccountComboboxSpecialOption = {
+  id: string
+  label: string
+  description?: string
+  accent?: string
 }
 
 type AccountComboboxProps = {
@@ -19,10 +30,50 @@ type AccountComboboxProps = {
   disabled?: boolean
   inputRef?: Ref<HTMLInputElement>
   onInputKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void
+  options?: AccountPickerOption[]
+  specialOptions?: AccountComboboxSpecialOption[]
+  emptyMessage?: string
 }
 
 function formatAccountLabel(account: AccountPickerOption): string {
   return `${account.code} - ${account.name}`
+}
+
+const ACCOUNT_TYPE_META: Record<string, { label: string; accent: string; background: string }> = {
+  ASSET: { label: '资产', accent: '#38bdf8', background: 'rgba(56,189,248,0.12)' },
+  NON_CURRENT_ASSET: { label: '长期资产', accent: '#22d3ee', background: 'rgba(34,211,238,0.12)' },
+  LIABILITY: { label: '负债', accent: '#f59e0b', background: 'rgba(245,158,11,0.13)' },
+  NON_CURRENT_LIABILITY: { label: '长期负债', accent: '#fb7185', background: 'rgba(251,113,133,0.12)' },
+  EQUITY: { label: '权益', accent: '#a78bfa', background: 'rgba(167,139,250,0.12)' },
+  REVENUE: { label: '收入', accent: '#34d399', background: 'rgba(52,211,153,0.12)' },
+  EXPENSE: { label: '费用', accent: '#f87171', background: 'rgba(248,113,113,0.12)' },
+  CGS: { label: '成本', accent: '#fb923c', background: 'rgba(251,146,60,0.12)' },
+  CURRENT_ACCOUNT: { label: '往来', accent: '#2dd4bf', background: 'rgba(45,212,191,0.12)' },
+}
+
+type RenderOption =
+  | {
+    kind: 'special'
+    id: string
+    label: string
+    description?: string
+    accent: string
+    searchText: string
+  }
+  | {
+    kind: 'account'
+    id: string
+    account: AccountPickerOption
+    label: string
+    level: number
+    typeLabel: string
+    accent: string
+    background: string
+    searchText: string
+  }
+
+function accountTypeMeta(type: string) {
+  return ACCOUNT_TYPE_META[type] ?? { label: type, accent: '#C9A96E', background: 'rgba(201,169,110,0.12)' }
 }
 
 export function AccountCombobox({
@@ -34,18 +85,43 @@ export function AccountCombobox({
   disabled = false,
   inputRef,
   onInputKeyDown,
+  options: localOptions,
+  specialOptions = [],
+  emptyMessage: emptyMessageProp,
 }: AccountComboboxProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const listboxId = useId()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [options, setOptions] = useState<AccountPickerOption[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState<AccountPickerOption | null>(null)
+  const [highlightedIndex, setHighlightedIndex] = useState(0)
 
-  const displayValue = open ? search : selectedAccount ? formatAccountLabel(selectedAccount) : ''
+  const selectedSpecialOption = useMemo(
+    () => specialOptions.find(option => option.id === value) ?? null,
+    [specialOptions, value],
+  )
+  const selectedLocalAccount = useMemo(
+    () => localOptions?.find(account => account.id === value) ?? null,
+    [localOptions, value],
+  )
+
+  const displayValue = open
+    ? search
+    : !value
+      ? ''
+      : selectedSpecialOption
+      ? selectedSpecialOption.label
+      : selectedLocalAccount
+        ? formatAccountLabel(selectedLocalAccount)
+        : selectedAccount
+          ? formatAccountLabel(selectedAccount)
+          : ''
 
   const fetchOptions = useCallback(
     async (query: string) => {
+      if (localOptions) return
       if (!companyId) {
         setOptions([])
         return
@@ -65,14 +141,11 @@ export function AccountCombobox({
         setLoading(false)
       }
     },
-    [companyId],
+    [companyId, localOptions],
   )
 
   useEffect(() => {
-    if (!value || value === 'NONE') {
-      setSelectedAccount(null)
-      return
-    }
+    if (localOptions || selectedSpecialOption || !value || value === 'NONE') return
     if (selectedAccount?.id === value) return
 
     let cancelled = false
@@ -92,7 +165,7 @@ export function AccountCombobox({
     return () => {
       cancelled = true
     }
-  }, [value, companyId, selectedAccount?.id])
+  }, [value, companyId, selectedAccount?.id, selectedSpecialOption, localOptions])
 
   useEffect(() => {
     if (!open) return
@@ -113,17 +186,61 @@ export function AccountCombobox({
     return () => document.removeEventListener('mousedown', handlePointerDown)
   }, [])
 
+  const renderOptions = useMemo<RenderOption[]>(() => {
+    const query = search.trim().toLowerCase()
+    const accountRows = (localOptions ?? options).map(account => {
+      const meta = accountTypeMeta(account.type)
+      const label = formatAccountLabel(account)
+      const searchText = `${label} ${account.type} ${meta.label}`.toLowerCase()
+      return {
+        kind: 'account' as const,
+        id: account.id,
+        account,
+        label,
+        level: Math.max(1, account.level ?? 1),
+        typeLabel: meta.label,
+        accent: meta.accent,
+        background: meta.background,
+        searchText,
+      }
+    })
+    const specialRows = specialOptions.map(option => ({
+      kind: 'special' as const,
+      id: option.id,
+      label: option.label,
+      description: option.description,
+      accent: option.accent ?? '#C9A96E',
+      searchText: `${option.label} ${option.description ?? ''}`.toLowerCase(),
+    }))
+    return [...specialRows, ...accountRows].filter(option => !query || option.searchText.includes(query))
+  }, [localOptions, options, search, specialOptions])
+
+  const activeHighlightedIndex = renderOptions.length === 0
+    ? 0
+    : Math.min(highlightedIndex, renderOptions.length - 1)
+
   const emptyMessage = useMemo(() => {
     if (!companyId) return '请先选择客户公司'
     if (loading) return '加载中...'
-    return '未找到匹配科目'
-  }, [companyId, loading])
+    return emptyMessageProp ?? '未找到匹配科目'
+  }, [companyId, emptyMessageProp, loading])
 
   function selectAccount(account: AccountPickerOption) {
     setSelectedAccount(account)
     onChange(account.id)
     setOpen(false)
     setSearch('')
+  }
+
+  function selectOption(option: RenderOption) {
+    if (option.kind === 'special') {
+      setSelectedAccount(null)
+      onChange(option.id)
+      setOpen(false)
+      setSearch('')
+      return
+    }
+    selectAccount(option.account)
   }
 
   return (
@@ -143,16 +260,61 @@ export function AccountCombobox({
           onFocus={() => {
             setOpen(true)
             setSearch('')
+            setHighlightedIndex(0)
           }}
           onKeyDown={event => {
-            if (open && (event.key === 'Enter' || event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+            if (event.key === 'ArrowDown') {
+              event.preventDefault()
+              if (!open) {
+                setOpen(true)
+                setSearch('')
+                setHighlightedIndex(0)
+                return
+              }
+              setHighlightedIndex(index => (
+                renderOptions.length ? (Math.min(index, renderOptions.length - 1) + 1) % renderOptions.length : 0
+              ))
+              return
+            }
+            if (event.key === 'ArrowUp') {
+              event.preventDefault()
+              if (!open) {
+                setOpen(true)
+                setSearch('')
+                setHighlightedIndex(0)
+                return
+              }
+              setHighlightedIndex(index => (
+                renderOptions.length ? (Math.min(index, renderOptions.length - 1) - 1 + renderOptions.length) % renderOptions.length : 0
+              ))
+              return
+            }
+            if (event.key === 'Enter' && open) {
+              event.preventDefault()
+              const option = renderOptions[activeHighlightedIndex]
+              if (option) selectOption(option)
+              return
+            }
+            if (event.key === 'Escape' && open) {
+              event.preventDefault()
+              setOpen(false)
+              setSearch('')
               return
             }
             onInputKeyDown?.(event)
           }}
           placeholder={placeholder}
           disabled={disabled || !companyId}
-          className={`w-full rounded-lg pl-8 pr-9 py-2 text-sm outline-none disabled:opacity-60 ${inputClassName}`}
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={open ? listboxId : undefined}
+          aria-activedescendant={open && renderOptions[activeHighlightedIndex] ? `${listboxId}-${renderOptions[activeHighlightedIndex].id}` : undefined}
+          aria-autocomplete="list"
+          className={cn(
+            'h-9 w-full rounded-lg border pl-8 pr-9 py-2 text-sm outline-none transition-colors disabled:opacity-60',
+            'focus-visible:border-[#C9A96E] focus-visible:ring-3 focus-visible:ring-[#C9A96E]/25',
+            inputClassName,
+          )}
         />
         <ChevronDown
           size={14}
@@ -161,24 +323,54 @@ export function AccountCombobox({
       </div>
 
       {open && (
-        <div className="financial-account-combobox-dropdown absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-lg border border-[#2A2418] bg-[#11110E] text-[#FFF7E6] shadow-lg">
-          {options.length === 0 ? (
+        <div
+          id={listboxId}
+          role="listbox"
+          className="financial-account-combobox-dropdown absolute z-50 mt-1 w-full min-w-0 max-h-72 overflow-y-auto rounded-lg border border-[#2A2418] bg-[#11110E] p-1.5 text-[#FFF7E6] shadow-xl sm:min-w-80"
+        >
+          {renderOptions.length === 0 ? (
             <div className="px-3 py-4 text-center text-sm text-[#B8AD98]">
               {emptyMessage}
             </div>
           ) : (
-            options.map(account => (
+            renderOptions.map((option, index) => (
               <button
-                key={account.id}
+                key={option.id}
+                id={`${listboxId}-${option.id}`}
                 type="button"
-                data-selected={account.id === value ? 'true' : undefined}
+                role="option"
+                aria-selected={option.id === value}
+                data-selected={option.id === value ? 'true' : undefined}
+                data-highlighted={index === activeHighlightedIndex ? 'true' : undefined}
                 onMouseDown={e => e.preventDefault()}
-                onClick={() => selectAccount(account)}
-                className="w-full border-b border-[#1E1C15] px-3 py-2.5 text-left text-sm text-[#FFF7E6] transition-colors hover:bg-[#1E1A12]"
+                onMouseEnter={() => setHighlightedIndex(index)}
+                onClick={() => selectOption(option)}
+                className="flex w-full items-start gap-2.5 rounded-md px-2.5 py-2.5 text-left text-sm text-[#FFF7E6] transition-colors hover:bg-[#1E1A12]"
               >
-                <div className="font-medium">{formatAccountLabel(account)}</div>
-                <div className="mt-0.5 text-xs text-[#B8AD98]">
-                  {account.type}
+                <span
+                  className="mt-1 block size-2.5 shrink-0 rounded-full ring-2 ring-black/20"
+                  style={{ background: option.accent }}
+                />
+                <div
+                  className="min-w-0 flex-1"
+                  style={{ paddingLeft: option.kind === 'account' ? `${(option.level - 1) * 10}px` : undefined }}
+                >
+                  <div className="truncate font-medium">{option.label}</div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                    {option.kind === 'account' ? (
+                      <>
+                        <span
+                          className="rounded px-1.5 py-0.5 font-medium"
+                          style={{ background: option.background, color: option.accent }}
+                        >
+                          {option.typeLabel}
+                        </span>
+                        <span className="font-mono text-[#8F846F]">{option.account.type}</span>
+                      </>
+                    ) : (
+                      <span className="financial-account-combobox-muted">{option.description}</span>
+                    )}
+                  </div>
                 </div>
               </button>
             ))

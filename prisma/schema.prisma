@@ -2172,6 +2172,7 @@ model CosEmployee {
   email        String?
   position     String?
   department   String?
+  idCardNumber String?
   birthDate    DateTime?
   hireDate     DateTime?
   notes        String          @default("")

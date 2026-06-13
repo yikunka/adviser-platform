@@ -250,6 +250,63 @@ html {
   color: #9F927B !important;
 }
 
+.financial-field {
+  color-scheme: dark;
+  accent-color: #C9A96E;
+  -webkit-text-fill-color: #FFF7E6;
+}
+
+.financial-field::placeholder {
+  color: #9F927B !important;
+  -webkit-text-fill-color: #9F927B;
+  opacity: 1;
+}
+
+.financial-field[data-placeholder] {
+  color: #B8AD98 !important;
+  -webkit-text-fill-color: #B8AD98;
+}
+
+.financial-field svg {
+  color: #C9A96E !important;
+}
+
+.financial-field:hover {
+  border-color: #3A3020 !important;
+}
+
+.financial-field:focus-visible {
+  border-color: #C9A96E !important;
+  box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.18), inset 0 1px 0 rgba(255, 247, 230, 0.04) !important;
+}
+
+.financial-field::selection {
+  background: rgba(201, 169, 110, 0.72);
+  color: #0A0805;
+}
+
+.financial-field::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(83%) sepia(28%) saturate(526%) hue-rotate(359deg) brightness(91%) contrast(86%);
+  opacity: 0.92;
+}
+
+.financial-field:hover::-webkit-calendar-picker-indicator,
+.financial-field:focus::-webkit-calendar-picker-indicator {
+  opacity: 1;
+}
+
+.financial-field::-webkit-date-and-time-value {
+  color: #FFF7E6;
+  text-align: left;
+}
+
+.financial-field::-webkit-inner-spin-button,
+.financial-field::-webkit-outer-spin-button {
+  filter: invert(83%) sepia(28%) saturate(526%) hue-rotate(359deg) brightness(91%) contrast(86%);
+  opacity: 0.86;
+}
+
 .financial-modal [data-slot="dialog-footer"] {
   background: #16130E !important;
   border-color: #2A2418 !important;
@@ -286,11 +343,15 @@ html {
   color: #C9A96E !important;
 }
 
+.financial-account-combobox-dropdown button[data-highlighted='true'] {
+  background: #1E1A12 !important;
+}
+
 .financial-account-combobox-dropdown button:hover {
   background: #1E1A12 !important;
 }
 
-.financial-account-combobox-dropdown button .text-xs {
+.financial-account-combobox-muted {
   color: #B8AD98 !important;
 }
 

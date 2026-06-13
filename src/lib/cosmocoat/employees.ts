@@ -24,6 +24,7 @@ export type CosEmployeeRow = {
   email: string | null
   position: string | null
   department: string | null
+  idCardNumber: string | null
   birthDate: string | null
   birthInfo: CosEmployeeBirthInfo | null
   hireDate: string | null
@@ -83,6 +84,7 @@ export function serializeEmployee(
     email: string | null
     position: string | null
     department: string | null
+    idCardNumber: string | null
     birthDate: Date | null
     hireDate: Date | null
     notes: string
@@ -113,6 +115,7 @@ export function serializeEmployee(
     email: employee.email,
     position: employee.position,
     department: employee.department,
+    idCardNumber: employee.idCardNumber,
     birthDate: employee.birthDate?.toISOString() ?? null,
     birthInfo: resolveCosEmployeeBirthInfo(employee.birthDate?.toISOString() ?? null),
     hireDate: employee.hireDate?.toISOString() ?? null,
