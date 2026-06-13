@@ -15,6 +15,7 @@ import { PartySelect } from '@/components/admin/financial/subledger/PartySelect'
 import {
   accountPickerInputClassName,
   fieldClassName,
+  financialModalContentClassName,
   inputStyle,
   money,
   type SideConfig,
@@ -147,7 +148,7 @@ export function DocFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[88vh] overflow-y-auto">
+      <DialogContent className={`${financialModalContentClassName} max-w-3xl max-h-[88vh] overflow-y-auto`}>
         <DialogHeader>
           <DialogTitle>{editing ? `编辑${config.docLabel} ${editing.docNo}` : `新增${config.docLabel}`}</DialogTitle>
         </DialogHeader>

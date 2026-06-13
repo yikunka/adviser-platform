@@ -204,13 +204,16 @@ export const inputStyle = {
 } as const
 
 export const fieldClassName =
-  'bg-[#0E0E0A] border-[#2A2418] text-[#FFF7E6] placeholder:text-[#7A6A50] caret-[#C9A96E] focus-visible:border-[#C9A96E] focus-visible:ring-[#C9A96E]/25'
+  'financial-field bg-[#0E0E0A] border-[#2A2418] text-[#FFF7E6] placeholder:text-[#9F927B] caret-[#C9A96E] shadow-inner shadow-black/20 focus-visible:border-[#C9A96E] focus-visible:ring-[#C9A96E]/25'
 
 export const accountPickerInputClassName =
-  'bg-[#0E0E0A] border-[#2A2418] text-[#FFF7E6] placeholder:text-[#7A6A50] caret-[#C9A96E] focus-visible:border-[#C9A96E]'
+  'financial-field bg-[#0E0E0A] border-[#2A2418] text-[#FFF7E6] placeholder:text-[#9F927B] caret-[#C9A96E] shadow-inner shadow-black/20 focus-visible:border-[#C9A96E] focus-visible:ring-[#C9A96E]/25'
 
 export const selectContentClassName =
-  'border border-[#2A2418] bg-[#11100B] text-[#FFF7E6] shadow-xl shadow-black/30'
+  'financial-select-content border border-[#2A2418] bg-[#11100B] text-[#FFF7E6] shadow-xl shadow-black/30'
 
 export const selectItemClassName =
   'text-[#FFF7E6] focus:bg-[#1F1A12] focus:text-[#FFF7E6] data-[highlighted]:bg-[#1F1A12] data-[highlighted]:text-[#FFF7E6]'
+
+export const financialModalContentClassName =
+  'financial-modal border-[#2A2418] bg-[#11110E] text-[#FFF7E6] shadow-2xl ring-[#3A3428]'

@@ -14,6 +14,7 @@ import { PartySelect } from '@/components/admin/financial/subledger/PartySelect'
 import {
   accountPickerInputClassName,
   fieldClassName,
+  financialModalContentClassName,
   inputStyle,
   money,
   type SideConfig,
@@ -111,7 +112,7 @@ export function NoteFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className={`${financialModalContentClassName} max-w-lg`}>
         <DialogHeader>
           <DialogTitle>新增{config.noteLabel}</DialogTitle>
         </DialogHeader>
@@ -230,7 +231,7 @@ export function NoteApplyDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className={`${financialModalContentClassName} max-w-xl`}>
         <DialogHeader>
           <DialogTitle>
             核销 {note.noteNo} <span className="text-sm font-normal" style={{ color: 'var(--muted-foreground)' }}>可用 {money(note.remaining)} · 本次 {money(allocated)}</span>
