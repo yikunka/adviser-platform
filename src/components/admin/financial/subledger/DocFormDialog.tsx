@@ -148,7 +148,7 @@ export function DocFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`${financialModalContentClassName} max-w-3xl max-h-[88vh] overflow-y-auto`}>
+      <DialogContent className={`${financialModalContentClassName} w-[min(96vw,72rem)] !max-w-[72rem] max-h-[92vh] overflow-y-auto`}>
         <DialogHeader>
           <DialogTitle>{editing ? `编辑${config.docLabel} ${editing.docNo}` : `新增${config.docLabel}`}</DialogTitle>
         </DialogHeader>
@@ -202,7 +202,12 @@ export function DocFormDialog({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>明细行 *</Label>
-              <Button size="sm" variant="outline" style={{ borderColor: '#2A2418' }} onClick={() => setLines(c => [...c, emptyLine()])}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-[#C9A96E] bg-[#211B10] text-[#FFF7E6] shadow-sm shadow-black/20 hover:bg-[#C9A96E] hover:text-[#0A0805]"
+                onClick={() => setLines(c => [...c, emptyLine()])}
+              >
                 <Plus size={14} className="mr-1" /> 加一行
               </Button>
             </div>
@@ -246,7 +251,7 @@ export function DocFormDialog({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 w-8 p-0 hover:text-red-500"
+                    className="h-8 w-8 p-0 border border-[#4A3426] bg-[#1A1210] text-[#F7B4A7] hover:bg-[#3A1712] hover:text-[#FFE7E2] disabled:border-[#2A2418] disabled:bg-transparent disabled:text-[#6B6254]"
                     disabled={lines.length === 1}
                     onClick={() => setLines(c => c.filter((_, i) => i !== index))}
                   >
@@ -279,7 +284,11 @@ export function DocFormDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" style={{ borderColor: '#2A2418' }} onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            className="border-[#8A7A5A] bg-[#1A1812] text-[#FFF7E6] hover:bg-[#2A2418] hover:text-[#FFF7E6]"
+            onClick={() => onOpenChange(false)}
+          >
             取消
           </Button>
           <Button onClick={() => void save()} disabled={saving} style={{ background: '#C9A96E', color: '#0A0805' }}>

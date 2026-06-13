@@ -120,6 +120,7 @@ const partyBaseSchema = z.object({
   phone: z.string().trim().max(50).optional().nullable(),
   address: z.string().trim().max(500).optional().nullable(),
   taxNumber: z.string().trim().max(100).optional().nullable(),
+  color: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/, '颜色需为 #RRGGBB 格式').optional().default('#C9A96E'),
   currency: z.string().trim().length(3).optional().default('HKD'),
   paymentTermsDays: z.coerce.number().int().min(0).max(365).optional().default(30),
   creditLimit: z.coerce.number().min(0).optional().nullable(),

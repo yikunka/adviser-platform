@@ -2533,6 +2533,7 @@ model Party {
   phone            String?
   address          String?
   taxNumber        String?
+  color            String   @default("#C9A96E")
   currency         String   @default("HKD")
   paymentTermsDays Int      @default(30)
   creditLimit      Decimal? @db.Decimal(18, 2)

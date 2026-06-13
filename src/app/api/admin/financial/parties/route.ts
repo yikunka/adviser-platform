@@ -82,6 +82,7 @@ export async function POST(req: NextRequest) {
           phone: parsed.data.phone ?? null,
           address: parsed.data.address ?? null,
           taxNumber: parsed.data.taxNumber ?? null,
+          color: parsed.data.color,
           currency: parsed.data.currency,
           paymentTermsDays: parsed.data.paymentTermsDays,
           creditLimit: parsed.data.creditLimit ?? null,

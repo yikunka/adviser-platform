@@ -509,10 +509,6 @@ interface ProcessKitPrintViewProps {
   otherNote: string
   processDescription: string
   processFlowDocument: string
-  standardizedOperation: {
-    title: string
-    items: StandardizedOperationItem[]
-  }
   labels: {
     title: string
     basicInfo: string
@@ -538,7 +534,6 @@ function ProcessKitPrintView({
   otherNote,
   processDescription,
   processFlowDocument,
-  standardizedOperation,
   labels,
 }: ProcessKitPrintViewProps) {
   return (
@@ -641,20 +636,6 @@ function ProcessKitPrintView({
           </tr>
         </tbody>
       </table>
-
-      <div className="print-section-title" style={printSectionTitleStyle}>
-        {standardizedOperation.title}
-      </div>
-      <table style={printTableStyle}>
-        <tbody>
-          {standardizedOperation.items.map((item, index) => (
-            <tr key={item.title} style={{ background: index % 2 === 1 ? PROCESS_KIT_PRINT_COLORS.altBg : '#fff' }}>
-              <td style={{ ...printLabelCellStyle, width: '24%' }}>{item.title}</td>
-              <td style={{ ...printCellStyle, whiteSpace: 'pre-wrap' }}>{item.body}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   )
 }
@@ -749,15 +730,6 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   const thinnerProducts = useMemo(
     () => products.filter(product => matchesAccessoryProduct(product, 'thinner')),
     [products],
-  )
-  const processFlowDocument = useMemo(
-    () => buildProcessFlowDocumentFromItems(
-      processFlowItems,
-      kitProducts,
-      processFlowNote,
-      processDescription,
-    ),
-    [processFlowItems, kitProducts, processFlowNote, processDescription],
   )
   const processFlowDocumentForPrint = useMemo(
     () => buildProcessFlowDocumentFromItems(
@@ -1639,7 +1611,6 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
           otherNote={otherNote}
           processDescription={processDescription}
           processFlowDocument={processFlowDocumentForPrint}
-          standardizedOperation={standardizedOperation}
           labels={printLabels}
         />
       )}
