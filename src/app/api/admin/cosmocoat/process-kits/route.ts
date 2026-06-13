@@ -195,7 +195,7 @@ export async function GET(req: NextRequest) {
     ])
 
     return NextResponse.json({
-      items: items.map(serializeProcessKit),
+      items: items.map(kit => serializeProcessKit(kit)),
       total,
       page,
       limit,

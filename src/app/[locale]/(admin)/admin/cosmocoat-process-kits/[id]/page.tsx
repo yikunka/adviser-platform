@@ -2,7 +2,7 @@
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/i18n/navigation'
@@ -32,12 +32,21 @@ import {
   formatSprayViscosity,
   formatUvEnergy,
 } from '@/lib/cosmocoat/process-kit-parameters'
+import { subscribeFactoryProductChanged } from '@/lib/cosmocoat/factory-product-events'
 
 type FactoryProductOption = {
   id: string
   productCode: string
   name: string
   category?: { id: string; name: string; slug: string } | null
+}
+
+type LinkedFactoryProductSnapshot = {
+  id: string
+  productCode: string
+  name: string
+  displayName: string
+  updatedAt: string
 }
 
 type TechnicalTesterOption = {
@@ -159,6 +168,70 @@ function inputStyle(): React.CSSProperties {
   }
 }
 
+function syncFactoryProductOptions(
+  options: FactoryProductOption[],
+  snapshots: LinkedFactoryProductSnapshot[],
+) {
+  if (options.length === 0 || snapshots.length === 0) return options
+
+  const snapshotById = new Map(snapshots.map(snapshot => [snapshot.id, snapshot]))
+  let changed = false
+
+  const next = options.map(option => {
+    const snapshot = snapshotById.get(option.id)
+    if (!snapshot) return option
+    if (option.productCode === snapshot.productCode && option.name === snapshot.name) {
+      return option
+    }
+    changed = true
+    return {
+      ...option,
+      productCode: snapshot.productCode,
+      name: snapshot.name,
+    }
+  })
+
+  return changed ? next : options
+}
+
+function syncKitProductsWithLinkedFactorySnapshots(
+  products: KitProduct[],
+  snapshots: LinkedFactoryProductSnapshot[],
+) {
+  if (products.length === 0 || snapshots.length === 0) return products
+
+  const displayNameById = new Map(snapshots.map(snapshot => [snapshot.id, snapshot.displayName]))
+  let changed = false
+
+  const next = products.map(product => {
+    const productName = displayNameById.get(product.productId) ?? product.productName
+    const hardenerProductName = product.hardenerProductId
+      ? (displayNameById.get(product.hardenerProductId) ?? product.hardenerProductName)
+      : product.hardenerProductName
+    const thinnerProductName = product.thinnerProductId
+      ? (displayNameById.get(product.thinnerProductId) ?? product.thinnerProductName)
+      : product.thinnerProductName
+
+    if (
+      productName === product.productName
+      && hardenerProductName === product.hardenerProductName
+      && thinnerProductName === product.thinnerProductName
+    ) {
+      return product
+    }
+
+    changed = true
+    return {
+      ...product,
+      productName,
+      hardenerProductName,
+      thinnerProductName,
+    }
+  })
+
+  return changed ? next : products
+}
+
 const dateTimePickerStyle: React.CSSProperties = {
   background: '#0E0E0A',
   border: '1px solid #2A2418',
@@ -168,6 +241,7 @@ const dateTimePickerStyle: React.CSSProperties = {
 }
 
 const PRINT_RESET_DELAY_MS = 180
+const LINKED_FACTORY_PRODUCT_REFRESH_INTERVAL_MS = 1000
 const PROCESS_KIT_PRINT_AREA_ID = 'cosmocoat-process-kit-print-area'
 const PROCESS_KIT_PRINT_COLORS = {
   text: '#111827',
@@ -209,6 +283,13 @@ const PROCESS_FLOW_PRINT_COLUMN_WIDTHS = {
   label: '13%',
   value: '87%',
 } as const
+const PROCESS_KIT_COMPANY_CONTACTS = [
+  ['销售公司', '威柔新材料(广州)有限公司'],
+  ['生产工厂', '东莞华兴漆油有限公司'],
+  ['地址', '广东省东莞市长安镇厦岗龙源街9号'],
+  ['电话', '0769-85541701'],
+  ['网址', 'www.cosmocoat.cn'],
+] as const
 
 const PROCESS_KIT_PRINT_STYLES = `
   @media print {
@@ -427,7 +508,6 @@ interface ProcessKitPrintViewProps {
   performanceStandardGroups: PerformanceStandardPrintGroup[]
   otherNote: string
   processDescription: string
-  processFlowNote: string
   processFlowDocument: string
   standardizedOperation: {
     title: string
@@ -444,7 +524,6 @@ interface ProcessKitPrintViewProps {
     noPerformanceStandards: string
     processFlowSection: string
     addProcess: string
-    globalProcessNote: string
     processFlowDocument: string
     notes: string
   }
@@ -458,15 +537,35 @@ function ProcessKitPrintView({
   performanceStandardGroups,
   otherNote,
   processDescription,
-  processFlowNote,
   processFlowDocument,
   standardizedOperation,
   labels,
 }: ProcessKitPrintViewProps) {
   return (
     <div id={PROCESS_KIT_PRINT_AREA_ID}>
-      <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 16, marginBottom: 12, color: PROCESS_KIT_PRINT_COLORS.text }}>
-        {labels.title}
+      <div style={{ position: 'relative', minHeight: 64, marginBottom: 12, color: PROCESS_KIT_PRINT_COLORS.text }}>
+        <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 16, paddingTop: 4 }}>
+          {labels.title}
+        </div>
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            width: 238,
+            fontSize: 8,
+            lineHeight: 1.35,
+            textAlign: 'left',
+            color: PROCESS_KIT_PRINT_COLORS.text,
+          }}
+        >
+          {PROCESS_KIT_COMPANY_CONTACTS.map(([label, value]) => (
+            <div key={label} style={{ display: 'flex', gap: 4 }}>
+              <span style={{ flex: '0 0 36px', fontWeight: 700 }}>{label}</span>
+              <span style={{ flex: 1 }}>{value}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="print-section-title" style={printSectionTitleStyle}>
@@ -536,12 +635,6 @@ function ProcessKitPrintView({
           )}
           <tr>
             <td style={{ ...printLabelCellStyle, width: PROCESS_FLOW_PRINT_COLUMN_WIDTHS.label }}>
-              {labels.globalProcessNote}
-            </td>
-            <td style={{ ...printCellStyle, whiteSpace: 'pre-wrap' }}>{displayText(processFlowNote)}</td>
-          </tr>
-          <tr>
-            <td style={{ ...printLabelCellStyle, width: PROCESS_FLOW_PRINT_COLUMN_WIDTHS.label }}>
               {labels.processFlowDocument}
             </td>
             <td style={{ ...printCellStyle, whiteSpace: 'pre-wrap' }}>{displayText(processFlowDocument)}</td>
@@ -596,6 +689,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   const [showProductForm, setShowProductForm] = useState(false)
   const [addingProduct, setAddingProduct] = useState(false)
   const [selectedProductOption, setSelectedProductOption] = useState<FactoryProductOption | null>(null)
+  const linkedFactoryProductVersionRef = useRef<string | null | undefined>(undefined)
   const [editingProductId, setEditingProductId] = useState<string | null>(null)
   const [savingProductEdit, setSavingProductEdit] = useState(false)
   const [processEditor, setProcessEditor] = useState<{
@@ -665,10 +759,24 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     ),
     [processFlowItems, kitProducts, processFlowNote, processDescription],
   )
+  const processFlowDocumentForPrint = useMemo(
+    () => buildProcessFlowDocumentFromItems(
+      processFlowItems,
+      kitProducts,
+      null,
+      processDescription,
+    ),
+    [processFlowItems, kitProducts, processDescription],
+  )
   const editingProduct = useMemo(
     () => editingProductId ? kitProducts.find(product => product.id === editingProductId) ?? null : null,
     [editingProductId, kitProducts],
   )
+  const linkedFactoryProductIds = useMemo(() => [...new Set(kitProducts.flatMap(product => [
+    product.productId,
+    product.hardenerProductId,
+    product.thinnerProductId,
+  ].filter((id): id is string => Boolean(id))))], [kitProducts])
   const flowSequenceByItemId = useMemo(() => {
     const map = new Map<string, number>()
     let sequence = 0
@@ -701,7 +809,6 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     noPerformanceStandards: t('noPerformanceStandards'),
     processFlowSection: t('processFlowSection'),
     addProcess: t('addProcess'),
-    globalProcessNote: t('globalProcessNote'),
     processFlowDocument: t('processFlowDocument'),
     notes: t('notes'),
   }), [t])
@@ -757,7 +864,9 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
 
   const loadProducts = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/cosmocoat/factory-products?limit=500')
+      const res = await fetch('/api/admin/cosmocoat/factory-products?limit=500', {
+        cache: 'no-store',
+      })
       const data = await res.json()
       if (!res.ok) return
       setProducts((data.items ?? []).map((p: FactoryProductOption) => ({
@@ -774,7 +883,9 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   const loadTechnicalTesters = useCallback(async () => {
     setLoadingTesters(true)
     try {
-      const res = await fetch('/api/admin/cosmocoat/process-kits/testers')
+      const res = await fetch('/api/admin/cosmocoat/process-kits/testers', {
+        cache: 'no-store',
+      })
       const data = await res.json()
       if (!res.ok) return
       setTechnicalTesters(data.testers ?? [])
@@ -785,14 +896,16 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     }
   }, [])
 
-  const loadKit = useCallback(async () => {
+  const loadKit = useCallback(async (options?: { silent?: boolean }) => {
     if (isNew) return
-    setLoading(true)
+    if (!options?.silent) setLoading(true)
     try {
-      const res = await fetch(`/api/admin/cosmocoat/process-kits/${kitId}`)
+      const res = await fetch(`/api/admin/cosmocoat/process-kits/${kitId}`, {
+        cache: 'no-store',
+      })
       const data = await res.json()
       if (!res.ok) {
-        toast.error(data.error ?? t('loadFailed'))
+        if (!options?.silent) toast.error(data.error ?? t('loadFailed'))
         return
       }
       const kit = data.kit as LoadedKit
@@ -813,11 +926,50 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       setProcessFlowItems(kit.processFlowItems ?? [])
       setTests(kit.tests ?? [])
     } catch {
-      toast.error(t('loadFailed'))
+      if (!options?.silent) toast.error(t('loadFailed'))
     } finally {
-      setLoading(false)
+      if (!options?.silent) setLoading(false)
     }
   }, [isNew, kitId, t])
+
+  const loadLinkedFactoryProducts = useCallback(async () => {
+    if (isNew || linkedFactoryProductIds.length === 0) return
+
+    try {
+      const res = await fetch(`/api/admin/cosmocoat/process-kits/${kitId}/products`, {
+        cache: 'no-store',
+      })
+      const data = await res.json()
+      if (!res.ok) return
+
+      const snapshots = (data.items ?? []) as LinkedFactoryProductSnapshot[]
+      const nextVersion = typeof data.version === 'string' ? data.version : null
+      const previousVersion = linkedFactoryProductVersionRef.current
+      linkedFactoryProductVersionRef.current = nextVersion
+
+      if (previousVersion !== undefined && previousVersion !== nextVersion) {
+        void loadProducts()
+      }
+
+      setProducts(prev => syncFactoryProductOptions(prev, snapshots))
+      setKitProducts(prev => syncKitProductsWithLinkedFactorySnapshots(prev, snapshots))
+      setSelectedProductOption(prev => {
+        if (!prev) return prev
+        const snapshot = snapshots.find(item => item.id === prev.id)
+        if (!snapshot) return prev
+        if (prev.productCode === snapshot.productCode && prev.name === snapshot.name) {
+          return prev
+        }
+        return {
+          ...prev,
+          productCode: snapshot.productCode,
+          name: snapshot.name,
+        }
+      })
+    } catch {
+      // non-blocking
+    }
+  }, [isNew, kitId, linkedFactoryProductIds, loadProducts])
 
   useEffect(() => {
     loadProducts()
@@ -828,6 +980,103 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   useEffect(() => {
     if (!isNew) loadKit()
   }, [isNew, loadKit])
+
+  useEffect(() => {
+    return subscribeFactoryProductChanged(() => {
+      void loadLinkedFactoryProducts()
+    })
+  }, [loadLinkedFactoryProducts])
+
+  useEffect(() => {
+    if (isNew) return
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        loadProducts()
+        void loadLinkedFactoryProducts()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [isNew, loadLinkedFactoryProducts, loadProducts])
+
+  useEffect(() => {
+    if (!isNew) return
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        loadProducts()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [isNew, loadProducts])
+
+  useEffect(() => {
+    if (isNew || linkedFactoryProductIds.length === 0) return
+
+    function refreshLinkedFactoryProducts() {
+      if (document.visibilityState !== 'visible') return
+      void loadLinkedFactoryProducts()
+    }
+
+    refreshLinkedFactoryProducts()
+    const intervalId = window.setInterval(
+      refreshLinkedFactoryProducts,
+      LINKED_FACTORY_PRODUCT_REFRESH_INTERVAL_MS,
+    )
+
+    return () => window.clearInterval(intervalId)
+  }, [isNew, linkedFactoryProductIds, loadLinkedFactoryProducts])
+
+  useEffect(() => {
+    if (isNew || linkedFactoryProductIds.length > 0) return
+    linkedFactoryProductVersionRef.current = undefined
+  }, [isNew, linkedFactoryProductIds])
+
+  useEffect(() => {
+    if (!isNew) return
+
+    const nameById = new Map(products.map(product => [
+      product.id,
+      `${product.productCode} · ${product.name}`,
+    ]))
+    if (nameById.size === 0) return
+
+    setKitProducts(prev => {
+      if (prev.length === 0) return prev
+
+      let changed = false
+      const next = prev.map(product => {
+        const productName = nameById.get(product.productId) ?? product.productName
+        const hardenerProductName = product.hardenerProductId
+          ? (nameById.get(product.hardenerProductId) ?? product.hardenerProductName)
+          : product.hardenerProductName
+        const thinnerProductName = product.thinnerProductId
+          ? (nameById.get(product.thinnerProductId) ?? product.thinnerProductName)
+          : product.thinnerProductName
+
+        if (
+          productName !== product.productName
+          || hardenerProductName !== product.hardenerProductName
+          || thinnerProductName !== product.thinnerProductName
+        ) {
+          changed = true
+          return {
+            ...product,
+            productName,
+            hardenerProductName,
+            thinnerProductName,
+          }
+        }
+        return product
+      })
+
+      return changed ? next : prev
+    })
+  }, [isNew, products])
 
   async function saveKit() {
     if (!name.trim()) {
@@ -1389,8 +1638,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
           performanceStandardGroups={performanceStandardGroupsForPrint}
           otherNote={otherNote}
           processDescription={processDescription}
-          processFlowNote={processFlowNote}
-          processFlowDocument={processFlowDocument}
+          processFlowDocument={processFlowDocumentForPrint}
           standardizedOperation={standardizedOperation}
           labels={printLabels}
         />

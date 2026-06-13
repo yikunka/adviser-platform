@@ -7,6 +7,7 @@ import { getFactoryProductById, syncProductRecipes } from '@/lib/cosmocoat/facto
 import { syncFactoryProductViscosityFromCurrentRecipe } from '@/lib/cosmocoat/factory-product-viscosity-sync'
 import { refreshAllFormulaIsUsedCache } from '@/lib/cosmocoat/recipe-usage'
 import { refreshRecipeCostsForFactoryProducts } from '@/lib/cosmocoat/recipe-cost-refresh'
+import { syncProcessKitProductsForFactoryProduct } from '@/lib/cosmocoat/process-kit-product-sync'
 import {
   factoryViscosityFieldsSchema,
   mergeFactoryViscosityPatch,
@@ -150,6 +151,8 @@ export async function PATCH(
     if (unitPriceChanged) {
       await refreshRecipeCostsForFactoryProducts([id])
     }
+
+    await syncProcessKitProductsForFactoryProduct(id)
 
     const product = await getFactoryProductById(id)
     return NextResponse.json({ product })

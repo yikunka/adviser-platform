@@ -7,6 +7,7 @@ import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { Beaker, CheckCircle, ClipboardCheck, FolderCog, Pencil, Plus, Search, Trash2, XCircle } from 'lucide-react'
 import { formatMoney } from '@/lib/cosmocoat/recipes'
+import { useSearchParams } from 'next/navigation'
 
 type RecipeRow = {
   id: string
@@ -42,6 +43,13 @@ type PendingChangeRequest = {
     category: { id: string; code: string; name: string }
   }
   requestedBy: { id: string; nameEn: string | null; email: string }
+  changeSummary: string[]
+  changeDiff: Array<{
+    section: string
+    label: string
+    before: string
+    after: string
+  }>
 }
 
 const card: React.CSSProperties = {
@@ -370,6 +378,54 @@ function PendingApprovalsPanel({
                 </button>
               </div>
             </div>
+
+            {request.changeSummary.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {request.changeSummary.map(item => (
+                  <span
+                    key={item}
+                    className="rounded-md px-2 py-1 text-xs"
+                    style={{ background: 'rgba(201,169,110,0.1)', color: '#C9A96E', border: '1px solid rgba(201,169,110,0.2)' }}
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {request.changeDiff.length > 0 && (
+              <div className="overflow-x-auto rounded-lg" style={{ border: '1px solid #2A2418' }}>
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr>
+                      <th style={{ ...th, padding: '0.5rem 0.75rem', fontSize: '0.75rem' }}>分类</th>
+                      <th style={{ ...th, padding: '0.5rem 0.75rem', fontSize: '0.75rem' }}>变更项</th>
+                      <th style={{ ...th, padding: '0.5rem 0.75rem', fontSize: '0.75rem' }}>变更前</th>
+                      <th style={{ ...th, padding: '0.5rem 0.75rem', fontSize: '0.75rem' }}>变更后</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {request.changeDiff.map((line, index) => (
+                      <tr key={`${line.section}-${line.label}-${index}`}>
+                        <td style={{ ...td, padding: '0.5rem 0.75rem', fontSize: '0.75rem', color: '#C9A96E', whiteSpace: 'nowrap' }}>
+                          {line.section}
+                        </td>
+                        <td style={{ ...td, padding: '0.5rem 0.75rem', fontSize: '0.75rem', color: 'var(--foreground)', minWidth: 140 }}>
+                          {line.label}
+                        </td>
+                        <td style={{ ...td, padding: '0.5rem 0.75rem', fontSize: '0.75rem', whiteSpace: 'pre-wrap', minWidth: 180 }}>
+                          {line.before}
+                        </td>
+                        <td style={{ ...td, padding: '0.5rem 0.75rem', fontSize: '0.75rem', whiteSpace: 'pre-wrap', minWidth: 180 }}>
+                          {line.after}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
             <input
               value={reviewNotes[request.id] ?? ''}
               onChange={e => setReviewNotes(prev => ({ ...prev, [request.id]: e.target.value }))}
@@ -386,6 +442,7 @@ function PendingApprovalsPanel({
 
 export default function AdminCosmoCoatRecipesPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [items, setItems] = useState<RecipeRow[]>([])
   const [categories, setCategories] = useState<RecipeCategory[]>([])
   const [total, setTotal] = useState(0)
@@ -399,6 +456,10 @@ export default function AdminCosmoCoatRecipesPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [canDirectEdit, setCanDirectEdit] = useState(true)
   const [pendingChangeRequests, setPendingChangeRequests] = useState<PendingChangeRequest[]>([])
+  const [shouldFocusApprovals, setShouldFocusApprovals] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return new URLSearchParams(window.location.search).get('view') === 'pending-approvals'
+  })
 
   const fetchItems = useCallback(async () => {
     setLoading(true)
@@ -434,6 +495,15 @@ export default function AdminCosmoCoatRecipesPage() {
   useEffect(() => {
     setPage(1)
   }, [search, categoryId, usedByFactoryProduct])
+
+  useEffect(() => {
+    setShouldFocusApprovals(searchParams.get('view') === 'pending-approvals')
+  }, [searchParams])
+
+  useEffect(() => {
+    if (!shouldFocusApprovals || pendingChangeRequests.length === 0) return
+    document.getElementById('pending-approvals')?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  }, [shouldFocusApprovals, pendingChangeRequests])
 
   async function deleteRecipe(recipe: RecipeRow) {
     const confirmText = canDirectEdit
@@ -491,7 +561,12 @@ export default function AdminCosmoCoatRecipesPage() {
         </div>
       </div>
 
-      <PendingApprovalsPanel items={pendingChangeRequests} onReviewed={fetchItems} />
+      <div
+        id="pending-approvals"
+        className={shouldFocusApprovals ? 'scroll-mt-6 rounded-2xl ring-1 ring-[#C9A96E66] ring-offset-0' : 'scroll-mt-6'}
+      >
+        <PendingApprovalsPanel items={pendingChangeRequests} onReviewed={fetchItems} />
+      </div>
 
       <div style={card} className="p-4 flex flex-wrap gap-3">
         <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="rounded-lg px-3 py-2 text-sm outline-none" style={inputStyle()}>

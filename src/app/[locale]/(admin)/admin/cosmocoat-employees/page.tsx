@@ -87,7 +87,7 @@ function formatServiceYears(hireDate: string | null) {
 
 function formatFiveElement(employee: CosEmployeeRow) {
   if (!employee.birthInfo) return '—'
-  return `${employee.birthInfo.fiveElement}（${employee.birthInfo.sexagenaryYear}年）`
+  return `${employee.birthInfo.fiveElement}（${employee.birthInfo.dayMaster}日主）`
 }
 
 export default function AdminCosmoCoatEmployeesPage() {

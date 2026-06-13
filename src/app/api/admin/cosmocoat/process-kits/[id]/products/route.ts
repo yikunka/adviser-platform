@@ -10,6 +10,7 @@ import {
   removeProductFlowItems,
   resolveProcessFlowItems,
 } from '@/lib/cosmocoat/process-flow'
+import { formatFactoryProductDisplayName } from '@/lib/cosmocoat/factory-product-display'
 
 const processParameterSchema = z.preprocess(
   value => (value === undefined || value === null ? value : String(value)),
@@ -75,6 +76,77 @@ const updateSchema = z.object({
 
 function isMissingTable(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021'
+}
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
+  if (error) return error
+
+  const { id: kitId } = await params
+  const kit = await prisma.cosProcessKit.findUnique({
+    where: { id: kitId },
+    select: {
+      id: true,
+      products: {
+        select: {
+          productId: true,
+          hardenerProductId: true,
+          thinnerProductId: true,
+        },
+      },
+    },
+  })
+  if (!kit) return NextResponse.json({ error: '工艺书不存在' }, { status: 404 })
+
+  try {
+    const linkedProductIds = [...new Set(kit.products.flatMap(product => [
+      product.productId,
+      product.hardenerProductId,
+      product.thinnerProductId,
+    ].filter((id): id is string => Boolean(id))))]
+
+    if (linkedProductIds.length === 0) {
+      return NextResponse.json({ items: [], version: null })
+    }
+
+    const items = await prisma.cosTableFactoryProduct.findMany({
+      where: { id: { in: linkedProductIds } },
+      select: {
+        id: true,
+        productCode: true,
+        name: true,
+        updatedAt: true,
+      },
+      orderBy: [{ productCode: 'asc' }],
+    })
+
+    const version = items.reduce<string | null>(
+      (latest, product) => {
+        const timestamp = product.updatedAt.toISOString()
+        return latest == null || timestamp > latest ? timestamp : latest
+      },
+      null,
+    )
+
+    return NextResponse.json({
+      items: items.map(product => ({
+        id: product.id,
+        productCode: product.productCode,
+        name: product.name,
+        displayName: formatFactoryProductDisplayName(product),
+        updatedAt: product.updatedAt.toISOString(),
+      })),
+      version,
+    })
+  } catch (err) {
+    if (isMissingTable(err)) {
+      return NextResponse.json({ error: '工艺书表不存在，请先运行数据库迁移' }, { status: 503 })
+    }
+    throw err
+  }
 }
 
 async function resolveProductName(productId: string, productName?: string) {

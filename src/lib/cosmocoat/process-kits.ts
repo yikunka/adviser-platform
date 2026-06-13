@@ -7,6 +7,7 @@ import {
   type ProcessFlowProduct,
 } from '@/lib/cosmocoat/process-flow'
 import { normalizePerformanceStandards } from '@/lib/cosmocoat/process-kit-standards'
+import { enrichProcessKitProductsFromFactoryProducts } from '@/lib/cosmocoat/process-kit-product-sync'
 
 export const kitInclude = {
   products: {
@@ -29,8 +30,11 @@ export type ProcessKitWithRelations = Prisma.CosProcessKitGetPayload<{
   include: typeof kitInclude
 }>
 
-export function serializeProcessKit(kit: ProcessKitWithRelations) {
-  const products: ProcessFlowProduct[] = kit.products.map(p => ({
+export function serializeProcessKit(
+  kit: ProcessKitWithRelations,
+  productsInput = kit.products,
+) {
+  const products: ProcessFlowProduct[] = productsInput.map(p => ({
     id: p.id,
     productName: p.productName,
     quantityRatio: p.quantityRatio,
@@ -75,7 +79,7 @@ export function serializeProcessKit(kit: ProcessKitWithRelations) {
       kit.processFlowNote,
       kit.processDescription,
     ),
-    products: kit.products.map(p => ({
+    products: productsInput.map(p => ({
       id: p.id,
       kitId: p.kitId,
       productId: p.productId,
@@ -124,7 +128,8 @@ export async function getProcessKitById(id: string) {
     include: kitInclude,
   })
   if (!kit) return null
-  return serializeProcessKit(kit)
+  const products = await enrichProcessKitProductsFromFactoryProducts(kit.products)
+  return serializeProcessKit(kit, products)
 }
 
 export async function generateProcessKitCode(): Promise<string> {

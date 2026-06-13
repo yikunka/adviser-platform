@@ -6,9 +6,13 @@ describe('employeeMatchesFiveElement', () => {
     expect(employeeMatchesFiveElement({
       birthInfo: {
         lunarYear: 2024,
-        heavenlyStem: '甲',
-        earthlyBranch: '辰',
+        yearHeavenlyStem: '甲',
+        yearEarthlyBranch: '辰',
         sexagenaryYear: '甲辰',
+        dayHeavenlyStem: '甲',
+        dayEarthlyBranch: '辰',
+        sexagenaryDay: '甲辰',
+        dayMaster: '甲',
         fiveElement: '木',
         zodiac: '龙',
       },
@@ -20,9 +24,13 @@ describe('employeeMatchesFiveElement', () => {
     expect(employeeMatchesFiveElement({
       birthInfo: {
         lunarYear: 2023,
-        heavenlyStem: '癸',
-        earthlyBranch: '卯',
+        yearHeavenlyStem: '癸',
+        yearEarthlyBranch: '卯',
         sexagenaryYear: '癸卯',
+        dayHeavenlyStem: '癸',
+        dayEarthlyBranch: '卯',
+        sexagenaryDay: '癸卯',
+        dayMaster: '癸',
         fiveElement: '水',
         zodiac: '兔',
       },

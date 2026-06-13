@@ -725,13 +725,13 @@ export default function AdminCosmoCoatEmployeeDetailPage() {
                 style={inputStyle()}
               />
             </Field>
-            <Field label="五行" hint="根据出生日期自动计算">
+            <Field label="五行" hint="根据出生日主自动计算">
               <div
                 className="w-full rounded-lg px-3 py-2.5 text-sm"
                 style={{ ...inputStyle(), color: birthInfo ? 'var(--foreground)' : 'var(--muted-foreground)' }}
                 aria-live="polite"
               >
-                {birthInfo ? `${birthInfo.fiveElement}（${birthInfo.sexagenaryYear}年）` : '填写出生日期后显示'}
+                {birthInfo ? `${birthInfo.fiveElement}（${birthInfo.dayMaster}日主）` : '填写出生日期后显示'}
               </div>
             </Field>
             <Field label="生肖" hint="只读系统生成">

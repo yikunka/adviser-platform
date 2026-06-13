@@ -21,6 +21,7 @@ import {
   type CategoryTreeNode,
 } from '@/lib/cosmocoat/product-category-tree'
 import { VISCOSITY_UNITS, type ViscosityUnit } from '@/lib/cosmocoat/product-viscosity'
+import { notifyFactoryProductChanged } from '@/lib/cosmocoat/factory-product-events'
 
 type ProductCategoryRef = {
   id: string
@@ -317,6 +318,11 @@ function ProductEditor({
         return
       }
       toast.success(isEditing ? '产品已更新' : '产品已创建')
+      if (isEditing) {
+        notifyFactoryProductChanged(product.id)
+      } else if (data.product?.id) {
+        notifyFactoryProductChanged(data.product.id)
+      }
       onSaved()
       onClose()
     } catch {

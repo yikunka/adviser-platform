@@ -1,8 +1,12 @@
 export type CosEmployeeBirthInfo = {
   lunarYear: number
-  heavenlyStem: string
-  earthlyBranch: string
+  yearHeavenlyStem: string
+  yearEarthlyBranch: string
   sexagenaryYear: string
+  dayHeavenlyStem: string
+  dayEarthlyBranch: string
+  sexagenaryDay: string
+  dayMaster: string
   fiveElement: string
   zodiac: string
 }
@@ -67,22 +71,51 @@ function resolveChineseLunarYear(date: Date) {
   return Number.isInteger(parsed) ? parsed : date.getUTCFullYear()
 }
 
+function gregorianToJulianDayNumber(date: Date) {
+  const year = date.getUTCFullYear()
+  const month = date.getUTCMonth() + 1
+  const day = date.getUTCDate()
+  const a = Math.floor((14 - month) / 12)
+  const y = year + 4800 - a
+  const m = month + (12 * a) - 3
+
+  return day
+    + Math.floor(((153 * m) + 2) / 5)
+    + (365 * y)
+    + Math.floor(y / 4)
+    - Math.floor(y / 100)
+    + Math.floor(y / 400)
+    - 32045
+}
+
 export function resolveCosEmployeeBirthInfo(value?: string | null): CosEmployeeBirthInfo | null {
   const date = parseYmdDate(value)
   if (!date) return null
 
   const lunarYear = resolveChineseLunarYear(date)
-  const stemIndex = positiveModulo(lunarYear - 4, 10)
-  const branchIndex = positiveModulo(lunarYear - 4, 12)
-  const heavenlyStem = HEAVENLY_STEMS[stemIndex]
-  const earthlyBranch = EARTHLY_BRANCHES[branchIndex]
+  const yearStemIndex = positiveModulo(lunarYear - 4, 10)
+  const yearBranchIndex = positiveModulo(lunarYear - 4, 12)
+  const yearHeavenlyStem = HEAVENLY_STEMS[yearStemIndex]
+  const yearEarthlyBranch = EARTHLY_BRANCHES[yearBranchIndex]
+
+  // Sexagenary day numbering follows the standard Julian day mapping:
+  // stem = 1 + mod(JDN - 1, 10), branch = 1 + mod(JDN + 1, 12).
+  const julianDayNumber = gregorianToJulianDayNumber(date)
+  const dayStemIndex = positiveModulo(julianDayNumber - 1, 10)
+  const dayBranchIndex = positiveModulo(julianDayNumber + 1, 12)
+  const dayHeavenlyStem = HEAVENLY_STEMS[dayStemIndex]
+  const dayEarthlyBranch = EARTHLY_BRANCHES[dayBranchIndex]
 
   return {
     lunarYear,
-    heavenlyStem,
-    earthlyBranch,
-    sexagenaryYear: `${heavenlyStem}${earthlyBranch}`,
-    fiveElement: STEM_ELEMENTS[stemIndex],
-    zodiac: ZODIACS[branchIndex],
+    yearHeavenlyStem,
+    yearEarthlyBranch,
+    sexagenaryYear: `${yearHeavenlyStem}${yearEarthlyBranch}`,
+    dayHeavenlyStem,
+    dayEarthlyBranch,
+    sexagenaryDay: `${dayHeavenlyStem}${dayEarthlyBranch}`,
+    dayMaster: dayHeavenlyStem,
+    fiveElement: STEM_ELEMENTS[dayStemIndex],
+    zodiac: ZODIACS[yearBranchIndex],
   }
 }
