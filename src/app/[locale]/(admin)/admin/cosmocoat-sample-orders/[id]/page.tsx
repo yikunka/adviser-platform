@@ -39,7 +39,7 @@ type EmployeeOption = {
   email: string | null
   isActive: boolean
 }
-type ProcessKitOption = { id: string; code: string; name: string; status: string }
+type ProcessKitOption = { id: string; code: string; name: string; status: string; materials: string[]; otherNote: string | null }
 
 type ProcessKitProductRow = {
   id: string
@@ -1449,15 +1449,28 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
             </div>
             {kitOptions.length > 0 && (
               <div className="border rounded-lg overflow-hidden" style={{ borderColor: '#2A2418' }}>
+                <div
+                  className="grid grid-cols-[110px_minmax(180px,1fr)_minmax(180px,1.2fr)_36px] gap-3 px-3 py-2 text-xs font-medium"
+                  style={{ background: '#111108', color: 'var(--muted-foreground)', borderBottom: '1px solid #2A2418' }}
+                >
+                  <span>工艺编号</span>
+                  <span>工艺名称</span>
+                  <span>适用材料</span>
+                  <span />
+                </div>
                 {kitOptions.filter(k => !selectedKitIds.has(k.id)).slice(0, 8).map(kit => (
                   <button
                     key={kit.id}
                     type="button"
                     onClick={() => addProcessKit(kit)}
-                    className="w-full flex items-center justify-between px-3 py-2 text-left text-sm hover:bg-[#111108] border-b last:border-b-0"
+                    className="w-full grid grid-cols-[110px_minmax(180px,1fr)_minmax(180px,1.2fr)_36px] gap-3 items-center px-3 py-2 text-left text-sm hover:bg-[#111108] border-b last:border-b-0"
                     style={{ borderColor: '#1E1C15', color: 'var(--foreground)' }}
                   >
-                    <span><span className="font-mono text-xs opacity-70 mr-2">{kit.code}</span>{kit.name}</span>
+                    <span className="font-mono text-xs opacity-70">{kit.code}</span>
+                    <span>{kit.name}</span>
+                    <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                      {formatProcessKitMaterialsSummary(kit.materials, kit.otherNote) ?? '—'}
+                    </span>
                     <Plus size={14} style={{ color: '#C9A96E' }} />
                   </button>
                 ))}

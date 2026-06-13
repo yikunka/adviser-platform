@@ -243,6 +243,7 @@ const dateTimePickerStyle: React.CSSProperties = {
 const PRINT_RESET_DELAY_MS = 180
 const LINKED_FACTORY_PRODUCT_REFRESH_INTERVAL_MS = 1000
 const PROCESS_KIT_PRINT_AREA_ID = 'cosmocoat-process-kit-print-area'
+const PROCESS_KIT_LOGO_SRC = '/cosmocoat/cosmo-logo.png'
 const PROCESS_KIT_PRINT_COLORS = {
   text: '#111827',
   border: '#6B7280',
@@ -290,6 +291,21 @@ const PROCESS_KIT_COMPANY_CONTACTS = [
   ['电话', '0769-85541701'],
   ['网址', 'www.cosmocoat.cn'],
 ] as const
+
+function blobToDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to read logo data'))
+    reader.readAsDataURL(blob)
+  })
+}
+
+async function resolveAssetDataUrl(src: string) {
+  const res = await fetch(src)
+  if (!res.ok) throw new Error('Failed to load print asset')
+  return blobToDataUrl(await res.blob())
+}
 
 const PROCESS_KIT_PRINT_STYLES = `
   @media print {
@@ -539,6 +555,20 @@ function ProcessKitPrintView({
   return (
     <div id={PROCESS_KIT_PRINT_AREA_ID}>
       <div style={{ position: 'relative', minHeight: 64, marginBottom: 12, color: PROCESS_KIT_PRINT_COLORS.text }}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- print/Word export needs a plain img inside cloned HTML. */}
+        <img
+          data-process-kit-logo="true"
+          src={PROCESS_KIT_LOGO_SRC}
+          alt="CosmoCoat"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: 108,
+            height: 'auto',
+            display: 'block',
+          }}
+        />
         <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 16, paddingTop: 4 }}>
           {labels.title}
         </div>
@@ -1136,11 +1166,27 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     }, 0)
   }
 
-  function downloadProcessKitWord() {
+  async function downloadProcessKitWord() {
     const printArea = document.getElementById(PROCESS_KIT_PRINT_AREA_ID)
     if (!printArea) {
       toast.error(t('downloadFailed'))
       return
+    }
+
+    const exportArea = printArea.cloneNode(true) as HTMLElement
+    try {
+      const logoDataUrl = await resolveAssetDataUrl(PROCESS_KIT_LOGO_SRC)
+      exportArea
+        .querySelectorAll<HTMLImageElement>('img[data-process-kit-logo]')
+        .forEach(img => {
+          img.src = logoDataUrl
+        })
+    } catch {
+      exportArea
+        .querySelectorAll<HTMLImageElement>('img[data-process-kit-logo]')
+        .forEach(img => {
+          img.src = new URL(PROCESS_KIT_LOGO_SRC, window.location.origin).toString()
+        })
     }
 
     const filename = `${sanitizeDownloadFilename(code || name || 'process-kit')}-工艺书.doc`
@@ -1186,7 +1232,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     }
   </style>
 </head>
-<body>${printArea.innerHTML}</body>
+<body>${exportArea.innerHTML}</body>
 </html>`
     const blob = new Blob(['\ufeff', html], { type: 'application/msword;charset=utf-8' })
     const url = URL.createObjectURL(blob)
@@ -1643,7 +1689,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
               </button>
               <button
                 type="button"
-                onClick={downloadProcessKitWord}
+                onClick={() => void downloadProcessKitWord()}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
                 style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
               >

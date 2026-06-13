@@ -51,6 +51,7 @@ export async function GET(req: NextRequest) {
   if (error) return error
 
   const q = req.nextUrl.searchParams.get('q')?.trim() ?? ''
+  const all = req.nextUrl.searchParams.get('all') === '1'
   const page = Math.max(1, Number(req.nextUrl.searchParams.get('page') ?? '1') || 1)
   const skip = (page - 1) * PAGE_SIZE
 
@@ -74,8 +75,7 @@ export async function GET(req: NextRequest) {
         where,
         include: customerInclude,
         orderBy: [{ updatedAt: 'desc' }],
-        skip,
-        take: PAGE_SIZE,
+        ...(all ? {} : { skip, take: PAGE_SIZE }),
       }),
     ])
 
@@ -83,8 +83,8 @@ export async function GET(req: NextRequest) {
       customers: items.map(serializeCustomer),
       total,
       page,
-      pageSize: PAGE_SIZE,
-      totalPages: Math.ceil(total / PAGE_SIZE),
+      pageSize: all ? total : PAGE_SIZE,
+      totalPages: all ? 1 : Math.ceil(total / PAGE_SIZE),
     })
   } catch (err) {
     if (isMissingTable(err)) {

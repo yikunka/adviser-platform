@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { ContactRound, Mail, MapPin, Phone, Plus, Search, Upload } from 'lucide-react'
+import { ContactRound, Download, Mail, MapPin, Phone, Plus, Search, Upload } from 'lucide-react'
 import type { CosCustomerRow } from '@/lib/cosmocoat/customers'
 
 const card: React.CSSProperties = {
@@ -45,6 +45,7 @@ export default function AdminCosmoCoatCustomersPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [importing, setImporting] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const importInputRef = useRef<HTMLInputElement>(null)
 
   const fetchCustomers = useCallback(async () => {
@@ -102,6 +103,53 @@ export default function AdminCosmoCoatCustomersPage() {
     }
   }
 
+  async function exportCustomers() {
+    setExporting(true)
+    try {
+      const params = new URLSearchParams({ all: '1' })
+      if (search.trim()) params.set('q', search.trim())
+      const res = await fetch(`/api/admin/cosmocoat/customers?${params}`)
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? '导出客户失败')
+
+      const rows = (data.customers ?? []) as CosCustomerRow[]
+      if (rows.length === 0) {
+        toast.info('当前筛选条件下没有可导出的客户记录')
+        return
+      }
+
+      const XLSX = await import('xlsx')
+      const sheetRows = rows.map(customer => ({
+        客户编码: customer.code,
+        客户名称: customer.name,
+        关联账号邮箱: customer.user?.email ?? '',
+        关联账号名称: customer.user?.nameEn ?? '',
+        电话: customer.phone ?? '',
+        地址: customer.address ?? '',
+        更新时间: formatDate(customer.updatedAt),
+      }))
+      const worksheet = XLSX.utils.json_to_sheet(sheetRows)
+      worksheet['!cols'] = [
+        { wch: 14 },
+        { wch: 28 },
+        { wch: 32 },
+        { wch: 22 },
+        { wch: 18 },
+        { wch: 44 },
+        { wch: 16 },
+      ]
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, '客户列表')
+      const date = new Date().toISOString().slice(0, 10)
+      XLSX.writeFile(workbook, `CosmoCoat客户列表-${date}.xlsx`)
+      toast.success(`已导出 ${rows.length} 位客户`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '导出客户失败')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -128,6 +176,16 @@ export default function AdminCosmoCoatCustomersPage() {
           >
             <Upload size={16} />
             {importing ? '导入中...' : '导入表格'}
+          </button>
+          <button
+            type="button"
+            disabled={exporting || loading || total === 0}
+            onClick={() => void exportCustomers()}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+            style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
+          >
+            <Download size={16} />
+            {exporting ? '导出中...' : '导出 Excel'}
           </button>
           <Link
             href="/admin/cosmocoat-customers/new"

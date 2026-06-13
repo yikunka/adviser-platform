@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
   try {
     const items = await prisma.cosProcessKit.findMany({
       where,
-      select: { id: true, code: true, name: true, status: true },
+      select: { id: true, code: true, name: true, status: true, materials: true, otherNote: true },
       orderBy: [{ updatedAt: 'desc' }],
       take: limit,
     })
