@@ -10,7 +10,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PartySelect } from '@/components/admin/financial/subledger/PartySelect'
-import { inputStyle, money, type SideConfig, type SubDoc } from '@/components/admin/financial/subledger/config'
+import {
+  fieldClassName,
+  inputStyle,
+  money,
+  selectContentClassName,
+  selectItemClassName,
+  type SideConfig,
+  type SubDoc,
+} from '@/components/admin/financial/subledger/config'
 
 const METHOD_LABELS: Record<string, string> = {
   BANK_TRANSFER: '银行转账',
@@ -187,7 +195,7 @@ export function PaymentFormDialog({
             </div>
             <div className="space-y-1.5">
               <Label>{config.payLabel}日期 *</Label>
-              <Input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} style={inputStyle} />
+              <Input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} className={fieldClassName} style={inputStyle} />
             </div>
           </div>
 
@@ -200,18 +208,19 @@ export function PaymentFormDialog({
                 step="0.01"
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
+                className={fieldClassName}
                 style={inputStyle}
               />
             </div>
             <div className="space-y-1.5">
               <Label>方式</Label>
               <Select value={method} onValueChange={value => setMethod(value ?? 'BANK_TRANSFER')}>
-                <SelectTrigger className="w-full" style={inputStyle}>
+                <SelectTrigger className={`w-full ${fieldClassName}`} style={inputStyle}>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className={selectContentClassName}>
                   {Object.entries(METHOD_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
+                    <SelectItem key={value} value={value} className={selectItemClassName}>
                       {label}
                     </SelectItem>
                   ))}
@@ -221,13 +230,13 @@ export function PaymentFormDialog({
             <div className="space-y-1.5">
               <Label>银行账户（可选）</Label>
               <Select value={bankAccountId || 'NONE'} onValueChange={value => setBankAccountId(value === 'NONE' ? '' : value ?? '')}>
-                <SelectTrigger className="w-full" style={inputStyle}>
+                <SelectTrigger className={`w-full ${fieldClassName}`} style={inputStyle}>
                   <SelectValue placeholder="默认科目" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="NONE">默认科目（按方式映射）</SelectItem>
+                <SelectContent className={selectContentClassName}>
+                  <SelectItem value="NONE" className={selectItemClassName}>默认科目（按方式映射）</SelectItem>
                   {bankAccounts.map(account => (
-                    <SelectItem key={account.id} value={account.id}>
+                    <SelectItem key={account.id} value={account.id} className={selectItemClassName}>
                       {account.name}
                       {account.bankName ? ` · ${account.bankName}` : ''}
                     </SelectItem>
@@ -239,7 +248,7 @@ export function PaymentFormDialog({
 
           <div className="space-y-1.5">
             <Label>参考号 / 摘要</Label>
-            <Input value={reference} onChange={e => setReference(e.target.value)} style={inputStyle} />
+            <Input value={reference} onChange={e => setReference(e.target.value)} className={fieldClassName} style={inputStyle} />
           </div>
 
           <div className="space-y-2">
@@ -286,6 +295,7 @@ export function PaymentFormDialog({
                       onChange={e =>
                         setAllocationDrafts(current => ({ ...current, [doc.id]: e.target.value }))
                       }
+                      className={fieldClassName}
                       style={inputStyle}
                     />
                   </div>

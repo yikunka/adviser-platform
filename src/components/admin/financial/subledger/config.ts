@@ -195,4 +195,22 @@ export function money(value: number) {
   return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-export const inputStyle = { background: '#0E0E0A', border: '1px solid #2A2418' } as const
+export const inputStyle = {
+  background: '#0E0E0A',
+  border: '1px solid #2A2418',
+  color: '#FFF7E6',
+  caretColor: '#C9A96E',
+  colorScheme: 'dark',
+} as const
+
+export const fieldClassName =
+  'bg-[#0E0E0A] border-[#2A2418] text-[#FFF7E6] placeholder:text-[#7A6A50] caret-[#C9A96E] focus-visible:border-[#C9A96E] focus-visible:ring-[#C9A96E]/25'
+
+export const accountPickerInputClassName =
+  'bg-[#0E0E0A] border-[#2A2418] text-[#FFF7E6] placeholder:text-[#7A6A50] caret-[#C9A96E] focus-visible:border-[#C9A96E]'
+
+export const selectContentClassName =
+  'border border-[#2A2418] bg-[#11100B] text-[#FFF7E6] shadow-xl shadow-black/30'
+
+export const selectItemClassName =
+  'text-[#FFF7E6] focus:bg-[#1F1A12] focus:text-[#FFF7E6] data-[highlighted]:bg-[#1F1A12] data-[highlighted]:text-[#FFF7E6]'

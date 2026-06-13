@@ -2,6 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  fieldClassName,
+  inputStyle,
+  selectContentClassName,
+  selectItemClassName,
+} from '@/components/admin/financial/subledger/config'
 
 export type PartyOption = {
   id: string
@@ -46,16 +52,17 @@ export function PartySelect({
         onChange(id, options.find(option => option.id === id))
       }}
     >
-      <SelectTrigger className="w-full" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
+      <SelectTrigger className={`w-full ${fieldClassName}`} style={inputStyle}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className={selectContentClassName}>
         {options.length === 0 ? (
-          <div className="px-3 py-2 text-sm text-muted-foreground">暂无可选单位，请先在「往来单位」中创建</div>
+          <div className="px-3 py-2 text-sm text-[#B8AD98]">暂无可选单位，请先在「往来单位」中创建</div>
         ) : (
           options.map(option => (
-            <SelectItem key={option.id} value={option.id}>
-              {option.code} · {option.name}
+            <SelectItem key={option.id} value={option.id} className={selectItemClassName}>
+              <span className="font-mono text-xs text-[#C9A96E]">{option.code}</span>
+              <span>{option.name}</span>
             </SelectItem>
           ))
         )}

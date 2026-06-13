@@ -12,7 +12,14 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { AccountCombobox } from '@/components/admin/financial/AccountCombobox'
 import { PartySelect } from '@/components/admin/financial/subledger/PartySelect'
-import { inputStyle, money, type SideConfig, type SubDoc } from '@/components/admin/financial/subledger/config'
+import {
+  accountPickerInputClassName,
+  fieldClassName,
+  inputStyle,
+  money,
+  type SideConfig,
+  type SubDoc,
+} from '@/components/admin/financial/subledger/config'
 
 type LineDraft = {
   description: string
@@ -160,11 +167,11 @@ export function DocFormDialog({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>{config.docDateLabel} *</Label>
-                <Input type="date" value={date} onChange={e => setDate(e.target.value)} style={inputStyle} />
+                <Input type="date" value={date} onChange={e => setDate(e.target.value)} className={fieldClassName} style={inputStyle} />
               </div>
               <div className="space-y-1.5">
                 <Label>到期日</Label>
-                <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} style={inputStyle} />
+                <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className={fieldClassName} style={inputStyle} />
               </div>
             </div>
           </div>
@@ -173,7 +180,7 @@ export function DocFormDialog({
             {config.hasSupplierRef ? (
               <div className="space-y-1.5">
                 <Label>供应商发票号</Label>
-                <Input value={supplierRef} onChange={e => setSupplierRef(e.target.value)} style={inputStyle} />
+                <Input value={supplierRef} onChange={e => setSupplierRef(e.target.value)} className={fieldClassName} style={inputStyle} />
               </div>
             ) : null}
             <div className="space-y-1.5">
@@ -185,6 +192,7 @@ export function DocFormDialog({
                 step="0.01"
                 value={taxRate}
                 onChange={e => setTaxRate(e.target.value)}
+                className={fieldClassName}
                 style={inputStyle}
               />
             </div>
@@ -204,6 +212,7 @@ export function DocFormDialog({
                     placeholder="描述"
                     value={line.description}
                     onChange={e => updateLine(index, { description: e.target.value })}
+                    className={fieldClassName}
                     style={inputStyle}
                   />
                   <Input
@@ -213,6 +222,7 @@ export function DocFormDialog({
                     placeholder="数量"
                     value={line.quantity}
                     onChange={e => updateLine(index, { quantity: e.target.value })}
+                    className={fieldClassName}
                     style={inputStyle}
                   />
                   <Input
@@ -222,6 +232,7 @@ export function DocFormDialog({
                     placeholder="单价"
                     value={line.unitPrice}
                     onChange={e => updateLine(index, { unitPrice: e.target.value })}
+                    className={fieldClassName}
                     style={inputStyle}
                   />
                   <AccountCombobox
@@ -229,7 +240,7 @@ export function DocFormDialog({
                     companyId={companyId}
                     onChange={accountId => updateLine(index, { accountId })}
                     placeholder={config.lineAccountLabel}
-                    inputClassName="bg-[#0E0E0A] border border-[#2A2418]"
+                    inputClassName={accountPickerInputClassName}
                   />
                   <Button
                     variant="ghost"
@@ -247,7 +258,7 @@ export function DocFormDialog({
 
           <div className="space-y-1.5">
             <Label>备注</Label>
-            <Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} style={inputStyle} />
+            <Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={fieldClassName} style={inputStyle} />
           </div>
 
           <div className="rounded-md border px-4 py-3 text-sm space-y-1" style={{ borderColor: '#2A2418' }}>

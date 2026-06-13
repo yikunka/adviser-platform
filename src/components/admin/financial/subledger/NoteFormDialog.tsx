@@ -11,7 +11,14 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { AccountCombobox } from '@/components/admin/financial/AccountCombobox'
 import { PartySelect } from '@/components/admin/financial/subledger/PartySelect'
-import { inputStyle, money, type SideConfig, type SubDoc } from '@/components/admin/financial/subledger/config'
+import {
+  accountPickerInputClassName,
+  fieldClassName,
+  inputStyle,
+  money,
+  type SideConfig,
+  type SubDoc,
+} from '@/components/admin/financial/subledger/config'
 
 export type SubNote = {
   id: string
@@ -116,15 +123,15 @@ export function NoteFormDialog({
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label>日期 *</Label>
-              <Input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)} style={inputStyle} />
+              <Input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)} className={fieldClassName} style={inputStyle} />
             </div>
             <div className="space-y-1.5">
               <Label>金额（不含税）*</Label>
-              <Input type="number" min="0" step="0.01" value={subtotal} onChange={e => setSubtotal(e.target.value)} style={inputStyle} />
+              <Input type="number" min="0" step="0.01" value={subtotal} onChange={e => setSubtotal(e.target.value)} className={fieldClassName} style={inputStyle} />
             </div>
             <div className="space-y-1.5">
               <Label>税率</Label>
-              <Input type="number" min="0" max="1" step="0.01" value={taxRate} onChange={e => setTaxRate(e.target.value)} style={inputStyle} />
+              <Input type="number" min="0" max="1" step="0.01" value={taxRate} onChange={e => setTaxRate(e.target.value)} className={fieldClassName} style={inputStyle} />
             </div>
           </div>
           <div className="space-y-1.5">
@@ -133,12 +140,12 @@ export function NoteFormDialog({
               value={offsetAccountId}
               companyId={companyId}
               onChange={setOffsetAccountId}
-              inputClassName="bg-[#0E0E0A] border border-[#2A2418]"
+              inputClassName={accountPickerInputClassName}
             />
           </div>
           <div className="space-y-1.5">
             <Label>原因</Label>
-            <Textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} style={inputStyle} />
+            <Textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} className={fieldClassName} style={inputStyle} />
           </div>
         </div>
         <DialogFooter>
@@ -253,6 +260,7 @@ export function NoteApplyDialog({
                   placeholder="核销金额"
                   value={drafts[doc.id] ?? ''}
                   onChange={e => setDrafts(current => ({ ...current, [doc.id]: e.target.value }))}
+                  className={fieldClassName}
                   style={inputStyle}
                 />
               </div>

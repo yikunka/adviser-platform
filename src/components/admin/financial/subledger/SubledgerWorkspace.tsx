@@ -17,6 +17,7 @@ import { DocFormDialog } from '@/components/admin/financial/subledger/DocFormDia
 import { NoteApplyDialog, NoteFormDialog, type SubNote } from '@/components/admin/financial/subledger/NoteFormDialog'
 import { PaymentFormDialog } from '@/components/admin/financial/subledger/PaymentFormDialog'
 import {
+  fieldClassName,
   inputStyle,
   money,
   SIDE_CONFIG,
@@ -177,7 +178,7 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder={`搜索单号或${config.partyLabel}...`}
-                  className="max-w-xs"
+                  className={`max-w-xs ${fieldClassName}`}
                   style={inputStyle}
                 />
                 <Button
@@ -497,7 +498,7 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
                   type="date"
                   value={agingAsOf}
                   onChange={e => setAgingAsOf(e.target.value)}
-                  className="max-w-[170px]"
+                  className={`max-w-[170px] ${fieldClassName}`}
                   style={inputStyle}
                 />
               </div>
