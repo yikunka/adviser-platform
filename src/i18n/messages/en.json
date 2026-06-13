@@ -893,7 +893,7 @@
       "addProduct": "Add Reference Product",
       "addTest": "Add Test",
       "selectProduct": "Select product",
-      "selectProductPlaceholder": "Choose a factory product",
+      "selectProductPlaceholder": "Search factory products by name or code",
       "useHardener": "Use HD Hardener",
       "hardener": "HD Hardener",
       "hardenerProduct": "Hardener product",

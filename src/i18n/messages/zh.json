@@ -893,7 +893,7 @@
       "addProduct": "添加参考产品",
       "addTest": "添加测试",
       "selectProduct": "选择产品",
-      "selectProductPlaceholder": "请选择工厂产品",
+      "selectProductPlaceholder": "输入产品名称或编号搜索工厂产品",
       "useHardener": "使用 HD Hardener固化剂",
       "hardener": "HD Hardener固化剂",
       "hardenerProduct": "固化剂产品",

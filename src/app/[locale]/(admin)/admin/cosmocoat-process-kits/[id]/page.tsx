@@ -9,6 +9,7 @@ import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { ArrowLeft, Download, ImageIcon, Pencil, Plus, Printer, Save, Trash2, Upload, X } from 'lucide-react'
 import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
+import { FactoryProductCombobox } from '@/components/cosmocoat/FactoryProductCombobox'
 import { cn } from '@/lib/utils'
 import {
   appendProcessFlowItem,
@@ -579,6 +580,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
 
   const [showProductForm, setShowProductForm] = useState(false)
   const [addingProduct, setAddingProduct] = useState(false)
+  const [selectedProductOption, setSelectedProductOption] = useState<FactoryProductOption | null>(null)
   const [editingProductId, setEditingProductId] = useState<string | null>(null)
   const [savingProductEdit, setSavingProductEdit] = useState(false)
   const [processEditor, setProcessEditor] = useState<{
@@ -720,6 +722,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   }
 
   function resetProductForm() {
+    setSelectedProductOption(null)
     setProductForm({
       productId: '',
       useHardener: false,
@@ -980,7 +983,8 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       return
     }
 
-    const selectedProduct = products.find(product => product.id === productForm.productId)
+    const selectedProduct = selectedProductOption
+      ?? products.find(product => product.id === productForm.productId)
     const selectedHardener = productForm.useHardener
       ? products.find(product => product.id === productForm.hardenerProductId)
       : null
@@ -1570,17 +1574,23 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="space-y-1.5 sm:col-span-2">
                 <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('selectProduct')}</label>
-                <select
+                <FactoryProductCombobox
                   value={productForm.productId}
-                  onChange={e => setProductForm(f => ({ ...f, productId: e.target.value }))}
-                  className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                  style={inputStyle()}
-                >
-                  <option value="">{t('selectProductPlaceholder')}</option>
-                  {products.map(p => (
-                    <option key={p.id} value={p.id}>{p.productCode} · {p.name}</option>
-                  ))}
-                </select>
+                  onChange={productId => setProductForm(f => ({ ...f, productId }))}
+                  onProductSelect={product => {
+                    setSelectedProductOption(product
+                      ? {
+                        id: product.id,
+                        productCode: product.productCode,
+                        name: product.name,
+                        category: null,
+                      }
+                      : null)
+                  }}
+                  requireCurrentRecipe={false}
+                  placeholder={t('selectProductPlaceholder')}
+                  inputStyle={inputStyle()}
+                />
               </div>
               <div className="space-y-3 sm:col-span-2 lg:col-span-4">
                 <label className="flex items-center gap-2 text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
