@@ -7,7 +7,6 @@ import { logAudit } from '@/lib/audit/logger'
 import {
   customerInclude,
   generateCustomerCode,
-  getCustomerById,
   serializeCustomer,
 } from '@/lib/cosmocoat/customers'
 
