@@ -47,6 +47,7 @@ export const orderInclude = {
       id: true,
       code: true,
       name: true,
+      shelfLifeDays: true,
       productionSpeedRequirements: true,
       productionTimeRequirements: true,
       packagingRequirements: true,
