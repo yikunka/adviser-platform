@@ -74,6 +74,78 @@ rsync_rsh() {
 
 die() { echo "错误: $*" >&2; exit 1; }
 
+_prepare_build_marker() {
+  local marker
+  marker="$(mktemp "${TMPDIR:-/tmp}/adviser-next-build.XXXXXX")"
+  touch "$marker"
+  printf '%s\n' "$marker"
+}
+
+_cleanup_build_marker() {
+  local marker="${1:-}"
+  [[ -n "$marker" ]] && rm -f "$marker"
+}
+
+_assert_file_fresh_after_marker() {
+  local file="$1" marker="$2"
+  [[ -e "$file" ]] || die "构建不完整：缺少 $file"
+  [[ "$file" -nt "$marker" ]] || die "构建不完整：$file 不是本次构建生成，疑似沿用了旧产物"
+}
+
+_assert_next_build_complete() {
+  local marker="$1"
+  local build_id standalone_build_id
+  local required_files=(
+    ".next/BUILD_ID"
+    ".next/required-server-files.json"
+    ".next/routes-manifest.json"
+    ".next/build-manifest.json"
+    ".next/standalone/server.js"
+    ".next/standalone/.next/BUILD_ID"
+  )
+
+  for file in "${required_files[@]}"; do
+    _assert_file_fresh_after_marker "$file" "$marker"
+  done
+
+  [[ -d .next/static ]] || die "构建不完整：缺少 .next/static"
+  [[ .next/static -nt "$marker" ]] || die "构建不完整：.next/static 不是本次构建生成，疑似沿用了旧产物"
+
+  build_id="$(tr -d '[:space:]' < .next/BUILD_ID)"
+  standalone_build_id="$(tr -d '[:space:]' < .next/standalone/.next/BUILD_ID)"
+  [[ -n "$build_id" ]] || die "构建不完整：.next/BUILD_ID 为空"
+  [[ "$build_id" == "$standalone_build_id" ]] || die "构建不完整：standalone BUILD_ID 与主产物不一致"
+}
+
+_read_build_id_from_dir() {
+  local dir="$1"
+  local path="${dir%/}/.next/BUILD_ID"
+  [[ -f "$path" ]] || die "缺少 $path"
+  tr -d '[:space:]' < "$path"
+}
+
+_assert_local_deploy_matches_build() {
+  local app_dir="$1"
+  local source_build_id target_build_id
+  source_build_id="$(_read_build_id_from_dir ".")"
+  target_build_id="$(_read_build_id_from_dir "$app_dir")"
+  [[ "$source_build_id" == "$target_build_id" ]] || die "发布目录 BUILD_ID 不匹配：源码=.next/$source_build_id，目标=$app_dir/.next/$target_build_id"
+}
+
+_assert_remote_deploy_matches_build() {
+  local remote_dir="$1"
+  local source_build_id target_build_id
+  source_build_id="$(_read_build_id_from_dir ".")"
+  target_build_id="$(ssh_remote "tr -d '[:space:]' < '${remote_dir}/.next/BUILD_ID'")"
+  [[ -n "$target_build_id" ]] || die "远端缺少 ${remote_dir}/.next/BUILD_ID"
+  [[ "$source_build_id" == "$target_build_id" ]] || die "远端 BUILD_ID 不匹配：源码=.next/$source_build_id，远端=$remote_dir/.next/$target_build_id"
+}
+
+_configure_build_memory() {
+  # Keep Next/TypeScript from being killed by the system OOM killer during production builds.
+  export NODE_OPTIONS="${NODE_OPTIONS:+${NODE_OPTIONS} }--max-old-space-size=${DEPLOY_NODE_MEM_MB:-1536}"
+}
+
 require_deploy_host() {
   [[ -n "${DEPLOY_HOST:-}" ]] || die "请设置环境变量 DEPLOY_HOST"
 }
@@ -162,16 +234,19 @@ cmd_check() {
 }
 
 cmd_build() {
+  local build_marker
   cmd_check
   echo "▶ 安装依赖..."
   npm install --no-audit --no-fund
   echo "▶ prisma generate..."
   npx prisma generate
   echo "▶ next build..."
+  build_marker="$(_prepare_build_marker)"
   # 限制 Node 堆内存，防止构建时被 OOM Killer 杀掉；可用 DEPLOY_NODE_MEM_MB 覆盖（默认 1536 MB）
-  export NODE_OPTIONS="${NODE_OPTIONS:+${NODE_OPTIONS} }--max-old-space-size=${DEPLOY_NODE_MEM_MB:-1536}"
+  _configure_build_memory
   npm run build
-  [[ -f .next/standalone/server.js ]] || die "未生成 .next/standalone/server.js，请确认 next.config 中 output: standalone"
+  _assert_next_build_complete "$build_marker"
+  _cleanup_build_marker "$build_marker"
   if [[ -n "${OSS_BUCKET:-}" ]]; then
     echo "▶ 同步静态资源到 OSS..."
     node scripts/sync-oss-static.mjs
@@ -306,6 +381,7 @@ cmd_deploy() {
     rsync -az -e "$RSYNC_E" prisma/ "${REMOTE}:${REMOTE_DIR}/prisma/"
     rsync -az -e "$RSYNC_E" prisma.config.mjs "${REMOTE}:${REMOTE_DIR}/prisma.config.mjs"
     ssh_remote "rm -f '${REMOTE_DIR}/prisma.config.ts'"
+    _assert_remote_deploy_matches_build "${REMOTE_DIR}"
     DID_ANY=1
   else
     if [[ "$NEED_RSYNC_PUBLIC" == 1 ]]; then
@@ -524,6 +600,7 @@ _deploy_local_classify_diff_lines() {
 }
 
 _deploy_local_maybe_npm_prisma_next() {
+  local build_marker=""
   local need_deps="$1" need_gen="$2" need_build="$3"
   if [[ "$need_deps" == 1 ]] || [[ "$need_gen" == 1 ]] || [[ "$need_build" == 1 ]]; then
     cmd_check
@@ -541,8 +618,11 @@ _deploy_local_maybe_npm_prisma_next() {
 
   if [[ "$need_build" == 1 ]]; then
     echo "▶ next build…"
+    build_marker="$(_prepare_build_marker)"
+    _configure_build_memory
     npm run build
-    [[ -f .next/standalone/server.js ]] || die "未生成 .next/standalone/server.js，请确认 next.config 中 output: standalone"
+    _assert_next_build_complete "$build_marker"
+    _cleanup_build_marker "$build_marker"
     if [[ -n "${OSS_BUCKET:-}" ]]; then
       echo "▶ 同步静态资源到 OSS..."
       node scripts/sync-oss-static.mjs
@@ -566,6 +646,7 @@ _deploy_local_sync_to_app_dir() {
     rsync -a prisma/ "$APP_DIR/prisma/"
     rsync -a prisma.config.mjs "$APP_DIR/prisma.config.mjs"
     rm -f "$APP_DIR/prisma.config.ts"
+    _assert_local_deploy_matches_build "$APP_DIR"
     return 0
   fi
 
