@@ -148,6 +148,11 @@ export function periodRange(period: string) {
   return { start, end, asOfDate, label: period }
 }
 
+function periodAfter(period: string) {
+  const { end } = periodRange(period)
+  return `${end.getUTCFullYear()}-${String(end.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
 function signedBalance(amount: number, type: AccountType, code?: string) {
   if (isDebitNormalAccountType(type, code)) return roundMoney(amount)
   return roundMoney(-amount)
@@ -199,8 +204,8 @@ function scopeCompanyIds(scope?: FinancialReportScope) {
 }
 
 async function aggregatePostedJournalMovements(
-  beforeEnd?: Date,
-  fromStart?: Date,
+  beforePeriod?: string,
+  fromPeriod?: string,
   scope?: FinancialReportScope,
 ) {
   const companyIds = scopeCompanyIds(scope)
@@ -209,12 +214,12 @@ async function aggregatePostedJournalMovements(
     ...(companyIds ? { companyId: { in: companyIds } } : {}),
   }
 
-  if (beforeEnd && fromStart) {
-    entryWhere.entryDate = { gte: fromStart, lt: beforeEnd }
-  } else if (beforeEnd) {
-    entryWhere.entryDate = { lt: beforeEnd }
-  } else if (fromStart) {
-    entryWhere.entryDate = { gte: fromStart }
+  if (beforePeriod && fromPeriod) {
+    entryWhere.period = { gte: fromPeriod, lt: beforePeriod }
+  } else if (beforePeriod) {
+    entryWhere.period = { lt: beforePeriod }
+  } else if (fromPeriod) {
+    entryWhere.period = { gte: fromPeriod }
   }
 
   const lines = await prisma.journalLine.findMany({
@@ -237,13 +242,13 @@ async function aggregatePostedJournalMovements(
 }
 
 async function resolvePostedJournalAccountIdsWithAncestors(
-  beforeEnd: Date,
+  beforePeriod: string,
   scope?: FinancialReportScope,
 ) {
   const companyIds = scopeCompanyIds(scope)
   const entryWhere: Prisma.JournalEntryWhereInput = {
     status: 'POSTED',
-    entryDate: { lt: beforeEnd },
+    period: { lte: beforePeriod },
     ...(companyIds ? { companyId: { in: companyIds } } : {}),
   }
   const lineAccounts = await prisma.journalLine.findMany({
@@ -344,7 +349,7 @@ export async function buildFinancialReports(
   const { start, end, asOfDate } = periodRange(period)
   const companyIds = scopeCompanyIds(scope)
   const referencedAccountIds = companyIds
-    ? await resolvePostedJournalAccountIdsWithAncestors(end, scope)
+    ? await resolvePostedJournalAccountIdsWithAncestors(period, scope)
     : []
 
   const rawAccounts = await prisma.finAccount.findMany({
@@ -411,9 +416,9 @@ export async function buildFinancialReports(
       }))
 
   const [ledgerOpeningMovements, periodMovements, ledgerClosingMovements, openingBalances, closingBalances] = await Promise.all([
-    aggregatePostedJournalMovements(start, undefined, scope),
-    aggregatePostedJournalMovements(end, start, scope),
-    aggregatePostedJournalMovements(end, undefined, scope),
+    aggregatePostedJournalMovements(period, undefined, scope),
+    aggregatePostedJournalMovements(periodAfter(period), period, scope),
+    aggregatePostedJournalMovements(periodAfter(period), undefined, scope),
     aggregateOpeningBalanceMovements(start, scope),
     aggregateOpeningBalanceMovements(end, scope),
   ])

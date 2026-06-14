@@ -12,9 +12,6 @@ vi.mock('@/lib/db/prisma', () => ({
 }))
 
 const companyId = 'company-cos'
-const start = new Date('2026-05-01T00:00:00.000Z').getTime()
-const end = new Date('2026-06-01T00:00:00.000Z').getTime()
-
 type ReportAccountFixture = {
   id: string
   code: string
@@ -75,7 +72,7 @@ type MockFindManyArgs = {
   where?: {
     id?: { in?: string[] }
     entry?: {
-      entryDate?: { gte?: Date; lt?: Date }
+      period?: { gte?: string; gt?: string; lte?: string; lt?: string }
     }
   }
 }
@@ -112,13 +109,13 @@ describe('buildFinancialReports journal-line source', () => {
         return [{ accountId: 'bank' }, { accountId: 'rev-child' }]
       }
 
-      const entryDate = query.where?.entry?.entryDate
+      const period = query.where?.entry?.period
       const isPeriodMovement =
-        entryDate?.gte?.getTime() === start && entryDate?.lt?.getTime() === end
+        period?.gte === '2026-05' && period?.lt === '2026-06'
       const isOpeningMovement =
-        !entryDate?.gte && entryDate?.lt?.getTime() === start
+        !period?.gte && period?.lt === '2026-05'
       const isClosingMovement =
-        !entryDate?.gte && entryDate?.lt?.getTime() === end
+        !period?.gte && period?.lt === '2026-06'
 
       if (isPeriodMovement) return periodMovementLines
       if (isOpeningMovement) return priorMovementLines
@@ -145,6 +142,7 @@ describe('buildFinancialReports journal-line source', () => {
       where: {
         entry: expect.objectContaining({
           companyId: { in: [companyId] },
+          period: { lte: '2026-05' },
           status: 'POSTED',
         }),
       },
@@ -247,5 +245,25 @@ describe('buildFinancialReports journal-line source', () => {
         amount: 1200,
       }),
     ])
+  })
+
+  it('filters movements by accounting period instead of entry date ranges', async () => {
+    await buildFinancialReports('2026-05', { companyId })
+
+    expect(prisma.journalLine.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        entry: expect.objectContaining({
+          period: { gte: '2026-05', lt: '2026-06' },
+          status: 'POSTED',
+        }),
+      },
+    }))
+    expect(prisma.journalLine.findMany).not.toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        entry: expect.objectContaining({
+          entryDate: expect.anything(),
+        }),
+      },
+    }))
   })
 })
