@@ -63,6 +63,43 @@ type TechnicalOwnerOption = {
   isActive: boolean
 }
 
+type SampleOrderOption = {
+  id: string
+  code: string
+  status: 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED'
+  sampleKind: string
+  createdAt: string
+  customer: {
+    id: string
+    code: string
+    name: string
+  }
+  salesEmployee: {
+    id: string
+    code: string
+    name: string
+  } | null
+  technicalEmployee: {
+    id: string
+    code: string
+    name: string
+  } | null
+}
+
+type LinkedSampleOrderLine = {
+  key: string
+  sampleOrderId: string
+  code: string
+  status: SampleOrderOption['status']
+  customerCode: string
+  customerName: string
+  sampleKind: string
+  salesEmployeeName: string
+  technicalEmployeeName: string
+  quantityKg: string
+  notes: string
+}
+
 type EditableItem = {
   key: string
   isLocked: boolean
@@ -145,6 +182,12 @@ function formatCustomerOption(customer: CustomerOption) {
 
 function formatTechnicalOwnerOption(employee: TechnicalOwnerOption) {
   return `${employee.code} · ${employee.name}`
+}
+
+const SAMPLE_ORDER_STATUS_LABEL: Record<SampleOrderOption['status'], string> = {
+  DRAFT: '草稿',
+  IN_PROGRESS: '进行中',
+  COMPLETED: '已完成',
 }
 
 function toEditableItem(item: FullColorFormula['items'][number], index: number): EditableItem {
@@ -468,6 +511,9 @@ export default function CosmocoatColorFormulaDetailPage() {
   const [technicalOwnerSearch, setTechnicalOwnerSearch] = useState('')
   const [technicalOwnerOptions, setTechnicalOwnerOptions] = useState<TechnicalOwnerOption[]>([])
   const [technicalOwnerDropdownOpen, setTechnicalOwnerDropdownOpen] = useState(false)
+  const [sampleOrderSearch, setSampleOrderSearch] = useState('')
+  const [sampleOrderOptions, setSampleOrderOptions] = useState<SampleOrderOption[]>([])
+  const [sampleOrderLines, setSampleOrderLines] = useState<LinkedSampleOrderLine[]>([])
   const [targetColor, setTargetColor] = useState('')
   const [batchQuantity, setBatchQuantity] = useState(100)
   const [notes, setNotes] = useState('')
@@ -503,6 +549,19 @@ export default function CosmocoatColorFormulaDetailPage() {
       setCustomerSearch(formula.customer ? formatCustomerOption(formula.customer) : formula.customerName)
       setTechnicalOwnerId(formula.technicalOwnerId)
       setTechnicalOwnerSearch(formula.technicalOwner ? formatTechnicalOwnerOption(formula.technicalOwner) : '')
+      setSampleOrderLines(formula.sampleOrders.map(line => ({
+        key: line.id,
+        sampleOrderId: line.sampleOrderId,
+        code: line.sampleOrder.code,
+        status: line.sampleOrder.status as LinkedSampleOrderLine['status'],
+        customerCode: line.sampleOrder.customer.code,
+        customerName: line.sampleOrder.customer.name,
+        sampleKind: line.sampleOrder.sampleKind ?? '',
+        salesEmployeeName: line.sampleOrder.salesEmployee?.name ?? '',
+        technicalEmployeeName: line.sampleOrder.technicalEmployee?.name ?? '',
+        quantityKg: String(line.quantityKg),
+        notes: line.notes,
+      })))
       setTargetColor(formula.targetColor)
       setBatchQuantity(formula.batchQuantity)
       setNotes(formula.notes)
@@ -525,6 +584,10 @@ export default function CosmocoatColorFormulaDetailPage() {
   const selectedFactoryProduct = useMemo(
     () => factoryProducts.find(product => product.id === factoryProductId),
     [factoryProducts, factoryProductId],
+  )
+  const selectedSampleOrderIds = useMemo(
+    () => new Set(sampleOrderLines.map(line => line.sampleOrderId)),
+    [sampleOrderLines],
   )
 
   // Auto-generate formula code when factory product changes (new formulas)
@@ -670,6 +733,31 @@ export default function CosmocoatColorFormulaDetailPage() {
     }
   }, [technicalOwnerSearch])
 
+  useEffect(() => {
+    let cancelled = false
+    const controller = new AbortController()
+    const q = sampleOrderSearch.trim()
+    const t = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ limit: '30' })
+        if (q) params.set('q', q)
+        const res = await fetch(`/api/admin/cosmocoat/color-formulas/picker/sample-orders?${params}`, {
+          signal: controller.signal,
+        })
+        const data = await res.json()
+        if (!cancelled && res.ok) setSampleOrderOptions(data.items ?? [])
+      } catch {
+        /* ignore */
+      }
+    }, q ? 250 : 0)
+
+    return () => {
+      cancelled = true
+      controller.abort()
+      clearTimeout(t)
+    }
+  }, [sampleOrderSearch])
+
   const totals = useMemo(() => {
     const totalQty = items.reduce((sum, item) => sum + item.quantity, 0)
     return computeRecipeTotals(
@@ -730,6 +818,30 @@ export default function CosmocoatColorFormulaDetailPage() {
   function clearTechnicalOwner() {
     setTechnicalOwnerId(null)
     setTechnicalOwnerSearch('')
+  }
+
+  function addSampleOrder(order: SampleOrderOption) {
+    if (selectedSampleOrderIds.has(order.id)) {
+      toast.error('该打样单已关联')
+      return
+    }
+    setSampleOrderLines(prev => [...prev, {
+      key: order.id,
+      sampleOrderId: order.id,
+      code: order.code,
+      status: order.status,
+      customerCode: order.customer.code,
+      customerName: order.customer.name,
+      sampleKind: order.sampleKind,
+      salesEmployeeName: order.salesEmployee?.name ?? '',
+      technicalEmployeeName: order.technicalEmployee?.name ?? '',
+      quantityKg: String(batchQuantity),
+      notes: '',
+    }])
+  }
+
+  function removeSampleOrder(sampleOrderId: string) {
+    setSampleOrderLines(prev => prev.filter(line => line.sampleOrderId !== sampleOrderId))
   }
 
   function openPrintDialog() {
@@ -815,6 +927,12 @@ export default function CosmocoatColorFormulaDetailPage() {
       toast.error('请从负责人员下拉列表选择技术人员')
       return
     }
+    for (const line of sampleOrderLines) {
+      if (!line.quantityKg || Number(line.quantityKg) <= 0) {
+        toast.error(`打样单「${line.code}」数量无效`)
+        return
+      }
+    }
 
     setSaving(true)
     const payload = {
@@ -829,6 +947,12 @@ export default function CosmocoatColorFormulaDetailPage() {
       targetColor,
       batchQuantity,
       notes,
+      sampleOrders: sampleOrderLines.map((line, index) => ({
+        sampleOrderId: line.sampleOrderId,
+        quantityKg: Number(line.quantityKg),
+        sortOrder: index,
+        notes: line.notes,
+      })),
       items: items.map((item, index) => ({
         rawMaterialId: item.rawMaterialId,
         productSemifinishedId: item.productSemifinishedId,
@@ -1156,6 +1280,130 @@ export default function CosmocoatColorFormulaDetailPage() {
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-y" style={inputStyle()} />
           </div>
         </div>
+      </div>
+
+      <div style={card} className="p-4 space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>关联打样单</h3>
+            <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
+              可将当前调色配方直接关联到一个或多个打样单，便于双向追溯。
+            </p>
+          </div>
+          <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+            已关联 {sampleOrderLines.length} 个
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="relative max-w-md">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
+            <input
+              value={sampleOrderSearch}
+              onChange={e => setSampleOrderSearch(e.target.value)}
+              placeholder="搜索打样单号、客户或负责人..."
+              className="w-full rounded-lg pl-8 pr-3 py-2.5 text-sm outline-none"
+              style={inputStyle()}
+            />
+          </div>
+          {sampleOrderOptions.length > 0 && (
+            <div className="border rounded-lg overflow-hidden" style={{ borderColor: '#2A2418' }}>
+              {sampleOrderOptions.filter(order => !selectedSampleOrderIds.has(order.id)).slice(0, 8).map(order => (
+                <button
+                  key={order.id}
+                  type="button"
+                  onClick={() => addSampleOrder(order)}
+                  className="w-full flex items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-[#111108] border-b last:border-b-0"
+                  style={{ borderColor: '#1E1C15', color: 'var(--foreground)' }}
+                >
+                  <span className="min-w-0">
+                    <span className="font-mono text-xs opacity-70 mr-2">{order.code}</span>
+                    {order.customer.name}
+                    <span className="text-xs ml-2 opacity-60">
+                      {SAMPLE_ORDER_STATUS_LABEL[order.status]}
+                      {order.sampleKind ? ` · ${order.sampleKind}` : ''}
+                    </span>
+                  </span>
+                  <Plus size={14} style={{ color: '#C9A96E' }} />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {sampleOrderLines.length === 0 ? (
+          <p className="text-sm py-4 text-center" style={{ color: '#5A5040' }}>尚未关联打样单</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <th style={th}>打样单</th>
+                  <th style={th}>客户</th>
+                  <th style={th}>状态</th>
+                  <th style={th}>打样种类</th>
+                  <th style={th}>数量 (kg)</th>
+                  <th style={th}>备注</th>
+                  <th style={{ ...th, width: 48 }} />
+                </tr>
+              </thead>
+              <tbody>
+                {sampleOrderLines.map(line => (
+                  <tr key={line.key}>
+                    <td style={{ ...td, color: 'var(--foreground)' }}>
+                      <Link href={`/admin/cosmocoat-sample-orders/${line.sampleOrderId}`} className="underline" style={{ color: '#C9A96E' }}>
+                        {line.code}
+                      </Link>
+                      {(line.salesEmployeeName || line.technicalEmployeeName) && (
+                        <div className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                          {line.salesEmployeeName ? `销售：${line.salesEmployeeName}` : ''}
+                          {line.salesEmployeeName && line.technicalEmployeeName ? ' · ' : ''}
+                          {line.technicalEmployeeName ? `负责：${line.technicalEmployeeName}` : ''}
+                        </div>
+                      )}
+                    </td>
+                    <td style={td}>
+                      <span className="font-mono text-xs opacity-70 mr-2">{line.customerCode}</span>
+                      {line.customerName}
+                    </td>
+                    <td style={td}>{SAMPLE_ORDER_STATUS_LABEL[line.status]}</td>
+                    <td style={td}>{line.sampleKind || '—'}</td>
+                    <td style={td}>
+                      <input
+                        type="number"
+                        min="0.001"
+                        step="0.001"
+                        value={line.quantityKg}
+                        onChange={e => setSampleOrderLines(prev => prev.map(row => row.sampleOrderId === line.sampleOrderId ? { ...row, quantityKg: e.target.value } : row))}
+                        className="w-28 rounded px-2 py-1 text-sm outline-none"
+                        style={inputStyle()}
+                      />
+                    </td>
+                    <td style={td}>
+                      <input
+                        value={line.notes}
+                        onChange={e => setSampleOrderLines(prev => prev.map(row => row.sampleOrderId === line.sampleOrderId ? { ...row, notes: e.target.value } : row))}
+                        className="w-full min-w-[180px] rounded px-2 py-1 text-sm outline-none"
+                        style={inputStyle()}
+                        placeholder="打样用途、阶段说明等"
+                      />
+                    </td>
+                    <td style={td}>
+                      <button
+                        type="button"
+                        onClick={() => removeSampleOrder(line.sampleOrderId)}
+                        className="p-1 rounded hover:bg-[#1E1C15]"
+                        aria-label="移除打样单关联"
+                      >
+                        <X size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div style={{ ...card, overflow: 'hidden' }}>

@@ -11,7 +11,9 @@ import {
   enrichColorFormulaItemsFromRawMaterials,
   getColorFormulaById,
   saveColorFormulaItems,
+  saveColorFormulaSampleOrders,
   serializeColorFormula,
+  type ColorFormulaSampleOrderLineInput,
   type ColorFormulaItemInput,
 } from '@/lib/cosmocoat/color-formulas'
 
@@ -30,6 +32,13 @@ const itemSchema = z.object({
   message: '每条明细不能同时选择原料和半成品',
 })
 
+const sampleOrderSchema = z.object({
+  sampleOrderId: z.string().trim().min(1),
+  quantityKg: z.coerce.number().min(0.001).optional().default(1),
+  sortOrder: z.coerce.number().int().min(0).optional(),
+  notes: z.string().trim().max(500).optional().default(''),
+})
+
 const formulaSchema = z.object({
   code: z.string().trim().max(32).optional(),
   name: z.string().trim().min(1).max(160),
@@ -42,6 +51,7 @@ const formulaSchema = z.object({
   targetColor: z.string().trim().max(120).optional().default(''),
   batchQuantity: z.coerce.number().min(0.001).optional().default(100),
   notes: z.string().trim().max(2000).optional().default(''),
+  sampleOrders: z.array(sampleOrderSchema).optional().default([]),
   items: z.array(itemSchema).optional().default([]),
 })
 
@@ -143,6 +153,10 @@ export async function POST(req: NextRequest) {
     const code = parsed.data.code?.trim() || (await generateColorFormulaCode())
     const existing = await prisma.cosTableColorFormula.findUnique({ where: { code } })
     if (existing) return NextResponse.json({ error: '配方编号已存在' }, { status: 409 })
+    const sampleOrderIds = parsed.data.sampleOrders.map(line => line.sampleOrderId)
+    if (new Set(sampleOrderIds).size !== sampleOrderIds.length) {
+      return NextResponse.json({ error: '打样单不能重复关联' }, { status: 400 })
+    }
 
     const customer = parsed.data.customerId
       ? await prisma.cosCustomer.findUnique({
@@ -164,7 +178,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '所选负责人员不是技术人员或不存在' }, { status: 400 })
     }
 
+    if (sampleOrderIds.length > 0) {
+      const sampleOrders = await prisma.cosSampleOrder.findMany({
+        where: { id: { in: sampleOrderIds } },
+        select: { id: true },
+      })
+      if (sampleOrders.length !== sampleOrderIds.length) {
+        return NextResponse.json({ error: '所选打样单不存在' }, { status: 400 })
+      }
+    }
+
     const enriched = await enrichColorFormulaItemsFromRawMaterials(parsed.data.items as ColorFormulaItemInput[])
+    const sampleOrderLines: ColorFormulaSampleOrderLineInput[] = parsed.data.sampleOrders.map((line, index) => ({
+      sampleOrderId: line.sampleOrderId,
+      quantityKg: line.quantityKg,
+      sortOrder: line.sortOrder ?? index,
+      notes: line.notes,
+    }))
 
     const formula = await prisma.cosTableColorFormula.create({
       data: {
@@ -183,6 +213,7 @@ export async function POST(req: NextRequest) {
     })
 
     await saveColorFormulaItems(formula.id, enriched, parsed.data.batchQuantity)
+    await saveColorFormulaSampleOrders(formula.id, sampleOrderLines)
     const full = await getColorFormulaById(formula.id)
     return NextResponse.json({ formula: full }, { status: 201 })
   } catch (err) {

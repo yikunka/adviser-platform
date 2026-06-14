@@ -282,6 +282,7 @@ Custom color formulations for specific customers or products.
 - Material details use the same split layout as recipe management: selected item table above, candidate material table below with click-to-select and "添加选中"; picker category filter is single-select (default none — user picks one of AD, SO, Sol semifinished, DY, CO, CA, CC); selecting Sol semifinished loads only Sol semifinished inventory records, not raw materials
 - Category tabs filter the factory-product sub-filters below: PU tab shows only factory products whose product category name is exactly「PU漆」; 色漆 and 烤漆 tabs use inferred category matching
 - Clicking "新建配方" while a product filter is active pre-fills that product in the new formula form
+- Formula detail/new page includes a linked sample-order field: users can search and attach one or more CosmoCoat sample orders, set per-order sample quantity (kg) and notes, and open the linked sample order directly from the formula page
 - Detail page has a "打印文件" action: opens a dialog to enter target production weight (kg), scales product and raw-material line quantities proportionally, then triggers browser PDF print (A4, no page header/footer). Print header shows 调色单号 (formula code), name, category, linked factory product, production weight, and notes. Material table shows 序号 / 生产编号 / 原料·产品名称 / 用量(kg) / 占比 / 实投(kg) / 备注 only (hides attribute, color code, target color, source recipe, customer, unit price, and amount columns); 实投 scales with the entered production weight from each line's saved actual-weight value. Production instructions from the linked source recipe are not included in print output.
 
 ### Employees (`/admin/cosmocoat-employees`)
@@ -364,7 +365,7 @@ Independent supplier registry for CosmoCoat sourcing; data and permission key ar
 - Auto-generated order codes: `YP####` (e.g. `YP0001`)
 - Progress tracking: step indicator (草稿 → 进行中 → 已完成), `startedAt` when moving to IN_PROGRESS, `completedAt` when marked COMPLETED
 - Actions: Save (DRAFT), 开始打样 (→ IN_PROGRESS), 标记完成 (→ COMPLETED); completed orders lock line items, customer, and employee assignments but remain viewable
-- Detail page shows scaled color-formula material tables; the on-screen color-formula detail list shows each formula's total cost instead of a quantity column, while process-kit content is shown inline in the 工艺书明细 section when creating or editing
+- Detail page shows linked color-formula information in both the editable/read-only 调色配方明细 table and the expanded scaled material tables below; formulas linked from the color-formula module appear here automatically
 - **Print** on detail page (`/admin/cosmocoat-sample-orders/[id]`): browser print (A4) exports full order — customer profile, **特急** checkbox marker (red 特急 text when enabled), sales and responsible employees, reference sample image, sample kind, substrate/sample-panel/sample-oil/special-process requirements, notes, process-kit details (applicable materials/products, performance standards, product parameters, process flow), color-formula line items, and scaled material tables; signature row for 打样人员 / 质检确认 / 客户签收
 - Delete allowed for DRAFT and COMPLETED orders; IN_PROGRESS orders cannot be deleted
 

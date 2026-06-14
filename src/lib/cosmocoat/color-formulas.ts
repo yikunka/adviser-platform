@@ -46,6 +46,45 @@ const itemInclude = {
   },
 } as const
 
+const sampleOrderLineInclude = {
+  orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+  include: {
+    sampleOrder: {
+      select: {
+        id: true,
+        code: true,
+        status: true,
+        sampleKind: true,
+        customer: { select: { id: true, code: true, name: true } },
+        salesEmployee: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            employeeType: true,
+            position: true,
+            department: true,
+            phone: true,
+            isActive: true,
+          },
+        },
+        technicalEmployee: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            employeeType: true,
+            position: true,
+            department: true,
+            phone: true,
+            isActive: true,
+          },
+        },
+      },
+    },
+  },
+} satisfies Prisma.CosTableColorFormula$sampleOrderLinesArgs
+
 const formulaInclude = {
   subcategory: {
     select: { id: true, parentCategory: true, code: true, name: true },
@@ -72,8 +111,16 @@ const formulaInclude = {
       isActive: true,
     },
   },
+  sampleOrderLines: sampleOrderLineInclude,
   items: { orderBy: { sortOrder: 'asc' as const }, include: itemInclude },
 } as const
+
+export type ColorFormulaSampleOrderLineInput = {
+  sampleOrderId: string
+  quantityKg: number
+  sortOrder: number
+  notes: string
+}
 
 function serializeItem(item: {
   id: string
@@ -209,10 +256,60 @@ export function serializeColorFormula(formula: {
     phone: string | null
     isActive: boolean
   } | null
+  sampleOrderLines?: Array<{
+    id: string
+    sampleOrderId: string
+    quantityKg: unknown
+    sortOrder: number
+    notes: string
+    sampleOrder: {
+      id: string
+      code: string
+      status: string
+      sampleKind: string
+      customer: { id: string; code: string; name: string }
+      salesEmployee: {
+        id: string
+        code: string
+        name: string
+        employeeType: string
+        position: string | null
+        department: string | null
+        phone: string | null
+        isActive: boolean
+      } | null
+      technicalEmployee: {
+        id: string
+        code: string
+        name: string
+        employeeType: string
+        position: string | null
+        department: string | null
+        phone: string | null
+        isActive: boolean
+      } | null
+    }
+  }>
   items?: Array<Parameters<typeof serializeItem>[0]>
   _count?: { items: number }
 }) {
   const items = formula.items?.map(serializeItem) ?? []
+  const sampleOrders = formula.sampleOrderLines?.map(line => ({
+    id: line.id,
+    sampleOrderId: line.sampleOrderId,
+    quantityKg: Number(line.quantityKg),
+    sortOrder: line.sortOrder,
+    notes: line.notes,
+    sampleOrder: {
+      id: line.sampleOrder.id,
+      code: line.sampleOrder.code,
+      status: line.sampleOrder.status,
+      sampleKind: line.sampleOrder.sampleKind,
+      customer: line.sampleOrder.customer,
+      salesEmployee: line.sampleOrder.salesEmployee,
+      technicalEmployee: line.sampleOrder.technicalEmployee,
+    },
+  })) ?? []
   const batchQuantity = Number(formula.batchQuantity)
   const totalQuantity = items.reduce((sum, i) => sum + i.quantity, 0)
   const totals = computeRecipeTotals(
@@ -268,6 +365,7 @@ export function serializeColorFormula(formula: {
     sourceRecipe: formula.sourceRecipe ?? null,
     customer: formula.customer ?? null,
     technicalOwner: formula.technicalOwner ?? null,
+    sampleOrders,
     items,
   }
 }
@@ -323,6 +421,24 @@ export async function saveColorFormulaItems(
     })
   }
   return normalized
+}
+
+export async function saveColorFormulaSampleOrders(
+  formulaId: string,
+  sampleOrders: ColorFormulaSampleOrderLineInput[],
+) {
+  await prisma.cosSampleOrderColorFormula.deleteMany({ where: { colorFormulaId: formulaId } })
+  if (sampleOrders.length > 0) {
+    await prisma.cosSampleOrderColorFormula.createMany({
+      data: sampleOrders.map((line, index) => ({
+        sampleOrderId: line.sampleOrderId,
+        colorFormulaId: formulaId,
+        quantityKg: line.quantityKg,
+        sortOrder: line.sortOrder ?? index,
+        notes: line.notes,
+      })),
+    })
+  }
 }
 
 export async function enrichColorFormulaItemsFromRawMaterials(
