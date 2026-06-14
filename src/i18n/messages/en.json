@@ -39,6 +39,7 @@
     "adminTeam": "Admin users & access",
     "cosmocoatRawMaterials": "Raw Materials",
     "cosmocoatRecipes": "Recipes",
+    "cosmocoatRecipeApprovals": "Pending Process Book Changes",
     "cosmocoatColorFormulas": "Color Formulas",
     "cosmocoatFactoryProducts": "Factory Product Management",
     "cosmocoatProductionOrders": "Production Orders",

@@ -39,6 +39,7 @@
     "adminTeam": "後台帳號與權限",
     "cosmocoatRawMaterials": "原料管理",
     "cosmocoatRecipes": "配方管理",
+    "cosmocoatRecipeApprovals": "待审批工艺书变更",
     "cosmocoatColorFormulas": "调色配方",
     "cosmocoatFactoryProducts": "工厂产品管理",
     "cosmocoatProductionOrders": "生产单管理",

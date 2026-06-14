@@ -23,7 +23,7 @@ Key metrics at a glance are grouped into a distinct Adviser corporate-services m
 
 Includes a visually separate SFS Diamond order statistics module showing total SFS orders, active orders, orders created in the last 30 days, and distribution by SFS order status (`PENDING`, `QUOTED`, `CONFIRMED`, `COMPLETED`, `CANCELLED`).
 
-Includes a separate CosmoCoat operations module showing pending non-super-admin recipe change requests, sample orders in `DRAFT`, and sample orders in `IN_PROGRESS`; each metric links to the filtered recipe-approval or sample-order list view.
+Includes a separate CosmoCoat operations module showing pending non-super-admin recipe change requests, sample orders in `DRAFT`, and sample orders in `IN_PROGRESS`; the pending-change metric links to the dedicated approval page, while the sample-order metrics link to filtered list views.
 
 ### 2. Companies (`/admin/companies`)
 Manages the full portfolio of client companies.
@@ -268,7 +268,7 @@ Product formulation management.
 - Packaging requirements: button quick-select presets (200目、300目、400目、色装机); clicking a preset fills the field; new recipes start with an empty packaging field (no default preset)
 - QC section (separate card): multi-select checkboxes for standard tests (黏度, 百格, 水煮80C/30M, 湿油外观, 干板外观) plus optional free-text test standard; each checked test shows its own result input on the same row (unchecked tests hide result inputs); selected tests and custom text are carried into production order quality-check requirements when creating orders (viscosity checkbox includes recipe viscosity value when set)
 - Material rows can be reordered by drag-and-drop; new order is auto-saved immediately
-- **Change approval workflow**: non–`SUPER_ADMIN` roles cannot directly modify or delete existing recipes; PATCH/DELETE (including refresh-prices) create a pending change request (`UPDATE` or `DELETE`) for super-admin review; `SUPER_ADMIN` applies changes immediately; recipe list page shows a **待审批变更** panel for super admins with approve/reject actions, automatic core-change summary, and before-vs-after difference rows (including material additions/removals/quantity or price changes, batch quantity changes, unit-cost changes, and basic/process/QC field changes); non–super-admin users see **提交审批** on the detail page and get HTTP 202 when a request is queued; only one pending request per recipe at a time; creating new recipes does not require approval
+- **Change approval workflow**: non–`SUPER_ADMIN` roles cannot directly modify or delete existing recipes; PATCH/DELETE (including refresh-prices) create a pending change request (`UPDATE` or `DELETE`) for super-admin review; `SUPER_ADMIN` applies changes immediately; a dedicated page at `/admin/cosmocoat-recipe-approvals` lists pending / approved / rejected requests with requester info, review records, automatic core-change summaries, and before-vs-after difference rows (including material additions/removals/quantity or price changes, batch quantity changes, unit-cost changes, and basic/process/QC field changes); the recipe list page still shows a pending-only panel with a shortcut to the full approval page; non–super-admin users see **提交审批** on the detail page and get HTTP 202 when a request is queued; only one pending request per recipe at a time; creating new recipes does not require approval
 
 ### Color Matching Formulas (`/admin/cosmocoat-color-formulas`)
 Custom color formulations for specific customers or products.

@@ -255,7 +255,7 @@ export default async function AdminDashboardPage() {
               {
                 label: t('cosmocoat.pendingRecipeChanges'),
                 value: cosmocoatStats.pendingRecipeChanges,
-                href: '/admin/cosmocoat-recipes?view=pending-approvals#pending-approvals',
+                href: '/admin/cosmocoat-recipe-approvals',
                 accent: '#f59e0b',
               },
               {

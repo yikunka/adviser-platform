@@ -107,6 +107,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/cosmocoat-products', key: 'cosmocoatProducts', Icon: Package },
       { href: '/admin/cosmocoat-raw-materials', key: 'cosmocoatRawMaterials', Icon: FlaskConical },
       { href: '/admin/cosmocoat-recipes', key: 'cosmocoatRecipes', Icon: Beaker },
+      { href: '/admin/cosmocoat-recipe-approvals', key: 'cosmocoatRecipes', labelKey: 'cosmocoatRecipeApprovals', Icon: ClipboardCheck },
       { href: '/admin/cosmocoat-product-categories', key: 'cosmocoatFactoryProducts', labelKey: 'cosmocoatFactoryProductCategories', Icon: FolderTree },
       { href: '/admin/cosmocoat-factory-products', key: 'cosmocoatFactoryProducts', Icon: Boxes },
       { href: '/admin/cosmocoat-color-formulas', key: 'cosmocoatColorFormulas', Icon: Palette },

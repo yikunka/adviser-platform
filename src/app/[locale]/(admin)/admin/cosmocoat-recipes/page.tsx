@@ -543,6 +543,15 @@ export default function AdminCosmoCoatRecipesPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {canDirectEdit && (
+            <Link
+              href="/admin/cosmocoat-recipe-approvals"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm"
+              style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}
+            >
+              <ClipboardCheck size={15} /> 待审批工艺书变更
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => setShowCategoryManage(true)}
@@ -566,6 +575,17 @@ export default function AdminCosmoCoatRecipesPage() {
         className={shouldFocusApprovals ? 'scroll-mt-6 rounded-2xl ring-1 ring-[#C9A96E66] ring-offset-0' : 'scroll-mt-6'}
       >
         <PendingApprovalsPanel items={pendingChangeRequests} onReviewed={fetchItems} />
+        {canDirectEdit && pendingChangeRequests.length > 0 && (
+          <div className="mt-3 flex justify-end">
+            <Link
+              href="/admin/cosmocoat-recipe-approvals"
+              className="text-xs font-medium"
+              style={{ color: '#C9A96E' }}
+            >
+              查看完整审批记录
+            </Link>
+          </div>
+        )}
       </div>
 
       <div style={card} className="p-4 flex flex-wrap gap-3">

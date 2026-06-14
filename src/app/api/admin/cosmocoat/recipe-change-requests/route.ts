@@ -8,24 +8,37 @@ function isMissingTable(error: unknown) {
 }
 
 export async function GET(req: NextRequest) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatRecipes' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'cosmocoatRecipes' })
   if (error) return error
 
   const status = req.nextUrl.searchParams.get('status')?.trim() ?? 'PENDING'
   const recipeId = req.nextUrl.searchParams.get('recipeId')?.trim() ?? ''
   const limit = Number(req.nextUrl.searchParams.get('limit') ?? '50') || 50
 
-  if (!['PENDING', 'APPROVED', 'REJECTED'].includes(status)) {
+  if (!['ALL', 'PENDING', 'APPROVED', 'REJECTED'].includes(status)) {
     return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
   }
 
   try {
-    const items = await listRecipeChangeRequests({
-      status: status as 'PENDING' | 'APPROVED' | 'REJECTED',
-      recipeId: recipeId || undefined,
-      limit,
+    const items = status === 'ALL'
+      ? (await Promise.all([
+          listRecipeChangeRequests({ status: 'PENDING', recipeId: recipeId || undefined, limit }),
+          listRecipeChangeRequests({ status: 'APPROVED', recipeId: recipeId || undefined, limit }),
+          listRecipeChangeRequests({ status: 'REJECTED', recipeId: recipeId || undefined, limit }),
+        ]))
+          .flat()
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, limit)
+      : await listRecipeChangeRequests({
+          status: status as 'PENDING' | 'APPROVED' | 'REJECTED',
+          recipeId: recipeId || undefined,
+          limit,
+        })
+
+    return NextResponse.json({
+      items,
+      canReview: session!.user.role === 'SUPER_ADMIN',
     })
-    return NextResponse.json({ items })
   } catch (err) {
     if (isMissingTable(err)) {
       return NextResponse.json({ error: '配方审批表不存在，请先运行数据库迁移' }, { status: 503 })
