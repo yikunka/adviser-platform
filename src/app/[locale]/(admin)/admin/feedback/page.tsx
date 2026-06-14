@@ -515,7 +515,6 @@ function buildDevPrompt(item: FeatureRequest, conversation: ChatMessage[] = []):
     ...(attachmentLines ? ['**附件**：', attachmentLines, ''] : []),
     '---',
     '参考 `src/lib/feedback/system-knowledge.md` 了解系统现有功能上下文。',
-    '完成后请同步更新 `src/lib/feedback/system-knowledge.md`。',
   ].join('\n')
 }
 
