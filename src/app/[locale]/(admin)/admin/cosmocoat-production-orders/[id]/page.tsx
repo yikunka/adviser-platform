@@ -6,8 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, ExternalLink, FlaskConical, Printer, RefreshCw, Save } from 'lucide-react'
-import { COS_EMPLOYEE_TYPE_LABELS } from '@/lib/cosmocoat/employee-labels'
+import { ArrowLeft, FlaskConical, Printer, RefreshCw, Save } from 'lucide-react'
 import type { CosEmployeeType } from '@prisma/client'
 import {
   formatPercent,
@@ -1010,52 +1009,6 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
           )}
         </div>
       </div>
-
-      {productionEmployee && (
-        <div style={card} className="p-4 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>生产人员信息</h3>
-            <Link
-              href={`/admin/cosmocoat-employees/${productionEmployee.id}`}
-              className="inline-flex items-center gap-1 text-xs"
-              style={{ color: '#C9A96E' }}
-            >
-              <ExternalLink size={12} />
-              查看员工档案
-            </Link>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
-            <div>
-              <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>员工编码</span>
-              <p style={{ color: 'var(--foreground)' }}>{productionEmployee.code}</p>
-            </div>
-            <div>
-              <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>姓名</span>
-              <p style={{ color: 'var(--foreground)' }}>{productionEmployee.name}</p>
-            </div>
-            <div>
-              <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>员工类型</span>
-              <p style={{ color: 'var(--foreground)' }}>{COS_EMPLOYEE_TYPE_LABELS[productionEmployee.employeeType]}</p>
-            </div>
-            <div>
-              <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>职位</span>
-              <p style={{ color: 'var(--foreground)' }}>{productionEmployee.position ?? '—'}</p>
-            </div>
-            <div>
-              <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>部门</span>
-              <p style={{ color: 'var(--foreground)' }}>{productionEmployee.department ?? '—'}</p>
-            </div>
-            <div>
-              <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>电话</span>
-              <p style={{ color: 'var(--foreground)' }}>{productionEmployee.phone ?? '—'}</p>
-            </div>
-            <div>
-              <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>邮箱</span>
-              <p style={{ color: 'var(--foreground)' }}>{productionEmployee.email ?? '—'}</p>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div style={{ ...card, overflow: 'hidden' }}>
         <div className="px-4 py-3 border-b flex flex-wrap items-center justify-between gap-2" style={{ borderColor: '#2A2418' }}>

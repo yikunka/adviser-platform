@@ -292,11 +292,11 @@ CosmoCoat factory staff registry (内务、销售、生产、技术、编外人�
 - List with search (code / name / phone / email / position / department) plus dropdown filters for employee type, five element (`金` / `木` / `水` / `火` / `土`), and status (active / inactive); results update immediately and the paginated table shows hire date, complete-year service years (工龄), five element column (五行, auto-calculated from birth date, immediately left of 更新时间), and update time
 - Create, view, edit, and delete at `/admin/cosmocoat-employees/[id]`; new at `/admin/cosmocoat-employees/new`
 - Upload, preview, download, and delete **劳动合同**, **简历**, and **身份证** files (PDF, Word, JPG, PNG, WEBP; max 10 MB); PDFs and images open in an in-page preview dialog, Word files use online preview when the storage URL is publicly accessible and otherwise keep a download fallback; new employee forms can select files before saving, and creation saves the employee record and selected files together (if file upload fails, the employee is not created)
-- Production orders can assign an active **生产人员**; assigned employee basic info is shown on the production order detail page with a link to the employee profile
+- Production orders can assign an active **生产人员** via a dropdown on the detail page; assigned employee profile details are not shown on the production order detail page
 
 ### Production Orders (`/admin/cosmocoat-production-orders`)
 Manufacturing batch tracking.
-- Fields: order code, factory product, recipe, total weight, optional assigned production employee (detail page shows employee code, name, type, position, department, phone, email with link to employee profile; batch number is not shown or editable on the detail page, though list view still has a 批次 column)
+- Fields: order code, factory product, recipe, total weight, optional assigned production employee (dropdown only; no employee detail panel on the detail page; batch number is not shown or editable on the detail page, though list view still has a 批次 column)
 - Detail page shows recipe code, name, and viscosity range (read-only, e.g. `9.7-9.8 S` or `9.7-9.8 KU` from the linked recipe); there is no link/button to open the linked recipe detail page
 - New order page: factory product picker supports type-to-search with fuzzy matching (product code, name, current recipe); loads options on demand via lightweight API instead of bulk-fetching all products
 - Product list auto-excludes factory products without a current recipe; optional `?recipeId=` URL param further limits choices to products linked to that recipe
