@@ -1,7 +1,16 @@
 'use client'
 
 import { type KeyboardEvent, type Ref, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
-import { ChevronDown, Search } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, FolderTree, Search } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { getAccountHierarchy } from '@/lib/financial/account-tree'
 import { cn } from '@/lib/utils'
 
 export type AccountPickerOption = {
@@ -33,6 +42,8 @@ type AccountComboboxProps = {
   options?: AccountPickerOption[]
   specialOptions?: AccountComboboxSpecialOption[]
   emptyMessage?: string
+  dialogMode?: boolean
+  dialogTitle?: string
 }
 
 function formatAccountLabel(account: AccountPickerOption): string {
@@ -76,6 +87,126 @@ function accountTypeMeta(type: string) {
   return ACCOUNT_TYPE_META[type] ?? { label: type, accent: '#C9A96E', background: 'rgba(201,169,110,0.12)' }
 }
 
+function isSelectableJournalAccount(account: AccountPickerOption, accounts: AccountPickerOption[]) {
+  if (account.level === 2 || account.level === 3) return true
+  if (account.level !== 1) return false
+  return !accounts.some(row => row.parentId === account.id)
+}
+
+type AccountTreeNode = AccountPickerOption & { children: AccountTreeNode[] }
+
+function filterAccountTree(nodes: AccountTreeNode[], query: string): AccountTreeNode[] {
+  const normalizedQuery = query.trim().toLowerCase()
+  if (!normalizedQuery) return nodes
+
+  const visit = (node: AccountTreeNode): AccountTreeNode | null => {
+    const selfMatches = `${node.code} ${node.name} ${node.type}`.toLowerCase().includes(normalizedQuery)
+    const children = node.children.map(visit).filter((child): child is AccountTreeNode => Boolean(child))
+    if (!selfMatches && children.length === 0) return null
+    return { ...node, children }
+  }
+
+  return nodes.map(visit).filter((node): node is AccountTreeNode => Boolean(node))
+}
+
+function AccountTreeRows({
+  nodes,
+  accounts,
+  value,
+  expandedIds,
+  onToggle,
+  onSelect,
+  depth = 0,
+}: {
+  nodes: AccountTreeNode[]
+  accounts: AccountPickerOption[]
+  value: string
+  expandedIds: Set<string>
+  onToggle: (accountId: string) => void
+  onSelect: (account: AccountPickerOption) => void
+  depth?: number
+}) {
+  return (
+    <>
+      {nodes.map(node => {
+        const meta = accountTypeMeta(node.type)
+        const hasChildren = node.children.length > 0
+        const expanded = expandedIds.has(node.id)
+        const selectable = isSelectableJournalAccount(node, accounts)
+        const selected = node.id === value
+
+        return (
+          <div key={node.id}>
+            <div
+              className={cn(
+                'grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-md px-2 py-1.5 text-sm',
+                selected ? 'bg-[#2A2418] text-[#FFF7E6]' : 'text-[#EADDC3]',
+                selectable ? 'hover:bg-[#1E1A12]' : 'opacity-80',
+              )}
+              style={{ paddingLeft: `${8 + depth * 18}px` }}
+            >
+              <button
+                type="button"
+                onClick={() => hasChildren && onToggle(node.id)}
+                disabled={!hasChildren}
+                className="grid size-6 place-items-center rounded text-[#B8AD98] disabled:opacity-30"
+                aria-label={expanded ? '收起下级科目' : '展开下级科目'}
+              >
+                {hasChildren ? (
+                  expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />
+                ) : (
+                  <span className="size-3" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                disabled={!selectable}
+                onClick={() => onSelect(node)}
+                className="min-w-0 text-left disabled:cursor-not-allowed"
+                title={selectable ? `${node.code} - ${node.name}` : '该科目有下级，请选择可入账的明细科目'}
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <span
+                    className="block size-2.5 shrink-0 rounded-full ring-2 ring-black/20"
+                    style={{ background: meta.accent }}
+                  />
+                  <span className="truncate font-medium">{node.code} - {node.name}</span>
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-2 pl-4 text-xs">
+                  <span
+                    className="rounded px-1.5 py-0.5 font-medium"
+                    style={{ background: meta.background, color: meta.accent }}
+                  >
+                    {meta.label}
+                  </span>
+                  <span className="text-[#8F846F]">第 {node.level} 级</span>
+                  {!selectable && <span className="text-[#8F846F]">选择下级明细科目</span>}
+                </div>
+              </button>
+
+              <div className="grid size-6 place-items-center">
+                {selected ? <Check size={15} className="text-[#C9A96E]" /> : null}
+              </div>
+            </div>
+            {hasChildren && expanded ? (
+              <AccountTreeRows
+                nodes={node.children}
+                accounts={accounts}
+                value={value}
+                expandedIds={expandedIds}
+                onToggle={onToggle}
+                onSelect={onSelect}
+                depth={depth + 1}
+              />
+            ) : null}
+          </div>
+        )
+      })}
+    </>
+  )
+}
+
 export function AccountCombobox({
   value,
   companyId,
@@ -88,6 +219,8 @@ export function AccountCombobox({
   options: localOptions,
   specialOptions = [],
   emptyMessage: emptyMessageProp,
+  dialogMode = false,
+  dialogTitle = '选择会计科目',
 }: AccountComboboxProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const listboxId = useId()
@@ -97,6 +230,8 @@ export function AccountCombobox({
   const [loading, setLoading] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState<AccountPickerOption | null>(null)
   const [highlightedIndex, setHighlightedIndex] = useState(0)
+  const [treeDialogOpen, setTreeDialogOpen] = useState(false)
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
 
   const selectedSpecialOption = useMemo(
     () => specialOptions.find(option => option.id === value) ?? null,
@@ -120,7 +255,7 @@ export function AccountCombobox({
           : ''
 
   const fetchOptions = useCallback(
-    async (query: string) => {
+    async (query: string, options?: { tree?: boolean }) => {
       if (localOptions) return
       if (!companyId) {
         setOptions([])
@@ -128,12 +263,21 @@ export function AccountCombobox({
       }
       setLoading(true)
       try {
-        const params = new URLSearchParams({ companyId, limit: '50' })
-        if (query.trim()) params.set('q', query.trim())
+        const params = new URLSearchParams({ companyId, limit: options?.tree ? '500' : '50' })
+        if (options?.tree) params.set('mode', 'tree')
+        if (query.trim() && !options?.tree) params.set('q', query.trim())
         const res = await fetch(`/api/admin/financial/accounts/picker-options?${params}`)
         const data = await res.json()
         if (res.ok) {
-          setOptions(data.items ?? [])
+          const items = data.items ?? []
+          setOptions(items)
+          if (options?.tree) {
+            setExpandedIds(new Set(
+              items
+                .filter((account: AccountPickerOption) => !account.parentId)
+                .map((account: AccountPickerOption) => account.id),
+            ))
+          }
         }
       } catch {
         /* non-blocking */
@@ -225,10 +369,35 @@ export function AccountCombobox({
     return emptyMessageProp ?? '未找到匹配科目'
   }, [companyId, emptyMessageProp, loading])
 
+  const treeAccounts = useMemo(() => {
+    return (localOptions ?? options)
+      .filter(account => (account.level ?? 1) <= 3)
+      .map(account => ({
+        ...account,
+        level: Math.max(1, account.level ?? 1),
+        sortOrder: account.sortOrder ?? 0,
+        parentId: account.parentId ?? null,
+      }))
+  }, [localOptions, options])
+
+  const treeNodes = useMemo(() => {
+    return filterAccountTree(getAccountHierarchy(treeAccounts) as AccountTreeNode[], search)
+  }, [search, treeAccounts])
+
+  const activeExpandedIds = useMemo(() => {
+    if (!search.trim()) return expandedIds
+    const next = new Set(expandedIds)
+    for (const account of treeAccounts) {
+      if (account.parentId) next.add(account.parentId)
+    }
+    return next
+  }, [expandedIds, search, treeAccounts])
+
   function selectAccount(account: AccountPickerOption) {
     setSelectedAccount(account)
     onChange(account.id)
     setOpen(false)
+    setTreeDialogOpen(false)
     setSearch('')
   }
 
@@ -241,6 +410,106 @@ export function AccountCombobox({
       return
     }
     selectAccount(option.account)
+  }
+
+  function toggleExpanded(accountId: string) {
+    setExpandedIds(current => {
+      const next = new Set(current)
+      if (next.has(accountId)) next.delete(accountId)
+      else next.add(accountId)
+      return next
+    })
+  }
+
+  if (dialogMode) {
+    return (
+      <>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={disabled || !companyId}
+          onClick={() => {
+            setSearch('')
+            setHighlightedIndex(0)
+            setTreeDialogOpen(true)
+            void fetchOptions('', { tree: true })
+          }}
+          onKeyDown={event => {
+            if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+              onInputKeyDown?.(event as unknown as KeyboardEvent<HTMLInputElement>)
+            }
+          }}
+          className={cn(
+            'h-9 w-full justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm font-normal',
+            'focus-visible:border-[#C9A96E] focus-visible:ring-3 focus-visible:ring-[#C9A96E]/25',
+            inputClassName,
+          )}
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <FolderTree size={14} className="shrink-0 text-[#9F927B]" />
+            <span className={cn('truncate', !displayValue && 'text-[#9F927B]')}>
+              {displayValue || placeholder}
+            </span>
+          </span>
+          <ChevronDown size={14} className="shrink-0 text-[#9F927B]" />
+        </Button>
+
+        <Dialog
+          open={treeDialogOpen}
+          onOpenChange={next => {
+            if (next) {
+              setSearch('')
+              setHighlightedIndex(0)
+              void fetchOptions('', { tree: true })
+            }
+            setTreeDialogOpen(next)
+          }}
+        >
+          <DialogContent className="financial-modal max-h-[88vh] overflow-hidden border-[#2A2418] bg-[#11110E] text-[#FFF7E6] shadow-2xl ring-[#3A3428] sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-[#FFF7E6]">{dialogTitle}</DialogTitle>
+              <DialogDescription className="text-[#B8AD98]">
+                通过树形层级浏览一级、二级、三级科目，也可以输入编码或名称搜索。
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="relative">
+              <Search
+                size={14}
+                className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#9F927B]"
+              />
+              <input
+                value={search}
+                onChange={event => setSearch(event.target.value)}
+                placeholder="输入科目编码或名称搜索..."
+                autoFocus
+                className={cn(
+                  'h-10 w-full rounded-lg border border-[#2A2418] bg-[#0E0E0A] py-2 pl-9 pr-3 text-sm text-[#FFF7E6] outline-none placeholder:text-[#9F927B]',
+                  'focus-visible:border-[#C9A96E] focus-visible:ring-3 focus-visible:ring-[#C9A96E]/25',
+                )}
+              />
+            </div>
+
+            <div className="max-h-[56vh] overflow-y-auto rounded-lg border border-[#2A2418] bg-[#0B0B08] p-1.5">
+              {treeNodes.length === 0 ? (
+                <div className="px-3 py-8 text-center text-sm text-[#B8AD98]">
+                  {emptyMessage}
+                </div>
+              ) : (
+                <AccountTreeRows
+                  nodes={treeNodes}
+                  accounts={treeAccounts}
+                  value={value}
+                  expandedIds={activeExpandedIds}
+                  onToggle={toggleExpanded}
+                  onSelect={selectAccount}
+                />
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
+    )
   }
 
   return (

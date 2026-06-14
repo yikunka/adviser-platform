@@ -335,7 +335,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
             {isReopeningCancelled
               ? '保存后凭证将恢复为待过账，可继续审核并过账生成总账记录。'
               : '保存后状态为待过账，使用审核并过账生成总账记录。'}
-            分录行内按 ↑/↓ 切换行（末行 ↓ 新增一行），Enter 确认并跳到下一行（末行 Enter 保存）。F1 保存并清空表单继续录入，日期保留为上一条分录日期。科目列支持编码或名称模糊搜索。
+            分录行内按 ↑/↓ 切换行（末行 ↓ 新增一行），Enter 确认并跳到下一行（末行 Enter 保存）。F1 保存并清空表单继续录入，日期保留为上一条分录日期。科目列通过树形弹窗选择，并支持编码或名称模糊搜索。
           </DialogDescription>
         </DialogHeader>
 
@@ -464,6 +464,8 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                         inputClassName={fieldClassName}
                         disabled={!hasCompany}
                         onInputKeyDown={event => handleLineKeyDown(index, event)}
+                        dialogMode
+                        dialogTitle={`选择第 ${index + 1} 行科目`}
                       />
                     </TableCell>
                     <TableCell>

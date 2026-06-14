@@ -21,7 +21,8 @@ export async function GET(req: NextRequest) {
 
   const q = (req.nextUrl.searchParams.get('q') || '').trim()
   const id = req.nextUrl.searchParams.get('id')
-  const limit = Math.min(Number(req.nextUrl.searchParams.get('limit') || 50), 100)
+  const mode = req.nextUrl.searchParams.get('mode')
+  const limit = Math.min(Number(req.nextUrl.searchParams.get('limit') || 50), 500)
 
   await ensureDefaultChartOfAccounts(companyId, prisma)
 
@@ -41,6 +42,18 @@ export async function GET(req: NextRequest) {
   })
 
   const query = q.toLowerCase()
+  if (mode === 'tree') {
+    const items = accounts
+      .filter(account => account.level <= 3)
+      .filter(account => {
+        if (!query) return true
+        return account.code.toLowerCase().includes(query) || account.name.toLowerCase().includes(query)
+      })
+      .slice(0, limit)
+
+    return NextResponse.json({ items })
+  }
+
   const items = getJournalAccountPickerAccounts(accounts)
     .filter(account => {
       if (!query) return true
