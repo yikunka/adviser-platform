@@ -601,7 +601,12 @@ export async function buildFinancialReports(
 
     const hasChildren = accountHasChildren(account)
     const topLevelHasChildren = topLevelAccountHasChildren(account, level1GroupId)
-    const statementRow: StatementLineRow = { ...reportRow, amount: statementPeriodNet }
+    const statementRow: StatementLineRow = {
+      ...reportRow,
+      amount: statementPeriodNet,
+      periodDebit: statementPeriodTotals.debit,
+      periodCredit: statementPeriodTotals.credit,
+    }
     if (shouldIncludeIncomeStatementLine({
       type: account.type,
       level: account.level,
@@ -618,7 +623,12 @@ export async function buildFinancialReports(
       addProfitAndLossLine({
         account,
         level1GroupId,
-        line: { ...reportRow, amount: ownPeriodNet },
+        line: {
+          ...reportRow,
+          amount: ownPeriodNet,
+          periodDebit: ownPeriodTotals.debit,
+          periodCredit: ownPeriodTotals.credit,
+        },
         sourceAccountIds: ownAccountIds,
       })
     }
@@ -626,7 +636,12 @@ export async function buildFinancialReports(
       uncoveredProfitAndLossCandidates.push({
         account,
         level1GroupId,
-        line: { ...reportRow, amount: ownPeriodNet },
+        line: {
+          ...reportRow,
+          amount: ownPeriodNet,
+          periodDebit: ownPeriodTotals.debit,
+          periodCredit: ownPeriodTotals.credit,
+        },
         sourceAccountIds: ownAccountIds,
       })
     }
@@ -661,7 +676,12 @@ export async function buildFinancialReports(
     addProfitAndLossLine({
       account: candidate.account,
       level1GroupId: candidate.level1GroupId,
-      line: { ...candidate.line, amount },
+      line: {
+        ...candidate.line,
+        amount,
+        periodDebit: uncoveredTotals.debit,
+        periodCredit: uncoveredTotals.credit,
+      },
       sourceAccountIds: uncoveredSourceAccountIds,
     })
   }

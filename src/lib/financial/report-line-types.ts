@@ -10,4 +10,6 @@ export type ReportAccountRow = {
 
 export type StatementLineRow = ReportAccountRow & {
   amount: number
+  periodDebit?: number
+  periodCredit?: number
 }

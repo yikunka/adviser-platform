@@ -133,6 +133,8 @@ describe('buildFinancialReports journal-line source', () => {
         accountId: 'rev-child',
         code: '4001',
         name: '主营业务收入',
+        periodDebit: 0,
+        periodCredit: 1000,
         amount: 1000,
       }),
     ])
@@ -218,6 +220,8 @@ describe('buildFinancialReports journal-line source', () => {
     expect(reports.incomeStatement.revenue).toEqual([
       expect.objectContaining({
         accountId: 'rev-child',
+        periodDebit: 200,
+        periodCredit: 0,
         amount: -200,
       }),
     ])
@@ -242,6 +246,8 @@ describe('buildFinancialReports journal-line source', () => {
     expect(reports.incomeStatement.revenue).toEqual([
       expect.objectContaining({
         accountId: 'rev-child',
+        periodDebit: 0,
+        periodCredit: 1200,
         amount: 1200,
       }),
     ])
