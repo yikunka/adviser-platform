@@ -839,6 +839,10 @@
       "detailTitle": "工艺书详情",
       "search": "搜索编号、名称、描述...",
       "allStatuses": "全部状态",
+      "allDates": "全部时间",
+      "resetFilters": "重置筛选",
+      "startDate": "开始日期",
+      "endDate": "结束日期",
       "loading": "加载中...",
       "loadFailed": "加载失败",
       "empty": "暂无工艺书，点击「新建工艺书」开始。",
@@ -853,6 +857,16 @@
       "testCount": "测试数",
       "createdBy": "创建人",
       "updatedAt": "更新时间",
+      "dateFields": {
+        "updatedAt": "按更新时间",
+        "createdAt": "按创建时间"
+      },
+      "dateRanges": {
+        "7d": "最近 7 天",
+        "30d": "最近 30 天",
+        "90d": "最近 90 天",
+        "custom": "自定义日期"
+      },
       "actions": "操作",
       "totalCount": "共 {count} 条工艺书",
       "prev": "上一页",

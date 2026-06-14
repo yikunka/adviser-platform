@@ -3,6 +3,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
@@ -83,6 +84,10 @@ function actionLabel(action: PendingChangeRequest['action']) {
 function requesterLabel(request: PendingChangeRequest) {
   return request.requestedBy.nameEn?.trim() || request.requestedBy.email
 }
+
+const STATUS_FILTERS = new Set(['DRAFT', 'ACTIVE', 'ARCHIVED'])
+const DATE_FIELD_FILTERS = new Set(['updatedAt', 'createdAt'])
+const DATE_RANGE_FILTERS = new Set(['', '7d', '30d', '90d', 'custom'])
 
 function PendingApprovalsPanel({
   items,
@@ -265,13 +270,36 @@ function StatusBadge({ status, label }: { status: ProcessKitRow['status']; label
 export default function AdminCosmoCoatProcessKitsPage() {
   const t = useTranslations('admin.processKits')
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [items, setItems] = useState<ProcessKitRow[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    const value = new URLSearchParams(window.location.search).get('status')?.trim() ?? ''
+    return STATUS_FILTERS.has(value) ? value : ''
+  })
+  const [dateField, setDateField] = useState(() => {
+    if (typeof window === 'undefined') return 'updatedAt'
+    const value = new URLSearchParams(window.location.search).get('dateField')?.trim() ?? 'updatedAt'
+    return DATE_FIELD_FILTERS.has(value) ? value : 'updatedAt'
+  })
+  const [dateRange, setDateRange] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    const value = new URLSearchParams(window.location.search).get('dateRange')?.trim() ?? ''
+    return DATE_RANGE_FILTERS.has(value) ? value : ''
+  })
+  const [startDate, setStartDate] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    return new URLSearchParams(window.location.search).get('startDate')?.trim() ?? ''
+  })
+  const [endDate, setEndDate] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    return new URLSearchParams(window.location.search).get('endDate')?.trim() ?? ''
+  })
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [canDirectEdit, setCanDirectEdit] = useState(false)
   const [pendingChangeRequests, setPendingChangeRequests] = useState<PendingChangeRequest[]>([])
@@ -280,12 +308,66 @@ export default function AdminCosmoCoatProcessKitsPage() {
     return t(`statuses.${status}`)
   }, [t])
 
+  useEffect(() => {
+    const nextStatus = searchParams.get('status')?.trim() ?? ''
+    setStatusFilter(current => {
+      const resolved = STATUS_FILTERS.has(nextStatus) ? nextStatus : ''
+      return current === resolved ? current : resolved
+    })
+
+    const nextDateField = searchParams.get('dateField')?.trim() ?? 'updatedAt'
+    setDateField(current => {
+      const resolved = DATE_FIELD_FILTERS.has(nextDateField) ? nextDateField : 'updatedAt'
+      return current === resolved ? current : resolved
+    })
+
+    const nextDateRange = searchParams.get('dateRange')?.trim() ?? ''
+    setDateRange(current => {
+      const resolved = DATE_RANGE_FILTERS.has(nextDateRange) ? nextDateRange : ''
+      return current === resolved ? current : resolved
+    })
+
+    const nextStartDate = searchParams.get('startDate')?.trim() ?? ''
+    setStartDate(current => current === nextStartDate ? current : nextStartDate)
+
+    const nextEndDate = searchParams.get('endDate')?.trim() ?? ''
+    setEndDate(current => current === nextEndDate ? current : nextEndDate)
+  }, [searchParams])
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (statusFilter) params.set('status', statusFilter)
+    else params.delete('status')
+
+    if (dateField !== 'updatedAt') params.set('dateField', dateField)
+    else params.delete('dateField')
+
+    if (dateRange) params.set('dateRange', dateRange)
+    else params.delete('dateRange')
+
+    if (dateRange === 'custom' && startDate) params.set('startDate', startDate)
+    else params.delete('startDate')
+
+    if (dateRange === 'custom' && endDate) params.set('endDate', endDate)
+    else params.delete('endDate')
+
+    const nextQuery = params.toString()
+    const currentQuery = searchParams.toString()
+    if (nextQuery !== currentQuery) {
+      router.replace(nextQuery ? `/admin/cosmocoat-process-kits?${nextQuery}` : '/admin/cosmocoat-process-kits')
+    }
+  }, [dateField, dateRange, endDate, router, searchParams, startDate, statusFilter])
+
   const fetchItems = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams({ page: String(page), limit: '50' })
       if (search.trim()) params.set('q', search.trim())
       if (statusFilter) params.set('status', statusFilter)
+      if (dateField) params.set('dateField', dateField)
+      if (dateRange) params.set('dateRange', dateRange)
+      if (dateRange === 'custom' && startDate) params.set('startDate', startDate)
+      if (dateRange === 'custom' && endDate) params.set('endDate', endDate)
       const res = await fetch(`/api/admin/cosmocoat/process-kits?${params}`)
       const data = await res.json()
       if (!res.ok) {
@@ -302,7 +384,7 @@ export default function AdminCosmoCoatProcessKitsPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search, statusFilter, t])
+  }, [dateField, dateRange, endDate, page, search, startDate, statusFilter, t])
 
   useEffect(() => {
     const timer = setTimeout(fetchItems, search ? 300 : 0)
@@ -311,7 +393,50 @@ export default function AdminCosmoCoatProcessKitsPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [search, statusFilter])
+  }, [dateField, dateRange, endDate, search, startDate, statusFilter])
+
+  function resetFilters() {
+    setStatusFilter('')
+    setDateField('updatedAt')
+    setDateRange('')
+    setStartDate('')
+    setEndDate('')
+    setPage(1)
+  }
+
+  function updateSearch(value: string) {
+    setSearch(value)
+    setPage(1)
+  }
+
+  function updateStatusFilter(value: string) {
+    setStatusFilter(value)
+    setPage(1)
+  }
+
+  function updateDateField(value: string) {
+    setDateField(value)
+    setPage(1)
+  }
+
+  function updateDateRange(value: string) {
+    setDateRange(value)
+    if (value !== 'custom') {
+      setStartDate('')
+      setEndDate('')
+    }
+    setPage(1)
+  }
+
+  function updateStartDate(value: string) {
+    setStartDate(value)
+    setPage(1)
+  }
+
+  function updateEndDate(value: string) {
+    setEndDate(value)
+    setPage(1)
+  }
 
   async function deleteKit(kit: ProcessKitRow) {
     if (!window.confirm(t('deleteConfirm', { name: kit.name }))) return
@@ -353,7 +478,7 @@ export default function AdminCosmoCoatProcessKitsPage() {
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
           <input
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => updateSearch(e.target.value)}
             placeholder={t('search')}
             className="w-full pl-8 pr-3 py-2 rounded-lg text-sm outline-none"
             style={inputStyle()}
@@ -361,7 +486,7 @@ export default function AdminCosmoCoatProcessKitsPage() {
         </div>
         <select
           value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
+          onChange={e => updateStatusFilter(e.target.value)}
           className="rounded-lg px-3 py-2 text-sm outline-none min-w-[140px]"
           style={inputStyle()}
         >
@@ -370,6 +495,56 @@ export default function AdminCosmoCoatProcessKitsPage() {
           <option value="ACTIVE">{t('statuses.ACTIVE')}</option>
           <option value="ARCHIVED">{t('statuses.ARCHIVED')}</option>
         </select>
+        <select
+          value={dateField}
+          onChange={e => updateDateField(e.target.value)}
+          className="rounded-lg px-3 py-2 text-sm outline-none min-w-[150px]"
+          style={inputStyle()}
+        >
+          <option value="updatedAt">{t('dateFields.updatedAt')}</option>
+          <option value="createdAt">{t('dateFields.createdAt')}</option>
+        </select>
+        <select
+          value={dateRange}
+          onChange={e => updateDateRange(e.target.value)}
+          className="rounded-lg px-3 py-2 text-sm outline-none min-w-[150px]"
+          style={inputStyle()}
+        >
+          <option value="">{t('allDates')}</option>
+          <option value="7d">{t('dateRanges.7d')}</option>
+          <option value="30d">{t('dateRanges.30d')}</option>
+          <option value="90d">{t('dateRanges.90d')}</option>
+          <option value="custom">{t('dateRanges.custom')}</option>
+        </select>
+        {dateRange === 'custom' && (
+          <>
+            <input
+              type="date"
+              value={startDate}
+              onChange={e => updateStartDate(e.target.value)}
+              aria-label={t('startDate')}
+              className="rounded-lg px-3 py-2 text-sm outline-none min-w-[160px]"
+              style={inputStyle()}
+            />
+            <input
+              type="date"
+              value={endDate}
+              min={startDate || undefined}
+              onChange={e => updateEndDate(e.target.value)}
+              aria-label={t('endDate')}
+              className="rounded-lg px-3 py-2 text-sm outline-none min-w-[160px]"
+              style={inputStyle()}
+            />
+          </>
+        )}
+        <button
+          type="button"
+          onClick={resetFilters}
+          className="rounded-lg px-3 py-2 text-sm"
+          style={{ ...inputStyle(), minWidth: '96px' }}
+        >
+          {t('resetFilters')}
+        </button>
       </div>
 
       {canDirectEdit && (

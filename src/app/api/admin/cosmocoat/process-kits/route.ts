@@ -92,6 +92,14 @@ function isMissingSchema(error: unknown) {
     && (error.code === 'P2021' || error.code === 'P2022')
 }
 
+function parseDateFilterValue(value: string | null) {
+  if (!value) return null
+  const trimmed = value.trim()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return null
+  const date = new Date(`${trimmed}T00:00:00.000Z`)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
 async function resolveProductRows(products: z.infer<typeof kitSchema>['products']) {
   if (products.length === 0) return []
 
@@ -165,9 +173,38 @@ export async function GET(req: NextRequest) {
 
   const q = req.nextUrl.searchParams.get('q')?.trim() ?? ''
   const status = req.nextUrl.searchParams.get('status')?.trim() ?? ''
+  const dateFieldParam = req.nextUrl.searchParams.get('dateField')?.trim() ?? 'updatedAt'
+  const dateField = dateFieldParam === 'createdAt' ? 'createdAt' : 'updatedAt'
+  const dateRange = req.nextUrl.searchParams.get('dateRange')?.trim() ?? ''
+  const startDate = parseDateFilterValue(req.nextUrl.searchParams.get('startDate'))
+  const endDate = parseDateFilterValue(req.nextUrl.searchParams.get('endDate'))
   const page = Math.max(1, Number(req.nextUrl.searchParams.get('page') ?? '1') || 1)
   const limit = Math.min(200, Math.max(1, Number(req.nextUrl.searchParams.get('limit') ?? '50') || 50))
   const skip = (page - 1) * limit
+  const now = new Date()
+  let dateFilter: Prisma.DateTimeFilter | undefined
+
+  if (startDate && endDate && startDate > endDate) {
+    return NextResponse.json({ error: '开始日期不能晚于结束日期' }, { status: 400 })
+  }
+
+  if (dateRange === '7d' || dateRange === '30d' || dateRange === '90d') {
+    const days = Number(dateRange.replace('d', ''))
+    const since = new Date(now)
+    since.setUTCDate(since.getUTCDate() - days)
+    dateFilter = { gte: since }
+  } else if (dateRange === 'custom') {
+    const customFilter: Prisma.DateTimeFilter = {}
+    if (startDate) customFilter.gte = startDate
+    if (endDate) {
+      const endExclusive = new Date(endDate)
+      endExclusive.setUTCDate(endExclusive.getUTCDate() + 1)
+      customFilter.lt = endExclusive
+    }
+    if (Object.keys(customFilter).length > 0) {
+      dateFilter = customFilter
+    }
+  }
 
   const where: Prisma.CosProcessKitWhereInput = {
     ...(q
@@ -182,6 +219,7 @@ export async function GET(req: NextRequest) {
     ...(status && ['DRAFT', 'ACTIVE', 'ARCHIVED'].includes(status)
       ? { status: status as 'DRAFT' | 'ACTIVE' | 'ARCHIVED' }
       : {}),
+    ...(dateFilter ? { [dateField]: dateFilter } : {}),
   }
 
   try {

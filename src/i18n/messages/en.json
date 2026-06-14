@@ -839,6 +839,10 @@
       "detailTitle": "Process Kit Detail",
       "search": "Search code, name, description...",
       "allStatuses": "All statuses",
+      "allDates": "All dates",
+      "resetFilters": "Reset filters",
+      "startDate": "Start date",
+      "endDate": "End date",
       "loading": "Loading...",
       "loadFailed": "Failed to load",
       "empty": "No process kits yet. Click \"New Process Kit\" to get started.",
@@ -853,6 +857,16 @@
       "testCount": "Tests",
       "createdBy": "Created by",
       "updatedAt": "Updated",
+      "dateFields": {
+        "updatedAt": "Filter by updated date",
+        "createdAt": "Filter by created date"
+      },
+      "dateRanges": {
+        "7d": "Last 7 days",
+        "30d": "Last 30 days",
+        "90d": "Last 90 days",
+        "custom": "Custom date range"
+      },
       "actions": "Actions",
       "totalCount": "{count} process kit(s) total",
       "prev": "Previous",
