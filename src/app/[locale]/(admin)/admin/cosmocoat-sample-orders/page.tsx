@@ -6,7 +6,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { FlaskConical, Pencil, Plus, Search, Trash2 } from 'lucide-react'
-import { formatWeight } from '@/lib/cosmocoat/recipes'
 import { useSearchParams } from 'next/navigation'
 
 type EmployeeSummary = {
@@ -24,6 +23,7 @@ type EmployeeSummary = {
 type SampleOrderRow = {
   id: string
   code: string
+  isUrgent: boolean
   status: 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED'
   notes: string
   referenceImageUrl: string | null
@@ -217,13 +217,10 @@ export default function AdminCosmoCoatSampleOrdersPage() {
               <thead>
                 <tr>
                   <th style={th}>打样单号</th>
-                  <th style={th}>参考样品</th>
+                  <th style={th}>特急</th>
                   <th style={th}>客户</th>
                   <th style={th}>销售人员</th>
                   <th style={th}>负责人员</th>
-                  <th style={th}>工艺书</th>
-                  <th style={th}>调色配方</th>
-                  <th style={th}>配方合计</th>
                   <th style={th}>状态</th>
                   <th style={th}>创建时间</th>
                   <th style={{ ...th, textAlign: 'right' }}>操作</th>
@@ -237,16 +234,11 @@ export default function AdminCosmoCoatSampleOrdersPage() {
                     onClick={() => router.push(`/admin/cosmocoat-sample-orders/${order.id}`)}
                   >
                     <td style={{ ...td, color: 'var(--foreground)', fontWeight: 500 }}>{order.code}</td>
-                    <td style={td} onClick={e => e.stopPropagation()}>
-                      {order.referenceImageUrl ? (
-                        <img
-                          src={order.referenceImageUrl}
-                          alt={`${order.code} 参考样品`}
-                          className="rounded object-cover border h-40 w-40"
-                          style={{ borderColor: '#2A2418' }}
-                        />
+                    <td style={td}>
+                      {order.isUrgent ? (
+                        <span className="text-sm font-semibold" style={{ color: '#DC2626' }}>特急</span>
                       ) : (
-                        <span className="text-xs" style={{ color: '#5A5040' }}>—</span>
+                        '—'
                       )}
                     </td>
                     <td style={td}>
@@ -255,9 +247,6 @@ export default function AdminCosmoCoatSampleOrdersPage() {
                     </td>
                     <td style={td}>{formatEmployee(order.salesEmployee)}</td>
                     <td style={td}>{formatEmployee(order.technicalEmployee)}</td>
-                    <td style={td}>{order.processKitCount}</td>
-                    <td style={td}>{order.colorFormulaCount}</td>
-                    <td style={td}>{formatWeight(order.totalQuantityKg)} kg</td>
                     <td style={td}>
                       <span
                         className="inline-flex px-2 py-0.5 rounded text-xs font-medium"

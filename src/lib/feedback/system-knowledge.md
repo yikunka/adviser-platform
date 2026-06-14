@@ -355,7 +355,7 @@ Independent supplier registry for CosmoCoat sourcing; data and permission key ar
 
 ### Sample Orders (`/admin/cosmocoat-sample-orders`)
 打样单（样品单）管理，用于客户打样需求的全流程跟踪。
-- List with search (order code / customer / sales employee / technical responsible employee) and status filter; columns: reference sample thumbnail (4× enlarged in all statuses), customer, sales employee, responsible employee, process kit (0 or 1), color-formula count, total color-formula weight (kg), status, creation date
+- List with search (order code / customer / sales employee / technical responsible employee) and status filter; columns: 特急标识（勾选特急时显示红色“特急”）, customer, sales employee, responsible employee, status, creation date
 - Statuses: `DRAFT` → `IN_PROGRESS` → `COMPLETED`
 - Create at `/admin/cosmocoat-sample-orders/new`; detail at `/admin/cosmocoat-sample-orders/[id]`
 - Link to a CosmoCoat customer profile (required), optional sales employee (`SALES` type), and optional responsible employee (`TECHNICAL` type)
