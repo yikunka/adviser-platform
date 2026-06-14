@@ -294,6 +294,8 @@ model User {
   cosSupplierFilesUploaded            CosSupplierFile[]             @relation("CosSupplierFileUploader")
   cosRecipeChangeRequestsSubmitted    CosTableRecipeChangeRequest[] @relation("CosRecipeChangeRequester")
   cosRecipeChangeRequestsReviewed     CosTableRecipeChangeRequest[] @relation("CosRecipeChangeReviewer")
+  cosProcessKitChangeRequestsSubmitted CosProcessKitChangeRequest[]  @relation("CosProcessKitChangeRequester")
+  cosProcessKitChangeRequestsReviewed  CosProcessKitChangeRequest[]  @relation("CosProcessKitChangeReviewer")
 
   @@map("users")
 }
@@ -2044,9 +2046,44 @@ model CosProcessKit {
   products         CosProcessKitProduct[]
   tests            CosProcessTest[]
   sampleOrderLines CosSampleOrderProcessKit[]
+  changeRequests   CosProcessKitChangeRequest[]
 
   @@index([status])
   @@map("cos_process_kits")
+}
+
+enum CosProcessKitChangeAction {
+  UPDATE
+  DELETE
+}
+
+enum CosProcessKitChangeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model CosProcessKitChangeRequest {
+  id            String                              @id @default(cuid())
+  kitId         String
+  action        CosProcessKitChangeAction
+  payload       Json?
+  status        CosProcessKitChangeRequestStatus    @default(PENDING)
+  requestNote   String                              @default("")
+  reviewNote    String                              @default("")
+  requestedById String
+  reviewedById  String?
+  reviewedAt    DateTime?
+  createdAt     DateTime                            @default(now())
+  updatedAt     DateTime                            @updatedAt
+
+  kit         CosProcessKit @relation(fields: [kitId], references: [id], onDelete: Cascade)
+  requestedBy User          @relation("CosProcessKitChangeRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  reviewedBy  User?         @relation("CosProcessKitChangeReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([kitId, status])
+  @@map("cos_process_kit_change_requests")
 }
 
 /// Product in a Process Kit - 工艺书中的产品组合

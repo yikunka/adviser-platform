@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { getProcessKitById } from '@/lib/cosmocoat/process-kits'
+import { rejectPendingProcessKitChangeRequests } from '@/lib/cosmocoat/process-kit-change-requests'
 import { normalizeProcessFlowItems, processFlowItemsForDb } from '@/lib/cosmocoat/process-flow'
 
 const processFlowItemSchema = z.discriminatedUnion('type', [
@@ -33,6 +34,9 @@ export async function PATCH(
 ) {
   const { session, error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
   if (error) return error
+  if (session!.user.role !== 'SUPER_ADMIN') {
+    return NextResponse.json({ error: '非超级管理员请在详情页提交审批，不能直接修改工艺流程' }, { status: 403 })
+  }
 
   const { id: kitId } = await params
   const kit = await prisma.cosProcessKit.findUnique({
@@ -55,6 +59,7 @@ export async function PATCH(
   }
 
   try {
+    await rejectPendingProcessKitChangeRequests(kitId, session!.user.id, '超级管理员已直接执行变更')
     await prisma.cosProcessKit.update({
       where: { id: kitId },
       data: {

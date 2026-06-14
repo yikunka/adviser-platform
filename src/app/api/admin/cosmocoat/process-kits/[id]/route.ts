@@ -1,22 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { getProcessKitById } from '@/lib/cosmocoat/process-kits'
-import { normalizePerformanceStandards } from '@/lib/cosmocoat/process-kit-standards'
-
-const patchSchema = z.object({
-  code: z.string().trim().min(1).max(32).optional(),
-  name: z.string().trim().min(1).max(160).optional(),
-  description: z.string().trim().max(2000).nullable().optional(),
-  materials: z.array(z.string()).optional(),
-  performanceStandards: z.array(z.string()).optional(),
-  otherNote: z.string().trim().max(500).nullable().optional(),
-  processDescription: z.string().trim().max(2000).nullable().optional(),
-  processFlowNote: z.string().trim().max(2000).nullable().optional(),
-  status: z.enum(['DRAFT', 'ACTIVE', 'ARCHIVED']).optional(),
-})
+import {
+  applyProcessKitDelete,
+  applyProcessKitUpdate,
+  createProcessKitChangeRequest,
+  findPendingProcessKitChangeRequest,
+  ProcessKitChangeRequestError,
+  rejectPendingProcessKitChangeRequests,
+  validateProcessKitPatch,
+} from '@/lib/cosmocoat/process-kit-change-requests'
+import { processKitPatchSchema } from '@/lib/cosmocoat/process-kit-patch-schema'
 
 function isMissingTable(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021'
@@ -26,14 +22,29 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
   if (error) return error
 
   const { id } = await params
   try {
-    const kit = await getProcessKitById(id)
+    const [kit, pendingChangeRequest] = await Promise.all([
+      getProcessKitById(id),
+      findPendingProcessKitChangeRequest(id),
+    ])
     if (!kit) return NextResponse.json({ error: '工艺书不存在' }, { status: 404 })
-    return NextResponse.json({ kit })
+    return NextResponse.json({
+      kit,
+      canDirectEdit: session!.user.role === 'SUPER_ADMIN',
+      pendingChangeRequest: pendingChangeRequest
+        ? {
+            id: pendingChangeRequest.id,
+            action: pendingChangeRequest.action,
+            status: pendingChangeRequest.status,
+            createdAt: pendingChangeRequest.createdAt.toISOString(),
+            requestedBy: pendingChangeRequest.requestedBy,
+          }
+        : null,
+    })
   } catch (err) {
     if (isMissingTable(err)) {
       return NextResponse.json({ error: '工艺书表不存在，请先运行数据库迁移' }, { status: 503 })
@@ -51,7 +62,7 @@ export async function PATCH(
 
   const { id } = await params
   const body = await req.json().catch(() => null)
-  const parsed = patchSchema.safeParse(body)
+  const parsed = processKitPatchSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
   }
@@ -59,42 +70,44 @@ export async function PATCH(
   const current = await prisma.cosProcessKit.findUnique({ where: { id } })
   if (!current) return NextResponse.json({ error: '工艺书不存在' }, { status: 404 })
 
-  try {
-    if (parsed.data.code && parsed.data.code !== current.code) {
-      const duplicate = await prisma.cosProcessKit.findUnique({ where: { code: parsed.data.code } })
-      if (duplicate) return NextResponse.json({ error: '工艺书编号已存在' }, { status: 409 })
+  if (session!.user.role !== 'SUPER_ADMIN') {
+    try {
+      await validateProcessKitPatch(id, parsed.data, current)
+      const changeRequest = await createProcessKitChangeRequest({
+        kitId: id,
+        action: 'UPDATE',
+        payload: parsed.data,
+        requestedById: session!.user.id,
+      })
+      return NextResponse.json(
+        {
+          changeRequest,
+          message: '变更已提交，等待超级管理员审批',
+        },
+        { status: 202 },
+      )
+    } catch (err) {
+      if (err instanceof ProcessKitChangeRequestError) {
+        return NextResponse.json({ error: err.message }, { status: err.status })
+      }
+      if (isMissingTable(err)) {
+        return NextResponse.json({ error: '工艺书审批表不存在，请先运行数据库迁移' }, { status: 503 })
+      }
+      throw err
     }
+  }
 
-    await prisma.cosProcessKit.update({
-      where: { id },
-      data: {
-        code: parsed.data.code,
-        name: parsed.data.name,
-        description: parsed.data.description !== undefined
-          ? (parsed.data.description || null)
-          : undefined,
-        materials: parsed.data.materials,
-        performanceStandards: parsed.data.performanceStandards !== undefined
-          ? normalizePerformanceStandards(parsed.data.performanceStandards)
-          : undefined,
-        otherNote: parsed.data.otherNote !== undefined
-          ? (parsed.data.otherNote || null)
-          : undefined,
-        processDescription: parsed.data.processDescription !== undefined
-          ? (parsed.data.processDescription || null)
-          : undefined,
-        processFlowNote: parsed.data.processFlowNote !== undefined
-          ? (parsed.data.processFlowNote || null)
-          : undefined,
-        status: parsed.data.status,
-        updatedBy: session!.user.id,
-        updatedByName: session!.user.name ?? session!.user.email ?? null,
-      },
+  try {
+    await rejectPendingProcessKitChangeRequests(id, session!.user.id, '超级管理员已直接执行变更')
+    const kit = await applyProcessKitUpdate(id, parsed.data, {
+      id: session!.user.id,
+      name: session!.user.name ?? session!.user.email ?? null,
     })
-
-    const kit = await getProcessKitById(id)
     return NextResponse.json({ kit })
   } catch (err) {
+    if (err instanceof ProcessKitChangeRequestError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
     if (isMissingTable(err)) {
       return NextResponse.json({ error: '工艺书表不存在，请先运行数据库迁移' }, { status: 503 })
     }
@@ -106,13 +119,49 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
   if (error) return error
 
   const { id } = await params
   const current = await prisma.cosProcessKit.findUnique({ where: { id } })
   if (!current) return NextResponse.json({ error: '工艺书不存在' }, { status: 404 })
 
-  await prisma.cosProcessKit.delete({ where: { id } })
-  return NextResponse.json({ success: true })
+  if (session!.user.role !== 'SUPER_ADMIN') {
+    try {
+      const changeRequest = await createProcessKitChangeRequest({
+        kitId: id,
+        action: 'DELETE',
+        requestedById: session!.user.id,
+      })
+      return NextResponse.json(
+        {
+          changeRequest,
+          message: '删除请求已提交，等待超级管理员审批',
+        },
+        { status: 202 },
+      )
+    } catch (err) {
+      if (err instanceof ProcessKitChangeRequestError) {
+        return NextResponse.json({ error: err.message }, { status: err.status })
+      }
+      if (isMissingTable(err)) {
+        return NextResponse.json({ error: '工艺书审批表不存在，请先运行数据库迁移' }, { status: 503 })
+      }
+      throw err
+    }
+  }
+
+  try {
+    await rejectPendingProcessKitChangeRequests(id, session!.user.id, '超级管理员已直接执行变更')
+    await applyProcessKitDelete(id)
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    if (err instanceof ProcessKitChangeRequestError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
+    if (isMissingTable(err)) {
+      return NextResponse.json({ error: '工艺书表不存在，请先运行数据库迁移' }, { status: 503 })
+    }
+    throw err
+  }
 }

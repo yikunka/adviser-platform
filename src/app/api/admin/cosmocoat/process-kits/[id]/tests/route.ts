@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
+import { rejectPendingProcessKitChangeRequests } from '@/lib/cosmocoat/process-kit-change-requests'
 import { getProcessKitById } from '@/lib/cosmocoat/process-kits'
 
 const testSchema = z.object({
@@ -31,8 +32,11 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
   if (error) return error
+  if (session!.user.role !== 'SUPER_ADMIN') {
+    return NextResponse.json({ error: '非超级管理员请在详情页提交审批，不能直接新增测试记录' }, { status: 403 })
+  }
 
   const { id: kitId } = await params
   try {
@@ -76,8 +80,11 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
   if (error) return error
+  if (session!.user.role !== 'SUPER_ADMIN') {
+    return NextResponse.json({ error: '非超级管理员请在详情页提交审批，不能直接新增测试记录' }, { status: 403 })
+  }
 
   const { id: kitId } = await params
   const kit = await prisma.cosProcessKit.findUnique({ where: { id: kitId } })
@@ -90,6 +97,7 @@ export async function POST(
   }
 
   try {
+    await rejectPendingProcessKitChangeRequests(kitId, session!.user.id, '超级管理员已直接执行变更')
     const tester = await prisma.cosEmployee.findFirst({
       where: {
         id: parsed.data.testerId,

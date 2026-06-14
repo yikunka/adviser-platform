@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { getProcessKitById } from '@/lib/cosmocoat/process-kits'
+import { rejectPendingProcessKitChangeRequests } from '@/lib/cosmocoat/process-kit-change-requests'
 import {
   appendProductFlowItem,
   processFlowItemsForDb,
@@ -82,8 +83,11 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
   if (error) return error
+  if (session!.user.role !== 'SUPER_ADMIN') {
+    return NextResponse.json({ error: '非超级管理员请在详情页提交审批，不能直接修改工艺书产品' }, { status: 403 })
+  }
 
   const { id: kitId } = await params
   const kit = await prisma.cosProcessKit.findUnique({
@@ -177,8 +181,11 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
   if (error) return error
+  if (session!.user.role !== 'SUPER_ADMIN') {
+    return NextResponse.json({ error: '非超级管理员请在详情页提交审批，不能直接修改工艺书产品' }, { status: 403 })
+  }
 
   const { id: kitId } = await params
   const kit = await prisma.cosProcessKit.findUnique({ where: { id: kitId } })
@@ -191,6 +198,7 @@ export async function POST(
   }
 
   try {
+    await rejectPendingProcessKitChangeRequests(kitId, session!.user.id, '超级管理员已直接执行变更')
     const resolvedName = await resolveProductName(parsed.data.productId, parsed.data.productName)
     if (!resolvedName) {
       return NextResponse.json({ error: '产品不存在，请提供有效的产品 ID 或产品名称' }, { status: 400 })
@@ -267,8 +275,11 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
   if (error) return error
+  if (session!.user.role !== 'SUPER_ADMIN') {
+    return NextResponse.json({ error: '非超级管理员请在详情页提交审批，不能直接修改工艺书产品' }, { status: 403 })
+  }
 
   const { id: kitId } = await params
   const kit = await prisma.cosProcessKit.findUnique({ where: { id: kitId } })
@@ -286,6 +297,7 @@ export async function PATCH(
   if (!product) return NextResponse.json({ error: '产品明细不存在' }, { status: 404 })
 
   try {
+    await rejectPendingProcessKitChangeRequests(kitId, session!.user.id, '超级管理员已直接执行变更')
     const accessoryNames = await resolveAccessoryProducts([
       parsed.data.hardenerProductId ?? '',
       parsed.data.thinnerProductId ?? '',
@@ -337,8 +349,11 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
   if (error) return error
+  if (session!.user.role !== 'SUPER_ADMIN') {
+    return NextResponse.json({ error: '非超级管理员请在详情页提交审批，不能直接修改工艺书产品' }, { status: 403 })
+  }
 
   const { id: kitId } = await params
   const kit = await prisma.cosProcessKit.findUnique({ where: { id: kitId } })
@@ -355,6 +370,7 @@ export async function DELETE(
   })
   if (!product) return NextResponse.json({ error: '产品明细不存在' }, { status: 404 })
 
+  await rejectPendingProcessKitChangeRequests(kitId, session!.user.id, '超级管理员已直接执行变更')
   await prisma.cosProcessKitProduct.delete({ where: { id: parsed.data.id } })
 
   const currentKit = await prisma.cosProcessKit.findUnique({

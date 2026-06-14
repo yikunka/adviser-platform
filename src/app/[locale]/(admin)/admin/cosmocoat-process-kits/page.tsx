@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { BookOpen, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { BookOpen, ClipboardCheck, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 
 type ProcessKitRow = {
   id: string
@@ -19,6 +19,29 @@ type ProcessKitRow = {
   createdByName: string | null
   createdAt: string
   updatedAt: string
+}
+
+type PendingChangeRequest = {
+  id: string
+  kitId: string
+  action: 'UPDATE' | 'DELETE'
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  createdAt: string
+  requestNote: string
+  kit: {
+    id: string
+    code: string
+    name: string
+    status: string
+  }
+  requestedBy: { id: string; nameEn: string | null; email: string }
+  changeSummary: string[]
+  changeDiff: Array<{
+    section: string
+    label: string
+    before: string
+    after: string
+  }>
 }
 
 const card: React.CSSProperties = {
@@ -53,6 +76,175 @@ function inputStyle(): React.CSSProperties {
   }
 }
 
+function actionLabel(action: PendingChangeRequest['action']) {
+  return action === 'DELETE' ? '删除工艺书' : '修改工艺书'
+}
+
+function requesterLabel(request: PendingChangeRequest) {
+  return request.requestedBy.nameEn?.trim() || request.requestedBy.email
+}
+
+function PendingApprovalsPanel({
+  items,
+  onReviewed,
+}: {
+  items: PendingChangeRequest[]
+  onReviewed: () => void
+}) {
+  const [reviewingId, setReviewingId] = useState<string | null>(null)
+  const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({})
+
+  async function reviewRequest(request: PendingChangeRequest, action: 'APPROVE' | 'REJECT') {
+    const confirmText = action === 'APPROVE'
+      ? `确定批准「${request.kit.name}」的${actionLabel(request.action)}请求？`
+      : `确定驳回「${request.kit.name}」的${actionLabel(request.action)}请求？`
+    if (!window.confirm(confirmText)) return
+
+    setReviewingId(request.id)
+    try {
+      const res = await fetch(`/api/admin/cosmocoat/process-kit-change-requests/${request.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, reviewNote: reviewNotes[request.id] ?? '' }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? '审批失败')
+        return
+      }
+      toast.success(action === 'APPROVE' ? '已批准' : '已驳回')
+      setReviewNotes(prev => {
+        const next = { ...prev }
+        delete next[request.id]
+        return next
+      })
+      onReviewed()
+    } catch {
+      toast.error('审批失败')
+    } finally {
+      setReviewingId(null)
+    }
+  }
+
+  if (items.length === 0) return null
+
+  return (
+    <div style={card} className="p-4 space-y-4">
+      <div className="flex items-center gap-2">
+        <ClipboardCheck size={18} style={{ color: '#C9A96E' }} />
+        <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>
+          待审批变更（{items.length}）
+        </h2>
+      </div>
+      <div className="space-y-3">
+        {items.map(request => (
+          <div key={request.id} className="rounded-lg p-4 space-y-3" style={{ background: '#111108', border: '1px solid #2A2418' }}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className="inline-flex px-2 py-0.5 rounded-md text-xs font-medium"
+                    style={{
+                      background: request.action === 'DELETE' ? 'rgba(239,68,68,0.12)' : 'rgba(201,169,110,0.12)',
+                      color: request.action === 'DELETE' ? '#ef4444' : '#C9A96E',
+                    }}
+                  >
+                    {actionLabel(request.action)}
+                  </span>
+                  <Link href={`/admin/cosmocoat-process-kits/${request.kit.id}`} className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
+                    {request.kit.code} · {request.kit.name}
+                  </Link>
+                </div>
+                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                  提交人：{requesterLabel(request)} · {new Date(request.createdAt).toLocaleString('zh-CN')}
+                </p>
+                {request.requestNote && (
+                  <p className="text-xs" style={{ color: '#9A8060' }}>说明：{request.requestNote}</p>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={reviewingId === request.id}
+                  onClick={() => reviewRequest(request, 'APPROVE')}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
+                  style={{ background: '#4A9F52', color: '#fff' }}
+                >
+                  批准
+                </button>
+                <button
+                  type="button"
+                  disabled={reviewingId === request.id}
+                  onClick={() => reviewRequest(request, 'REJECT')}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
+                  style={{ border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444' }}
+                >
+                  驳回
+                </button>
+              </div>
+            </div>
+
+            {request.changeSummary.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {request.changeSummary.map(item => (
+                  <span
+                    key={item}
+                    className="rounded-md px-2 py-1 text-xs"
+                    style={{ background: 'rgba(201,169,110,0.1)', color: '#C9A96E', border: '1px solid rgba(201,169,110,0.2)' }}
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {request.changeDiff.length > 0 && (
+              <div className="overflow-x-auto rounded-lg" style={{ border: '1px solid #2A2418' }}>
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr>
+                      <th style={{ ...th, padding: '0.5rem 0.75rem', fontSize: '0.75rem' }}>分类</th>
+                      <th style={{ ...th, padding: '0.5rem 0.75rem', fontSize: '0.75rem' }}>变更项</th>
+                      <th style={{ ...th, padding: '0.5rem 0.75rem', fontSize: '0.75rem' }}>变更前</th>
+                      <th style={{ ...th, padding: '0.5rem 0.75rem', fontSize: '0.75rem' }}>变更后</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {request.changeDiff.map((line, index) => (
+                      <tr key={`${line.section}-${line.label}-${index}`}>
+                        <td style={{ ...td, padding: '0.5rem 0.75rem', fontSize: '0.75rem', color: '#C9A96E', whiteSpace: 'nowrap' }}>
+                          {line.section}
+                        </td>
+                        <td style={{ ...td, padding: '0.5rem 0.75rem', fontSize: '0.75rem', color: 'var(--foreground)', minWidth: 140 }}>
+                          {line.label}
+                        </td>
+                        <td style={{ ...td, padding: '0.5rem 0.75rem', fontSize: '0.75rem', whiteSpace: 'pre-wrap', minWidth: 180 }}>
+                          {line.before}
+                        </td>
+                        <td style={{ ...td, padding: '0.5rem 0.75rem', fontSize: '0.75rem', whiteSpace: 'pre-wrap', minWidth: 180 }}>
+                          {line.after}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <input
+              value={reviewNotes[request.id] ?? ''}
+              onChange={e => setReviewNotes(prev => ({ ...prev, [request.id]: e.target.value }))}
+              placeholder="审批备注（可选）"
+              className="w-full rounded-lg px-3 py-2 text-xs outline-none"
+              style={inputStyle()}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function StatusBadge({ status, label }: { status: ProcessKitRow['status']; label: string }) {
   const colors: Record<ProcessKitRow['status'], { bg: string; text: string }> = {
     DRAFT: { bg: 'rgba(148, 163, 184, 0.15)', text: '#94a3b8' },
@@ -81,6 +273,8 @@ export default function AdminCosmoCoatProcessKitsPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [canDirectEdit, setCanDirectEdit] = useState(false)
+  const [pendingChangeRequests, setPendingChangeRequests] = useState<PendingChangeRequest[]>([])
 
   const statusLabel = useCallback((status: ProcessKitRow['status']) => {
     return t(`statuses.${status}`)
@@ -101,6 +295,8 @@ export default function AdminCosmoCoatProcessKitsPage() {
       setItems(data.items ?? [])
       setTotal(data.total ?? 0)
       setTotalPages(data.totalPages ?? 1)
+      setCanDirectEdit(Boolean(data.canDirectEdit))
+      setPendingChangeRequests(data.pendingChangeRequests ?? [])
     } catch {
       toast.error(t('loadFailed'))
     } finally {
@@ -127,7 +323,7 @@ export default function AdminCosmoCoatProcessKitsPage() {
         toast.error(data.error ?? t('deleteFailed'))
         return
       }
-      toast.success(t('deleted'))
+      toast.success(res.status === 202 ? '删除审批已提交' : t('deleted'))
       fetchItems()
     } catch {
       toast.error(t('deleteFailed'))
@@ -175,6 +371,10 @@ export default function AdminCosmoCoatProcessKitsPage() {
           <option value="ARCHIVED">{t('statuses.ARCHIVED')}</option>
         </select>
       </div>
+
+      {canDirectEdit && (
+        <PendingApprovalsPanel items={pendingChangeRequests} onReviewed={fetchItems} />
+      )}
 
       <div style={{ ...card, overflow: 'hidden' }}>
         {loading ? (

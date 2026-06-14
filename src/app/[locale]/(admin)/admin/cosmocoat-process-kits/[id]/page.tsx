@@ -114,6 +114,14 @@ type LoadedKit = {
   tests?: KitTest[]
 }
 
+type PendingChangeRequest = {
+  id: string
+  action: 'UPDATE' | 'DELETE'
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  createdAt: string
+  requestedBy: { id: string; nameEn: string | null; email: string }
+}
+
 const MATERIALS = [
   { id: 'ABS', label: 'ABS' },
   { id: 'SAN', label: 'SAN' },
@@ -680,6 +688,8 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [printing, setPrinting] = useState(false)
+  const [canDirectEdit, setCanDirectEdit] = useState(isNew)
+  const [pendingChangeRequest, setPendingChangeRequest] = useState<PendingChangeRequest | null>(null)
   const [products, setProducts] = useState<FactoryProductOption[]>([])
   const [technicalTesters, setTechnicalTesters] = useState<TechnicalTesterOption[]>([])
   const [loadingTesters, setLoadingTesters] = useState(false)
@@ -696,6 +706,9 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   const [kitProducts, setKitProducts] = useState<KitProduct[]>([])
   const [processFlowItems, setProcessFlowItems] = useState<ProcessFlowItem[]>([])
   const [tests, setTests] = useState<KitTest[]>([])
+  const [hasLocalProductChanges, setHasLocalProductChanges] = useState(false)
+  const [hasLocalProcessFlowChanges, setHasLocalProcessFlowChanges] = useState(false)
+  const [hasLocalTestChanges, setHasLocalTestChanges] = useState(false)
 
   const [showProductForm, setShowProductForm] = useState(false)
   const [addingProduct, setAddingProduct] = useState(false)
@@ -911,6 +924,8 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
         return
       }
       const kit = data.kit as LoadedKit
+      setCanDirectEdit(Boolean(data.canDirectEdit))
+      setPendingChangeRequest(data.pendingChangeRequest ?? null)
       setCode(kit.code)
       setName(kit.name)
       setDescription(kit.description ?? '')
@@ -927,6 +942,9 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       setKitProducts(kit.products ?? [])
       setProcessFlowItems(kit.processFlowItems ?? [])
       setTests(kit.tests ?? [])
+      setHasLocalProductChanges(false)
+      setHasLocalProcessFlowChanges(false)
+      setHasLocalTestChanges(false)
     } catch {
       if (!options?.silent) toast.error(t('loadFailed'))
     } finally {
@@ -1097,6 +1115,34 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     }
 
     setSaving(true)
+    const productPayload = kitProducts.map((product, index) => ({
+      clientId: product.id,
+      productId: product.productId,
+      sortOrder: index,
+      hardenerProductId: product.hardenerProductId,
+      hardenerRatio: product.hardenerRatio,
+      thinnerProductId: product.thinnerProductId,
+      thinnerRatio: product.thinnerRatio,
+      irMinutes: product.irMinutes,
+      irTemperature: product.irTemperature,
+      uvEnergy: product.uvEnergy,
+      filmThickness: product.filmThickness,
+      sprayViscosity: product.sprayViscosity,
+      notes: product.notes,
+      processBlocks: product.processBlocks ?? [],
+    }))
+    const testPayload = tests.map(test => ({
+      id: test.id,
+      testType: test.testType as typeof TEST_TYPES[number],
+      testResult: test.testResult as typeof TEST_RESULTS[number],
+      testDate: test.testDate,
+      testerId: test.testerId,
+      testerName: test.testerName,
+      reportLink: test.reportLink ?? '',
+      testNotes: test.testNotes ?? '',
+      passedAt: test.passedAt,
+    }))
+
     const kitData = {
       name: name.trim(),
       description: description.trim() || null,
@@ -1105,25 +1151,14 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       otherNote: hasOther && otherNote.trim() ? otherNote.trim() : null,
       processDescription: processDescription.trim() || null,
       processFlowNote: processFlowNote.trim() || null,
-      ...(isNew
+      ...((isNew || !canDirectEdit) && (isNew || hasLocalProductChanges || hasLocalProcessFlowChanges)
         ? {
-            products: kitProducts.map((product, index) => ({
-              clientId: product.id,
-              productId: product.productId,
-              sortOrder: index,
-              hardenerProductId: product.hardenerProductId,
-              hardenerRatio: product.hardenerRatio,
-              thinnerProductId: product.thinnerProductId,
-              thinnerRatio: product.thinnerRatio,
-              irMinutes: product.irMinutes,
-              irTemperature: product.irTemperature,
-              uvEnergy: product.uvEnergy,
-              filmThickness: product.filmThickness,
-              sprayViscosity: product.sprayViscosity,
-              notes: product.notes,
-            })),
+            products: productPayload,
             processFlowItems,
           }
+        : {}),
+      ...(!isNew && !canDirectEdit && hasLocalTestChanges
+        ? { tests: testPayload }
         : {}),
       ...(!isNew ? { status } : {}),
     }
@@ -1145,7 +1180,11 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
         toast.error(data.error ?? t('saveFailed'))
         return
       }
-      toast.success(isNew ? t('created') : t('saved'))
+      toast.success(
+        isNew
+          ? t('created')
+          : (res.status === 202 ? '审批已提交，等待超级管理员处理' : t('saved')),
+      )
       if (isNew && data.kit?.id) {
         router.replace(`/admin/cosmocoat-process-kits/${data.kit.id}`)
       } else {
@@ -1273,7 +1312,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
     const selectedThinner = productForm.useThinner
       ? products.find(product => product.id === productForm.thinnerProductId)
       : null
-    if (isNew) {
+    if (isNew || !canDirectEdit) {
       const draftId = `draft-${Date.now()}-${kitProducts.length}`
       setKitProducts(prev => [
         ...prev,
@@ -1300,6 +1339,10 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
         },
       ])
       setProcessFlowItems(prev => appendProductFlowItem(prev, draftId))
+      if (!isNew) {
+        setHasLocalProductChanges(true)
+        setHasLocalProcessFlowChanges(true)
+      }
       resetProductForm()
       setShowProductForm(false)
       return
@@ -1402,7 +1445,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       ? products.find(product => product.id === editForm.thinnerProductId)
       : null
 
-    if (isNew) {
+    if (isNew || !canDirectEdit) {
       setKitProducts(prev => prev.map(product =>
         product.id === editingProductId
           ? {
@@ -1422,6 +1465,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
             }
           : product,
       ))
+      if (!isNew) setHasLocalProductChanges(true)
       toast.success(t('productUpdated'))
       resetEditForm()
       return
@@ -1464,11 +1508,15 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   async function removeProduct(productId: string) {
     if (!window.confirm(t('removeProductConfirm'))) return
     if (editingProductId === productId) resetEditForm()
-    if (isNew) {
+    if (isNew || !canDirectEdit) {
       setKitProducts(prev => prev.filter(product => product.id !== productId))
       setProcessFlowItems(prev => prev.filter(item =>
         !(item.type === 'product' && item.kitProductId === productId),
       ))
+      if (!isNew) {
+        setHasLocalProductChanges(true)
+        setHasLocalProcessFlowChanges(true)
+      }
       return
     }
     try {
@@ -1500,7 +1548,10 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
 
   async function persistProcessFlowItems(nextItems: ProcessFlowItem[]) {
     setProcessFlowItems(nextItems)
-    if (isNew) return true
+    if (isNew || !canDirectEdit) {
+      if (!isNew) setHasLocalProcessFlowChanges(true)
+      return true
+    }
 
     setSavingProcessBlock(true)
     try {
@@ -1602,6 +1653,38 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       return
     }
 
+    if (isNew || !canDirectEdit) {
+      const tester = technicalTesters.find(item => item.id === testForm.testerId)
+      setTests(prev => [
+        {
+          id: `draft-test-${Date.now()}-${prev.length}`,
+          testType: testForm.testType,
+          testResult: testForm.testResult,
+          testDate,
+          testerName: tester?.name ?? '',
+          testerId: testForm.testerId,
+          tester: tester ? { id: tester.id, code: tester.code, name: tester.name } : null,
+          reportLink: testForm.reportLink || null,
+          testNotes: testForm.testNotes || null,
+          passedAt: testForm.testResult === 'PASSED' ? testDate : null,
+        },
+        ...prev,
+      ])
+      if (!isNew) setHasLocalTestChanges(true)
+      toast.success(t('testAdded'))
+      setTestForm({
+        testType: 'PERFORMANCE',
+        testResult: 'PENDING',
+        testDate: toDatetimeLocal(new Date().toISOString()),
+        testerId: '',
+        reportLink: '',
+        testNotes: '',
+      })
+      setTestReportFileName('')
+      setShowTestForm(false)
+      return
+    }
+
     setAddingTest(true)
     try {
       const res = await fetch(`/api/admin/cosmocoat/process-kits/${kitId}/tests`, {
@@ -1671,7 +1754,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
               {isNew ? t('createTitle') : t('detailTitle')}
             </h1>
             <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-              {isNew ? t('createSubtitle') : `${code} · ${name}`}
+              {isNew ? t('createSubtitle') : `${code} · ${name}${!canDirectEdit ? ' · 修改需超级管理员审批' : ''}`}
             </p>
           </div>
         </div>
@@ -1700,14 +1783,28 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
           <button
             type="button"
             onClick={saveKit}
-            disabled={saving}
+            disabled={saving || (!isNew && !!pendingChangeRequest && !canDirectEdit)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
             style={{ background: '#C9A96E', color: '#0A0805' }}
           >
-            <Save size={14} /> {saving ? t('saving') : (isNew ? t('create') : t('save'))}
+            <Save size={14} /> {saving ? t('saving') : (isNew ? t('create') : (canDirectEdit ? t('save') : '提交审批'))}
           </button>
         </div>
       </div>
+
+      {!isNew && pendingChangeRequest && !canDirectEdit && (
+        <div className="rounded-lg px-4 py-3 text-sm" style={{ background: 'rgba(201,169,110,0.12)', border: '1px solid rgba(201,169,110,0.25)', color: '#C9A96E' }}>
+          该工艺书已有待审批的{pendingChangeRequest.action === 'DELETE' ? '删除' : '修改'}请求（提交人：
+          {pendingChangeRequest.requestedBy.nameEn?.trim() || pendingChangeRequest.requestedBy.email}，
+          {new Date(pendingChangeRequest.createdAt).toLocaleString('zh-CN')}），请等待超级管理员处理后再提交新的变更。
+        </div>
+      )}
+
+      {!isNew && !canDirectEdit && !pendingChangeRequest && (
+        <div className="rounded-lg px-4 py-3 text-sm" style={{ background: 'rgba(201,169,110,0.08)', border: '1px solid rgba(201,169,110,0.2)', color: '#9A8060' }}>
+          您的角色修改或删除工艺书时需提交审批，由超级管理员批准后才会生效。产品组合、工艺流程和测试记录会先保存在当前页面，点击“提交审批”后统一送审。
+        </div>
+      )}
 
       <div style={card} className="p-4 space-y-4">
         <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>{t('basicInfo')}</h3>

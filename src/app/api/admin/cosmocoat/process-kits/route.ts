@@ -9,6 +9,7 @@ import {
   kitInclude,
   serializeProcessKit,
 } from '@/lib/cosmocoat/process-kits'
+import { listProcessKitChangeRequests } from '@/lib/cosmocoat/process-kit-change-requests'
 import { normalizePerformanceStandards } from '@/lib/cosmocoat/process-kit-standards'
 import {
   deriveProcessFlowItemsFromLegacy,
@@ -158,8 +159,9 @@ function buildInitialProcessFlowItems(
 }
 
 export async function GET(req: NextRequest) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProcessKits' })
   if (error) return error
+  const isSuperAdmin = session!.user.role === 'SUPER_ADMIN'
 
   const q = req.nextUrl.searchParams.get('q')?.trim() ?? ''
   const status = req.nextUrl.searchParams.get('status')?.trim() ?? ''
@@ -200,6 +202,10 @@ export async function GET(req: NextRequest) {
       page,
       limit,
       totalPages: Math.ceil(total / limit),
+      canDirectEdit: isSuperAdmin,
+      pendingChangeRequests: isSuperAdmin
+        ? await listProcessKitChangeRequests({ status: 'PENDING', limit: 100 })
+        : [],
     })
   } catch (err) {
     if (isMissingSchema(err)) {
