@@ -15,7 +15,7 @@ import {
 const patchSchema = z.object({
   code: z.string().trim().min(1).max(32).optional(),
   name: z.string().trim().min(1).max(200).optional(),
-  employeeType: z.enum(['INTERNAL', 'SALES', 'PRODUCTION', 'TECHNICAL']).optional(),
+  employeeType: z.enum(['INTERNAL', 'SALES', 'PRODUCTION', 'TECHNICAL', 'OUTSOURCED']).optional(),
   phone: z.string().trim().max(50).optional().nullable(),
   email: z.string().trim().max(200).optional().nullable(),
   position: z.string().trim().max(100).optional().nullable(),

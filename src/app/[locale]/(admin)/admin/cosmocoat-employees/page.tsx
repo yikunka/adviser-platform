@@ -41,6 +41,7 @@ const TYPE_OPTIONS: { value: CosEmployeeType | ''; label: string }[] = [
   { value: 'SALES', label: COS_EMPLOYEE_TYPE_LABELS.SALES },
   { value: 'PRODUCTION', label: COS_EMPLOYEE_TYPE_LABELS.PRODUCTION },
   { value: 'TECHNICAL', label: COS_EMPLOYEE_TYPE_LABELS.TECHNICAL },
+  { value: 'OUTSOURCED', label: COS_EMPLOYEE_TYPE_LABELS.OUTSOURCED },
 ]
 
 const FIVE_ELEMENT_OPTIONS = [
@@ -140,7 +141,7 @@ export default function AdminCosmoCoatEmployeesPage() {
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>员工管理</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-            共 {total} 位员工 · 管理内务、销售、生产与技术人员档案
+            共 {total} 位员工 · 管理内务、销售、生产、技术与编外人员档案
           </p>
         </div>
         <Link

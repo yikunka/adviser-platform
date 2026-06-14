@@ -285,8 +285,8 @@ Custom color formulations for specific customers or products.
 - Detail page has a "打印文件" action: opens a dialog to enter target production weight (kg), scales product and raw-material line quantities proportionally, then triggers browser PDF print (A4, no page header/footer). Print header shows 调色单号 (formula code), name, category, linked factory product, production weight, and notes. Material table shows 序号 / 生产编号 / 原料·产品名称 / 用量(kg) / 占比 / 实投(kg) / 备注 only (hides attribute, color code, target color, source recipe, customer, unit price, and amount columns); 实投 scales with the entered production weight from each line's saved actual-weight value. Production instructions from the linked source recipe are not included in print output.
 
 ### Employees (`/admin/cosmocoat-employees`)
-CosmoCoat factory staff registry (内务、销售、生产、技术人员).
-- Employee types: `INTERNAL` (内务人员), `SALES` (销售人员), `PRODUCTION` (生产人员), `TECHNICAL` (技术人员); sales and technical staff can be assigned to CosmoCoat sample orders
+CosmoCoat factory staff registry (内务、销售、生产、技术、编外人员).
+- Employee types: `INTERNAL` (内务人员), `SALES` (销售人员), `PRODUCTION` (生产人员), `TECHNICAL` (技术人员), `OUTSOURCED` (编外人员); sales and technical staff can be assigned to CosmoCoat sample orders
 - Fields: employee code (auto `YG####` if omitted), name, type, phone, email, position, department, ID card number (15- or 18-digit with checksum validation), birth date (auto-filled from ID card on create; manual birth-date edits take precedence over ID card thereafter), system-calculated five element (by day master / day stem from birth date) and zodiac (by lunar birth year), hire date, notes, active status
 - List with search (code / name / phone / email / position / department) plus dropdown filters for employee type, five element (`金` / `木` / `水` / `火` / `土`), and status (active / inactive); results update immediately and the paginated table shows hire date, complete-year service years (工龄), five element column (五行, auto-calculated from birth date, immediately left of 更新时间), and update time
 - Create, view, edit, and delete at `/admin/cosmocoat-employees/[id]`; new at `/admin/cosmocoat-employees/new`

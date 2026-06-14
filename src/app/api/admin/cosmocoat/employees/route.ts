@@ -30,7 +30,7 @@ const FILE_TYPE_LABELS: Record<CosEmployeeFileType, string> = {
 const createSchema = z.object({
   code: z.string().trim().min(1).max(32).optional(),
   name: z.string().trim().min(1).max(200),
-  employeeType: z.enum(['INTERNAL', 'SALES', 'PRODUCTION', 'TECHNICAL']),
+  employeeType: z.enum(['INTERNAL', 'SALES', 'PRODUCTION', 'TECHNICAL', 'OUTSOURCED']),
   phone: z.string().trim().max(50).optional().nullable(),
   email: z.string().trim().max(200).optional().nullable(),
   position: z.string().trim().max(100).optional().nullable(),
@@ -141,7 +141,7 @@ export async function GET(req: NextRequest) {
       { department: { contains: q, mode: 'insensitive' } },
     ]
   }
-  if (employeeType && ['INTERNAL', 'SALES', 'PRODUCTION', 'TECHNICAL'].includes(employeeType)) {
+  if (employeeType && ['INTERNAL', 'SALES', 'PRODUCTION', 'TECHNICAL', 'OUTSOURCED'].includes(employeeType)) {
     where.employeeType = employeeType as CosEmployeeType
   }
   if (status === 'active') {
