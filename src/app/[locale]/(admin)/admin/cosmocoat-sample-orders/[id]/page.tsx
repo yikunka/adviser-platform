@@ -7,6 +7,7 @@ import { useParams } from 'next/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { ArrowLeft, CheckCircle2, ChevronDown, ChevronUp, ImagePlus, PlayCircle, Plus, Printer, Save, Search, X } from 'lucide-react'
+import { ProcessKitCombobox } from '@/components/cosmocoat/ProcessKitCombobox'
 import {
   PROCESS_KIT_MATERIALS,
   formatProcessKitMaterialsSummary,
@@ -744,9 +745,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
   const [customers, setCustomers] = useState<CustomerOption[]>([])
   const [salesEmployees, setSalesEmployees] = useState<EmployeeOption[]>([])
   const [technicalEmployees, setTechnicalEmployees] = useState<EmployeeOption[]>([])
-  const [kitOptions, setKitOptions] = useState<ProcessKitOption[]>([])
   const [formulaOptions, setFormulaOptions] = useState<ColorFormulaOption[]>([])
-  const [kitSearch, setKitSearch] = useState('')
   const [formulaSearch, setFormulaSearch] = useState('')
 
   const isReadOnly = !isNew && order?.status === 'COMPLETED'
@@ -783,26 +782,6 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
       } else {
         setTechnicalEmployees(employees)
       }
-    } catch {
-      // silent
-    }
-  }, [])
-
-  const fetchKitOptions = useCallback(async (q: string) => {
-    try {
-      const params = new URLSearchParams({ limit: '50' })
-      if (q.trim()) params.set('q', q.trim())
-      const res = await fetch(`/api/admin/cosmocoat/sample-orders/picker/process-kits?${params}`)
-      const data = await res.json()
-      if (!res.ok) return
-      setKitOptions((data.items ?? []).map((kit: ProcessKitOption) => ({
-        id: kit.id,
-        code: kit.code,
-        name: kit.name,
-        status: kit.status,
-        materials: kit.materials ?? [],
-        otherNote: kit.otherNote ?? null,
-      })))
     } catch {
       // silent
     }
@@ -884,10 +863,6 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
     fetchEmployeeOptions('TECHNICAL')
   }, [fetchEmployeeOptions])
   useEffect(() => { fetchOrder() }, [fetchOrder])
-  useEffect(() => {
-    const timer = setTimeout(() => fetchKitOptions(kitSearch), kitSearch ? 300 : 0)
-    return () => clearTimeout(timer)
-  }, [fetchKitOptions, kitSearch])
   useEffect(() => {
     const timer = setTimeout(() => fetchFormulaOptions(formulaSearch), formulaSearch ? 300 : 0)
     return () => clearTimeout(timer)
@@ -1468,45 +1443,11 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
 
         {!isReadOnly && processKitLines.length === 0 && (
           <div className="space-y-2">
-            <div className="relative max-w-md">
-              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
-              <input
-                value={kitSearch}
-                onChange={e => setKitSearch(e.target.value)}
-                placeholder="搜索工艺书编号或名称..."
-                className="w-full pl-8 pr-3 py-2 rounded-lg text-sm outline-none"
-                style={inputStyle()}
-              />
-            </div>
-            {kitOptions.length > 0 && (
-              <div className="border rounded-lg overflow-hidden" style={{ borderColor: '#2A2418' }}>
-                <div
-                  className="grid grid-cols-[110px_minmax(180px,1fr)_minmax(180px,1.2fr)_36px] gap-3 px-3 py-2 text-xs font-medium"
-                  style={{ background: '#111108', color: 'var(--muted-foreground)', borderBottom: '1px solid #2A2418' }}
-                >
-                  <span>工艺编号</span>
-                  <span>工艺名称</span>
-                  <span>适用材料</span>
-                  <span />
-                </div>
-                {kitOptions.filter(k => !selectedKitIds.has(k.id)).slice(0, 8).map(kit => (
-                  <button
-                    key={kit.id}
-                    type="button"
-                    onClick={() => addProcessKit(kit)}
-                    className="w-full grid grid-cols-[110px_minmax(180px,1fr)_minmax(180px,1.2fr)_36px] gap-3 items-center px-3 py-2 text-left text-sm hover:bg-[#111108] border-b last:border-b-0"
-                    style={{ borderColor: '#1E1C15', color: 'var(--foreground)' }}
-                  >
-                    <span className="font-mono text-xs opacity-70">{kit.code}</span>
-                    <span>{kit.name}</span>
-                    <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                      {formatProcessKitMaterialsSummary(kit.materials, kit.otherNote) ?? '—'}
-                    </span>
-                    <Plus size={14} style={{ color: '#C9A96E' }} />
-                  </button>
-                ))}
-              </div>
-            )}
+            <ProcessKitCombobox
+              onSelect={addProcessKit}
+              selectedIds={[...selectedKitIds]}
+              inputStyle={inputStyle()}
+            />
           </div>
         )}
 
