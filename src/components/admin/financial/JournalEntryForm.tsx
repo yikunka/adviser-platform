@@ -77,6 +77,8 @@ const modalContentClassName = 'financial-modal max-h-[92vh] overflow-y-auto bord
 const modalFooterClassName = 'border-[#2A2418] bg-[#16130E]'
 const labelClassName = 'text-[#EADDC3]'
 const fieldClassName = 'border-[#2A2418] bg-[#0E0E0A] text-[#FFF7E6] placeholder:text-[#9F927B]'
+const lineFieldClassName = `${fieldClassName} h-11 min-h-[2.75rem] py-2.5 text-sm`
+const lineTableCellClassName = 'py-3 align-middle'
 const selectContentClassName = 'financial-select-content border-[#2A2418] bg-[#11110E] text-[#FFF7E6]'
 const secondaryButtonClassName = 'border-[#3A3428] bg-[#0E0E0A] text-[#FFF7E6] hover:bg-[#1E1A12] hover:text-[#FFF7E6]'
 const warningTextClassName = 'text-xs text-[#f59e0b]'
@@ -443,8 +445,8 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
               </TableHeader>
               <TableBody>
                 {lines.map((line, index) => (
-                  <TableRow key={index}>
-                    <TableCell>
+                  <TableRow key={index} className="align-middle">
+                    <TableCell className={lineTableCellClassName}>
                       <Input
                         ref={el => {
                           lineFirstFieldRefs.current[index] = el
@@ -453,40 +455,40 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                         onChange={event => updateLine(index, { description: event.target.value })}
                         onKeyDown={event => handleLineKeyDown(index, event)}
                         placeholder="可选"
-                        className={fieldClassName}
+                        className={lineFieldClassName}
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className={lineTableCellClassName}>
                       <AccountCombobox
                         value={line.accountId === 'NONE' ? '' : line.accountId}
                         companyId={fixedCompanyId ?? (companyId === 'NONE' ? '' : companyId)}
                         onChange={accountId => updateLine(index, { accountId: accountId || 'NONE' })}
-                        inputClassName={fieldClassName}
+                        inputClassName={lineFieldClassName}
                         disabled={!hasCompany}
                         onInputKeyDown={event => handleLineKeyDown(index, event)}
                         dialogMode
                         dialogTitle={`选择第 ${index + 1} 行科目`}
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className={lineTableCellClassName}>
                       <DimensionSelect
                         companyId={fixedCompanyId ?? (companyId === 'NONE' ? '' : companyId)}
                         type="cost-center"
                         value={line.costCenterId}
                         onChange={costCenterId => updateLine(index, { costCenterId })}
-                        className={`border ${fieldClassName}`}
+                        className={`border ${lineFieldClassName}`}
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className={lineTableCellClassName}>
                       <DimensionSelect
                         companyId={fixedCompanyId ?? (companyId === 'NONE' ? '' : companyId)}
                         type="project"
                         value={line.projectId}
                         onChange={projectId => updateLine(index, { projectId })}
-                        className={`border ${fieldClassName}`}
+                        className={`border ${lineFieldClassName}`}
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className={lineTableCellClassName}>
                       <Input
                         type="number"
                         min="0"
@@ -494,10 +496,10 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                         value={line.debit}
                         onChange={event => updateLine(index, { debit: event.target.value, credit: event.target.value ? '' : line.credit })}
                         onKeyDown={event => handleLineKeyDown(index, event)}
-                        className={`text-right ${fieldClassName}`}
+                        className={`text-right ${lineFieldClassName}`}
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className={lineTableCellClassName}>
                       <Input
                         type="number"
                         min="0"
@@ -505,10 +507,10 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                         value={line.credit}
                         onChange={event => updateLine(index, { credit: event.target.value, debit: event.target.value ? '' : line.debit })}
                         onKeyDown={event => handleLineKeyDown(index, event)}
-                        className={`text-right ${fieldClassName}`}
+                        className={`text-right ${lineFieldClassName}`}
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className={lineTableCellClassName}>
                       <Button
                         type="button"
                         variant="ghost"

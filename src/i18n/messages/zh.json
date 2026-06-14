@@ -765,6 +765,7 @@
       "selectCompanyTitle": "財務管理",
       "selectCompanySubtitle": "請先選擇客戶公司，再進行日記賬、總賬及 HKFRS 報表作業。",
       "searchPlaceholder": "搜尋公司名稱或代碼...",
+      "financialManagerLabel": "財務負責人：{name}",
       "loading": "載入公司中...",
       "empty": "沒有可存取的客戶公司。"
     },

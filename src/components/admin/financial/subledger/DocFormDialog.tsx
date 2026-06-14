@@ -31,6 +31,13 @@ type LineDraft = {
 
 const emptyLine = (): LineDraft => ({ description: '', quantity: '1', unitPrice: '', accountId: '' })
 
+const TAX_RATE_PRESETS = [
+  { label: '3%', value: '0.03' },
+  { label: '6%', value: '0.06' },
+  { label: '9%', value: '0.09' },
+  { label: '13%', value: '0.13' },
+] as const
+
 function todayYmd() {
   return new Date().toISOString().slice(0, 10)
 }
@@ -186,16 +193,42 @@ export function DocFormDialog({
             ) : null}
             <div className="space-y-1.5">
               <Label>税率（如 0.1 表示 10%）</Label>
-              <Input
-                type="number"
-                min="0"
-                max="1"
-                step="0.01"
-                value={taxRate}
-                onChange={e => setTaxRate(e.target.value)}
-                className={fieldClassName}
-                style={inputStyle}
-              />
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={taxRate}
+                  onChange={e => setTaxRate(e.target.value)}
+                  className={`${fieldClassName} w-28 shrink-0`}
+                  style={inputStyle}
+                />
+                {config.side === 'ar' ? (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {TAX_RATE_PRESETS.map(preset => {
+                      const active = taxRate === preset.value
+                      return (
+                        <Button
+                          key={preset.value}
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-2.5 text-xs"
+                          style={{
+                            borderColor: active ? '#C9A96E' : '#2A2418',
+                            background: active ? 'rgba(201,169,110,0.15)' : '#0E0E0A',
+                            color: active ? '#C9A96E' : '#FFF7E6',
+                          }}
+                          onClick={() => setTaxRate(preset.value)}
+                        >
+                          {preset.label}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
 

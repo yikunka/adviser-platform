@@ -24,8 +24,40 @@ export async function GET() {
       id: true,
       nameEn: true,
       companyCode: true,
+      financialManagerId: true,
+      financialManager: { select: { nameEn: true } },
     },
   })
 
-  return NextResponse.json({ groups: [], companies })
+  const managerPairs = companies.flatMap(company =>
+    company.financialManagerId
+      ? [{ companyId: company.id, userId: company.financialManagerId }]
+      : [],
+  )
+
+  const managerAssignments = managerPairs.length > 0
+    ? await prisma.companyStaffAssignment.findMany({
+        where: { OR: managerPairs },
+        select: {
+          companyId: true,
+          user: { select: { nameEn: true } },
+        },
+      })
+    : []
+
+  const managerNameByCompanyId = new Map(
+    managerAssignments.map(assignment => [assignment.companyId, assignment.user.nameEn]),
+  )
+
+  const companiesWithManager = companies.map(company => ({
+    id: company.id,
+    nameEn: company.nameEn,
+    companyCode: company.companyCode,
+    financialManagerName:
+      managerNameByCompanyId.get(company.id)
+      ?? company.financialManager?.nameEn
+      ?? null,
+  }))
+
+  return NextResponse.json({ groups: [], companies: companiesWithManager })
 }

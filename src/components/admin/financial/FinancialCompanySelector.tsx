@@ -21,7 +21,8 @@ export function FinancialCompanySelector() {
     return companies.filter(
       c =>
         c.nameEn.toLowerCase().includes(q) ||
-        (c.companyCode?.toLowerCase().includes(q) ?? false),
+        (c.companyCode?.toLowerCase().includes(q) ?? false) ||
+        (c.financialManagerName?.toLowerCase().includes(q) ?? false),
     )
   }, [companies, search])
 
@@ -49,6 +50,10 @@ export function FinancialCompanySelector() {
     ? [selectedCompany.companyCode, selectedCompany.nameEn].filter(Boolean).join(' · ')
     : t('searchPlaceholder')
 
+  const selectedManagerLabel = selectedCompany?.financialManagerName
+    ? t('financialManagerLabel', { name: selectedCompany.financialManagerName })
+    : null
+
   return (
     <div className="rounded-lg border border-[#2A2418] bg-card p-4 space-y-3">
       <div>
@@ -60,7 +65,7 @@ export function FinancialCompanySelector() {
         </p>
       </div>
 
-      <div ref={containerRef} onBlur={handleBlur} className="relative w-full max-w-sm">
+      <div ref={containerRef} onBlur={handleBlur} className="relative w-full max-w-md space-y-1.5">
         {/* Trigger */}
         {!open ? (
           <button
@@ -94,6 +99,12 @@ export function FinancialCompanySelector() {
           </div>
         )}
 
+        {selectedManagerLabel && !open ? (
+          <p className="text-xs px-1" style={{ color: 'var(--muted-foreground)' }}>
+            {selectedManagerLabel}
+          </p>
+        ) : null}
+
         {/* Dropdown list */}
         {open && (
           <div
@@ -117,20 +128,27 @@ export function FinancialCompanySelector() {
                       key={company.id}
                       type="button"
                       onMouseDown={e => { e.preventDefault(); select(company.id) }}
-                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors hover:bg-[#1A1A12]"
+                      className="flex w-full items-start gap-3 px-4 py-2.5 text-left text-sm transition-colors hover:bg-[#1A1A12]"
                       style={{ borderLeft: isSelected ? '2px solid #C9A96E' : '2px solid transparent' }}
                     >
-                      <span
-                        className="flex-1 truncate"
-                        style={{ color: isSelected ? '#FFF7E6' : 'var(--foreground)' }}
-                      >
-                        {company.nameEn}
+                      <span className="min-w-0 flex-1">
+                        <span
+                          className="block truncate"
+                          style={{ color: isSelected ? '#FFF7E6' : 'var(--foreground)' }}
+                        >
+                          {company.nameEn}
+                        </span>
+                        {company.financialManagerName ? (
+                          <span className="mt-0.5 block truncate text-xs" style={{ color: '#9F927B' }}>
+                            {t('financialManagerLabel', { name: company.financialManagerName })}
+                          </span>
+                        ) : null}
                       </span>
-                      <span className="shrink-0 text-xs" style={{ color: isSelected ? '#C9A96E' : 'var(--muted-foreground)' }}>
+                      <span className="shrink-0 text-xs pt-0.5" style={{ color: isSelected ? '#C9A96E' : 'var(--muted-foreground)' }}>
                         {company.companyCode ?? '—'}
                       </span>
                       {isSelected && (
-                        <Check size={12} className="shrink-0" style={{ color: '#C9A96E' }} />
+                        <Check size={12} className="shrink-0 pt-0.5" style={{ color: '#C9A96E' }} />
                       )}
                     </button>
                   )

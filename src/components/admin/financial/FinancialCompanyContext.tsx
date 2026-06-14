@@ -11,6 +11,7 @@ export type FinancialCompanyInfo = {
   id: string
   nameEn: string
   companyCode: string | null
+  financialManagerName?: string | null
 }
 
 // URL-based company context — when present, takes priority over the global selector context.

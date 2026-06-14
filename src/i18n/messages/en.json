@@ -765,6 +765,7 @@
       "selectCompanyTitle": "Finance Management",
       "selectCompanySubtitle": "Select a client company to manage journals, ledgers, and HKFRS reports.",
       "searchPlaceholder": "Search by company name or code...",
+      "financialManagerLabel": "Financial Manager: {name}",
       "loading": "Loading companies...",
       "empty": "No accessible client companies."
     },
