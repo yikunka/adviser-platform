@@ -334,15 +334,12 @@ cmd_deploy() {
         git -C "$SCRIPT_DIR" diff --name-only "${REV_FROM}..${HEAD_NOW}" | _deploy_local_classify_diff_lines
 
         if [[ "$_DL_N_ALL" -gt 0 ]] && [[ "$_DL_N_REL" -eq 0 ]]; then
-          echo "✓ 有新提交但仅文档等非运行路径，跳过构建。"
-          ssh_remote "printf '%s\n' '${HEAD_NOW}' > '${REMOTE_DIR}/.adviser-deploy-rev'"
-          echo "▶ 已写入远端 .adviser-deploy-rev (${HEAD_NOW:0:12}…)"
+          echo "✓ 有新提交但仅文档等非运行路径，跳过构建。（.adviser-deploy-rev 保持不变，下次重新核对）"
           return 0
         fi
 
         if [[ "$NEED_DEPS$NEED_BUILD$NEED_PRISMA_GEN$NEED_MIGRATE$NEED_RSYNC_PUBLIC" == "00000" ]]; then
-          echo "✓ 无待发布变更。"
-          ssh_remote "printf '%s\n' '${HEAD_NOW}' > '${REMOTE_DIR}/.adviser-deploy-rev'"
+          echo "✓ 无待发布变更。（.adviser-deploy-rev 保持不变，下次重新核对）"
           return 0
         fi
 
@@ -795,14 +792,12 @@ cmd_deploy_local() {
       git -C "$SCRIPT_DIR" diff --name-only "${DIFF_FROM}..${HEAD_NOW}" | _deploy_local_classify_diff_lines
 
       if [[ "$_DL_N_ALL" -gt 0 ]] && [[ "$_DL_N_REL" -eq 0 ]]; then
-        echo "✓ 有新提交但仅文档等非运行路径，跳过构建。"
-        printf '%s\n' "$HEAD_NOW" >"$REV_FILE"
+        echo "✓ 有新提交但仅文档等非运行路径，跳过构建。（.adviser-deploy-rev 保持不变，下次重新核对）"
         exit 0
       fi
 
       if [[ "$NEED_DEPS$NEED_BUILD$NEED_PRISMA_GEN$NEED_MIGRATE$NEED_RSYNC_PUBLIC" == "00000" ]]; then
-        echo "✓ 无待发布变更。"
-        printf '%s\n' "$HEAD_NOW" >"$REV_FILE"
+        echo "✓ 无待发布变更。（.adviser-deploy-rev 保持不变，下次重新核对）"
         exit 0
       fi
 
