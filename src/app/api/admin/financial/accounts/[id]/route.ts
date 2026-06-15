@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Prisma, type AccountType } from '@prisma/client'
 import { logAudit } from '@/lib/audit/logger'
-import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { isCreditNormalAccountType } from '@/lib/financial/account-types'
 import { isDescendantAccount } from '@/lib/financial/account-tree'
 import { accountUpdateSchema } from '@/lib/financial/schemas'
 import { serializeAccount } from '@/lib/financial/serializers'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
-import { assertFinancialManager } from '@/lib/financial/api-guard'
+import { assertFinancialManager, requireFinancialWriteRole } from '@/lib/financial/api-guard'
 import { canEditEnteredBalances } from '@/lib/financial/opening-balance'
 import { signedLineAmount } from '@/lib/financial/utils'
 import { calculateYearToDateAmount } from '@/lib/financial/year-to-date'
@@ -58,7 +57,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
+  const { session, error } = await requireFinancialWriteRole()
   if (error) return error
 
   const { id } = await params
@@ -237,7 +236,7 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
+  const { session, error } = await requireFinancialWriteRole()
   if (error) return error
 
   const { id } = await params

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logAudit } from '@/lib/audit/logger'
 import { prisma } from '@/lib/db/prisma'
-import { apiError, guardFinancialCompany, handleFinancialError } from '@/lib/financial/api-guard'
+import { apiError, guardFinancialCompany, guardFinancialMutationCompany, handleFinancialError } from '@/lib/financial/api-guard'
 import { bankGlBalanceAsOf } from '@/lib/financial/bank-accounts'
 import { bankAccountSchema } from '@/lib/financial/schemas'
 import { serializeBankAccount } from '@/lib/financial/subledger-serializers'
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     return apiError(parsed.error.issues[0]?.message || '请检查银行账户表单。')
   }
 
-  const guard = await guardFinancialCompany(parsed.data.companyId, { requireManager: true })
+  const guard = await guardFinancialMutationCompany(parsed.data.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const glAccount = await prisma.finAccount.findUnique({

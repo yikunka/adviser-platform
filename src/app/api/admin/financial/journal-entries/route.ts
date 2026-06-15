@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { logAudit } from '@/lib/audit/logger'
-import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { journalEntryCreateSchema, journalEntryFilterSchema } from '@/lib/financial/schemas'
 import { serializeJournalEntriesWithHierarchy, serializeJournalEntryWithHierarchy, loadCompanyAccountMap } from '@/lib/financial/journal-entry-serialization'
@@ -10,7 +9,7 @@ import {
   assertCompanyAccessible,
   resolveCompanyAccess,
 } from '@/lib/company-access'
-import { assertFinancialManager } from '@/lib/financial/api-guard'
+import { assertFinancialManager, requireFinancialWriteRole } from '@/lib/financial/api-guard'
 import { generateVoucherNo, parseYmdDate, periodFromDate, validateBalance } from '@/lib/financial/utils'
 
 function apiError(error: string, status = 400) {
@@ -28,7 +27,7 @@ function validateJournalLines(lines: { debit: number; credit: number }[]) {
 }
 
 export async function GET(req: NextRequest) {
-  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
+  const { session, error } = await requireFinancialWriteRole()
   if (error) return error
 
   const parsed = journalEntryFilterSchema.safeParse({
@@ -78,7 +77,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
+  const { session, error } = await requireFinancialWriteRole()
   if (error) return error
 
   const body = await req.json().catch(() => null)

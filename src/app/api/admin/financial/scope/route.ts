@@ -53,6 +53,7 @@ export async function GET() {
     id: company.id,
     nameEn: company.nameEn,
     companyCode: company.companyCode,
+    financialReadOnly: session!.user.role === 'STAFF',
     financialManagerName:
       managerNameByCompanyId.get(company.id)
       ?? company.financialManager?.nameEn

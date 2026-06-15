@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireRole } from '@/lib/auth/rbac'
 import { resolveCompanyAccess } from '@/lib/company-access'
 import { assertCompaniesAccessible } from '@/lib/financial/report-groups'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
+import { requireFinancialWriteRole } from '@/lib/financial/api-guard'
 
 const reportGroupSchema = z.object({
   name: z.string().trim().min(1).max(200).optional(),
@@ -20,7 +20,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
+  const { session, error } = await requireFinancialWriteRole()
   if (error) return error
 
   const { id } = await params
@@ -97,7 +97,7 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
+  const { session, error } = await requireFinancialWriteRole()
   if (error) return error
 
   const { id } = await params

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logAudit } from '@/lib/audit/logger'
 import { prisma } from '@/lib/db/prisma'
-import { apiError, guardFinancialCompany, handleFinancialError } from '@/lib/financial/api-guard'
+import { apiError, guardFinancialCompany, guardFinancialMutationCompany, handleFinancialError } from '@/lib/financial/api-guard'
 import {
   deleteDraftPurchaseBill,
   purchaseBillInclude,
@@ -26,7 +26,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const before = await prisma.purchaseBill.findUnique({ where: { id }, select: { companyId: true } })
   if (!before) return apiError('账单不存在。', 404)
 
-  const guard = await guardFinancialCompany(before.companyId, { requireManager: true })
+  const guard = await guardFinancialMutationCompany(before.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const body = await req.json().catch(() => null)
@@ -49,7 +49,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const before = await prisma.purchaseBill.findUnique({ where: { id }, select: { companyId: true, billNo: true } })
   if (!before) return apiError('账单不存在。', 404)
 
-  const guard = await guardFinancialCompany(before.companyId, { requireManager: true })
+  const guard = await guardFinancialMutationCompany(before.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   try {

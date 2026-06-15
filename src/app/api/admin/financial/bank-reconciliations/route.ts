@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { logAudit } from '@/lib/audit/logger'
 import { prisma } from '@/lib/db/prisma'
-import { apiError, guardFinancialCompany, handleFinancialError } from '@/lib/financial/api-guard'
+import { apiError, guardFinancialCompany, guardFinancialMutationCompany, handleFinancialError } from '@/lib/financial/api-guard'
 import { bankGlBalanceAsOf } from '@/lib/financial/bank-accounts'
 import { reconciliationCreateSchema } from '@/lib/financial/schemas'
 import { parseYmdDate } from '@/lib/financial/utils'
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   })
   if (!bankAccount) return apiError('银行账户不存在。', 404)
 
-  const guard = await guardFinancialCompany(bankAccount.companyId, { requireManager: true })
+  const guard = await guardFinancialMutationCompany(bankAccount.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const reconciliations = await prisma.bankReconciliation.findMany({

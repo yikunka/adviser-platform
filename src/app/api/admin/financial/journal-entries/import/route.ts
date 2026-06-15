@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import * as XLSX from 'xlsx'
-import { requireRole } from '@/lib/auth/rbac'
+import { requireFinancialWriteRole } from '@/lib/financial/api-guard'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
@@ -369,7 +369,7 @@ function validateEntries(
 }
 
 export async function POST(req: NextRequest) {
-  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
+  const { session, error } = await requireFinancialWriteRole()
   if (error) return error
 
   const formData = await req.formData().catch(() => null)

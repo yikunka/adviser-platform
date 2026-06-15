@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireRole } from '@/lib/auth/rbac'
+import { requireFinancialWriteRole } from '@/lib/financial/api-guard'
 import { postJournalEntriesBatch } from '@/lib/financial/post-journal-entry'
 
 const batchPostSchema = z.object({
@@ -12,7 +12,7 @@ function apiError(error: string, status = 400) {
 }
 
 export async function POST(req: NextRequest) {
-  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
+  const { session, error } = await requireFinancialWriteRole()
   if (error) return error
 
   const body = await req.json().catch(() => null)

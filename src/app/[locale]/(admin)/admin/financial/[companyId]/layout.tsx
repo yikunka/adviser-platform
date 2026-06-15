@@ -60,6 +60,7 @@ export default async function FinancialCompanyLayout({
         id: company.id,
         nameEn: company.nameEn,
         companyCode: company.companyCode,
+        financialReadOnly: session.user.role === 'STAFF',
       }}
     >
       {children}

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { logAudit } from '@/lib/audit/logger'
 import { prisma } from '@/lib/db/prisma'
-import { apiError, guardFinancialCompany, handleFinancialError } from '@/lib/financial/api-guard'
+import { apiError, guardFinancialCompany, guardFinancialMutationCompany, handleFinancialError } from '@/lib/financial/api-guard'
 import { createSalesInvoice, salesInvoiceInclude } from '@/lib/financial/sales-invoices'
 import { salesInvoiceCreateSchema } from '@/lib/financial/schemas'
 import { serializeSalesInvoice } from '@/lib/financial/subledger-serializers'
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     return apiError(parsed.error.issues[0]?.message || '请检查发票表单。')
   }
 
-  const guard = await guardFinancialCompany(parsed.data.companyId, { requireManager: true })
+  const guard = await guardFinancialMutationCompany(parsed.data.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   try {

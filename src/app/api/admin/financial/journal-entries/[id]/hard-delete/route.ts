@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireRole } from '@/lib/auth/rbac'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
 import { prisma } from '@/lib/db/prisma'
-import { assertFinancialManager } from '@/lib/financial/api-guard'
+import { assertFinancialManager, requireFinancialWriteRole } from '@/lib/financial/api-guard'
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
@@ -12,7 +11,7 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
+  const { session, error } = await requireFinancialWriteRole()
   if (error) return error
 
   const { id } = await params

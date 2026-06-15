@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logAudit } from '@/lib/audit/logger'
 import { prisma } from '@/lib/db/prisma'
-import { apiError, guardFinancialCompany, handleFinancialError } from '@/lib/financial/api-guard'
+import { apiError, guardFinancialMutationCompany, handleFinancialError } from '@/lib/financial/api-guard'
 import { autoMatchStatementLines } from '@/lib/financial/bank-reconciliation'
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -13,7 +13,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   if (!reconciliation) return apiError('对账不存在。', 404)
   if (reconciliation.status === 'COMPLETED') return apiError('对账已完成，不能再匹配。')
 
-  const guard = await guardFinancialCompany(reconciliation.bankAccount.companyId, { requireManager: true })
+  const guard = await guardFinancialMutationCompany(reconciliation.bankAccount.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const [unmatchedLines, matchedIds] = await Promise.all([

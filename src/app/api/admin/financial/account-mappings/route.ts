@@ -3,7 +3,7 @@ import type { AccountMappingKey } from '@prisma/client'
 import { logAudit } from '@/lib/audit/logger'
 import { prisma } from '@/lib/db/prisma'
 import { DEFAULT_MAPPING_CODES, MAPPING_KEY_LABELS } from '@/lib/financial/account-mappings'
-import { apiError, guardFinancialCompany, handleFinancialError } from '@/lib/financial/api-guard'
+import { apiError, guardFinancialCompany, guardFinancialMutationCompany, handleFinancialError } from '@/lib/financial/api-guard'
 import { accountMappingUpsertSchema } from '@/lib/financial/schemas'
 
 /** 返回每个映射键的当前配置（显式配置 / 默认回退 / 缺失）。 */
@@ -48,7 +48,7 @@ export async function PUT(req: NextRequest) {
     return apiError(parsed.error.issues[0]?.message || '请检查科目映射输入。')
   }
 
-  const guard = await guardFinancialCompany(parsed.data.companyId, { requireManager: true })
+  const guard = await guardFinancialMutationCompany(parsed.data.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const accountIds = [...new Set(parsed.data.mappings.map(mapping => mapping.accountId))]

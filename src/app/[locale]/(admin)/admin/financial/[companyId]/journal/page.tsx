@@ -301,6 +301,7 @@ function JournalPrintStyles() {
 
 export default function AdminFinancialJournalPage() {
   const company = useFinancialCompany()
+  const readOnly = company.financialReadOnly ?? false
   const searchParams = useSearchParams()
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -601,24 +602,28 @@ export default function AdminFinancialJournalPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls"
-              className="hidden"
-              onChange={handleImportFile}
-              disabled={importing}
-            />
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={importing}
-              style={{ borderColor: '#2A2418' }}
-            >
-              <Upload size={15} className="mr-2" /> {importing ? '导入中...' : '导入 Excel'}
-            </Button>
-            {selectedDraftCount > 0 ? (
+            {!readOnly ? (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  className="hidden"
+                  onChange={handleImportFile}
+                  disabled={importing}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={importing}
+                  style={{ borderColor: '#2A2418' }}
+                >
+                  <Upload size={15} className="mr-2" /> {importing ? '导入中...' : '导入 Excel'}
+                </Button>
+              </>
+            ) : null}
+            {!readOnly && selectedDraftCount > 0 ? (
               <Button
                 size="sm"
                 onClick={() => void batchPostEntries()}
@@ -629,12 +634,20 @@ export default function AdminFinancialJournalPage() {
                 {batchPosting ? '过账中...' : `批量过账 (${selectedDraftCount})`}
               </Button>
             ) : null}
-            <Button size="sm" onClick={openCreateForm} style={{ background: '#C9A96E', color: '#0A0805' }}>
-              <Plus size={15} className="mr-2" /> 新增日记账
-            </Button>
+            {!readOnly ? (
+              <Button size="sm" onClick={openCreateForm} style={{ background: '#C9A96E', color: '#0A0805' }}>
+                <Plus size={15} className="mr-2" /> 新增日记账
+              </Button>
+            ) : null}
           </div>
         </div>
       </div>
+
+      {readOnly ? (
+        <div className="rounded-lg border border-[#C9A96E55] bg-[#C9A96E14] px-4 py-3 text-sm" style={{ color: '#EADDC3' }}>
+          Staff 账号在日记账模块仅可查看与打印，不能导入、创建、编辑、过账、取消或彻底删除凭证。
+        </div>
+      ) : null}
 
       <Card className="rounded-lg border-[#2A2418] bg-card">
         <CardHeader className="pb-4">
@@ -709,14 +722,16 @@ export default function AdminFinancialJournalPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[40px]">
-                      <input
-                        type="checkbox"
-                        checked={allDraftOnPageSelected}
-                        onChange={toggleSelectAllDraftOnPage}
-                        disabled={draftOnPage.length === 0}
-                        aria-label="全选本页待过账"
-                        className="cursor-pointer"
-                      />
+                      {!readOnly ? (
+                        <input
+                          type="checkbox"
+                          checked={allDraftOnPageSelected}
+                          onChange={toggleSelectAllDraftOnPage}
+                          disabled={draftOnPage.length === 0}
+                          aria-label="全选本页待过账"
+                          className="cursor-pointer"
+                        />
+                      ) : null}
                     </TableHead>
                     <TableHead>凭证号</TableHead>
                     <TableHead>日期</TableHead>
@@ -730,7 +745,7 @@ export default function AdminFinancialJournalPage() {
                   {paginated.map(entry => (
                     <TableRow key={entry.id}>
                       <TableCell>
-                        {entry.status === 'DRAFT' ? (
+                        {!readOnly && entry.status === 'DRAFT' ? (
                           <input
                             type="checkbox"
                             checked={selectedIds.has(entry.id)}
@@ -765,7 +780,7 @@ export default function AdminFinancialJournalPage() {
                         >
                           <Printer size={15} className="text-muted-foreground" />
                         </Button>
-                        {entry.status === 'DRAFT' ? (
+                        {!readOnly && entry.status === 'DRAFT' ? (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -776,37 +791,41 @@ export default function AdminFinancialJournalPage() {
                             <CheckCircle size={15} />
                           </Button>
                         ) : null}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          onClick={() => openEditForm(entry)}
-                          disabled={entry.status === 'POSTED'}
-                          title={entry.status === 'CANCELLED' ? '重新编辑并恢复为待过账' : '编辑'}
-                        >
-                          <Pencil size={15} className="text-muted-foreground" />
-                        </Button>
-                        {entry.status === 'CANCELLED' ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 hover:text-red-500"
-                            title="彻底删除"
-                            onClick={() => hardDeleteEntry(entry)}
-                          >
-                            <Trash2 size={15} />
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 hover:text-red-500"
-                            title="取消日记账"
-                            onClick={() => cancelEntry(entry)}
-                          >
-                            <Ban size={15} />
-                          </Button>
-                        )}
+                        {!readOnly ? (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => openEditForm(entry)}
+                              disabled={entry.status === 'POSTED'}
+                              title={entry.status === 'CANCELLED' ? '重新编辑并恢复为待过账' : '编辑'}
+                            >
+                              <Pencil size={15} className="text-muted-foreground" />
+                            </Button>
+                            {entry.status === 'CANCELLED' ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 hover:text-red-500"
+                                title="彻底删除"
+                                onClick={() => hardDeleteEntry(entry)}
+                              >
+                                <Trash2 size={15} />
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 hover:text-red-500"
+                                title="取消日记账"
+                                onClick={() => cancelEntry(entry)}
+                              >
+                                <Ban size={15} />
+                              </Button>
+                            )}
+                          </>
+                        ) : null}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -859,6 +878,7 @@ export default function AdminFinancialJournalPage() {
         onPosted={fetchEntries}
         onPrint={entry => printJournalEntry(entry as JournalEntry)}
         onEdit={openEditFormFromView}
+        readOnly={readOnly}
       />
       <JournalEntryPrintArea entry={printEntry} fallbackCompanyName={company.nameEn} />
       <JournalPrintStyles />

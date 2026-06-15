@@ -18,7 +18,8 @@ type ReportGroup = {
 }
 
 export function FinancialReportGroupsPanel() {
-  const { companies } = useFinancialWorkspace()
+  const { companies, company } = useFinancialWorkspace()
+  const readOnly = company?.financialReadOnly ?? companies[0]?.financialReadOnly ?? false
   const [groups, setGroups] = useState<ReportGroup[]>([])
   const [selectedGroupId, setSelectedGroupId] = useState('')
   const [name, setName] = useState('')
@@ -127,43 +128,51 @@ export function FinancialReportGroupsPanel() {
         </Button>
       </div>
 
-      <form onSubmit={createGroup} className="grid gap-3 lg:grid-cols-[minmax(220px,280px)_1fr_auto] lg:items-start">
-        <Input
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder="组合名称"
-          className="h-9"
-          style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
-        />
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {companies.map(company => {
-            const checked = selectedCompanyIds.includes(company.id)
-            return (
-              <button
-                key={company.id}
-                type="button"
-                onClick={() => toggleCompany(company.id)}
-                className="shrink-0 rounded-md border px-3 py-2 text-left text-xs"
-                style={{
-                  minWidth: 190,
-                  borderColor: checked ? '#C9A96E' : '#2A2418',
-                  background: checked ? 'rgba(201,169,110,0.10)' : '#0E0E0A',
-                  color: checked ? '#FFF7E6' : 'var(--foreground)',
-                }}
-              >
-                <span className="block truncate font-medium">{company.nameEn}</span>
-                <span className="block truncate" style={{ color: checked ? '#C9A96E' : 'var(--muted-foreground)' }}>
-                  {company.companyCode ?? company.id}
-                </span>
-              </button>
-            )
-          })}
+      {readOnly ? (
+        <div className="rounded-lg border border-[#C9A96E55] bg-[#C9A96E14] px-4 py-3 text-sm" style={{ color: '#EADDC3' }}>
+          Staff 账号可查看和导出合并报表，但不能新增或删除合并报表组合。
         </div>
-        <Button type="submit" size="sm" disabled={saving || companies.length === 0}>
-          <Plus size={14} className="mr-2" />
-          创建
-        </Button>
-      </form>
+      ) : null}
+
+      {!readOnly ? (
+        <form onSubmit={createGroup} className="grid gap-3 lg:grid-cols-[minmax(220px,280px)_1fr_auto] lg:items-start">
+          <Input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="组合名称"
+            className="h-9"
+            style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
+          />
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {companies.map(company => {
+              const checked = selectedCompanyIds.includes(company.id)
+              return (
+                <button
+                  key={company.id}
+                  type="button"
+                  onClick={() => toggleCompany(company.id)}
+                  className="shrink-0 rounded-md border px-3 py-2 text-left text-xs"
+                  style={{
+                    minWidth: 190,
+                    borderColor: checked ? '#C9A96E' : '#2A2418',
+                    background: checked ? 'rgba(201,169,110,0.10)' : '#0E0E0A',
+                    color: checked ? '#FFF7E6' : 'var(--foreground)',
+                  }}
+                >
+                  <span className="block truncate font-medium">{company.nameEn}</span>
+                  <span className="block truncate" style={{ color: checked ? '#C9A96E' : 'var(--muted-foreground)' }}>
+                    {company.companyCode ?? company.id}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          <Button type="submit" size="sm" disabled={saving || companies.length === 0}>
+            <Plus size={14} className="mr-2" />
+            创建
+          </Button>
+        </form>
+      ) : null}
 
       <div className="flex gap-2 overflow-x-auto pb-1">
         {loading ? (
@@ -191,17 +200,19 @@ export function FinancialReportGroupsPanel() {
                     {group.companies.length} 家公司
                   </span>
                 </button>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="size-8"
-                  onClick={() => deleteGroup(group.id)}
-                  disabled={saving}
-                  title="删除合并报表组合"
-                >
-                  <Trash2 size={14} />
-                </Button>
+                {!readOnly ? (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="size-8"
+                    onClick={() => deleteGroup(group.id)}
+                    disabled={saving}
+                    title="删除合并报表组合"
+                  >
+                    <Trash2 size={14} />
+                  </Button>
+                ) : null}
               </div>
             )
           })

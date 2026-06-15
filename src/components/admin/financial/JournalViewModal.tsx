@@ -46,6 +46,7 @@ type Props = {
   onPosted?: () => void | Promise<void>
   onPrint?: (entry: JournalEntryDetails) => void
   onEdit?: (entry: JournalEntryDetails) => void
+  readOnly?: boolean
 }
 
 const STATUS_COLORS: Record<JournalEntryDetails['status'], string> = {
@@ -61,7 +62,7 @@ function money(value: number) {
   return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-export function JournalViewModal({ open, onOpenChange, entry, onPosted, onPrint, onEdit }: Props) {
+export function JournalViewModal({ open, onOpenChange, entry, onPosted, onPrint, onEdit, readOnly = false }: Props) {
   const [posting, setPosting] = useState(false)
   const totalDebit = entry?.lines.reduce((sum, line) => sum + line.debit, 0) ?? 0
   const totalCredit = entry?.lines.reduce((sum, line) => sum + line.credit, 0) ?? 0
@@ -165,7 +166,7 @@ export function JournalViewModal({ open, onOpenChange, entry, onPosted, onPrint,
         ) : null}
 
         <DialogFooter className={modalFooterClassName}>
-          {entry?.status === 'DRAFT' || entry?.status === 'CANCELLED' ? (
+          {!readOnly && (entry?.status === 'DRAFT' || entry?.status === 'CANCELLED') ? (
             <Button
               type="button"
               variant="outline"
@@ -182,7 +183,7 @@ export function JournalViewModal({ open, onOpenChange, entry, onPosted, onPrint,
               打印凭证
             </Button>
           ) : null}
-          {entry?.status === 'DRAFT' ? (
+          {!readOnly && entry?.status === 'DRAFT' ? (
             <Button
               type="button"
               onClick={postEntry}

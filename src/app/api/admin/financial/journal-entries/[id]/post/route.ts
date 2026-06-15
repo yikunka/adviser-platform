@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { Session } from 'next-auth'
-import { requireRole } from '@/lib/auth/rbac'
+import { requireFinancialWriteRole } from '@/lib/financial/api-guard'
 import { postJournalEntryById } from '@/lib/financial/post-journal-entry'
 
 function apiError(error: string, status = 400) {
@@ -21,7 +21,7 @@ export async function PUT(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
+  const { session, error } = await requireFinancialWriteRole()
   if (error) return error
 
   const { id } = await params
@@ -32,7 +32,7 @@ export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
+  const { session, error } = await requireFinancialWriteRole()
   if (error) return error
 
   const { id } = await params

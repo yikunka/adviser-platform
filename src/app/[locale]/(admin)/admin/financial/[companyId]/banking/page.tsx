@@ -116,6 +116,7 @@ function parseCsvRows(rows: Record<string, string>[]): { lines: CsvRow[]; errors
 
 export default function AdminFinancialBankingPage() {
   const company = useFinancialCompany()
+  const readOnly = company.financialReadOnly ?? false
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const [accounts, setAccounts] = useState<BankAccount[]>([])
@@ -321,19 +322,27 @@ export default function AdminFinancialBankingPage() {
               {company.nameEn} · 银行账户、流水导入与银行对账。
             </p>
           </div>
-          <Button
-            size="sm"
-            onClick={() => {
-              setEditingAccount(null)
-              setAccountForm({ name: '', bankName: '', accountNumber: '', glAccountId: '' })
-              setAccountFormOpen(true)
-            }}
-            style={{ background: '#C9A96E', color: '#0A0805' }}
-          >
-            <Plus size={15} className="mr-2" /> 新增银行账户
-          </Button>
+          {!readOnly ? (
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditingAccount(null)
+                setAccountForm({ name: '', bankName: '', accountNumber: '', glAccountId: '' })
+                setAccountFormOpen(true)
+              }}
+              style={{ background: '#C9A96E', color: '#0A0805' }}
+            >
+              <Plus size={15} className="mr-2" /> 新增银行账户
+            </Button>
+          ) : null}
         </div>
       </div>
+
+      {readOnly ? (
+        <div className="rounded-lg border border-[#C9A96E55] bg-[#C9A96E14] px-4 py-3 text-sm" style={{ color: '#EADDC3' }}>
+          Staff 账号在银行与现金模块仅可查看对账和流水结果，不能新增账户、导入流水或执行对账操作。
+        </div>
+      ) : null}
 
       {/* 账户卡片 */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -353,24 +362,26 @@ export default function AdminFinancialBankingPage() {
               <CardContent className="pt-4 space-y-1">
                 <div className="flex items-center justify-between">
                   <p className="font-semibold" style={{ color: 'var(--foreground)' }}>{account.name}</p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={event => {
-                      event.stopPropagation()
-                      setEditingAccount(account)
-                      setAccountForm({
-                        name: account.name,
-                        bankName: account.bankName,
-                        accountNumber: account.accountNumber,
-                        glAccountId: account.glAccountId,
-                      })
-                      setAccountFormOpen(true)
-                    }}
-                  >
-                    <Pencil size={13} className="text-muted-foreground" />
-                  </Button>
+                  {!readOnly ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={event => {
+                        event.stopPropagation()
+                        setEditingAccount(account)
+                        setAccountForm({
+                          name: account.name,
+                          bankName: account.bankName,
+                          accountNumber: account.accountNumber,
+                          glAccountId: account.glAccountId,
+                        })
+                        setAccountFormOpen(true)
+                      }}
+                    >
+                      <Pencil size={13} className="text-muted-foreground" />
+                    </Button>
+                  ) : null}
                 </div>
                 <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
                   {[account.bankName, account.accountNumber].filter(Boolean).join(' · ') || '—'}
@@ -403,36 +414,40 @@ export default function AdminFinancialBankingPage() {
                   <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
                     {selectedAccount.name} · 进行中的对账会自动载入；完成后可开启下一期。
                   </p>
-                  {!workspace ? (
+                  {!workspace ? !readOnly ? (
                     <Button size="sm" onClick={() => setReconFormOpen(true)} style={{ background: '#C9A96E', color: '#0A0805' }}>
                       <Plus size={15} className="mr-2" /> 开始新对账
                     </Button>
-                  ) : (
+                  ) : null : (
                     <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        style={{ borderColor: '#2A2418' }}
-                        onClick={() =>
-                          void reconAction(
-                            `/api/admin/financial/bank-reconciliations/${workspace.reconciliation.id}/auto-match`,
-                            'POST',
-                          )
-                        }
-                      >
-                        <Wand2 size={14} className="mr-1" /> 自动匹配
-                      </Button>
-                      <Button
-                        size="sm"
-                        disabled={!workspace.summary.isBalanced}
-                        title={workspace.summary.isBalanced ? '' : '调节后差额为零才能完成对账'}
-                        onClick={() =>
-                          void reconAction(`/api/admin/financial/bank-reconciliations/${workspace.reconciliation.id}`, 'PUT')
-                        }
-                        style={{ background: '#10b981', color: '#fff' }}
-                      >
-                        <CheckCircle size={14} className="mr-1" /> 完成对账
-                      </Button>
+                      {!readOnly ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            style={{ borderColor: '#2A2418' }}
+                            onClick={() =>
+                              void reconAction(
+                                `/api/admin/financial/bank-reconciliations/${workspace.reconciliation.id}/auto-match`,
+                                'POST',
+                              )
+                            }
+                          >
+                            <Wand2 size={14} className="mr-1" /> 自动匹配
+                          </Button>
+                          <Button
+                            size="sm"
+                            disabled={!workspace.summary.isBalanced}
+                            title={workspace.summary.isBalanced ? '' : '调节后差额为零才能完成对账'}
+                            onClick={() =>
+                              void reconAction(`/api/admin/financial/bank-reconciliations/${workspace.reconciliation.id}`, 'PUT')
+                            }
+                            style={{ background: '#10b981', color: '#fff' }}
+                          >
+                            <CheckCircle size={14} className="mr-1" /> 完成对账
+                          </Button>
+                        </>
+                      ) : null}
                     </div>
                   )}
                 </div>
@@ -539,7 +554,7 @@ export default function AdminFinancialBankingPage() {
                                       : '未匹配'}
                                 </span>
                                 <span className="flex gap-1">
-                                  {line.status === 'UNMATCHED' ? (
+                                  {!readOnly && line.status === 'UNMATCHED' ? (
                                     <>
                                       <Button
                                         variant="ghost"
@@ -563,21 +578,23 @@ export default function AdminFinancialBankingPage() {
                                         <X size={12} className="mr-1" /> 排除
                                       </Button>
                                     </>
-                                  ) : (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 px-2 text-xs"
-                                      onClick={() =>
-                                        void reconAction(`/api/admin/financial/bank-statement-lines/${line.id}`, 'PATCH', {
-                                          action: line.status === 'MATCHED' ? 'UNMATCH' : 'INCLUDE',
-                                        })
-                                      }
-                                    >
-                                      <RefreshCw size={12} className="mr-1" />
-                                      {line.status === 'MATCHED' ? '取消匹配' : '恢复'}
-                                    </Button>
-                                  )}
+                                  ) : !readOnly ? (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 px-2 text-xs"
+                                        onClick={() =>
+                                          void reconAction(`/api/admin/financial/bank-statement-lines/${line.id}`, 'PATCH', {
+                                            action: line.status === 'MATCHED' ? 'UNMATCH' : 'INCLUDE',
+                                          })
+                                        }
+                                      >
+                                        <RefreshCw size={12} className="mr-1" />
+                                        {line.status === 'MATCHED' ? '取消匹配' : '恢复'}
+                                      </Button>
+                                    ) : (
+                                      <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>只读</span>
+                                    )}
                                 </span>
                               </div>
                             </div>
@@ -602,9 +619,9 @@ export default function AdminFinancialBankingPage() {
                             <button
                               key={row.id}
                               type="button"
-                              disabled={!matchingLineId}
+                              disabled={!matchingLineId || readOnly}
                               onClick={() =>
-                                matchingLineId
+                                matchingLineId && !readOnly
                                   ? void reconAction(`/api/admin/financial/bank-statement-lines/${matchingLineId}`, 'PATCH', {
                                       action: 'MATCH',
                                       ledgerId: row.id,
@@ -640,27 +657,33 @@ export default function AdminFinancialBankingPage() {
           <TabsContent value="import">
             <Card className="rounded-lg border-[#2A2418] bg-card">
               <CardHeader className="pb-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".csv"
-                    className="hidden"
-                    onChange={event => {
-                      const file = event.target.files?.[0]
-                      if (file) handleCsvFile(file)
-                    }}
-                  />
-                  <Button size="sm" variant="outline" style={{ borderColor: '#2A2418' }} onClick={() => fileInputRef.current?.click()}>
-                    <Upload size={15} className="mr-2" /> 选择 CSV 文件
-                  </Button>
-                  {csvFileName ? <span className="text-sm" style={{ color: 'var(--muted-foreground)' }}>{csvFileName}</span> : null}
-                  {csvLines.length > 0 ? (
-                    <Button size="sm" onClick={() => void importCsv()} disabled={importing} style={{ background: '#C9A96E', color: '#0A0805' }}>
-                      {importing ? '导入中...' : `导入 ${csvLines.length} 行到「${selectedAccount.name}」`}
+                {!readOnly ? (
+                  <div className="flex flex-wrap items-center gap-3">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".csv"
+                      className="hidden"
+                      onChange={event => {
+                        const file = event.target.files?.[0]
+                        if (file) handleCsvFile(file)
+                      }}
+                    />
+                    <Button size="sm" variant="outline" style={{ borderColor: '#2A2418' }} onClick={() => fileInputRef.current?.click()}>
+                      <Upload size={15} className="mr-2" /> 选择 CSV 文件
                     </Button>
-                  ) : null}
-                </div>
+                    {csvFileName ? <span className="text-sm" style={{ color: 'var(--muted-foreground)' }}>{csvFileName}</span> : null}
+                    {csvLines.length > 0 ? (
+                      <Button size="sm" onClick={() => void importCsv()} disabled={importing} style={{ background: '#C9A96E', color: '#0A0805' }}>
+                        {importing ? '导入中...' : `导入 ${csvLines.length} 行到「${selectedAccount.name}」`}
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                    Staff 账号不可导入银行流水。
+                  </div>
+                )}
                 <p className="mt-2 text-xs" style={{ color: 'var(--muted-foreground)' }}>
                   支持列名：Date/日期、Description/摘要、Reference/参考号、Amount/金额（正=流入，负=流出），或 Credit/存入 + Debit/支出 两列。
                 </p>

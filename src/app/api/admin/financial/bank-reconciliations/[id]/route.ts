@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logAudit } from '@/lib/audit/logger'
 import { prisma } from '@/lib/db/prisma'
-import { apiError, guardFinancialCompany, handleFinancialError } from '@/lib/financial/api-guard'
+import { apiError, guardFinancialCompany, guardFinancialMutationCompany, handleFinancialError } from '@/lib/financial/api-guard'
 import { computeReconciliationSummary } from '@/lib/financial/bank-reconciliation'
 
 async function loadReconciliationWorkspace(id: string) {
@@ -92,7 +92,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const workspace = await loadReconciliationWorkspace(id)
   if (!workspace) return apiError('对账不存在。', 404)
 
-  const guard = await guardFinancialCompany(workspace.reconciliation.companyId, { requireManager: true })
+  const guard = await guardFinancialMutationCompany(workspace.reconciliation.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   return NextResponse.json(workspace)

@@ -18,6 +18,7 @@ import { useFinancialCompany } from '@/components/admin/financial/FinancialCompa
 
 export default function AdminFinancialAccountsPage() {
   const company = useFinancialCompany()
+  const readOnly = company.financialReadOnly ?? false
   const [accounts, setAccounts] = useState<FinancialAccount[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -93,11 +94,19 @@ export default function AdminFinancialAccountsPage() {
               {company.nameEn} · 管理会计科目和层级结构。
             </p>
           </div>
-          <Button size="sm" onClick={openCreateDialog} style={{ background: '#C9A96E', color: '#0A0805' }}>
-            <Plus size={15} className="mr-2" /> 新增科目
-          </Button>
+          {!readOnly ? (
+            <Button size="sm" onClick={openCreateDialog} style={{ background: '#C9A96E', color: '#0A0805' }}>
+              <Plus size={15} className="mr-2" /> 新增科目
+            </Button>
+          ) : null}
         </div>
       </div>
+
+      {readOnly ? (
+        <div className="rounded-lg border border-[#C9A96E55] bg-[#C9A96E14] px-4 py-3 text-sm" style={{ color: '#EADDC3' }}>
+          Staff 账号在财务模块为只读模式：可查看科目与报表，但不能新增、编辑或删除财务数据。
+        </div>
+      ) : null}
 
       <Card className="rounded-lg border-[#2A2418] bg-card">
         <CardHeader className="pb-4">
@@ -168,23 +177,29 @@ export default function AdminFinancialAccountsPage() {
                       </TableCell>
                       <TableCell>{account.sortOrder}</TableCell>
                       <TableCell className="text-right space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          onClick={() => openEditDialog(account)}
-                        >
-                          <Pencil size={15} className="text-muted-foreground" />
-                        </Button>
-                        {!account.isSystem && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 hover:text-red-500"
-                            onClick={() => deleteAccount(account)}
-                          >
-                            <Trash2 size={15} />
-                          </Button>
+                        {!readOnly ? (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => openEditDialog(account)}
+                            >
+                              <Pencil size={15} className="text-muted-foreground" />
+                            </Button>
+                            {!account.isSystem && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 hover:text-red-500"
+                                onClick={() => deleteAccount(account)}
+                              >
+                                <Trash2 size={15} />
+                              </Button>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>只读</span>
                         )}
                       </TableCell>
                     </TableRow>

@@ -84,6 +84,7 @@ function safeFilenamePart(value: string) {
 export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
   const config = SIDE_CONFIG[side]
   const company = useFinancialCompany()
+  const readOnly = company.financialReadOnly ?? false
 
   const [docs, setDocs] = useState<SubDoc[]>([])
   const [payments, setPayments] = useState<SubPayment[]>([])
@@ -305,6 +306,12 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
         </div>
       </div>
 
+      {readOnly ? (
+        <div className="rounded-lg border border-[#C9A96E55] bg-[#C9A96E14] px-4 py-3 text-sm" style={{ color: '#EADDC3' }}>
+          Staff 账号在 {config.title} 模块仅可查看与导出，不能新增、编辑、过账、核销或作废单据。
+        </div>
+      ) : null}
+
       <Tabs value={activeTab} onValueChange={value => setActiveTab(value as SubledgerTab)}>
         <TabsList>
           <TabsTrigger value="docs">{config.docTabLabel}</TabsTrigger>
@@ -325,16 +332,18 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
                   className={`max-w-xs ${fieldClassName}`}
                   style={inputStyle}
                 />
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setEditingDoc(null)
-                    setDocFormOpen(true)
-                  }}
-                  style={{ background: '#C9A96E', color: '#0A0805' }}
-                >
-                  <Plus size={15} className="mr-2" /> 新增{config.docLabel}
-                </Button>
+                {!readOnly ? (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setEditingDoc(null)
+                      setDocFormOpen(true)
+                    }}
+                    style={{ background: '#C9A96E', color: '#0A0805' }}
+                  >
+                    <Plus size={15} className="mr-2" /> 新增{config.docLabel}
+                  </Button>
+                ) : null}
               </div>
             </CardHeader>
             <CardContent>
@@ -371,7 +380,7 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
                         <TableCell>{statusBadge(doc.displayStatus, config.statusLabels)}</TableCell>
                         <TableCell className="font-mono text-xs">{doc.journalEntry?.voucherNo ?? '-'}</TableCell>
                         <TableCell className="text-right space-x-1">
-                          {doc.status === 'DRAFT' ? (
+                          {!readOnly && doc.status === 'DRAFT' ? (
                             <>
                               <Button
                                 variant="ghost"
@@ -412,7 +421,7 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
                                 <Trash2 size={15} />
                               </Button>
                             </>
-                          ) : doc.status !== 'VOIDED' ? (
+                          ) : !readOnly && doc.status !== 'VOIDED' ? (
                             <>
                               {doc.outstanding > 0 ? (
                                 <Button
@@ -445,7 +454,9 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
                                 <Ban size={15} />
                               </Button>
                             </>
-                          ) : null}
+                          ) : (
+                            <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>只读</span>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -461,16 +472,18 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
           <Card className="rounded-lg border-[#2A2418] bg-card">
             <CardHeader className="pb-4">
               <div className="flex justify-end">
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setPaymentPresetDoc(null)
-                    setPaymentFormOpen(true)
-                  }}
-                  style={{ background: '#C9A96E', color: '#0A0805' }}
-                >
-                  <Plus size={15} className="mr-2" /> 登记{config.payLabel}
-                </Button>
+                {!readOnly ? (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setPaymentPresetDoc(null)
+                      setPaymentFormOpen(true)
+                    }}
+                    style={{ background: '#C9A96E', color: '#0A0805' }}
+                  >
+                    <Plus size={15} className="mr-2" /> 登记{config.payLabel}
+                  </Button>
+                ) : null}
               </div>
             </CardHeader>
             <CardContent>
@@ -507,7 +520,7 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
                           {statusBadge(payment.status, { POSTED: '已过账', VOIDED: '已作废' })}
                         </TableCell>
                         <TableCell className="text-right">
-                          {payment.status === 'POSTED' ? (
+                          {!readOnly && payment.status === 'POSTED' ? (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -524,7 +537,9 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
                             >
                               <Ban size={15} />
                             </Button>
-                          ) : null}
+                          ) : (
+                            <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>只读</span>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -540,9 +555,11 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
           <Card className="rounded-lg border-[#2A2418] bg-card">
             <CardHeader className="pb-4">
               <div className="flex justify-end">
-                <Button size="sm" onClick={() => setNoteFormOpen(true)} style={{ background: '#C9A96E', color: '#0A0805' }}>
-                  <Plus size={15} className="mr-2" /> 新增{config.noteLabel}
-                </Button>
+                {!readOnly ? (
+                  <Button size="sm" onClick={() => setNoteFormOpen(true)} style={{ background: '#C9A96E', color: '#0A0805' }}>
+                    <Plus size={15} className="mr-2" /> 新增{config.noteLabel}
+                  </Button>
+                ) : null}
               </div>
             </CardHeader>
             <CardContent>
@@ -573,7 +590,7 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
                           {statusBadge(note.status, { DRAFT: '草稿', POSTED: '已过账', VOIDED: '已作废' })}
                         </TableCell>
                         <TableCell className="text-right space-x-1">
-                          {note.status === 'DRAFT' ? (
+                          {!readOnly && note.status === 'DRAFT' ? (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -590,7 +607,7 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
                               <CheckCircle size={15} />
                             </Button>
                           ) : null}
-                          {note.status === 'POSTED' && note.remaining > 0 ? (
+                          {!readOnly && note.status === 'POSTED' && note.remaining > 0 ? (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -604,7 +621,7 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
                               <Link2 size={15} />
                             </Button>
                           ) : null}
-                          {note.status !== 'VOIDED' ? (
+                          {!readOnly && note.status !== 'VOIDED' ? (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -621,7 +638,9 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
                             >
                               {note.status === 'DRAFT' ? <Trash2 size={15} /> : <Ban size={15} />}
                             </Button>
-                          ) : null}
+                          ) : (
+                            <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>只读</span>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

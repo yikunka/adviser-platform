@@ -44,6 +44,33 @@ export async function guardFinancialCompany(
   return { session: session! }
 }
 
+export function assertFinancialWriteAllowed(session: Session): NextResponse | null {
+  if (session.user.role === 'STAFF') {
+    return apiError('Staff 角色在财务模块仅可查看和导出，不能修改任何财务数据。', 403)
+  }
+  return null
+}
+
+export async function requireFinancialWriteRole():
+Promise<{ session: Session; error?: undefined } | { session?: undefined; error: NextResponse }> {
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
+  if (error) return { error }
+  const writeError = assertFinancialWriteAllowed(session!)
+  if (writeError) return { error: writeError }
+  return { session: session! }
+}
+
+export async function guardFinancialMutationCompany(
+  companyId: string | null | undefined,
+  options?: { requireManager?: boolean },
+): Promise<{ session: Session; error?: undefined } | { session?: undefined; error: NextResponse }> {
+  const guard = await guardFinancialCompany(companyId, options)
+  if (guard.error) return guard
+  const writeError = assertFinancialWriteAllowed(guard.session)
+  if (writeError) return { error: writeError }
+  return guard
+}
+
 export async function assertFinancialManager(
   session: Session,
   companyId: string | null | undefined,

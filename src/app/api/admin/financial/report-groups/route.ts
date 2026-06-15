@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireRole } from '@/lib/auth/rbac'
 import {
   buildCompanyAccessWhere,
   resolveCompanyAccess,
@@ -8,6 +7,7 @@ import {
 import { assertCompaniesAccessible } from '@/lib/financial/report-groups'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
+import { requireFinancialWriteRole } from '@/lib/financial/api-guard'
 
 const reportGroupSchema = z.object({
   name: z.string().trim().min(1).max(200),
@@ -20,7 +20,7 @@ function apiError(error: string, status = 400) {
 }
 
 export async function GET() {
-  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
+  const { session, error } = await requireFinancialWriteRole()
   if (error) return error
 
   const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
@@ -59,7 +59,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
+  const { session, error } = await requireFinancialWriteRole()
   if (error) return error
 
   const body = await req.json().catch(() => null)

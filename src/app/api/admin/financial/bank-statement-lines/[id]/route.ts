@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { logAudit } from '@/lib/audit/logger'
 import { prisma } from '@/lib/db/prisma'
-import { apiError, guardFinancialCompany, handleFinancialError } from '@/lib/financial/api-guard'
+import { apiError, guardFinancialMutationCompany, handleFinancialError } from '@/lib/financial/api-guard'
 import { roundMoney } from '@/lib/financial/utils'
 
 const actionSchema = z.discriminatedUnion('action', [
@@ -22,7 +22,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!line) return apiError('流水行不存在。', 404)
 
   const companyId = line.statement.bankAccount.companyId
-  const guard = await guardFinancialCompany(companyId, { requireManager: true })
+  const guard = await guardFinancialMutationCompany(companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const body = await req.json().catch(() => null)
