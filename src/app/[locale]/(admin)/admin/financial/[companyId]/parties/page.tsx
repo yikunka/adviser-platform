@@ -511,116 +511,126 @@ export default function AdminFinancialPartiesPage() {
       </Card>
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="financial-modal max-w-2xl max-h-[88vh] overflow-y-auto border-[#2A2418] bg-[#11110E] text-[#FFF7E6] shadow-2xl ring-[#3A3428]">
+        <DialogContent className="financial-modal w-[min(96vw,1080px)] max-w-[1080px] border-[#2A2418] bg-[#11110E] text-[#FFF7E6] shadow-2xl ring-[#3A3428]">
           <DialogHeader>
             <DialogTitle className="text-[#FFF7E6]">{editing ? `编辑 ${editing.code}` : '新增往来单位'}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label className={labelClassName}>编号 *（如 C0001 / S0001）</Label>
-                <Input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} className={fieldClassName} />
-              </div>
-              <div className="space-y-1.5">
-                <Label className={labelClassName}>账期（天）</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  max="365"
-                  value={form.paymentTermsDays}
-                  onChange={e => setForm(f => ({ ...f, paymentTermsDays: e.target.value }))}
-                  className={fieldClassName}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label className={labelClassName}>名称 *</Label>
-                <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={fieldClassName} />
-              </div>
-              <div className="space-y-1.5">
-                <Label className={labelClassName}>中文名称</Label>
-                <Input value={form.nameZh} onChange={e => setForm(f => ({ ...f, nameZh: e.target.value }))} className={fieldClassName} />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className={labelClassName}>角色 *</Label>
-              <div className="flex gap-4 text-sm text-[#EADDC3]">
-                {([
-                  ['isCustomer', '客户'],
-                  ['isSupplier', '供应商'],
-                  ['isEmployee', '员工'],
-                ] as const).map(([key, label]) => (
-                  <label key={key} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={form[key]}
-                      onChange={e => setForm(f => ({ ...f, [key]: e.target.checked }))}
-                      className="size-4 accent-[#C9A96E]"
-                    />
-                    {label}
-                  </label>
-                ))}
-              </div>
-            </div>
-            <PartyColorPicker value={form.color} onChange={color => setForm(f => ({ ...f, color }))} />
-            {(form.isCustomer || form.isSupplier) ? (
-              <div className="rounded-lg border border-[#2A2418] bg-[#0E0E0A] p-4">
-                <div className="mb-3">
-                  <h3 className="text-sm font-semibold text-[#FFF7E6]">关联会计科目</h3>
-                  <p className="mt-1 text-xs text-[#B8AD98]">
-                    新增时可选择已有一级/二级/三级科目；未选择时系统会自动新建客户应收或供应商应付科目。
-                  </p>
+          <div className="max-h-[calc(92vh-9rem)] overflow-y-auto pr-1">
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <div className="space-y-1.5">
+                  <Label className={labelClassName}>编号 *（如 C0001 / S0001）</Label>
+                  <Input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} className={fieldClassName} />
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {form.isCustomer ? (
-                    <AccountLinkSelect
-                      label="客户应收科目"
-                      value={form.arAccountId}
-                      onChange={value => setForm(f => ({ ...f, arAccountId: value }))}
-                      options={arAccountOptions}
-                      createMode={!editing}
-                      autoLabel="自动新建客户应收科目"
-                      noneLabel="不关联（使用默认应收映射）"
-                    />
-                  ) : null}
-                  {form.isSupplier ? (
-                    <AccountLinkSelect
-                      label="供应商应付科目"
-                      value={form.apAccountId}
-                      onChange={value => setForm(f => ({ ...f, apAccountId: value }))}
-                      options={apAccountOptions}
-                      createMode={!editing}
-                      autoLabel="自动新建供应商应付科目"
-                      noneLabel="不关联（使用默认应付映射）"
-                    />
-                  ) : null}
+                <div className="space-y-1.5">
+                  <Label className={labelClassName}>账期（天）</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="365"
+                    value={form.paymentTermsDays}
+                    onChange={e => setForm(f => ({ ...f, paymentTermsDays: e.target.value }))}
+                    className={fieldClassName}
+                  />
+                </div>
+                <div className="md:col-span-2 xl:col-span-1">
+                  <PartyColorPicker value={form.color} onChange={color => setForm(f => ({ ...f, color }))} />
                 </div>
               </div>
-            ) : null}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label className={labelClassName}>邮箱</Label>
-                <Input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className={fieldClassName} />
+
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className={labelClassName}>名称 *</Label>
+                  <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={fieldClassName} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className={labelClassName}>中文名称</Label>
+                  <Input value={form.nameZh} onChange={e => setForm(f => ({ ...f, nameZh: e.target.value }))} className={fieldClassName} />
+                </div>
               </div>
+
               <div className="space-y-1.5">
-                <Label className={labelClassName}>电话</Label>
-                <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className={fieldClassName} />
+                <Label className={labelClassName}>角色 *</Label>
+                <div className="flex flex-wrap gap-4 text-sm text-[#EADDC3]">
+                  {([
+                    ['isCustomer', '客户'],
+                    ['isSupplier', '供应商'],
+                    ['isEmployee', '员工'],
+                  ] as const).map(([key, label]) => (
+                    <label key={key} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form[key]}
+                        onChange={e => setForm(f => ({ ...f, [key]: e.target.checked }))}
+                        className="size-4 accent-[#C9A96E]"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+
+              {(form.isCustomer || form.isSupplier) ? (
+                <div className="rounded-lg border border-[#2A2418] bg-[#0E0E0A] p-4">
+                  <div className="mb-3">
+                    <h3 className="text-sm font-semibold text-[#FFF7E6]">关联会计科目</h3>
+                    <p className="mt-1 text-xs text-[#B8AD98]">
+                      新增时可选择已有一级/二级/三级科目；未选择时系统会自动新建客户应收或供应商应付科目。
+                    </p>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {form.isCustomer ? (
+                      <AccountLinkSelect
+                        label="客户应收科目"
+                        value={form.arAccountId}
+                        onChange={value => setForm(f => ({ ...f, arAccountId: value }))}
+                        options={arAccountOptions}
+                        createMode={!editing}
+                        autoLabel="自动新建客户应收科目"
+                        noneLabel="不关联（使用默认应收映射）"
+                      />
+                    ) : null}
+                    {form.isSupplier ? (
+                      <AccountLinkSelect
+                        label="供应商应付科目"
+                        value={form.apAccountId}
+                        onChange={value => setForm(f => ({ ...f, apAccountId: value }))}
+                        options={apAccountOptions}
+                        createMode={!editing}
+                        autoLabel="自动新建供应商应付科目"
+                        noneLabel="不关联（使用默认应付映射）"
+                      />
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className={labelClassName}>邮箱</Label>
+                  <Input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className={fieldClassName} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className={labelClassName}>电话</Label>
+                  <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className={fieldClassName} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className={labelClassName}>地址</Label>
+                  <Input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} className={fieldClassName} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className={labelClassName}>税号</Label>
+                  <Input value={form.taxNumber} onChange={e => setForm(f => ({ ...f, taxNumber: e.target.value }))} className={fieldClassName} />
+                </div>
+              </div>
+
               <div className="space-y-1.5">
-                <Label className={labelClassName}>地址</Label>
-                <Input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} className={fieldClassName} />
+                <Label className={labelClassName}>备注</Label>
+                <Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={4} className={fieldClassName} />
               </div>
-              <div className="space-y-1.5">
-                <Label className={labelClassName}>税号</Label>
-                <Input value={form.taxNumber} onChange={e => setForm(f => ({ ...f, taxNumber: e.target.value }))} className={fieldClassName} />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className={labelClassName}>备注</Label>
-              <Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} className={fieldClassName} />
             </div>
           </div>
           <DialogFooter>
