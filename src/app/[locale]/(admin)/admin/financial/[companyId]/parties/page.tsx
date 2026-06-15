@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { AccountCombobox } from '@/components/admin/financial/AccountCombobox'
 import { FinancialBreadcrumbs } from '@/components/admin/financial/FinancialBreadcrumbs'
 import { useFinancialCompany } from '@/components/admin/financial/FinancialCompanyContext'
+import { buildPartyCodePreview } from '@/lib/financial/party-code'
 
 type Party = {
   id: string
@@ -219,6 +220,7 @@ function AccountLinkSelect({
 
 export default function AdminFinancialPartiesPage() {
   const company = useFinancialCompany()
+  const readOnly = company.financialReadOnly ?? false
   const [parties, setParties] = useState<Party[]>([])
   const [accounts, setAccounts] = useState<FinancialAccount[]>([])
   const [loading, setLoading] = useState(true)
@@ -309,8 +311,8 @@ export default function AdminFinancialPartiesPage() {
   }
 
   async function save() {
-    if (!form.code.trim() || !form.name.trim()) {
-      toast.error('编号和名称必填。')
+    if (!form.name.trim()) {
+      toast.error('名称必填。')
       return
     }
     if (!form.isCustomer && !form.isSupplier && !form.isEmployee) {
@@ -326,7 +328,6 @@ export default function AdminFinancialPartiesPage() {
     try {
       const payload = {
         ...(editing ? {} : { companyId: company.id }),
-        code: form.code.trim(),
         name: form.name.trim(),
         nameZh: form.nameZh.trim() || null,
         isCustomer: form.isCustomer,
@@ -391,6 +392,8 @@ export default function AdminFinancialPartiesPage() {
     )
   }
 
+  const autoCodePreview = buildPartyCodePreview(form)
+
   return (
     <div className="p-6 space-y-6">
       <div className="space-y-2">
@@ -402,11 +405,19 @@ export default function AdminFinancialPartiesPage() {
               {company.nameEn} · 客户、供应商与员工主数据，用于应收/应付模块。
             </p>
           </div>
-          <Button size="sm" onClick={() => openForm(null)} style={{ background: '#C9A96E', color: '#0A0805' }}>
-            <Plus size={15} className="mr-2" /> 新增往来单位
-          </Button>
+          {!readOnly ? (
+            <Button size="sm" onClick={() => openForm(null)} style={{ background: '#C9A96E', color: '#0A0805' }}>
+              <Plus size={15} className="mr-2" /> 新增往来单位
+            </Button>
+          ) : null}
         </div>
       </div>
+
+      {readOnly ? (
+        <div className="rounded-lg border border-[#C9A96E55] bg-[#C9A96E14] px-4 py-3 text-sm" style={{ color: '#EADDC3' }}>
+          Staff 账号可查看往来单位资料，但不能新增、编辑或删除财务主数据。
+        </div>
+      ) : null}
 
       <Card className="rounded-lg border-[#2A2418] bg-card">
         <CardHeader className="pb-4">
@@ -495,12 +506,18 @@ export default function AdminFinancialPartiesPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right space-x-1">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openForm(party)}>
-                        <Pencil size={15} className="text-muted-foreground" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:text-red-500" onClick={() => void remove(party)}>
-                        <Trash2 size={15} />
-                      </Button>
+                      {!readOnly ? (
+                        <>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openForm(party)}>
+                            <Pencil size={15} className="text-muted-foreground" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:text-red-500" onClick={() => void remove(party)}>
+                            <Trash2 size={15} />
+                          </Button>
+                        </>
+                      ) : (
+                        <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>只读</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -519,8 +536,17 @@ export default function AdminFinancialPartiesPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                 <div className="space-y-1.5">
-                  <Label className={labelClassName}>编号 *（如 C0001 / S0001）</Label>
-                  <Input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} className={fieldClassName} />
+                  <Label className={labelClassName}>编号</Label>
+                  <Input
+                    value={editing ? form.code : autoCodePreview}
+                    readOnly
+                    className={`${fieldClassName} cursor-not-allowed opacity-80`}
+                  />
+                  <p className="text-xs text-[#B8AD98]">
+                    {editing
+                      ? '编号由系统生成后保留，不支持手动修改。'
+                      : '新建时按角色自动分配编号：客户 CL-XXXX、供应商 SP-XXXX、员工 ST-XXXX；多角色时按 客户 > 供应商 > 员工 优先级取前缀。'}
+                  </p>
                 </div>
                 <div className="space-y-1.5">
                   <Label className={labelClassName}>账期（天）</Label>

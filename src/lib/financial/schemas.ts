@@ -108,7 +108,10 @@ const moneySchema = z.coerce.number().min(0).max(999999999999)
 
 const partyBaseSchema = z.object({
   companyId: z.string().cuid('Company is required'),
-  code: z.string().trim().min(1, '编号必填').max(32),
+  code: z.preprocess(
+    value => (value === '' || value === undefined ? null : value),
+    z.string().trim().min(1, '编号必填').max(32).nullable(),
+  ).optional(),
   name: z.string().trim().min(1, '名称必填').max(200),
   nameZh: z.string().trim().max(200).optional().nullable(),
   isCustomer: z.coerce.boolean().optional().default(false),

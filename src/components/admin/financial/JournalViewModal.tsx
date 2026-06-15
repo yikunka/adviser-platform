@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { CheckCircle, Pencil, Printer } from 'lucide-react'
+import { CheckCircle, Pencil, Printer, Undo2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -22,6 +22,7 @@ export type JournalEntryDetails = {
   date: string
   description: string
   status: 'DRAFT' | 'POSTED' | 'CANCELLED'
+  sourceType?: 'MANUAL' | string
   createdBy?: string | null
   createdAt?: string | null
   company?: { id: string; nameEn: string; companyCode: string | null } | null
@@ -64,12 +65,14 @@ function money(value: number) {
 
 export function JournalViewModal({ open, onOpenChange, entry, onPosted, onPrint, onEdit, readOnly = false }: Props) {
   const [posting, setPosting] = useState(false)
+  const [unposting, setUnposting] = useState(false)
+  const canUnpost = entry?.status === 'POSTED' && (!entry.sourceType || entry.sourceType === 'MANUAL')
   const totalDebit = entry?.lines.reduce((sum, line) => sum + line.debit, 0) ?? 0
   const totalCredit = entry?.lines.reduce((sum, line) => sum + line.credit, 0) ?? 0
 
   async function postEntry() {
     if (!entry) return
-    if (!confirm(`确定审核并过账日记账 ${entry.voucherNo}？过账后会生成总账记录，不能撤销。`)) return
+    if (!confirm(`确定审核并过账日记账 ${entry.voucherNo}？过账后会生成总账记录。`)) return
 
     setPosting(true)
     try {
@@ -83,6 +86,25 @@ export function JournalViewModal({ open, onOpenChange, entry, onPosted, onPrint,
       toast.error(error instanceof Error ? error.message : '日记账过账失败。')
     } finally {
       setPosting(false)
+    }
+  }
+
+  async function unpostEntry() {
+    if (!entry) return
+    if (!confirm(`确定撤销 ${entry.voucherNo} 的过账并恢复为待过账？对应总账记录会被移除。`)) return
+
+    setUnposting(true)
+    try {
+      const res = await fetch(`/api/admin/financial/journal-entries/${entry.id}/unpost`, { method: 'PUT' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.toast || data.error || '撤销过账失败。')
+      toast.success(data.toast || '日记账已撤销过账。')
+      onOpenChange(false)
+      await onPosted?.()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '撤销过账失败。')
+    } finally {
+      setUnposting(false)
     }
   }
 
@@ -192,6 +214,18 @@ export function JournalViewModal({ open, onOpenChange, entry, onPosted, onPrint,
             >
               <CheckCircle size={15} className="mr-2" />
               {posting ? '过账中...' : '审核并过账'}
+            </Button>
+          ) : null}
+          {!readOnly && canUnpost ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={unpostEntry}
+              disabled={unposting}
+              className={secondaryButtonClassName}
+            >
+              <Undo2 size={15} className="mr-2" />
+              {unposting ? '撤销中...' : '撤销过账'}
             </Button>
           ) : null}
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className={secondaryButtonClassName}>

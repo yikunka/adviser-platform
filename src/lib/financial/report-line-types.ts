@@ -2,6 +2,7 @@ import type { AccountType } from '@prisma/client'
 
 export type ReportAccountRow = {
   accountId: string
+  parentId?: string | null
   code: string
   name: string
   type: AccountType

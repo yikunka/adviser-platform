@@ -252,6 +252,7 @@ model User {
   createdCompanyStaffAssignments CompanyStaffAssignment[] @relation("CompanyStaffAssignmentCreator")
   financialManagedCompanies      Company[]                @relation("FinancialManager")
   createdFinancialReportGroups   FinancialReportGroup[]   @relation("FinancialReportGroupCreator")
+  uploadedFinancialHistoryBooks  FinancialHistoryLedgerBook[] @relation("FinancialHistoryLedgerBookUploader")
   uploadedDocuments              Document[]
   kycReviews                     KeyPerson[]              @relation("KYCReviewer")
   kycSubmissions                 KeyPerson[]              @relation("ClientKycSubmissions")
@@ -378,6 +379,7 @@ model Company {
   finPayments            FinPayment[]
   finCreditNotes         FinCreditNote[]
   bankAccounts           BankAccount[]
+  financialHistoryBooks  FinancialHistoryLedgerBook[]
 
   @@index([pendingClientEmail])
   @@index([financialManagerId])
@@ -2531,6 +2533,29 @@ model AccountBalance {
   @@map("adv_account_balances")
 }
 
+model FinancialHistoryLedgerBook {
+  id           String   @id @default(cuid())
+  companyId    String
+  title        String
+  fileName     String
+  fileKey      String
+  fileUrl      String
+  mimeType     String
+  fileSize     Int
+  sheets       Json
+  notes        String   @default("")
+  uploadedById String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  uploadedBy User?   @relation("FinancialHistoryLedgerBookUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt])
+  @@index([uploadedById])
+  @@map("adv_financial_history_ledger_books")
+}
+
 model ExchangeRate {
   id            String   @id @default(cuid())
   fromCurrency  String
@@ -2556,7 +2581,7 @@ model ExchangeRate {
 model Party {
   id               String   @id @default(cuid())
   companyId        String
-  code             String // C0001 / S0001 等
+  code             String // CL-0001 / SP-0001 / ST-0001
   name             String
   nameZh           String?
   isCustomer       Boolean  @default(false)

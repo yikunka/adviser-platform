@@ -1,7 +1,8 @@
+import { Prisma } from '@prisma/client'
 import { NextRequest, NextResponse } from 'next/server'
 import { logAudit } from '@/lib/audit/logger'
 import { prisma } from '@/lib/db/prisma'
-import { apiError, guardFinancialCompany, handleFinancialError } from '@/lib/financial/api-guard'
+import { apiError, guardFinancialMutationCompany, handleFinancialError } from '@/lib/financial/api-guard'
 import { validatePartyAccount } from '@/lib/financial/party-accounts'
 import { partyUpdateSchema } from '@/lib/financial/schemas'
 import { serializeParty } from '@/lib/financial/subledger-serializers'
@@ -11,7 +12,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const before = await prisma.party.findUnique({ where: { id } })
   if (!before) return apiError('往来单位不存在。', 404)
 
-  const guard = await guardFinancialCompany(before.companyId, { requireManager: true })
+  const guard = await guardFinancialMutationCompany(before.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const body = await req.json().catch(() => null)
@@ -30,11 +31,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       if (!account) return apiError('关联应付科目不存在或不属于该公司。')
     }
 
-    const data = {
-      ...parsed.data,
-      ...(parsed.data.isCustomer === false ? { arAccountId: null } : {}),
-      ...(parsed.data.isSupplier === false ? { apAccountId: null } : {}),
-    }
+    const { code, ...rest } = parsed.data
+    void code
+    const data: Prisma.PartyUncheckedUpdateInput = { ...rest }
+    if (parsed.data.isCustomer === false) data.arAccountId = null
+    if (parsed.data.isSupplier === false) data.apAccountId = null
     const party = await prisma.party.update({ where: { id }, data })
     await logAudit(guard.session.user.id, 'UPDATE', 'Party', id, before, party)
     return NextResponse.json({ party: serializeParty(party), toast: '往来单位已更新。' })
@@ -48,7 +49,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const before = await prisma.party.findUnique({ where: { id } })
   if (!before) return apiError('往来单位不存在。', 404)
 
-  const guard = await guardFinancialCompany(before.companyId, { requireManager: true })
+  const guard = await guardFinancialMutationCompany(before.companyId, { requireManager: true })
   if (guard.error) return guard.error
 
   const [invoiceCount, billCount, paymentCount] = await Promise.all([

@@ -3,6 +3,7 @@ import { roundMoney } from '@/lib/financial/utils'
 
 export type TrialBalanceDisplayRow = {
   accountId: string
+  parentId?: string | null
   code: string
   name: string
   type: AccountType

@@ -24,6 +24,8 @@ type PostResult =
   | { ok: true; entry: ReturnType<typeof serializeJournalEntry> }
   | { ok: false; error: string; status: number }
 
+type UnpostResult = PostResult
+
 export async function postJournalEntryById(id: string, session: Session): Promise<PostResult> {
   const before = await prisma.journalEntry.findUnique({ where: { id }, include: journalInclude })
   if (!before) return { ok: false, error: 'Journal entry not found.', status: 404 }
@@ -73,6 +75,47 @@ export async function postJournalEntryById(id: string, session: Session): Promis
   })
 
   await logAudit(session.user.id, 'POST', 'JournalEntry', id, serializeJournalEntry(before), serializeJournalEntry(entry))
+  return { ok: true, entry: serializeJournalEntry(entry) }
+}
+
+export async function unpostJournalEntryById(id: string, session: Session): Promise<UnpostResult> {
+  const before = await prisma.journalEntry.findUnique({ where: { id }, include: journalInclude })
+  if (!before) return { ok: false, error: 'Journal entry not found.', status: 404 }
+  if (before.status !== 'POSTED') return { ok: false, error: '只有已过账的日记账可以撤销过账。', status: 400 }
+  if (!before.companyId) return { ok: false, error: 'Journal entry must be assigned to a company before unposting.', status: 400 }
+  if (before.sourceType !== 'MANUAL') {
+    return { ok: false, error: '子分类账自动生成的凭证不能直接撤销过账，请从源单据作废或红冲。', status: 400 }
+  }
+
+  const access = await resolveCompanyAccess(session.user.id, session.user.role)
+  if (!(await assertCompanyAccessible(access, before.companyId))) {
+    return { ok: false, error: 'Forbidden', status: 403 }
+  }
+  const managerError = await assertFinancialManager(session, before.companyId)
+  if (managerError) {
+    return {
+      ok: false,
+      error: 'Only the assigned financial manager can perform financial operations for this company.',
+      status: 403,
+    }
+  }
+  try {
+    await assertPeriodOpen(prisma, before.companyId, periodFromEntryDate(before.entryDate))
+  } catch (err) {
+    if (err instanceof PeriodClosedError) return { ok: false, error: err.message, status: 400 }
+    throw err
+  }
+
+  const entry = await prisma.$transaction(async tx => {
+    await tx.ledger.deleteMany({ where: { entryId: id } })
+    return tx.journalEntry.update({
+      where: { id },
+      data: { status: 'DRAFT', postedAt: null, reversedAt: null },
+      include: journalInclude,
+    })
+  })
+
+  await logAudit(session.user.id, 'UNPOST', 'JournalEntry', id, serializeJournalEntry(before), serializeJournalEntry(entry))
   return { ok: true, entry: serializeJournalEntry(entry) }
 }
 

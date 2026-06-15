@@ -5,7 +5,7 @@
 import { type ChangeEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useRouter } from '@/i18n/navigation'
-import { Ban, Eye, Pencil, Trash2, Plus, CheckCircle, Upload, CheckSquare, Printer } from 'lucide-react'
+import { Ban, Eye, Pencil, Trash2, Plus, CheckCircle, Upload, CheckSquare, Printer, Undo2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,6 +27,7 @@ type JournalEntry = JournalEntryDetails &
     description: string
     companyId?: string | null
     status: 'DRAFT' | 'POSTED' | 'CANCELLED'
+    sourceType?: 'MANUAL' | string
     totalAmount: number
     createdBy: string
     createdAt: string
@@ -429,7 +430,7 @@ export default function AdminFinancialJournalPage() {
   }
 
   async function postEntry(entry: JournalEntry) {
-    if (!confirm(`确定审核并过账日记账 ${entry.voucherNo}？过账后会生成总账记录，不能撤销。`))
+    if (!confirm(`确定审核并过账日记账 ${entry.voucherNo}？过账后会生成总账记录。`))
       return
 
     try {
@@ -444,21 +445,34 @@ export default function AdminFinancialJournalPage() {
   }
 
   async function batchPostEntries() {
-    const draftIds = [...selectedIds].filter(id => {
-      const entry = entries.find(row => row.id === id)
-      return entry?.status === 'DRAFT'
-    })
+    const draftIds = selectedDraftIds()
     if (draftIds.length === 0) {
       toast.error('请至少选择一条待过账日记账。')
       return
     }
     if (
       !confirm(
-        `确定批量过账 ${draftIds.length} 条日记账？过账后会生成总账记录，不能撤销。`,
+        `确定批量过账 ${draftIds.length} 条日记账？过账后会生成总账记录。`,
       )
     )
       return
 
+    await postDraftIds(draftIds)
+  }
+
+  async function postAllDraftEntries() {
+    const draftIds = filtered.filter(entry => entry.status === 'DRAFT').map(entry => entry.id)
+    if (draftIds.length === 0) {
+      toast.error('当前列表没有待过账日记账。')
+      return
+    }
+    setSelectedIds(new Set(draftIds))
+    if (!confirm(`确定一键过账当前列表中的 ${draftIds.length} 条待过账日记账？`)) return
+
+    await postDraftIds(draftIds)
+  }
+
+  async function postDraftIds(draftIds: string[]) {
     setBatchPosting(true)
     try {
       const res = await fetch('/api/admin/financial/journal-entries/batch-post', {
@@ -502,6 +516,20 @@ export default function AdminFinancialJournalPage() {
       await fetchEntries()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '取消日记账失败。')
+    }
+  }
+
+  async function unpostEntry(entry: JournalEntry) {
+    if (!confirm(`确定撤销 ${entry.voucherNo} 的过账并恢复为待过账？对应总账记录会被移除。`)) return
+
+    try {
+      const res = await fetch(`/api/admin/financial/journal-entries/${entry.id}/unpost`, { method: 'PUT' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.toast || data.error || '撤销过账失败。')
+      toast.success(data.toast || '日记账已撤销过账。')
+      await fetchEntries()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '撤销过账失败。')
     }
   }
 
@@ -575,6 +603,18 @@ export default function AdminFinancialJournalPage() {
     const entry = entries.find(row => row.id === id)
     return entry?.status === 'DRAFT'
   }).length
+  const allDraftCount = filtered.filter(entry => entry.status === 'DRAFT').length
+
+  function selectedDraftIds() {
+    return [...selectedIds].filter(id => {
+      const entry = entries.find(row => row.id === id)
+      return entry?.status === 'DRAFT'
+    })
+  }
+
+  function canUnpostEntry(entry: JournalEntry) {
+    return entry.status === 'POSTED' && (!entry.sourceType || entry.sourceType === 'MANUAL')
+  }
 
   function toggleSelectAllDraftOnPage() {
     setSelectedIds(current => {
@@ -634,6 +674,18 @@ export default function AdminFinancialJournalPage() {
                 {batchPosting ? '过账中...' : `批量过账 (${selectedDraftCount})`}
               </Button>
             ) : null}
+            {!readOnly && allDraftCount > 0 ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void postAllDraftEntries()}
+                disabled={batchPosting}
+                style={{ borderColor: '#10b981', color: '#10b981' }}
+              >
+                <CheckSquare size={15} className="mr-2" />
+                {batchPosting ? '过账中...' : `一键全部过账 (${allDraftCount})`}
+              </Button>
+            ) : null}
             {!readOnly ? (
               <Button size="sm" onClick={openCreateForm} style={{ background: '#C9A96E', color: '#0A0805' }}>
                 <Plus size={15} className="mr-2" /> 新增日记账
@@ -679,9 +731,9 @@ export default function AdminFinancialJournalPage() {
             </Select>
           </div>
           <div className="mt-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-            Excel 导入支持三种格式：逐行分录（Voucher No、Date、Description、Account Code、Debit、Credit）；
-            按科目名称（Date、Account、Particular、Debit、Credit，Account 无法匹配时整条导入记录失败）；
-            借贷配对行（Date、Description、Debit Account Code、Credit Account Code、Amount）。导入后保存为待过账。
+            Excel 导入支持三种格式：推荐逐行分录顺序为 Date、Voucher Number、Account Code、Account Name、Particular、Debit、Credit，
+            其中 Voucher Number 留空自动生成，Account Code 留空时按 Account Name 匹配现有科目或自动创建新科目；也兼容旧版
+            Account 名称列格式，以及借贷配对行（Date、Description、Debit Account Code、Credit Account Code、Amount）。导入后保存为待过账。
           </div>
           {importResult ? (
             <div
@@ -791,6 +843,17 @@ export default function AdminFinancialJournalPage() {
                             <CheckCircle size={15} />
                           </Button>
                         ) : null}
+                        {!readOnly && canUnpostEntry(entry) ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:text-amber-400"
+                            title="撤销过账并恢复为待过账"
+                            onClick={() => unpostEntry(entry)}
+                          >
+                            <Undo2 size={15} />
+                          </Button>
+                        ) : null}
                         {!readOnly ? (
                           <>
                             <Button
@@ -799,7 +862,7 @@ export default function AdminFinancialJournalPage() {
                               className="h-8 w-8 p-0"
                               onClick={() => openEditForm(entry)}
                               disabled={entry.status === 'POSTED'}
-                              title={entry.status === 'CANCELLED' ? '重新编辑并恢复为待过账' : '编辑'}
+                              title={entry.status === 'POSTED' ? '请先撤销过账再编辑' : entry.status === 'CANCELLED' ? '重新编辑并恢复为待过账' : '编辑'}
                             >
                               <Pencil size={15} className="text-muted-foreground" />
                             </Button>

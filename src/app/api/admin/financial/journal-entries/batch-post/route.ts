@@ -4,7 +4,7 @@ import { requireFinancialWriteRole } from '@/lib/financial/api-guard'
 import { postJournalEntriesBatch } from '@/lib/financial/post-journal-entry'
 
 const batchPostSchema = z.object({
-  ids: z.array(z.string().trim().min(1)).min(1, '至少选择一条日记账。').max(100, '一次最多过账 100 条日记账。'),
+  ids: z.array(z.string().trim().min(1)).min(1, '至少选择一条日记账。').max(1000, '一次最多过账 1000 条日记账。'),
 })
 
 function apiError(error: string, status = 400) {

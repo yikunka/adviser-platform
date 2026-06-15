@@ -193,6 +193,7 @@ export type FinancialReportScope = {
 }
 
 type InternalReportAccountRow = ReportAccountRow & {
+  parentId?: string | null
   sourceAccountIds: string[]
   sortOrder: number
 }
@@ -555,6 +556,7 @@ export async function buildFinancialReports(
 
     const reportRow: ReportAccountRow = {
       accountId: account.accountId,
+      parentId: account.parentId ?? null,
       code: account.code,
       name: account.name,
       type: account.type,
