@@ -133,10 +133,18 @@ const DOCUMENT_TYPE_LABEL: Record<string, string> = {
   KYC_OTHER: 'Other document',
 }
 
+const REQUIRED_KYC_DOCUMENT_TYPES = ['KYC_ID', 'KYC_ADDRESS', 'KYC_DECLARATION'] as const
 const VISIBLE_KYC_DOCUMENT_TYPES = ['KYC_ID', 'KYC_ADDRESS', 'KYC_DECLARATION', 'KYC_OTHER'] as const
 
 function documentTypeLabel(type: string) {
   return DOCUMENT_TYPE_LABEL[type] ?? type.replace(/^KYC_/, '').replace(/_/g, ' ')
+}
+
+function missingDocumentTypes(record: KYCRecord) {
+  return REQUIRED_KYC_DOCUMENT_TYPES.filter((type) => {
+    const latest = record.kycDocuments.find(doc => doc.documentType === type)
+    return !latest || latest.status === 'REJECTED'
+  })
 }
 
 function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -821,6 +829,7 @@ export default function KYCQueuePage() {
                 </tr>
               ) : records.map((r) => {
                 const client = clientPortalAccount(r)
+                const missingDocs = missingDocumentTypes(r)
                 return (
                 <tr
                   key={r.id}
@@ -853,9 +862,20 @@ export default function KYCQueuePage() {
                     {new Date(r.updatedAt).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[r.kycStatus] ?? ''}`}>
-                      {r.kycStatus}
-                    </span>
+                    <div className="flex flex-col gap-1.5">
+                      <span className={`w-fit px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[r.kycStatus] ?? ''}`}>
+                        {r.kycStatus}
+                      </span>
+                      {missingDocs.length > 0 ? (
+                        <span
+                          className="w-fit rounded-full px-2 py-0.5 text-xs font-medium"
+                          style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}
+                          title={`Missing or rejected: ${missingDocs.map(documentTypeLabel).join(', ')}`}
+                        >
+                          Missing: {missingDocs.map(documentTypeLabel).join(' / ')}
+                        </span>
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
                 )

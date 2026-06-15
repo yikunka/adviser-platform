@@ -52,6 +52,7 @@ Company-level staff access: multiple staff users can be assigned to a company vi
 ### 3. KYC Queue (`/admin/kyc`)
 Know Your Customer compliance workflow.
 - List with search; columns: KYC code, name, status, PEP indicator, AML risk level, approval date
+- In the queue list status column, records with missing required KYC files show a red missing marker for ID proof, address proof, and/or declaration when the latest file for that type is absent or rejected
 - KYC statuses: `DRAFT` → `SUBMITTED` → `PENDING_INFO` → `APPROVED` / `REJECTED`
 - Each KYC record captures: personal info, ID type/number, address, employment, business nature, source of funds/wealth, asset declarations, declaration date
 - Upload and verify supporting documents (proof of ID, proof of address, etc.)
