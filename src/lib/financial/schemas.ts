@@ -55,8 +55,6 @@ export const journalLineSchema = z.object({
   debit: z.coerce.number().min(0).max(999999999999).optional().default(0),
   credit: z.coerce.number().min(0).max(999999999999).optional().default(0),
   notes: z.string().trim().max(500).optional().default(''),
-  costCenterId: z.string().trim().min(1).nullable().optional(),
-  projectId: z.string().trim().min(1).nullable().optional(),
 })
 
 export const journalEntryCreateSchema = z.object({
@@ -236,19 +234,6 @@ export const reconciliationCreateSchema = z.object({
   statementDate: ymdSchema,
   statementBalance: z.coerce.number(),
   notes: z.string().trim().max(1000).optional().default(''),
-})
-
-export const dimensionCreateSchema = z.object({
-  companyId: z.string().cuid('Company is required'),
-  code: z.string().trim().min(1, '编号必填').max(32),
-  name: z.string().trim().min(1, '名称必填').max(200),
-  isActive: z.coerce.boolean().optional().default(true),
-})
-
-export const dimensionUpdateSchema = z.object({
-  code: z.string().trim().min(1).max(32).optional(),
-  name: z.string().trim().min(1).max(200).optional(),
-  isActive: z.coerce.boolean().optional(),
 })
 
 export const accountMappingUpsertSchema = z.object({

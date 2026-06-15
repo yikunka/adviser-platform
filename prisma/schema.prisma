@@ -373,8 +373,6 @@ model Company {
   fiscalPeriods          FiscalPeriod[]
   accountMappings        AccountMapping[]
   docSequences           DocSequence[]
-  costCenters            CostCenter[]
-  finProjects            FinProject[]
   salesInvoices          SalesInvoice[]
   purchaseBills          PurchaseBill[]
   finPayments            FinPayment[]
@@ -2472,10 +2470,8 @@ model JournalLine {
   credit      Decimal @default(0.0) @db.Decimal(18, 4)
   notes       String  @default("")
 
-  // ── 辅助核算维度（预留，可空；UI 按阶段开放）──
-  partyId      String? // 往来单位（客户/供应商/员工）
-  costCenterId String? // 成本中心
-  projectId    String? // 项目
+  // ── 扩展预留字段（可空）──
+  partyId String? // 往来单位（客户/供应商/员工）
 
   // ── 多币种（预留，可空；null = 本位币交易）──
   currency     String? // 原币币种，null = 本位币
@@ -2486,8 +2482,6 @@ model JournalLine {
   entry      JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
   account    FinAccount   @relation(fields: [accountId], references: [id])
   party      Party?       @relation(fields: [partyId], references: [id], onDelete: SetNull)
-  costCenter CostCenter?  @relation(fields: [costCenterId], references: [id], onDelete: SetNull)
-  project    FinProject?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   @@index([entryId, lineNum])
   @@index([accountId])
@@ -2642,40 +2636,6 @@ model DocSequence {
 
   @@unique([companyId, docType, periodKey])
   @@map("adv_doc_sequences")
-}
-
-/// 成本中心（维度主表；UI 后续阶段开放）
-model CostCenter {
-  id        String   @id @default(cuid())
-  companyId String
-  code      String
-  name      String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  journalLines JournalLine[]
-
-  @@unique([companyId, code])
-  @@map("adv_cost_centers")
-}
-
-/// 项目（维度主表；UI 后续阶段开放）
-model FinProject {
-  id        String   @id @default(cuid())
-  companyId String
-  code      String
-  name      String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  journalLines JournalLine[]
-
-  @@unique([companyId, code])
-  @@map("adv_fin_projects")
 }
 
 /// 销售发票（AR 子分类账；companyId = 账套所属公司，partyId = 该公司的客户）

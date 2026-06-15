@@ -22,7 +22,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { AccountCombobox } from '@/components/admin/financial/AccountCombobox'
-import { DimensionSelect } from '@/components/admin/financial/DimensionSelect'
 
 type ScopeCompany = {
   id: string
@@ -35,8 +34,6 @@ type FormLine = {
   description: string
   debit: string
   credit: string
-  costCenterId: string
-  projectId: string
 }
 
 export type JournalEntryForForm = {
@@ -56,8 +53,6 @@ export type JournalEntryForForm = {
     description: string
     debit: number
     credit: number
-    costCenterId?: string | null
-    projectId?: string | null
     account?: { code: string; name: string } | null
   }[]
 }
@@ -94,7 +89,7 @@ function todayYmd() {
 }
 
 function blankLine(): FormLine {
-  return { accountId: 'NONE', description: '', debit: '', credit: '', costCenterId: '', projectId: '' }
+  return { accountId: 'NONE', description: '', debit: '', credit: '' }
 }
 
 function numeric(value: string) {
@@ -137,8 +132,6 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
           description: line.description ?? '',
           debit: line.debit ? String(line.debit) : '',
           credit: line.credit ? String(line.credit) : '',
-          costCenterId: line.costCenterId ?? '',
-          projectId: line.projectId ?? '',
         }))
       : [blankLine(), blankLine()])
   }, [entry, fixedCompanyId, open])
@@ -210,8 +203,6 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
         description: line.description,
         debit: numeric(line.debit),
         credit: numeric(line.credit),
-        costCenterId: line.costCenterId || null,
-        projectId: line.projectId || null,
       }))
 
       if (payloadLines.some(line => !line.accountId)) {
@@ -436,8 +427,6 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                 <TableRow>
                   <TableHead className="min-w-[180px]">行摘要</TableHead>
                   <TableHead className="min-w-[240px]">科目</TableHead>
-                  <TableHead className="min-w-[150px]">成本中心</TableHead>
-                  <TableHead className="min-w-[150px]">项目</TableHead>
                   <TableHead className="w-[130px] text-right">借方</TableHead>
                   <TableHead className="w-[130px] text-right">贷方</TableHead>
                   <TableHead className="w-[48px]" />
@@ -468,24 +457,6 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                         onInputKeyDown={event => handleLineKeyDown(index, event)}
                         dialogMode
                         dialogTitle={`选择第 ${index + 1} 行科目`}
-                      />
-                    </TableCell>
-                    <TableCell className={lineTableCellClassName}>
-                      <DimensionSelect
-                        companyId={fixedCompanyId ?? (companyId === 'NONE' ? '' : companyId)}
-                        type="cost-center"
-                        value={line.costCenterId}
-                        onChange={costCenterId => updateLine(index, { costCenterId })}
-                        className={`border ${lineFieldClassName}`}
-                      />
-                    </TableCell>
-                    <TableCell className={lineTableCellClassName}>
-                      <DimensionSelect
-                        companyId={fixedCompanyId ?? (companyId === 'NONE' ? '' : companyId)}
-                        type="project"
-                        value={line.projectId}
-                        onChange={projectId => updateLine(index, { projectId })}
-                        className={`border ${lineFieldClassName}`}
                       />
                     </TableCell>
                     <TableCell className={lineTableCellClassName}>
@@ -525,7 +496,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                   </TableRow>
                 ))}
                 <TableRow>
-                  <TableCell colSpan={4} className="text-right font-medium">合计</TableCell>
+                  <TableCell colSpan={2} className="text-right font-medium">合计</TableCell>
                   <TableCell className="text-right font-medium">{totals.debit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                   <TableCell className="text-right font-medium">{totals.credit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                   <TableCell />

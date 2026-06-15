@@ -18,7 +18,6 @@ const FINANCIAL_SUB_ROUTES = new Set([
   'payables',
   'parties',
   'banking',
-  'dimensions',
 ])
 
 export default async function FinancialCompanyLayout({

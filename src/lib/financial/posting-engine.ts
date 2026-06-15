@@ -17,8 +17,6 @@ export type PostingLineInput = {
   debit: number
   credit: number
   partyId?: string | null
-  costCenterId?: string | null
-  projectId?: string | null
   notes?: string
 }
 
@@ -95,8 +93,6 @@ export async function createAndPostEntry(
           credit: new Prisma.Decimal(roundMoney(line.credit)),
           notes: line.notes ?? '',
           partyId: line.partyId ?? null,
-          costCenterId: line.costCenterId ?? null,
-          projectId: line.projectId ?? null,
         })),
       },
     },
@@ -176,8 +172,6 @@ export async function reversePostedEntry(
           credit: line.debit,
           notes: line.notes,
           partyId: line.partyId,
-          costCenterId: line.costCenterId,
-          projectId: line.projectId,
         })),
       },
     },

@@ -3,7 +3,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useState } from 'react'
-import { ArrowRight, BookOpen, Contact, FileBarChart, FileText, HandCoins, Landmark, Layers, ReceiptText, Tags, WalletCards } from 'lucide-react'
+import { ArrowRight, BookOpen, Contact, FileBarChart, FileText, HandCoins, Landmark, Layers, ReceiptText, WalletCards } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -99,12 +99,6 @@ export function FinancialCompanyDashboard() {
       desc: '客户、供应商与员工主数据。',
       href: `/admin/financial/${company.id}/parties`,
       Icon: Contact,
-    },
-    {
-      title: '辅助核算维度',
-      desc: '成本中心、项目主数据与维度损益分析。',
-      href: `/admin/financial/${company.id}/dimensions`,
-      Icon: Tags,
     },
   ]
 

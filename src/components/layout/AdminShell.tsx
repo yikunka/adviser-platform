@@ -42,7 +42,6 @@ import {
   HandCoins,
   Landmark,
   Contact,
-  Tags,
   Truck,
 } from 'lucide-react'
 import type { AdminMenuKey } from '@/lib/auth/admin-access'
@@ -89,7 +88,6 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/financial/[companyId]/payables', key: 'financial', labelKey: 'financialPayables', Icon: HandCoins },
       { href: '/admin/financial/[companyId]/banking', key: 'financial', labelKey: 'financialBanking', Icon: Landmark },
       { href: '/admin/financial/[companyId]/parties', key: 'financial', labelKey: 'financialParties', Icon: Contact },
-      { href: '/admin/financial/[companyId]/dimensions', key: 'financial', labelKey: 'financialDimensions', Icon: Tags },
     ],
   },
   {
