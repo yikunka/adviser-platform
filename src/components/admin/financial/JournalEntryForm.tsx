@@ -72,8 +72,8 @@ const modalContentClassName = 'financial-modal max-h-[92vh] overflow-y-auto bord
 const modalFooterClassName = 'border-[#2A2418] bg-[#16130E]'
 const labelClassName = 'text-[#EADDC3]'
 const fieldClassName = 'border-[#2A2418] bg-[#0E0E0A] text-[#FFF7E6] placeholder:text-[#9F927B]'
-const lineFieldClassName = `${fieldClassName} h-11 min-h-[2.75rem] py-2.5 text-sm`
-const lineTableCellClassName = 'py-3 align-middle'
+const lineFieldClassName = `${fieldClassName} h-14 min-h-14 py-3 text-base`
+const lineTableCellClassName = 'py-4 align-middle'
 const selectContentClassName = 'financial-select-content border-[#2A2418] bg-[#11110E] text-[#FFF7E6]'
 const secondaryButtonClassName = 'border-[#3A3428] bg-[#0E0E0A] text-[#FFF7E6] hover:bg-[#1E1A12] hover:text-[#FFF7E6]'
 const warningTextClassName = 'text-xs text-[#f59e0b]'
@@ -425,10 +425,10 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[180px]">行摘要</TableHead>
-                  <TableHead className="min-w-[240px]">科目</TableHead>
-                  <TableHead className="w-[130px] text-right">借方</TableHead>
-                  <TableHead className="w-[130px] text-right">贷方</TableHead>
+                  <TableHead className="min-w-[220px]">行摘要</TableHead>
+                  <TableHead className="min-w-[320px]">科目</TableHead>
+                  <TableHead className="w-[160px] text-right">借方</TableHead>
+                  <TableHead className="w-[160px] text-right">贷方</TableHead>
                   <TableHead className="w-[48px]" />
                 </TableRow>
               </TableHeader>

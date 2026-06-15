@@ -17,7 +17,6 @@ import { JournalEntryForm, type JournalEntryForForm } from '@/components/admin/f
 import { JournalViewModal, type JournalEntryDetails } from '@/components/admin/financial/JournalViewModal'
 import { FinancialBreadcrumbs } from '@/components/admin/financial/FinancialBreadcrumbs'
 import { useFinancialCompany } from '@/components/admin/financial/FinancialCompanyContext'
-import { formatJournalLineAccountLevels } from '@/lib/financial/account-hierarchy'
 
 type JournalEntry = JournalEntryDetails &
   JournalEntryForForm & {
@@ -63,6 +62,16 @@ function money(value: number) {
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString('zh-HK')
+}
+
+function journalPrintAccountLabel(line: {
+  accountId?: string | null
+  account?: { code?: string | null; name?: string | null } | null
+}) {
+  if (line.account?.code || line.account?.name) {
+    return `${line.account.code} ${line.account.name}`.trim()
+  }
+  return line.accountId || '-'
 }
 
 function JournalEntryPrintArea({
@@ -113,38 +122,26 @@ function JournalEntryPrintArea({
             <tr>
               <th>行</th>
               <th>行摘要</th>
-              <th>一级科目</th>
-              <th>二级科目</th>
-              <th>三级科目</th>
-              <th>借贷方向</th>
+              <th>科目</th>
               <th className="amount">金额</th>
-              <th className="amount">借方</th>
-              <th className="amount">贷方</th>
             </tr>
           </thead>
           <tbody>
             {entry.lines.map((line, index) => {
               const isDebit = line.debit > 0
               const amount = isDebit ? line.debit : line.credit
-              const accountLevels = formatJournalLineAccountLevels(line.account ?? undefined)
               return (
                 <tr key={`${entry.id}-${index}`}>
                   <td>{index + 1}</td>
                   <td>{line.description || '-'}</td>
-                  <td>{accountLevels.level1}</td>
-                  <td>{accountLevels.level2}</td>
-                  <td>{accountLevels.level3}</td>
-                  <td>{isDebit ? '借方' : '贷方'}</td>
+                  <td>{journalPrintAccountLabel(line)}</td>
                   <td className="amount">{money(amount)}</td>
-                  <td className="amount">{line.debit > 0 ? money(line.debit) : '-'}</td>
-                  <td className="amount">{line.credit > 0 ? money(line.credit) : '-'}</td>
                 </tr>
               )
             })}
             <tr className="journal-print-total">
-              <td colSpan={7}>合计</td>
-              <td className="amount">{money(totalDebit)}</td>
-              <td className="amount">{money(totalCredit)}</td>
+              <td colSpan={3}>借方合计 / 贷方合计</td>
+              <td className="amount">{money(totalDebit)} / {money(totalCredit)}</td>
             </tr>
           </tbody>
         </table>
@@ -276,6 +273,16 @@ function JournalPrintStyles() {
         .journal-print-table td:first-child {
           width: 28px;
           text-align: center;
+        }
+
+        .journal-print-table th:nth-child(2),
+        .journal-print-table td:nth-child(2) {
+          width: 34%;
+        }
+
+        .journal-print-table th:nth-child(3),
+        .journal-print-table td:nth-child(3) {
+          width: 38%;
         }
 
         .journal-print-table .amount {

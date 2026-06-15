@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Check, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -29,7 +29,6 @@ type Party = {
   phone: string | null
   address: string | null
   taxNumber: string | null
-  color: string
   paymentTermsDays: number
   arAccountId: string | null
   apAccountId: string | null
@@ -62,7 +61,6 @@ const emptyForm = {
   phone: '',
   address: '',
   taxNumber: '',
-  color: '#C9A96E',
   paymentTermsDays: '30',
   arAccountId: 'AUTO',
   apAccountId: 'AUTO',
@@ -73,9 +71,6 @@ const fieldClassName = 'border-[#2A2418] bg-[#0E0E0A] text-[#FFF7E6] placeholder
 const selectContentClassName = 'financial-select-content border-[#2A2418] bg-[#11110E] text-[#FFF7E6]'
 const labelClassName = 'text-[#EADDC3]'
 const secondaryButtonClassName = 'border-[#3A3428] bg-[#0E0E0A] text-[#FFF7E6] hover:bg-[#1E1A12] hover:text-[#FFF7E6]'
-const defaultPartyColor = '#C9A96E'
-const hexColorPattern = /^#[0-9A-Fa-f]{6}$/
-const partyColorOptions = ['#C9A96E', '#38BDF8', '#10B981', '#F59E0B', '#EF4444', '#A78BFA', '#F472B6', '#94A3B8']
 
 function accountOptionLabel(account: Pick<FinancialAccount, 'code' | 'name'>) {
   return `${account.code} - ${account.name}`
@@ -102,72 +97,6 @@ function flattenAccountOptions(accounts: FinancialAccount[]) {
   }
   visit(null)
   return rows
-}
-
-function normalizePartyColor(value: string) {
-  const trimmed = value.trim()
-  const withHash = trimmed.startsWith('#') ? trimmed : `#${trimmed}`
-  return hexColorPattern.test(withHash) ? withHash.toUpperCase() : null
-}
-
-function PartyColorPicker({
-  value,
-  onChange,
-}: {
-  value: string
-  onChange: (value: string) => void
-}) {
-  const previewColor = normalizePartyColor(value) ?? defaultPartyColor
-
-  return (
-    <div className="space-y-2 rounded-lg border border-[#2A2418] bg-[#0E0E0A] p-3">
-      <Label className={labelClassName}>标识颜色</Label>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <label className="relative flex h-12 w-full cursor-pointer items-center gap-3 rounded-lg border border-[#3A3428] bg-[#11110E] px-3 sm:w-44">
-          <span className="h-7 w-7 shrink-0 rounded-full border border-white/20 shadow-inner" style={{ background: previewColor }} />
-          <span className="font-mono text-sm text-[#FFF7E6]">{previewColor}</span>
-          <input
-            aria-label="选择往来单位颜色"
-            type="color"
-            value={previewColor}
-            onChange={event => onChange(event.target.value.toUpperCase())}
-            className="absolute inset-0 cursor-pointer opacity-0"
-          />
-        </label>
-        <Input
-          value={value}
-          onChange={event => onChange(event.target.value)}
-          onBlur={event => {
-            const normalized = normalizePartyColor(event.target.value)
-            if (normalized) onChange(normalized)
-          }}
-          placeholder="#C9A96E"
-          className={`font-mono uppercase ${fieldClassName}`}
-        />
-      </div>
-      <div className="grid grid-cols-8 gap-2">
-        {partyColorOptions.map(color => {
-          const selected = previewColor === color
-          return (
-            <button
-              key={color}
-              type="button"
-              aria-label={`选择颜色 ${color}`}
-              className="flex h-8 w-8 items-center justify-center rounded-full border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A96E]/40"
-              style={{
-                background: color,
-                borderColor: selected ? '#FFF7E6' : '#2A2418',
-                boxShadow: selected ? '0 0 0 2px rgba(201,169,110,0.38)' : undefined,
-              }}
-              onClick={() => onChange(color)}
-            >
-              {selected ? <Check size={15} className="text-[#0A0805] drop-shadow" /> : null}
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
 }
 
 function AccountLinkSelect({
@@ -299,7 +228,6 @@ export default function AdminFinancialPartiesPage() {
             phone: party.phone ?? '',
             address: party.address ?? '',
             taxNumber: party.taxNumber ?? '',
-            color: normalizePartyColor(party.color) ?? defaultPartyColor,
             paymentTermsDays: String(party.paymentTermsDays),
             arAccountId: party.arAccountId ?? 'NONE',
             apAccountId: party.apAccountId ?? 'NONE',
@@ -319,11 +247,6 @@ export default function AdminFinancialPartiesPage() {
       toast.error('至少选择一个角色。')
       return
     }
-    const color = normalizePartyColor(form.color)
-    if (!color) {
-      toast.error('颜色需为 #RRGGBB 格式。')
-      return
-    }
     setSaving(true)
     try {
       const payload = {
@@ -337,7 +260,6 @@ export default function AdminFinancialPartiesPage() {
         phone: form.phone.trim() || null,
         address: form.address.trim() || null,
         taxNumber: form.taxNumber.trim() || null,
-        color,
         paymentTermsDays: Number(form.paymentTermsDays) || 30,
         arAccountId: form.isCustomer && form.arAccountId !== 'AUTO' && form.arAccountId !== 'NONE' ? form.arAccountId : null,
         apAccountId: form.isSupplier && form.apAccountId !== 'AUTO' && form.apAccountId !== 'NONE' ? form.apAccountId : null,
@@ -465,7 +387,6 @@ export default function AdminFinancialPartiesPage() {
                   <TableRow key={party.id}>
                     <TableCell className="font-mono">{party.code}</TableCell>
                     <TableCell>
-                      <span className="mr-2 inline-block h-2.5 w-2.5 rounded-full align-middle" style={{ background: party.color }} />
                       <span>{party.name}</span>
                       {party.nameZh ? (
                         <span className="ml-2 text-xs" style={{ color: 'var(--muted-foreground)' }}>{party.nameZh}</span>
@@ -534,7 +455,7 @@ export default function AdminFinancialPartiesPage() {
           </DialogHeader>
           <div className="max-h-[calc(92vh-9rem)] overflow-y-auto pr-1">
             <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label className={labelClassName}>编号</Label>
                   <Input
@@ -558,9 +479,6 @@ export default function AdminFinancialPartiesPage() {
                     onChange={e => setForm(f => ({ ...f, paymentTermsDays: e.target.value }))}
                     className={fieldClassName}
                   />
-                </div>
-                <div className="md:col-span-2 xl:col-span-1">
-                  <PartyColorPicker value={form.color} onChange={color => setForm(f => ({ ...f, color }))} />
                 </div>
               </div>
 

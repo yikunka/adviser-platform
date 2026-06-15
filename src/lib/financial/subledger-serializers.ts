@@ -37,7 +37,6 @@ export type SerializedParty = {
   phone: string | null
   address: string | null
   taxNumber: string | null
-  color: string
   currency: string
   paymentTermsDays: number
   creditLimit: number | null
@@ -61,7 +60,6 @@ export function serializeParty(party: Party): SerializedParty {
     phone: party.phone,
     address: party.address,
     taxNumber: party.taxNumber,
-    color: party.color,
     currency: party.currency,
     paymentTermsDays: party.paymentTermsDays,
     creditLimit: party.creditLimit === null ? null : money(party.creditLimit),

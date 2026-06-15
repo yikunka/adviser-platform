@@ -253,6 +253,7 @@ model User {
   financialManagedCompanies      Company[]                @relation("FinancialManager")
   createdFinancialReportGroups   FinancialReportGroup[]   @relation("FinancialReportGroupCreator")
   uploadedFinancialHistoryBooks  FinancialHistoryLedgerBook[] @relation("FinancialHistoryLedgerBookUploader")
+  uploadedHistoricalInvoices     HistoricalInvoiceFile[]   @relation("HistoricalInvoiceFileUploader")
   uploadedDocuments              Document[]
   kycReviews                     KeyPerson[]              @relation("KYCReviewer")
   kycSubmissions                 KeyPerson[]              @relation("ClientKycSubmissions")
@@ -1044,6 +1045,26 @@ model InvoiceLineItem {
 
   @@index([invoiceId, sortOrder])
   @@map("invoice_line_items")
+}
+
+model HistoricalInvoiceFile {
+  id           String   @id @default(cuid())
+  title        String
+  fileName     String
+  fileKey      String
+  fileUrl      String
+  mimeType     String
+  fileSize     Int
+  uploadedById String?
+  notes        String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  uploadedBy User? @relation("HistoricalInvoiceFileUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([uploadedById])
+  @@map("historical_invoice_files")
 }
 
 // ─────────────────────────────────────────────
@@ -2591,7 +2612,6 @@ model Party {
   phone            String?
   address          String?
   taxNumber        String?
-  color            String   @default("#C9A96E")
   currency         String   @default("HKD")
   paymentTermsDays Int      @default(30)
   creditLimit      Decimal? @db.Decimal(18, 2)

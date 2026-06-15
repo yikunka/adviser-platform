@@ -2,8 +2,9 @@
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import { useCallback, useEffect, useState } from 'react'
+import { type ChangeEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { Download, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { Link } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
@@ -24,6 +25,15 @@ type InvoiceRow = {
   keyPerson?: { id: string; nameEn: string; kycCode?: string | null } | null
 }
 
+type HistoricalInvoiceFile = {
+  id: string
+  title: string
+  fileName: string
+  fileSize: number
+  createdAt: string
+  uploadedBy: string
+}
+
 const STATUS_COLOR: Record<string, string> = {
   DRAFT: 'bg-[rgba(120,113,108,0.15)] text-[#9A8060]',
   SENT: 'bg-[rgba(59,130,246,0.12)] text-[#3b82f6]',
@@ -31,14 +41,24 @@ const STATUS_COLOR: Record<string, string> = {
   CANCELLED: 'bg-[rgba(239,68,68,0.12)] text-[#ef4444]',
 }
 
+function fileSizeLabel(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
 export default function InvoicesPage() {
   const t = useTranslations('admin.invoices')
+  const historyFileRef = useRef<HTMLInputElement | null>(null)
   const [invoices, setInvoices] = useState<InvoiceRow[]>([])
+  const [historicalFiles, setHistoricalFiles] = useState<HistoricalInvoiceFile[]>([])
   const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyUploading, setHistoryUploading] = useState(false)
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true)
@@ -62,6 +82,62 @@ export default function InvoicesPage() {
     fetchInvoices()
   }, [fetchInvoices])
 
+  const fetchHistoricalFiles = useCallback(async () => {
+    setHistoryLoading(true)
+    try {
+      const res = await fetch('/api/admin/invoices/history')
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.toast || json.error || '载入历史发票失败。')
+      setHistoricalFiles(Array.isArray(json.files) ? json.files : [])
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '载入历史发票失败。')
+    } finally {
+      setHistoryLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchHistoricalFiles()
+  }, [fetchHistoricalFiles])
+
+  async function uploadHistoricalInvoice(file: File) {
+    setHistoryUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/admin/invoices/history', {
+        method: 'POST',
+        body: formData,
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.toast || json.error || '上传历史发票失败。')
+      toast.success(json.toast || '历史发票已上传。')
+      await fetchHistoricalFiles()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '上传历史发票失败。')
+    } finally {
+      setHistoryUploading(false)
+      if (historyFileRef.current) historyFileRef.current.value = ''
+    }
+  }
+
+  function handleHistoryFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    void uploadHistoricalInvoice(file)
+  }
+
+  async function downloadHistoricalInvoice(file: HistoricalInvoiceFile) {
+    try {
+      const res = await fetch(`/api/admin/invoices/history/${file.id}/download`)
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.toast || json.error || '生成下载链接失败。')
+      window.location.assign(json.url)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '下载历史发票失败。')
+    }
+  }
+
   const pages = Math.max(1, Math.ceil(total / 20))
 
   return (
@@ -70,9 +146,27 @@ export default function InvoicesPage() {
         <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>
           {t('title')}
         </h1>
-        <Link href="/admin/invoices/new">
-          <Button>{t('create')}</Button>
-        </Link>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <input
+            ref={historyFileRef}
+            type="file"
+            accept="application/pdf,.pdf"
+            className="hidden"
+            onChange={handleHistoryFileChange}
+            disabled={historyUploading}
+          />
+          <Button
+            variant="outline"
+            onClick={() => historyFileRef.current?.click()}
+            disabled={historyUploading}
+          >
+            <Upload size={15} className="mr-2" />
+            {historyUploading ? '上传中...' : '添加历史发票'}
+          </Button>
+          <Link href="/admin/invoices/new">
+            <Button>{t('create')}</Button>
+          </Link>
+        </div>
       </div>
 
       <div className="flex gap-2 flex-wrap">
@@ -94,6 +188,51 @@ export default function InvoicesPage() {
           ))}
         </select>
       </div>
+
+      <Card>
+        <CardContent className="p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>历史发票文件</h2>
+              <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                上传的 PDF 仅作为历史发票档案保存，不影响现有发票编号和状态。
+              </p>
+            </div>
+          </div>
+          {historyLoading ? (
+            <div className="py-4 text-sm" style={{ color: 'var(--muted-foreground)' }}>载入中...</div>
+          ) : historicalFiles.length === 0 ? (
+            <div className="py-4 text-sm" style={{ color: 'var(--muted-foreground)' }}>暂无历史发票文件</div>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {historicalFiles.map(file => (
+                <div key={file.id} className="rounded-md border border-[#2A2418] bg-[#0E0E0A] p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{file.title}</p>
+                      <p className="mt-1 truncate text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                        {file.fileName} · {fileSizeLabel(file.fileSize)}
+                      </p>
+                      <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                        {new Date(file.createdAt).toLocaleString()} · {file.uploadedBy}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 shrink-0 p-0"
+                      title="下载历史发票"
+                      onClick={() => void downloadHistoricalInvoice(file)}
+                    >
+                      <Download size={15} />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="p-0">
