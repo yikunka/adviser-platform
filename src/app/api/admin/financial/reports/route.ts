@@ -3,10 +3,9 @@ import { requireRole } from '@/lib/auth/rbac'
 import { buildFinancialReports } from '@/lib/financial/reports'
 import { financialReportFilterSchema } from '@/lib/financial/schemas'
 import {
-  assertCompanyAccessible,
   resolveCompanyAccess,
 } from '@/lib/company-access'
-import { resolveReportGroupCompanyIds } from '@/lib/financial/report-groups'
+import { resolveFinancialReportScope } from '@/lib/financial/report-scope'
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
@@ -26,19 +25,17 @@ export async function GET(req: NextRequest) {
 
   try {
     const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
-    if (parsed.data.companyId && !(await assertCompanyAccessible(access, parsed.data.companyId))) {
-      return apiError('Forbidden', 403)
-    }
-    const companyIds = parsed.data.reportGroupId
-      ? await resolveReportGroupCompanyIds(parsed.data.reportGroupId, access)
-      : undefined
+    const scope = await resolveFinancialReportScope(access, parsed.data)
     const reports = await buildFinancialReports(parsed.data.period, {
-      companyId: parsed.data.companyId,
-      companyIds,
+      companyId: scope.companyId,
+      companyIds: scope.companyIds,
     })
     return NextResponse.json({ reports })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to generate financial reports.'
-    return apiError(message, message === 'Forbidden' ? 403 : 500)
+    return apiError(
+      message,
+      message === 'Forbidden' ? 403 : message === 'Financial company not found' ? 404 : 500,
+    )
   }
 }

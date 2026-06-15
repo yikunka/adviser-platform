@@ -5,6 +5,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Link } from '@/i18n/navigation'
+import { resolveStoredFinancialCompanyId } from '@/lib/financial/selected-company'
 import { toast } from 'sonner'
 
 export type FinancialCompanyInfo = {
@@ -56,7 +57,18 @@ export function FinancialCompanyProvider({
       .then(async res => {
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || '载入财务公司失败')
-        setCompanies(data.companies ?? [])
+        const nextCompanies = data.companies ?? []
+        setCompanies(nextCompanies)
+        const nextSelectedCompanyId = resolveStoredFinancialCompanyId(
+          nextCompanies,
+          window.localStorage.getItem(STORAGE_KEY),
+        )
+        setSelectedCompanyIdState(nextSelectedCompanyId)
+        if (nextSelectedCompanyId) {
+          window.localStorage.setItem(STORAGE_KEY, nextSelectedCompanyId)
+        } else {
+          window.localStorage.removeItem(STORAGE_KEY)
+        }
       })
       .catch(error => toast.error(error instanceof Error ? error.message : '载入财务公司失败'))
       .finally(() => setLoading(false))
