@@ -17,17 +17,17 @@ type MappingClient = {
 
 /** 映射缺省时按默认科目表代码回退（与 DEFAULT_CHART_OF_ACCOUNTS 对齐） */
 export const DEFAULT_MAPPING_CODES: Record<AccountMappingKey, string> = {
-  AR_CONTROL: '1100', // 应收账款
-  AP_CONTROL: '2001', // 应付账款
-  SALES_REVENUE: '4001', // 营业收入
-  OUTPUT_TAX: '2100', // 应交税费
-  INPUT_TAX: '2100', // 应交税费
-  BANK_DEFAULT: '1002', // 银行存款
-  CASH_DEFAULT: '1001', // 现金
-  PURCHASE_EXPENSE_DEFAULT: '6001', // 管理费用
-  BANK_FEES: '6001', // 管理费用
-  EXCHANGE_GAIN_LOSS: '6001', // 管理费用（预留）
-  RETAINED_EARNINGS: '3100', // 留存收益（预留）
+  AR_CONTROL: '02', // 应收
+  AP_CONTROL: '03', // 应付
+  SALES_REVENUE: '05', // 收入
+  OUTPUT_TAX: '03', // 应付
+  INPUT_TAX: '03', // 应付
+  BANK_DEFAULT: '01', // 现金与银行
+  CASH_DEFAULT: '01', // 现金与银行
+  PURCHASE_EXPENSE_DEFAULT: '07', // 行政费用
+  BANK_FEES: '09', // 财务费用
+  EXCHANGE_GAIN_LOSS: '09', // 财务费用（预留）
+  RETAINED_EARNINGS: '04', // 权益（预留）
 }
 
 export const MAPPING_KEY_LABELS: Record<AccountMappingKey, string> = {

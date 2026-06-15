@@ -12,19 +12,15 @@ export type DefaultChartAccount = {
 
 /** Level-1 HKFRS starter chart seeded when a company has no accounts yet. */
 export const DEFAULT_CHART_OF_ACCOUNTS: ReadonlyArray<DefaultChartAccount> = [
-  { code: '1001', name: '现金 CASH IN HAND', type: 'ASSET', sortOrder: 1 },
-  { code: '1002', name: '银行存款 BANK', type: 'ASSET', sortOrder: 2 },
-  { code: '1100', name: '应收账款 ACCOUNTS RECEIVABLE', type: 'ASSET', sortOrder: 10 },
-  { code: '1200', name: '存货 INVENTORY', type: 'ASSET', sortOrder: 20 },
-  { code: '1300', name: '固定资产 FIXED ASSETS', type: 'NON_CURRENT_ASSET', sortOrder: 30 },
-  { code: '2001', name: '应付账款 ACCOUNTS PAYABLE', type: 'LIABILITY', sortOrder: 1 },
-  { code: '2100', name: '应交税费 TAXES PAYABLE', type: 'LIABILITY', sortOrder: 10 },
-  { code: '2500', name: '长期借款 LONG-TERM BORROWINGS', type: 'NON_CURRENT_LIABILITY', sortOrder: 20 },
-  { code: '3001', name: '实收资本 SHARE CAPITAL', type: 'EQUITY', sortOrder: 1 },
-  { code: '3100', name: '留存收益 RETAINED EARNINGS', type: 'EQUITY', sortOrder: 10 },
-  { code: '4001', name: '营业收入 REVENUE', type: 'REVENUE', sortOrder: 1 },
-  { code: '5001', name: '营业成本 COST OF SALES', type: 'CGS', sortOrder: 1 },
-  { code: '6001', name: '管理费用 ADMINISTRATIVE EXPENSES', type: 'EXPENSE', sortOrder: 1 },
+  { code: '01', name: '现金与银行', type: 'ASSET', sortOrder: 1 },
+  { code: '02', name: '应收', type: 'ASSET', sortOrder: 2 },
+  { code: '03', name: '应付', type: 'LIABILITY', sortOrder: 3 },
+  { code: '04', name: '权益', type: 'EQUITY', sortOrder: 4 },
+  { code: '05', name: '收入', type: 'REVENUE', sortOrder: 5 },
+  { code: '06', name: '成本', type: 'CGS', sortOrder: 6 },
+  { code: '07', name: '行政费用', type: 'EXPENSE', sortOrder: 7 },
+  { code: '08', name: '销售费用', type: 'EXPENSE', sortOrder: 8 },
+  { code: '09', name: '财务费用', type: 'EXPENSE', sortOrder: 9 },
 ]
 
 export async function ensureDefaultChartOfAccounts(

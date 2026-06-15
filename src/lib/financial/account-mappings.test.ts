@@ -19,12 +19,12 @@ function fakeClient(options: { mappingAccountId?: string; fallbackAccounts?: Rec
 
 describe('account mapping resolution', () => {
   it('prefers explicit mapping', async () => {
-    const client = fakeClient({ mappingAccountId: 'acc-explicit', fallbackAccounts: { '1100': 'acc-default' } })
+    const client = fakeClient({ mappingAccountId: 'acc-explicit', fallbackAccounts: { '02': 'acc-default' } })
     expect(await resolveMappedAccountId(client, 'c1', 'AR_CONTROL')).toBe('acc-explicit')
   })
 
   it('falls back to default chart code', async () => {
-    const client = fakeClient({ fallbackAccounts: { '1100': 'acc-ar', '2001': 'acc-ap' } })
+    const client = fakeClient({ fallbackAccounts: { '02': 'acc-ar', '03': 'acc-ap' } })
     expect(await resolveMappedAccountId(client, 'c1', 'AR_CONTROL')).toBe('acc-ar')
     expect(await resolveMappedAccountId(client, 'c1', 'AP_CONTROL')).toBe('acc-ap')
   })
@@ -37,7 +37,7 @@ describe('account mapping resolution', () => {
 
   it('covers every mapping key with a fallback code', () => {
     for (const code of Object.values(DEFAULT_MAPPING_CODES)) {
-      expect(code).toMatch(/^\d{4}$/)
+      expect(code).toMatch(/^\d{2}$/)
     }
   })
 })
