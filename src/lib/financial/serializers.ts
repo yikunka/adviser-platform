@@ -1,4 +1,4 @@
-import type { AccountType, JournalStatus } from '@prisma/client'
+import type { AccountType, JournalSourceType, JournalStatus } from '@prisma/client'
 import {
   buildAccountLevelChain,
   type AccountHierarchyNode,
@@ -96,6 +96,7 @@ export function serializeJournalEntry(
     description: string
     period: string
     status: JournalStatus
+    sourceType?: JournalSourceType
     companyId?: string | null
     company?: { id: string; nameEn: string; companyCode: string | null } | null
     createdAt?: Date
@@ -172,6 +173,7 @@ export function serializeJournalEntry(
     description: entry.description,
     period: entry.period,
     status: entry.status,
+    sourceType: entry.sourceType ?? 'MANUAL',
     companyId: entry.companyId ?? null,
     company: entry.company ?? null,
     totalAmount: lines.reduce((sum, line) => sum + line.debit, 0),
