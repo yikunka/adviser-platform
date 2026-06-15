@@ -3,6 +3,7 @@ import { absoluteUrl, sfsSeo } from '@/lib/seo'
 import SFSHeader from './components/SFSHeader'
 import SFSFooter from './components/SFSFooter'
 import SFSProviders from './components/SFSProviders'
+import SFSChatWidget from './components/SFSChatWidget'
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -44,6 +45,7 @@ export default function SFSDiamondLayout({ children }: { children: React.ReactNo
         <SFSHeader />
         <main className="flex-1">{children}</main>
         <SFSFooter />
+        <SFSChatWidget />
       </div>
     </SFSProviders>
   )

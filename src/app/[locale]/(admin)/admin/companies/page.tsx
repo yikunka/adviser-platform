@@ -17,6 +17,7 @@ type Company = {
   status: string
   serviceTier?: string
   financialEnabled: boolean
+  dateOfIncorporation?: string | null
   annualReturnDate?: string
   assignedStaff?: { nameEn: string }
   financialManager?: { nameEn: string; email: string } | null
@@ -28,6 +29,15 @@ const STATUS_COLOR: Record<string, string> = {
   DORMANT:      'bg-[rgba(234,179,8,0.12)] text-[#eab308]',
   STRUCK_OFF:   'bg-[rgba(239,68,68,0.12)] text-[#ef4444]',
   DEREGISTERED: 'bg-[rgba(120,113,108,0.15)] text-[#9A8060]',
+}
+
+function annualReturnDeadline(dateOfIncorporation?: string | null) {
+  if (!dateOfIncorporation) return null
+  const registrationDate = new Date(dateOfIncorporation)
+  if (Number.isNaN(registrationDate.getTime())) return null
+  const deadline = new Date(registrationDate)
+  deadline.setDate(deadline.getDate() + 42)
+  return deadline
 }
 
 export default function CompaniesPage() {
@@ -108,7 +118,7 @@ export default function CompaniesPage() {
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('status')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('client')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('financialModule')}</th>
-                <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('arDate')}</th>
+                <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('arDeadline')}</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -171,7 +181,7 @@ export default function CompaniesPage() {
                     )}
                   </td>
                   <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
-                    {c.annualReturnDate ? new Date(c.annualReturnDate).toLocaleDateString() : '—'}
+                    {annualReturnDeadline(c.dateOfIncorporation)?.toLocaleDateString() ?? '—'}
                   </td>
                   <td className="px-4 py-3 text-right text-xs font-medium" style={{ color: '#C9A96E' }}>
                     {t('view')} →

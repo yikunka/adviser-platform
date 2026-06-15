@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { absoluteUrl, cosmoSeo } from '@/lib/seo'
 import CosmoHeader from './components/CosmoHeader'
 import CosmoFooter from './components/CosmoFooter'
+import CosmoChatWidget from './components/CosmoChatWidget'
 
 export const metadata: Metadata = {
   title: {
@@ -126,6 +127,7 @@ export default function CosmoLayout({ children }: { children: React.ReactNode })
         <CosmoHeader />
         <main className="flex-1 relative z-0">{children}</main>
         <CosmoFooter />
+        <CosmoChatWidget />
       </div>
     </>
   )

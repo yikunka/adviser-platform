@@ -27,7 +27,7 @@ Includes a separate CosmoCoat operations module showing pending non-super-admin 
 
 ### 2. Companies (`/admin/companies`)
 Manages the full portfolio of client companies.
-- List with search (name / code / registration number), status badge, assigned client, annual return date, financial-module toggle
+- List with search (name / code / registration number), status badge, assigned client, annual return deadline (registration date + 42 days), financial-module toggle
 - Company statuses: `ACTIVE`, `DORMANT`, `STRUCK_OFF`, `DEREGISTERED`
 - Company types: `HONG_KONG`, `BVI`, `CAYMAN`, `MARSHALL`
 - Auto-generates company codes by type: `AA#####` (HK), `BV#####` (BVI), `CA#####` (Cayman), `MS#####` (Marshall)
@@ -168,6 +168,7 @@ Routes under `/[locale]/(client)/`. Accessible by `CLIENT` role users only.
 Memorial diamond jewellery service (lab-grown diamonds from cremation remains). Public site at `sfsdiamond.com`; admin under Adviser console.
 
 ### Public Pages (`/sfsdiamond/`)
+- **Floating AI Chat Widget**: gold (#C9A96E) circular button fixed at bottom-right of all SFS Diamond pages; opens a 340×480 chat panel; answers visitor questions about company info, the CVD process, FAQ content, ordering, and memorial diamond details; powered by `claude-haiku-4-5-20251001` via `/api/sfsdiamond/chat`; knowledge is embedded statically in the server-side system prompt (no DB query); no authentication required
 - **Home**: hero, process overview, team, four value pillars, Eternity Ring 3D visualization
 - **About**: company background, mission, vision
 - **Technology**: diamond creation process (CVD growth explained)
@@ -231,6 +232,8 @@ Cosmetics manufacturing ERP. Public product site at `/cosmocoat/`; manufacturing
 
 ### Public Pages (`/cosmocoat/`)
 Home, Products catalog, Product detail, About, Supporting.
+
+- **Floating AI Chat Widget**: cyan (#00d4ff) square button fixed at bottom-right of all CosmoCoat pages; opens a 340×480 terminal-themed chat panel; answers questions about product formulas, process parameters, and material lists; powered by `claude-haiku-4-5-20251001` via `/api/cosmocoat/chat`; knowledge is fetched live from the `cos_table_recipes` DB table on each request (includes category, batch quantity, viscosity, shelf life, material items with quantities); no authentication required
 
 ### Factory Products (`/admin/cosmocoat-factory-products`)
 Finished goods produced by the factory.
@@ -395,6 +398,8 @@ Same double-entry accounting structure as Adviser (chart of accounts, journal en
 - **"提交需求" widget**: floating button at the top-right of every admin page (below the header); opens a multi-turn chat dialog; LLM clarifies and structures the requirement; user confirms; saved to `adv_feature_requests`
 - **KYC document analysis**: batch AI-assisted review of uploaded KYC documents
 - **NAR1 sync**: AI-assisted data extraction from Companies Registry annual return documents
+- **SFS Diamond public chat** (`/api/sfsdiamond/chat`): NDJSON streaming endpoint; static knowledge base embedded in system prompt; no auth
+- **CosmoCoat public chat** (`/api/cosmocoat/chat`): NDJSON streaming endpoint; live recipe knowledge fetched from DB per request; no auth
 
 ### Internationalisation
 - Supported locales: `en`, `zh-HK`
