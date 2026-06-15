@@ -2,10 +2,10 @@
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { MapPin, Phone, Plus, Search, Truck } from 'lucide-react'
+import { MapPin, Phone, Plus, Search, Truck, Upload } from 'lucide-react'
 import type { CosSupplierRow } from '@/lib/cosmocoat/suppliers'
 
 const card: React.CSSProperties = {
@@ -44,6 +44,8 @@ export default function AdminCosmoCoatSuppliersPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [importing, setImporting] = useState(false)
+  const importInputRef = useRef<HTMLInputElement>(null)
 
   const fetchSuppliers = useCallback(async () => {
     setLoading(true)
@@ -75,6 +77,31 @@ export default function AdminCosmoCoatSuppliersPage() {
     setPage(1)
   }, [search])
 
+  async function handleImport(fileList: FileList | null) {
+    const file = fileList?.[0]
+    if (!file) return
+
+    setImporting(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/admin/cosmocoat/suppliers/import', {
+        method: 'POST',
+        body: fd,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? '导入失败')
+      toast.success(`已导入 ${data.imported ?? 0} 家供应商${data.skipped ? `，跳过 ${data.skipped} 行` : ''}`)
+      if (importInputRef.current) importInputRef.current.value = ''
+      setPage(1)
+      await fetchSuppliers()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '导入失败')
+    } finally {
+      setImporting(false)
+    }
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -84,14 +111,33 @@ export default function AdminCosmoCoatSuppliersPage() {
             共 {total} 家供应商 · 独立管理 CosmoCoat 供应商档案与附件
           </p>
         </div>
-        <Link
-          href="/admin/cosmocoat-suppliers/new"
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
-          style={{ background: '#C9A96E', color: '#0A0805' }}
-        >
-          <Plus size={16} />
-          新建供应商
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            className="hidden"
+            onChange={e => handleImport(e.target.files)}
+          />
+          <button
+            type="button"
+            disabled={importing}
+            onClick={() => importInputRef.current?.click()}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+            style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
+          >
+            <Upload size={16} />
+            {importing ? '导入中...' : '导入表格'}
+          </button>
+          <Link
+            href="/admin/cosmocoat-suppliers/new"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+            style={{ background: '#C9A96E', color: '#0A0805' }}
+          >
+            <Plus size={16} />
+            新建供应商
+          </Link>
+        </div>
       </div>
 
       <div className="relative w-full max-w-md">

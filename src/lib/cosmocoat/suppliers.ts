@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
 
 export type CosSupplierRow = {
@@ -44,22 +45,35 @@ export async function getSupplierById(id: string) {
   return serializeSupplier(supplier)
 }
 
-export async function generateSupplierCode(): Promise<string> {
-  const latest = await prisma.cosSupplier.findFirst({
+function formatSupplierCode(value: number) {
+  return `SC${String(value).padStart(4, '0')}`
+}
+
+export async function generateSupplierCodeForTx(
+  tx: Pick<Prisma.TransactionClient, 'cosSupplier'>,
+  reservedCodes?: Set<string>,
+): Promise<string> {
+  const latest = await tx.cosSupplier.findFirst({
     where: { code: { startsWith: 'SC' } },
     orderBy: { code: 'desc' },
     select: { code: true },
   })
 
-  if (!latest?.code) return 'SC0001'
-
-  const match = latest.code.match(/^SC(\d+)$/)
-  if (match) {
-    const lastNumber = parseInt(match[1], 10)
-    return `SC${String(lastNumber + 1).padStart(4, '0')}`
+  let nextNumber = 1
+  if (latest?.code) {
+    const match = latest.code.match(/^SC(\d+)$/)
+    if (match) nextNumber = parseInt(match[1], 10) + 1
   }
 
-  return 'SC0001'
+  while (true) {
+    const code = formatSupplierCode(nextNumber)
+    if (!reservedCodes?.has(code)) return code
+    nextNumber += 1
+  }
+}
+
+export async function generateSupplierCode(): Promise<string> {
+  return generateSupplierCodeForTx(prisma)
 }
 
 export { supplierInclude }
