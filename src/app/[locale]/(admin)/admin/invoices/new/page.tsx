@@ -6,7 +6,9 @@ import { toast } from 'sonner'
 import { Link, useRouter } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { InvoiceLineItemsEditor, type InvoiceLineDraft } from '@/components/admin/invoices/InvoiceLineItemsEditor'
 import { computeTotals } from '@/lib/invoice/calc'
 
 type CustomerType = 'COMPANY' | 'INDIVIDUAL'
@@ -19,9 +21,8 @@ type CustomerOption = {
   billToAddress?: string | null
   billToEmail?: string | null
 }
-type LineRow = { description: string; quantity: string; unitPrice: string }
 
-const emptyLine = (): LineRow => ({ description: '', quantity: '1', unitPrice: '0' })
+const emptyLine = (): InvoiceLineDraft => ({ description: '', quantity: '1', unitPrice: '0' })
 
 export default function NewInvoicePage() {
   const t = useTranslations('admin.invoices')
@@ -35,7 +36,7 @@ export default function NewInvoicePage() {
   const [issueDate, setIssueDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [dueDate, setDueDate] = useState('')
   const [notes, setNotes] = useState('')
-  const [lines, setLines] = useState<LineRow[]>([emptyLine()])
+  const [lines, setLines] = useState<InvoiceLineDraft[]>([emptyLine()])
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -63,7 +64,7 @@ export default function NewInvoicePage() {
     return computeTotals(parsed, 0)
   }, [lines])
 
-  function updateLine(i: number, patch: Partial<LineRow>) {
+  function updateLine(i: number, patch: Partial<InvoiceLineDraft>) {
     setLines(prev => prev.map((row, idx) => (idx === i ? { ...row, ...patch } : row)))
   }
 
@@ -201,54 +202,23 @@ export default function NewInvoicePage() {
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader>
           <CardTitle>{t('lineItems')}</CardTitle>
-          <Button type="button" variant="outline" size="sm" onClick={() => setLines(l => [...l, emptyLine()])}>
-            {t('addLine')}
-          </Button>
         </CardHeader>
         <CardContent className="space-y-3">
-          {lines.map((line, i) => (
-            <div key={i} className="grid gap-2 sm:grid-cols-12 items-end">
-              <div className="sm:col-span-5">
-                <Input
-                  placeholder={t('description')}
-                  value={line.description}
-                  onChange={e => updateLine(i, { description: e.target.value })}
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder={t('quantity')}
-                  value={line.quantity}
-                  onChange={e => updateLine(i, { quantity: e.target.value })}
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder={t('unitPrice')}
-                  value={line.unitPrice}
-                  onChange={e => updateLine(i, { unitPrice: e.target.value })}
-                />
-              </div>
-              <div className="sm:col-span-2 text-sm py-2" style={{ color: 'var(--muted-foreground)' }}>
-                HKD {((parseFloat(line.quantity) || 0) * (parseFloat(line.unitPrice) || 0)).toFixed(2)}
-              </div>
-              <div className="sm:col-span-1">
-                {lines.length > 1 && (
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setLines(l => l.filter((_, idx) => idx !== i))}>
-                    ×
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
+          <InvoiceLineItemsEditor
+            amountLabel={t('amount')}
+            currency="HKD"
+            addLineLabel={t('addLine')}
+            removeLineLabel={t('removeLine')}
+            descriptionLabel={t('description')}
+            quantityLabel={t('quantity')}
+            unitPriceLabel={t('unitPrice')}
+            lines={lines}
+            onAddLine={() => setLines(current => [...current, emptyLine()])}
+            onRemoveLine={index => setLines(current => current.filter((_, currentIndex) => currentIndex !== index))}
+            onUpdateLine={updateLine}
+          />
           <div className="pt-4 border-t text-sm space-y-1" style={{ borderColor: '#2A2418' }}>
             <div className="flex justify-between"><span>{t('subtotal')}</span><span>HKD {totals.subtotal.toFixed(2)}</span></div>
             <div className="flex justify-between"><span>{t('tax')}</span><span>HKD {totals.taxAmount.toFixed(2)}</span></div>
@@ -260,12 +230,11 @@ export default function NewInvoicePage() {
       <Card>
         <CardContent className="pt-6">
           <label className="text-sm font-medium block mb-1">{t('notes')}</label>
-          <textarea
+          <Textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
             rows={3}
-            className="w-full rounded-md px-3 py-2 text-sm"
-            style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: '#F0EAD8' }}
+            className="min-h-24 resize-y"
           />
         </CardContent>
       </Card>
