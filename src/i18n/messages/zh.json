@@ -789,6 +789,12 @@
       "billToAddress": "開票地址",
       "issueDate": "開票日期",
       "dueDate": "到期日",
+      "dueDatePresetHint": "快速選項按開票日期計算；若開票日期留空，則以當天計算。手動修改到期日後會取消快速選項。",
+      "dueDatePreset": {
+        "MONTH_END": "月結",
+        "MONTH_END_30": "月結30天",
+        "MONTH_END_60": "月結60天"
+      },
       "total": "總計",
       "status": "狀態",
       "view": "查看",

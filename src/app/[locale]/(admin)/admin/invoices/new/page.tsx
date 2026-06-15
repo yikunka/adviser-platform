@@ -10,6 +10,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { InvoiceLineItemsEditor, type InvoiceLineDraft } from '@/components/admin/invoices/InvoiceLineItemsEditor'
 import { computeTotals } from '@/lib/invoice/calc'
+import {
+  computeInvoiceDueDate,
+  type InvoiceDueDatePreset,
+} from '@/lib/invoice/due-date-presets'
 
 type CustomerType = 'COMPANY' | 'INDIVIDUAL'
 type CustomerOption = {
@@ -23,6 +27,7 @@ type CustomerOption = {
 }
 
 const emptyLine = (): InvoiceLineDraft => ({ description: '', quantity: '1', unitPrice: '0' })
+const dueDatePresets: InvoiceDueDatePreset[] = ['MONTH_END', 'MONTH_END_30', 'MONTH_END_60']
 
 export default function NewInvoicePage() {
   const t = useTranslations('admin.invoices')
@@ -35,6 +40,7 @@ export default function NewInvoicePage() {
   const [billToEmail, setBillToEmail] = useState('')
   const [issueDate, setIssueDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [dueDate, setDueDate] = useState('')
+  const [dueDatePreset, setDueDatePreset] = useState<InvoiceDueDatePreset | null>(null)
   const [notes, setNotes] = useState('')
   const [lines, setLines] = useState<InvoiceLineDraft[]>([emptyLine()])
   const [saving, setSaving] = useState(false)
@@ -191,11 +197,47 @@ export default function NewInvoicePage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="text-sm font-medium block mb-1">{t('issueDate')}</label>
-              <Input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)} />
+              <Input
+                type="date"
+                value={issueDate}
+                onChange={e => {
+                  const nextIssueDate = e.target.value
+                  setIssueDate(nextIssueDate)
+                  if (dueDatePreset) {
+                    setDueDate(computeInvoiceDueDate(dueDatePreset, nextIssueDate))
+                  }
+                }}
+              />
             </div>
             <div>
               <label className="text-sm font-medium block mb-1">{t('dueDate')}</label>
-              <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+              <div className="mb-2 flex flex-wrap gap-2">
+                {dueDatePresets.map(preset => (
+                  <Button
+                    key={preset}
+                    type="button"
+                    size="sm"
+                    variant={dueDatePreset === preset ? 'default' : 'outline'}
+                    onClick={() => {
+                      setDueDatePreset(preset)
+                      setDueDate(computeInvoiceDueDate(preset, issueDate))
+                    }}
+                  >
+                    {t(`dueDatePreset.${preset}` as 'dueDatePreset.MONTH_END')}
+                  </Button>
+                ))}
+              </div>
+              <Input
+                type="date"
+                value={dueDate}
+                onChange={e => {
+                  setDueDate(e.target.value)
+                  setDueDatePreset(null)
+                }}
+              />
+              <p className="mt-2 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                {t('dueDatePresetHint')}
+              </p>
             </div>
           </div>
         </CardContent>

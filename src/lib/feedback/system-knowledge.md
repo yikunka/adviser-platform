@@ -99,7 +99,7 @@ Financial module can be enabled/disabled per company via the `financialEnabled` 
 Service invoicing for TCSP professional fees.
 - List with search, status filter
 - Invoice statuses: `DRAFT` → `SENT` → `PAID` / `CANCELLED`
-- Create invoices for either a linked client company or an approved personal KYC identity; billing fields are auto-filled from the selected customer and can be manually adjusted; line items support description, quantity, and unit price only (no tax-rate input on the form; tax defaults to 0%); the line-item editor uses a wider multi-line description field with quantity/unit-price controls grouped beside it
+- Create invoices for either a linked client company or an approved personal KYC identity; billing fields are auto-filled from the selected customer and can be manually adjusted; line items support description, quantity, and unit price only (no tax-rate input on the form; tax defaults to 0%); the line-item editor uses a wider multi-line description field with quantity/unit-price controls grouped beside it; the new-invoice form includes due-date quick options for `月结`, `月结30天`, and `月结60天`, which calculate and fill the due date from the issue date (or today if the issue date is empty)
 - Edit DRAFT invoices from the invoice detail page, including billing fields, dates, notes, and line items; status changes remain available there
 - Generate and download PDF; the PDF uses global 6AM Advisory sender contact details in the header and Bank of China (Hong Kong) / FPS payment instructions in the footer
 - Link invoices to client companies or approved individual KYC records

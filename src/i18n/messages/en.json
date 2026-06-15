@@ -789,6 +789,12 @@
       "billToAddress": "Bill to address",
       "issueDate": "Issue date",
       "dueDate": "Due date",
+      "dueDatePresetHint": "Quick options are calculated from the issue date, or from today if the issue date is empty. Editing the due date manually clears the preset.",
+      "dueDatePreset": {
+        "MONTH_END": "EOM",
+        "MONTH_END_30": "EOM +30",
+        "MONTH_END_60": "EOM +60"
+      },
       "total": "Total",
       "status": "Status",
       "view": "View",
