@@ -741,6 +741,7 @@
       "financialEnabledOff": "Financial module disabled.",
       "financialToggleFailed": "Failed to update financial module.",
       "arDate": "AR Date",
+      "arDeadline": "AR Deadline",
       "view": "View",
       "empty": "No companies found.",
       "newTitle": "New Company",

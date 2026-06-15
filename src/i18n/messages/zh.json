@@ -741,6 +741,7 @@
       "financialEnabledOff": "財務模組已停用。",
       "financialToggleFailed": "更新財務模組失敗。",
       "arDate": "周年申報日",
+      "arDeadline": "周年申報截止日",
       "view": "查看",
       "empty": "找不到公司。",
       "newTitle": "新增公司",
