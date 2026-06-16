@@ -9,7 +9,7 @@ import {
   assertCompanyAccessible,
   resolveCompanyAccess,
 } from '@/lib/company-access'
-import { assertFinancialManager, requireFinancialWriteRole } from '@/lib/financial/api-guard'
+import { assertFinancialManager, requireFinancialReadRole, requireFinancialWriteRole } from '@/lib/financial/api-guard'
 import { generateVoucherNo, parseYmdDate, periodFromDate, validateBalance } from '@/lib/financial/utils'
 
 function apiError(error: string, status = 400) {
@@ -27,7 +27,7 @@ function validateJournalLines(lines: { debit: number; credit: number }[]) {
 }
 
 export async function GET(req: NextRequest) {
-  const { session, error } = await requireFinancialWriteRole()
+  const { session, error } = await requireFinancialReadRole()
   if (error) return error
 
   const parsed = journalEntryFilterSchema.safeParse({

@@ -37,6 +37,7 @@ export async function guardFinancialCompany(
   if (
     options?.requireManager
     && session!.user.role !== 'SUPER_ADMIN'
+    && session!.user.role !== 'STAFF'
     && company.financialManagerId !== session!.user.id
   ) {
     return { error: apiError('Only the assigned financial manager can perform financial operations for this company.', 403) }
@@ -49,6 +50,11 @@ export function assertFinancialWriteAllowed(session: Session): NextResponse | nu
     return apiError('Staff 角色在财务模块仅可查看和导出，不能修改任何财务数据。', 403)
   }
   return null
+}
+
+export async function requireFinancialReadRole():
+Promise<{ session: Session; error?: undefined } | { session?: undefined; error: NextResponse }> {
+  return requireRole('STAFF', { adminMenu: 'financial' })
 }
 
 export async function requireFinancialWriteRole():

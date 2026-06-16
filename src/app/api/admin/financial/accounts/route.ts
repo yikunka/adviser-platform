@@ -12,7 +12,7 @@ import { roundMoney, signedLineAmount } from '@/lib/financial/utils'
 import { calculateYearToDateAmount } from '@/lib/financial/year-to-date'
 import { ensureDefaultChartOfAccounts } from '@/lib/financial/default-chart-of-accounts'
 import { isCreditNormalAccountType } from '@/lib/financial/account-types'
-import { assertFinancialManager, requireFinancialWriteRole } from '@/lib/financial/api-guard'
+import { assertFinancialManager, requireFinancialReadRole, requireFinancialWriteRole } from '@/lib/financial/api-guard'
 
 function apiError(error: string, status = 400) {
   return NextResponse.json({ error, toast: error }, { status })
@@ -79,7 +79,7 @@ async function clearEnteredBalances(
 }
 
 export async function GET(req: NextRequest) {
-  const { session, error } = await requireFinancialWriteRole()
+  const { session, error } = await requireFinancialReadRole()
   if (error) return error
   const companyId = req.nextUrl.searchParams.get('companyId')
   if (!companyId) return apiError('Company is required.')

@@ -7,7 +7,7 @@ import {
 import { assertCompaniesAccessible } from '@/lib/financial/report-groups'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
-import { requireFinancialWriteRole } from '@/lib/financial/api-guard'
+import { requireFinancialReadRole, requireFinancialWriteRole } from '@/lib/financial/api-guard'
 
 const reportGroupSchema = z.object({
   name: z.string().trim().min(1).max(200),
@@ -20,7 +20,7 @@ function apiError(error: string, status = 400) {
 }
 
 export async function GET() {
-  const { session, error } = await requireFinancialWriteRole()
+  const { session, error } = await requireFinancialReadRole()
   if (error) return error
 
   const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
