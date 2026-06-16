@@ -313,7 +313,7 @@ Manufacturing batch tracking.
 - Detail page **QC** section: auto-loads recipe QC test checkboxes (黏度, 百格, 水煮80C/30M, 湿油外观, 干板外观 — viscosity checkbox shows recipe viscosity when set), optional custom test standard, and per-item result inputs (only for checked tests); all editable on the order
 - Print production order: A4 sheet with enlarged text, no page header/footer, darker high-contrast print colors, a material table constrained to page margins, and material names omitted while keeping material codes, ratios, required weight, and actual weight
 - Print output includes structured 生产工艺 and QC sections from the order's saved process/QC fields; QC print layout lists each selected test item on its own row (测试项目 / 测试结果) with a bordered result box per item (pre-filled when saved, blank for handwriting on paper); optional custom test standard appears as an additional row
-- Production-order list rows have a product-label print action next to edit; it prints a 100mm x 70mm label with product name (editable before printing), production order number, recipe code, recipe shelf life, and weight (editable before printing)
+- Production-order list rows have a product-label print action next to edit; it prints a 100mm x 70mm black-and-white thermal-paper label headed by the product code, with product name (editable before printing), production order number, smaller recipe code / recipe shelf-life text, and weight (editable before printing)
 - Output: creates semifinished product inventory entries on completion
 
 ### Semifinished Products (`/admin/cosmocoat-product-semifinished`)

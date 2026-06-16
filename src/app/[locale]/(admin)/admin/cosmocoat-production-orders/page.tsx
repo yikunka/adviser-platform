@@ -31,6 +31,7 @@ type ProductLabelDraft = {
 }
 
 type ProductLabelPrintData = {
+  productCode: string
   productName: string
   orderCode: string
   recipeCode: string
@@ -82,15 +83,15 @@ function ProductLabelPrintView({ label }: { label: ProductLabelPrintData }) {
   return (
     <div id="cosmocoat-product-label-print-area">
       <div className="product-label-card">
-        <div className="product-label-title">产品标签</div>
+        <div className="product-label-code">{label.productCode || '—'}</div>
         <div className="product-label-product">{label.productName || '—'}</div>
         <div className="product-label-grid">
           <span>生产单号</span>
           <strong>{label.orderCode || '—'}</strong>
-          <span>配方号</span>
-          <strong>{label.recipeCode || '—'}</strong>
-          <span>保质期</span>
-          <strong>{label.shelfLife}</strong>
+          <span className="product-label-recipe-text">配方号</span>
+          <strong className="product-label-recipe-text">{label.recipeCode || '—'}</strong>
+          <span className="product-label-recipe-text">保质期</span>
+          <strong className="product-label-recipe-text">{label.shelfLife}</strong>
           <span>重量</span>
           <strong>{label.weight || '—'}</strong>
         </div>
@@ -182,6 +183,7 @@ export default function AdminCosmoCoatProductionOrdersPage() {
   function printProductLabel() {
     if (!labelDraft) return
     const nextLabel = {
+      productCode: labelDraft.order.factoryProduct.productCode,
       productName: labelDraft.productName.trim(),
       orderCode: labelDraft.order.code,
       recipeCode: labelDraft.order.recipe.code,
@@ -240,7 +242,7 @@ export default function AdminCosmoCoatProductionOrdersPage() {
                 padding: 4mm;
                 box-sizing: border-box;
                 font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
-                color: #111 !important;
+                color: #000 !important;
                 background: #fff !important;
                 print-color-adjust: exact;
                 -webkit-print-color-adjust: exact;
@@ -248,13 +250,16 @@ export default function AdminCosmoCoatProductionOrdersPage() {
 
               #cosmocoat-product-label-print-area * {
                 box-sizing: border-box;
-                color: #111 !important;
+                color: #000 !important;
+                background: #fff !important;
+                box-shadow: none !important;
+                text-shadow: none !important;
               }
 
               .product-label-card {
                 width: 100%;
                 height: 100%;
-                border: 1.6pt solid #111;
+                border: 1.6pt solid #000;
                 padding: 4mm;
                 display: flex;
                 flex-direction: column;
@@ -262,13 +267,16 @@ export default function AdminCosmoCoatProductionOrdersPage() {
                 gap: 2.5mm;
               }
 
-              .product-label-title {
+              .product-label-code {
                 text-align: center;
-                font-size: 12pt;
-                font-weight: 700;
+                font-size: 16pt;
+                font-weight: 800;
                 letter-spacing: 0;
-                border-bottom: 1pt solid #111;
+                border-bottom: 1pt solid #000;
                 padding-bottom: 2mm;
+                line-height: 1.1;
+                word-break: break-word;
+                overflow-wrap: anywhere;
               }
 
               .product-label-product {
@@ -283,8 +291,8 @@ export default function AdminCosmoCoatProductionOrdersPage() {
               .product-label-grid {
                 display: grid;
                 grid-template-columns: 22mm 1fr;
-                border-top: 1pt solid #111;
-                border-left: 1pt solid #111;
+                border-top: 1pt solid #000;
+                border-left: 1pt solid #000;
                 font-size: 10pt;
                 line-height: 1.25;
               }
@@ -293,15 +301,19 @@ export default function AdminCosmoCoatProductionOrdersPage() {
               .product-label-grid strong {
                 min-height: 8mm;
                 padding: 1.6mm 2mm;
-                border-right: 1pt solid #111;
-                border-bottom: 1pt solid #111;
+                border-right: 1pt solid #000;
+                border-bottom: 1pt solid #000;
                 word-break: break-word;
                 overflow-wrap: anywhere;
               }
 
               .product-label-grid span {
                 font-weight: 700;
-                background: #f1f1f1 !important;
+              }
+
+              .product-label-grid .product-label-recipe-text {
+                font-size: 8pt;
+                font-weight: 500;
               }
             }
 
