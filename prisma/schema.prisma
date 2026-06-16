@@ -2981,6 +2981,7 @@ model BankReconciliation {
 
 enum FeatureRequestStatus {
   PENDING
+  ACCEPTED
   IN_PROGRESS
   DONE
   REJECTED

@@ -125,7 +125,7 @@ Client portal account management.
 ### 9. Requirements / Feedback (`/admin/feedback`)
 AI-powered feature request management. **SUPER_ADMIN only.**
 - Lists all submitted feature requests with title (LLM-generated), summary, priority, status, submission date
-- Statuses: `PENDING`, `IN_PROGRESS`, `DONE`, `REJECTED`
+- Statuses: `PENDING` → `ACCEPTED` → `IN_PROGRESS` → `DONE` / `REJECTED`; PENDING items are internal-only and not visible to external dev-tool systems; admin clicks Accept to promote to ACCEPTED before external pickup
 - View full conversation history for each submission
 - **Model Config** tab: configure the LLM provider (Anthropic / DeepSeek / 阿里百炼), model, and API key used for the "提交需求" widget
 - The "提交需求" floating button appears at the top-right of every admin page (below the header); it opens a chat dialog that clarifies the request and saves a structured summary
@@ -341,7 +341,7 @@ Product application method documentation (產品配套工藝書).
 - In the Process Flow section of print and Word export, the table uses a fixed narrow label column and wide content column so long process notes and full process documents stay readable in both browser print preview and downloaded Word files
 - Every process-kit detail page includes a standardized operation notes section at the bottom covering pretreatment, filtering, recommended spray environment, coating storage conditions, disclaimer, and first-article testing requirements; these standardized notes are omitted from A4 print and Word export so exported documents contain only the core process-kit content
 - Test records (detail page only, not in print/Word): type (`PERFORMANCE`, `DURABILITY`, `ADHESION`, `COLOR_STABILITY`, `BOND_STRENGTH`, `OTHER`), result (`PASSED`, `FAILED`, `PENDING`), test date, tester selected from active CosmoCoat Employee Management `TECHNICAL` employees, optional notes, and one internal-only JPG/PNG/WEBP report image stored as the report link
-- **Change approval workflow**: non-`SUPER_ADMIN` roles cannot directly modify or delete existing process kits; updating or deleting a saved kit creates one pending change request (`UPDATE` or `DELETE`) per kit for super-admin review, while creating a new process kit still takes effect immediately; the process-kit list page shows a **待审批变更** panel for super admins with approve/reject actions, change summaries, and before-vs-after diff rows; non-super-admin users see **提交审批** on the detail page, and product-combination / process-flow / test-record edits stay local in the page until submitted for approval
+- **Change approval workflow**: only `SUPER_ADMIN` can see and operate process-kit pending-change features, including the list-page **待审批变更** panel, approve/reject actions, pending-request status, and before-vs-after diff details; non-`SUPER_ADMIN` users cannot modify or delete existing process kits and see saved kits as read-only, while creating a new process kit still takes effect immediately
 
 ### Customers (`/admin/cosmocoat-customers`)
 Unified customer registry for CosmoCoat manufacturing clients (raw material purchases, recipe services, finished goods).

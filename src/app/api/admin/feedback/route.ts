@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const cursor = req.nextUrl.searchParams.get('cursor') || undefined
 
   const records = await prisma.featureRequest.findMany({
-    where: status ? { status: status as 'PENDING' | 'IN_PROGRESS' | 'DONE' | 'REJECTED' } : undefined,
+    where: status ? { status: status as 'PENDING' | 'ACCEPTED' | 'IN_PROGRESS' | 'DONE' | 'REJECTED' } : undefined,
     orderBy: { createdAt: 'desc' },
     take: limit + 1,
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),

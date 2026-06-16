@@ -17,7 +17,8 @@ export async function GET(req: NextRequest, { params }: Params) {
   return NextResponse.json({ requirement })
 }
 
-const VALID_STATUSES = ['PENDING', 'IN_PROGRESS', 'DONE', 'REJECTED']
+// PENDING is internal-only — external systems may only set ACCEPTED and beyond
+const VALID_STATUSES = ['ACCEPTED', 'IN_PROGRESS', 'DONE', 'REJECTED']
 
 // PATCH /api/devtool/requirements/:id  — update status
 // Body: { "status": "IN_PROGRESS" }
@@ -43,7 +44,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const updated = await prisma.featureRequest.update({
     where: { id },
-    data: { status: status as 'PENDING' | 'IN_PROGRESS' | 'DONE' | 'REJECTED' },
+    data: { status: status as 'ACCEPTED' | 'IN_PROGRESS' | 'DONE' | 'REJECTED' },
   })
   return NextResponse.json({ requirement: updated })
 }

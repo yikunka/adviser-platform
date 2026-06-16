@@ -9,7 +9,7 @@ import { requireFeedbackAccess, prisma } from '@/lib/feedback/adapter'
 // ─────────────────────────────────────────────
 
 const updateSchema = z.object({
-  status: z.enum(['PENDING', 'IN_PROGRESS', 'DONE', 'REJECTED']).optional(),
+  status: z.enum(['PENDING', 'ACCEPTED', 'IN_PROGRESS', 'DONE', 'REJECTED']).optional(),
 })
 
 export async function GET(

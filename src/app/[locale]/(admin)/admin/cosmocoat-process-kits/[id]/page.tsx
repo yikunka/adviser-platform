@@ -766,6 +766,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   })
 
   const hasOther = selectedMaterials.includes('OTHER')
+  const isExistingReadOnly = !isNew && !canDirectEdit
   const hardenerProducts = useMemo(
     () => products.filter(product => matchesAccessoryProduct(product, 'hardener')),
     [products],
@@ -925,7 +926,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       }
       const kit = data.kit as LoadedKit
       setCanDirectEdit(Boolean(data.canDirectEdit))
-      setPendingChangeRequest(data.pendingChangeRequest ?? null)
+      setPendingChangeRequest(Boolean(data.canDirectEdit) ? (data.pendingChangeRequest ?? null) : null)
       setCode(kit.code)
       setName(kit.name)
       setDescription(kit.description ?? '')
@@ -1183,7 +1184,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
       toast.success(
         isNew
           ? t('created')
-          : (res.status === 202 ? '审批已提交，等待超级管理员处理' : t('saved')),
+          : t('saved'),
       )
       if (isNew && data.kit?.id) {
         router.replace(`/admin/cosmocoat-process-kits/${data.kit.id}`)
@@ -1754,7 +1755,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
               {isNew ? t('createTitle') : t('detailTitle')}
             </h1>
             <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-              {isNew ? t('createSubtitle') : `${code} · ${name}${!canDirectEdit ? ' · 修改需超级管理员审批' : ''}`}
+              {isNew ? t('createSubtitle') : `${code} · ${name}${isExistingReadOnly ? ' · 仅 SUPER_ADMIN 可编辑' : ''}`}
             </p>
           </div>
         </div>
@@ -1780,32 +1781,27 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
               </button>
             </>
           )}
-          <button
-            type="button"
-            onClick={saveKit}
-            disabled={saving || (!isNew && !!pendingChangeRequest && !canDirectEdit)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
-            style={{ background: '#C9A96E', color: '#0A0805' }}
-          >
-            <Save size={14} /> {saving ? t('saving') : (isNew ? t('create') : (canDirectEdit ? t('save') : '提交审批'))}
-          </button>
+          {(isNew || canDirectEdit) && (
+            <button
+              type="button"
+              onClick={saveKit}
+              disabled={saving || (!isNew && !!pendingChangeRequest && !canDirectEdit)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+              style={{ background: '#C9A96E', color: '#0A0805' }}
+            >
+              <Save size={14} /> {saving ? t('saving') : (isNew ? t('create') : t('save'))}
+            </button>
+          )}
         </div>
       </div>
 
-      {!isNew && pendingChangeRequest && !canDirectEdit && (
-        <div className="rounded-lg px-4 py-3 text-sm" style={{ background: 'rgba(201,169,110,0.12)', border: '1px solid rgba(201,169,110,0.25)', color: '#C9A96E' }}>
-          该工艺书已有待审批的{pendingChangeRequest.action === 'DELETE' ? '删除' : '修改'}请求（提交人：
-          {pendingChangeRequest.requestedBy.nameEn?.trim() || pendingChangeRequest.requestedBy.email}，
-          {new Date(pendingChangeRequest.createdAt).toLocaleString('zh-CN')}），请等待超级管理员处理后再提交新的变更。
+      {isExistingReadOnly && (
+        <div className="rounded-lg px-4 py-3 text-sm" style={{ background: 'rgba(148,163,184,0.1)', border: '1px solid rgba(148,163,184,0.22)', color: '#94a3b8' }}>
+          当前工艺书对非 SUPER_ADMIN 账号为只读。
         </div>
       )}
 
-      {!isNew && !canDirectEdit && !pendingChangeRequest && (
-        <div className="rounded-lg px-4 py-3 text-sm" style={{ background: 'rgba(201,169,110,0.08)', border: '1px solid rgba(201,169,110,0.2)', color: '#9A8060' }}>
-          您的角色修改或删除工艺书时需提交审批，由超级管理员批准后才会生效。产品组合、工艺流程和测试记录会先保存在当前页面，点击“提交审批”后统一送审。
-        </div>
-      )}
-
+      <div className="space-y-6" style={isExistingReadOnly ? { pointerEvents: 'none', opacity: 0.72 } : undefined}>
       <div style={card} className="p-4 space-y-4">
         <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>{t('basicInfo')}</h3>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -2903,6 +2899,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
         title={standardizedOperation.title}
         items={standardizedOperation.items}
       />
+      </div>
       </div>
     </>
   )

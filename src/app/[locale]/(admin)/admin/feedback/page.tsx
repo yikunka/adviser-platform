@@ -15,6 +15,7 @@ import {
   ExternalLink,
   Settings2,
   CheckCircle,
+  CheckCheck,
   AlertCircle,
   Loader2,
   Save,
@@ -42,7 +43,7 @@ type FeatureRequest = {
   priority: string
   pageUrl: string
   pageTitle: string
-  status: 'PENDING' | 'IN_PROGRESS' | 'DONE' | 'REJECTED'
+  status: 'PENDING' | 'ACCEPTED' | 'IN_PROGRESS' | 'DONE' | 'REJECTED'
   userEmail: string | null
   userName: string | null
   createdAt: string
@@ -53,6 +54,7 @@ type FeatureRequest = {
 type FeatureRequestDetail = FeatureRequest & {
   conversation: ChatMessage[]
 }
+
 
 // API only returns saved values + key hints — options come from local import
 type SavedConfig = {
@@ -67,17 +69,19 @@ type SavedConfig = {
 
 const STATUS_OPTIONS = [
   { value: 'ALL', label: '全部状态' },
-  { value: 'PENDING', label: '待处理' },
+  { value: 'PENDING', label: '待审核' },
+  { value: 'ACCEPTED', label: '已接受' },
   { value: 'IN_PROGRESS', label: '处理中' },
   { value: 'DONE', label: '已完成' },
   { value: 'REJECTED', label: '已拒绝' },
 ]
 
 const STATUS_META: Record<string, { bg: string; text: string; label: string }> = {
-  PENDING: { bg: '#F59E0B22', text: '#F59E0B', label: '待处理' },
+  PENDING:     { bg: '#F59E0B22', text: '#F59E0B', label: '待审核' },
+  ACCEPTED:    { bg: '#a78bfa22', text: '#a78bfa', label: '已接受' },
   IN_PROGRESS: { bg: '#38bdf822', text: '#38bdf8', label: '处理中' },
-  DONE: { bg: '#10b98122', text: '#10b981', label: '已完成' },
-  REJECTED: { bg: '#ef444422', text: '#ef4444', label: '已拒绝' },
+  DONE:        { bg: '#10b98122', text: '#10b981', label: '已完成' },
+  REJECTED:    { bg: '#ef444422', text: '#ef4444', label: '已拒绝' },
 }
 
 const PRIORITY_COLOR: Record<string, string> = {
@@ -467,7 +471,7 @@ function ConfigTab() {
           >
             <p className="font-medium" style={{ color: '#9F927B' }}>开发工具接入方式</p>
             <p>① 探测服务器：<code className="font-mono" style={{ color: '#C9A96E' }}>GET /api/devtool/info</code></p>
-            <p>② 查询需求：<code className="font-mono" style={{ color: '#C9A96E' }}>GET /api/devtool/requirements?status=PENDING</code></p>
+            <p>② 查询需求：<code className="font-mono" style={{ color: '#C9A96E' }}>GET /api/devtool/requirements?status=ACCEPTED</code>（PENDING 仅内部可见）</p>
             <p>③ 更新状态：<code className="font-mono" style={{ color: '#C9A96E' }}>PATCH /api/devtool/requirements/:id  {'{"status":"IN_PROGRESS"}'}</code></p>
             <p>④ 请求 header：<code className="font-mono" style={{ color: '#C9A96E' }}>Authorization: Bearer &lt;key&gt;</code></p>
           </div>
@@ -633,11 +637,11 @@ function RequirementsTab() {
       setBatchCopying(false)
       return
     }
-    const pendingIds = selected.filter(i => i.status === 'PENDING').map(i => i.id)
-    await Promise.all(pendingIds.map(id => updateStatus(id, 'IN_PROGRESS', true)))
+    const acceptedIds = selected.filter(i => i.status === 'ACCEPTED').map(i => i.id)
+    await Promise.all(acceptedIds.map(id => updateStatus(id, 'IN_PROGRESS', true)))
     setBatchCopying(false)
     setSelectedIds(new Set())
-    const updatedCount = pendingIds.length
+    const updatedCount = acceptedIds.length
     toast.success(
       updatedCount > 0
         ? `已复制 ${selected.length} 个任务，${updatedCount} 个需求状态已更新为「处理中」`
@@ -652,7 +656,7 @@ function RequirementsTab() {
       toast.error('无法访问剪贴板，请检查浏览器权限')
       return
     }
-    if (item.status === 'PENDING') {
+    if (item.status === 'ACCEPTED') {
       await updateStatus(item.id, 'IN_PROGRESS', true)
       toast.success('已复制到剪贴板，状态已更新为「处理中」')
     } else {
@@ -817,6 +821,20 @@ function RequirementsTab() {
                       </TableCell>
                       <TableCell onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-1">
+                          {item.status === 'PENDING' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 gap-1 text-xs font-medium"
+                              title="接受需求，外部系统可见"
+                              disabled={updatingId === item.id}
+                              style={{ color: '#a78bfa' }}
+                              onClick={() => updateStatus(item.id, 'ACCEPTED')}
+                            >
+                              <CheckCheck size={13} />
+                              接受
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -850,6 +868,21 @@ function RequirementsTab() {
             已选 {selectedIds.size} 个需求
           </span>
           <div className="w-px h-4" style={{ background: '#3A3020' }} />
+          {items.filter(i => selectedIds.has(i.id) && i.status === 'PENDING').length > 0 && (
+            <Button
+              size="sm"
+              disabled={batchCopying || updatingId !== null}
+              onClick={async () => {
+                const pendingSelected = items.filter(i => selectedIds.has(i.id) && i.status === 'PENDING')
+                await Promise.all(pendingSelected.map(i => updateStatus(i.id, 'ACCEPTED', true)))
+                toast.success(`已接受 ${pendingSelected.length} 个需求`)
+              }}
+              style={{ background: '#a78bfa22', color: '#a78bfa', border: '1px solid #a78bfa55', borderRadius: 999 }}
+            >
+              <CheckCheck size={13} className="mr-1.5" />
+              批量接受
+            </Button>
+          )}
           <Button
             size="sm"
             disabled={batchCopying}

@@ -303,6 +303,7 @@ export default function AdminCosmoCoatProcessKitsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [canDirectEdit, setCanDirectEdit] = useState(false)
   const [pendingChangeRequests, setPendingChangeRequests] = useState<PendingChangeRequest[]>([])
+  const canManageExistingKits = canDirectEdit
 
   const statusLabel = useCallback((status: ProcessKitRow['status']) => {
     return t(`statuses.${status}`)
@@ -448,7 +449,7 @@ export default function AdminCosmoCoatProcessKitsPage() {
         toast.error(data.error ?? t('deleteFailed'))
         return
       }
-      toast.success(res.status === 202 ? '删除审批已提交' : t('deleted'))
+      toast.success(t('deleted'))
       fetchItems()
     } catch {
       toast.error(t('deleteFailed'))
@@ -601,23 +602,27 @@ export default function AdminCosmoCoatProcessKitsPage() {
                     <td style={td}>{new Date(kit.updatedAt).toLocaleDateString()}</td>
                     <td style={{ ...td, textAlign: 'right' }}>
                       <div className="flex items-center justify-end gap-1">
-                        <Link
-                          href={`/admin/cosmocoat-process-kits/${kit.id}`}
-                          onClick={e => e.stopPropagation()}
-                          className="p-1.5 rounded-md inline-flex"
-                          style={{ color: 'var(--muted-foreground)' }}
-                        >
-                          <Pencil size={14} />
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={e => { e.stopPropagation(); deleteKit(kit) }}
-                          disabled={deletingId === kit.id}
-                          className="p-1.5 rounded-md disabled:opacity-40"
-                          style={{ color: '#ef4444' }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        {canManageExistingKits && (
+                          <>
+                            <Link
+                              href={`/admin/cosmocoat-process-kits/${kit.id}`}
+                              onClick={e => e.stopPropagation()}
+                              className="p-1.5 rounded-md inline-flex"
+                              style={{ color: 'var(--muted-foreground)' }}
+                            >
+                              <Pencil size={14} />
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={e => { e.stopPropagation(); deleteKit(kit) }}
+                              disabled={deletingId === kit.id}
+                              className="p-1.5 rounded-md disabled:opacity-40"
+                              style={{ color: '#ef4444' }}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

@@ -6,11 +6,9 @@ import { getProcessKitById } from '@/lib/cosmocoat/process-kits'
 import {
   applyProcessKitDelete,
   applyProcessKitUpdate,
-  createProcessKitChangeRequest,
   findPendingProcessKitChangeRequest,
   ProcessKitChangeRequestError,
   rejectPendingProcessKitChangeRequests,
-  validateProcessKitPatch,
 } from '@/lib/cosmocoat/process-kit-change-requests'
 import { processKitPatchSchema } from '@/lib/cosmocoat/process-kit-patch-schema'
 
@@ -26,15 +24,16 @@ export async function GET(
   if (error) return error
 
   const { id } = await params
+  const isSuperAdmin = session!.user.role === 'SUPER_ADMIN'
   try {
     const [kit, pendingChangeRequest] = await Promise.all([
       getProcessKitById(id),
-      findPendingProcessKitChangeRequest(id),
+      isSuperAdmin ? findPendingProcessKitChangeRequest(id) : Promise.resolve(null),
     ])
     if (!kit) return NextResponse.json({ error: '工艺书不存在' }, { status: 404 })
     return NextResponse.json({
       kit,
-      canDirectEdit: session!.user.role === 'SUPER_ADMIN',
+      canDirectEdit: isSuperAdmin,
       pendingChangeRequest: pendingChangeRequest
         ? {
             id: pendingChangeRequest.id,
@@ -71,30 +70,7 @@ export async function PATCH(
   if (!current) return NextResponse.json({ error: '工艺书不存在' }, { status: 404 })
 
   if (session!.user.role !== 'SUPER_ADMIN') {
-    try {
-      await validateProcessKitPatch(id, parsed.data, current)
-      const changeRequest = await createProcessKitChangeRequest({
-        kitId: id,
-        action: 'UPDATE',
-        payload: parsed.data,
-        requestedById: session!.user.id,
-      })
-      return NextResponse.json(
-        {
-          changeRequest,
-          message: '变更已提交，等待超级管理员审批',
-        },
-        { status: 202 },
-      )
-    } catch (err) {
-      if (err instanceof ProcessKitChangeRequestError) {
-        return NextResponse.json({ error: err.message }, { status: err.status })
-      }
-      if (isMissingTable(err)) {
-        return NextResponse.json({ error: '工艺书审批表不存在，请先运行数据库迁移' }, { status: 503 })
-      }
-      throw err
-    }
+    return NextResponse.json({ error: '仅 SUPER_ADMIN 可修改已有工艺书' }, { status: 403 })
   }
 
   try {
@@ -127,28 +103,7 @@ export async function DELETE(
   if (!current) return NextResponse.json({ error: '工艺书不存在' }, { status: 404 })
 
   if (session!.user.role !== 'SUPER_ADMIN') {
-    try {
-      const changeRequest = await createProcessKitChangeRequest({
-        kitId: id,
-        action: 'DELETE',
-        requestedById: session!.user.id,
-      })
-      return NextResponse.json(
-        {
-          changeRequest,
-          message: '删除请求已提交，等待超级管理员审批',
-        },
-        { status: 202 },
-      )
-    } catch (err) {
-      if (err instanceof ProcessKitChangeRequestError) {
-        return NextResponse.json({ error: err.message }, { status: err.status })
-      }
-      if (isMissingTable(err)) {
-        return NextResponse.json({ error: '工艺书审批表不存在，请先运行数据库迁移' }, { status: 503 })
-      }
-      throw err
-    }
+    return NextResponse.json({ error: '仅 SUPER_ADMIN 可删除已有工艺书' }, { status: 403 })
   }
 
   try {
