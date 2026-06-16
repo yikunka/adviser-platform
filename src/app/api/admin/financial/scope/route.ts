@@ -15,9 +15,6 @@ export async function GET() {
     where: {
       financialEnabled: true,
       ...(buildCompanyAccessWhere(access) ?? {}),
-      ...(session!.user.role === 'SUPER_ADMIN'
-        ? {}
-        : { financialManagerId: session!.user.id }),
     },
     orderBy: [{ nameEn: 'asc' }],
     select: {
