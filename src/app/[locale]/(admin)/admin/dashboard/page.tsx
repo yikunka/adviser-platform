@@ -51,12 +51,14 @@ export default async function AdminDashboardPage() {
     prisma.company.count({ where: { status: 'ACTIVE' } }),
     prisma.keyPerson.count({ where: { kycStatus: 'SUBMITTED' } }),
     prisma.aMLAlert.count({ where: { resolution: 'PENDING' } }),
-    prisma.company.count({
+    prisma.annualFiling.count({
       where: {
-        annualReturnDate: {
+        status: { in: ['NOT_STARTED', 'IN_PREPARATION', 'OVERDUE'] },
+        filingDeadline: {
           gte: today,
           lte: thirtyDaysFromNow,
         },
+        company: { status: 'ACTIVE' },
       },
     }),
     prisma.sfsOrder.count(),

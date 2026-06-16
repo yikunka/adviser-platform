@@ -734,6 +734,7 @@
       "companyCode": "Company Code",
       "companyName": "Company Name",
       "companyNumber": "Company No.",
+      "incorporationDate": "Incorporation Date",
       "status": "Status",
       "client": "Client",
       "financialModule": "Finance",

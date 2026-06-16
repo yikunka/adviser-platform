@@ -19,7 +19,7 @@ Admin left navigation is grouped by module. Menu groups can be collapsed/expande
 ## Adviser Admin Console
 
 ### 1. Dashboard (`/admin`)
-Key metrics at a glance are grouped into a distinct Adviser corporate-services module: active companies count, pending KYC submissions, open AML alerts, annual returns due within 30 days. Each metric links to the relevant module.
+Key metrics at a glance are grouped into a distinct Adviser corporate-services module: active companies count, pending KYC submissions, open AML alerts, annual filings due within 30 days. Each metric links to the relevant module.
 
 Includes a visually separate SFS Diamond order statistics module showing total SFS orders, active orders, orders created in the last 30 days, and distribution by SFS order status (`PENDING`, `QUOTED`, `CONFIRMED`, `COMPLETED`, `CANCELLED`).
 
@@ -27,15 +27,17 @@ Includes a separate CosmoCoat operations module showing pending non-super-admin 
 
 ### 2. Companies (`/admin/companies`)
 Manages the full portfolio of client companies.
-- List with search (name / code / registration number), status badge, assigned client, annual return deadline (registration date + 42 days), financial-module toggle
+- List with search (name / code / registration number), status badge, assigned client, company incorporation date, financial-module toggle
 - Company statuses: `ACTIVE`, `DORMANT`, `STRUCK_OFF`, `DEREGISTERED`
-- Company types: `HONG_KONG`, `BVI`, `CAYMAN`, `MARSHALL`
-- Auto-generates company codes by type: `AA#####` (HK), `BV#####` (BVI), `CA#####` (Cayman), `MS#####` (Marshall)
+- Company-code jurisdiction types: `HONG_KONG`, `BVI`, `CAYMAN`, `MARSHALL`
+- Auto-generates company codes by company-code jurisdiction type: `AA#####` (HK), `BV#####` (BVI), `CA#####` (Cayman), `MS#####` (Marshall)
+- Company detail editing includes a separate **Company Type** field for legal/entity category values such as `private company limited by shares`, `public company limited by shares`, `company limited by guarantee`, `branch office`, `BVI`, `CAYMAN`, `BERMUDA`, and `MARSHALL`; this field is independent from the company-code type and does not affect code generation
 - Create new company; assign client user or pending-client email; assign staff
 - Companies with the financial module enabled can optionally be assigned a **Financial Manager** from existing active back-office staff accounts; assignment can be left blank and filled later from the company edit form
 
 **Company detail sub-pages** (`/admin/companies/[id]/...`):
 - **Directors** — Register of Directors (ROD): add / edit / remove; date of appointment / cessation
+- **Ownership Structure** — company detail People page shows a recursive shareholder structure chart above Directors; company shareholders are visually distinguished from natural persons and expanded when their member name matches another company record
 - **Members** — Register of Members (ROM): shareholders with share class, share count, transfer history
 - **Significant Controllers** — ROSC entries
 - **Designated Representatives** — company representatives
@@ -49,7 +51,7 @@ Manages the full portfolio of client companies.
 
 Company-level staff access: multiple staff users can be assigned to a company via `company_staff_assignments`.
 
-### 3. KYC Queue (`/admin/kyc`)
+### 3. KYC Queue (`/admin/kyc`; Chinese admin nav label: 自然人管理)
 Know Your Customer compliance workflow.
 - List with search; columns: KYC code, name, status, PEP indicator, AML risk level, approval date
 - In the queue list status column, records with missing required KYC files show a red missing marker for ID proof, address proof, and/or declaration when the latest file for that type is absent or rejected
@@ -141,7 +143,7 @@ Routes under `/[locale]/(client)/`. Accessible by `CLIENT` role users only.
 - Summary cards for assigned companies with quick links
 - KYC status badge (own submission status)
 - Last 5 unread notifications
-- Upcoming annual return dates
+- Assigned companies list no longer shows company master-file annual return dates
 
 ### My Companies (`/companies`)
 - List of companies linked to the logged-in client

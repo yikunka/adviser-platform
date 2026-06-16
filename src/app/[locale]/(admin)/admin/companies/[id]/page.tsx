@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { DatePickerPopover } from '@/components/ui/date-picker-popover'
 import { BUSINESS_NATURE_OPTIONS } from '@/lib/kyc/kycFieldOptions'
 import { type NAR1UiAnalysisResult } from '@/lib/company/nar1-analysis'
+import { COMPANY_LEGAL_TYPE_VALUES, type CompanyLegalType } from '@/lib/company/company-legal-type'
 
 // ── KYC Person type (for pre-fill picker) ────────────────────────────────────
 
@@ -146,6 +147,7 @@ type Company = {
   companyNumber: string | null
   companyCode: string | null
   companyType: string | null
+  companyLegalType: CompanyLegalType | null
   clientUserId: string | null
   pendingClientEmail: string | null
   clientUser: { nameEn: string; email: string } | null
@@ -157,13 +159,27 @@ type Company = {
   businessNature: string | null
   status: string
   financialEnabled: boolean
-  annualReturnDate: string | null
   directors: Director[]
   members: Member[]
   significantControllers: Controller[]
   designatedReps: DesignatedRep[]
   documents: { id: string; name: string; documentType: string; createdAt: string; notes: string | null; effectiveDate: string | null }[]
   fileCases: FileCase[]
+}
+
+type OwnershipNode = {
+  id: string
+  type: 'COMPANY' | 'PERSON'
+  nameEn: string
+  nameZh: string | null
+  companyId: string | null
+  companyNumber: string | null
+  keyPersonId: string | null
+  shareClass: string | null
+  sharesHeld: number | null
+  ownershipPercent: number | null
+  circular: boolean
+  children: OwnershipNode[]
 }
 
 type ModalState =
@@ -204,26 +220,6 @@ const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.75rem',
 function fmt(d: string | null | undefined) {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('en-HK')
-}
-
-function fmtMonthDay(d: string | null | undefined) {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-HK', { month: 'short', day: 'numeric' })
-}
-
-function monthDayParts(d: string | null | undefined) {
-  if (!d) return { month: '', day: '' }
-  const date = new Date(d)
-  return {
-    month: String(date.getUTCMonth() + 1).padStart(2, '0'),
-    day: String(date.getUTCDate()).padStart(2, '0'),
-  }
-}
-
-function annualReturnIso(month: string, day: string, existing: string | null | undefined) {
-  if (!month || !day) return null
-  const year = existing ? new Date(existing).getUTCFullYear() : new Date().getFullYear()
-  return new Date(Date.UTC(year, Number(month) - 1, Number(day))).toISOString()
 }
 
 function DateInput({ value, onChange, required, disabled }: {
@@ -326,6 +322,89 @@ function YearGroupedDocs({
   )
 }
 
+function OwnershipNodeCard({ node, depth = 0 }: { node: OwnershipNode; depth?: number }) {
+  const isCompany = node.type === 'COMPANY'
+  const hasMeta = node.sharesHeld != null || node.ownershipPercent != null || node.shareClass
+
+  return (
+    <div className="relative">
+      {depth > 0 ? (
+        <div className="absolute left-0 top-0 h-full border-l border-[#2A2418]" />
+      ) : null}
+      <div
+        className="rounded-lg border px-3 py-3"
+        style={{
+          marginLeft: depth > 0 ? 18 : 0,
+          borderColor: isCompany ? '#38bdf866' : '#C9A96E55',
+          background: isCompany ? 'rgba(56,189,248,0.08)' : 'rgba(201,169,110,0.08)',
+        }}
+      >
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className="rounded px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide"
+                style={{
+                  background: isCompany ? 'rgba(56,189,248,0.14)' : 'rgba(201,169,110,0.14)',
+                  color: isCompany ? '#38bdf8' : '#C9A96E',
+                }}
+              >
+                {isCompany ? 'Company' : 'Natural Person'}
+              </span>
+              {node.circular ? (
+                <span className="rounded px-2 py-0.5 text-[11px] font-semibold" style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>
+                  Circular
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-2 truncate text-sm font-semibold" style={{ color: 'var(--foreground)' }}>
+              {node.nameEn}
+            </p>
+            {node.nameZh ? <p className="mt-0.5 text-xs" style={{ color: '#7A7060' }}>{node.nameZh}</p> : null}
+            {node.companyNumber ? <p className="mt-0.5 text-xs" style={{ color: '#7A7060' }}>Co. No. {node.companyNumber}</p> : null}
+          </div>
+          {hasMeta ? (
+            <div className="shrink-0 text-left text-xs sm:text-right" style={{ color: '#B8AD98' }}>
+              {node.ownershipPercent != null ? <p className="font-semibold" style={{ color: '#F0EAD8' }}>{node.ownershipPercent}%</p> : null}
+              {node.sharesHeld != null ? <p>{node.sharesHeld.toLocaleString()} shares</p> : null}
+              {node.shareClass ? <p>{node.shareClass}</p> : null}
+            </div>
+          ) : null}
+        </div>
+      </div>
+      {node.children.length > 0 ? (
+        <div className="mt-2 space-y-2">
+          {node.children.map(child => (
+            <OwnershipNodeCard key={`${child.type}-${child.id}`} node={child} depth={depth + 1} />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function OwnershipStructurePanel({ structure, loading }: { structure: OwnershipNode | null; loading: boolean }) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <h3 className="text-base font-semibold" style={{ color: 'var(--foreground)' }}>Company Ownership Structure</h3>
+        <p className="mt-1 text-xs" style={{ color: '#7A7060' }}>
+          Shareholders are shown recursively when a member name matches another company record.
+        </p>
+      </div>
+      <div style={cardStyle} className="p-4">
+        {loading ? (
+          <p className="text-sm" style={{ color: '#7A7060' }}>Loading ownership structure...</p>
+        ) : structure ? (
+          <OwnershipNodeCard node={structure} />
+        ) : (
+          <p className="text-sm" style={{ color: '#5A5040' }}>No ownership structure available.</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Company Edit Form ─────────────────────────────────────────────────────────
 
 function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => void }) {
@@ -334,16 +413,14 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
   const [staffOptions, setStaffOptions] = useState<StaffOption[]>([])
   const [clientsLoading, setClientsLoading] = useState(true)
   const [staffLoading, setStaffLoading] = useState(true)
-  const annualParts = monthDayParts(company.annualReturnDate)
   const [form, setForm] = useState({
     nameEn: company.nameEn,
     nameZh: company.nameZh ?? '',
     companyNumber: company.companyNumber ?? '',
     companyCode: company.companyCode ?? '',
+    companyLegalType: company.companyLegalType ?? '',
     clientUserId: company.clientUserId ?? '',
     dateOfIncorporation: company.dateOfIncorporation ? company.dateOfIncorporation.slice(0, 10) : '',
-    annualReturnMonth: annualParts.month,
-    annualReturnDay: annualParts.day,
     registeredAddress: company.registeredAddress ?? '',
     businessNature: company.businessNature ?? '',
     status: company.status,
@@ -354,7 +431,6 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
   })
 
   function set(k: string, v: string | boolean | string[]) { setForm(f => ({ ...f, [k]: v })) }
-  const annualDayCount = form.annualReturnMonth ? new Date(2000, Number(form.annualReturnMonth), 0).getDate() : 31
 
   useEffect(() => {
     let cancelled = false
@@ -414,9 +490,9 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
       if (form.nameZh) body.nameZh = form.nameZh
       if (form.companyNumber) body.companyNumber = form.companyNumber
       body.companyCode = form.companyCode.trim() || null
+      body.companyLegalType = form.companyLegalType || null
       body.clientUserId = form.clientUserId || null
       if (form.dateOfIncorporation) body.dateOfIncorporation = new Date(form.dateOfIncorporation).toISOString()
-      body.annualReturnDate = annualReturnIso(form.annualReturnMonth, form.annualReturnDay, company.annualReturnDate)
       if (form.registeredAddress) body.registeredAddress = form.registeredAddress
       if (form.businessNature) body.businessNature = form.businessNature
       if (form.serviceTier) body.serviceTier = form.serviceTier
@@ -479,29 +555,13 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
           <DateInput value={form.dateOfIncorporation} onChange={v => set('dateOfIncorporation', v)} />
         </div>
         <div>
-          <label style={labelStyle}>Annual Return Day</label>
-          <div className="grid grid-cols-2 gap-2">
-            <select
-              value={form.annualReturnMonth}
-              onChange={e => {
-                const month = e.target.value
-                const maxDay = month ? new Date(2000, Number(month), 0).getDate() : 31
-                setForm(f => ({ ...f, annualReturnMonth: month, annualReturnDay: Number(f.annualReturnDay) > maxDay ? String(maxDay).padStart(2, '0') : f.annualReturnDay }))
-              }}
-              style={fieldStyle}
-            >
-              <option value="" style={{ background: '#141414' }}>Month</option>
-              {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(month => (
-                <option key={month} value={month} style={{ background: '#141414' }}>{month}</option>
-              ))}
-            </select>
-            <select value={form.annualReturnDay} onChange={e => set('annualReturnDay', e.target.value)} style={fieldStyle}>
-              <option value="" style={{ background: '#141414' }}>Day</option>
-              {Array.from({ length: annualDayCount }, (_, i) => String(i + 1).padStart(2, '0')).map(day => (
-                <option key={day} value={day} style={{ background: '#141414' }}>{day}</option>
-              ))}
-            </select>
-          </div>
+          <label style={labelStyle}>Company Type</label>
+          <select value={form.companyLegalType} onChange={e => set('companyLegalType', e.target.value)} style={fieldStyle}>
+            <option value="" style={{ background: '#141414' }}>— Select company type —</option>
+            {COMPANY_LEGAL_TYPE_VALUES.map(type => (
+              <option key={type} value={type} style={{ background: '#141414' }}>{type}</option>
+            ))}
+          </select>
         </div>
       </div>
       <div>
@@ -1748,6 +1808,8 @@ export default function CompanyDetailPage() {
 
   const [company, setCompany] = useState<Company | null>(null)
   const [loading, setLoading] = useState(true)
+  const [ownershipStructure, setOwnershipStructure] = useState<OwnershipNode | null>(null)
+  const [ownershipLoading, setOwnershipLoading] = useState(true)
   const [modal, setModal] = useState<ModalState>(null)
   const [kycPersons, setKycPersons] = useState<KycPerson[]>([])
   const [uploading, setUploading] = useState<string | null>(null)
@@ -1796,6 +1858,16 @@ export default function CompanyDetailPage() {
   }, [id])
 
   useEffect(() => { reload() }, [reload])
+
+  const reloadOwnershipStructure = useCallback(() => {
+    fetch(`/api/admin/companies/${id}/ownership-structure`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => setOwnershipStructure(data?.structure ?? null))
+      .catch(() => setOwnershipStructure(null))
+      .finally(() => setOwnershipLoading(false))
+  }, [id])
+
+  useEffect(() => { reloadOwnershipStructure() }, [reloadOwnershipStructure])
 
   useEffect(() => {
     fetch('/api/admin/key-persons')
@@ -1855,7 +1927,7 @@ export default function CompanyDetailPage() {
       setNar1AnalysisWarning(payload.warning)
       setNar1AnalysisSource(payload.source)
       setNar1PdfPagesRendered(payload.pdfPagesRendered)
-      setNar1AnnualReturnDate(payload.annualReturnDate ?? company?.annualReturnDate?.slice(0, 10))
+      setNar1AnnualReturnDate(payload.annualReturnDate)
       setShowNar1AnalysisResult(true)
 
       if (payload.warning) {
@@ -1961,6 +2033,7 @@ export default function CompanyDetailPage() {
     setModal(null)
     ensuredDocsForRef.current = null
     reload()
+    reloadOwnershipStructure()
   }
 
   useEffect(() => {
@@ -2007,6 +2080,11 @@ export default function CompanyDetailPage() {
                 {company.companyType === 'HONG_KONG' ? 'Hong Kong' : company.companyType === 'BVI' ? 'BVI' : company.companyType === 'CAYMAN' ? 'Cayman' : company.companyType === 'MARSHALL' ? 'Marshall' : company.companyType}
               </span>
             )}
+            {company.companyLegalType && (
+              <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(56,189,248,0.10)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.22)' }}>
+                {company.companyLegalType}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -2037,8 +2115,8 @@ export default function CompanyDetailPage() {
             {[
               ['Registered Address', company.registeredAddress ?? '—'],
               ['Date of Incorporation', company.dateOfIncorporation ? new Date(company.dateOfIncorporation).toLocaleDateString('en-HK') : '—'],
+              ['Company Type', company.companyLegalType ?? '—'],
               ['Business Nature', company.businessNature ?? '—'],
-              ['Annual Return Day', fmtMonthDay(company.annualReturnDate)],
             ].map(([label, value]) => (
               <div key={label} className="flex px-4 py-3">
                 <span className="w-52 shrink-0 text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>{label}</span>
@@ -2634,6 +2712,7 @@ export default function CompanyDetailPage() {
 
         {/* People — Directors, Members, Controllers */}
         <TabsContent value="people" className="mt-4 space-y-8">
+          <OwnershipStructurePanel structure={ownershipStructure} loading={ownershipLoading} />
 
           {/* Directors group */}
           <div className="space-y-3">

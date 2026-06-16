@@ -39,8 +39,7 @@ export async function POST(
   const summary = await syncNar1ToRegisters(
     companyId,
     parsed.data.data as never,
-    parsed.data.annualReturnDate
-      ?? company.annualReturnDate?.toISOString().slice(0, 10),
+    parsed.data.annualReturnDate,
   )
 
   await logAudit(session!.user.id, 'UPDATE', 'Company', companyId, null, { nar1Sync: summary })

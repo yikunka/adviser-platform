@@ -4,7 +4,7 @@ import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import {
   Building2, ShieldCheck, Bell,
-  ArrowRight, CalendarClock, FilePlus,
+  ArrowRight, FilePlus,
   ShoppingCart,
 } from 'lucide-react'
 
@@ -33,7 +33,7 @@ export default async function DashboardPage({
           { pendingClientEmail: session!.user.email.toLowerCase() },
         ],
       },
-      select: { id: true, nameEn: true, nameZh: true, companyNumber: true, annualReturnDate: true },
+      select: { id: true, nameEn: true, nameZh: true, companyNumber: true },
       take: 5,
     }),
     prisma.notification.findMany({
@@ -193,14 +193,6 @@ export default async function DashboardPage({
                     <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{c.companyNumber}</p>
                   </div>
                 </div>
-                {c.annualReturnDate && (
-                  <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                    <CalendarClock size={12} />
-                    <span>
-                      AR: {new Date(c.annualReturnDate).toLocaleDateString(locale === 'zh' ? 'zh-HK' : 'en-HK')}
-                    </span>
-                  </div>
-                )}
               </Link>
             ))}
           </div>

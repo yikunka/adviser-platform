@@ -149,29 +149,6 @@ export async function generateAndStoreCompanyDocument({
   })
 }
 
-export async function ensureNar1Document(companyId: string, uploadedById: string) {
-  const company = await prisma.company.findUnique({
-    where: { id: companyId },
-    select: { annualReturnDate: true },
-  })
-  if (!company?.annualReturnDate) return null
-
-  const year = String(company.annualReturnDate.getUTCFullYear())
-  const existing = await prisma.document.findFirst({
-    where: { companyId, documentType: 'NAR1', notes: `Year: ${year}`, deletedAt: null },
-    orderBy: { createdAt: 'desc' },
-  })
-  if (existing) return existing
-
-  return generateAndStoreCompanyDocument({
-    type: 'NAR1',
-    companyId,
-    uploadedById,
-    notes: `Year: ${year}`,
-    effectiveDate: new Date(Date.UTC(Number(year), 0, 1)),
-  })
-}
-
 export async function ensureMonthlyDdrDocument(companyId: string, uploadedById: string, date = new Date()) {
   const { start, end, key } = monthRange(date)
   const existing = await prisma.document.findFirst({

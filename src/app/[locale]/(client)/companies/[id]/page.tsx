@@ -28,11 +28,6 @@ function fmt(d: Date | null | undefined) {
   return new Date(d).toLocaleDateString('en-HK')
 }
 
-function fmtMonthDay(d: Date | null | undefined) {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-HK', { month: 'short', day: 'numeric' })
-}
-
 function docHref(id: string) {
   return `/api/documents/${id}/download?redirect=1`
 }
@@ -123,7 +118,6 @@ export default async function ClientCompanyDetailPage({ params }: Props) {
     { label: 'Registered Address', value: company.registeredAddress ?? '—' },
     { label: 'Date of Incorporation', value: company.dateOfIncorporation ? fmt(company.dateOfIncorporation) : '—' },
     { label: 'Business Nature', value: company.businessNature ?? '—' },
-    { label: 'Annual Return Day', value: fmtMonthDay(company.annualReturnDate) },
   ]
   const isGeneratedDoc = (doc: typeof company.documents[number]) => doc.name.startsWith(`${doc.documentType} —`)
   const latestGeneratedDoc = (docType: string) => company.documents.find(d => d.documentType === docType && isGeneratedDoc(d))

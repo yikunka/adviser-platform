@@ -55,7 +55,6 @@ export async function generateNAR1(companyId: string): Promise<Buffer> {
     labeledRow('Business Registration No.', company.businessRegNumber ?? ''),
     labeledRow('BR Expiry Date', company.brExpiryDate ? company.brExpiryDate.toISOString().split('T')[0] : ''),
     labeledRow('Financial Year End (Month)', company.financialYearEndMonth != null ? String(company.financialYearEndMonth) : ''),
-    labeledRow('Annual Return Date', company.annualReturnDate ? company.annualReturnDate.toISOString().split('T')[0] : ''),
   ]
 
   // ── Directors ──────────────────────────────────────────────────────

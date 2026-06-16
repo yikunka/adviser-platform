@@ -3,14 +3,15 @@ import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
 import { z } from 'zod'
+import { COMPANY_LEGAL_TYPE_VALUES } from '@/lib/company/company-legal-type'
 
 const updateSchema = z.object({
   nameEn: z.string().min(1).max(200).optional(),
   nameZh: z.string().max(200).optional(),
   companyNumber: z.string().max(20).optional(),
   companyCode: z.string().max(20).optional().nullable(),
+  companyLegalType: z.enum(COMPANY_LEGAL_TYPE_VALUES).optional().nullable(),
   dateOfIncorporation: z.string().optional(),
-  annualReturnDate: z.string().optional().nullable(),
   registeredAddress: z.string().max(500).optional(),
   businessNature: z.string().max(500).optional(),
   status: z.enum(['ACTIVE', 'DORMANT', 'STRUCK_OFF', 'DEREGISTERED']).optional(),
@@ -79,11 +80,10 @@ export async function PATCH(
   const before = await prisma.company.findUnique({ where: { id } })
   if (!before) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const { dateOfIncorporation, annualReturnDate, staffUserIds, ...rest } = parsed.data
+  const { dateOfIncorporation, staffUserIds, ...rest } = parsed.data
   const data = {
     ...rest,
     ...(dateOfIncorporation !== undefined ? { dateOfIncorporation: new Date(dateOfIncorporation) } : {}),
-    ...(annualReturnDate !== undefined ? { annualReturnDate: annualReturnDate ? new Date(annualReturnDate) : null } : {}),
     ...(rest.clientUserId !== undefined ? { pendingClientEmail: null as null } : {}),
   }
   const uniqueStaffIds = staffUserIds !== undefined ? Array.from(new Set(staffUserIds)) : undefined

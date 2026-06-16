@@ -18,7 +18,6 @@ type Company = {
   serviceTier?: string
   financialEnabled: boolean
   dateOfIncorporation?: string | null
-  annualReturnDate?: string
   assignedStaff?: { nameEn: string }
   financialManager?: { nameEn: string; email: string } | null
   clientUser?: { nameEn: string; email: string }
@@ -29,15 +28,6 @@ const STATUS_COLOR: Record<string, string> = {
   DORMANT:      'bg-[rgba(234,179,8,0.12)] text-[#eab308]',
   STRUCK_OFF:   'bg-[rgba(239,68,68,0.12)] text-[#ef4444]',
   DEREGISTERED: 'bg-[rgba(120,113,108,0.15)] text-[#9A8060]',
-}
-
-function annualReturnDeadline(dateOfIncorporation?: string | null) {
-  if (!dateOfIncorporation) return null
-  const registrationDate = new Date(dateOfIncorporation)
-  if (Number.isNaN(registrationDate.getTime())) return null
-  const deadline = new Date(registrationDate)
-  deadline.setDate(deadline.getDate() + 42)
-  return deadline
 }
 
 export default function CompaniesPage() {
@@ -115,10 +105,10 @@ export default function CompaniesPage() {
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('companyCode')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('companyName')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('companyNumber')}</th>
+                <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('incorporationDate')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('status')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('client')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('financialModule')}</th>
-                <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('arDeadline')}</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -143,6 +133,9 @@ export default function CompaniesPage() {
                     {c.nameZh && <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{c.nameZh}</p>}
                   </td>
                   <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>{c.companyNumber}</td>
+                  <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
+                    {c.dateOfIncorporation ? new Date(c.dateOfIncorporation).toLocaleDateString() : '—'}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[c.status] ?? ''}`}>
                       {c.status}
@@ -179,9 +172,6 @@ export default function CompaniesPage() {
                         {c.financialManager?.nameEn ?? '未指派财务管理员'}
                       </p>
                     )}
-                  </td>
-                  <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
-                    {annualReturnDeadline(c.dateOfIncorporation)?.toLocaleDateString() ?? '—'}
                   </td>
                   <td className="px-4 py-3 text-right text-xs font-medium" style={{ color: '#C9A96E' }}>
                     {t('view')} →

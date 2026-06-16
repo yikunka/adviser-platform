@@ -14,18 +14,21 @@ async function checkAnnualReturnDeadlines() {
     const from = new Date(target); from.setHours(0, 0, 0, 0)
     const to = new Date(target); to.setHours(23, 59, 59, 999)
 
-    const companies = await prisma.company.findMany({
+    const filings = await prisma.annualFiling.findMany({
       where: {
-        status: 'ACTIVE',
-        annualReturnDate: { gte: from, lte: to },
-        clientUserId: { not: null },
+        status: { in: ['NOT_STARTED', 'IN_PREPARATION', 'OVERDUE'] },
+        filingDeadline: { gte: from, lte: to },
+        company: { status: 'ACTIVE', clientUserId: { not: null } },
       },
-      include: { clientUser: { select: { id: true, email: true, nameEn: true } } },
+      include: {
+        company: { include: { clientUser: { select: { id: true, email: true, nameEn: true } } } },
+      },
     })
 
-    for (const co of companies) {
+    for (const filing of filings) {
+      const co = filing.company
       if (!co.clientUser) continue
-      const message = `Annual return for ${co.nameEn} is due in ${days} days (${co.annualReturnDate?.toISOString().split('T')[0]}).`
+      const message = `Annual return for ${co.nameEn} is due in ${days} days (${filing.filingDeadline?.toISOString().split('T')[0]}).`
       await createNotification(co.clientUser.id, 'ANNUAL_RETURN_DUE', message, co.id)
       console.log(`[Scheduler] AR reminder sent for ${co.nameEn} (${days}d)`)
     }

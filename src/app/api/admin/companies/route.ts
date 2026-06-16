@@ -140,7 +140,6 @@ export async function POST(req: NextRequest) {
 
   const { dateOfIncorporation, clientUserEmail, ...rest } = parsed.data
   const doi = dateOfIncorporation ? new Date(dateOfIncorporation) : null
-  const annualReturnDate = doi ? new Date(doi.getTime() + 42 * 24 * 60 * 60 * 1000) : null
 
   let resolvedClientId: string | undefined = rest.clientUserId?.trim() || undefined
   let pendingClientEmail: string | null = null
@@ -183,7 +182,6 @@ export async function POST(req: NextRequest) {
       clientUserId: resolvedClientId ?? null,
       pendingClientEmail,
       dateOfIncorporation: doi,
-      annualReturnDate,
     },
   })
 
