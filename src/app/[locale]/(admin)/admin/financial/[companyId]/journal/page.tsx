@@ -793,8 +793,7 @@ export default function AdminFinancialJournalPage() {
                       ) : null}
                     </TableHead>
                     <TableHead>凭证号</TableHead>
-                    <TableHead>日期</TableHead>
-                    <TableHead>摘要</TableHead>
+                    <TableHead className="min-w-[260px]">日期 / 摘要</TableHead>
                     <TableHead>状态</TableHead>
                     <TableHead className="text-right">金额合计</TableHead>
                     <TableHead className="text-right">操作</TableHead>
@@ -815,8 +814,18 @@ export default function AdminFinancialJournalPage() {
                         ) : null}
                       </TableCell>
                       <TableCell className="font-mono">{entry.voucherNo}</TableCell>
-                      <TableCell>{new Date(entry.date).toLocaleDateString('zh-HK')}</TableCell>
-                      <TableCell className="max-w-[240px] truncate">{entry.description}</TableCell>
+                      <TableCell>
+                        <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                          <span className="shrink-0 text-sm">{new Date(entry.date).toLocaleDateString('zh-HK')}</span>
+                          <span
+                            className="min-w-0 max-w-[280px] truncate text-sm"
+                            style={{ color: 'var(--muted-foreground)' }}
+                            title={entry.description}
+                          >
+                            {entry.description}
+                          </span>
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"

@@ -349,7 +349,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
             )}
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-[180px_minmax(220px,1fr)]">
+          <div className="grid gap-4 sm:grid-cols-[180px_minmax(260px,1fr)]">
             <div className="space-y-2">
               <Label className={labelClassName}>日期</Label>
               <DatePickerPopover
@@ -358,8 +358,19 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                 className={`${fieldClassName} border`}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="journal-description" className={labelClassName}>摘要</Label>
+              <Textarea
+                id="journal-description"
+                value={description}
+                onChange={event => setDescription(event.target.value)}
+                required
+                rows={2}
+                className={`${fieldClassName} min-h-10`}
+              />
+            </div>
             {!fixedCompanyId ? (
-              <div className="space-y-2">
+              <div className="space-y-2 sm:col-span-2">
                 <Label className={labelClassName}>客户公司</Label>
                 <Select value={companyId} onValueChange={value => setCompanyId(value ?? 'NONE')}>
                   <SelectTrigger className={`w-full ${fieldClassName}`}>
@@ -385,19 +396,6 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                 ) : null}
               </div>
             ) : null}
-          </div>
-          <div className="space-y-2">
-            <div className="space-y-2">
-              <Label htmlFor="journal-description" className={labelClassName}>摘要</Label>
-              <Textarea
-                id="journal-description"
-                value={description}
-                onChange={event => setDescription(event.target.value)}
-                required
-                rows={3}
-                className={fieldClassName}
-              />
-            </div>
           </div>
 
           <div className="flex items-center justify-between gap-3">
