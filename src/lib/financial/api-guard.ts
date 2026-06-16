@@ -54,7 +54,9 @@ export function assertFinancialWriteAllowed(session: Session): NextResponse | nu
 
 export async function requireFinancialReadRole():
 Promise<{ session: Session; error?: undefined } | { session?: undefined; error: NextResponse }> {
-  return requireRole('STAFF', { adminMenu: 'financial' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
+  if (error) return { error }
+  return { session: session! }
 }
 
 export async function requireFinancialWriteRole():
