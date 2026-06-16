@@ -457,7 +457,6 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                   ＊ 点击有下级科目的行可展开或收起明细；「科目层级」可限制可展开范围；借贷合计始终只基于一级科目计算。
                   仅显示有余额或本期发生额的科目。零余额科目在过账分录后自动出现。
                   带「一级汇总」标注的行为一级科目汇总（含下级明细合计），计入借贷合计。
-                  带「期末计算」标注的行为汇总估算，不计入借贷合计。
                 </p>
                 {!reports.trialBalance.balanced ? (
                   <BalanceWarning
@@ -856,7 +855,6 @@ function CashFlowSection({ title, items }: { title: string; items: { label: stri
   )
 }
 
-/** Trial-balance table that handles computed rows (isComputed=true) with distinct styling. */
 function TrialBalanceTable({
   rows,
   expandedAccountIds,
@@ -871,7 +869,6 @@ function TrialBalanceTable({
   }
 
   const headers = ['编码', '科目', '类型', '本期借方', '本期贷方', '期末借方', '期末贷方']
-  const computedRows = rows.filter(row => row.isComputed)
   const accountRows = rows.filter(row => !row.isComputed)
   const rowById = new Map(accountRows.map(row => [row.accountId, row]))
   const childrenByParentId = new Map<string, TrialBalanceRow[]>()
@@ -897,12 +894,8 @@ function TrialBalanceTable({
   }
 
   for (const row of rootRows) addVisibleRow(row, 0)
-  for (const row of computedRows) visibleRows.push({ row, depth: 0 })
 
   function rowStyle(row: TrialBalanceRow) {
-    if (row.isComputed) {
-      return { background: 'rgba(201,169,110,0.06)', fontStyle: 'italic' as const }
-    }
     if (row.isSummary) {
       return { background: 'rgba(42,36,24,0.04)', fontWeight: 600 as const }
     }
@@ -959,14 +952,6 @@ function TrialBalanceTable({
                     style={{ background: 'rgba(42,36,24,0.08)', color: '#2A2418' }}
                   >
                     一级汇总
-                  </span>
-                )}
-                {row.isComputed && (
-                  <span
-                    className="ml-2 rounded px-1 py-0.5 text-[10px] font-normal not-italic"
-                    style={{ background: 'rgba(201,169,110,0.2)', color: '#C9A96E' }}
-                  >
-                    期末计算
                   </span>
                 )}
               </TableCell>

@@ -139,6 +139,11 @@ describe('buildFinancialReports journal-line source', () => {
       }),
     ])
     expect(reports.incomeStatement.totalRevenue).toBe(1000)
+    expect(reports.trialBalance.rows).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        accountId: 'current-year-earnings',
+      }),
+    ]))
     expect(reports.balanceSheet.equity).not.toEqual(expect.arrayContaining([
       expect.objectContaining({ code: '3999' }),
     ]))

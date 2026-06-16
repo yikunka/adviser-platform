@@ -89,9 +89,9 @@ describe('assembleTrialBalanceRows', () => {
       detailRows: [
         detailRow({ accountId: 'a2', code: '1001', name: '现金' }),
         {
-          accountId: 'current-year-earnings',
+          accountId: 'computed-adjustment',
           code: '——',
-          name: '本年利润（期末计算，未结转）',
+          name: 'Computed adjustment',
           type: 'EQUITY',
           level: 1,
           sortOrder: 999999,
@@ -135,9 +135,9 @@ describe('calculateTrialBalanceLevel1Totals', () => {
         closingCredit: 300,
       }),
       detailRow({
-        accountId: 'current-year-earnings',
+        accountId: 'computed-adjustment',
         code: '——',
-        name: '本年利润（期末计算，未结转）',
+        name: 'Computed adjustment',
         level: 1,
         type: 'EQUITY',
         closingDebit: 0,
