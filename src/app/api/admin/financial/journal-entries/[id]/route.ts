@@ -4,7 +4,7 @@ import { logAudit } from '@/lib/audit/logger'
 import { prisma } from '@/lib/db/prisma'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
 import { resolveJournalCompanyScope } from '@/lib/financial/company-scope'
-import { assertFinancialManager, requireFinancialWriteRole } from '@/lib/financial/api-guard'
+import { assertFinancialManager, requireFinancialReadRole, requireFinancialWriteRole } from '@/lib/financial/api-guard'
 import {
   journalEntryInclude,
   loadCompanyAccountMap,
@@ -40,7 +40,7 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { session, error } = await requireFinancialWriteRole()
+  const { session, error } = await requireFinancialReadRole()
   if (error) return error
 
   const { id } = await params
