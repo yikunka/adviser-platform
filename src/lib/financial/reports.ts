@@ -283,6 +283,12 @@ function movementSignedBalance(totals: MovementTotals, type: AccountType, code?:
   return signedBalance(net, type, code)
 }
 
+function profitAndLossMovementAmount(totals: MovementTotals, type: AccountType) {
+  if (type === 'REVENUE') return roundMoney(totals.credit - totals.debit)
+  if (type === 'CGS' || type === 'EXPENSE') return roundMoney(totals.debit - totals.credit)
+  return 0
+}
+
 function periodBeforeDate(date: Date) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
 }
@@ -542,8 +548,13 @@ export async function buildFinancialReports(
     const ownPeriodTotals = sumMovements(periodMovements, ownAccountIds)
 
     const openingBalance = movementSignedBalance(openingTotals, account.type, account.code)
-    const statementPeriodNet = movementSignedBalance(statementPeriodTotals, account.type, account.code)
-    const ownPeriodNet = movementSignedBalance(ownPeriodTotals, account.type, account.code)
+    const isProfitAndLossAccount = account.type === 'REVENUE' || account.type === 'CGS' || account.type === 'EXPENSE'
+    const statementPeriodNet = isProfitAndLossAccount
+      ? profitAndLossMovementAmount(statementPeriodTotals, account.type)
+      : movementSignedBalance(statementPeriodTotals, account.type, account.code)
+    const ownPeriodNet = isProfitAndLossAccount
+      ? profitAndLossMovementAmount(ownPeriodTotals, account.type)
+      : movementSignedBalance(ownPeriodTotals, account.type, account.code)
     const ledgerClosingBalance = movementSignedBalance(closingTotals, account.type, account.code)
     const yearToDateTotals = shouldConsolidateAccounts
       ? undefined
@@ -672,7 +683,7 @@ export async function buildFinancialReports(
     if (uncoveredSourceAccountIds.length === 0) continue
 
     const uncoveredTotals = sumMovements(periodMovements, uncoveredSourceAccountIds)
-    const amount = movementSignedBalance(uncoveredTotals, candidate.account.type, candidate.account.code)
+    const amount = profitAndLossMovementAmount(uncoveredTotals, candidate.account.type)
     if (amount === 0) continue
 
     addProfitAndLossLine({
@@ -696,29 +707,15 @@ export async function buildFinancialReports(
   const totalExpenses = roundMoney(expenseCategories.reduce((sum, category) => sum + category.total, 0))
   const netProfit = roundMoney(grossProfit - totalExpenses)
 
-  const equityLinesWithProfit = [
-    ...equityLines,
-    ...(netProfit !== 0
-      ? [{
-          accountId: 'current-year-earnings',
-          code: '3999',
-          name: 'Profit for the period',
-          type: 'EQUITY' as AccountType,
-          level: 1,
-          amount: netProfit,
-        }]
-      : []),
-  ]
-
   const balanceSheetLayout = buildBalanceSheetSections({
     assetLines,
     liabilityLines,
-    equityLines: equityLinesWithProfit,
+    equityLines,
     level1AccountIdByReportAccountId,
   })
   const totalAssets = balanceSheetLayout.totalAssets
   const totalLiabilities = balanceSheetLayout.totalLiabilities
-  const totalEquityWithProfit = roundMoney(balanceSheetLayout.totalEquity)
+  const totalEquityWithProfit = roundMoney(balanceSheetLayout.totalEquity + netProfit)
   const totalLiabilitiesAndEquity = roundMoney(totalLiabilities + totalEquityWithProfit)
   const balanceSheetEquation = buildAccountingEquationCheck(totalAssets, totalLiabilities, totalEquityWithProfit)
   const trialBalanceEquation = buildAccountingEquationCheck(totalAssets, totalLiabilities, totalEquityWithProfit)
@@ -801,7 +798,10 @@ export async function buildFinancialReports(
       standard: 'HKFRS',
       assetSections: balanceSheetLayout.assetSections,
       liabilitySections: balanceSheetLayout.liabilitySections,
-      equitySection: balanceSheetLayout.equitySection,
+      equitySection: {
+        ...balanceSheetLayout.equitySection,
+        total: totalEquityWithProfit,
+      },
       assets: balanceSheetLayout.assets,
       liabilities: balanceSheetLayout.liabilities,
       equity: balanceSheetLayout.equity,

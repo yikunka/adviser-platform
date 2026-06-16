@@ -139,6 +139,13 @@ describe('buildFinancialReports journal-line source', () => {
       }),
     ])
     expect(reports.incomeStatement.totalRevenue).toBe(1000)
+    expect(reports.balanceSheet.equity).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: '3999' }),
+    ]))
+    expect(reports.balanceSheet.equitySection.lines).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: '3999' }),
+    ]))
+    expect(reports.balanceSheet.totalEquity).toBe(1000)
 
     expect(prisma.journalLine.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: {
