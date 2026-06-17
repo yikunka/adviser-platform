@@ -43,6 +43,7 @@ import {
   Landmark,
   Contact,
   Truck,
+  Network,
 } from 'lucide-react'
 import type { AdminMenuKey } from '@/lib/auth/admin-access'
 import { pathnameToAdminMenuKey, adminMenusAllow } from '@/lib/auth/admin-access'
@@ -102,6 +103,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     labelKey: 'cosmocoat',
     items: [
+      { href: '/admin/cosmocoat-overview', key: 'cosmocoatOverview', Icon: Network },
       { href: '/admin/cosmocoat-products', key: 'cosmocoatProducts', Icon: Package },
       { href: '/admin/cosmocoat-raw-materials', key: 'cosmocoatRawMaterials', Icon: FlaskConical },
       { href: '/admin/cosmocoat-recipes', key: 'cosmocoatRecipes', Icon: Beaker },

@@ -234,6 +234,14 @@ Order lifecycle management for memorial diamond commissions.
 
 Cosmetics manufacturing ERP. Public product site at `/cosmocoat/`; manufacturing management under Adviser admin console.
 
+### Material Flow Overview (`/admin/cosmocoat-overview`)
+Animated SVG flow diagram showing all entity relationships across the CosmoCoat production chain.
+- Visualises: 原材料 → 配方 → 半成品 → 工厂产品 → 调色单 / 工艺书 in vertical bands
+- Each node = one actual database record; edges = real relationships (recipe items, product links, color formula sources, process kit products)
+- Hover a node to highlight all connected paths and see name/code/relationship count
+- Data fetched client-side from `/api/admin/cosmocoat/overview-graph`; up to 200 records per entity type
+- Menu item: "物料流向" (zh) / "Flow Overview" (en) in the CosmoCoat group
+
 ### Public Pages (`/cosmocoat/`)
 Home, Products catalog, Product detail, About, Supporting.
 
