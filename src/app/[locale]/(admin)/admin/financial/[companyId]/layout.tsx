@@ -6,6 +6,7 @@ import {
   resolveCompanyAccess,
 } from '@/lib/company-access'
 import { UrlBasedCompanyProvider } from '@/components/admin/financial/FinancialCompanyContext'
+import { computeEffectivePermissions, hasPermission } from '@/lib/auth/permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,6 +20,16 @@ const FINANCIAL_SUB_ROUTES = new Set([
   'parties',
   'banking',
 ])
+
+// Any financial write action grants non-readonly mode
+const FINANCIAL_WRITE_PERMS = [
+  'financialJournal.create', 'financialJournal.edit', 'financialJournal.approve',
+  'financialReceivables.create', 'financialReceivables.edit', 'financialReceivables.approve',
+  'financialPayables.create', 'financialPayables.edit', 'financialPayables.approve',
+  'financialAccounts.create', 'financialAccounts.edit', 'financialAccounts.delete',
+  'financialBanking.create', 'financialBanking.edit',
+  'financialParties.create', 'financialParties.edit', 'financialParties.delete',
+]
 
 export default async function FinancialCompanyLayout({
   children,
@@ -38,14 +49,21 @@ export default async function FinancialCompanyLayout({
     redirect(`/${locale}/admin-login`)
   }
 
-  const company = await prisma.company.findUnique({
-    where: { id: companyId },
-    select: {
-      id: true,
-      nameEn: true,
-      companyCode: true,
-    },
-  })
+  const [company, userRow] = await Promise.all([
+    prisma.company.findUnique({
+      where: { id: companyId },
+      select: { id: true, nameEn: true, companyCode: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        role: true,
+        adminMenuKeys: true,
+        adminPlatforms: true,
+        adminRole: { select: { permissions: true } },
+      },
+    }),
+  ])
 
   if (!company) notFound()
 
@@ -54,13 +72,16 @@ export default async function FinancialCompanyLayout({
     notFound()
   }
 
+  const effectivePerms = computeEffectivePermissions(userRow ?? { role: session.user.role, adminMenuKeys: [], adminPlatforms: [] })
+  const financialReadOnly = effectivePerms !== 'all' && !FINANCIAL_WRITE_PERMS.some(p => hasPermission(effectivePerms, p))
+
   return (
     <UrlBasedCompanyProvider
       company={{
         id: company.id,
         nameEn: company.nameEn,
         companyCode: company.companyCode,
-        financialReadOnly: session.user.role === 'STAFF',
+        financialReadOnly,
       }}
     >
       {children}

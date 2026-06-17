@@ -34,16 +34,44 @@ function PermMatrix({
     const next = new Set(permissions)
     if (next.has(key)) {
       next.delete(key)
-      // When unchecking view, uncheck all actions for that page too
       if (!key.includes('.')) {
         for (const a of ALL_ACTIONS) next.delete(`${key}.${a}`)
       }
     } else {
       next.add(key)
-      // When checking an action, auto-check view
-      if (key.includes('.')) {
-        const pageKey = key.split('.')[0]
-        next.add(pageKey)
+      if (key.includes('.')) next.add(key.split('.')[0])
+    }
+    onChange(next)
+  }
+
+  function togglePageAll(menuKey: string, actions: PermAction[]) {
+    if (readonly || actions.length === 0) return
+    const next = new Set(permissions)
+    const allChecked = actions.every(a => next.has(`${menuKey}.${a}`))
+    if (allChecked) {
+      for (const a of actions) next.delete(`${menuKey}.${a}`)
+    } else {
+      next.add(menuKey)
+      for (const a of actions) next.add(`${menuKey}.${a}`)
+    }
+    onChange(next)
+  }
+
+  function toggleGroupAll(pages: typeof PERMISSION_GROUPS[0]['pages']) {
+    if (readonly) return
+    const next = new Set(permissions)
+    const allChecked = pages.every(
+      p => next.has(p.menuKey) && p.actions.every(a => next.has(`${p.menuKey}.${a}`))
+    )
+    if (allChecked) {
+      for (const p of pages) {
+        next.delete(p.menuKey)
+        for (const a of ALL_ACTIONS) next.delete(`${p.menuKey}.${a}`)
+      }
+    } else {
+      for (const p of pages) {
+        next.add(p.menuKey)
+        for (const a of p.actions) next.add(`${p.menuKey}.${a}`)
       }
     }
     onChange(next)
@@ -51,84 +79,131 @@ function PermMatrix({
 
   return (
     <div className="space-y-6">
-      {PERMISSION_GROUPS.map(group => (
-        <div key={group.group}>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-bold uppercase tracking-widest"
-              style={{ color: '#C9A96E' }}>{group.group}</span>
-            <div className="flex-1 h-px" style={{ background: '#2A2418' }} />
-          </div>
+      {PERMISSION_GROUPS.map(group => {
+        const groupAllChecked = group.pages.every(
+          p => permissions.has(p.menuKey) && p.actions.every(a => permissions.has(`${p.menuKey}.${a}`))
+        )
+        const groupSomeChecked = group.pages.some(
+          p => permissions.has(p.menuKey) || p.actions.some(a => permissions.has(`${p.menuKey}.${a}`))
+        )
 
-          <div className="rounded-lg overflow-hidden" style={{ border: '1px solid #2A2418' }}>
-            {/* Header */}
-            <div className="grid text-center"
-              style={{
-                gridTemplateColumns: `1fr repeat(${ALL_ACTIONS.length}, 44px)`,
-                background: '#111108',
-                borderBottom: '1px solid #2A2418',
-              }}
-            >
-              <div className="px-3 py-2 text-left text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
-                页面
-              </div>
-              {ALL_ACTIONS.map(a => (
-                <div key={a} className="py-2 text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
-                  {ACTION_LABELS[a]}
-                </div>
-              ))}
+        return (
+          <div key={group.group}>
+            {/* Group header with select-all */}
+            <div className="flex items-center gap-2 mb-2">
+              <button
+                type="button"
+                title={groupAllChecked ? '取消全选此分组' : '全选此分组'}
+                onClick={() => toggleGroupAll(group.pages)}
+                disabled={readonly}
+                className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-all"
+                style={{
+                  background: groupAllChecked ? '#C9A96E' : groupSomeChecked ? 'rgba(201,169,110,0.25)' : 'transparent',
+                  border: `1px solid ${groupAllChecked || groupSomeChecked ? '#C9A96E' : '#4A3A28'}`,
+                  cursor: readonly ? 'default' : 'pointer',
+                }}
+              >
+                {groupAllChecked
+                  ? <Check size={10} strokeWidth={3} style={{ color: '#0A0805' }} />
+                  : groupSomeChecked
+                    ? <span style={{ width: 8, height: 2, background: '#C9A96E', display: 'block', borderRadius: 1 }} />
+                    : null
+                }
+              </button>
+              <span className="text-xs font-bold uppercase tracking-widest"
+                style={{ color: '#C9A96E' }}>{group.group}</span>
+              <div className="flex-1 h-px" style={{ background: '#2A2418' }} />
             </div>
 
-            {/* Rows */}
-            {group.pages.map((page, idx) => {
-              const hasView = permissions.has(page.menuKey)
-              return (
-                <div
-                  key={page.menuKey}
-                  className="grid items-center"
-                  style={{
-                    gridTemplateColumns: `1fr repeat(${ALL_ACTIONS.length}, 44px)`,
-                    borderBottom: idx < group.pages.length - 1 ? '1px solid #1A1810' : undefined,
-                    background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)',
-                  }}
-                >
-                  {/* Page name + view checkbox */}
-                  <div className="px-3 py-2.5 flex items-center gap-2">
-                    <Checkbox
-                      checked={hasView}
-                      onChange={() => toggle(page.menuKey)}
-                      disabled={readonly}
-                    />
-                    <span className="text-sm" style={{ color: hasView ? 'var(--foreground)' : 'var(--muted-foreground)' }}>
-                      {page.label}
-                    </span>
-                  </div>
-
-                  {/* Action checkboxes */}
-                  {ALL_ACTIONS.map(action => {
-                    const key = `${page.menuKey}.${action}`
-                    const applicable = page.actions.includes(action)
-                    const checked = permissions.has(key)
-                    return (
-                      <div key={action} className="flex items-center justify-center py-2.5">
-                        {applicable ? (
-                          <Checkbox
-                            checked={checked}
-                            onChange={() => toggle(key)}
-                            disabled={readonly || !hasView}
-                            dim={!hasView}
-                          />
-                        ) : (
-                          <span className="text-xs" style={{ color: '#2A2418' }}>—</span>
-                        )}
-                      </div>
-                    )
-                  })}
+            <div className="rounded-lg overflow-hidden" style={{ border: '1px solid #2A2418' }}>
+              {/* Column header */}
+              <div className="grid text-center"
+                style={{
+                  gridTemplateColumns: `1fr repeat(${ALL_ACTIONS.length}, 44px)`,
+                  background: '#111108',
+                  borderBottom: '1px solid #2A2418',
+                }}
+              >
+                <div className="px-3 py-2 text-left text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                  页面
                 </div>
-              )
-            })}
+                {ALL_ACTIONS.map(a => (
+                  <div key={a} className="py-2 text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                    {ACTION_LABELS[a]}
+                  </div>
+                ))}
+              </div>
+
+              {/* Rows */}
+              {group.pages.map((page, idx) => {
+                const hasView = permissions.has(page.menuKey)
+                const pageAllActions = page.actions.length > 0 && page.actions.every(a => permissions.has(`${page.menuKey}.${a}`))
+                const pageSomeActions = page.actions.some(a => permissions.has(`${page.menuKey}.${a}`))
+
+                return (
+                  <div
+                    key={page.menuKey}
+                    className="grid items-center"
+                    style={{
+                      gridTemplateColumns: `1fr repeat(${ALL_ACTIONS.length}, 44px)`,
+                      borderBottom: idx < group.pages.length - 1 ? '1px solid #1A1810' : undefined,
+                      background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)',
+                    }}
+                  >
+                    {/* Page name + view checkbox + select-all-actions */}
+                    <div className="px-3 py-2.5 flex items-center gap-2">
+                      <Checkbox
+                        checked={hasView}
+                        onChange={() => toggle(page.menuKey)}
+                        disabled={readonly}
+                      />
+                      <span className="text-sm" style={{ color: hasView ? 'var(--foreground)' : 'var(--muted-foreground)' }}>
+                        {page.label}
+                      </span>
+                      {page.actions.length > 0 && !readonly && (
+                        <button
+                          type="button"
+                          onClick={() => togglePageAll(page.menuKey, page.actions)}
+                          title={pageAllActions ? '取消全选操作' : '全选操作'}
+                          className="ml-auto text-[10px] px-1.5 py-0.5 rounded transition-all flex-shrink-0"
+                          style={{
+                            color: pageAllActions ? '#0A0805' : pageSomeActions ? '#C9A96E' : '#4A3A28',
+                            background: pageAllActions ? '#C9A96E' : pageSomeActions ? 'rgba(201,169,110,0.15)' : 'transparent',
+                            border: `1px solid ${pageAllActions || pageSomeActions ? '#C9A96E44' : '#2A2418'}`,
+                          }}
+                        >
+                          全
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Action checkboxes */}
+                    {ALL_ACTIONS.map(action => {
+                      const key = `${page.menuKey}.${action}`
+                      const applicable = page.actions.includes(action)
+                      const checked = permissions.has(key)
+                      return (
+                        <div key={action} className="flex items-center justify-center py-2.5">
+                          {applicable ? (
+                            <Checkbox
+                              checked={checked}
+                              onChange={() => toggle(key)}
+                              disabled={readonly || !hasView}
+                              dim={!hasView}
+                            />
+                          ) : (
+                            <span className="text-xs" style={{ color: '#2A2418' }}>—</span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
