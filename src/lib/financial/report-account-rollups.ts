@@ -8,6 +8,7 @@ export type ReportRollupAccount = {
   name: string
   type: AccountType
   code: string
+  yearToDateAmount?: number
   yearToDateDebit: number
   yearToDateCredit: number
 }
@@ -47,8 +48,20 @@ export function buildLeafAccountIdsByAccount(
 }
 
 function ownYearToDateTotals(account: ReportRollupAccount): YearToDateTotals {
-  const debit = roundMoney(account.yearToDateDebit)
-  const credit = roundMoney(account.yearToDateCredit)
+  const legacyAmount = roundMoney(account.yearToDateAmount ?? 0)
+  const explicitDebit = roundMoney(account.yearToDateDebit)
+  const explicitCredit = roundMoney(account.yearToDateCredit)
+  const creditNormal = account.type === 'REVENUE'
+  const debit = explicitDebit !== 0 || explicitCredit !== 0
+    ? explicitDebit
+    : creditNormal
+      ? 0
+      : legacyAmount
+  const credit = explicitDebit !== 0 || explicitCredit !== 0
+    ? explicitCredit
+    : creditNormal
+      ? legacyAmount
+      : 0
   return {
     debit,
     credit,

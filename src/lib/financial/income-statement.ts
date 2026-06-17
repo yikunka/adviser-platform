@@ -21,6 +21,50 @@ export const INCOME_STATEMENT_EXPENSE_CATEGORIES: ReadonlyArray<{
 ]
 
 const PL_STATEMENT_TYPES: ReadonlySet<AccountType> = new Set(['REVENUE', 'EXPENSE', 'CGS'])
+export type ProfitAndLossStatementType = 'REVENUE' | 'EXPENSE' | 'CGS'
+
+function isProfitAndLossStatementType(type: AccountType): type is ProfitAndLossStatementType {
+  return PL_STATEMENT_TYPES.has(type)
+}
+
+function isRevenueCandidate(account: { code: string; name: string }) {
+  const text = normalize(`${account.code} ${account.name}`)
+  return (
+    /收入|收益|營業收入|营业收入|销售收入|銷售收入|主营业务收入|主營業務收入|revenue|income|turnover/.test(text)
+    || /^05/.test(account.code)
+    || /^4/.test(account.code)
+  )
+}
+
+function isCostOfSalesCandidate(account: { code: string; name: string }) {
+  const text = normalize(`${account.code} ${account.name}`)
+  return (
+    /销售成本|銷售成本|主营业务成本|主營業務成本|采购成本|採購成本|costofsales|\bcogs\b|purchasecost/.test(text)
+    || /^06/.test(account.code)
+    || /^5/.test(account.code)
+  )
+}
+
+function isExpenseCandidate(account: { code: string; name: string }) {
+  const text = normalize(`${account.code} ${account.name}`)
+  return (
+    /费用|費用|expense|bankfee|bankcharge|interest|administrative|admin|selling|marketing|promotion|distribution/.test(text)
+    || /^(07|08|09)/.test(account.code)
+    || /^6/.test(account.code)
+  )
+}
+
+export function inferProfitAndLossStatementType(account: {
+  type: AccountType
+  code: string
+  name: string
+}): ProfitAndLossStatementType | null {
+  if (isProfitAndLossStatementType(account.type)) return account.type
+  if (isExpenseCandidate(account)) return 'EXPENSE'
+  if (isCostOfSalesCandidate(account)) return 'CGS'
+  if (isRevenueCandidate(account)) return 'REVENUE'
+  return null
+}
 
 export function shouldIncludeIncomeStatementLine(input: {
   type: AccountType

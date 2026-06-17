@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AccountType } from '@prisma/client'
+import { Prisma, type AccountType } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
 import { buildFinancialReports } from './reports'
 
@@ -20,6 +20,7 @@ type ReportAccountFixture = {
   level: number
   parentId: string | null
   sortOrder: number
+  yearToDateAmount?: number
   yearToDateDebit: number
   yearToDateCredit: number
 }
@@ -219,6 +220,155 @@ describe('buildFinancialReports journal-line source', () => {
       }),
     ])
     expect(reports.incomeStatement.totalRevenue).toBe(888)
+  })
+
+  it('builds P&L from trial-balance movement accounts even when legacy account types are wrong', async () => {
+    reportAccounts = [
+      baseReportAccounts[0],
+      {
+        id: 'legacy-rev-parent',
+        code: '05',
+        name: '收入',
+        type: 'ASSET',
+        level: 1,
+        parentId: null,
+        sortOrder: 10,
+        yearToDateDebit: 0,
+        yearToDateCredit: 0,
+      },
+      {
+        id: 'legacy-rev-child',
+        code: '0501',
+        name: '服务收入',
+        type: 'ASSET',
+        level: 2,
+        parentId: 'legacy-rev-parent',
+        sortOrder: 11,
+        yearToDateDebit: 0,
+        yearToDateCredit: 0,
+      },
+      {
+        id: 'legacy-expense',
+        code: '0701',
+        name: '行政费用',
+        type: 'ASSET',
+        level: 1,
+        parentId: null,
+        sortOrder: 20,
+        yearToDateDebit: 0,
+        yearToDateCredit: 0,
+      },
+    ]
+    periodMovementLines = [
+      { accountId: 'bank', debit: 700, credit: 120 },
+      { accountId: 'legacy-rev-child', debit: 0, credit: 700 },
+      { accountId: 'legacy-expense', debit: 120, credit: 0 },
+    ]
+
+    const reports = await buildFinancialReports('2026-05', { companyId })
+
+    expect(reports.trialBalance.rows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        accountId: 'legacy-rev-child',
+        periodCredit: 700,
+      }),
+      expect.objectContaining({
+        accountId: 'legacy-expense',
+        periodDebit: 120,
+      }),
+    ]))
+    expect(reports.incomeStatement.revenue).toEqual([
+      expect.objectContaining({
+        accountId: 'legacy-rev-child',
+        code: '0501',
+        type: 'REVENUE',
+        periodDebit: 0,
+        periodCredit: 700,
+        amount: 700,
+      }),
+    ])
+    expect(reports.incomeStatement.expenses).toEqual([
+      expect.objectContaining({
+        accountId: 'legacy-expense',
+        code: '0701',
+        type: 'EXPENSE',
+        periodDebit: 120,
+        periodCredit: 0,
+        amount: 120,
+      }),
+    ])
+    expect(reports.incomeStatement.totalRevenue).toBe(700)
+    expect(reports.incomeStatement.totalExpenses).toBe(120)
+    expect(reports.incomeStatement.netProfit).toBe(580)
+  })
+
+  it('uses legacy yearToDateAmount for P&L when explicit year-to-date debit and credit are empty', async () => {
+    reportAccounts = [
+      baseReportAccounts[0],
+      {
+        id: 'legacy-ytd-rev',
+        code: '4001',
+        name: '服務收入',
+        type: 'REVENUE',
+        level: 1,
+        parentId: null,
+        sortOrder: 10,
+        yearToDateAmount: 930,
+        yearToDateDebit: 0,
+        yearToDateCredit: 0,
+      },
+    ]
+    periodMovementLines = []
+
+    const reports = await buildFinancialReports('2026-05', { companyId })
+
+    expect(reports.incomeStatement.revenue).toEqual([
+      expect.objectContaining({
+        accountId: 'legacy-ytd-rev',
+        periodDebit: 0,
+        periodCredit: 930,
+        amount: 930,
+      }),
+    ])
+    expect(reports.incomeStatement.totalRevenue).toBe(930)
+  })
+
+  it('uses account-balance closing amounts for P&L when imported balances have no journal movement', async () => {
+    periodMovementLines = []
+    vi.mocked(prisma.accountBalance.findMany).mockResolvedValue([
+      {
+        id: 'balance-rev-child',
+        accountId: 'rev-child',
+        period: '2026-05',
+        openingDebit: new Prisma.Decimal(0),
+        openingCredit: new Prisma.Decimal(0),
+        closingDebit: new Prisma.Decimal(0),
+        closingCredit: new Prisma.Decimal(640),
+        endingBalance: new Prisma.Decimal(640),
+      },
+    ])
+
+    const reports = await buildFinancialReports('2026-05', { companyId })
+
+    expect(reports.trialBalance.rows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        accountId: 'rev-parent',
+        closingCredit: 640,
+      }),
+      expect.objectContaining({
+        accountId: 'rev-child',
+        closingCredit: 640,
+      }),
+    ]))
+    expect(reports.incomeStatement.revenue).toEqual([
+      expect.objectContaining({
+        accountId: 'rev-child',
+        periodDebit: 0,
+        periodCredit: 640,
+        amount: 640,
+      }),
+    ])
+    expect(reports.incomeStatement.totalRevenue).toBe(640)
   })
 
   it('keeps P&L movement direction when debit activity offsets revenue', async () => {
