@@ -14,6 +14,7 @@ const patchSchema = z.object({
   password: z.string().min(8).max(100).optional(),
   adminPlatforms: z.array(z.enum(['ADVISER', 'SFS_DIAMOND', 'COSMICOAT'])).optional(),
   adminMenuKeys: z.array(z.string()).optional(),
+  adminRoleId: z.string().nullable().optional(),
 })
 
 function normalizeMenus(keys: string[] | undefined): string[] | undefined {
@@ -63,6 +64,9 @@ export async function PATCH(
   if (parsed.data.password) {
     data.passwordHash = await bcrypt.hash(parsed.data.password, 12)
   }
+  if ('adminRoleId' in parsed.data) {
+    data.adminRoleId = parsed.data.adminRoleId ?? null
+  }
 
   const user = await prisma.user.update({
     where: { id },
@@ -74,6 +78,7 @@ export async function PATCH(
       ...(data.adminPlatforms !== undefined ? { adminPlatforms: data.adminPlatforms as Platform[] } : {}),
       ...(data.adminMenuKeys !== undefined ? { adminMenuKeys: data.adminMenuKeys as string[] } : {}),
       ...(data.passwordHash !== undefined ? { passwordHash: data.passwordHash as string } : {}),
+      ...('adminRoleId' in data ? { adminRoleId: data.adminRoleId as string | null } : {}),
     },
     select: {
       id: true,

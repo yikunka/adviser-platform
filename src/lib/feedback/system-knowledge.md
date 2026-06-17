@@ -109,12 +109,21 @@ Service invoicing for TCSP professional fees.
 
 ### 7. Team Management (`/admin/team`)
 Staff access control.
-- Roles: `SUPER_ADMIN`, `COMPLIANCE`, `STAFF`
+- System roles: `SUPER_ADMIN`, `COMPLIANCE`, `STAFF`
 - Per-staff platform access flags (Adviser / SFS Diamond / CosmoCoat)
 - Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, team, feedback, sfs-customers, sfs-orders, sfs-invoices, cosmocoat-* including cosmocoat-customers, cosmocoat-suppliers, cosmocoat-employees, cosmocoat-sample-orders)
+- Dynamic role assignment: each staff member can be assigned one dynamic `AdminRole` (from Role Management) that grants additional page + button-level permissions
 - Legacy mode: no restrictions; new mode: explicit per-menu grants
 - Create / edit / deactivate staff accounts
 - Active `STAFF`, `COMPLIANCE`, and `SUPER_ADMIN` accounts can be selected as per-company Financial Managers from Company Management; this assignment controls financial-operation authority for enabled companies
+
+### 7b. Role Management (`/admin/admin-roles`)
+Dynamic permission roles. **SUPER_ADMIN only.**
+- Create, edit, delete custom roles with name, color, and description
+- Each role has a permission matrix covering all admin pages across all modules (CosmoCoat, Adviser, SFS Diamond, System)
+- Permissions are per-page (view access) and per-action (create, edit, delete, approve, export, import)
+- System roles cannot be deleted
+- Assigned to staff via Team Management; effective permissions = role permissions + direct menu key grants
 
 ### 8. User Accounts (`/admin/users`)
 Client portal account management.

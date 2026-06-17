@@ -299,7 +299,27 @@ model User {
   cosProcessKitChangeRequestsSubmitted CosProcessKitChangeRequest[]  @relation("CosProcessKitChangeRequester")
   cosProcessKitChangeRequestsReviewed  CosProcessKitChangeRequest[]  @relation("CosProcessKitChangeReviewer")
 
+  /// Dynamic RBAC role assignment (optional — falls back to adminMenuKeys when unset)
+  adminRoleId String?
+  adminRole   AdminRole? @relation(fields: [adminRoleId], references: [id], onDelete: SetNull)
+
   @@map("users")
+}
+
+model AdminRole {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String   @default("")
+  color       String   @default("#6b7280")
+  /// All permission strings: page keys (e.g. 'cosmocoatRecipes') + action keys (e.g. 'cosmocoatRecipes.create')
+  permissions String[] @default([])
+  /// System roles cannot be deleted
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+
+  @@map("admin_roles")
 }
 
 model VerificationToken {

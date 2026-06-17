@@ -30,7 +30,7 @@ export const ADMIN_MENU_KEYS = [
 
 export type AdminMenuKey = (typeof ADMIN_MENU_KEYS)[number]
 
-const MENU_PLATFORM: Record<AdminMenuKey, Platform | 'GLOBAL'> = {
+export const MENU_PLATFORM: Record<AdminMenuKey, Platform | 'GLOBAL'> = {
   dashboard: 'GLOBAL',
   settings: 'GLOBAL',
   adminTeam: 'GLOBAL',
@@ -62,6 +62,8 @@ export type AdminAccessUser = {
   role: UserRole
   adminMenuKeys: string[]
   adminPlatforms: Platform[]
+  /** Permissions from a dynamic AdminRole, if assigned. */
+  adminRolePermissions?: string[]
 }
 
 /** Resolves JWT/session-safe menu access for staff users (super admin = all). */
@@ -69,22 +71,29 @@ export function computeEffectiveAdminMenus(user: AdminAccessUser): ReadonlySet<A
   if (user.role === 'SUPER_ADMIN') return 'all'
   if (user.role === 'CLIENT') return new Set()
 
-  const legacyStaff = user.adminMenuKeys.length === 0 && user.adminPlatforms.length === 0
+  const hasLegacyConfig = user.adminMenuKeys.length > 0 || user.adminPlatforms.length > 0
+  const legacyStaff = !hasLegacyConfig && !user.adminRolePermissions?.length
   if (legacyStaff) return 'all'
 
   const platformSet = new Set(user.adminPlatforms)
   const hasPlatformFilter = user.adminPlatforms.length > 0
 
   const keys = new Set<AdminMenuKey>()
+
+  // From explicit adminMenuKeys (legacy / override)
   for (const raw of user.adminMenuKeys) {
     if (!ADMIN_MENU_KEYS.includes(raw as AdminMenuKey)) continue
     const k = raw as AdminMenuKey
     const plat = MENU_PLATFORM[k]
-    if (plat === 'GLOBAL') {
-      keys.add(k)
-      continue
-    }
+    if (plat === 'GLOBAL') { keys.add(k); continue }
     if (!hasPlatformFilter || platformSet.has(plat)) keys.add(k)
+  }
+
+  // From dynamic AdminRole (page-level perms have no dot)
+  for (const perm of (user.adminRolePermissions ?? [])) {
+    if (perm.includes('.')) continue
+    if (!ADMIN_MENU_KEYS.includes(perm as AdminMenuKey)) continue
+    keys.add(perm as AdminMenuKey)
   }
 
   keys.add('dashboard')

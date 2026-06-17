@@ -4,6 +4,7 @@ import type { Session } from 'next-auth'
 import type { UserRole } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
 import { adminMenusAllow, computeEffectiveAdminMenus, type AdminMenuKey } from '@/lib/auth/admin-access'
+import { computeEffectivePermissions, hasPermission } from '@/lib/auth/permissions'
 
 const ROLE_RANK: Record<UserRole, number> = {
   CLIENT: 0,
@@ -21,6 +22,13 @@ export type RequireRoleOptions = {
   adminMenu?: AdminMenuKey
 }
 
+const userPermSelect = {
+  role: true,
+  adminMenuKeys: true,
+  adminPlatforms: true,
+  adminRole: { select: { permissions: true } },
+} as const
+
 export async function requireRole(minRole: UserRole, opts?: RequireRoleOptions): Promise<RBACResult> {
   const session = await auth()
   if (!session) {
@@ -34,16 +42,54 @@ export async function requireRole(minRole: UserRole, opts?: RequireRoleOptions):
     if (session.user.role !== 'SUPER_ADMIN') {
       const row = await prisma.user.findUnique({
         where: { id: session.user.id },
-        select: { role: true, adminMenuKeys: true, adminPlatforms: true },
+        select: userPermSelect,
       })
       if (!row) {
         return { session: null, error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
       }
-      const menus = computeEffectiveAdminMenus(row)
+      const menus = computeEffectiveAdminMenus({
+        ...row,
+        adminRolePermissions: row.adminRole?.permissions,
+      })
       if (!adminMenusAllow(menus, opts.adminMenu)) {
         return { session: null, error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
       }
     }
+  }
+
+  return { session: session as Session, error: null }
+}
+
+/**
+ * Checks a specific permission string (page key OR action key like 'cosmocoatRecipes.delete').
+ * Use this for granular button-level API protection.
+ */
+export async function requirePermission(perm: string, minRole: UserRole = 'STAFF'): Promise<RBACResult> {
+  const session = await auth()
+  if (!session) {
+    return { session: null, error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+  }
+  if (ROLE_RANK[session.user.role] < ROLE_RANK[minRole]) {
+    return { session: null, error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
+  }
+  if (session.user.role === 'SUPER_ADMIN') {
+    return { session: session as Session, error: null }
+  }
+
+  const row = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: userPermSelect,
+  })
+  if (!row) {
+    return { session: null, error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+  }
+
+  const perms = computeEffectivePermissions({
+    ...row,
+    adminRole: row.adminRole,
+  })
+  if (!hasPermission(perms, perm)) {
+    return { session: null, error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
   }
 
   return { session: session as Session, error: null }

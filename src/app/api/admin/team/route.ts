@@ -13,6 +13,7 @@ const createSchema = z.object({
   role: z.enum(['STAFF', 'COMPLIANCE', 'SUPER_ADMIN']),
   adminPlatforms: z.array(z.enum(['ADVISER', 'SFS_DIAMOND', 'COSMICOAT'])).default([]),
   adminMenuKeys: z.array(z.string()).default([]),
+  adminRoleId: z.string().optional().nullable(),
 })
 
 function normalizeMenus(keys: string[]): string[] {
@@ -36,6 +37,8 @@ export async function GET() {
       isActive: true,
       adminPlatforms: true,
       adminMenuKeys: true,
+      adminRoleId: true,
+      adminRole: { select: { id: true, name: true, color: true } },
       emailVerified: true,
       createdAt: true,
     },
@@ -79,6 +82,7 @@ export async function POST(req: Request) {
       platform: 'ADVISER',
       adminPlatforms,
       adminMenuKeys: adminMenuKeys as unknown as string[],
+      adminRoleId: parsed.data.adminRoleId ?? null,
       emailVerified: new Date(),
     },
     select: {

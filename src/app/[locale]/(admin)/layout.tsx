@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
 import AdminShell from '@/components/layout/AdminShell'
 import { computeEffectiveAdminMenus } from '@/lib/auth/admin-access'
+import { computeEffectivePermissions } from '@/lib/auth/permissions'
 
 const STAFF_ROLES = new Set(['STAFF', 'COMPLIANCE', 'SUPER_ADMIN'])
 
@@ -27,17 +28,33 @@ export default async function AdminLayout({
 
   const userRow = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { role: true, adminMenuKeys: true, adminPlatforms: true },
+    select: {
+      role: true,
+      adminMenuKeys: true,
+      adminPlatforms: true,
+      adminRole: { select: { permissions: true } },
+    },
   })
   if (!userRow) redirectToInvalidateSession(locale)
 
-  const menuAccess = computeEffectiveAdminMenus(userRow)
+  const menuAccess = computeEffectiveAdminMenus({
+    ...userRow,
+    adminRolePermissions: userRow.adminRole?.permissions,
+  })
+
+  // Full permission set for button-level checks (null = all access)
+  const effectivePerms = computeEffectivePermissions({
+    ...userRow,
+    adminRole: userRow.adminRole,
+  })
+  const permissions: string[] | null = effectivePerms === 'all' ? null : Array.from(effectivePerms)
 
   return (
     <AdminShell
       userName={session.user.name ?? session.user.email}
       userRole={session.user.role}
       menuAccess={menuAccess}
+      permissions={permissions}
       locale={locale}
     >
       {children}

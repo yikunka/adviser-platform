@@ -7,6 +7,7 @@ import { Link } from '@/i18n/navigation'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget'
+import { AdminPermissionProvider } from '@/components/admin/AdminPermissionContext'
 import {
   LayoutDashboard,
   Building2,
@@ -44,6 +45,7 @@ import {
   Contact,
   Truck,
   Network,
+  ShieldCheck,
 } from 'lucide-react'
 import type { AdminMenuKey } from '@/lib/auth/admin-access'
 import { pathnameToAdminMenuKey, adminMenusAllow } from '@/lib/auth/admin-access'
@@ -124,6 +126,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/admin/users', key: 'users', Icon: Users },
       { href: '/admin/team', key: 'adminTeam', Icon: UserCog },
+      { href: '/admin/admin-roles', key: 'adminTeam', labelKey: 'adminRoles', Icon: ShieldCheck },
       { href: '/admin/settings', key: 'settings', Icon: Settings },
     ],
   },
@@ -170,12 +173,14 @@ export default function AdminShell({
   userName,
   userRole,
   menuAccess,
+  permissions,
   locale,
 }: {
   children: React.ReactNode
   userName: string
   userRole: string
   menuAccess: MenuAccess
+  permissions: string[] | null
   locale: string
 }) {
   const t = useTranslations('nav')
@@ -452,7 +457,9 @@ export default function AdminShell({
 
         <main className="flex-1 overflow-auto p-6" style={{ background: 'var(--background)' }}>
           <AdminRouteGuard menuAccess={menuAccess} userRole={userRole} locale={navLocale}>
-            {children}
+            <AdminPermissionProvider permissions={permissions}>
+              {children}
+            </AdminPermissionProvider>
           </AdminRouteGuard>
         </main>
       </div>

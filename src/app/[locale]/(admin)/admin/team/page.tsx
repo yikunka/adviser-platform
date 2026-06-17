@@ -5,7 +5,9 @@ import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import type { Platform, UserRole } from '@prisma/client'
 import { ADMIN_MENU_OPTIONS, ADMIN_PLATFORM_OPTIONS, type AdminMenuKey } from '@/lib/auth/admin-access'
-import { UserPlus, Pencil, Trash2, Ban, CheckCircle } from 'lucide-react'
+import { UserPlus, Pencil, Trash2, Ban, CheckCircle, ShieldCheck } from 'lucide-react'
+
+type AdminRoleStub = { id: string; name: string; color: string }
 
 type TeamUser = {
   id: string
@@ -15,6 +17,8 @@ type TeamUser = {
   isActive: boolean
   adminPlatforms: Platform[]
   adminMenuKeys: string[]
+  adminRoleId: string | null
+  adminRole: AdminRoleStub | null
   emailVerified: string | null
   createdAt: string
 }
@@ -56,6 +60,9 @@ function FormFields({
   togglePlatform,
   menus,
   toggleMenu,
+  adminRoleId,
+  setAdminRoleId,
+  availableRoles,
 }: {
   role: UserRole
   setRole: (r: UserRole) => void
@@ -63,6 +70,9 @@ function FormFields({
   togglePlatform: (p: Platform) => void
   menus: Set<AdminMenuKey>
   toggleMenu: (k: AdminMenuKey) => void
+  adminRoleId: string | null
+  setAdminRoleId: (id: string | null) => void
+  availableRoles: AdminRoleStub[]
 }) {
   const t = useTranslations('admin.team')
   const byGroup = useMemo(() => {
@@ -93,6 +103,25 @@ function FormFields({
           <option value="SUPER_ADMIN">Super Admin</option>
         </select>
       </div>
+
+      {availableRoles.length > 0 && (
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+            {t('dynamicRole')}
+          </label>
+          <select
+            value={adminRoleId ?? ''}
+            onChange={e => setAdminRoleId(e.target.value || null)}
+            className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+            style={{ background: '#1A1A12', border: '1px solid #2A2418', color: 'var(--foreground)' }}
+          >
+            <option value="">{t('noRole')}</option>
+            {availableRoles.map(r => (
+              <option key={r.id} value={r.id}>{r.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="space-y-2">
         <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
@@ -160,7 +189,16 @@ function EditorModal({
   const [menus, setMenus] = useState<Set<AdminMenuKey>>(
     () => new Set((user?.adminMenuKeys ?? []) as AdminMenuKey[]),
   )
+  const [adminRoleId, setAdminRoleId] = useState<string | null>(user?.adminRoleId ?? null)
+  const [availableRoles, setAvailableRoles] = useState<AdminRoleStub[]>([])
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/admin/roles')
+      .then(r => r.json())
+      .then(d => setAvailableRoles(d.roles ?? []))
+      .catch(() => {})
+  }, [])
 
   const togglePlatform = (p: Platform) => {
     setPlatforms(prev => {
@@ -195,6 +233,7 @@ function EditorModal({
             role,
             adminPlatforms: [...platforms],
             adminMenuKeys: [...menus],
+            adminRoleId: adminRoleId ?? null,
           }),
         })
         const data = await res.json()
@@ -210,6 +249,7 @@ function EditorModal({
           role,
           adminPlatforms: [...platforms],
           adminMenuKeys: [...menus],
+          adminRoleId: adminRoleId ?? null,
         }
         if (password.length >= 8) body.password = password
         const res = await fetch(`/api/admin/team/${user.id}`, {
@@ -293,6 +333,9 @@ function EditorModal({
             togglePlatform={togglePlatform}
             menus={menus}
             toggleMenu={toggleMenu}
+            adminRoleId={adminRoleId}
+            setAdminRoleId={setAdminRoleId}
+            availableRoles={availableRoles}
           />
           <div className="flex gap-3 pt-2">
             <button
@@ -416,6 +459,7 @@ export default function AdminTeamPage() {
                   <th style={th}>{t('email')}</th>
                   <th style={th}>{t('name')}</th>
                   <th style={th}>{t('role')}</th>
+                  <th style={th}>{t('dynamicRole')}</th>
                   <th style={th}>{t('platforms')}</th>
                   <th style={th}>{t('menus')}</th>
                   <th style={th}>{t('status')}</th>
@@ -449,6 +493,19 @@ export default function AdminTeamPage() {
                       <td style={td}>{u.nameEn}</td>
                       <td style={td}>
                         <RoleLabel role={u.role} />
+                      </td>
+                      <td style={td}>
+                        {u.adminRole ? (
+                          <span
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium"
+                            style={{ background: u.adminRole.color + '22', color: u.adminRole.color, border: `1px solid ${u.adminRole.color}44` }}
+                          >
+                            <ShieldCheck size={11} />
+                            {u.adminRole.name}
+                          </span>
+                        ) : (
+                          <span style={{ color: '#3A3020' }}>—</span>
+                        )}
                       </td>
                       <td style={td} className="max-w-[140px] truncate" title={u.adminPlatforms.join(', ')}>
                         {superFull

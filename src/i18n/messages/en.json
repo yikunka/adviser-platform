@@ -47,7 +47,8 @@
     "cosmocoatCustomers": "Customer Management",
     "cosmocoatSuppliers": "Supplier Management",
     "cosmocoatEmployees": "Employee Management",
-    "cosmocoatOverview": "Flow Overview"
+    "cosmocoatOverview": "Flow Overview",
+    "adminRoles": "Role Management"
   },
   "home": {
     "heroTitleHighlight": "6AM Advisory",
@@ -681,7 +682,9 @@
       "passwordNew": "New password (optional, min 8)",
       "roleStaff": "Staff",
       "roleCompliance": "Compliance",
-      "roleSuper": "Super Admin"
+      "roleSuper": "Super Admin",
+      "dynamicRole": "Dynamic role",
+      "noRole": "No role assigned"
     },
     "cosmocoatHub": {
       "title": "CosmoCoat",

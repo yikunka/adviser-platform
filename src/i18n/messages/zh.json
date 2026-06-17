@@ -47,7 +47,8 @@
     "cosmocoatCustomers": "客户管理",
     "cosmocoatSuppliers": "供应商管理",
     "cosmocoatEmployees": "员工管理",
-    "cosmocoatOverview": "物料流向"
+    "cosmocoatOverview": "物料流向",
+    "adminRoles": "角色管理"
   },
   "home": {
     "heroTitleHighlight": "6AM Advisory",
@@ -681,7 +682,9 @@
       "passwordNew": "新密碼（選填，至少8位）",
       "roleStaff": "職員",
       "roleCompliance": "合規",
-      "roleSuper": "超級管理員"
+      "roleSuper": "超級管理員",
+      "dynamicRole": "動態角色",
+      "noRole": "不指定角色"
     },
     "cosmocoatHub": {
       "title": "CosmoCoat",
