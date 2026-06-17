@@ -300,9 +300,8 @@ model User {
   cosProcessKitChangeRequestsSubmitted CosProcessKitChangeRequest[]  @relation("CosProcessKitChangeRequester")
   cosProcessKitChangeRequestsReviewed  CosProcessKitChangeRequest[]  @relation("CosProcessKitChangeReviewer")
 
-  /// Dynamic RBAC role assignment (optional — falls back to adminMenuKeys when unset)
-  adminRoleId String?
-  adminRole   AdminRole? @relation(fields: [adminRoleId], references: [id], onDelete: SetNull)
+  /// Dynamic RBAC role assignments (multi-role, union of all permissions)
+  adminRoles  UserAdminRole[]
 
   @@map("users")
 }
@@ -318,9 +317,20 @@ model AdminRole {
   isSystem    Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  users       User[]
+  users       UserAdminRole[]
 
   @@map("admin_roles")
+}
+
+model UserAdminRole {
+  userId String
+  roleId String
+  user   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   AdminRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@map("user_admin_roles")
 }
 
 model VerificationToken {

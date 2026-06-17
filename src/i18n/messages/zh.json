@@ -684,8 +684,9 @@
       "roleStaff": "職員",
       "roleCompliance": "合規",
       "roleSuper": "超級管理員",
-      "dynamicRole": "動態角色",
-      "noRole": "不指定角色"
+      "dynamicRole": "動態角色（多選）",
+      "noRole": "不指定角色",
+      "dynamicRoleNote": "已分配角色的權限將聯合生效，覆蓋下方傳統選單設定。"
     },
     "cosmocoatHub": {
       "title": "CosmoCoat",

@@ -17,8 +17,7 @@ type TeamUser = {
   isActive: boolean
   adminPlatforms: Platform[]
   adminMenuKeys: string[]
-  adminRoleId: string | null
-  adminRole: AdminRoleStub | null
+  adminRoles: AdminRoleStub[]
   emailVerified: string | null
   createdAt: string
 }
@@ -60,8 +59,8 @@ function FormFields({
   togglePlatform,
   menus,
   toggleMenu,
-  adminRoleId,
-  setAdminRoleId,
+  adminRoleIds,
+  toggleAdminRole,
   availableRoles,
 }: {
   role: UserRole
@@ -70,8 +69,8 @@ function FormFields({
   togglePlatform: (p: Platform) => void
   menus: Set<AdminMenuKey>
   toggleMenu: (k: AdminMenuKey) => void
-  adminRoleId: string | null
-  setAdminRoleId: (id: string | null) => void
+  adminRoleIds: Set<string>
+  toggleAdminRole: (id: string) => void
   availableRoles: AdminRoleStub[]
 }) {
   const t = useTranslations('admin.team')
@@ -105,21 +104,37 @@ function FormFields({
       </div>
 
       {availableRoles.length > 0 && (
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+        <div className="space-y-2">
+          <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
             {t('dynamicRole')}
-          </label>
-          <select
-            value={adminRoleId ?? ''}
-            onChange={e => setAdminRoleId(e.target.value || null)}
-            className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
-            style={{ background: '#1A1A12', border: '1px solid #2A2418', color: 'var(--foreground)' }}
-          >
-            <option value="">{t('noRole')}</option>
-            {availableRoles.map(r => (
-              <option key={r.id} value={r.id}>{r.name}</option>
-            ))}
-          </select>
+          </p>
+          <div className="rounded-lg p-3 space-y-2" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
+            {availableRoles.map(r => {
+              const checked = adminRoleIds.has(r.id)
+              return (
+                <label key={r.id} className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleAdminRole(r.id)}
+                    className="rounded"
+                  />
+                  <span
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium"
+                    style={{ background: r.color + '22', color: r.color, border: `1px solid ${r.color}44` }}
+                  >
+                    <ShieldCheck size={11} />
+                    {r.name}
+                  </span>
+                </label>
+              )
+            })}
+          </div>
+          {adminRoleIds.size > 0 && (
+            <p className="text-[11px]" style={{ color: '#6A5A40' }}>
+              {t('dynamicRoleNote')}
+            </p>
+          )}
         </div>
       )}
 
@@ -189,7 +204,9 @@ function EditorModal({
   const [menus, setMenus] = useState<Set<AdminMenuKey>>(
     () => new Set((user?.adminMenuKeys ?? []) as AdminMenuKey[]),
   )
-  const [adminRoleId, setAdminRoleId] = useState<string | null>(user?.adminRoleId ?? null)
+  const [adminRoleIds, setAdminRoleIds] = useState<Set<string>>(
+    () => new Set((user?.adminRoles ?? []).map(r => r.id)),
+  )
   const [availableRoles, setAvailableRoles] = useState<AdminRoleStub[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -218,6 +235,15 @@ function EditorModal({
     })
   }
 
+  const toggleAdminRole = (id: string) => {
+    setAdminRoleIds(prev => {
+      const n = new Set(prev)
+      if (n.has(id)) n.delete(id)
+      else n.add(id)
+      return n
+    })
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
@@ -233,7 +259,7 @@ function EditorModal({
             role,
             adminPlatforms: [...platforms],
             adminMenuKeys: [...menus],
-            adminRoleId: adminRoleId ?? null,
+            adminRoleIds: [...adminRoleIds],
           }),
         })
         const data = await res.json()
@@ -249,7 +275,7 @@ function EditorModal({
           role,
           adminPlatforms: [...platforms],
           adminMenuKeys: [...menus],
-          adminRoleId: adminRoleId ?? null,
+          adminRoleIds: [...adminRoleIds],
         }
         if (password.length >= 8) body.password = password
         const res = await fetch(`/api/admin/team/${user.id}`, {
@@ -333,8 +359,8 @@ function EditorModal({
             togglePlatform={togglePlatform}
             menus={menus}
             toggleMenu={toggleMenu}
-            adminRoleId={adminRoleId}
-            setAdminRoleId={setAdminRoleId}
+            adminRoleIds={adminRoleIds}
+            toggleAdminRole={toggleAdminRole}
             availableRoles={availableRoles}
           />
           <div className="flex gap-3 pt-2">
@@ -471,6 +497,7 @@ export default function AdminTeamPage() {
                   const legacy =
                     u.adminMenuKeys.length === 0 &&
                     u.adminPlatforms.length === 0 &&
+                    u.adminRoles.length === 0 &&
                     u.role !== 'SUPER_ADMIN'
                   const superFull = u.role === 'SUPER_ADMIN'
                   return (
@@ -495,14 +522,19 @@ export default function AdminTeamPage() {
                         <RoleLabel role={u.role} />
                       </td>
                       <td style={td}>
-                        {u.adminRole ? (
-                          <span
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium"
-                            style={{ background: u.adminRole.color + '22', color: u.adminRole.color, border: `1px solid ${u.adminRole.color}44` }}
-                          >
-                            <ShieldCheck size={11} />
-                            {u.adminRole.name}
-                          </span>
+                        {u.adminRoles.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {u.adminRoles.map(r => (
+                              <span
+                                key={r.id}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium"
+                                style={{ background: r.color + '22', color: r.color, border: `1px solid ${r.color}44` }}
+                              >
+                                <ShieldCheck size={11} />
+                                {r.name}
+                              </span>
+                            ))}
+                          </div>
                         ) : (
                           <span style={{ color: '#3A3020' }}>—</span>
                         )}

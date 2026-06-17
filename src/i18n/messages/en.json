@@ -684,8 +684,9 @@
       "roleStaff": "Staff",
       "roleCompliance": "Compliance",
       "roleSuper": "Super Admin",
-      "dynamicRole": "Dynamic role",
-      "noRole": "No role assigned"
+      "dynamicRole": "Dynamic roles (multi-select)",
+      "noRole": "No role assigned",
+      "dynamicRoleNote": "Permissions from all assigned roles are unioned and override legacy menu settings."
     },
     "cosmocoatHub": {
       "title": "CosmoCoat",

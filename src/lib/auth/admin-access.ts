@@ -84,8 +84,8 @@ export type AdminAccessUser = {
   role: UserRole
   adminMenuKeys: string[]
   adminPlatforms: Platform[]
-  /** Permissions from a dynamic AdminRole, if assigned. */
-  adminRolePermissions?: string[]
+  /** Permissions from all assigned AdminRoles (multi-role union). */
+  adminRolesPermissions?: string[][]
 }
 
 /** Resolves JWT/session-safe menu access for staff users (super admin = all). */
@@ -93,13 +93,15 @@ export function computeEffectiveAdminMenus(user: AdminAccessUser): ReadonlySet<A
   if (user.role === 'SUPER_ADMIN') return 'all'
   if (user.role === 'CLIENT') return new Set()
 
-  // Dynamic role takes full authority — adminMenuKeys are ignored
-  if (user.adminRolePermissions?.length) {
+  // Dynamic roles: union menu keys from all assigned roles
+  if (user.adminRolesPermissions && user.adminRolesPermissions.length > 0) {
     const keys = new Set<AdminMenuKey>()
-    for (const perm of user.adminRolePermissions) {
-      if (perm.includes('.')) continue
-      if (!ADMIN_MENU_KEYS.includes(perm as AdminMenuKey)) continue
-      keys.add(perm as AdminMenuKey)
+    for (const rolePerms of user.adminRolesPermissions) {
+      for (const perm of rolePerms) {
+        if (perm.includes('.')) continue
+        if (!ADMIN_MENU_KEYS.includes(perm as AdminMenuKey)) continue
+        keys.add(perm as AdminMenuKey)
+      }
     }
     keys.add('dashboard')
     return keys

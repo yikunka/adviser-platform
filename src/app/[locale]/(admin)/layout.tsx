@@ -32,20 +32,22 @@ export default async function AdminLayout({
       role: true,
       adminMenuKeys: true,
       adminPlatforms: true,
-      adminRole: { select: { permissions: true } },
+      adminRoles: { select: { role: { select: { permissions: true } } } },
     },
   })
   if (!userRow) redirectToInvalidateSession(locale)
 
+  const rolePermsList = userRow.adminRoles.map(r => r.role.permissions)
+
   const menuAccess = computeEffectiveAdminMenus({
     ...userRow,
-    adminRolePermissions: userRow.adminRole?.permissions,
+    adminRolesPermissions: rolePermsList,
   })
 
   // Full permission set for button-level checks (null = all access)
   const effectivePerms = computeEffectivePermissions({
     ...userRow,
-    adminRole: userRow.adminRole,
+    adminRoles: userRow.adminRoles.map(r => r.role),
   })
   const permissions: string[] | null = effectivePerms === 'all' ? null : Array.from(effectivePerms)
 

@@ -28,13 +28,15 @@ export async function GET() {
         role: true,
         adminMenuKeys: true,
         adminPlatforms: true,
-        adminRole: { select: { permissions: true } },
+        adminRoles: { select: { role: { select: { permissions: true } } } },
       },
     }),
   ])
 
   const effectivePerms = computeEffectivePermissions(
-    userRow ?? { role: session!.user.role, adminMenuKeys: [], adminPlatforms: [] }
+    userRow
+      ? { ...userRow, adminRoles: userRow.adminRoles.map(r => r.role) }
+      : { role: session!.user.role, adminMenuKeys: [], adminPlatforms: [] }
   )
   const financialReadOnly = effectivePerms !== 'all' && !FINANCIAL_WRITE_PERMS.some(p => hasPermission(effectivePerms, p))
   const companies = await prisma.company.findMany({

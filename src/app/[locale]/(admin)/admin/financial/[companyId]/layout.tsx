@@ -60,7 +60,7 @@ export default async function FinancialCompanyLayout({
         role: true,
         adminMenuKeys: true,
         adminPlatforms: true,
-        adminRole: { select: { permissions: true } },
+        adminRoles: { select: { role: { select: { permissions: true } } } },
       },
     }),
   ])
@@ -72,7 +72,11 @@ export default async function FinancialCompanyLayout({
     notFound()
   }
 
-  const effectivePerms = computeEffectivePermissions(userRow ?? { role: session.user.role, adminMenuKeys: [], adminPlatforms: [] })
+  const effectivePerms = computeEffectivePermissions(
+    userRow
+      ? { ...userRow, adminRoles: userRow.adminRoles.map(r => r.role) }
+      : { role: session.user.role, adminMenuKeys: [], adminPlatforms: [] }
+  )
   const financialReadOnly = effectivePerms !== 'all' && !FINANCIAL_WRITE_PERMS.some(p => hasPermission(effectivePerms, p))
 
   return (

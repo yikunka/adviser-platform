@@ -120,22 +120,26 @@ export type UserPermissionInput = {
   role: UserRole
   adminMenuKeys: string[]
   adminPlatforms: Platform[]
-  adminRole?: { permissions: string[] } | null
+  /** Permissions from all assigned AdminRoles (multi-role union). */
+  adminRoles?: { permissions: string[] }[] | null
 }
 
 /**
  * Computes the full set of permissions for a user.
  * Returns 'all' for SUPER_ADMIN and legacy staff.
  * Returns a Set<string> otherwise — includes both page keys and action keys.
+ * When multiple roles are assigned, their permissions are unioned.
  */
 export function computeEffectivePermissions(user: UserPermissionInput): Set<string> | 'all' {
   if (user.role === 'SUPER_ADMIN') return 'all'
   if (user.role === 'CLIENT') return new Set()
 
-  // Dynamic role takes full authority — adminMenuKeys are ignored
-  if (user.adminRole) {
+  // Dynamic roles: union permissions from all assigned roles
+  if (user.adminRoles && user.adminRoles.length > 0) {
     const perms = new Set<string>()
-    for (const p of user.adminRole.permissions) perms.add(p)
+    for (const r of user.adminRoles) {
+      for (const p of r.permissions) perms.add(p)
+    }
     perms.add('dashboard')
     return perms
   }

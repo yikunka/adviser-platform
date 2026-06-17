@@ -26,7 +26,7 @@ const userPermSelect = {
   role: true,
   adminMenuKeys: true,
   adminPlatforms: true,
-  adminRole: { select: { permissions: true } },
+  adminRoles: { select: { role: { select: { permissions: true } } } },
 } as const
 
 export async function requireRole(minRole: UserRole, opts?: RequireRoleOptions): Promise<RBACResult> {
@@ -49,7 +49,7 @@ export async function requireRole(minRole: UserRole, opts?: RequireRoleOptions):
       }
       const menus = computeEffectiveAdminMenus({
         ...row,
-        adminRolePermissions: row.adminRole?.permissions,
+        adminRolesPermissions: row.adminRoles.map(r => r.role.permissions),
       })
       if (!adminMenusAllow(menus, opts.adminMenu)) {
         return { session: null, error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
@@ -86,7 +86,7 @@ export async function requirePermission(perm: string, minRole: UserRole = 'STAFF
 
   const perms = computeEffectivePermissions({
     ...row,
-    adminRole: row.adminRole,
+    adminRoles: row.adminRoles.map(r => r.role),
   })
   if (!hasPermission(perms, perm)) {
     return { session: null, error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }

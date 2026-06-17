@@ -13,7 +13,7 @@ const createSchema = z.object({
   role: z.enum(['STAFF', 'COMPLIANCE', 'SUPER_ADMIN']),
   adminPlatforms: z.array(z.enum(['ADVISER', 'SFS_DIAMOND', 'COSMICOAT'])).default([]),
   adminMenuKeys: z.array(z.string()).default([]),
-  adminRoleId: z.string().optional().nullable(),
+  adminRoleIds: z.array(z.string()).default([]),
 })
 
 function normalizeMenus(keys: string[]): string[] {
@@ -37,8 +37,7 @@ export async function GET() {
       isActive: true,
       adminPlatforms: true,
       adminMenuKeys: true,
-      adminRoleId: true,
-      adminRole: { select: { id: true, name: true, color: true } },
+      adminRoles: { select: { role: { select: { id: true, name: true, color: true } } } },
       emailVerified: true,
       createdAt: true,
     },
@@ -46,7 +45,13 @@ export async function GET() {
     take: 200,
   })
 
-  return NextResponse.json({ users })
+  // Flatten nested join rows to a simple array for the client
+  const mapped = users.map(u => ({
+    ...u,
+    adminRoles: u.adminRoles.map(r => r.role),
+  }))
+
+  return NextResponse.json({ users: mapped })
 }
 
 /** POST /api/admin/team — create a staff / admin account. */
@@ -82,8 +87,10 @@ export async function POST(req: Request) {
       platform: 'ADVISER',
       adminPlatforms,
       adminMenuKeys: adminMenuKeys as unknown as string[],
-      adminRoleId: parsed.data.adminRoleId ?? null,
       emailVerified: new Date(),
+      adminRoles: parsed.data.adminRoleIds.length > 0
+        ? { create: parsed.data.adminRoleIds.map(roleId => ({ roleId })) }
+        : undefined,
     },
     select: {
       id: true,

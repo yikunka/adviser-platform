@@ -14,7 +14,7 @@ const patchSchema = z.object({
   password: z.string().min(8).max(100).optional(),
   adminPlatforms: z.array(z.enum(['ADVISER', 'SFS_DIAMOND', 'COSMICOAT'])).optional(),
   adminMenuKeys: z.array(z.string()).optional(),
-  adminRoleId: z.string().nullable().optional(),
+  adminRoleIds: z.array(z.string()).optional(),
 })
 
 function normalizeMenus(keys: string[] | undefined): string[] | undefined {
@@ -51,34 +51,37 @@ export async function PATCH(
     if (conflict) return NextResponse.json({ error: 'Email already in use' }, { status: 409 })
   }
 
-  const data: Record<string, unknown> = {}
-  if (parsed.data.nameEn !== undefined) data.nameEn = parsed.data.nameEn
-  if (parsed.data.email !== undefined) data.email = parsed.data.email.trim().toLowerCase()
-  if (parsed.data.role !== undefined) data.role = parsed.data.role as UserRole
-  if (parsed.data.isActive !== undefined) data.isActive = parsed.data.isActive
-  if (parsed.data.adminPlatforms !== undefined) data.adminPlatforms = parsed.data.adminPlatforms as Platform[]
+  const updateData: Record<string, unknown> = {}
+  if (parsed.data.nameEn !== undefined) updateData.nameEn = parsed.data.nameEn
+  if (parsed.data.email !== undefined) updateData.email = parsed.data.email.trim().toLowerCase()
+  if (parsed.data.role !== undefined) updateData.role = parsed.data.role as UserRole
+  if (parsed.data.isActive !== undefined) updateData.isActive = parsed.data.isActive
+  if (parsed.data.adminPlatforms !== undefined) updateData.adminPlatforms = parsed.data.adminPlatforms as Platform[]
   if (parsed.data.adminMenuKeys !== undefined) {
     const m = normalizeMenus(parsed.data.adminMenuKeys) as unknown as AdminMenuKey[]
-    data.adminMenuKeys = m as unknown as string[]
+    updateData.adminMenuKeys = m as unknown as string[]
   }
   if (parsed.data.password) {
-    data.passwordHash = await bcrypt.hash(parsed.data.password, 12)
-  }
-  if ('adminRoleId' in parsed.data) {
-    data.adminRoleId = parsed.data.adminRoleId ?? null
+    updateData.passwordHash = await bcrypt.hash(parsed.data.password, 12)
   }
 
   const user = await prisma.user.update({
     where: { id },
     data: {
-      ...(data.nameEn !== undefined ? { nameEn: data.nameEn as string } : {}),
-      ...(data.email !== undefined ? { email: data.email as string } : {}),
-      ...(data.role !== undefined ? { role: data.role as UserRole } : {}),
-      ...(data.isActive !== undefined ? { isActive: data.isActive as boolean } : {}),
-      ...(data.adminPlatforms !== undefined ? { adminPlatforms: data.adminPlatforms as Platform[] } : {}),
-      ...(data.adminMenuKeys !== undefined ? { adminMenuKeys: data.adminMenuKeys as string[] } : {}),
-      ...(data.passwordHash !== undefined ? { passwordHash: data.passwordHash as string } : {}),
-      ...('adminRoleId' in data ? { adminRoleId: data.adminRoleId as string | null } : {}),
+      ...(updateData.nameEn !== undefined ? { nameEn: updateData.nameEn as string } : {}),
+      ...(updateData.email !== undefined ? { email: updateData.email as string } : {}),
+      ...(updateData.role !== undefined ? { role: updateData.role as UserRole } : {}),
+      ...(updateData.isActive !== undefined ? { isActive: updateData.isActive as boolean } : {}),
+      ...(updateData.adminPlatforms !== undefined ? { adminPlatforms: updateData.adminPlatforms as Platform[] } : {}),
+      ...(updateData.adminMenuKeys !== undefined ? { adminMenuKeys: updateData.adminMenuKeys as string[] } : {}),
+      ...(updateData.passwordHash !== undefined ? { passwordHash: updateData.passwordHash as string } : {}),
+      // Replace all role assignments when adminRoleIds is provided
+      ...(parsed.data.adminRoleIds !== undefined ? {
+        adminRoles: {
+          deleteMany: {},
+          create: parsed.data.adminRoleIds.map(roleId => ({ roleId })),
+        },
+      } : {}),
     },
     select: {
       id: true,
