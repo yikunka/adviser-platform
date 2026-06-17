@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 
 // ── Types ──────────────────────────────────────────────────────────
 type NodeType = 'rawMaterial' | 'recipe' | 'semiFinished' | 'factoryProduct' | 'colorFormula' | 'processKit'
@@ -50,34 +50,37 @@ interface OverviewData {
   }
 }
 
-// ── Visual constants ───────────────────────────────────────────────
+// ── Constants ──────────────────────────────────────────────────────
 const TYPE_COLOR: Record<NodeType, string> = {
-  rawMaterial:   '#4ade80',
-  recipe:        '#60a5fa',
-  semiFinished:  '#f59e0b',
-  factoryProduct:'#a78bfa',
-  colorFormula:  '#f472b6',
-  processKit:    '#fb923c',
+  rawMaterial:    '#4ade80',
+  recipe:         '#60a5fa',
+  semiFinished:   '#f59e0b',
+  factoryProduct: '#a78bfa',
+  colorFormula:   '#f472b6',
+  processKit:     '#fb923c',
 }
-
 const TYPE_LABEL: Record<NodeType, string> = {
-  rawMaterial:   '原材料',
-  recipe:        '配方',
-  semiFinished:  '半成品',
-  factoryProduct:'工厂产品',
-  colorFormula:  '调色单',
-  processKit:    '工艺书',
+  rawMaterial:    '原材料',
+  recipe:         '配方',
+  semiFinished:   '半成品',
+  factoryProduct: '工厂产品',
+  colorFormula:   '调色单',
+  processKit:     '工艺书',
 }
 
-// Layout
 const NODES_PER_ROW = 30
-const H_SPACING    = 36   // horizontal gap between node centres
-const V_ROW_GAP    = 32   // vertical gap between rows within a band
-const BAND_PAD_TOP = 20
-const BAND_PAD_BOT = 14
-const INTER_GAP    = 60   // vertical space between bands (for edges)
-const NODE_R       = 5
-const CANVAS_H_PAD = 48
+const H_SPACING     = 36
+const V_ROW_GAP     = 32
+const BAND_PAD_TOP  = 20
+const BAND_PAD_BOT  = 14
+const INTER_GAP     = 60
+const NODE_R        = 5
+const CANVAS_H_PAD  = 48
+
+// Label display thresholds
+const PROXIMITY_R    = 85   // SVG px: show label when mouse within this distance
+const DENSITY_R      = 54   // SVG px: count chain-neighbours for density test
+const DENSITY_MAX    = 2    // if ≤ this many chain-neighbours → auto-show label
 
 // ── Build graph ────────────────────────────────────────────────────
 interface Band { type: NodeType; label: string; y: number; height: number }
@@ -85,7 +88,6 @@ interface Band { type: NodeType; label: string; y: number; height: number }
 function buildGraph(data: OverviewData) {
   const kitIds = new Set(data.nodes.processKits.map(k => k.id))
 
-  // All raw edge pairs
   const allPairs: { from: string; to: string; color: string }[] = [
     ...data.edges.rawToRecipe.map(e => ({ ...e, color: TYPE_COLOR.rawMaterial })),
     ...data.edges.recipeToRecipe.map(e => ({ ...e, color: TYPE_COLOR.recipe })),
@@ -99,7 +101,6 @@ function buildGraph(data: OverviewData) {
     ...data.edges.productToProcessKit.map(e => ({ ...e, color: TYPE_COLOR.factoryProduct })),
   ]
 
-  // Dedup
   const pairSet = new Set<string>()
   const dedupedPairs: typeof allPairs = []
   for (const p of allPairs) {
@@ -108,22 +109,14 @@ function buildGraph(data: OverviewData) {
   }
 
   const connectedIds = new Set<string>()
-  for (const p of dedupedPairs) {
-    connectedIds.add(p.from)
-    connectedIds.add(p.to)
-  }
+  for (const p of dedupedPairs) { connectedIds.add(p.from); connectedIds.add(p.to) }
 
-  // Layer definitions
   const LAYERS: { type: NodeType; label: string; items: RawNode[] }[] = [
-    { type: 'rawMaterial',    label: '原材料',          items: data.nodes.rawMaterials },
-    { type: 'recipe',         label: '配方',            items: data.nodes.recipes },
-    { type: 'semiFinished',   label: '半成品',          items: data.nodes.semiFinished },
-    { type: 'factoryProduct', label: '工厂产品',        items: data.nodes.factoryProducts },
-    {
-      type: 'colorFormula',
-      label: '调色单 / 工艺书',
-      items: [...data.nodes.colorFormulas, ...data.nodes.processKits],
-    },
+    { type: 'rawMaterial',    label: '原材料',       items: data.nodes.rawMaterials },
+    { type: 'recipe',         label: '配方',         items: data.nodes.recipes },
+    { type: 'semiFinished',   label: '半成品',       items: data.nodes.semiFinished },
+    { type: 'factoryProduct', label: '工厂产品',     items: data.nodes.factoryProducts },
+    { type: 'colorFormula',   label: '调色单 / 工艺书', items: [...data.nodes.colorFormulas, ...data.nodes.processKits] },
   ]
 
   const nodes: GraphNode[] = []
@@ -133,10 +126,8 @@ function buildGraph(data: OverviewData) {
 
   for (let li = 0; li < LAYERS.length; li++) {
     const { type, label, items } = LAYERS[li]
-
     if (items.length === 0) continue
 
-    // Sort: connected first, then by code
     const sorted = [...items].sort((a, b) => {
       const ac = connectedIds.has(a.id) ? 0 : 1
       const bc = connectedIds.has(b.id) ? 0 : 1
@@ -146,7 +137,6 @@ function buildGraph(data: OverviewData) {
 
     const numRows = Math.ceil(sorted.length / NODES_PER_ROW)
     const bandH = BAND_PAD_TOP + numRows * V_ROW_GAP + BAND_PAD_BOT
-
     bands.push({ type, label, y: currentY, height: bandH })
 
     for (let i = 0; i < sorted.length; i++) {
@@ -154,12 +144,8 @@ function buildGraph(data: OverviewData) {
       const row = Math.floor(i / NODES_PER_ROW)
       const col = i % NODES_PER_ROW
       const countInRow = Math.min(NODES_PER_ROW, sorted.length - row * NODES_PER_ROW)
-      // Centre the last (possibly shorter) row
       const rowStartX = CANVAS_H_PAD + ((NODES_PER_ROW - countInRow) / 2) * H_SPACING
-
-      const nodeType: NodeType =
-        type === 'colorFormula' && kitIds.has(item.id) ? 'processKit' : type
-
+      const nodeType: NodeType = type === 'colorFormula' && kitIds.has(item.id) ? 'processKit' : type
       nodes.push({
         ...item,
         type: nodeType,
@@ -169,12 +155,10 @@ function buildGraph(data: OverviewData) {
         connected: connectedIds.has(item.id),
       })
     }
-
     currentY += bandH + INTER_GAP
   }
 
   const canvasHeight = currentY + 16
-
   const nodeMap = new Map(nodes.map(n => [n.id, n]))
 
   const edges: GraphEdge[] = dedupedPairs
@@ -184,27 +168,23 @@ function buildGraph(data: OverviewData) {
   return { nodes, edges, nodeMap, bands, canvasWidth, canvasHeight }
 }
 
-// ── Edge path (bezier) ─────────────────────────────────────────────
+// ── Edge path ──────────────────────────────────────────────────────
 function edgePath(from: GraphNode, to: GraphNode): string {
   const x1 = from.x, y1 = from.y + NODE_R
   const x2 = to.x,   y2 = to.y - NODE_R
-
   if (from.layer === to.layer) {
-    // Same-layer arc (recipe→recipe)
     const arc = Math.abs(x2 - x1) * 0.25 + 18
     return `M ${x1} ${y1} C ${x1} ${y1 + arc}, ${x2} ${y2 + arc}, ${x2} ${y2}`
   }
   if (from.layer > to.layer) {
-    // Upward (semi→recipe): curve going up and left
     const ctrl = (from.y - to.y) * 0.55
     return `M ${x1} ${y1} C ${x1} ${y1 - ctrl}, ${x2} ${y2 + ctrl}, ${x2} ${y2}`
   }
-  // Normal downward
   const cy = (y1 + y2) / 2
   return `M ${x1} ${y1} C ${x1} ${cy}, ${x2} ${cy}, ${x2} ${y2}`
 }
 
-// ── Full-chain BFS (both directions) ─────────────────────────────
+// ── Full-chain BFS ─────────────────────────────────────────────────
 function getFullChain(startId: string, edges: GraphEdge[]) {
   const fwd = new Map<string, string[]>()
   const bwd = new Map<string, string[]>()
@@ -214,31 +194,25 @@ function getFullChain(startId: string, edges: GraphEdge[]) {
     if (!bwd.has(e.to)) bwd.set(e.to, [])
     bwd.get(e.to)!.push(e.from)
   }
-
   const chainNodes = new Set<string>([startId])
   const chainEdges = new Set<string>()
-
-  const bfs = (adj: Map<string, string[]>, getEdgeKey: (cur: string, nb: string) => string) => {
-    const queue = [startId]
-    const visited = new Set([startId])
-    while (queue.length) {
-      const cur = queue.shift()!
+  const bfs = (adj: Map<string, string[]>, mkKey: (c: string, n: string) => string) => {
+    const q = [startId], vis = new Set([startId])
+    while (q.length) {
+      const cur = q.shift()!
       for (const nb of (adj.get(cur) ?? [])) {
-        chainEdges.add(getEdgeKey(cur, nb))
-        if (!visited.has(nb)) {
-          visited.add(nb)
-          chainNodes.add(nb)
-          queue.push(nb)
-        }
+        chainEdges.add(mkKey(cur, nb))
+        if (!vis.has(nb)) { vis.add(nb); chainNodes.add(nb); q.push(nb) }
       }
     }
   }
-
   bfs(fwd, (c, n) => `${c}::${n}`)
   bfs(bwd, (c, n) => `${n}::${c}`)
-
   return { chainNodes, chainEdges }
 }
+
+// ── Helpers ────────────────────────────────────────────────────────
+function trunc(s: string, n: number) { return s.length > n ? s.slice(0, n - 1) + '…' : s }
 
 // ── Component ──────────────────────────────────────────────────────
 export function FlowDiagram() {
@@ -246,12 +220,14 @@ export function FlowDiagram() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
+  const [hoveredEdge, setHoveredEdge] = useState<string | null>(null)
+  // SVG-coordinate mouse position (only updated when chain is selected)
+  const [svgMouse, setSvgMouse] = useState<{ x: number; y: number } | null>(null)
+  // Screen-coordinate tooltip
   const [tooltip, setTooltip] = useState<{
-    node: GraphNode
-    screenX: number
-    screenY: number
-    connCount: number
+    node: GraphNode; screenX: number; screenY: number; connCount: number
   } | null>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
 
   useEffect(() => {
     fetch('/api/admin/cosmocoat/overview-graph')
@@ -267,9 +243,58 @@ export function FlowDiagram() {
     [selected, graph],
   )
 
+  // ── Density-based auto-labels: sparse chain nodes show label always ──
+  const autoShowLabels = useMemo(() => {
+    if (!chain || !graph) return new Set<string>()
+    const chainList = graph.nodes.filter(n => chain.chainNodes.has(n.id))
+    // Sort by neighbour count (fewest first), keep up to 20 to avoid clutter
+    const scored = chainList.map(n => {
+      const neighbours = chainList.filter(
+        o => o.id !== n.id && Math.hypot(o.x - n.x, o.y - n.y) < DENSITY_R
+      ).length
+      return { id: n.id, neighbours }
+    })
+    scored.sort((a, b) => a.neighbours - b.neighbours)
+    const result = new Set<string>()
+    for (const { id, neighbours } of scored) {
+      if (neighbours > DENSITY_MAX) break
+      if (result.size >= 20) break
+      result.add(id)
+    }
+    return result
+  }, [chain, graph])
+
+  // ── Proximity-based labels: chain nodes near the cursor ──
+  const nearbyChainNodes = useMemo(() => {
+    if (!svgMouse || !chain || !graph) return new Set<string>()
+    return new Set(
+      graph.nodes
+        .filter(n => chain.chainNodes.has(n.id) &&
+          Math.hypot(n.x - svgMouse.x, n.y - svgMouse.y) < PROXIMITY_R)
+        .map(n => n.id)
+    )
+  }, [svgMouse, chain, graph])
+
+  const handleSvgMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    // Always track for proximity labels during selection
+    if (selected && svgRef.current) {
+      const rect = svgRef.current.getBoundingClientRect()
+      const vb = svgRef.current.viewBox.baseVal
+      setSvgMouse({
+        x: (e.clientX - rect.left) * (vb.width / rect.width),
+        y: (e.clientY - rect.top) * (vb.height / rect.height),
+      })
+    }
+  }, [selected])
+
+  const handleSvgMouseLeave = useCallback(() => {
+    setSvgMouse(null)
+  }, [])
+
   const handleNodeClick = useCallback((id: string, e: React.MouseEvent) => {
     e.stopPropagation()
     setSelected(prev => (prev === id ? null : id))
+    setSvgMouse(null)
   }, [])
 
   const handleNodeHover = useCallback(
@@ -281,53 +306,42 @@ export function FlowDiagram() {
     [graph],
   )
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 220px)', color: 'var(--muted-foreground)' }}>
-        <div className="text-center space-y-2">
-          <div className="w-8 h-8 rounded-full border-2 animate-spin mx-auto"
-            style={{ borderColor: '#C9A96E', borderTopColor: 'transparent' }} />
-          <p className="text-sm">正在加载物料流向图…</p>
-        </div>
+  if (loading) return (
+    <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 220px)', color: 'var(--muted-foreground)' }}>
+      <div className="text-center space-y-2">
+        <div className="w-8 h-8 rounded-full border-2 animate-spin mx-auto"
+          style={{ borderColor: '#C9A96E', borderTopColor: 'transparent' }} />
+        <p className="text-sm">正在加载物料流向图…</p>
       </div>
-    )
-  }
+    </div>
+  )
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-32 text-red-400 text-sm">{error}</div>
-    )
-  }
+  if (error) return (
+    <div className="flex items-center justify-center h-32 text-red-400 text-sm">{error}</div>
+  )
 
   if (!graph) return null
 
   const { nodes, edges, nodeMap, bands, canvasWidth, canvasHeight } = graph
-  const totalEdges = edges.length
-
-  // Ambient path IDs (every 6th edge for ambient particles)
   const ambientEdges = edges.filter((_, i) => i % 6 === 0)
-  // Chain edges for particles
-  const chainEdgeList = chain
-    ? edges.filter(e => chain.chainEdges.has(e.key))
-    : []
+  const chainEdgeList = chain ? edges.filter(e => chain.chainEdges.has(e.key)) : []
 
   return (
     <div className="flex flex-col gap-3" style={{ height: 'calc(100vh - 220px)' }}>
-      {/* ── Legend bar ── */}
+      {/* Legend */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 flex-shrink-0">
-        {(Object.entries(TYPE_LABEL) as [NodeType, string][]).map(([t, label]) => (
+        {(Object.entries(TYPE_LABEL) as [NodeType, string][]).map(([t, lbl]) => (
           <div key={t} className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-              style={{ background: TYPE_COLOR[t] }} />
-            <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{label}</span>
+            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: TYPE_COLOR[t] }} />
+            <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{lbl}</span>
           </div>
         ))}
         <span className="text-xs ml-auto" style={{ color: 'var(--muted-foreground)' }}>
-          {nodes.length} 节点 · {totalEdges} 关联
+          {nodes.length} 节点 · {edges.length} 关联
           {chain && ` · 链路 ${chain.chainNodes.size} 个节点`}
         </span>
         {selected && (
-          <button onClick={() => setSelected(null)}
+          <button onClick={() => { setSelected(null); setSvgMouse(null) }}
             className="text-xs px-2 py-0.5 rounded"
             style={{ background: 'rgba(201,169,110,0.15)', color: '#C9A96E' }}>
             清除选择
@@ -335,41 +349,39 @@ export function FlowDiagram() {
         )}
       </div>
 
-      {/* ── SVG canvas ── */}
+      {/* Canvas */}
       <div
         className="overflow-auto rounded-lg flex-1 relative"
         style={{ background: '#070707', border: '1px solid var(--sidebar-border)' }}
-        onClick={() => setSelected(null)}
+        onClick={() => { setSelected(null); setSvgMouse(null) }}
       >
         {nodes.length === 0 ? (
           <div className="flex items-center justify-center h-full text-sm"
-            style={{ color: 'var(--muted-foreground)' }}>
-            暂无数据，请先录入原材料和配方
-          </div>
+            style={{ color: 'var(--muted-foreground)' }}>暂无数据</div>
         ) : (
           <svg
+            ref={svgRef}
             viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
             width={canvasWidth}
             height={canvasHeight}
             style={{ display: 'block' }}
+            onMouseMove={handleSvgMouseMove}
+            onMouseLeave={handleSvgMouseLeave}
           >
             <defs>
-              {/* Glow filters */}
-              {(Object.entries(TYPE_COLOR) as [NodeType, string][]).map(([t, c]) => (
-                <filter key={t} id={`glow-${t}`} x="-60%" y="-60%" width="220%" height="220%">
-                  <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur" />
-                  <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+              {(Object.keys(TYPE_COLOR) as NodeType[]).map(t => (
+                <filter key={t} id={`glow-${t}`} x="-70%" y="-70%" width="240%" height="240%">
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="b" />
+                  <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
                 </filter>
               ))}
-
-              {/* Path defs for ambient particles */}
+              {/* Ambient particle paths */}
               {!selected && ambientEdges.map((e, i) => {
                 const fn = nodeMap.get(e.from), tn = nodeMap.get(e.to)
                 if (!fn || !tn) return null
                 return <path key={`adef-${i}`} id={`apath-${i}`} d={edgePath(fn, tn)} fill="none" />
               })}
-
-              {/* Path defs for chain particles */}
+              {/* Chain particle paths */}
               {chainEdgeList.map((e, i) => {
                 const fn = nodeMap.get(e.from), tn = nodeMap.get(e.to)
                 if (!fn || !tn) return null
@@ -377,14 +389,13 @@ export function FlowDiagram() {
               })}
             </defs>
 
-            {/* ── Band backgrounds ── */}
+            {/* Band backgrounds */}
             {bands.map(b => (
               <g key={b.type}>
                 <rect x={0} y={b.y} width={canvasWidth} height={b.height}
                   fill={TYPE_COLOR[b.type]} fillOpacity={0.04} />
-                <text x={10} y={b.y + 13} fontSize={9}
-                  fill={TYPE_COLOR[b.type]} fillOpacity={0.5}
-                  fontWeight={700} letterSpacing={1.5} fontFamily="monospace">
+                <text x={10} y={b.y + 13} fontSize={9} fill={TYPE_COLOR[b.type]}
+                  fillOpacity={0.5} fontWeight={700} letterSpacing={1.5} fontFamily="monospace">
                   {b.label.toUpperCase()}
                 </text>
               </g>
@@ -395,30 +406,41 @@ export function FlowDiagram() {
               const fn = nodeMap.get(e.from), tn = nodeMap.get(e.to)
               if (!fn || !tn) return null
               const inChain = chain?.chainEdges.has(e.key)
+              const isHovEdge = !selected && hoveredEdge === e.key
+              const d = edgePath(fn, tn)
 
+              let strokeW = 0.7, strokeOp = 0.18, filtered = false
               if (selected) {
-                if (!inChain) return (
-                  <path key={e.key} d={edgePath(fn, tn)}
-                    stroke={e.color} strokeWidth={0.5} fill="none" strokeOpacity={0.04} />
-                )
-                return (
-                  <path key={e.key} d={edgePath(fn, tn)}
-                    stroke={e.color} strokeWidth={1.5} fill="none" strokeOpacity={0.75}
-                    filter={`url(#glow-${fn.type})`} />
-                )
+                if (inChain) { strokeW = 1.5; strokeOp = 0.78; filtered = true }
+                else { strokeW = 0.5; strokeOp = 0.04 }
+              } else if (isHovEdge) {
+                strokeW = 1.8; strokeOp = 0.55; filtered = true
               }
+
               return (
-                <path key={e.key} d={edgePath(fn, tn)}
-                  stroke={e.color} strokeWidth={0.7} fill="none" strokeOpacity={0.18} />
+                <g key={e.key}
+                  onMouseEnter={() => !selected && setHoveredEdge(e.key)}
+                  onMouseLeave={() => setHoveredEdge(null)}
+                >
+                  {/* Invisible wide hit area */}
+                  <path d={d} stroke="transparent" strokeWidth={10} fill="none"
+                    style={{ pointerEvents: selected ? 'none' : 'stroke' }} />
+                  <path d={d}
+                    stroke={e.color} strokeWidth={strokeW} fill="none" strokeOpacity={strokeOp}
+                    filter={filtered ? `url(#glow-${fn.type})` : undefined}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                </g>
               )
             })}
 
-            {/* ── Ambient particles (idle state) ── */}
+            {/* Ambient particles */}
             {!selected && ambientEdges.map((e, i) => {
               const fn = nodeMap.get(e.from), tn = nodeMap.get(e.to)
               if (!fn || !tn) return null
               return (
-                <circle key={`ap-${i}`} r={1.5} fill={e.color} fillOpacity={0.55}>
+                <circle key={`ap-${i}`} r={1.5} fill={e.color} fillOpacity={0.55}
+                  style={{ pointerEvents: 'none' }}>
                   <animateMotion dur="3.5s" begin={`${(i * 0.43) % 4}s`} repeatCount="indefinite">
                     <mpath href={`#apath-${i}`} />
                   </animateMotion>
@@ -426,12 +448,13 @@ export function FlowDiagram() {
               )
             })}
 
-            {/* ── Chain particles (selection state) ── */}
+            {/* Chain particles */}
             {chainEdgeList.map((e, i) => {
               const fn = nodeMap.get(e.from), tn = nodeMap.get(e.to)
               if (!fn || !tn) return null
               return (
-                <circle key={`cp-${i}`} r={2.5} fill={e.color} fillOpacity={0.95}>
+                <circle key={`cp-${i}`} r={2.5} fill={e.color} fillOpacity={0.95}
+                  style={{ pointerEvents: 'none' }}>
                   <animateMotion dur="1.4s" begin={`${(i * 0.28) % 1.4}s`} repeatCount="indefinite">
                     <mpath href={`#cpath-${i}`} />
                   </animateMotion>
@@ -444,8 +467,16 @@ export function FlowDiagram() {
               const color = TYPE_COLOR[node.type]
               const isSelected = selected === node.id
               const inChain = chain?.chainNodes.has(node.id)
-              const opacity = selected ? (inChain ? 1 : 0.08) : 1
+              const opacity = selected ? (inChain ? 1 : 0.07) : 1
               const r = isSelected ? NODE_R + 3 : NODE_R
+              // Label visibility
+              const showLabel = isSelected ||
+                (!!chain && inChain && (autoShowLabels.has(node.id) || nearbyChainNodes.has(node.id)))
+              const labelCode = trunc(node.code, 14)
+              const labelName = trunc(node.name, 16)
+              const labelCodeW = labelCode.length * 5.8 + 8
+              const labelNameW = labelName.length * 4.8 + 8
+              const labelW = Math.max(labelCodeW, labelNameW)
 
               return (
                 <g key={node.id}
@@ -454,40 +485,45 @@ export function FlowDiagram() {
                   style={{ cursor: 'pointer' }}
                   onClick={ev => handleNodeClick(node.id, ev)}
                   onMouseEnter={ev => handleNodeHover(node, ev)}
-                  onMouseLeave={() => handleNodeHover(null)}
+                  onMouseLeave={() => { handleNodeHover(null); setTooltip(null) }}
+                  onMouseMove={ev => tooltip?.node.id === node.id &&
+                    setTooltip(t => t ? { ...t, screenX: ev.clientX, screenY: ev.clientY } : t)}
                 >
-                  {/* Invisible hit area */}
-                  <circle r={12} fill="transparent" />
+                  <circle r={14} fill="transparent" />
 
                   {node.connected ? (
                     <circle r={r}
-                      fill={color}
-                      fillOpacity={isSelected ? 0.35 : 0.14}
-                      stroke={color}
-                      strokeWidth={isSelected ? 2 : 1.5}
+                      fill={color} fillOpacity={isSelected ? 0.35 : 0.13}
+                      stroke={color} strokeWidth={isSelected ? 2 : 1.5}
                       strokeOpacity={isSelected ? 1 : 0.75}
                     />
                   ) : (
-                    // Unconnected: dashed dim ring
-                    <circle r={NODE_R}
-                      fill="transparent"
-                      stroke={color}
-                      strokeWidth={1}
-                      strokeOpacity={0.25}
-                      strokeDasharray="2 2"
-                    />
+                    <circle r={NODE_R} fill="transparent"
+                      stroke={color} strokeWidth={1} strokeOpacity={0.25} strokeDasharray="2 2" />
                   )}
 
-                  {/* Centre dot */}
                   <circle r={isSelected ? 3 : 2}
-                    fill={color} fillOpacity={node.connected ? 0.95 : 0.3} />
+                    fill={color} fillOpacity={node.connected ? 0.95 : 0.3}
+                    style={{ pointerEvents: 'none' }} />
 
-                  {/* Label on hover / select */}
-                  {isSelected && (
-                    <text y={-r - 5} textAnchor="middle"
-                      fontSize={8} fill={color} fontWeight={700}>
-                      {node.code}
-                    </text>
+                  {/* Floating label */}
+                  {showLabel && (
+                    <g style={{ pointerEvents: 'none' }}>
+                      <rect
+                        x={-labelW / 2} y={-r - 26}
+                        width={labelW} height={22} rx={3}
+                        fill="#0c0c0c" fillOpacity={0.88}
+                        stroke={color} strokeOpacity={0.3} strokeWidth={0.5}
+                      />
+                      <text y={-r - 16} textAnchor="middle"
+                        fontSize={7.5} fill={color} fontWeight={700} fontFamily="monospace">
+                        {labelCode}
+                      </text>
+                      <text y={-r - 7} textAnchor="middle"
+                        fontSize={6.5} fill={color} fillOpacity={0.65}>
+                        {labelName}
+                      </text>
+                    </g>
                   )}
                 </g>
               )
@@ -496,7 +532,7 @@ export function FlowDiagram() {
         )}
       </div>
 
-      {/* ── Tooltip ── */}
+      {/* Tooltip */}
       {tooltip && (
         <div className="pointer-events-none fixed z-50 max-w-xs rounded-lg px-3 py-2 text-xs shadow-xl"
           style={{
@@ -505,7 +541,7 @@ export function FlowDiagram() {
             color: 'var(--foreground)',
             left: `${tooltip.screenX}px`,
             top: `${tooltip.screenY}px`,
-            transform: 'translate(-50%, calc(-100% - 12px))',
+            transform: 'translate(-50%, calc(-100% - 14px))',
           }}
         >
           <div className="flex items-center gap-1.5 mb-1">
@@ -517,9 +553,7 @@ export function FlowDiagram() {
           </div>
           <div className="font-medium leading-snug">{tooltip.node.name}</div>
           <div className="mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{tooltip.node.code}</div>
-          {!tooltip.node.connected && (
-            <div className="mt-1 text-amber-400">未被使用</div>
-          )}
+          {!tooltip.node.connected && <div className="mt-1 text-amber-400">未被使用</div>}
           {tooltip.connCount > 0 && (
             <div className="mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
               {tooltip.connCount} 条关联 · 点击高亮全链路
