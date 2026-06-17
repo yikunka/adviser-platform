@@ -112,7 +112,7 @@ Service invoicing for TCSP professional fees.
 Staff access control.
 - System roles: `SUPER_ADMIN`, `COMPLIANCE`, `STAFF`
 - Per-staff platform access flags (Adviser / SFS Diamond / CosmoCoat)
-- Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, team, feedback, sfs-customers, sfs-orders, sfs-invoices, cosmocoat-* including cosmocoat-customers, cosmocoat-suppliers, cosmocoat-employees, cosmocoat-sample-orders)
+- Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, team, feedback, sfs-customers, sfs-orders, sfs-invoices, cosmocoat-* including cosmocoat-customers, cosmocoat-suppliers, cosmocoat-employees, cosmocoat-qualification-files, cosmocoat-sample-orders)
 - Dynamic role assignment: each staff member can be assigned one dynamic `AdminRole` (from Role Management) that grants additional page + button-level permissions
 - Legacy mode: no restrictions; new mode: explicit per-menu grants
 - Create / edit / deactivate staff accounts
@@ -378,6 +378,13 @@ Independent supplier registry for CosmoCoat sourcing; data and permission key ar
 - Create, view, edit, and delete supplier profiles; detail page at `/admin/cosmocoat-suppliers/[id]`; new at `/admin/cosmocoat-suppliers/new`
 - Upload, view, download, and delete supplier files on saved supplier profiles (PDF, Word, JPG, PNG, WEBP; max 10 MB); new suppliers must be saved before uploading
 
+### Qualification Files (`/admin/cosmocoat-qualification-files`)
+CosmoCoat 系统资质文件管理模块，用于保存公司官方资质文件档案。
+- List with search (title / qualification type / original filename), pagination, and row actions
+- Fields: title, qualification type, original filename, optional notes, upload/update time, uploader
+- Upload, inline preview, download, edit, and delete qualification files (PDF, JPG, PNG, WEBP; max 10 MB)
+- Create and edit use the same modal: title and qualification type are required; editing can optionally replace the uploaded file while keeping the record
+
 ### Sample Orders (`/admin/cosmocoat-sample-orders`)
 打样单（样品单）管理，用于客户打样需求的全流程跟踪。
 - List with search (order code / customer / sales employee / technical responsible employee) and status filter; columns: 特急标识（勾选特急时显示红色“特急”）, customer, sales employee, responsible employee, status, creation date
@@ -386,12 +393,12 @@ Independent supplier registry for CosmoCoat sourcing; data and permission key ar
 - Link to a CosmoCoat customer profile (required), optional sales employee (`SALES` type), and optional responsible employee (`TECHNICAL` type)
 - **One process kit per order** (database unique constraint on `sampleOrderId`); line items also support multiple Color Formulas, each with quantity in kg; no duplicate formulas on the same order
 - Process kit lines do not require a sample weight: the process-kit picker is a searchable dropdown that matches by code or name and shows code, name, and **适用材料** (substrate types) before selection; adding a kit loads the full process-flow document on expand (performance standards shown with the same Chinese labels as Process Kits, product parameters, complete process flow); **适用材料** (substrate types with readable labels) and **适用产品** (reference factory product names) are always shown on the kit card header without expanding; kit **materials** checkbox selections and `otherNote` for「其他」are included in the applicable-materials summary; only color formulas use quantity (kg)
-- Basic info: customer (required), sales employee dropdown from CosmoCoat Employee Management `SALES` employees, responsible employee dropdown from `TECHNICAL` employees, a **特急** checkbox flag, optional **reference sample image** (max 1, upload to OSS), then order-level fields for **素材选择** (single value from Process Kit substrate presets or custom text), **打样种类** (`调色种类` / `UV种类` / `性能测试`), **样板要求**, **样油要求**, **特别工艺(常规不能满足)**, and **notes**; list shows 4× enlarged thumbnail; detail page shows enlarged image (up to 480px height) in all statuses
+- Basic info: customer (required), sales employee dropdown from CosmoCoat Employee Management `SALES` employees, responsible employee dropdown from `TECHNICAL` employees, a **特急** checkbox flag, optional **reference sample image** (max 1, upload to OSS), then order-level fields for **素材选择** (single value from Process Kit substrate presets or custom text), **打样种类** (`调色种类` / `UV种类` / `性能测试`), **样板要求**, **样油要求**, **特别工艺(常规不能满足)**, **区域备注**, and **notes**; list shows 4× enlarged thumbnail; detail page shows enlarged image (up to 480px height) in all statuses
 - Auto-generated order codes: `YP####` (e.g. `YP0001`)
 - Progress tracking: step indicator (草稿 → 进行中 → 已完成), `startedAt` when moving to IN_PROGRESS, `completedAt` when marked COMPLETED
 - Actions: Save (DRAFT), 开始打样 (→ IN_PROGRESS), 标记完成 (→ COMPLETED); completed orders lock line items, customer, and employee assignments but remain viewable
 - Detail page shows linked color-formula information in both the editable/read-only 调色配方明细 table and the expanded scaled material tables below; formulas linked from the color-formula module appear here automatically
-- **Print** on detail page (`/admin/cosmocoat-sample-orders/[id]`): browser print (A4) exports full order — customer profile, **特急** checkbox marker (red 特急 text when enabled), sales and responsible employees, reference sample image, sample kind, substrate/sample-panel/sample-oil/special-process requirements, notes, process-kit details (applicable materials/products, performance standards, product parameters, process flow), color-formula line items, and scaled material tables; signature row for 打样人员 / 质检确认 / 客户签收
+- **Print** on detail page (`/admin/cosmocoat-sample-orders/[id]`): browser print (A4) exports full order — customer profile, **特急** checkbox marker (red 特急 text when enabled), sales and responsible employees, reference sample image, sample kind, substrate/sample-panel/sample-oil/special-process requirements, **区域备注**, notes, process-kit details (applicable materials/products, performance standards, product parameters, process flow), color-formula line items, and scaled material tables; signature row for 打样人员 / 质检确认 / 客户签收
 - Delete allowed for DRAFT and COMPLETED orders; IN_PROGRESS orders cannot be deleted
 
 ### CosmoCoat Financial Accounting
