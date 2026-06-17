@@ -123,6 +123,7 @@ function JournalEntryPrintArea({
               <th>行</th>
               <th>行摘要</th>
               <th>科目</th>
+              <th>方向</th>
               <th className="amount">金额</th>
             </tr>
           </thead>
@@ -135,12 +136,13 @@ function JournalEntryPrintArea({
                   <td>{index + 1}</td>
                   <td>{line.description || '-'}</td>
                   <td>{journalPrintAccountLabel(line)}</td>
+                  <td>{isDebit ? '借方' : '贷方'}</td>
                   <td className="amount">{money(amount)}</td>
                 </tr>
               )
             })}
             <tr className="journal-print-total">
-              <td colSpan={3}>借方合计 / 贷方合计</td>
+              <td colSpan={4}>借方合计 / 贷方合计</td>
               <td className="amount">{money(totalDebit)} / {money(totalCredit)}</td>
             </tr>
           </tbody>
@@ -277,12 +279,18 @@ function JournalPrintStyles() {
 
         .journal-print-table th:nth-child(2),
         .journal-print-table td:nth-child(2) {
-          width: 34%;
+          width: 32%;
         }
 
         .journal-print-table th:nth-child(3),
         .journal-print-table td:nth-child(3) {
-          width: 38%;
+          width: 36%;
+        }
+
+        .journal-print-table th:nth-child(4),
+        .journal-print-table td:nth-child(4) {
+          width: 42px;
+          text-align: center;
         }
 
         .journal-print-table .amount {

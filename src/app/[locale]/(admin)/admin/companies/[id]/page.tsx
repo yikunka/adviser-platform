@@ -222,6 +222,14 @@ function fmt(d: string | null | undefined) {
   return new Date(d).toLocaleDateString('en-HK')
 }
 
+function annualReturnDeadline(dateOfIncorporation: string | null | undefined) {
+  if (!dateOfIncorporation) return '—'
+  const date = new Date(dateOfIncorporation)
+  if (Number.isNaN(date.getTime())) return '—'
+  const deadline = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 42))
+  return `${String(deadline.getUTCMonth() + 1).padStart(2, '0')}-${String(deadline.getUTCDate()).padStart(2, '0')}`
+}
+
 function DateInput({ value, onChange, required, disabled }: {
   value: string
   onChange: (v: string) => void
@@ -2117,6 +2125,7 @@ export default function CompanyDetailPage() {
               ['Date of Incorporation', company.dateOfIncorporation ? new Date(company.dateOfIncorporation).toLocaleDateString('en-HK') : '—'],
               ['Company Type', company.companyLegalType ?? '—'],
               ['Business Nature', company.businessNature ?? '—'],
+              ['Annual Return Deadline', annualReturnDeadline(company.dateOfIncorporation)],
             ].map(([label, value]) => (
               <div key={label} className="flex px-4 py-3">
                 <span className="w-52 shrink-0 text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>{label}</span>

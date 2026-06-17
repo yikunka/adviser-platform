@@ -14,6 +14,7 @@ type ProductionOrderRow = {
   totalWeight: number
   batchNo: string
   status: string
+  startedAt: string | null
   createdAt: string
   factoryProduct: { productCode: string; name: string; unit: string }
   recipe: { code: string; name: string; shelfLifeDays: number | null }
@@ -27,6 +28,7 @@ type ProductionOrderRow = {
 type ProductLabelDraft = {
   order: ProductionOrderRow
   productName: string
+  productionDate: string
   weight: string
 }
 
@@ -36,6 +38,7 @@ type ProductLabelPrintData = {
   orderCode: string
   recipeCode: string
   shelfLife: string
+  productionDate: string
   weight: string
 }
 
@@ -79,6 +82,13 @@ function formatShelfLife(days: number | null | undefined) {
   return days ? `${days} 天` : '—'
 }
 
+function formatProductLabelDate(iso: string | null | undefined) {
+  if (!iso) return '—'
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
+}
+
 function ProductLabelPrintView({ label }: { label: ProductLabelPrintData }) {
   return (
     <div id="cosmocoat-product-label-print-area">
@@ -90,6 +100,8 @@ function ProductLabelPrintView({ label }: { label: ProductLabelPrintData }) {
           <strong>{label.orderCode || '—'}</strong>
           <span className="product-label-recipe-text">配方号</span>
           <strong className="product-label-recipe-text">{label.recipeCode || '—'}</strong>
+          <span>生产日期</span>
+          <strong>{label.productionDate}</strong>
           <span className="product-label-recipe-text">保质期</span>
           <strong className="product-label-recipe-text">{label.shelfLife}</strong>
           <span>重量</span>
@@ -176,6 +188,7 @@ export default function AdminCosmoCoatProductionOrdersPage() {
     setLabelDraft({
       order,
       productName: order.factoryProduct.name,
+      productionDate: formatProductLabelDate(order.startedAt ?? order.createdAt),
       weight: `${formatWeight(order.totalWeight)} ${order.factoryProduct.unit}`,
     })
   }
@@ -188,6 +201,7 @@ export default function AdminCosmoCoatProductionOrdersPage() {
       orderCode: labelDraft.order.code,
       recipeCode: labelDraft.order.recipe.code,
       shelfLife: formatShelfLife(labelDraft.order.recipe.shelfLifeDays),
+      productionDate: labelDraft.productionDate,
       weight: labelDraft.weight.trim(),
     }
     setLabelPrintData(nextLabel)
@@ -260,32 +274,35 @@ export default function AdminCosmoCoatProductionOrdersPage() {
                 width: 100%;
                 height: 100%;
                 border: 1.6pt solid #000;
-                padding: 4mm;
+                padding: 3mm;
                 display: flex;
                 flex-direction: column;
                 justify-content: flex-start;
-                gap: 2.5mm;
+                gap: 2mm;
+                overflow: hidden;
               }
 
               .product-label-code {
                 text-align: center;
-                font-size: 16pt;
+                font-size: 15pt;
                 font-weight: 800;
                 letter-spacing: 0;
                 border-bottom: 1pt solid #000;
-                padding-bottom: 2mm;
+                padding-bottom: 1.5mm;
                 line-height: 1.1;
                 word-break: break-word;
                 overflow-wrap: anywhere;
               }
 
               .product-label-product {
-                min-height: 12mm;
-                font-size: 13pt;
+                min-height: 9mm;
+                max-height: 14mm;
+                font-size: 12pt;
                 font-weight: 700;
                 line-height: 1.2;
                 word-break: break-word;
                 overflow-wrap: anywhere;
+                overflow: hidden;
               }
 
               .product-label-grid {
@@ -293,18 +310,21 @@ export default function AdminCosmoCoatProductionOrdersPage() {
                 grid-template-columns: 22mm 1fr;
                 border-top: 1pt solid #000;
                 border-left: 1pt solid #000;
-                font-size: 10pt;
-                line-height: 1.25;
+                font-size: 9.5pt;
+                line-height: 1.18;
+                flex: 1;
+                min-height: 0;
               }
 
               .product-label-grid span,
               .product-label-grid strong {
-                min-height: 8mm;
-                padding: 1.6mm 2mm;
+                min-height: 6.1mm;
+                padding: 1mm 1.6mm;
                 border-right: 1pt solid #000;
                 border-bottom: 1pt solid #000;
                 word-break: break-word;
                 overflow-wrap: anywhere;
+                overflow: hidden;
               }
 
               .product-label-grid span {
@@ -312,7 +332,7 @@ export default function AdminCosmoCoatProductionOrdersPage() {
               }
 
               .product-label-grid .product-label-recipe-text {
-                font-size: 8pt;
+                font-size: 7.8pt;
                 font-weight: 500;
               }
             }
@@ -515,6 +535,15 @@ export default function AdminCosmoCoatProductionOrdersPage() {
                   <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>保质期</label>
                   <input
                     value={formatShelfLife(labelDraft.order.recipe.shelfLifeDays)}
+                    readOnly
+                    className="w-full rounded-lg px-3 py-2.5 text-sm outline-none opacity-70"
+                    style={inputStyle()}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>生产日期</label>
+                  <input
+                    value={labelDraft.productionDate}
                     readOnly
                     className="w-full rounded-lg px-3 py-2.5 text-sm outline-none opacity-70"
                     style={inputStyle()}

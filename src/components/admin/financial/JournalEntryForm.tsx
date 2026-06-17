@@ -68,7 +68,7 @@ type Props = {
   onContinued?: () => void
 }
 
-const modalContentClassName = 'financial-modal max-h-[92vh] overflow-y-auto border-[#2A2418] bg-[#11110E] text-[#FFF7E6] shadow-2xl ring-[#3A3428] sm:max-w-5xl'
+const modalContentClassName = 'financial-modal max-h-[96vh] w-[min(96vw,83rem)] overflow-y-auto border-[#2A2418] bg-[#11110E] text-[#FFF7E6] shadow-2xl ring-[#3A3428] sm:max-w-[83rem]'
 const modalFooterClassName = 'border-[#2A2418] bg-[#16130E]'
 const labelClassName = 'text-[#EADDC3]'
 const fieldClassName = 'border-[#2A2418] bg-[#0E0E0A] text-[#FFF7E6] placeholder:text-[#9F927B]'
