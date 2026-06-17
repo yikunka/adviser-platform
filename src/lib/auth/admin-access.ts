@@ -6,6 +6,15 @@ export const ADMIN_MENU_KEYS = [
   'kyc',
   'aml',
   'financial',
+  'financialAccounts',
+  'financialJournal',
+  'financialLedger',
+  'financialReports',
+  'financialReceivables',
+  'financialPayables',
+  'financialBanking',
+  'financialParties',
+  'financialHistory',
   'invoices',
   'users',
   'sfsCustomers',
@@ -26,6 +35,7 @@ export const ADMIN_MENU_KEYS = [
   'cosmocoatEmployees',
   'cosmocoatOverview',
   'adminTeam',
+  'adminRoles',
 ] as const
 
 export type AdminMenuKey = (typeof ADMIN_MENU_KEYS)[number]
@@ -34,10 +44,20 @@ export const MENU_PLATFORM: Record<AdminMenuKey, Platform | 'GLOBAL'> = {
   dashboard: 'GLOBAL',
   settings: 'GLOBAL',
   adminTeam: 'GLOBAL',
+  adminRoles: 'GLOBAL',
   companies: 'ADVISER',
   kyc: 'ADVISER',
   aml: 'ADVISER',
   financial: 'ADVISER',
+  financialAccounts: 'ADVISER',
+  financialJournal: 'ADVISER',
+  financialLedger: 'ADVISER',
+  financialReports: 'ADVISER',
+  financialReceivables: 'ADVISER',
+  financialPayables: 'ADVISER',
+  financialBanking: 'ADVISER',
+  financialParties: 'ADVISER',
+  financialHistory: 'ADVISER',
   invoices: 'ADVISER',
   users: 'GLOBAL',
   sfsCustomers: 'SFS_DIAMOND',
@@ -108,7 +128,14 @@ export function adminMenusAllow(
   required: AdminMenuKey,
 ): boolean {
   if (menus === 'all') return true
-  return menus.has(required)
+  if (menus.has(required)) return true
+  // Legacy: 'financial' access grants all financial sub-page API routes
+  if (required === 'financial') {
+    for (const k of menus) {
+      if (k.startsWith('financial')) return true
+    }
+  }
+  return false
 }
 
 /** Map /{locale}/admin/<segment> to a menu key (first path segment only). */
@@ -125,8 +152,25 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
       return 'kyc'
     case 'aml':
       return 'aml'
-    case 'financial':
-      return 'financial'
+    case 'financial': {
+      // Match /admin/financial/<sub> or /admin/financial/<companyId>/<sub>
+      const rest = pathname.replace(/^.*\/admin\/financial/, '')
+      const parts = rest.split('/').filter(Boolean)
+      // parts[0] is either a sub-page name or a companyId; parts[1] (if present) is a sub-page name
+      const sub = parts.length >= 2 ? parts[1] : parts[0]
+      switch (sub) {
+        case 'accounts':     return 'financialAccounts'
+        case 'journal':      return 'financialJournal'
+        case 'ledger':       return 'financialLedger'
+        case 'reports':      return 'financialReports'
+        case 'receivables':  return 'financialReceivables'
+        case 'payables':     return 'financialPayables'
+        case 'banking':      return 'financialBanking'
+        case 'parties':      return 'financialParties'
+        case 'history':      return 'financialHistory'
+        default:             return 'financial'
+      }
+    }
     case 'invoices':
       return 'invoices'
     case 'users':
@@ -143,6 +187,8 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
       return 'settings'
     case 'team':
       return 'adminTeam'
+    case 'admin-roles':
+      return 'adminRoles'
     case 'cosmocoat-products':
       return 'cosmocoatProducts'
     case 'cosmocoat-product-categories':
@@ -186,7 +232,16 @@ export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: stri
   { key: 'companies', label: 'Companies', group: 'Adviser' },
   { key: 'kyc', label: 'KYC queue', group: 'Adviser' },
   { key: 'aml', label: 'AML', group: 'Adviser' },
-  { key: 'financial', label: 'Financial', group: 'Finance Management' },
+  { key: 'financial',           label: 'Financial (company select)', group: 'Finance Management' },
+  { key: 'financialAccounts',   label: 'Chart of accounts',          group: 'Finance Management' },
+  { key: 'financialJournal',    label: 'Journal entries',            group: 'Finance Management' },
+  { key: 'financialLedger',     label: 'General ledger',             group: 'Finance Management' },
+  { key: 'financialReports',    label: 'Financial reports',          group: 'Finance Management' },
+  { key: 'financialReceivables',label: 'Receivables',                group: 'Finance Management' },
+  { key: 'financialPayables',   label: 'Payables',                   group: 'Finance Management' },
+  { key: 'financialBanking',    label: 'Banking',                    group: 'Finance Management' },
+  { key: 'financialParties',    label: 'Parties',                    group: 'Finance Management' },
+  { key: 'financialHistory',    label: 'Historical ledger books',    group: 'Finance Management' },
   { key: 'invoices', label: 'Invoices', group: 'Adviser' },
   { key: 'users', label: 'Customer account management', group: 'System' },
   { key: 'sfsCustomers', label: 'SFS customers', group: 'SFS Diamond' },
@@ -207,4 +262,5 @@ export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: stri
   { key: 'cosmocoatOverview', label: 'Material flow overview', group: 'CosmoCoat' },
   { key: 'settings', label: 'Settings', group: 'System' },
   { key: 'adminTeam', label: 'Admin users & access', group: 'System' },
+  { key: 'adminRoles', label: 'Role management', group: 'System' },
 ]
