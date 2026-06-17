@@ -5,12 +5,38 @@ import {
   buildCompanyAccessWhere,
   resolveCompanyAccess,
 } from '@/lib/company-access'
+import { computeEffectivePermissions, hasPermission } from '@/lib/auth/permissions'
+
+const FINANCIAL_WRITE_PERMS = [
+  'financialJournal.create', 'financialJournal.edit', 'financialJournal.approve',
+  'financialReceivables.create', 'financialReceivables.edit', 'financialReceivables.approve',
+  'financialPayables.create', 'financialPayables.edit', 'financialPayables.approve',
+  'financialAccounts.create', 'financialAccounts.edit', 'financialAccounts.delete',
+  'financialBanking.create', 'financialBanking.edit',
+  'financialParties.create', 'financialParties.edit', 'financialParties.delete',
+]
 
 export async function GET() {
   const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
   if (error) return error
 
-  const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
+  const [access, userRow] = await Promise.all([
+    resolveCompanyAccess(session!.user.id, session!.user.role),
+    prisma.user.findUnique({
+      where: { id: session!.user.id },
+      select: {
+        role: true,
+        adminMenuKeys: true,
+        adminPlatforms: true,
+        adminRole: { select: { permissions: true } },
+      },
+    }),
+  ])
+
+  const effectivePerms = computeEffectivePermissions(
+    userRow ?? { role: session!.user.role, adminMenuKeys: [], adminPlatforms: [] }
+  )
+  const financialReadOnly = effectivePerms !== 'all' && !FINANCIAL_WRITE_PERMS.some(p => hasPermission(effectivePerms, p))
   const companies = await prisma.company.findMany({
     where: {
       financialEnabled: true,
@@ -50,7 +76,7 @@ export async function GET() {
     id: company.id,
     nameEn: company.nameEn,
     companyCode: company.companyCode,
-    financialReadOnly: session!.user.role === 'STAFF',
+    financialReadOnly,
     financialManagerName:
       managerNameByCompanyId.get(company.id)
       ?? company.financialManager?.nameEn
