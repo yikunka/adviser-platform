@@ -114,18 +114,20 @@ export function computeEffectivePermissions(user: UserPermissionInput): Set<stri
   if (user.role === 'SUPER_ADMIN') return 'all'
   if (user.role === 'CLIENT') return new Set()
 
-  // Legacy staff: nothing explicitly configured and no dynamic role → full access
-  const hasLegacyConfig = user.adminMenuKeys.length > 0 || user.adminPlatforms.length > 0
-  if (!hasLegacyConfig && !user.adminRole) return 'all'
-
-  const perms = new Set<string>()
-
-  // From dynamic role
+  // Dynamic role takes full authority — adminMenuKeys are ignored
   if (user.adminRole) {
+    const perms = new Set<string>()
     for (const p of user.adminRole.permissions) perms.add(p)
+    perms.add('dashboard')
+    return perms
   }
 
-  // From legacy adminMenuKeys (page view only, platform-filtered)
+  // Legacy staff: nothing explicitly configured → full access
+  const hasLegacyConfig = user.adminMenuKeys.length > 0 || user.adminPlatforms.length > 0
+  if (!hasLegacyConfig) return 'all'
+
+  // Legacy explicit grants — page view only, platform-filtered
+  const perms = new Set<string>()
   const platformSet = new Set(user.adminPlatforms)
   const hasPlatformFilter = user.adminPlatforms.length > 0
   for (const k of user.adminMenuKeys) {

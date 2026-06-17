@@ -71,29 +71,32 @@ export function computeEffectiveAdminMenus(user: AdminAccessUser): ReadonlySet<A
   if (user.role === 'SUPER_ADMIN') return 'all'
   if (user.role === 'CLIENT') return new Set()
 
-  const hasLegacyConfig = user.adminMenuKeys.length > 0 || user.adminPlatforms.length > 0
-  const legacyStaff = !hasLegacyConfig && !user.adminRolePermissions?.length
-  if (legacyStaff) return 'all'
+  // Dynamic role takes full authority — adminMenuKeys are ignored
+  if (user.adminRolePermissions?.length) {
+    const keys = new Set<AdminMenuKey>()
+    for (const perm of user.adminRolePermissions) {
+      if (perm.includes('.')) continue
+      if (!ADMIN_MENU_KEYS.includes(perm as AdminMenuKey)) continue
+      keys.add(perm as AdminMenuKey)
+    }
+    keys.add('dashboard')
+    return keys
+  }
 
+  // Legacy staff: nothing explicitly configured → full access
+  const hasLegacyConfig = user.adminMenuKeys.length > 0 || user.adminPlatforms.length > 0
+  if (!hasLegacyConfig) return 'all'
+
+  // Legacy explicit grants — page view only, platform-filtered
+  const keys = new Set<AdminMenuKey>()
   const platformSet = new Set(user.adminPlatforms)
   const hasPlatformFilter = user.adminPlatforms.length > 0
-
-  const keys = new Set<AdminMenuKey>()
-
-  // From explicit adminMenuKeys (legacy / override)
   for (const raw of user.adminMenuKeys) {
     if (!ADMIN_MENU_KEYS.includes(raw as AdminMenuKey)) continue
     const k = raw as AdminMenuKey
     const plat = MENU_PLATFORM[k]
     if (plat === 'GLOBAL') { keys.add(k); continue }
     if (!hasPlatformFilter || platformSet.has(plat)) keys.add(k)
-  }
-
-  // From dynamic AdminRole (page-level perms have no dot)
-  for (const perm of (user.adminRolePermissions ?? [])) {
-    if (perm.includes('.')) continue
-    if (!ADMIN_MENU_KEYS.includes(perm as AdminMenuKey)) continue
-    keys.add(perm as AdminMenuKey)
   }
 
   keys.add('dashboard')
