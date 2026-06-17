@@ -432,6 +432,24 @@ export async function buildFinancialReports(
   const openingMovements = mergeMovementMaps(ledgerOpeningMovements, openingBalances)
   const closingMovements = mergeMovementMaps(ledgerClosingMovements, closingBalances)
 
+  // For income statement: include FinAccount.yearToDateDebit/Credit in period movements so that
+  // companies that imported historical data via yearToDate (without posted journal entries) still
+  // show P&L figures. Trial balance period columns continue to use journal-only periodMovements.
+  const plPeriodMovements = new Map(periodMovements)
+  if (!shouldConsolidateAccounts) {
+    for (const rawAccount of rawAccounts) {
+      if (rawAccount.type !== 'REVENUE' && rawAccount.type !== 'CGS' && rawAccount.type !== 'EXPENSE') continue
+      const ytdDebit = Number(rawAccount.yearToDateDebit)
+      const ytdCredit = Number(rawAccount.yearToDateCredit)
+      if (ytdDebit === 0 && ytdCredit === 0) continue
+      const existing = plPeriodMovements.get(rawAccount.id) ?? { debit: 0, credit: 0 }
+      plPeriodMovements.set(rawAccount.id, {
+        debit: roundMoney(existing.debit + ytdDebit),
+        credit: roundMoney(existing.credit + ytdCredit),
+      })
+    }
+  }
+
   const { level1AccountIdByReportAccountId, level1SortOrderById } = buildLevel1GroupingMaps(
     rawAccounts,
     accounts.map(({ accountId, code }) => ({ accountId, code })),
@@ -544,8 +562,8 @@ export async function buildFinancialReports(
     const closingTotals = sumMovements(closingMovements, account.sourceAccountIds)
     const statementAccountIds = statementSourceAccountIds(account)
     const ownAccountIds = ownSourceAccountIds(account)
-    const statementPeriodTotals = sumMovements(periodMovements, statementAccountIds)
-    const ownPeriodTotals = sumMovements(periodMovements, ownAccountIds)
+    const statementPeriodTotals = sumMovements(plPeriodMovements, statementAccountIds)
+    const ownPeriodTotals = sumMovements(plPeriodMovements, ownAccountIds)
 
     const openingBalance = movementSignedBalance(openingTotals, account.type, account.code)
     const isProfitAndLossAccount = account.type === 'REVENUE' || account.type === 'CGS' || account.type === 'EXPENSE'
@@ -682,7 +700,7 @@ export async function buildFinancialReports(
     )
     if (uncoveredSourceAccountIds.length === 0) continue
 
-    const uncoveredTotals = sumMovements(periodMovements, uncoveredSourceAccountIds)
+    const uncoveredTotals = sumMovements(plPeriodMovements, uncoveredSourceAccountIds)
     const amount = profitAndLossMovementAmount(uncoveredTotals, candidate.account.type)
     if (amount === 0) continue
 

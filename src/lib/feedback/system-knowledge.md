@@ -113,7 +113,7 @@ Staff access control.
 - System roles: `SUPER_ADMIN`, `COMPLIANCE`, `STAFF`
 - Per-staff platform access flags (Adviser / SFS Diamond / CosmoCoat)
 - Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, team, feedback, sfs-customers, sfs-orders, sfs-invoices, cosmocoat-* including cosmocoat-customers, cosmocoat-suppliers, cosmocoat-employees, cosmocoat-qualification-files, cosmocoat-sample-orders)
-- Dynamic role assignment: each staff member can be assigned one dynamic `AdminRole` (from Role Management) that grants additional page + button-level permissions
+- Dynamic role assignment: each staff member can be assigned multiple dynamic `AdminRole` records (from Role Management); effective access is the union of all selected roles' page + button-level permissions
 - Legacy mode: no restrictions; new mode: explicit per-menu grants
 - Create / edit / deactivate staff accounts
 - Active `STAFF`, `COMPLIANCE`, and `SUPER_ADMIN` accounts can be selected as per-company Financial Managers from Company Management; this assignment controls financial-operation authority for enabled companies
