@@ -28,6 +28,7 @@ const patchSchema = z.object({
   samplePanelRequirement: z.string().trim().max(1000).optional(),
   sampleOilRequirement: z.string().trim().max(1000).optional(),
   specialProcessRequirement: z.string().trim().max(1000).optional(),
+  areaRemark: z.string().trim().max(2000).optional(),
   notes: z.string().trim().max(2000).optional(),
   referenceImageUrl: z.string().trim().max(2000).nullable().optional(),
   status: z.enum(['DRAFT', 'IN_PROGRESS', 'COMPLETED']).optional(),
@@ -218,6 +219,7 @@ export async function PATCH(
           ...(parsed.data.samplePanelRequirement !== undefined ? { samplePanelRequirement: parsed.data.samplePanelRequirement } : {}),
           ...(parsed.data.sampleOilRequirement !== undefined ? { sampleOilRequirement: parsed.data.sampleOilRequirement } : {}),
           ...(parsed.data.specialProcessRequirement !== undefined ? { specialProcessRequirement: parsed.data.specialProcessRequirement } : {}),
+          ...(parsed.data.areaRemark !== undefined ? { areaRemark: parsed.data.areaRemark } : {}),
           ...(parsed.data.notes !== undefined ? { notes: parsed.data.notes } : {}),
           ...(parsed.data.referenceImageUrl !== undefined
             ? { referenceImageUrl: parsed.data.referenceImageUrl?.trim() || null }

@@ -363,6 +363,7 @@ type SampleOrderPrintViewProps = {
   samplePanelRequirement: string
   sampleOilRequirement: string
   specialProcessRequirement: string
+  areaRemark: string
   notes: string
   referenceImageUrl: string
   processKitLines: ProcessKitLine[]
@@ -377,6 +378,7 @@ function SampleOrderPrintView({
   samplePanelRequirement,
   sampleOilRequirement,
   specialProcessRequirement,
+  areaRemark,
   notes,
   referenceImageUrl,
   processKitLines,
@@ -488,6 +490,12 @@ function SampleOrderPrintView({
             <tr>
               <td style={printLabelCell}>特别工艺</td>
               <td colSpan={3} style={{ ...printCell, whiteSpace: 'pre-wrap' }}>{specialProcessRequirement.trim()}</td>
+            </tr>
+          )}
+          {areaRemark.trim() && (
+            <tr>
+              <td style={printLabelCell}>区域备注</td>
+              <td colSpan={3} style={{ ...printCell, whiteSpace: 'pre-wrap' }}>{areaRemark.trim()}</td>
             </tr>
           )}
           {notes.trim() && (
@@ -735,6 +743,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
   const [samplePanelRequirement, setSamplePanelRequirement] = useState('')
   const [sampleOilRequirement, setSampleOilRequirement] = useState('')
   const [specialProcessRequirement, setSpecialProcessRequirement] = useState('')
+  const [areaRemark, setAreaRemark] = useState('')
   const [notes, setNotes] = useState('')
   const [referenceImageUrl, setReferenceImageUrl] = useState('')
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -830,6 +839,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
       setSamplePanelRequirement(loaded.samplePanelRequirement)
       setSampleOilRequirement(loaded.sampleOilRequirement)
       setSpecialProcessRequirement(loaded.specialProcessRequirement)
+      setAreaRemark(loaded.areaRemark ?? '')
       setNotes(loaded.notes)
       setReferenceImageUrl(loaded.referenceImageUrl ?? '')
       setProcessKitLines(loaded.processKits.map(line => ({
@@ -948,6 +958,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
       samplePanelRequirement,
       sampleOilRequirement,
       specialProcessRequirement,
+      areaRemark,
       notes,
       referenceImageUrl: referenceImageUrl.trim() || null,
       processKits,
@@ -1154,6 +1165,7 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
           samplePanelRequirement={samplePanelRequirement}
           sampleOilRequirement={sampleOilRequirement}
           specialProcessRequirement={specialProcessRequirement}
+          areaRemark={areaRemark}
           notes={notes}
           referenceImageUrl={referenceImageUrl}
           processKitLines={processKitLines}
@@ -1420,6 +1432,17 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
             className="w-full px-3 py-2 rounded-lg text-sm outline-none disabled:opacity-60"
             style={inputStyle()}
             placeholder="记录超出标准工艺的定制制作要求"
+          />
+        </Field>
+        <Field label="区域备注">
+          <textarea
+            value={areaRemark}
+            disabled={isReadOnly}
+            onChange={e => setAreaRemark(e.target.value)}
+            rows={3}
+            className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-y disabled:opacity-60"
+            style={inputStyle()}
+            placeholder="记录区域相关的打样细节、注意事项或特殊说明"
           />
         </Field>
         <Field label="备注">

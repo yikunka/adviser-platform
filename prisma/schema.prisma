@@ -294,6 +294,7 @@ model User {
   cosEmployeeFilesUploaded            CosEmployeeFile[]             @relation("CosEmployeeFileUploader")
   cosCustomerBusinessLicensesUploaded CosCustomerBusinessLicense[]  @relation("CosCustomerBusinessLicenseUploader")
   cosSupplierFilesUploaded            CosSupplierFile[]             @relation("CosSupplierFileUploader")
+  cosQualificationFilesUploaded       CosQualificationFile[]        @relation("CosQualificationFileUploader")
   cosRecipeChangeRequestsSubmitted    CosTableRecipeChangeRequest[] @relation("CosRecipeChangeRequester")
   cosRecipeChangeRequestsReviewed     CosTableRecipeChangeRequest[] @relation("CosRecipeChangeReviewer")
   cosProcessKitChangeRequestsSubmitted CosProcessKitChangeRequest[]  @relation("CosProcessKitChangeRequester")
@@ -2340,6 +2341,27 @@ model CosEmployeeFile {
   @@map("cos_employee_files")
 }
 
+model CosQualificationFile {
+  id           String   @id @default(cuid())
+  title        String
+  documentType String
+  fileName     String
+  storageKey   String
+  mimeType     String
+  fileSize     Int
+  notes        String?
+  uploadedById String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  uploadedBy User @relation("CosQualificationFileUploader", fields: [uploadedById], references: [id])
+
+  @@index([documentType])
+  @@index([title])
+  @@index([createdAt])
+  @@map("cos_qualification_files")
+}
+
 // ─────────────────────────────────────────────
 // CosmoCoat — Sample Orders (打样单 / 样品单)
 // ─────────────────────────────────────────────
@@ -2363,6 +2385,7 @@ model CosSampleOrder {
   samplePanelRequirement    String               @default("")
   sampleOilRequirement      String               @default("")
   specialProcessRequirement String               @default("")
+  areaRemark                String               @default("")
   notes                     String               @default("")
   referenceImageUrl         String?
   startedAt                 DateTime?

@@ -31,6 +31,7 @@ const orderSchema = z.object({
   samplePanelRequirement: z.string().trim().max(1000).optional().default(''),
   sampleOilRequirement: z.string().trim().max(1000).optional().default(''),
   specialProcessRequirement: z.string().trim().max(1000).optional().default(''),
+  areaRemark: z.string().trim().max(2000).optional().default(''),
   notes: z.string().trim().max(2000).optional().default(''),
   referenceImageUrl: z.string().trim().max(2000).nullable().optional(),
   processKits: z.array(z.object({
@@ -78,6 +79,7 @@ export async function GET(req: NextRequest) {
             { samplePanelRequirement: { contains: q, mode: 'insensitive' } },
             { sampleOilRequirement: { contains: q, mode: 'insensitive' } },
             { specialProcessRequirement: { contains: q, mode: 'insensitive' } },
+            { areaRemark: { contains: q, mode: 'insensitive' } },
             { notes: { contains: q, mode: 'insensitive' } },
             { customer: { name: { contains: q, mode: 'insensitive' } } },
             { customer: { code: { contains: q, mode: 'insensitive' } } },
@@ -176,6 +178,7 @@ export async function POST(req: NextRequest) {
       samplePanelRequirement: parsed.data.samplePanelRequirement,
       sampleOilRequirement: parsed.data.sampleOilRequirement,
       specialProcessRequirement: parsed.data.specialProcessRequirement,
+      areaRemark: parsed.data.areaRemark,
       notes: parsed.data.notes,
       referenceImageUrl: parsed.data.referenceImageUrl?.trim() || null,
       status: parsed.data.status,

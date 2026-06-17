@@ -190,51 +190,6 @@ export default function InvoicesPage() {
       </div>
 
       <Card>
-        <CardContent className="p-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>历史发票文件</h2>
-              <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                上传的 PDF 仅作为历史发票档案保存，不影响现有发票编号和状态。
-              </p>
-            </div>
-          </div>
-          {historyLoading ? (
-            <div className="py-4 text-sm" style={{ color: 'var(--muted-foreground)' }}>载入中...</div>
-          ) : historicalFiles.length === 0 ? (
-            <div className="py-4 text-sm" style={{ color: 'var(--muted-foreground)' }}>暂无历史发票文件</div>
-          ) : (
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-              {historicalFiles.map(file => (
-                <div key={file.id} className="rounded-md border border-[#2A2418] bg-[#0E0E0A] p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{file.title}</p>
-                      <p className="mt-1 truncate text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        {file.fileName} · {fileSizeLabel(file.fileSize)}
-                      </p>
-                      <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        {new Date(file.createdAt).toLocaleString()} · {file.uploadedBy}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 shrink-0 p-0"
-                      title="下载历史发票"
-                      onClick={() => void downloadHistoricalInvoice(file)}
-                    >
-                      <Download size={15} />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
         <CardContent className="p-0">
           <table className="w-full text-sm">
             <thead style={{ background: '#1A1A12', borderBottom: '1px solid #2A2418' }}>
@@ -296,6 +251,51 @@ export default function InvoicesPage() {
           <Button variant="outline" size="sm" disabled={page >= pages} onClick={() => setPage(p => p + 1)}>{t('next')}</Button>
         </div>
       )}
+
+      <Card>
+        <CardContent className="p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>历史发票文件</h2>
+              <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                上传的 PDF 仅作为历史发票档案保存，不影响现有发票编号和状态。
+              </p>
+            </div>
+          </div>
+          {historyLoading ? (
+            <div className="py-4 text-sm" style={{ color: 'var(--muted-foreground)' }}>载入中...</div>
+          ) : historicalFiles.length === 0 ? (
+            <div className="py-4 text-sm" style={{ color: 'var(--muted-foreground)' }}>暂无历史发票文件</div>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {historicalFiles.map(file => (
+                <div key={file.id} className="rounded-md border border-[#2A2418] bg-[#0E0E0A] p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{file.title}</p>
+                      <p className="mt-1 truncate text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                        {file.fileName} · {fileSizeLabel(file.fileSize)}
+                      </p>
+                      <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                        {new Date(file.createdAt).toLocaleString()} · {file.uploadedBy}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 shrink-0 p-0"
+                      title="下载历史发票"
+                      onClick={() => void downloadHistoricalInvoice(file)}
+                    >
+                      <Download size={15} />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

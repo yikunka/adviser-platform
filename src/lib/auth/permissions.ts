@@ -44,6 +44,7 @@ export const PERMISSION_GROUPS: PermGroup[] = [
       { menuKey: 'cosmocoatCustomers',        label: '客户',         actions: ['create', 'edit', 'delete'] },
       { menuKey: 'cosmocoatSuppliers',        label: '供应商',       actions: ['create', 'edit', 'delete'] },
       { menuKey: 'cosmocoatEmployees',        label: '员工',         actions: ['create', 'edit', 'delete'] },
+      { menuKey: 'cosmocoatQualificationFiles', label: '资质文件',   actions: ['create', 'edit', 'delete'] },
     ],
   },
   {

@@ -33,6 +33,7 @@ export const ADMIN_MENU_KEYS = [
   'cosmocoatCustomers',
   'cosmocoatSuppliers',
   'cosmocoatEmployees',
+  'cosmocoatQualificationFiles',
   'cosmocoatOverview',
   'adminTeam',
   'adminRoles',
@@ -75,6 +76,7 @@ export const MENU_PLATFORM: Record<AdminMenuKey, Platform | 'GLOBAL'> = {
   cosmocoatCustomers: 'COSMICOAT',
   cosmocoatSuppliers: 'COSMICOAT',
   cosmocoatEmployees: 'COSMICOAT',
+  cosmocoatQualificationFiles: 'COSMICOAT',
   cosmocoatOverview: 'COSMICOAT',
 }
 
@@ -213,6 +215,8 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
       return 'cosmocoatSuppliers'
     case 'cosmocoat-employees':
       return 'cosmocoatEmployees'
+    case 'cosmocoat-qualification-files':
+      return 'cosmocoatQualificationFiles'
     case 'cosmocoat-overview':
       return 'cosmocoatOverview'
     default:
@@ -259,6 +263,7 @@ export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: stri
   { key: 'cosmocoatCustomers', label: 'Customer management', group: 'CosmoCoat' },
   { key: 'cosmocoatSuppliers', label: 'Supplier management', group: 'CosmoCoat' },
   { key: 'cosmocoatEmployees', label: 'Employee management', group: 'CosmoCoat' },
+  { key: 'cosmocoatQualificationFiles', label: 'Qualification files', group: 'CosmoCoat' },
   { key: 'cosmocoatOverview', label: 'Material flow overview', group: 'CosmoCoat' },
   { key: 'settings', label: 'Settings', group: 'System' },
   { key: 'adminTeam', label: 'Admin users & access', group: 'System' },

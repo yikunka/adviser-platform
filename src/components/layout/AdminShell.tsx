@@ -119,6 +119,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/cosmocoat-customers', key: 'cosmocoatCustomers', Icon: ContactRound },
       { href: '/admin/cosmocoat-suppliers', key: 'cosmocoatSuppliers', Icon: Truck },
       { href: '/admin/cosmocoat-employees', key: 'cosmocoatEmployees', Icon: UserRound },
+      { href: '/admin/cosmocoat-qualification-files', key: 'cosmocoatQualificationFiles', Icon: ShieldCheck },
     ],
   },
   {

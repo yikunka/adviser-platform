@@ -47,6 +47,7 @@
     "cosmocoatCustomers": "Customer Management",
     "cosmocoatSuppliers": "Supplier Management",
     "cosmocoatEmployees": "Employee Management",
+    "cosmocoatQualificationFiles": "Qualification Files",
     "cosmocoatOverview": "Flow Overview",
     "adminRoles": "Role Management"
   },

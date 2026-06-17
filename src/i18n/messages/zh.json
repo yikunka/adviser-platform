@@ -47,6 +47,7 @@
     "cosmocoatCustomers": "客户管理",
     "cosmocoatSuppliers": "供应商管理",
     "cosmocoatEmployees": "员工管理",
+    "cosmocoatQualificationFiles": "资质文件管理",
     "cosmocoatOverview": "物料流向",
     "adminRoles": "角色管理"
   },

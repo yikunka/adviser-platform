@@ -449,11 +449,11 @@ export default function AdminFinancialPartiesPage() {
       </Card>
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="financial-modal w-[min(96vw,1080px)] max-w-[1080px] border-[#2A2418] bg-[#11110E] text-[#FFF7E6] shadow-2xl ring-[#3A3428]">
+        <DialogContent className="financial-modal h-[min(96vh,1200px)] w-[min(98vw,1440px)] max-w-[1440px] border-[#2A2418] bg-[#11110E] text-[#FFF7E6] shadow-2xl ring-[#3A3428]">
           <DialogHeader>
             <DialogTitle className="text-[#FFF7E6]">{editing ? `编辑 ${editing.code}` : '新增往来单位'}</DialogTitle>
           </DialogHeader>
-          <div className="max-h-[calc(92vh-9rem)] overflow-y-auto pr-1">
+          <div className="max-h-[calc(96vh-10rem)] overflow-y-auto pr-1">
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div className="space-y-1.5">
