@@ -1,39 +1,46 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 
-type NodeId = string
+// ── Types ──────────────────────────────────────────────────────────
+type NodeType = 'rawMaterial' | 'recipe' | 'semiFinished' | 'factoryProduct' | 'colorFormula' | 'processKit'
 
-interface GraphNode {
-  id: NodeId
+interface RawNode {
+  id: string
   code: string
   name: string
   category?: string
+}
+
+interface GraphNode extends RawNode {
+  type: NodeType
   layer: number
   x: number
   y: number
-  type: 'rawMaterial' | 'recipe' | 'semiFinished' | 'factoryProduct' | 'colorFormula' | 'processKit'
+  connected: boolean
 }
 
 interface GraphEdge {
-  from: NodeId
-  to: NodeId
+  from: string
+  to: string
   color: string
+  key: string
 }
 
 interface OverviewData {
   nodes: {
-    rawMaterials: { id: string; code: string; name: string; category?: string }[]
-    recipes: { id: string; code: string; name: string }[]
-    semiFinished: { id: string; code: string; name: string }[]
-    factoryProducts: { id: string; code: string; name: string }[]
-    colorFormulas: { id: string; code: string; name: string }[]
-    processKits: { id: string; code: string; name: string }[]
+    rawMaterials: RawNode[]
+    recipes: RawNode[]
+    semiFinished: RawNode[]
+    factoryProducts: RawNode[]
+    colorFormulas: RawNode[]
+    processKits: RawNode[]
   }
   edges: {
     rawToRecipe: { from: string; to: string }[]
     recipeToRecipe: { from: string; to: string }[]
     semiToRecipe: { from: string; to: string }[]
+    recipeToSemiFinished: { from: string; to: string }[]
     recipeToProduct: { from: string; to: string }[]
     recipeToColorFormula: { from: string; to: string }[]
     rawToColorFormula: { from: string; to: string }[]
@@ -43,193 +50,243 @@ interface OverviewData {
   }
 }
 
-const LAYER_COLORS: Record<string, string> = {
-  rawMaterial: '#4ade80',
-  recipe: '#60a5fa',
-  semiFinished: '#f59e0b',
-  factoryProduct: '#a78bfa',
-  colorFormula: '#f472b6',
-  processKit: '#fb923c',
+// ── Visual constants ───────────────────────────────────────────────
+const TYPE_COLOR: Record<NodeType, string> = {
+  rawMaterial:   '#4ade80',
+  recipe:        '#60a5fa',
+  semiFinished:  '#f59e0b',
+  factoryProduct:'#a78bfa',
+  colorFormula:  '#f472b6',
+  processKit:    '#fb923c',
 }
 
-const LAYER_LABELS: Record<string, string> = {
-  rawMaterial: '原材料',
-  recipe: '配方',
-  semiFinished: '半成品',
-  factoryProduct: '工厂产品',
-  colorFormula: '调色单',
-  processKit: '工艺书',
+const TYPE_LABEL: Record<NodeType, string> = {
+  rawMaterial:   '原材料',
+  recipe:        '配方',
+  semiFinished:  '半成品',
+  factoryProduct:'工厂产品',
+  colorFormula:  '调色单',
+  processKit:    '工艺书',
 }
 
-const LAYER_Y = [80, 240, 380, 520, 660]
+// Layout
+const NODES_PER_ROW = 30
+const H_SPACING    = 36   // horizontal gap between node centres
+const V_ROW_GAP    = 32   // vertical gap between rows within a band
+const BAND_PAD_TOP = 20
+const BAND_PAD_BOT = 14
+const INTER_GAP    = 60   // vertical space between bands (for edges)
+const NODE_R       = 5
+const CANVAS_H_PAD = 48
 
-function buildGraph(data: OverviewData): { nodes: GraphNode[]; edges: GraphEdge[] } {
+// ── Build graph ────────────────────────────────────────────────────
+interface Band { type: NodeType; label: string; y: number; height: number }
+
+function buildGraph(data: OverviewData) {
+  const kitIds = new Set(data.nodes.processKits.map(k => k.id))
+
+  // All raw edge pairs
+  const allPairs: { from: string; to: string; color: string }[] = [
+    ...data.edges.rawToRecipe.map(e => ({ ...e, color: TYPE_COLOR.rawMaterial })),
+    ...data.edges.recipeToRecipe.map(e => ({ ...e, color: TYPE_COLOR.recipe })),
+    ...data.edges.semiToRecipe.map(e => ({ ...e, color: TYPE_COLOR.semiFinished })),
+    ...(data.edges.recipeToSemiFinished ?? []).map(e => ({ ...e, color: TYPE_COLOR.recipe })),
+    ...data.edges.recipeToProduct.map(e => ({ ...e, color: TYPE_COLOR.recipe })),
+    ...data.edges.recipeToColorFormula.map(e => ({ ...e, color: TYPE_COLOR.recipe })),
+    ...data.edges.rawToColorFormula.map(e => ({ ...e, color: TYPE_COLOR.rawMaterial })),
+    ...data.edges.semiToColorFormula.map(e => ({ ...e, color: TYPE_COLOR.semiFinished })),
+    ...data.edges.productToColorFormula.map(e => ({ ...e, color: TYPE_COLOR.factoryProduct })),
+    ...data.edges.productToProcessKit.map(e => ({ ...e, color: TYPE_COLOR.factoryProduct })),
+  ]
+
+  // Dedup
+  const pairSet = new Set<string>()
+  const dedupedPairs: typeof allPairs = []
+  for (const p of allPairs) {
+    const k = `${p.from}::${p.to}`
+    if (!pairSet.has(k)) { pairSet.add(k); dedupedPairs.push(p) }
+  }
+
+  const connectedIds = new Set<string>()
+  for (const p of dedupedPairs) {
+    connectedIds.add(p.from)
+    connectedIds.add(p.to)
+  }
+
+  // Layer definitions
+  const LAYERS: { type: NodeType; label: string; items: RawNode[] }[] = [
+    { type: 'rawMaterial',    label: '原材料',          items: data.nodes.rawMaterials },
+    { type: 'recipe',         label: '配方',            items: data.nodes.recipes },
+    { type: 'semiFinished',   label: '半成品',          items: data.nodes.semiFinished },
+    { type: 'factoryProduct', label: '工厂产品',        items: data.nodes.factoryProducts },
+    {
+      type: 'colorFormula',
+      label: '调色单 / 工艺书',
+      items: [...data.nodes.colorFormulas, ...data.nodes.processKits],
+    },
+  ]
+
   const nodes: GraphNode[] = []
-  const nodeMap = new Map<string, GraphNode>()
+  const bands: Band[] = []
+  let currentY = 16
+  const canvasWidth = NODES_PER_ROW * H_SPACING + CANVAS_H_PAD * 2
 
-  const addNodes = (
-    items: { id: string; code: string; name: string; category?: string }[],
-    type: GraphNode['type'],
-    layer: number,
-  ) => {
-    items.forEach((item, i) => {
-      const node: GraphNode = {
-        id: item.id,
-        code: item.code,
-        name: item.name,
-        category: item.category,
-        layer,
-        type,
-        x: 0,
-        y: LAYER_Y[layer] ?? 80 + layer * 140,
-      }
-      nodes.push(node)
-      nodeMap.set(item.id, node)
+  for (let li = 0; li < LAYERS.length; li++) {
+    const { type, label, items } = LAYERS[li]
+
+    if (items.length === 0) continue
+
+    // Sort: connected first, then by code
+    const sorted = [...items].sort((a, b) => {
+      const ac = connectedIds.has(a.id) ? 0 : 1
+      const bc = connectedIds.has(b.id) ? 0 : 1
+      if (ac !== bc) return ac - bc
+      return a.code.localeCompare(b.code)
     })
-  }
 
-  addNodes(data.nodes.rawMaterials, 'rawMaterial', 0)
-  addNodes(data.nodes.recipes, 'recipe', 1)
-  addNodes(data.nodes.semiFinished, 'semiFinished', 2)
-  addNodes(data.nodes.factoryProducts, 'factoryProduct', 3)
-  addNodes([...data.nodes.colorFormulas, ...data.nodes.processKits], 'colorFormula', 4)
-  data.nodes.processKits.forEach(k => {
-    const n = nodeMap.get(k.id)
-    if (n) n.type = 'processKit'
-  })
+    const numRows = Math.ceil(sorted.length / NODES_PER_ROW)
+    const bandH = BAND_PAD_TOP + numRows * V_ROW_GAP + BAND_PAD_BOT
 
-  // Assign x positions within each layer
-  const layerNodes: Map<number, GraphNode[]> = new Map()
-  for (const n of nodes) {
-    if (!layerNodes.has(n.layer)) layerNodes.set(n.layer, [])
-    layerNodes.get(n.layer)!.push(n)
-  }
+    bands.push({ type, label, y: currentY, height: bandH })
 
-  const NODE_SPACING = 36
-  const MIN_PADDING = 60
+    for (let i = 0; i < sorted.length; i++) {
+      const item = sorted[i]
+      const row = Math.floor(i / NODES_PER_ROW)
+      const col = i % NODES_PER_ROW
+      const countInRow = Math.min(NODES_PER_ROW, sorted.length - row * NODES_PER_ROW)
+      // Centre the last (possibly shorter) row
+      const rowStartX = CANVAS_H_PAD + ((NODES_PER_ROW - countInRow) / 2) * H_SPACING
 
-  layerNodes.forEach((layerItems) => {
-    const totalWidth = Math.max(
-      800,
-      layerItems.length * NODE_SPACING + MIN_PADDING * 2,
-    )
-    layerItems.forEach((node, i) => {
-      node.x = MIN_PADDING + (i / Math.max(1, layerItems.length - 1)) * (totalWidth - MIN_PADDING * 2)
-    })
-  })
+      const nodeType: NodeType =
+        type === 'colorFormula' && kitIds.has(item.id) ? 'processKit' : type
 
-  // Build edges
-  const edges: GraphEdge[] = []
-
-  const addEdges = (
-    pairs: { from: string; to: string }[],
-    color: string,
-  ) => {
-    for (const { from, to } of pairs) {
-      if (nodeMap.has(from) && nodeMap.has(to)) {
-        edges.push({ from, to, color })
-      }
+      nodes.push({
+        ...item,
+        type: nodeType,
+        layer: li,
+        x: rowStartX + col * H_SPACING,
+        y: currentY + BAND_PAD_TOP + row * V_ROW_GAP,
+        connected: connectedIds.has(item.id),
+      })
     }
+
+    currentY += bandH + INTER_GAP
   }
 
-  addEdges(data.edges.rawToRecipe, LAYER_COLORS.rawMaterial)
-  addEdges(data.edges.recipeToRecipe, LAYER_COLORS.recipe)
-  addEdges(data.edges.semiToRecipe, LAYER_COLORS.semiFinished)
-  addEdges(data.edges.recipeToProduct, LAYER_COLORS.recipe)
-  addEdges(data.edges.recipeToColorFormula, LAYER_COLORS.recipe)
-  addEdges(data.edges.rawToColorFormula, LAYER_COLORS.rawMaterial)
-  addEdges(data.edges.semiToColorFormula, LAYER_COLORS.semiFinished)
-  addEdges(data.edges.productToColorFormula, LAYER_COLORS.factoryProduct)
-  addEdges(data.edges.productToProcessKit, LAYER_COLORS.factoryProduct)
+  const canvasHeight = currentY + 16
 
-  return { nodes, edges: edges.slice(0, 3000) }
+  const nodeMap = new Map(nodes.map(n => [n.id, n]))
+
+  const edges: GraphEdge[] = dedupedPairs
+    .filter(p => nodeMap.has(p.from) && nodeMap.has(p.to))
+    .map(p => ({ from: p.from, to: p.to, color: p.color, key: `${p.from}::${p.to}` }))
+
+  return { nodes, edges, nodeMap, bands, canvasWidth, canvasHeight }
 }
 
-function edgePath(
-  fromNode: GraphNode,
-  toNode: GraphNode,
-): string {
-  const x1 = fromNode.x
-  const y1 = fromNode.y + 7
-  const x2 = toNode.x
-  const y2 = toNode.y - 7
+// ── Edge path (bezier) ─────────────────────────────────────────────
+function edgePath(from: GraphNode, to: GraphNode): string {
+  const x1 = from.x, y1 = from.y + NODE_R
+  const x2 = to.x,   y2 = to.y - NODE_R
+
+  if (from.layer === to.layer) {
+    // Same-layer arc (recipe→recipe)
+    const arc = Math.abs(x2 - x1) * 0.25 + 18
+    return `M ${x1} ${y1} C ${x1} ${y1 + arc}, ${x2} ${y2 + arc}, ${x2} ${y2}`
+  }
+  if (from.layer > to.layer) {
+    // Upward (semi→recipe): curve going up and left
+    const ctrl = (from.y - to.y) * 0.55
+    return `M ${x1} ${y1} C ${x1} ${y1 - ctrl}, ${x2} ${y2 + ctrl}, ${x2} ${y2}`
+  }
+  // Normal downward
   const cy = (y1 + y2) / 2
   return `M ${x1} ${y1} C ${x1} ${cy}, ${x2} ${cy}, ${x2} ${y2}`
 }
 
-function computeViewBox(nodes: GraphNode[]): { width: number; height: number } {
-  if (nodes.length === 0) return { width: 900, height: 780 }
-  const maxX = Math.max(...nodes.map(n => n.x)) + 60
-  const maxY = Math.max(...nodes.map(n => n.y)) + 60
-  return { width: Math.max(900, maxX), height: Math.max(780, maxY) }
+// ── Full-chain BFS (both directions) ─────────────────────────────
+function getFullChain(startId: string, edges: GraphEdge[]) {
+  const fwd = new Map<string, string[]>()
+  const bwd = new Map<string, string[]>()
+  for (const e of edges) {
+    if (!fwd.has(e.from)) fwd.set(e.from, [])
+    fwd.get(e.from)!.push(e.to)
+    if (!bwd.has(e.to)) bwd.set(e.to, [])
+    bwd.get(e.to)!.push(e.from)
+  }
+
+  const chainNodes = new Set<string>([startId])
+  const chainEdges = new Set<string>()
+
+  const bfs = (adj: Map<string, string[]>, getEdgeKey: (cur: string, nb: string) => string) => {
+    const queue = [startId]
+    const visited = new Set([startId])
+    while (queue.length) {
+      const cur = queue.shift()!
+      for (const nb of (adj.get(cur) ?? [])) {
+        chainEdges.add(getEdgeKey(cur, nb))
+        if (!visited.has(nb)) {
+          visited.add(nb)
+          chainNodes.add(nb)
+          queue.push(nb)
+        }
+      }
+    }
+  }
+
+  bfs(fwd, (c, n) => `${c}::${n}`)
+  bfs(bwd, (c, n) => `${n}::${c}`)
+
+  return { chainNodes, chainEdges }
 }
 
-interface TooltipInfo {
-  screenX: number
-  screenY: number
-  node: GraphNode
-  connectedCount: number
-}
-
+// ── Component ──────────────────────────────────────────────────────
 export function FlowDiagram() {
   const [data, setData] = useState<OverviewData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [tooltip, setTooltip] = useState<TooltipInfo | null>(null)
-  const [hoveredId, setHoveredId] = useState<string | null>(null)
-  const [highlightEdges, setHighlightEdges] = useState<Set<string>>(new Set())
-  const svgRef = useRef<SVGSVGElement>(null)
+  const [selected, setSelected] = useState<string | null>(null)
+  const [tooltip, setTooltip] = useState<{
+    node: GraphNode
+    screenX: number
+    screenY: number
+    connCount: number
+  } | null>(null)
 
   useEffect(() => {
     fetch('/api/admin/cosmocoat/overview-graph')
       .then(r => r.json())
-      .then(d => {
-        setData(d)
-        setLoading(false)
-      })
-      .catch(() => {
-        setError('加载数据失败')
-        setLoading(false)
-      })
+      .then(d => { setData(d); setLoading(false) })
+      .catch(() => { setError('加载数据失败'); setLoading(false) })
   }, [])
 
-  const { nodes, edges } = data ? buildGraph(data) : { nodes: [], edges: [] }
-  const nodeMap = new Map(nodes.map(n => [n.id, n]))
-  const { width: vbWidth, height: vbHeight } = computeViewBox(nodes)
+  const graph = useMemo(() => data ? buildGraph(data) : null, [data])
 
-  const handleNodeEnter = useCallback(
-    (nodeId: string, e: React.MouseEvent) => {
-      const node = nodeMap.get(nodeId)
-      if (!node) return
-      const relatedEdges = new Set<string>()
-      let count = 0
-      for (const edge of edges) {
-        if (edge.from === nodeId || edge.to === nodeId) {
-          relatedEdges.add(`${edge.from}::${edge.to}`)
-          count++
-        }
-      }
-      setHoveredId(nodeId)
-      setHighlightEdges(relatedEdges)
-      setTooltip({ screenX: e.clientX, screenY: e.clientY, node, connectedCount: count })
-    },
-    [edges, nodeMap],
+  const chain = useMemo(
+    () => selected && graph ? getFullChain(selected, graph.edges) : null,
+    [selected, graph],
   )
 
-  const handleNodeLeave = useCallback(() => {
-    setHoveredId(null)
-    setHighlightEdges(new Set())
-    setTooltip(null)
+  const handleNodeClick = useCallback((id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSelected(prev => (prev === id ? null : id))
   }, [])
+
+  const handleNodeHover = useCallback(
+    (node: GraphNode | null, e?: React.MouseEvent) => {
+      if (!node || !graph) { setTooltip(null); return }
+      const connCount = graph.edges.filter(ed => ed.from === node.id || ed.to === node.id).length
+      setTooltip({ node, screenX: e!.clientX, screenY: e!.clientY, connCount })
+    },
+    [graph],
+  )
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96" style={{ color: 'var(--muted-foreground)' }}>
+      <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 220px)', color: 'var(--muted-foreground)' }}>
         <div className="text-center space-y-2">
-          <div
-            className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin mx-auto"
-            style={{ borderColor: '#C9A96E', borderTopColor: 'transparent' }}
-          />
+          <div className="w-8 h-8 rounded-full border-2 animate-spin mx-auto"
+            style={{ borderColor: '#C9A96E', borderTopColor: 'transparent' }} />
           <p className="text-sm">正在加载物料流向图…</p>
         </div>
       </div>
@@ -238,250 +295,197 @@ export function FlowDiagram() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-48 text-red-400 text-sm">
-        {error}
-      </div>
+      <div className="flex items-center justify-center h-32 text-red-400 text-sm">{error}</div>
     )
   }
 
+  if (!graph) return null
+
+  const { nodes, edges, nodeMap, bands, canvasWidth, canvasHeight } = graph
   const totalEdges = edges.length
-  const hasData = nodes.length > 0
+
+  // Ambient path IDs (every 6th edge for ambient particles)
+  const ambientEdges = edges.filter((_, i) => i % 6 === 0)
+  // Chain edges for particles
+  const chainEdgeList = chain
+    ? edges.filter(e => chain.chainEdges.has(e.key))
+    : []
 
   return (
-    <div className="space-y-4">
-      {/* Legend */}
-      <div className="flex flex-wrap gap-4 px-1">
-        {(Object.entries(LAYER_LABELS) as [string, string][]).map(([type, label]) => (
-          <div key={type} className="flex items-center gap-1.5">
-            <span
-              className="w-3 h-3 rounded-full flex-shrink-0"
-              style={{ background: LAYER_COLORS[type] }}
-            />
-            <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-              {label}
-            </span>
+    <div className="flex flex-col gap-3" style={{ height: 'calc(100vh - 220px)' }}>
+      {/* ── Legend bar ── */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 flex-shrink-0">
+        {(Object.entries(TYPE_LABEL) as [NodeType, string][]).map(([t, label]) => (
+          <div key={t} className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+              style={{ background: TYPE_COLOR[t] }} />
+            <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{label}</span>
           </div>
         ))}
         <span className="text-xs ml-auto" style={{ color: 'var(--muted-foreground)' }}>
-          共 {nodes.length} 个节点 · {totalEdges} 条关联
+          {nodes.length} 节点 · {totalEdges} 关联
+          {chain && ` · 链路 ${chain.chainNodes.size} 个节点`}
         </span>
+        {selected && (
+          <button onClick={() => setSelected(null)}
+            className="text-xs px-2 py-0.5 rounded"
+            style={{ background: 'rgba(201,169,110,0.15)', color: '#C9A96E' }}>
+            清除选择
+          </button>
+        )}
       </div>
 
-      {!hasData ? (
-        <div
-          className="flex items-center justify-center h-64 rounded-lg border border-dashed text-sm"
-          style={{ color: 'var(--muted-foreground)', borderColor: 'var(--border)' }}
-        >
-          暂无数据，请先录入原材料和配方
-        </div>
-      ) : (
-        <div
-          className="overflow-auto rounded-lg"
-          style={{ background: '#0a0a0a', border: '1px solid var(--sidebar-border)' }}
-        >
+      {/* ── SVG canvas ── */}
+      <div
+        className="overflow-auto rounded-lg flex-1 relative"
+        style={{ background: '#070707', border: '1px solid var(--sidebar-border)' }}
+        onClick={() => setSelected(null)}
+      >
+        {nodes.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-sm"
+            style={{ color: 'var(--muted-foreground)' }}>
+            暂无数据，请先录入原材料和配方
+          </div>
+        ) : (
           <svg
-            ref={svgRef}
-            viewBox={`0 0 ${vbWidth} ${vbHeight}`}
-            width={vbWidth}
-            height={vbHeight}
-            style={{ display: 'block', minWidth: '100%' }}
+            viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
+            width={canvasWidth}
+            height={canvasHeight}
+            style={{ display: 'block' }}
           >
             <defs>
-              {/* Animated gradient for flow effect on edges */}
-              {(Object.entries(LAYER_COLORS) as [string, string][]).map(([type, color]) => (
-                <linearGradient
-                  key={type}
-                  id={`grad-${type}`}
-                  x1="0%"
-                  y1="0%"
-                  x2="0%"
-                  y2="100%"
-                >
-                  <stop offset="0%" stopColor={color} stopOpacity="0" />
-                  <stop offset="40%" stopColor={color} stopOpacity="0.6" />
-                  <stop offset="100%" stopColor={color} stopOpacity="0.9" />
-                </linearGradient>
-              ))}
-
-              {/* Glow filters per color */}
-              {(Object.entries(LAYER_COLORS) as [string, string][]).map(([type, color]) => (
-                <filter key={`glow-${type}`} id={`glow-${type}`} x="-50%" y="-50%" width="200%" height="200%">
-                  <feGaussianBlur stdDeviation="3" result="blur" />
-                  <feMerge>
-                    <feMergeNode in="blur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
+              {/* Glow filters */}
+              {(Object.entries(TYPE_COLOR) as [NodeType, string][]).map(([t, c]) => (
+                <filter key={t} id={`glow-${t}`} x="-60%" y="-60%" width="220%" height="220%">
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur" />
+                  <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
                 </filter>
               ))}
+
+              {/* Path defs for ambient particles */}
+              {!selected && ambientEdges.map((e, i) => {
+                const fn = nodeMap.get(e.from), tn = nodeMap.get(e.to)
+                if (!fn || !tn) return null
+                return <path key={`adef-${i}`} id={`apath-${i}`} d={edgePath(fn, tn)} fill="none" />
+              })}
+
+              {/* Path defs for chain particles */}
+              {chainEdgeList.map((e, i) => {
+                const fn = nodeMap.get(e.from), tn = nodeMap.get(e.to)
+                if (!fn || !tn) return null
+                return <path key={`cdef-${i}`} id={`cpath-${i}`} d={edgePath(fn, tn)} fill="none" />
+              })}
             </defs>
 
-            {/* Layer band backgrounds */}
-            {[
-              { layer: 0, type: 'rawMaterial', label: '原材料' },
-              { layer: 1, type: 'recipe', label: '配方' },
-              { layer: 2, type: 'semiFinished', label: '半成品' },
-              { layer: 3, type: 'factoryProduct', label: '工厂产品' },
-              { layer: 4, type: 'colorFormula', label: '调色单 / 工艺书' },
-            ].map(({ layer, type, label }) => {
-              const layerNodes = nodes.filter(n => n.layer === layer)
-              if (layerNodes.length === 0) return null
-              const yCenter = LAYER_Y[layer] ?? 80 + layer * 140
-              return (
-                <g key={layer}>
-                  <rect
-                    x={0}
-                    y={yCenter - 30}
-                    width={vbWidth}
-                    height={60}
-                    fill={LAYER_COLORS[type]}
-                    fillOpacity={0.04}
-                    rx={0}
-                  />
-                  <text
-                    x={12}
-                    y={yCenter + 4}
-                    fontSize={10}
-                    fill={LAYER_COLORS[type]}
-                    fillOpacity={0.6}
-                    fontWeight={600}
-                    letterSpacing={2}
-                  >
-                    {label.toUpperCase()}
-                  </text>
-                </g>
-              )
-            })}
-
-            {/* Edges - background (dim) */}
-            <g opacity={hoveredId ? 0.08 : 1}>
-              {edges.map((e, i) => {
-                const from = nodeMap.get(e.from)
-                const to = nodeMap.get(e.to)
-                if (!from || !to) return null
-                return (
-                  <path
-                    key={i}
-                    d={edgePath(from, to)}
-                    stroke={e.color}
-                    strokeWidth={1}
-                    fill="none"
-                    strokeOpacity={0.25}
-                  />
-                )
-              })}
-            </g>
-
-            {/* Highlighted edges */}
-            {hoveredId && (
-              <g>
-                {edges
-                  .filter(e => highlightEdges.has(`${e.from}::${e.to}`))
-                  .map((e, i) => {
-                    const from = nodeMap.get(e.from)
-                    const to = nodeMap.get(e.to)
-                    if (!from || !to) return null
-                    const pathId = `hpath-${i}`
-                    const d = edgePath(from, to)
-                    return (
-                      <g key={i}>
-                        <path
-                          id={pathId}
-                          d={d}
-                          stroke={e.color}
-                          strokeWidth={2}
-                          fill="none"
-                          strokeOpacity={0.8}
-                          filter={`url(#glow-${from.type})`}
-                        />
-                        {/* Animated particle */}
-                        <circle r={3} fill={e.color} fillOpacity={0.9}>
-                          <animateMotion
-                            dur="1.2s"
-                            repeatCount="indefinite"
-                            rotate="auto"
-                          >
-                            <mpath href={`#${pathId}`} />
-                          </animateMotion>
-                        </circle>
-                      </g>
-                    )
-                  })}
+            {/* ── Band backgrounds ── */}
+            {bands.map(b => (
+              <g key={b.type}>
+                <rect x={0} y={b.y} width={canvasWidth} height={b.height}
+                  fill={TYPE_COLOR[b.type]} fillOpacity={0.04} />
+                <text x={10} y={b.y + 13} fontSize={9}
+                  fill={TYPE_COLOR[b.type]} fillOpacity={0.5}
+                  fontWeight={700} letterSpacing={1.5} fontFamily="monospace">
+                  {b.label.toUpperCase()}
+                </text>
               </g>
-            )}
+            ))}
 
-            {/* Ambient animated particles on all edges (sparse) */}
-            {!hoveredId && edges.filter((_, i) => i % 5 === 0).map((e, i) => {
-              const from = nodeMap.get(e.from)
-              const to = nodeMap.get(e.to)
-              if (!from || !to) return null
-              const pathId = `apath-${i}`
-              const d = edgePath(from, to)
-              const delay = (i * 0.37) % 3
+            {/* ── Edges ── */}
+            {edges.map(e => {
+              const fn = nodeMap.get(e.from), tn = nodeMap.get(e.to)
+              if (!fn || !tn) return null
+              const inChain = chain?.chainEdges.has(e.key)
+
+              if (selected) {
+                if (!inChain) return (
+                  <path key={e.key} d={edgePath(fn, tn)}
+                    stroke={e.color} strokeWidth={0.5} fill="none" strokeOpacity={0.04} />
+                )
+                return (
+                  <path key={e.key} d={edgePath(fn, tn)}
+                    stroke={e.color} strokeWidth={1.5} fill="none" strokeOpacity={0.75}
+                    filter={`url(#glow-${fn.type})`} />
+                )
+              }
               return (
-                <g key={`amb-${i}`}>
-                  <path id={pathId} d={d} fill="none" stroke="none" />
-                  <circle r={2} fill={e.color} fillOpacity={0.7}>
-                    <animateMotion
-                      dur="2.5s"
-                      begin={`${delay}s`}
-                      repeatCount="indefinite"
-                    >
-                      <mpath href={`#${pathId}`} />
-                    </animateMotion>
-                  </circle>
-                </g>
+                <path key={e.key} d={edgePath(fn, tn)}
+                  stroke={e.color} strokeWidth={0.7} fill="none" strokeOpacity={0.18} />
               )
             })}
 
-            {/* Nodes */}
+            {/* ── Ambient particles (idle state) ── */}
+            {!selected && ambientEdges.map((e, i) => {
+              const fn = nodeMap.get(e.from), tn = nodeMap.get(e.to)
+              if (!fn || !tn) return null
+              return (
+                <circle key={`ap-${i}`} r={1.5} fill={e.color} fillOpacity={0.55}>
+                  <animateMotion dur="3.5s" begin={`${(i * 0.43) % 4}s`} repeatCount="indefinite">
+                    <mpath href={`#apath-${i}`} />
+                  </animateMotion>
+                </circle>
+              )
+            })}
+
+            {/* ── Chain particles (selection state) ── */}
+            {chainEdgeList.map((e, i) => {
+              const fn = nodeMap.get(e.from), tn = nodeMap.get(e.to)
+              if (!fn || !tn) return null
+              return (
+                <circle key={`cp-${i}`} r={2.5} fill={e.color} fillOpacity={0.95}>
+                  <animateMotion dur="1.4s" begin={`${(i * 0.28) % 1.4}s`} repeatCount="indefinite">
+                    <mpath href={`#cpath-${i}`} />
+                  </animateMotion>
+                </circle>
+              )
+            })}
+
+            {/* ── Nodes ── */}
             {nodes.map(node => {
-              const color = LAYER_COLORS[node.type]
-              const isHovered = hoveredId === node.id
-              const isConnected =
-                hoveredId &&
-                edges.some(
-                  e =>
-                    (e.from === hoveredId && e.to === node.id) ||
-                    (e.to === hoveredId && e.from === node.id),
-                )
-              const opacity =
-                !hoveredId ? 1 : isHovered || isConnected ? 1 : 0.2
+              const color = TYPE_COLOR[node.type]
+              const isSelected = selected === node.id
+              const inChain = chain?.chainNodes.has(node.id)
+              const opacity = selected ? (inChain ? 1 : 0.08) : 1
+              const r = isSelected ? NODE_R + 3 : NODE_R
 
               return (
-                <g
-                  key={node.id}
-                  transform={`translate(${node.x}, ${node.y})`}
-                  style={{ cursor: 'pointer' }}
-                  onMouseEnter={(e) => handleNodeEnter(node.id, e)}
-                  onMouseLeave={handleNodeLeave}
+                <g key={node.id}
+                  transform={`translate(${node.x},${node.y})`}
                   opacity={opacity}
+                  style={{ cursor: 'pointer' }}
+                  onClick={ev => handleNodeClick(node.id, ev)}
+                  onMouseEnter={ev => handleNodeHover(node, ev)}
+                  onMouseLeave={() => handleNodeHover(null)}
                 >
-                  {/* Hit area */}
-                  <circle r={14} fill="transparent" />
+                  {/* Invisible hit area */}
+                  <circle r={12} fill="transparent" />
 
-                  {/* Node ring */}
-                  <circle
-                    r={isHovered ? 9 : 6}
-                    fill={color}
-                    fillOpacity={isHovered ? 0.25 : 0.15}
-                    stroke={color}
-                    strokeWidth={isHovered ? 2 : 1.5}
-                    strokeOpacity={isHovered ? 1 : 0.8}
-                    style={{ transition: 'r 0.15s, fill-opacity 0.15s' }}
-                  />
-
-                  {/* Center dot */}
-                  <circle r={2.5} fill={color} fillOpacity={isHovered ? 1 : 0.9} />
-
-                  {/* Label on hover */}
-                  {isHovered && (
-                    <text
-                      y={-14}
-                      textAnchor="middle"
-                      fontSize={9}
+                  {node.connected ? (
+                    <circle r={r}
                       fill={color}
-                      fontWeight={600}
-                    >
+                      fillOpacity={isSelected ? 0.35 : 0.14}
+                      stroke={color}
+                      strokeWidth={isSelected ? 2 : 1.5}
+                      strokeOpacity={isSelected ? 1 : 0.75}
+                    />
+                  ) : (
+                    // Unconnected: dashed dim ring
+                    <circle r={NODE_R}
+                      fill="transparent"
+                      stroke={color}
+                      strokeWidth={1}
+                      strokeOpacity={0.25}
+                      strokeDasharray="2 2"
+                    />
+                  )}
+
+                  {/* Centre dot */}
+                  <circle r={isSelected ? 3 : 2}
+                    fill={color} fillOpacity={node.connected ? 0.95 : 0.3} />
+
+                  {/* Label on hover / select */}
+                  {isSelected && (
+                    <text y={-r - 5} textAnchor="middle"
+                      fontSize={8} fill={color} fontWeight={700}>
                       {node.code}
                     </text>
                   )}
@@ -489,36 +493,36 @@ export function FlowDiagram() {
               )
             })}
           </svg>
+        )}
+      </div>
 
-          {/* Floating tooltip */}
-          {tooltip && (
-            <div
-              className="pointer-events-none fixed z-50 max-w-xs rounded-lg px-3 py-2 text-xs shadow-lg"
-              style={{
-                background: '#111',
-                border: `1px solid ${LAYER_COLORS[tooltip.node.type]}44`,
-                color: 'var(--foreground)',
-                transform: 'translate(-50%, calc(-100% - 12px))',
-                left: `${tooltip.screenX}px`,
-                top: `${tooltip.screenY}px`,
-              }}
-            >
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <span
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ background: LAYER_COLORS[tooltip.node.type] }}
-                />
-                <span className="font-semibold" style={{ color: LAYER_COLORS[tooltip.node.type] }}>
-                  {LAYER_LABELS[tooltip.node.type]}
-                </span>
-              </div>
-              <div className="font-medium leading-snug">{tooltip.node.name}</div>
-              <div style={{ color: 'var(--muted-foreground)' }}>{tooltip.node.code}</div>
-              {tooltip.connectedCount > 0 && (
-                <div className="mt-1" style={{ color: 'var(--muted-foreground)' }}>
-                  {tooltip.connectedCount} 条关联
-                </div>
-              )}
+      {/* ── Tooltip ── */}
+      {tooltip && (
+        <div className="pointer-events-none fixed z-50 max-w-xs rounded-lg px-3 py-2 text-xs shadow-xl"
+          style={{
+            background: '#101010',
+            border: `1px solid ${TYPE_COLOR[tooltip.node.type]}44`,
+            color: 'var(--foreground)',
+            left: `${tooltip.screenX}px`,
+            top: `${tooltip.screenY}px`,
+            transform: 'translate(-50%, calc(-100% - 12px))',
+          }}
+        >
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className="w-2 h-2 rounded-full flex-shrink-0"
+              style={{ background: TYPE_COLOR[tooltip.node.type] }} />
+            <span className="font-semibold" style={{ color: TYPE_COLOR[tooltip.node.type] }}>
+              {TYPE_LABEL[tooltip.node.type]}
+            </span>
+          </div>
+          <div className="font-medium leading-snug">{tooltip.node.name}</div>
+          <div className="mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{tooltip.node.code}</div>
+          {!tooltip.node.connected && (
+            <div className="mt-1 text-amber-400">未被使用</div>
+          )}
+          {tooltip.connCount > 0 && (
+            <div className="mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+              {tooltip.connCount} 条关联 · 点击高亮全链路
             </div>
           )}
         </div>

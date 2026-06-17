@@ -7,12 +7,12 @@ export async function GET() {
   if (error) return error
 
   try {
-    const [rawMaterials, recipes, semiFinished, factoryProducts, colorFormulas, processKits] =
+    const [rawMaterials, recipes, semiFinished, factoryProducts, colorFormulas, processKits, productionOrders] =
       await Promise.all([
         prisma.cosTableRawMaterial.findMany({
           select: { id: true, productionCode: true, name: true, category: true },
           orderBy: { productionCode: 'asc' },
-          take: 200,
+          take: 300,
         }),
         prisma.cosTableRecipe.findMany({
           select: {
@@ -28,12 +28,12 @@ export async function GET() {
             },
           },
           orderBy: { code: 'asc' },
-          take: 200,
+          take: 300,
         }),
         prisma.cosTableProductSemifinished.findMany({
           select: { id: true, code: true, name: true },
           orderBy: { code: 'asc' },
-          take: 200,
+          take: 300,
         }),
         prisma.cosTableFactoryProduct.findMany({
           select: {
@@ -44,7 +44,7 @@ export async function GET() {
             recipeLinks: { select: { recipeId: true } },
           },
           orderBy: { productCode: 'asc' },
-          take: 200,
+          take: 300,
         }),
         prisma.cosTableColorFormula.findMany({
           select: {
@@ -61,7 +61,7 @@ export async function GET() {
             },
           },
           orderBy: { code: 'asc' },
-          take: 200,
+          take: 300,
         }),
         prisma.cosProcessKit.findMany({
           select: {
@@ -71,14 +71,28 @@ export async function GET() {
             products: { select: { productId: true } },
           },
           orderBy: { code: 'asc' },
-          take: 100,
+          take: 200,
+        }),
+        // Production orders to derive recipe → semi-finished edges
+        prisma.cosTableProductionOrder.findMany({
+          select: {
+            recipeId: true,
+            semifinishedProducts: { select: { id: true } },
+          },
+          take: 500,
         }),
       ])
 
-    // Build edge sets (dedup with Set)
+    const parseEdges = (set: Set<string>) =>
+      Array.from(set).map(s => {
+        const [from, to] = s.split('::')
+        return { from, to }
+      })
+
     const rawToRecipe = new Set<string>()
     const recipeToRecipe = new Set<string>()
     const semiToRecipe = new Set<string>()
+    const recipeToSemiFinished = new Set<string>()
     const recipeToProduct = new Set<string>()
     const recipeToColorFormula = new Set<string>()
     const rawToColorFormula = new Set<string>()
@@ -94,12 +108,19 @@ export async function GET() {
       }
     }
 
+    for (const order of productionOrders) {
+      if (!order.recipeId) continue
+      for (const sf of order.semifinishedProducts) {
+        recipeToSemiFinished.add(`${order.recipeId}::${sf.id}`)
+      }
+    }
+
     for (const product of factoryProducts) {
-      const linkedRecipeIds = new Set([
+      const linkedIds = new Set([
         ...(product.currentRecipeId ? [product.currentRecipeId] : []),
         ...product.recipeLinks.map(r => r.recipeId),
       ])
-      for (const recipeId of linkedRecipeIds) {
+      for (const recipeId of linkedIds) {
         recipeToProduct.add(`${recipeId}::${product.id}`)
       }
     }
@@ -119,12 +140,6 @@ export async function GET() {
       }
     }
 
-    const parseEdges = (set: Set<string>) =>
-      Array.from(set).map(s => {
-        const [from, to] = s.split('::')
-        return { from, to }
-      })
-
     return NextResponse.json({
       nodes: {
         rawMaterials: rawMaterials.map(r => ({ id: r.id, code: r.productionCode, name: r.name, category: r.category })),
@@ -138,6 +153,7 @@ export async function GET() {
         rawToRecipe: parseEdges(rawToRecipe),
         recipeToRecipe: parseEdges(recipeToRecipe),
         semiToRecipe: parseEdges(semiToRecipe),
+        recipeToSemiFinished: parseEdges(recipeToSemiFinished),
         recipeToProduct: parseEdges(recipeToProduct),
         recipeToColorFormula: parseEdges(recipeToColorFormula),
         rawToColorFormula: parseEdges(rawToColorFormula),
