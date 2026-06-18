@@ -43,6 +43,35 @@ type ProductLabelPrintData = {
   weight: string
 }
 
+// Label print rotation — lets operators match the design to their label printer's
+// actual paper-feed direction. Persisted in localStorage so the choice is remembered.
+type LabelRotation = '0' | '90' | '180' | '270'
+
+const LABEL_ROTATION_STORAGE_KEY = 'cosmocoat-product-label-rotation'
+
+const LABEL_ROTATION_OPTIONS: { value: LabelRotation; label: string }[] = [
+  { value: '0', label: '横向 100×70（正常）' },
+  { value: '90', label: '旋转 90°（纵向走纸）' },
+  { value: '180', label: '旋转 180°（倒转）' },
+  { value: '270', label: '旋转 270°（纵向走纸）' },
+]
+
+const LABEL_DESIGN_W_MM = 100
+const LABEL_DESIGN_H_MM = 70
+
+/** Page size + frame transform for a given rotation (frame is always laid out at 100×70). */
+function labelPrintGeometry(rotation: LabelRotation) {
+  const portraitFeed = rotation === '90' || rotation === '270'
+  const pageW = portraitFeed ? LABEL_DESIGN_H_MM : LABEL_DESIGN_W_MM
+  const pageH = portraitFeed ? LABEL_DESIGN_W_MM : LABEL_DESIGN_H_MM
+  const transform =
+    rotation === '90' ? `translateX(${LABEL_DESIGN_H_MM}mm) rotate(90deg)`
+    : rotation === '180' ? `translate(${LABEL_DESIGN_W_MM}mm, ${LABEL_DESIGN_H_MM}mm) rotate(180deg)`
+    : rotation === '270' ? `translateY(${LABEL_DESIGN_W_MM}mm) rotate(270deg)`
+    : 'none'
+  return { pageW, pageH, transform }
+}
+
 const card: React.CSSProperties = {
   background: 'var(--card)',
   border: '1px solid var(--border)',
@@ -93,6 +122,7 @@ function formatProductLabelDate(iso: string | null | undefined) {
 function ProductLabelPrintView({ label }: { label: ProductLabelPrintData }) {
   return (
     <div id="cosmocoat-product-label-print-area">
+      <div className="product-label-frame">
       <div className="product-label-card">
         <div className="product-label-code">{label.productCode || '—'}</div>
         <div className="product-label-product">{label.productName || '—'}</div>
@@ -108,6 +138,7 @@ function ProductLabelPrintView({ label }: { label: ProductLabelPrintData }) {
           <span>重量</span>
           <strong>{label.weight || '—'}</strong>
         </div>
+      </div>
       </div>
     </div>
   )
@@ -126,6 +157,19 @@ export default function AdminCosmoCoatProductionOrdersPage() {
   const [labelDraft, setLabelDraft] = useState<ProductLabelDraft | null>(null)
   const [labelPrintData, setLabelPrintData] = useState<ProductLabelPrintData | null>(null)
   const [printingLabel, setPrintingLabel] = useState(false)
+  const [labelRotation, setLabelRotation] = useState<LabelRotation>('0')
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(LABEL_ROTATION_STORAGE_KEY)
+    if (stored === '0' || stored === '90' || stored === '180' || stored === '270') {
+      setLabelRotation(stored)
+    }
+  }, [])
+
+  function updateLabelRotation(value: LabelRotation) {
+    setLabelRotation(value)
+    window.localStorage.setItem(LABEL_ROTATION_STORAGE_KEY, value)
+  }
 
   const fetchItems = useCallback(async () => {
     setLoading(true)
@@ -212,18 +256,20 @@ export default function AdminCosmoCoatProductionOrdersPage() {
     window.setTimeout(() => window.print(), 50)
   }
 
+  const labelGeometry = labelPrintGeometry(labelRotation)
+
   return (
     <>
       {labelPrintData && (
         <>
           <style>{`
             @media print {
-              @page { size: 100mm 70mm; margin: 0; }
+              @page { size: ${labelGeometry.pageW}mm ${labelGeometry.pageH}mm; margin: 0; }
 
               html,
               body {
-                width: 100mm !important;
-                height: 70mm !important;
+                width: ${labelGeometry.pageW}mm !important;
+                height: ${labelGeometry.pageH}mm !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 background: #fff !important;
@@ -253,11 +299,11 @@ export default function AdminCosmoCoatProductionOrdersPage() {
 
               #cosmocoat-product-label-print-area {
                 display: block !important;
-                width: 100mm;
-                height: 70mm;
-                padding: 4mm;
+                position: relative;
+                width: ${labelGeometry.pageW}mm;
+                height: ${labelGeometry.pageH}mm;
+                overflow: hidden;
                 box-sizing: border-box;
-                font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
                 color: #000 !important;
                 background: #fff !important;
                 print-color-adjust: exact;
@@ -270,6 +316,21 @@ export default function AdminCosmoCoatProductionOrdersPage() {
                 background: #fff !important;
                 box-shadow: none !important;
                 text-shadow: none !important;
+              }
+
+              /* Frame is always laid out at the 100×70 design size, then rotated to
+                 match the printer's paper-feed direction. */
+              .product-label-frame {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: ${LABEL_DESIGN_W_MM}mm;
+                height: ${LABEL_DESIGN_H_MM}mm;
+                padding: 4mm;
+                box-sizing: border-box;
+                transform-origin: top left;
+                transform: ${labelGeometry.transform};
+                font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
               }
 
               .product-label-card {
@@ -562,6 +623,22 @@ export default function AdminCosmoCoatProductionOrdersPage() {
                     style={inputStyle()}
                   />
                 </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>打印方向</label>
+                <select
+                  value={labelRotation}
+                  onChange={e => updateLabelRotation(e.target.value as LabelRotation)}
+                  className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+                  style={inputStyle()}
+                >
+                  {LABEL_ROTATION_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                  若打印内容偏移或被裁切，切换方向使其与标签走纸一致；该选择会被记住。
+                </p>
               </div>
             </div>
 

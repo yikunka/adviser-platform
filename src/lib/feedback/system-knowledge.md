@@ -334,6 +334,7 @@ Manufacturing batch tracking.
 - Print production order: A4 sheet with enlarged text, no page header/footer, darker high-contrast print colors, a material table constrained to page margins, and material names omitted while keeping material codes, ratios, required weight, and actual weight
 - Print output includes structured 生产工艺 and QC sections from the order's saved process/QC fields; QC print layout lists each selected test item on its own row (测试项目 / 测试结果) with a bordered result box per item (pre-filled when saved, blank for handwriting on paper); optional custom test standard appears as an additional row
 - Production-order list rows have a product-label print action next to edit; it prints a 100mm x 70mm black-and-white thermal-paper label headed by the product code, with product name (editable before printing), production order number, smaller recipe code / recipe shelf-life text, production date, and weight (editable before printing), laid out to stay within the thermal-label boundary
+- The label print dialog has a 打印方向 (print direction) selector to match the label printer's paper-feed direction: 横向 100×70（正常）/ 旋转 90° / 180° / 270°; rotating 90°/270° switches the page to portrait 70×100 and rotates the label content. The choice is remembered per-browser (localStorage). Use this when the printed label is offset, cropped, or rotated wrong
 - Output: creates semifinished product inventory entries on completion
 
 ### Semifinished Products (`/admin/cosmocoat-product-semifinished`)
