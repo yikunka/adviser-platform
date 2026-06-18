@@ -314,23 +314,29 @@ cmd_deploy() {
     echo "▶ 全量部署$([ "${DEPLOY_FORCE_FULL:-}" == "1" ] && echo "（DEPLOY_FORCE_FULL=1）" || echo "（非 git 目录）")"
     NEED_DEPS=1 NEED_BUILD=1 NEED_PRISMA_GEN=1 NEED_MIGRATE=1 NEED_RSYNC_PUBLIC=1
   else
-    REV_FROM="$(ssh_remote "cat '${REMOTE_DIR}/.adviser-deploy-rev' 2>/dev/null || true" 2>/dev/null | tr -d ' \t\r\n' || true)"
+    REV_FROM_RAW="$(ssh_remote "cat '${REMOTE_DIR}/.adviser-deploy-rev' 2>/dev/null || true" 2>/dev/null | tr -d ' \t\r\n' || true)"
+    # Resolve to a full commit SHA so a short/partial hash compares correctly below.
+    REV_FROM="$(git -C "$SCRIPT_DIR" rev-parse --verify -q "${REV_FROM_RAW}^{commit}" 2>/dev/null || true)"
 
-    if [[ -z "$REV_FROM" ]]; then
+    if [[ -z "$REV_FROM_RAW" ]]; then
       echo "▶ 远端无部署记录（首次），全量"
       NEED_DEPS=1 NEED_BUILD=1 NEED_PRISMA_GEN=1 NEED_MIGRATE=1 NEED_RSYNC_PUBLIC=1
     else
-      _df_commit="${REV_FROM}^{commit}"
-      if ! git -C "$SCRIPT_DIR" rev-parse --verify -q "$_df_commit" >/dev/null 2>&1; then
-        echo "▶ 远端 .adviser-deploy-rev (${REV_FROM:0:7}…) 在本地不可见，全量"
+      if [[ -z "$REV_FROM" ]]; then
+        echo "▶ 远端 .adviser-deploy-rev (${REV_FROM_RAW:0:7}…) 在本地不可见，全量"
         NEED_DEPS=1 NEED_BUILD=1 NEED_PRISMA_GEN=1 NEED_MIGRATE=1 NEED_RSYNC_PUBLIC=1
       elif ! git -C "$SCRIPT_DIR" merge-base --is-ancestor "$REV_FROM" "$HEAD_NOW" 2>/dev/null; then
         echo "▶ 部署记录与当前历史不一致（rebase/amend），全量"
         NEED_DEPS=1 NEED_BUILD=1 NEED_PRISMA_GEN=1 NEED_MIGRATE=1 NEED_RSYNC_PUBLIC=1
       elif [[ "$REV_FROM" == "$HEAD_NOW" ]]; then
-        echo "✓ 远端已与当前提交一致（${HEAD_NOW:0:12}…），无需部署。"
+        echo "✓ 远端已与当前提交一致（rev=${REV_FROM_RAW:0:12} = HEAD ${HEAD_NOW:0:12}…），无需部署。"
+        if [[ "$REV_FROM_RAW" != "$HEAD_NOW" ]]; then
+          ssh_remote "printf '%s\n' '${HEAD_NOW}' > '${REMOTE_DIR}/.adviser-deploy-rev'"
+          echo "▶ 已将远端 .adviser-deploy-rev 规范化为完整 SHA"
+        fi
         return 0
       else
+        echo "▶ 增量比对：rev=${REV_FROM:0:12}（记录值 ${REV_FROM_RAW:0:12}）→ HEAD=${HEAD_NOW:0:12}"
         git -C "$SCRIPT_DIR" diff --name-only "${REV_FROM}..${HEAD_NOW}" | _deploy_local_classify_diff_lines
 
         if [[ "$_DL_N_ALL" -gt 0 ]] && [[ "$_DL_N_REL" -eq 0 ]]; then
@@ -535,6 +541,14 @@ _deploy_local_git_pull_maybe() {
 }
 
 _deploy_local_path_ignored_for_incremental() {
+  # Anything under src/ is part of the build output (including runtime assets that
+  # happen to be markdown, e.g. src/lib/feedback/system-knowledge.md) — never treat
+  # it as docs-only, otherwise a change to it would be skipped and never deployed.
+  case "$1" in
+    src/*)
+      return 1
+      ;;
+  esac
   case "$1" in
     README*|CHANGELOG*|CONTRIBUTING*|LICENSE*|CODEOWNERS|.git*|*.md|*.MD)
       return 0
@@ -774,22 +788,33 @@ cmd_deploy_local() {
     echo "▶ 发布目录无 server.js，全量"
     NEED_DEPS=1 NEED_BUILD=1 NEED_PRISMA_GEN=1 NEED_MIGRATE=1 NEED_RSYNC_PUBLIC=1
   else
-    DIFF_FROM="$(head -n1 "$REV_FILE" | tr -d ' \t\r\n')"
-    _df_commit="${DIFF_FROM}^{commit}"
-    if [[ -z "$DIFF_FROM" ]] || ! git -C "$SCRIPT_DIR" rev-parse --verify -q "$_df_commit" >/dev/null 2>&1; then
-      echo "▶ .adviser-deploy-rev 无效，全量"
+    DIFF_FROM_RAW="$(head -n1 "$REV_FILE" | tr -d ' \t\r\n')"
+    # Resolve whatever is recorded (full SHA, short hash, ref…) to a full commit SHA so
+    # the "same commit" comparison below is exact. A short hash recorded by an external
+    # wrapper used to fall through to an empty-diff "无待发布变更" and silently skip.
+    DIFF_FROM="$(git -C "$SCRIPT_DIR" rev-parse --verify -q "${DIFF_FROM_RAW}^{commit}" 2>/dev/null || true)"
+    if [[ -z "$DIFF_FROM_RAW" ]] || [[ -z "$DIFF_FROM" ]]; then
+      echo "▶ .adviser-deploy-rev 无效（${DIFF_FROM_RAW:-空}），全量"
       NEED_DEPS=1 NEED_BUILD=1 NEED_PRISMA_GEN=1 NEED_MIGRATE=1 NEED_RSYNC_PUBLIC=1
     elif ! git -C "$SCRIPT_DIR" merge-base --is-ancestor "$DIFF_FROM" "$HEAD_NOW" 2>/dev/null; then
       echo "▶ 部署记录与当前历史不一致（rebase/amend），全量"
       NEED_DEPS=1 NEED_BUILD=1 NEED_PRISMA_GEN=1 NEED_MIGRATE=1 NEED_RSYNC_PUBLIC=1
     elif [[ "$DIFF_FROM" == "$HEAD_NOW" ]]; then
-      echo "✓ 已与上次部署提交一致（${HEAD_NOW:0:12}），无需构建或同步。"
+      echo "✓ 已与上次部署提交一致（rev=${DIFF_FROM_RAW:0:12} = HEAD ${HEAD_NOW:0:12}），无需构建或同步。"
+      # Normalize the marker to the full SHA so an external short/partial hash can't keep
+      # re-triggering the empty-diff path on every run.
+      if [[ "$DIFF_FROM_RAW" != "$HEAD_NOW" ]]; then
+        printf '%s\n' "$HEAD_NOW" >"$REV_FILE"
+        echo "▶ 已将 .adviser-deploy-rev 规范化为完整 SHA"
+      fi
       exit 0
     else
+      echo "▶ 增量比对：rev=${DIFF_FROM:0:12}（记录值 ${DIFF_FROM_RAW:0:12}）→ HEAD=${HEAD_NOW:0:12}"
       NEED_DEPS=0 NEED_BUILD=0 NEED_PRISMA_GEN=0 NEED_MIGRATE=0 NEED_RSYNC_PUBLIC=0
       _DL_N_ALL=0
       _DL_N_REL=0
       git -C "$SCRIPT_DIR" diff --name-only "${DIFF_FROM}..${HEAD_NOW}" | _deploy_local_classify_diff_lines
+      echo "▶ 变更文件数：全部=$_DL_N_ALL，运行相关=$_DL_N_REL"
 
       if [[ "$_DL_N_ALL" -gt 0 ]] && [[ "$_DL_N_REL" -eq 0 ]]; then
         echo "✓ 有新提交但仅文档等非运行路径，跳过构建。（.adviser-deploy-rev 保持不变，下次重新核对）"
