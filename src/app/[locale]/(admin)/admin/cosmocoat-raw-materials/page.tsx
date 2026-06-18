@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { FlaskConical, Pencil, Plus, Search, Trash2, UploadCloud, CheckCircle, XCircle } from 'lucide-react'
+import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 import { CategoryComboField } from '@/components/cosmocoat/category-combo-field'
 import type { RawMaterialListRow, RawMaterialRow } from '@/lib/cosmocoat/raw-materials'
 
@@ -265,6 +266,7 @@ function RawMaterialCreateModal({
 
 export default function AdminCosmoCoatRawMaterialsPage() {
   const router = useRouter()
+  const canViewDetail = useAdminPermission('cosmocoatRawMaterials.view')
   const [items, setItems] = useState<RawMaterialListRow[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -451,7 +453,7 @@ export default function AdminCosmoCoatRawMaterialsPage() {
               </thead>
               <tbody>
                 {items.map(item => (
-                  <tr key={item.id} className="cursor-pointer transition-colors hover:bg-[#111108]" onClick={() => openDetail(item)}>
+                  <tr key={item.id} className={`transition-colors hover:bg-[#111108] ${canViewDetail ? 'cursor-pointer' : ''}`} onClick={canViewDetail ? () => openDetail(item) : undefined}>
                     <td style={{ ...td, color: 'var(--foreground)', fontWeight: 500 }}>{item.productionCode}</td>
                     <td style={td}>{item.huaxingCode || '—'}</td>
                     <td style={td}>{item.category || '—'}</td>
@@ -481,9 +483,11 @@ export default function AdminCosmoCoatRawMaterialsPage() {
                     </td>
                     <td style={{ ...td, textAlign: 'right' }}>
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={e => { e.stopPropagation(); openDetail(item) }} className="p-1.5 rounded-md" style={{ color: 'var(--muted-foreground)' }}>
-                          <Pencil size={14} />
-                        </button>
+                        {canViewDetail && (
+                          <button onClick={e => { e.stopPropagation(); openDetail(item) }} className="p-1.5 rounded-md" style={{ color: 'var(--muted-foreground)' }}>
+                            <Pencil size={14} />
+                          </button>
+                        )}
                         <button onClick={e => { e.stopPropagation(); deleteItem(item) }} disabled={deletingId === item.id} className="p-1.5 rounded-md disabled:opacity-40" style={{ color: 'var(--muted-foreground)' }}>
                           <Trash2 size={14} />
                         </button>

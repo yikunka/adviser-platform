@@ -7,6 +7,7 @@ import { Link } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { Plus, Search, UserRound } from 'lucide-react'
 import type { CosEmployeeRow } from '@/lib/cosmocoat/employees'
+import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 import { COS_EMPLOYEE_FIVE_ELEMENTS } from '@/lib/cosmocoat/employee-filters'
 import { COS_EMPLOYEE_TYPE_LABELS } from '@/lib/cosmocoat/employee-labels'
 import type { CosEmployeeType } from '@prisma/client'
@@ -92,6 +93,7 @@ function formatFiveElement(employee: CosEmployeeRow) {
 }
 
 export default function AdminCosmoCoatEmployeesPage() {
+  const canViewDetail = useAdminPermission('cosmocoatEmployees.view')
   const [employees, setEmployees] = useState<CosEmployeeRow[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -226,13 +228,17 @@ export default function AdminCosmoCoatEmployeesPage() {
               ) : employees.map(employee => (
                 <tr key={employee.id} className="hover:bg-[#1A1A12]/50 align-top">
                   <td style={td}>
-                    <Link
-                      href={`/admin/cosmocoat-employees/${employee.id}`}
-                      className="font-medium underline-offset-4 hover:underline"
-                      style={{ color: '#C9A96E' }}
-                    >
-                      {employee.code}
-                    </Link>
+                    {canViewDetail ? (
+                      <Link
+                        href={`/admin/cosmocoat-employees/${employee.id}`}
+                        className="font-medium underline-offset-4 hover:underline"
+                        style={{ color: '#C9A96E' }}
+                      >
+                        {employee.code}
+                      </Link>
+                    ) : (
+                      <span className="font-medium" style={{ color: 'var(--foreground)' }}>{employee.code}</span>
+                    )}
                   </td>
                   <td style={{ ...td, color: 'var(--foreground)' }}>{employee.name}</td>
                   <td style={td}>{COS_EMPLOYEE_TYPE_LABELS[employee.employeeType]}</td>

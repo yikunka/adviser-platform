@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { FlaskConical, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 import { useSearchParams } from 'next/navigation'
 
 type EmployeeSummary = {
@@ -91,6 +92,7 @@ function formatEmployee(employee: EmployeeSummary | null): string {
 
 export default function AdminCosmoCoatSampleOrdersPage() {
   const router = useRouter()
+  const canViewDetail = useAdminPermission('cosmocoatSampleOrders.view')
   const searchParams = useSearchParams()
   const [items, setItems] = useState<SampleOrderRow[]>([])
   const [total, setTotal] = useState(0)
@@ -230,8 +232,8 @@ export default function AdminCosmoCoatSampleOrdersPage() {
                 {items.map(order => (
                   <tr
                     key={order.id}
-                    className="cursor-pointer transition-colors hover:bg-[#111108]"
-                    onClick={() => router.push(`/admin/cosmocoat-sample-orders/${order.id}`)}
+                    className={`transition-colors hover:bg-[#111108] ${canViewDetail ? 'cursor-pointer' : ''}`}
+                    onClick={canViewDetail ? () => router.push(`/admin/cosmocoat-sample-orders/${order.id}`) : undefined}
                   >
                     <td style={{ ...td, color: 'var(--foreground)', fontWeight: 500 }}>{order.code}</td>
                     <td style={td}>
@@ -258,13 +260,15 @@ export default function AdminCosmoCoatSampleOrdersPage() {
                     <td style={td}>{new Date(order.createdAt).toLocaleDateString('zh-CN')}</td>
                     <td style={{ ...td, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1">
-                        <Link
-                          href={`/admin/cosmocoat-sample-orders/${order.id}`}
-                          className="p-1.5 rounded hover:bg-[#1E1C15]"
-                          title="编辑"
-                        >
-                          <Pencil size={14} />
-                        </Link>
+                        {canViewDetail && (
+                          <Link
+                            href={`/admin/cosmocoat-sample-orders/${order.id}`}
+                            className="p-1.5 rounded hover:bg-[#1E1C15]"
+                            title="编辑"
+                          >
+                            <Pencil size={14} />
+                          </Link>
+                        )}
                         {order.status !== 'IN_PROGRESS' && (
                           <button
                             type="button"

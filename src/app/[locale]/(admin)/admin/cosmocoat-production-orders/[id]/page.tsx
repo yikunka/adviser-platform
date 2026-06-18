@@ -477,7 +477,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
     options?: { overwriteProcess?: boolean },
   ) => {
     try {
-      const res = await fetch(`/api/admin/cosmocoat/recipes/${recipeId}`)
+      const res = await fetch(`/api/admin/cosmocoat/production-orders/recipe/${recipeId}`)
       const data = await res.json()
       if (!res.ok) {
         toast.error(data.error ?? '加载配方失败')

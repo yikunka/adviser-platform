@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { Beaker, CheckCircle, ClipboardCheck, FolderCog, Pencil, Plus, Search, Trash2, XCircle } from 'lucide-react'
+import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 import { formatMoney } from '@/lib/cosmocoat/recipes'
 import { useSearchParams } from 'next/navigation'
 
@@ -442,6 +443,7 @@ function PendingApprovalsPanel({
 
 export default function AdminCosmoCoatRecipesPage() {
   const router = useRouter()
+  const canViewDetail = useAdminPermission('cosmocoatRecipes.view')
   const searchParams = useSearchParams()
   const [items, setItems] = useState<RecipeRow[]>([])
   const [categories, setCategories] = useState<RecipeCategory[]>([])
@@ -655,8 +657,8 @@ export default function AdminCosmoCoatRecipesPage() {
                 {items.map(recipe => (
                   <tr
                     key={recipe.id}
-                    className="cursor-pointer transition-colors hover:bg-[#111108]"
-                    onClick={() => router.push(`/admin/cosmocoat-recipes/${recipe.id}`)}
+                    className={`transition-colors hover:bg-[#111108] ${canViewDetail ? 'cursor-pointer' : ''}`}
+                    onClick={canViewDetail ? () => router.push(`/admin/cosmocoat-recipes/${recipe.id}`) : undefined}
                   >
                     <td style={{ ...td, color: 'var(--foreground)', fontWeight: 500 }}>{recipe.code}</td>
                     <td style={td}>{recipe.name}</td>
@@ -672,14 +674,16 @@ export default function AdminCosmoCoatRecipesPage() {
                     <td style={td}>{new Date(recipe.updatedAt).toLocaleDateString('zh-CN')}</td>
                     <td style={{ ...td, textAlign: 'right' }}>
                       <div className="flex items-center justify-end gap-1">
-                        <Link
-                          href={`/admin/cosmocoat-recipes/${recipe.id}`}
-                          onClick={e => e.stopPropagation()}
-                          className="p-1.5 rounded-md inline-flex"
-                          style={{ color: 'var(--muted-foreground)' }}
-                        >
-                          <Pencil size={14} />
-                        </Link>
+                        {canViewDetail && (
+                          <Link
+                            href={`/admin/cosmocoat-recipes/${recipe.id}`}
+                            onClick={e => e.stopPropagation()}
+                            className="p-1.5 rounded-md inline-flex"
+                            style={{ color: 'var(--muted-foreground)' }}
+                          >
+                            <Pencil size={14} />
+                          </Link>
+                        )}
                         <button
                           type="button"
                           onClick={e => { e.stopPropagation(); deleteRecipe(recipe) }}

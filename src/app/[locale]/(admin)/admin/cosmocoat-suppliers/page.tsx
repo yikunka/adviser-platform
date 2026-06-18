@@ -7,6 +7,7 @@ import { Link } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { MapPin, Phone, Plus, Search, Truck, Upload } from 'lucide-react'
 import type { CosSupplierRow } from '@/lib/cosmocoat/suppliers'
+import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 
 const card: React.CSSProperties = {
   background: 'var(--card)',
@@ -38,6 +39,7 @@ function formatDate(value: string | null) {
 }
 
 export default function AdminCosmoCoatSuppliersPage() {
+  const canViewDetail = useAdminPermission('cosmocoatSuppliers.view')
   const [suppliers, setSuppliers] = useState<CosSupplierRow[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -180,13 +182,17 @@ export default function AdminCosmoCoatSuppliersPage() {
               ) : suppliers.map(supplier => (
                 <tr key={supplier.id} className="hover:bg-[#1A1A12]/50 align-top">
                   <td style={td}>
-                    <Link
-                      href={`/admin/cosmocoat-suppliers/${supplier.id}`}
-                      className="font-medium underline-offset-4 hover:underline"
-                      style={{ color: '#C9A96E' }}
-                    >
-                      {supplier.code}
-                    </Link>
+                    {canViewDetail ? (
+                      <Link
+                        href={`/admin/cosmocoat-suppliers/${supplier.id}`}
+                        className="font-medium underline-offset-4 hover:underline"
+                        style={{ color: '#C9A96E' }}
+                      >
+                        {supplier.code}
+                      </Link>
+                    ) : (
+                      <span className="font-medium" style={{ color: 'var(--foreground)' }}>{supplier.code}</span>
+                    )}
                   </td>
                   <td style={{ ...td, color: 'var(--foreground)' }} className="min-w-[180px]">{supplier.name}</td>
                   <td style={td} className="min-w-[200px]">

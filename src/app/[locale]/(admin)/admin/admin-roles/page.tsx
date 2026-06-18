@@ -18,7 +18,7 @@ type AdminRole = {
 }
 
 // ── Permission matrix helpers ──────────────────────────────────────
-const ALL_ACTIONS: PermAction[] = ['create', 'edit', 'delete', 'import', 'export', 'approve', 'complete']
+const ALL_ACTIONS: PermAction[] = ['view', 'create', 'edit', 'delete', 'import', 'export', 'approve', 'complete']
 
 function PermMatrix({
   permissions,

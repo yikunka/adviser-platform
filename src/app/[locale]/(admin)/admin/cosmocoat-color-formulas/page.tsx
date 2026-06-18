@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { Palette, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 import {
   COLOR_FORMULA_CATEGORIES,
   factoryProductMatchesColorFormulaCategory,
@@ -84,6 +85,7 @@ function formatCustomerOption(customer: CustomerOption) {
 
 export default function CosmocoatColorFormulasPage() {
   const router = useRouter()
+  const canViewDetail = useAdminPermission('cosmocoatColorFormulas.view')
   const [items, setItems] = useState<FormulaRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -409,8 +411,8 @@ export default function CosmocoatColorFormulasPage() {
                 {items.map(row => (
                   <tr
                     key={row.id}
-                    className="cursor-pointer transition-colors hover:bg-[#111108]"
-                    onClick={() => router.push(`/admin/cosmocoat-color-formulas/${row.id}`)}
+                    className={`transition-colors hover:bg-[#111108] ${canViewDetail ? 'cursor-pointer' : ''}`}
+                    onClick={canViewDetail ? () => router.push(`/admin/cosmocoat-color-formulas/${row.id}`) : undefined}
                   >
                     <td style={{ ...td, color: 'var(--foreground)', fontWeight: 500 }}>{row.code}</td>
                     <td style={td}>{row.name}</td>
@@ -435,14 +437,16 @@ export default function CosmocoatColorFormulasPage() {
                     <td style={td}>{new Date(row.updatedAt).toLocaleDateString('zh-CN')}</td>
                     <td style={{ ...td, textAlign: 'right' }}>
                       <div className="flex items-center justify-end gap-1">
-                        <Link
-                          href={`/admin/cosmocoat-color-formulas/${row.id}`}
-                          onClick={e => e.stopPropagation()}
-                          className="p-1.5 rounded-md inline-flex"
-                          style={{ color: 'var(--muted-foreground)' }}
-                        >
-                          <Pencil size={14} />
-                        </Link>
+                        {canViewDetail && (
+                          <Link
+                            href={`/admin/cosmocoat-color-formulas/${row.id}`}
+                            onClick={e => e.stopPropagation()}
+                            className="p-1.5 rounded-md inline-flex"
+                            style={{ color: 'var(--muted-foreground)' }}
+                          >
+                            <Pencil size={14} />
+                          </Link>
+                        )}
                         <button
                           type="button"
                           onClick={e => { e.stopPropagation(); deleteFormula(row) }}

@@ -7,6 +7,7 @@ import { Link } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { ContactRound, Download, Mail, MapPin, Phone, Plus, Search, Upload } from 'lucide-react'
 import type { CosCustomerRow } from '@/lib/cosmocoat/customers'
+import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 
 const card: React.CSSProperties = {
   background: 'var(--card)',
@@ -38,6 +39,7 @@ function formatDate(value: string | null) {
 }
 
 export default function AdminCosmoCoatCustomersPage() {
+  const canViewDetail = useAdminPermission('cosmocoatCustomers.view')
   const [customers, setCustomers] = useState<CosCustomerRow[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -238,13 +240,17 @@ export default function AdminCosmoCoatCustomersPage() {
               ) : customers.map(customer => (
                 <tr key={customer.id} className="hover:bg-[#1A1A12]/50 align-top">
                   <td style={td}>
-                    <Link
-                      href={`/admin/cosmocoat-customers/${customer.id}`}
-                      className="font-medium underline-offset-4 hover:underline"
-                      style={{ color: '#C9A96E' }}
-                    >
-                      {customer.code}
-                    </Link>
+                    {canViewDetail ? (
+                      <Link
+                        href={`/admin/cosmocoat-customers/${customer.id}`}
+                        className="font-medium underline-offset-4 hover:underline"
+                        style={{ color: '#C9A96E' }}
+                      >
+                        {customer.code}
+                      </Link>
+                    ) : (
+                      <span className="font-medium" style={{ color: 'var(--foreground)' }}>{customer.code}</span>
+                    )}
                   </td>
                   <td style={{ ...td, color: 'var(--foreground)' }} className="min-w-[160px]">{customer.name}</td>
                   <td style={td} className="min-w-[200px]">

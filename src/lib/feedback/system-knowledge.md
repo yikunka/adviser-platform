@@ -122,7 +122,8 @@ Staff access control.
 Dynamic permission roles. **SUPER_ADMIN only.**
 - Create, edit, delete custom roles with name, color, and description
 - Each role has a permission matrix covering all admin pages across all modules (CosmoCoat, Adviser, SFS Diamond, System)
-- Permissions are per-page (view access) and per-action (create, edit, delete, approve, export, import)
+- Permissions are per-page (list/menu view access) and per-action (view detail, create, edit, delete, approve, export, import)
+- "查看详情/view" is a distinct action for CosmoCoat modules (raw materials, recipes, color formulas, production orders, process kits, sample orders, customers, suppliers, employees): without it a user sees the list page but cannot open record detail pages (detail links/row navigation are hidden)
 - System roles cannot be deleted
 - Assigned to staff via Team Management; effective permissions = role permissions + direct menu key grants
 
@@ -327,6 +328,7 @@ Manufacturing batch tracking.
 - Recipes containing only nested sub-recipes or semifinished components (no raw-material lines) show an empty materials table instead of crashing
 - Statuses: `DRAFT` → `IN_PROGRESS` → `COMPLETED`
 - Line items: raw materials, semifinished component recipes, and Sol. semifinished inventory components with required weight and actual weight used; selecting a product on new order or opening a draft order loads the full linked recipe material list and preserves saved actual weights when rows are synced; draft orders have **从配方重新加载** on both the materials table and 生产工艺 sections to refresh material lines and process/QC fields from the current recipe
+- Loading the recipe material detail for a production order only requires production-order access (`cosmocoatProductionOrders`); it does NOT require recipe-management (`cosmocoatRecipes`) permission — material detail is served via a production-order-scoped endpoint that exposes material codes/ratios but no recipe pricing
 - Detail page **生产工艺** section: selecting a product on new order (or opening an existing order) auto-loads the linked recipe's production speed, production time, packaging requirements, and production notes; fields are editable on the order, with a **从配方重新加载** action on draft orders to reset from the current recipe
 - Detail page **QC** section: auto-loads recipe QC test checkboxes (黏度, 百格, 水煮80C/30M, 湿油外观, 干板外观 — viscosity checkbox shows recipe viscosity when set), optional custom test standard, and per-item result inputs (only for checked tests); all editable on the order
 - Print production order: A4 sheet with enlarged text, no page header/footer, darker high-contrast print colors, a material table constrained to page margins, and material names omitted while keeping material codes, ratios, required weight, and actual weight

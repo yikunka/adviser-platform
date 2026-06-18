@@ -7,6 +7,7 @@ import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { ClipboardList, Pencil, Plus, Printer, Search, Trash2, X } from 'lucide-react'
 import { formatWeight } from '@/lib/cosmocoat/recipes'
+import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 
 type ProductionOrderRow = {
   id: string
@@ -114,6 +115,7 @@ function ProductLabelPrintView({ label }: { label: ProductLabelPrintData }) {
 
 export default function AdminCosmoCoatProductionOrdersPage() {
   const router = useRouter()
+  const canViewDetail = useAdminPermission('cosmocoatProductionOrders.view')
   const [items, setItems] = useState<ProductionOrderRow[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -405,8 +407,8 @@ export default function AdminCosmoCoatProductionOrdersPage() {
                 {items.map(order => (
                   <tr
                     key={order.id}
-                    className="cursor-pointer transition-colors hover:bg-[#111108]"
-                    onClick={() => router.push(`/admin/cosmocoat-production-orders/${order.id}`)}
+                    className={`transition-colors hover:bg-[#111108] ${canViewDetail ? 'cursor-pointer' : ''}`}
+                    onClick={canViewDetail ? () => router.push(`/admin/cosmocoat-production-orders/${order.id}`) : undefined}
                   >
                     <td style={{ ...td, color: 'var(--foreground)', fontWeight: 500 }}>{order.code}</td>
                     <td style={td}>
@@ -424,15 +426,17 @@ export default function AdminCosmoCoatProductionOrdersPage() {
                     <td style={td}>{new Date(order.createdAt).toLocaleDateString('zh-CN')}</td>
                     <td style={{ ...td, textAlign: 'right' }}>
                       <div className="flex items-center justify-end gap-1">
-                        <Link
-                          href={`/admin/cosmocoat-production-orders/${order.id}`}
-                          onClick={e => e.stopPropagation()}
-                          className="p-1.5 rounded-md inline-flex"
-                          title="修改生产单"
-                          style={{ color: 'var(--muted-foreground)' }}
-                        >
-                          <Pencil size={14} />
-                        </Link>
+                        {canViewDetail && (
+                          <Link
+                            href={`/admin/cosmocoat-production-orders/${order.id}`}
+                            onClick={e => e.stopPropagation()}
+                            className="p-1.5 rounded-md inline-flex"
+                            title="修改生产单"
+                            style={{ color: 'var(--muted-foreground)' }}
+                          >
+                            <Pencil size={14} />
+                          </Link>
+                        )}
                         <button
                           type="button"
                           onClick={e => { e.stopPropagation(); openLabelDialog(order) }}

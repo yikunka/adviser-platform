@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { BookOpen, ClipboardCheck, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 
 type ProcessKitRow = {
   id: string
@@ -304,6 +305,7 @@ export default function AdminCosmoCoatProcessKitsPage() {
   const [canDirectEdit, setCanDirectEdit] = useState(false)
   const [pendingChangeRequests, setPendingChangeRequests] = useState<PendingChangeRequest[]>([])
   const canManageExistingKits = canDirectEdit
+  const canViewDetail = useAdminPermission('cosmocoatProcessKits.view')
 
   const statusLabel = useCallback((status: ProcessKitRow['status']) => {
     return t(`statuses.${status}`)
@@ -586,8 +588,8 @@ export default function AdminCosmoCoatProcessKitsPage() {
                 {items.map(kit => (
                   <tr
                     key={kit.id}
-                    className="cursor-pointer transition-colors hover:bg-[#111108]"
-                    onClick={() => router.push(`/admin/cosmocoat-process-kits/${kit.id}`)}
+                    className={`transition-colors hover:bg-[#111108] ${canViewDetail ? 'cursor-pointer' : ''}`}
+                    onClick={canViewDetail ? () => router.push(`/admin/cosmocoat-process-kits/${kit.id}`) : undefined}
                   >
                     <td style={{ ...td, color: 'var(--foreground)', fontWeight: 500, fontFamily: 'monospace', fontSize: '0.8125rem' }}>
                       {kit.code}
@@ -604,14 +606,16 @@ export default function AdminCosmoCoatProcessKitsPage() {
                       <div className="flex items-center justify-end gap-1">
                         {canManageExistingKits && (
                           <>
-                            <Link
-                              href={`/admin/cosmocoat-process-kits/${kit.id}`}
-                              onClick={e => e.stopPropagation()}
-                              className="p-1.5 rounded-md inline-flex"
-                              style={{ color: 'var(--muted-foreground)' }}
-                            >
-                              <Pencil size={14} />
-                            </Link>
+                            {canViewDetail && (
+                              <Link
+                                href={`/admin/cosmocoat-process-kits/${kit.id}`}
+                                onClick={e => e.stopPropagation()}
+                                className="p-1.5 rounded-md inline-flex"
+                                style={{ color: 'var(--muted-foreground)' }}
+                              >
+                                <Pencil size={14} />
+                              </Link>
+                            )}
                             <button
                               type="button"
                               onClick={e => { e.stopPropagation(); deleteKit(kit) }}
