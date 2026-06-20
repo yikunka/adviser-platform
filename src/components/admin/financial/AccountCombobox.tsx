@@ -112,6 +112,18 @@ function isSelectableJournalAccount(account: AccountPickerOption, accounts: Acco
 
 type AccountTreeNode = AccountPickerOption & { children: AccountTreeNode[] }
 
+function getVisibleNodes(nodes: AccountTreeNode[], expandedIds: Set<string>): AccountTreeNode[] {
+  const result: AccountTreeNode[] = []
+  function visit(list: AccountTreeNode[]) {
+    for (const node of list) {
+      result.push(node)
+      if (node.children.length > 0 && expandedIds.has(node.id)) visit(node.children)
+    }
+  }
+  visit(nodes)
+  return result
+}
+
 function filterAccountTree(nodes: AccountTreeNode[], query: string): AccountTreeNode[] {
   const normalizedQuery = query.trim().toLowerCase()
   if (!normalizedQuery) return nodes
@@ -134,6 +146,7 @@ function AccountTreeRows({
   onToggle,
   onSelect,
   depth = 0,
+  highlightedId,
 }: {
   nodes: AccountTreeNode[]
   accounts: AccountPickerOption[]
@@ -142,6 +155,7 @@ function AccountTreeRows({
   onToggle: (accountId: string) => void
   onSelect: (account: AccountPickerOption) => void
   depth?: number
+  highlightedId?: string | null
 }) {
   return (
     <>
@@ -151,14 +165,15 @@ function AccountTreeRows({
         const expanded = expandedIds.has(node.id)
         const selectable = isSelectableJournalAccount(node, accounts)
         const selected = node.id === value
+        const highlighted = node.id === highlightedId
         const showBalance = !hasChildren
 
         return (
-          <div key={node.id}>
+          <div key={node.id} data-tree-node-id={node.id}>
             <div
               className={cn(
                 'grid grid-cols-[auto_1fr_auto_auto] items-center gap-2 rounded-md px-2 py-1.5 text-sm',
-                selected ? 'bg-[#2A2418] text-[#FFF7E6]' : 'text-[#EADDC3]',
+                selected ? 'bg-[#2A2418] text-[#FFF7E6]' : highlighted ? 'bg-[#1E1A12] text-[#FFF7E6]' : 'text-[#EADDC3]',
                 selectable ? 'hover:bg-[#1E1A12]' : 'opacity-80',
               )}
               style={{ paddingLeft: `${8 + depth * 18}px` }}
@@ -224,6 +239,7 @@ function AccountTreeRows({
                 onToggle={onToggle}
                 onSelect={onSelect}
                 depth={depth + 1}
+                highlightedId={highlightedId}
               />
             ) : null}
           </div>
@@ -249,6 +265,8 @@ export function AccountCombobox({
   dialogTitle = '选择会计科目',
 }: AccountComboboxProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const listboxRef = useRef<HTMLDivElement>(null)
+  const dialogListRef = useRef<HTMLDivElement>(null)
   const listboxId = useId()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -258,6 +276,7 @@ export function AccountCombobox({
   const [highlightedIndex, setHighlightedIndex] = useState(0)
   const [treeDialogOpen, setTreeDialogOpen] = useState(false)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const [dialogHighlightedId, setDialogHighlightedId] = useState<string | null>(null)
 
   const selectedSpecialOption = useMemo(
     () => specialOptions.find(option => option.id === value) ?? null,
@@ -419,6 +438,18 @@ export function AccountCombobox({
     return next
   }, [expandedIds, search, treeAccounts])
 
+  useEffect(() => {
+    if (!listboxRef.current) return
+    const el = listboxRef.current.querySelector<HTMLElement>('[data-highlighted="true"]')
+    el?.scrollIntoView({ block: 'nearest' })
+  }, [open, activeHighlightedIndex])
+
+  useEffect(() => {
+    if (!dialogHighlightedId || !dialogListRef.current) return
+    const el = dialogListRef.current.querySelector<HTMLElement>(`[data-tree-node-id="${dialogHighlightedId}"]`)
+    el?.scrollIntoView({ block: 'nearest' })
+  }, [dialogHighlightedId])
+
   function selectAccount(account: AccountPickerOption) {
     setSelectedAccount(account)
     onChange(account.id)
@@ -457,6 +488,7 @@ export function AccountCombobox({
           onClick={() => {
             setSearch('')
             setHighlightedIndex(0)
+            setDialogHighlightedId(null)
             setTreeDialogOpen(true)
             void fetchOptions('', { tree: true })
           }}
@@ -486,6 +518,7 @@ export function AccountCombobox({
             if (next) {
               setSearch('')
               setHighlightedIndex(0)
+              setDialogHighlightedId(null)
               void fetchOptions('', { tree: true })
             }
             setTreeDialogOpen(next)
@@ -506,7 +539,37 @@ export function AccountCombobox({
               />
               <input
                 value={search}
-                onChange={event => setSearch(event.target.value)}
+                onChange={event => {
+                  setSearch(event.target.value)
+                  setDialogHighlightedId(null)
+                }}
+                onKeyDown={event => {
+                  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                    event.preventDefault()
+                    const visibleNodes = getVisibleNodes(treeNodes, activeExpandedIds)
+                    if (visibleNodes.length === 0) return
+                    const currentIndex = dialogHighlightedId
+                      ? visibleNodes.findIndex(n => n.id === dialogHighlightedId)
+                      : -1
+                    const nextIndex = event.key === 'ArrowDown'
+                      ? (currentIndex + 1) % visibleNodes.length
+                      : (currentIndex - 1 + visibleNodes.length) % visibleNodes.length
+                    setDialogHighlightedId(visibleNodes[nextIndex].id)
+                    return
+                  }
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    if (!dialogHighlightedId) return
+                    const visibleNodes = getVisibleNodes(treeNodes, activeExpandedIds)
+                    const node = visibleNodes.find(n => n.id === dialogHighlightedId)
+                    if (!node) return
+                    if (node.children.length > 0) {
+                      toggleExpanded(node.id)
+                    } else if (isSelectableJournalAccount(node, treeAccounts)) {
+                      selectAccount(node)
+                    }
+                  }
+                }}
                 placeholder="输入科目编码或名称搜索..."
                 autoFocus
                 className={cn(
@@ -516,7 +579,7 @@ export function AccountCombobox({
               />
             </div>
 
-            <div className="max-h-[56vh] overflow-y-auto rounded-lg border border-[#2A2418] bg-[#0B0B08] p-1.5">
+            <div ref={dialogListRef} className="max-h-[56vh] overflow-y-auto rounded-lg border border-[#2A2418] bg-[#0B0B08] p-1.5">
               {treeNodes.length === 0 ? (
                 <div className="px-3 py-8 text-center text-sm text-[#B8AD98]">
                   {emptyMessage}
@@ -529,6 +592,7 @@ export function AccountCombobox({
                   expandedIds={activeExpandedIds}
                   onToggle={toggleExpanded}
                   onSelect={selectAccount}
+                  highlightedId={dialogHighlightedId}
                 />
               )}
             </div>
@@ -619,6 +683,7 @@ export function AccountCombobox({
 
       {open && (
         <div
+          ref={listboxRef}
           id={listboxId}
           role="listbox"
           className="financial-account-combobox-dropdown absolute z-50 mt-1 w-full min-w-0 max-h-72 overflow-y-auto rounded-lg border border-[#2A2418] bg-[#11110E] p-1.5 text-[#FFF7E6] shadow-xl sm:min-w-80"
@@ -640,7 +705,7 @@ export function AccountCombobox({
                 onMouseDown={e => e.preventDefault()}
                 onMouseEnter={() => setHighlightedIndex(index)}
                 onClick={() => selectOption(option)}
-                className="flex w-full items-start gap-2.5 rounded-md px-2.5 py-2.5 text-left text-sm text-[#FFF7E6] transition-colors hover:bg-[#1E1A12]"
+                className="flex w-full items-start gap-2.5 rounded-md px-2.5 py-2.5 text-left text-sm text-[#FFF7E6] transition-colors hover:bg-[#1E1A12] data-[highlighted=true]:bg-[#1E1A12]"
               >
                 <span
                   className="mt-1 block size-2.5 shrink-0 rounded-full ring-2 ring-black/20"
