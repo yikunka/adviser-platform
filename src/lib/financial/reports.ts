@@ -696,10 +696,15 @@ export async function buildFinancialReports(
 
   function addCumulativeProfitAndLossSource(input: {
     amount: number
+    statementType: ProfitAndLossStatementType
     sourceAccountIds: string[]
   }) {
     if (input.amount === 0) return
-    cumulativeProfitAndLoss = roundMoney(cumulativeProfitAndLoss + input.amount)
+    // `profitAndLossMovementAmount` returns positive magnitudes for every P&L type
+    // (revenue = credit-debit, cost/expense = debit-credit). Profit is revenue minus
+    // cost/expense, so revenue adds to equity while cost/expense subtracts from it.
+    const signedAmount = input.statementType === 'REVENUE' ? input.amount : -input.amount
+    cumulativeProfitAndLoss = roundMoney(cumulativeProfitAndLoss + signedAmount)
     for (const accountId of input.sourceAccountIds) {
       coveredCumulativeProfitAndLossSourceAccountIds.add(accountId)
     }
@@ -851,11 +856,13 @@ export async function buildFinancialReports(
     })) {
       addCumulativeProfitAndLossSource({
         amount: cumulativeStatementNet,
+        statementType: profitAndLossType,
         sourceAccountIds: statementAccountIds,
       })
     } else if (profitAndLossType && account.level === 1 && hasChildren && cumulativeOwnNet !== 0) {
       addCumulativeProfitAndLossSource({
         amount: cumulativeOwnNet,
+        statementType: profitAndLossType,
         sourceAccountIds: ownAccountIds,
       })
     }
@@ -922,6 +929,7 @@ export async function buildFinancialReports(
     const amount = profitAndLossMovementAmount(uncoveredTotals, candidate.statementType)
     addCumulativeProfitAndLossSource({
       amount,
+      statementType: candidate.statementType,
       sourceAccountIds: uncoveredSourceAccountIds,
     })
   }

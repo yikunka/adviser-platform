@@ -454,6 +454,56 @@ describe('buildFinancialReports journal-line source', () => {
     expect(reports.balanceSheet.totalEquity).toBe(1000)
   })
 
+  it('subtracts expenses when folding cumulative profit into equity and keeps the equation balanced', async () => {
+    reportAccounts = [
+      ...baseReportAccounts,
+      {
+        id: 'expense',
+        code: '6001',
+        name: '管理费用',
+        type: 'EXPENSE',
+        level: 1,
+        parentId: null,
+        sortOrder: 20,
+        yearToDateDebit: 0,
+        yearToDateCredit: 0,
+      },
+      {
+        id: 'current-year-profit',
+        code: '8003',
+        name: 'Current Year Profit',
+        type: 'EQUITY',
+        level: 1,
+        parentId: null,
+        sortOrder: 30,
+        yearToDateDebit: 0,
+        yearToDateCredit: 0,
+      },
+    ]
+    // Balanced entry: cash 700 + expense 300 (debit) = revenue 1000 (credit).
+    periodMovementLines = [
+      { accountId: 'bank', debit: 700, credit: 0 },
+      { accountId: 'expense', debit: 300, credit: 0 },
+      { accountId: 'rev-child', debit: 0, credit: 1000 },
+    ]
+
+    const reports = await buildFinancialReports('2026-05', { companyId })
+
+    // Profit = revenue 1000 - expense 300, not 1000 + 300.
+    expect(reports.incomeStatement.netProfit).toBe(700)
+    expect(reports.balanceSheet.equitySection.lines).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        accountId: 'current-year-profit',
+        amount: 700,
+        noteAmount: 700,
+      }),
+    ]))
+    expect(reports.balanceSheet.totalEquity).toBe(700)
+    expect(reports.balanceSheet.totalAssets).toBe(700)
+    expect(reports.balanceSheet.equation.balanced).toBe(true)
+    expect(reports.balanceSheet.equation.difference).toBe(0)
+  })
+
   it('calculates current-year-profit from P&L source data instead of plugging the balance-sheet difference', async () => {
     periodMovementLines = [
       { accountId: 'bank', debit: 500, credit: 0 },
