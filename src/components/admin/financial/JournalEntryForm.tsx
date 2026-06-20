@@ -45,6 +45,7 @@ export type JournalEntryForForm = {
   companyId?: string | null
   company?: { id: string; nameEn: string; companyCode: string | null } | null
   status: 'DRAFT' | 'POSTED' | 'CANCELLED'
+  sourceType?: 'MANUAL' | 'CLOSING' | null
   totalAmount?: number
   createdBy?: string | null
   createdAt?: string | null
@@ -113,6 +114,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
   const [entryDate, setEntryDate] = useState(todayYmd())
   const [companyId, setCompanyId] = useState('NONE')
   const [description, setDescription] = useState('')
+  const [sourceType, setSourceType] = useState<'MANUAL' | 'CLOSING'>('MANUAL')
   const [lines, setLines] = useState<FormLine[]>([blankLine(), blankLine()])
   const [saving, setSaving] = useState(false)
   const [loadingScope, setLoadingScope] = useState(false)
@@ -126,6 +128,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
     }
     setCompanyId(entry?.companyId ?? fixedCompanyId ?? 'NONE')
     setDescription(entry?.description ?? '')
+    setSourceType((entry?.sourceType === 'CLOSING' ? 'CLOSING' : 'MANUAL'))
     setLines(entry?.lines?.length
       ? entry.lines.map(line => ({
           accountId: line.accountId,
@@ -217,7 +220,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
           {
             method: entry ? 'PATCH' : 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ entryDate, companyId, description, lines: payloadLines }),
+            body: JSON.stringify({ entryDate, companyId, description, sourceType, lines: payloadLines }),
           },
         )
         const data = await res.json().catch(() => ({}))
@@ -256,6 +259,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
       onContinued,
       onOpenChange,
       onSaved,
+      sourceType,
       totals.balanced,
     ],
   )
@@ -349,7 +353,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
             )}
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-[180px_minmax(260px,1fr)]">
+          <div className="grid gap-4 sm:grid-cols-[180px_160px_minmax(260px,1fr)]">
             <div className="space-y-2">
               <Label className={labelClassName}>日期</Label>
               <DatePickerPopover
@@ -357,6 +361,18 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                 onChange={setEntryDate}
                 className={`${fieldClassName} border`}
               />
+            </div>
+            <div className="space-y-2">
+              <Label className={labelClassName}>分录类型</Label>
+              <Select value={sourceType} onValueChange={value => setSourceType(value as 'MANUAL' | 'CLOSING')}>
+                <SelectTrigger className={`w-full ${fieldClassName}`}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className={selectContentClassName}>
+                  <SelectItem value="MANUAL">手工录入</SelectItem>
+                  <SelectItem value="CLOSING">期末结转</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="journal-description" className={labelClassName}>摘要</Label>

@@ -128,6 +128,7 @@ export async function PATCH(
           ? { companyId: companyScope.companyId }
           : {}),
         ...(parsed.data.attachments !== undefined ? { attachments: parsed.data.attachments } : {}),
+        ...(parsed.data.sourceType !== undefined ? { sourceType: parsed.data.sourceType } : {}),
         ...(isReopeningCancelled ? { status: 'DRAFT', postedAt: null, reversedAt: null } : {}),
         ...(parsed.data.lines
           ? {

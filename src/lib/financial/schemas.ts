@@ -12,6 +12,7 @@ export const accountTypeSchema = z.enum([
   'CURRENT_ACCOUNT',
 ])
 export const journalStatusSchema = z.enum(['DRAFT', 'POSTED', 'CANCELLED'])
+export const manualJournalSourceTypeSchema = z.enum(['MANUAL', 'CLOSING'])
 
 const nullableIdSchema = z.preprocess(
   value => (value === '' || value === 'NONE' || value === undefined ? null : value),
@@ -63,6 +64,7 @@ export const journalEntryCreateSchema = z.object({
   companyId: z.string().cuid('Company is required'),
   lines: z.array(journalLineSchema).min(2, 'At least two lines are required'),
   attachments: z.array(z.string().trim().min(1)).optional().default([]),
+  sourceType: manualJournalSourceTypeSchema.optional().default('MANUAL'),
 })
 
 export const journalEntryUpdateSchema = journalEntryCreateSchema.partial().extend({

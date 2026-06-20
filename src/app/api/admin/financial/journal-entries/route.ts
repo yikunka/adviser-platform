@@ -123,6 +123,7 @@ export async function POST(req: NextRequest) {
           description: parsed.data.description,
           period: periodFromDate(entryDate),
           attachments: parsed.data.attachments,
+          sourceType: parsed.data.sourceType,
           companyId: companyScope.companyId,
           createdById: session.user.id,
           lines: {

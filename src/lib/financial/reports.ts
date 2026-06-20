@@ -1,4 +1,4 @@
-import type { AccountType, Prisma } from '@prisma/client'
+import type { AccountType, JournalSourceType, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
 import { isDebitNormalAccountType } from '@/lib/financial/account-types'
 import {
@@ -210,11 +210,13 @@ async function aggregatePostedJournalMovements(
   beforePeriod?: string,
   fromPeriod?: string,
   scope?: FinancialReportScope,
+  options?: { excludeSourceTypes?: JournalSourceType[] },
 ) {
   const companyIds = scopeCompanyIds(scope)
   const entryWhere: Prisma.JournalEntryWhereInput = {
     status: 'POSTED',
     ...(companyIds ? { companyId: { in: companyIds } } : {}),
+    ...(options?.excludeSourceTypes?.length ? { sourceType: { notIn: options.excludeSourceTypes } } : {}),
   }
 
   if (beforePeriod && fromPeriod) {
@@ -457,19 +459,25 @@ export async function buildFinancialReports(
         ...rest,
       }))
 
-  const [ledgerOpeningMovements, periodMovements, ledgerClosingMovements, openingBalances, closingBalances] = await Promise.all([
+  const [ledgerOpeningMovements, periodMovements, ledgerClosingMovements, openingBalances, closingBalances, plSourceMovements, bsLedgerClosingMovements] = await Promise.all([
     aggregatePostedJournalMovements(period, undefined, scope),
     aggregatePostedJournalMovements(periodAfter(period), period, scope),
     aggregatePostedJournalMovements(periodAfter(period), undefined, scope),
     aggregateOpeningBalanceMovements(start, scope),
     aggregateOpeningBalanceMovements(end, scope, 'closing'),
+    aggregatePostedJournalMovements(periodAfter(period), period, scope, { excludeSourceTypes: ['CLOSING'] }),
+    aggregatePostedJournalMovements(periodAfter(period), undefined, scope, { excludeSourceTypes: ['CLOSING'] }),
   ])
   const openingMovements = mergeMovementMaps(ledgerOpeningMovements, openingBalances)
   const closingMovements = mergeMovementMaps(ledgerClosingMovements, closingBalances)
+  // Balance sheet uses closing movements excluding CLOSING entries so that profit transferred
+  // via 结转本年利润 is not double-counted when netProfit is added to equity below.
+  const bsClosingMovements = mergeMovementMaps(bsLedgerClosingMovements, closingBalances)
 
-  // For income statement: include legacy/imported P&L sources so companies without posted journal
-  // entries still show figures that match their available trial-balance data.
-  const plPeriodMovements = new Map(periodMovements)
+  // For income statement: exclude CLOSING entries (结转本年利润) so that period-end transfer
+  // vouchers do not cancel out the revenue/expense figures.
+  // Trial balance still uses the full periodMovements (including CLOSING) to show true movements.
+  const plPeriodMovements = new Map(plSourceMovements)
   if (!shouldConsolidateAccounts) {
     for (const rawAccount of rawAccounts) {
       const statementType = inferProfitAndLossStatementType(rawAccount)
@@ -614,6 +622,7 @@ export async function buildFinancialReports(
     const openingTotals = sumMovements(openingMovements, account.sourceAccountIds)
     const periodTotals = sumMovements(periodMovements, account.sourceAccountIds)
     const closingTotals = sumMovements(closingMovements, account.sourceAccountIds)
+    const bsClosingTotals = sumMovements(bsClosingMovements, account.sourceAccountIds)
     const statementAccountIds = statementSourceAccountIds(account)
     const ownAccountIds = ownSourceAccountIds(account)
     const statementPeriodTotals = sumMovements(plPeriodMovements, statementAccountIds)
@@ -633,9 +642,12 @@ export async function buildFinancialReports(
       : yearToDateTotalsByAccount.get(account.accountId)
     const yearToDateBalance = yearToDateTotals?.balance ?? 0
     const closingBalance = roundMoney(ledgerClosingBalance + yearToDateBalance)
+    // Balance sheet closing balance excludes CLOSING entries to avoid double-counting netProfit.
+    const bsLedgerClosingBalance = movementSignedBalance(bsClosingTotals, account.type, account.code)
+    const bsClosingBalance = roundMoney(bsLedgerClosingBalance + yearToDateBalance)
 
     openingByAccount.set(account.accountId, openingBalance)
-    closingByAccount.set(account.accountId, closingBalance)
+    closingByAccount.set(account.accountId, bsClosingBalance)
 
     const reportRow: ReportAccountRow = {
       accountId: account.accountId,
@@ -738,18 +750,18 @@ export async function buildFinancialReports(
     }
 
     if (shouldIncludeAccountInBalanceSheet(account.level)) {
-      if ((account.type === 'ASSET' || account.type === 'NON_CURRENT_ASSET') && closingBalance !== 0) {
-        assetLines.push({ ...reportRow, amount: closingBalance })
+      if ((account.type === 'ASSET' || account.type === 'NON_CURRENT_ASSET') && bsClosingBalance !== 0) {
+        assetLines.push({ ...reportRow, amount: bsClosingBalance })
       }
-      if ((account.type === 'LIABILITY' || account.type === 'NON_CURRENT_LIABILITY') && closingBalance !== 0) {
-        liabilityLines.push({ ...reportRow, amount: closingBalance })
+      if ((account.type === 'LIABILITY' || account.type === 'NON_CURRENT_LIABILITY') && bsClosingBalance !== 0) {
+        liabilityLines.push({ ...reportRow, amount: bsClosingBalance })
       }
-      if (account.type === 'EQUITY' && closingBalance !== 0) equityLines.push({ ...reportRow, amount: closingBalance })
-      if (isCurrentAccountReceivable(account) && closingBalance !== 0) {
-        assetLines.push({ ...reportRow, amount: closingBalance })
+      if (account.type === 'EQUITY' && bsClosingBalance !== 0) equityLines.push({ ...reportRow, amount: bsClosingBalance })
+      if (isCurrentAccountReceivable(account) && bsClosingBalance !== 0) {
+        assetLines.push({ ...reportRow, amount: bsClosingBalance })
       }
-      if (account.type === 'CURRENT_ACCOUNT' && /^2/.test(account.code) && closingBalance !== 0) {
-        liabilityLines.push({ ...reportRow, amount: closingBalance })
+      if (account.type === 'CURRENT_ACCOUNT' && /^2/.test(account.code) && bsClosingBalance !== 0) {
+        liabilityLines.push({ ...reportRow, amount: bsClosingBalance })
       }
     }
   }
