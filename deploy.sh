@@ -237,7 +237,7 @@ cmd_build() {
   local build_marker
   cmd_check
   echo "▶ 安装依赖..."
-  npm install --no-audit --no-fund
+  npm install --include=dev --no-audit --no-fund
   echo "▶ prisma generate..."
   npx prisma generate
   echo "▶ next build..."
@@ -362,7 +362,7 @@ cmd_deploy() {
     cmd_check
     if [[ "$NEED_DEPS" == 1 ]]; then
       echo "▶ 安装依赖..."
-      npm install --no-audit --no-fund
+      npm install --include=dev --no-audit --no-fund
     fi
     if [[ "$NEED_PRISMA_GEN" == 1 ]]; then
       echo "▶ prisma generate..."
@@ -619,7 +619,7 @@ _deploy_local_maybe_npm_prisma_next() {
 
   if [[ "$need_deps" == 1 ]]; then
     echo "▶ npm 安装依赖…"
-    npm install --no-audit --no-fund
+    npm install --include=dev --no-audit --no-fund
   fi
 
   if [[ "$need_gen" == 1 ]] || [[ "$need_build" == 1 ]]; then

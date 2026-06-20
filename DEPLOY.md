@@ -496,7 +496,8 @@ sudo systemctl restart postgresql
 ```bash
 cd /opt/adviser
 
-npm ci --omit=dev
+# Build needs devDependencies such as TypeScript, ESLint, and Tailwind/PostCSS.
+npm ci --include=dev
 npx prisma generate
 npm run build
 
@@ -559,7 +560,8 @@ pm2 logs adviser --lines 50
 cd /opt/adviser
 git pull origin main
 
-npm ci --omit=dev
+# Build needs devDependencies such as TypeScript, ESLint, and Tailwind/PostCSS.
+npm ci --include=dev
 npx prisma generate
 npm run build
 
