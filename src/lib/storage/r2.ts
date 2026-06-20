@@ -14,6 +14,7 @@ import path from 'path'
 import { access } from 'fs/promises'
 import { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { fileNameFromContentDisposition } from '@/lib/http/content-disposition'
 
 function uploadsRoot(): string {
   const fromEnv = (process.env['LOCAL_UPLOADS_DIR'] ?? '').trim()
@@ -218,8 +219,8 @@ export async function getSignedDownloadUrl(
     const disposition = opts?.responseContentDisposition ?? ''
     if (disposition.includes('attachment')) {
       params.set('download', '1')
-      const match = disposition.match(/filename="([^"]+)"/)
-      if (match?.[1]) params.set('filename', match[1])
+      const fileName = fileNameFromContentDisposition(disposition)
+      if (fileName) params.set('filename', fileName)
     }
     return `${getAppBaseUrl()}/api/files?${params.toString()}`
   }

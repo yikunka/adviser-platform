@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 import type { Prisma } from '@prisma/client'
 import { deleteFromR2, getOssConfigError, uploadToR2 } from '@/lib/storage/r2'
+import { contentDispositionHeader } from '@/lib/http/content-disposition'
 
 const ALLOWED_TYPES = [
   'application/pdf',
@@ -61,7 +62,7 @@ export async function uploadCosQualificationFile(file: File) {
   const buffer = Buffer.from(await file.arrayBuffer())
 
   await uploadToR2(key, buffer, contentType, {
-    contentDisposition: `inline; filename="${file.name.replace(/"/g, '')}"`,
+    contentDisposition: contentDispositionHeader('inline', file.name),
   })
 
   return { key, contentType }

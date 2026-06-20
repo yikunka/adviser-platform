@@ -9,6 +9,7 @@ import {
   serializeSupplier,
   supplierInclude,
 } from '@/lib/cosmocoat/suppliers'
+import { supplierListOrderBy } from '@/lib/cosmocoat/supplier-list-order'
 
 const PAGE_SIZE = 20
 
@@ -53,7 +54,7 @@ export async function GET(req: NextRequest) {
       prisma.cosSupplier.findMany({
         where,
         include: supplierInclude,
-        orderBy: [{ updatedAt: 'desc' }],
+        orderBy: supplierListOrderBy(),
         skip,
         take: PAGE_SIZE,
       }),

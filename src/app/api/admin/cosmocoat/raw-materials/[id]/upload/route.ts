@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { uploadToR2, deleteFromR2, getOssConfigError } from '@/lib/storage/r2'
+import { contentDispositionHeader } from '@/lib/http/content-disposition'
 
 // Allowed file types for TDS and MSDS documents
 const ALLOWED_TYPES = [
@@ -94,7 +95,7 @@ export async function POST(
 
   try {
     await uploadToR2(key, buffer, contentType, {
-      contentDisposition: `attachment; filename="${file.name}"`,
+      contentDisposition: contentDispositionHeader('attachment', file.name),
     })
 
     const updateData =

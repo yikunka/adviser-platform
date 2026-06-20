@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { getSignedDownloadUrl, isLocalStorageEnabled } from '@/lib/storage/r2'
+import { contentDispositionHeader } from '@/lib/http/content-disposition'
 
 export async function GET(
   _req: Request,
@@ -18,7 +19,7 @@ export async function GET(
   if (!file) return NextResponse.json({ error: '文件不存在' }, { status: 404 })
 
   const url = await getSignedDownloadUrl(file.storageKey, 900, {
-    responseContentDisposition: `inline; filename="${file.fileName.replace(/"/g, '')}"`,
+    responseContentDisposition: contentDispositionHeader('inline', file.fileName),
   })
 
   return NextResponse.json({

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { getSignedDownloadUrl } from '@/lib/storage/r2'
+import { contentDispositionHeader } from '@/lib/http/content-disposition'
 
 type FileType = 'tds' | 'msds'
 
@@ -50,7 +51,7 @@ export async function GET(
     const safeName = `${rawMaterial.productionCode}_${rawMaterial.name}_${fileType.toUpperCase()}${ext}`
       .replace(/[^\w\u4e00-\u9fff.-]+/g, '_')
     const downloadUrl = await getSignedDownloadUrl(fileKey, 900, {
-      responseContentDisposition: `attachment; filename="${safeName}"`,
+      responseContentDisposition: contentDispositionHeader('attachment', safeName),
     })
 
     return NextResponse.json({

@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import { requireRole } from '@/lib/auth/rbac'
 import { ossImg } from '@/lib/oss-img'
 import { getSignedDownloadUrl, isLocalStorageEnabled, uploadToR2 } from '@/lib/storage/r2'
+import { contentDispositionHeader } from '@/lib/http/content-disposition'
 
 const ALLOWED_TYPES: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest) {
   const key = `cosmocoat/sample-orders/${crypto.randomUUID()}.${ext}`
   const buffer = Buffer.from(await file.arrayBuffer())
   await uploadToR2(key, buffer, contentType, {
-    contentDisposition: `inline; filename="${file.name.replace(/"/g, '')}"`,
+    contentDisposition: contentDispositionHeader('inline', file.name),
     cacheControl: 'public, max-age=31536000, immutable',
   })
 

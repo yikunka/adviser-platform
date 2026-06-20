@@ -3,6 +3,14 @@ import Credentials from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db/prisma'
 import type { UserRole, Platform } from '@prisma/client'
+import { CredentialsSignin } from 'next-auth'
+import {
+  AdminOnlyLoginError,
+  AuthSystemError,
+  EmailNotVerifiedError,
+  InactiveAccountError,
+  PlatformMismatchLoginError,
+} from '@/lib/auth/login-errors'
 
 declare module 'next-auth' {
   interface Session {
@@ -49,34 +57,43 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const emailNorm  = (credentials.email as string).trim().toLowerCase()
         const reqPlatform = (credentials.platform as Platform | undefined) ?? 'ADVISER'
-
-        const user = await prisma.user.findFirst({
-          where: { email: { equals: emailNorm, mode: 'insensitive' } },
-        })
-
-        if (!user) return null
-        if (!user.emailVerified) return null
-        if (!user.isActive) return null
-
-        const valid = await bcrypt.compare(
-          credentials.password as string,
-          user.passwordHash,
-        )
-        if (!valid) return null
-
         const adminLogin = credentials.adminLogin === '1' || credentials.adminLogin === 'true'
-        if (adminLogin && user.role === 'CLIENT') return null
+        try {
+          const user = await prisma.user.findFirst({
+            where: { email: { equals: emailNorm, mode: 'insensitive' } },
+          })
 
-        // Staff / admin accounts always log in via the Adviser panel — skip platform check
-        const isStaff = user.role !== 'CLIENT'
-        if (!isStaff && user.platform !== reqPlatform) return null
+          if (!user) return null
+          if (!user.emailVerified) throw new EmailNotVerifiedError()
+          if (!user.isActive) throw new InactiveAccountError()
 
-        return {
-          id:       user.id,
-          email:    user.email,
-          name:     user.nameEn,
-          role:     user.role,
-          platform: user.platform,
+          const valid = await bcrypt.compare(
+            credentials.password as string,
+            user.passwordHash,
+          )
+          if (!valid) return null
+
+          if (adminLogin && user.role === 'CLIENT') throw new AdminOnlyLoginError()
+
+          // Staff / admin accounts always log in via the Adviser panel — skip platform check
+          const isStaff = user.role !== 'CLIENT'
+          if (!isStaff && user.platform !== reqPlatform) throw new PlatformMismatchLoginError()
+
+          return {
+            id:       user.id,
+            email:    user.email,
+            name:     user.nameEn,
+            role:     user.role,
+            platform: user.platform,
+          }
+        } catch (error) {
+          if (error instanceof CredentialsSignin) throw error
+          console.error('[auth] credentials authorize failed', {
+            email: emailNorm,
+            requestedPlatform: reqPlatform,
+            adminLogin,
+          }, error)
+          throw new AuthSystemError(error instanceof Error ? error : undefined)
         }
       },
     }),

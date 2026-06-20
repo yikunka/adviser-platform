@@ -10,6 +10,7 @@ import { signIn, signOut, useSession } from 'next-auth/react'
 import { toast } from 'sonner'
 import { Link } from '@/i18n/navigation'
 import { Loader2 } from 'lucide-react'
+import { normalizeLoginFailureCode } from '@/lib/auth/login-errors'
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -19,6 +20,28 @@ const loginSchema = z.object({
 type LoginData = z.infer<typeof loginSchema>
 
 const STAFF_ROLES = new Set(['STAFF', 'COMPLIANCE', 'SUPER_ADMIN'])
+
+function loginErrorMessage(
+  t: ReturnType<typeof useTranslations<'auth'>>,
+  error: string | undefined,
+  code: string | undefined,
+) {
+  switch (normalizeLoginFailureCode(error, code)) {
+    case 'unverified':
+      return t('loginEmailNotVerified')
+    case 'inactive':
+      return t('loginAccountInactive')
+    case 'admin_only':
+      return t('loginAdminOnly')
+    case 'platform_mismatch':
+      return t('loginWrongPortal')
+    case 'system':
+      return t('loginSystemError')
+    case 'credentials':
+    default:
+      return t('loginFailed')
+  }
+}
 
 export default function AdminLoginPage() {
   const t = useTranslations('auth')
@@ -73,7 +96,7 @@ export default function AdminLoginPage() {
       })
 
       if (result?.error) {
-        toast.error(t('loginFailed'))
+        toast.error(loginErrorMessage(t, result.error, result.code))
         return
       }
 
@@ -102,9 +125,9 @@ export default function AdminLoginPage() {
           go(`/${locale}/admin/dashboard`)
           return
         }
-        toast.error(t('loginFailed'))
+        toast.error(t('loginAdminOnly'))
       } catch {
-        toast.error(t('loginFailed'))
+        toast.error(t('loginSystemError'))
       }
     } finally {
       setLoading(false)

@@ -5,10 +5,10 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Loader2 } from 'lucide-react'
+import { normalizeLoginFailureCode } from '@/lib/auth/login-errors'
 
 const schema = z.object({
   email:    z.string().email('Invalid email'),
@@ -16,8 +16,25 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
+function loginErrorMessage(error: string | undefined, code: string | undefined) {
+  switch (normalizeLoginFailureCode(error, code)) {
+    case 'unverified':
+      return 'Your email is not verified yet.'
+    case 'inactive':
+      return 'This account is inactive.'
+    case 'admin_only':
+      return 'This account can only sign in through the admin portal.'
+    case 'platform_mismatch':
+      return 'Please sign in through the correct platform portal.'
+    case 'system':
+      return 'Sign-in is temporarily unavailable. Please try again later.'
+    case 'credentials':
+    default:
+      return 'Invalid email or password.'
+  }
+}
+
 export default function SFSLoginPage() {
-  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -34,7 +51,7 @@ export default function SFSLoginPage() {
         redirect: false,
       })
       if (result?.error) {
-        setError('Invalid email or password.')
+        setError(loginErrorMessage(result.error, result.code))
         return
       }
       window.location.assign('/sfsdiamond/dashboard')

@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import { uploadToR2, deleteFromR2, getOssConfigError } from '@/lib/storage/r2'
+import { contentDispositionHeader } from '@/lib/http/content-disposition'
 
 const ALLOWED_TYPES = [
   'application/pdf',
@@ -60,7 +61,7 @@ export async function uploadCosSupplierFile(supplierId: string, file: File) {
   const buffer = Buffer.from(await file.arrayBuffer())
 
   await uploadToR2(key, buffer, contentType, {
-    contentDisposition: `attachment; filename="${file.name.replace(/"/g, '')}"`,
+    contentDisposition: contentDispositionHeader('attachment', file.name),
   })
 
   return { key, contentType }

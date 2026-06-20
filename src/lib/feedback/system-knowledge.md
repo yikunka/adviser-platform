@@ -316,7 +316,7 @@ CosmoCoat factory staff registry (内务、销售、生产、技术、编外人�
 - Fields: employee code (auto `YG####` if omitted), name, type, phone, email, position, department, ID card number (15- or 18-digit with checksum validation), birth date (auto-filled from ID card on create; manual birth-date edits take precedence over ID card thereafter), system-calculated five element (by day master / day stem from birth date) and zodiac (by lunar birth year), hire date, notes, active status
 - List with search (code / name / phone / email / position / department) plus dropdown filters for employee type, five element (`金` / `木` / `水` / `火` / `土`), and status (active / inactive); results update immediately and default-sort by employee code ascending; the paginated table shows hire date, complete-year service years (工龄), five element column (五行, auto-calculated from birth date), required-file status badges for 劳动合同 and 身份证 (red when missing), and update time
 - Create, view, edit, and delete at `/admin/cosmocoat-employees/[id]`; new at `/admin/cosmocoat-employees/new`
-- Upload, preview, download, and delete **劳动合同**, **简历**, and **身份证** files (PDF, Word, JPG, PNG, WEBP; max 10 MB); PDFs and images open in an in-page preview dialog, Word files use online preview when the storage URL is publicly accessible and otherwise keep a download fallback; new employee forms can select files before saving, and creation saves the employee record and selected files together (if file upload fails, the employee is not created)
+- Upload, preview, download, and delete **劳动合同**, **简历**, and **身份证** files (PDF, Word, JPG, PNG, WEBP; max 10 MB); Chinese file names are preserved for display, preview, and download; PDFs and images open in an in-page preview dialog, Word files use online preview when the storage URL is publicly accessible and otherwise keep a download fallback; new employee forms can select files before saving, and creation saves the employee record and selected files together (if file upload fails, the employee is not created)
 - Production orders can assign an active **生产人员** via a dropdown on the detail page; assigned employee profile details are not shown on the production order detail page
 
 ### Production Orders (`/admin/cosmocoat-production-orders`)
@@ -327,11 +327,11 @@ Manufacturing batch tracking.
 - Product list auto-excludes factory products without a current recipe; optional `?recipeId=` URL param further limits choices to products linked to that recipe
 - Recipes containing only nested sub-recipes or semifinished components (no raw-material lines) show an empty materials table instead of crashing
 - Statuses: `DRAFT` → `IN_PROGRESS` → `COMPLETED`
-- Line items: raw materials, semifinished component recipes, and Sol. semifinished inventory components with required weight and actual weight used; selecting a product on new order or opening a draft order loads the full linked recipe material list and preserves saved actual weights when rows are synced; draft orders have **从配方重新加载** on both the materials table and 生产工艺 sections to refresh material lines and process/QC fields from the current recipe
+- Line items: raw materials, semifinished component recipes, and Sol. semifinished inventory components with required weight and actual weight used; material tables show raw-material production codes, but semifinished recipe / Sol. semifinished rows show the semifinished/product name instead of the recipe or semifinished code; selecting a product on new order or opening a draft order loads the full linked recipe material list and preserves saved actual weights when rows are synced; draft orders have **从配方重新加载** on both the materials table and 生产工艺 sections to refresh material lines and process/QC fields from the current recipe
 - Loading the recipe material detail for a production order only requires production-order access (`cosmocoatProductionOrders`); it does NOT require recipe-management (`cosmocoatRecipes`) permission — material detail is served via a production-order-scoped endpoint that exposes material codes/ratios but no recipe pricing
 - Detail page **生产工艺** section: selecting a product on new order (or opening an existing order) auto-loads the linked recipe's production speed, production time, packaging requirements, and production notes; fields are editable on the order, with a **从配方重新加载** action on draft orders to reset from the current recipe
 - Detail page **QC** section: auto-loads recipe QC test checkboxes (黏度, 啞度, 百格, 水煮80C/30M, 湿油外观, 干板外观 — viscosity checkbox shows recipe viscosity when set), optional custom test standard, and per-item result inputs (only for checked tests); all editable on the order
-- Print production order: A4 sheet with enlarged text, no page header/footer, darker high-contrast print colors, a material table constrained to page margins, and material names omitted while keeping material codes, ratios, required weight, and actual weight
+- Print production order: A4 sheet with enlarged text, no page header/footer, darker high-contrast print colors, and a material table constrained to page margins; raw-material rows keep material codes, while semifinished recipe / Sol. semifinished rows show names, with ratios, required weight, and actual weight retained
 - Print output includes structured 生产工艺 and QC sections from the order's saved process/QC fields; QC print layout lists each selected test item on its own row (测试项目 / 测试结果) with a bordered result box per item (pre-filled when saved, blank for handwriting on paper); optional custom test standard appears as an additional row
 - Production-order list rows have a product-label print action next to edit; it prints a 100mm x 70mm black-and-white thermal-paper label headed by the product code, with product name (editable before printing), production order number, smaller recipe code / recipe shelf-life text, production date, and weight (editable before printing), laid out to stay within the thermal-label boundary
 - The label print dialog has a 打印方向 (print direction) selector to match the label printer's paper-feed direction: 横向 100×70（正常）/ 旋转 90° / 180° / 270°; rotating 90°/270° switches the page to portrait 70×100 and rotates the label content. The choice is remembered per-browser (localStorage). Use this when the printed label is offset, cropped, or rotated wrong
@@ -370,22 +370,23 @@ Unified customer registry for CosmoCoat manufacturing clients (raw material purc
 - List with search (code / name / phone / address / linked account email); paginated table; list rows can be exported to Excel using all rows that match the current search filter, including customer code, name, linked account email/name, phone, address, and updated date
 - Bulk import from Excel/CSV on the list page: upload a table containing customer names only; the system creates customer records and auto-generates `KH####` codes
 - Create, view, edit, and delete customer profiles; detail page at `/admin/cosmocoat-customers/[id]`; new at `/admin/cosmocoat-customers/new`; **Save changes** / **Create customer** and **Cancel** actions are in the page header for quick access (no bottom save bar)
-- Upload, view, download, and delete **营业执照** files on saved customer profiles (PDF, JPG, PNG, WEBP; max 10 MB); new customers must be saved before uploading
+- Upload, view, download, and delete **营业执照** files on saved customer profiles (PDF, JPG, PNG, WEBP; max 10 MB; Chinese file names are preserved for display/download); new customers must be saved before uploading
 - Each CosmoCoat platform account can be linked to at most one customer profile
 
 ### Suppliers (`/admin/cosmocoat-suppliers`)
 Independent supplier registry for CosmoCoat sourcing; data and permission key are separate from customer management.
 - Fields: supplier code (auto-generated `SC####` if omitted), name, contact information, address
+- Supplier list defaults to supplier-code ascending order (`SC0001`, `SC0002`, ...)
 - List with search (code / name / contact information / address); paginated table
 - Bulk import from Excel/CSV on the list page: supplier name is required; optional supplier code can be provided, otherwise the system auto-generates `SC####`; contact information and address can also be imported when those columns exist
 - Create, view, edit, and delete supplier profiles; detail page at `/admin/cosmocoat-suppliers/[id]`; new at `/admin/cosmocoat-suppliers/new`
-- Upload, view, download, and delete supplier files on saved supplier profiles (PDF, Word, JPG, PNG, WEBP; max 10 MB); new suppliers must be saved before uploading
+- Upload, view, download, and delete supplier files on saved supplier profiles (PDF, Word, JPG, PNG, WEBP; max 10 MB; Chinese file names are preserved for display/download); new suppliers must be saved before uploading
 
 ### Qualification Files (`/admin/cosmocoat-qualification-files`)
 CosmoCoat 系统资质文件管理模块，用于保存公司官方资质文件档案。
 - List with search (title / qualification type / original filename), pagination, and row actions
 - Fields: title, qualification type, original filename, optional notes, upload/update time, uploader
-- Upload, inline preview, download, edit, and delete qualification files (PDF, JPG, PNG, WEBP; max 10 MB)
+- Upload, inline preview, download, edit, and delete qualification files (PDF, JPG, PNG, WEBP; max 10 MB; Chinese file names are preserved for display/download)
 - Create and edit use the same modal: title and qualification type are required; editing can optionally replace the uploaded file while keeping the record
 
 ### Sample Orders (`/admin/cosmocoat-sample-orders`)

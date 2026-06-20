@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import { uploadToR2, deleteFromR2, getOssConfigError } from '@/lib/storage/r2'
+import { contentDispositionHeader } from '@/lib/http/content-disposition'
 import type { CosEmployeeFileType } from '@prisma/client'
 
 const ALLOWED_TYPES = [
@@ -71,7 +72,7 @@ export async function uploadCosEmployeeFile(
   const buffer = Buffer.from(await file.arrayBuffer())
 
   await uploadToR2(key, buffer, contentType, {
-    contentDisposition: `inline; filename="${file.name.replace(/"/g, '')}"`,
+    contentDisposition: contentDispositionHeader('inline', file.name),
   })
 
   return { key, contentType }

@@ -17,6 +17,7 @@ import {
   readLocalFile,
 } from '@/lib/storage/r2'
 import { prisma } from '@/lib/db/prisma'
+import { contentDispositionHeader, sanitizeDownloadFileName } from '@/lib/http/content-disposition'
 
 const MIME_MAP: Record<string, string> = {
   pdf: 'application/pdf',
@@ -76,7 +77,7 @@ function localFileResponse(
     status: 200,
     headers: {
       'Content-Type': contentType,
-      'Content-Disposition': `${disposition}; filename="${fileName}"`,
+      'Content-Disposition': contentDispositionHeader(disposition, fileName),
       'Content-Length': String(buffer.byteLength),
       'Cache-Control': 'private, no-store',
     },
@@ -92,7 +93,7 @@ async function redirectToOss(
     key,
     900,
     download
-      ? { responseContentDisposition: `attachment${filename ? `; filename="${filename}"` : ''}` }
+      ? { responseContentDisposition: contentDispositionHeader('attachment', filename) }
       : undefined,
   )
   return NextResponse.redirect(url, { status: 302 })
@@ -111,7 +112,7 @@ export async function GET(req: NextRequest) {
   }
 
   const download = req.nextUrl.searchParams.get('download') === '1'
-  const filename = req.nextUrl.searchParams.get('filename')?.replace(/["\r\n]/g, '')
+  const filename = sanitizeDownloadFileName(req.nextUrl.searchParams.get('filename'))
 
   const tryLocal = async () => {
     const { buffer } = await readLocalFile(key)

@@ -33,6 +33,7 @@ import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
 import { FactoryProductCombobox } from '@/components/cosmocoat/FactoryProductCombobox'
 import type { FactoryProductPickerOption } from '@/lib/cosmocoat/factory-product-picker'
 import { serializeFactoryViscosity } from '@/lib/cosmocoat/factory-product-viscosity'
+import { productionOrderItemDisplayCode } from '@/lib/cosmocoat/production-order-display'
 
 type FactoryProductOption = FactoryProductPickerOption
 
@@ -193,7 +194,7 @@ function PrintView({
         <thead>
           <tr style={{ background: '#f0f0f0' }}>
             <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'center', width: '8%' }}>序号</th>
-            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '34%' }}>物料编号</th>
+            <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'left', width: '34%' }}>物料编号/名称</th>
             <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'right', width: '14%' }}>比例</th>
             <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'right', width: '22%' }}>参考投料 ({productUnit})</th>
             <th style={{ padding: '3px 6px', border: '1px solid #ccc', fontWeight: 600, textAlign: 'right', width: '22%' }}>实投 ({productUnit})</th>
@@ -203,7 +204,7 @@ function PrintView({
           {items.map((item, index) => (
             <tr key={item.key} style={{ background: index % 2 === 1 ? '#fafafa' : '#fff' }}>
               <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'center' }}>{index + 1}</td>
-              <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{item.productionCode}</td>
+              <td style={{ padding: '3px 6px', border: '1px solid #ccc' }}>{productionOrderItemDisplayCode(item)}</td>
               <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>{formatPercent(item.percentage)}</td>
               <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>{formatWeight(item.requiredWeight)}</td>
               <td style={{ padding: '3px 6px', border: '1px solid #ccc', textAlign: 'right' }}>
@@ -1029,7 +1030,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
             <thead>
               <tr>
                 <th style={th}>序号</th>
-                <th style={th}>物料编号</th>
+                <th style={th}>物料编号/名称</th>
                 <th style={th}>比例</th>
                 <th style={th}>参考投料 ({productUnit})</th>
                 <th style={th}>本次实投 ({productUnit})</th>
@@ -1047,7 +1048,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
                   <td style={td}>{index + 1}</td>
                   <td style={td}>
                     <span className="inline-flex items-center gap-1">
-                      {item.productionCode}
+                      {productionOrderItemDisplayCode(item)}
                       {item.itemType === 'component_recipe' && (
                         <span className="inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded" style={{ background: 'rgba(201,169,110,0.15)', color: '#C9A96E' }}>
                           <FlaskConical size={10} /> 半成品

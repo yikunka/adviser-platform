@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { uploadToR2 } from '@/lib/storage/r2'
+import { contentDispositionHeader } from '@/lib/http/content-disposition'
 
 const ALLOWED_TYPES: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -68,7 +69,7 @@ export async function POST(
   const buffer = Buffer.from(await file.arrayBuffer())
 
   await uploadToR2(key, buffer, contentType, {
-    contentDisposition: `inline; filename="${file.name.replace(/"/g, '')}"`,
+    contentDisposition: contentDispositionHeader('inline', file.name),
     cacheControl: 'private, max-age=0, no-cache',
   })
 
