@@ -151,6 +151,13 @@ describe('buildFinancialReports journal-line source', () => {
     expect(reports.balanceSheet.equitySection.lines).not.toEqual(expect.arrayContaining([
       expect.objectContaining({ code: '3999' }),
     ]))
+    expect(reports.balanceSheet.equitySection.lines).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        accountId: '__current_period_profit__',
+        name: '本期利润',
+        amount: 1000,
+      }),
+    ]))
     expect(reports.balanceSheet.totalEquity).toBe(1000)
 
     expect(prisma.journalLine.findMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -442,9 +449,10 @@ describe('buildFinancialReports journal-line source', () => {
     ]))
     expect(reports.balanceSheet.equitySection.total).toBe(equityLineSum)
     expect(reports.balanceSheet.totalEquity).toBe(equityLineSum)
+    expect(reports.balanceSheet.totalEquity).toBe(1000)
   })
 
-  it('rolls current-period profit into a nested current-year-profit equity account and its parent summary', async () => {
+  it('rolls current-period profit into a nested current-year-profit equity account and parent summary', async () => {
     reportAccounts = [
       ...baseReportAccounts,
       {

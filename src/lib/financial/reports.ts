@@ -308,6 +308,68 @@ function hasMovement(totals: MovementTotals) {
   return totals.debit !== 0 || totals.credit !== 0
 }
 
+function addOrUpdateStatementLine(lines: StatementLineRow[], line: StatementLineRow) {
+  const existing = lines.find(existingLine => existingLine.accountId === line.accountId)
+  if (existing) {
+    existing.amount = roundMoney(existing.amount + line.amount)
+    return existing
+  }
+  lines.push(line)
+  return line
+}
+
+function addCurrentPeriodProfitToEquity(input: {
+  equityLines: StatementLineRow[]
+  accounts: InternalReportAccountRow[]
+  level1AccountIdByReportAccountId: Map<string, string>
+  netProfit: number
+}) {
+  if (input.netProfit === 0) return
+
+  const currentYearProfitAccount = input.accounts.find(
+    account => account.type === 'EQUITY' && isCurrentYearProfitAccountName(account.name),
+  )
+
+  if (!currentYearProfitAccount) {
+    addOrUpdateStatementLine(input.equityLines, {
+      accountId: '__current_period_profit__',
+      parentId: null,
+      code: 'P&L',
+      name: '本期利润',
+      type: 'EQUITY',
+      level: 1,
+      amount: input.netProfit,
+    })
+    return
+  }
+
+  addOrUpdateStatementLine(input.equityLines, {
+    accountId: currentYearProfitAccount.accountId,
+    parentId: currentYearProfitAccount.parentId ?? null,
+    code: currentYearProfitAccount.code,
+    name: currentYearProfitAccount.name,
+    type: currentYearProfitAccount.type,
+    level: currentYearProfitAccount.level,
+    amount: input.netProfit,
+  })
+
+  const level1GroupId = input.level1AccountIdByReportAccountId.get(currentYearProfitAccount.accountId)
+  if (!level1GroupId || level1GroupId === currentYearProfitAccount.accountId) return
+
+  const parentAccount = input.accounts.find(account => account.accountId === level1GroupId)
+  if (!parentAccount) return
+
+  addOrUpdateStatementLine(input.equityLines, {
+    accountId: parentAccount.accountId,
+    parentId: parentAccount.parentId ?? null,
+    code: parentAccount.code,
+    name: parentAccount.name,
+    type: parentAccount.type,
+    level: parentAccount.level,
+    amount: input.netProfit,
+  })
+}
+
 function periodBeforeDate(date: Date) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
 }
@@ -460,8 +522,8 @@ export async function buildFinancialReports(
   ])
   const openingMovements = mergeMovementMaps(ledgerOpeningMovements, openingBalances)
   const closingMovements = mergeMovementMaps(ledgerClosingMovements, closingBalances)
-  // Balance sheet uses closing movements excluding CLOSING entries so that profit transferred
-  // via 结转本年利润 is not double-counted when netProfit is added to equity below.
+  // Balance sheet uses closing movements excluding CLOSING entries so period-end
+  // transfer vouchers do not automatically fold current-period profit into equity.
   const bsClosingMovements = mergeMovementMaps(bsLedgerClosingMovements, closingBalances)
 
   // For income statement: exclude CLOSING entries (结转本年利润) so that period-end transfer
@@ -526,7 +588,6 @@ export async function buildFinancialReports(
 
   const openingByAccount = new Map<string, number>()
   const closingByAccount = new Map<string, number>()
-  let closingEquityEffect = 0
 
   function accountHasChildren(account: InternalReportAccountRow): boolean {
     if (shouldConsolidateAccounts) {
@@ -633,7 +694,6 @@ export async function buildFinancialReports(
       : yearToDateTotalsByAccount.get(account.accountId)
     const yearToDateBalance = yearToDateTotals?.balance ?? 0
     const closingBalance = roundMoney(ledgerClosingBalance + yearToDateBalance)
-    // Balance sheet closing balance excludes CLOSING entries to avoid double-counting netProfit.
     const bsLedgerClosingBalance = movementSignedBalance(bsClosingTotals, account.type, account.code)
     const bsClosingBalance = roundMoney(bsLedgerClosingBalance + yearToDateBalance)
 
@@ -689,6 +749,7 @@ export async function buildFinancialReports(
 
     const hasChildren = accountHasChildren(account)
     const topLevelHasChildren = topLevelAccountHasChildren(account, level1GroupId)
+    const balanceSheetClosingBalance = bsClosingBalance
     const statementRow: StatementLineRow = {
       ...reportRow,
       ...(profitAndLossType ? { type: profitAndLossType } : {}),
@@ -741,20 +802,17 @@ export async function buildFinancialReports(
     }
 
     if (shouldIncludeAccountInBalanceSheet(account.level)) {
-      if ((account.type === 'ASSET' || account.type === 'NON_CURRENT_ASSET') && closingBalance !== 0) {
-        assetLines.push({ ...reportRow, amount: closingBalance })
+      if ((account.type === 'ASSET' || account.type === 'NON_CURRENT_ASSET') && balanceSheetClosingBalance !== 0) {
+        assetLines.push({ ...reportRow, amount: balanceSheetClosingBalance })
       }
-      if ((account.type === 'LIABILITY' || account.type === 'NON_CURRENT_LIABILITY') && closingBalance !== 0) {
-        liabilityLines.push({ ...reportRow, amount: closingBalance })
+      if ((account.type === 'LIABILITY' || account.type === 'NON_CURRENT_LIABILITY') && balanceSheetClosingBalance !== 0) {
+        liabilityLines.push({ ...reportRow, amount: balanceSheetClosingBalance })
       }
-      if (account.type === 'EQUITY' && closingBalance !== 0) equityLines.push({ ...reportRow, amount: closingBalance })
-      if (account.type === 'EQUITY') {
-        // Track how much P&L was already transferred to equity via CLOSING entries,
-        // so we don't double-count it when adding netProfit to totalEquity below.
-        closingEquityEffect = roundMoney(closingEquityEffect + (closingBalance - bsClosingBalance))
+      if (account.type === 'EQUITY' && balanceSheetClosingBalance !== 0) {
+        equityLines.push({ ...reportRow, amount: balanceSheetClosingBalance })
       }
       if (account.type === 'CURRENT_ACCOUNT') {
-        const currentAccountSide = classifyCurrentAccountBalance(closingBalance)
+        const currentAccountSide = classifyCurrentAccountBalance(balanceSheetClosingBalance)
         if (currentAccountSide?.side === 'ASSET') {
           assetLines.push({ ...reportRow, amount: currentAccountSide.amount })
         }
@@ -796,48 +854,12 @@ export async function buildFinancialReports(
   const grossProfit = roundMoney(totalRevenue - totalCostOfSales)
   const totalExpenses = roundMoney(expenseCategories.reduce((sum, category) => sum + category.total, 0))
   const netProfit = roundMoney(grossProfit - totalExpenses)
-  const equityProfitAdjustment = roundMoney(netProfit - closingEquityEffect)
-  const currentYearProfitAccount = accounts.find(
-    account => account.type === 'EQUITY' && isCurrentYearProfitAccountName(account.name),
-  )
-
-  if (equityProfitAdjustment !== 0 && currentYearProfitAccount) {
-    const existingLine = equityLines.find(line => line.accountId === currentYearProfitAccount.accountId)
-    if (existingLine) {
-      existingLine.amount = roundMoney(existingLine.amount + equityProfitAdjustment)
-    } else {
-      equityLines.push({
-        accountId: currentYearProfitAccount.accountId,
-        parentId: currentYearProfitAccount.parentId ?? null,
-        code: currentYearProfitAccount.code,
-        name: currentYearProfitAccount.name,
-        type: currentYearProfitAccount.type,
-        level: currentYearProfitAccount.level,
-        amount: equityProfitAdjustment,
-      })
-    }
-
-    const level1GroupId = level1AccountIdByReportAccountId.get(currentYearProfitAccount.accountId)
-    if (level1GroupId && level1GroupId !== currentYearProfitAccount.accountId) {
-      const parentLine = equityLines.find(line => line.accountId === level1GroupId)
-      if (parentLine) {
-        parentLine.amount = roundMoney(parentLine.amount + equityProfitAdjustment)
-      } else {
-        const parentAccount = accounts.find(account => account.accountId === level1GroupId)
-        if (parentAccount) {
-          equityLines.push({
-            accountId: parentAccount.accountId,
-            parentId: parentAccount.parentId ?? null,
-            code: parentAccount.code,
-            name: parentAccount.name,
-            type: parentAccount.type,
-            level: parentAccount.level,
-            amount: equityProfitAdjustment,
-          })
-        }
-      }
-    }
-  }
+  addCurrentPeriodProfitToEquity({
+    equityLines,
+    accounts,
+    level1AccountIdByReportAccountId,
+    netProfit,
+  })
 
   const balanceSheetLayout = buildBalanceSheetSections({
     assetLines,
@@ -847,14 +869,10 @@ export async function buildFinancialReports(
   })
   const totalAssets = balanceSheetLayout.totalAssets
   const totalLiabilities = balanceSheetLayout.totalLiabilities
-  // Subtract closingEquityEffect (P&L already transferred to equity via CLOSING entries)
-  // to avoid double-counting it alongside netProfit from the income statement.
-  const totalEquityWithProfit = currentYearProfitAccount
-    ? balanceSheetLayout.totalEquity
-    : roundMoney(balanceSheetLayout.totalEquity + equityProfitAdjustment)
-  const totalLiabilitiesAndEquity = roundMoney(totalLiabilities + totalEquityWithProfit)
-  const balanceSheetEquation = buildAccountingEquationCheck(totalAssets, totalLiabilities, totalEquityWithProfit)
-  const trialBalanceEquation = buildAccountingEquationCheck(totalAssets, totalLiabilities, totalEquityWithProfit)
+  const totalEquity = balanceSheetLayout.totalEquity
+  const totalLiabilitiesAndEquity = roundMoney(totalLiabilities + totalEquity)
+  const balanceSheetEquation = buildAccountingEquationCheck(totalAssets, totalLiabilities, totalEquity)
+  const trialBalanceEquation = buildAccountingEquationCheck(totalAssets, totalLiabilities, totalEquity)
 
   const finalTrialRows = assembleTrialBalanceRows({
     detailRows: trialRows,
@@ -912,14 +930,14 @@ export async function buildFinancialReports(
       liabilitySections: balanceSheetLayout.liabilitySections,
       equitySection: {
         ...balanceSheetLayout.equitySection,
-        total: totalEquityWithProfit,
+        total: totalEquity,
       },
       assets: balanceSheetLayout.assets,
       liabilities: balanceSheetLayout.liabilities,
       equity: balanceSheetLayout.equity,
       totalAssets,
       totalLiabilities,
-      totalEquity: totalEquityWithProfit,
+      totalEquity,
       totalLiabilitiesAndEquity,
       balanced: balanceSheetEquation.balanced,
       equation: balanceSheetEquation,
