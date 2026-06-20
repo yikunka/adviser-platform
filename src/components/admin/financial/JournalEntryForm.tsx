@@ -296,6 +296,20 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
     [focusLineRow, lines.length, saveEntry, saving],
   )
 
+  const handleCreditKeyDown = useCallback(
+    (lineIndex: number, event: ReactKeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Tab' && !event.shiftKey && lineIndex === lines.length - 1) {
+        event.preventDefault()
+        pendingFocusLineIndex.current = lines.length
+        setLines(current => [...current, blankLine()])
+        return
+      }
+
+      handleLineKeyDown(lineIndex, event)
+    },
+    [handleLineKeyDown, lines.length],
+  )
+
   useEffect(() => {
     if (pendingFocusLineIndex.current === null) return
     const index = pendingFocusLineIndex.current
@@ -507,7 +521,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
                         step="0.01"
                         value={line.credit}
                         onChange={event => updateLine(index, { credit: event.target.value, debit: event.target.value ? '' : line.debit })}
-                        onKeyDown={event => handleLineKeyDown(index, event)}
+                        onKeyDown={event => handleCreditKeyDown(index, event)}
                         className={`text-right ${lineFieldClassName}`}
                       />
                     </TableCell>
