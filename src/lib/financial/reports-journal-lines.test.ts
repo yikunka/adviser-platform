@@ -155,6 +155,7 @@ describe('buildFinancialReports journal-line source', () => {
       expect.objectContaining({
         accountId: '__current_period_profit__',
         name: '本期利润',
+        note: '包含截至期末累计未结转损益，用于使资产负债表满足「资产 = 负债 + 所有者权益」。',
         amount: 1000,
       }),
     ]))
@@ -444,6 +445,7 @@ describe('buildFinancialReports journal-line source', () => {
     expect(reports.balanceSheet.equitySection.lines).toEqual(expect.arrayContaining([
       expect.objectContaining({
         accountId: 'current-year-profit',
+        note: '包含截至期末累计未结转损益，用于使资产负债表满足「资产 = 负债 + 所有者权益」。',
         amount: 1000,
       }),
     ]))
@@ -522,6 +524,13 @@ describe('buildFinancialReports journal-line source', () => {
         amount: 1200,
       }),
     ])
+    expect(reports.balanceSheet.equitySection.lines).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        accountId: '__current_period_profit__',
+        amount: 6200,
+      }),
+    ]))
+    expect(reports.balanceSheet.totalEquity).toBe(6200)
   })
 
   it('filters movements by accounting period instead of entry date ranges', async () => {

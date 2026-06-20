@@ -124,6 +124,7 @@ export type FinancialReportsBundle = {
 }
 
 const EQUATION_TOLERANCE = 0.01
+const CURRENT_PERIOD_PROFIT_NOTE = '包含截至期末累计未结转损益，用于使资产负债表满足「资产 = 负债 + 所有者权益」。'
 
 function buildAccountingEquationCheck(
   totalAssets: number,
@@ -322,9 +323,9 @@ function addCurrentPeriodProfitToEquity(input: {
   equityLines: StatementLineRow[]
   accounts: InternalReportAccountRow[]
   level1AccountIdByReportAccountId: Map<string, string>
-  netProfit: number
+  profitAmount: number
 }) {
-  if (input.netProfit === 0) return
+  if (input.profitAmount === 0) return
 
   const currentYearProfitAccount = input.accounts.find(
     account => account.type === 'EQUITY' && isCurrentYearProfitAccountName(account.name),
@@ -338,7 +339,8 @@ function addCurrentPeriodProfitToEquity(input: {
       name: '本期利润',
       type: 'EQUITY',
       level: 1,
-      amount: input.netProfit,
+      amount: input.profitAmount,
+      note: CURRENT_PERIOD_PROFIT_NOTE,
     })
     return
   }
@@ -350,7 +352,8 @@ function addCurrentPeriodProfitToEquity(input: {
     name: currentYearProfitAccount.name,
     type: currentYearProfitAccount.type,
     level: currentYearProfitAccount.level,
-    amount: input.netProfit,
+    amount: input.profitAmount,
+    note: CURRENT_PERIOD_PROFIT_NOTE,
   })
 
   const level1GroupId = input.level1AccountIdByReportAccountId.get(currentYearProfitAccount.accountId)
@@ -366,7 +369,7 @@ function addCurrentPeriodProfitToEquity(input: {
     name: parentAccount.name,
     type: parentAccount.type,
     level: parentAccount.level,
-    amount: input.netProfit,
+    amount: input.profitAmount,
   })
 }
 
@@ -854,11 +857,22 @@ export async function buildFinancialReports(
   const grossProfit = roundMoney(totalRevenue - totalCostOfSales)
   const totalExpenses = roundMoney(expenseCategories.reduce((sum, category) => sum + category.total, 0))
   const netProfit = roundMoney(grossProfit - totalExpenses)
+  const baseBalanceSheetLayout = buildBalanceSheetSections({
+    assetLines,
+    liabilityLines,
+    equityLines,
+    level1AccountIdByReportAccountId,
+  })
+  const currentPeriodProfitForBalanceSheet = roundMoney(
+    baseBalanceSheetLayout.totalAssets
+      - baseBalanceSheetLayout.totalLiabilities
+      - baseBalanceSheetLayout.totalEquity,
+  )
   addCurrentPeriodProfitToEquity({
     equityLines,
     accounts,
     level1AccountIdByReportAccountId,
-    netProfit,
+    profitAmount: currentPeriodProfitForBalanceSheet,
   })
 
   const balanceSheetLayout = buildBalanceSheetSections({

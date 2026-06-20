@@ -297,33 +297,34 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
         XLSX.utils.aoa_to_sheet(sheetRows('资产负债表', period, [
           ['截至日期', reports.balanceSheet.asOfDate],
           [],
-          ['分类', 'HKFRS 分组', '科目编码', '科目名称', '金额'],
+          ['分类', 'HKFRS 分组', '科目编码', '科目名称', '说明', '金额'],
           ...reports.balanceSheet.assetSections.flatMap(section => [
-            ...section.lines.map(row => ['资产', section.label, row.code, row.name, row.amount]),
-            [`${section.label}合计`, section.label, '', '', section.total],
+            ...section.lines.map(row => ['资产', section.label, row.code, row.name, row.note ?? '', row.amount]),
+            [`${section.label}合计`, section.label, '', '', '', section.total],
             [],
           ]),
-          ['资产合计', '', '', '', reports.balanceSheet.totalAssets],
+          ['资产合计', '', '', '', '', reports.balanceSheet.totalAssets],
           [],
           ...reports.balanceSheet.equitySection.lines.map(row => [
             '权益',
             reports.balanceSheet.equitySection.label,
             row.code,
             reportLineLabel(row.name),
+            row.note ?? '',
             row.amount,
           ]),
-          [`${reports.balanceSheet.equitySection.label}合计`, reports.balanceSheet.equitySection.label, '', '', reports.balanceSheet.equitySection.total],
-          ['权益合计', '', '', '', reports.balanceSheet.totalEquity],
+          [`${reports.balanceSheet.equitySection.label}合计`, reports.balanceSheet.equitySection.label, '', '', '', reports.balanceSheet.equitySection.total],
+          ['权益合计', '', '', '', '', reports.balanceSheet.totalEquity],
           [],
           ...reports.balanceSheet.liabilitySections.flatMap(section => [
-            ...section.lines.map(row => ['负债', section.label, row.code, row.name, row.amount]),
-            [`${section.label}合计`, section.label, '', '', section.total],
+            ...section.lines.map(row => ['负债', section.label, row.code, row.name, row.note ?? '', row.amount]),
+            [`${section.label}合计`, section.label, '', '', '', section.total],
             [],
           ]),
-          ['负债合计', '', '', '', reports.balanceSheet.totalLiabilities],
-          ['负债和权益合计', '', '', '', reports.balanceSheet.totalLiabilitiesAndEquity],
-          ['会计恒等式是否平衡', '', '', '', reports.balanceSheet.equation.balanced ? '是' : '否'],
-          ['恒等式差异（资产 − 负债和权益）', '', '', '', reports.balanceSheet.equation.difference],
+          ['负债合计', '', '', '', '', reports.balanceSheet.totalLiabilities],
+          ['负债和权益合计', '', '', '', '', reports.balanceSheet.totalLiabilitiesAndEquity],
+          ['会计恒等式是否平衡', '', '', '', '', reports.balanceSheet.equation.balanced ? '是' : '否'],
+          ['恒等式差异（资产 − 负债和权益）', '', '', '', '', reports.balanceSheet.equation.difference],
         ])),
         '资产负债表',
       )
@@ -675,7 +676,12 @@ function ExpandableBalanceSheetTable({
                     ) : (
                       <span className="inline-block w-[22px] shrink-0" />
                     )}
-                    <span>{reportLineLabel(line.name)}</span>
+                    <span className="flex min-w-0 flex-col">
+                      <span>{reportLineLabel(line.name)}</span>
+                      {line.note ? (
+                        <span className="mt-1 text-xs leading-relaxed text-muted-foreground">{line.note}</span>
+                      ) : null}
+                    </span>
                   </div>
                 </TableCell>
                 <TableCell className="text-right font-mono">{money(line.amount)}</TableCell>
