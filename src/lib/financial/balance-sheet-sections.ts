@@ -12,52 +12,30 @@ export type BalanceSheetSection = {
   total: number
 }
 
-function isCashAccount(account: { code: string; name: string }) {
-  return /^(1001|1002|1010|1020)/.test(account.code) || /cash|bank|現金|銀行/i.test(account.name)
-}
-
-function isCurrentAccountReceivable(account: { code: string; type: AccountType }) {
-  return account.type === 'CURRENT_ACCOUNT' && /^1/.test(account.code)
-}
-
-/** HKFRS current assets: cash, receivables, inventory (typically 10xx–12xx). */
+/** HKFRS current assets: accounts explicitly typed as current assets plus receivable-style current accounts. */
 export function isCurrentAssetAccount(account: { code: string; type: AccountType; name: string }) {
   if (account.type === 'NON_CURRENT_ASSET') return false
-  if (isCurrentAccountReceivable(account)) return true
-  if (account.type === 'ASSET') {
-    if (isCashAccount(account)) return true
-    return /^1(0|1|2)\d/.test(account.code)
-  }
-  return false
+  if (account.type === 'CURRENT_ACCOUNT') return true
+  return account.type === 'ASSET'
 }
 
-/** HKFRS non-current assets: property, plant and equipment and other long-term assets. */
+/** HKFRS non-current assets: accounts explicitly typed as non-current assets. */
 export function isNonCurrentAssetAccount(account: { code: string; type: AccountType; name: string }) {
-  if (account.type === 'NON_CURRENT_ASSET') return true
-  if (account.type !== 'ASSET') return false
-  return !isCurrentAssetAccount(account)
+  return account.type === 'NON_CURRENT_ASSET'
 }
 
 /**
- * HKFRS non-current liabilities: long-term borrowings and other obligations
- * not expected to be settled within 12 months (typically 25xx–29xx).
- *
- * Note: 22xx codes (应付账款, 应交税费, 应付职工薪酬 etc.) are SHORT-TERM
- * trade payables and accruals — they are CURRENT liabilities under both
- * Chinese GAAP and HKFRS, so they are intentionally excluded from this range.
+ * HKFRS non-current liabilities: accounts explicitly typed as non-current liabilities.
  */
 export function isNonCurrentLiabilityAccount(account: { code: string; type: AccountType }) {
-  if (account.type === 'NON_CURRENT_LIABILITY') return true
-  if (account.type !== 'LIABILITY') return false
-  return /^2[5-9]/.test(account.code)
+  return account.type === 'NON_CURRENT_LIABILITY'
 }
 
 /** HKFRS current liabilities: trade payables, accruals, tax payable and other short-term obligations. */
 export function isCurrentLiabilityAccount(account: { code: string; type: AccountType }) {
   if (account.type === 'NON_CURRENT_LIABILITY') return false
-  if (account.type === 'CURRENT_ACCOUNT' && /^2/.test(account.code)) return true
-  if (account.type !== 'LIABILITY') return false
-  return /^2/.test(account.code) && !isNonCurrentLiabilityAccount(account)
+  if (account.type === 'CURRENT_ACCOUNT') return true
+  return account.type === 'LIABILITY'
 }
 
 function sectionTotal(lines: BalanceSheetLineRow[]) {

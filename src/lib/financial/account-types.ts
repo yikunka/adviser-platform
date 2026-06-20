@@ -37,9 +37,9 @@ const CREDIT_NORMAL_TYPES: ReadonlyArray<AccountType> = [
   'REVENUE',
 ]
 
-/** Debit-normal types (assets, expenses, CGS, and receivable-style C/A). */
+/** Debit-normal types (assets, expenses, CGS, and current accounts before balance-side classification). */
 export function isDebitNormalAccountType(type: AccountType, code?: string) {
-  if (type === 'CURRENT_ACCOUNT' && code && /^2/.test(code)) return false
+  void code
   if (CREDIT_NORMAL_TYPES.includes(type)) return false
   return true
 }

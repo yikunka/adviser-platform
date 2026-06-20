@@ -10,8 +10,10 @@ import {
 describe('balance sheet HKFRS sections', () => {
   it('classifies cash and inventory as current assets and fixed assets as non-current', () => {
     expect(isCurrentAssetAccount({ code: '1001', type: 'ASSET', name: '现金' })).toBe(true)
+    expect(isCurrentAssetAccount({ code: '0102', type: 'ASSET', name: 'DBS-556' })).toBe(true)
     expect(isCurrentAssetAccount({ code: '1200', type: 'ASSET', name: '存货' })).toBe(true)
-    expect(isNonCurrentAssetAccount({ code: '1300', type: 'ASSET', name: '固定资产' })).toBe(true)
+    expect(isCurrentAssetAccount({ code: '9999', type: 'CURRENT_ACCOUNT', name: '往来借方余额' })).toBe(true)
+    expect(isNonCurrentAssetAccount({ code: '1300', type: 'ASSET', name: '固定资产' })).toBe(false)
     expect(isNonCurrentAssetAccount({ code: '1300', type: 'NON_CURRENT_ASSET', name: '固定资产' })).toBe(true)
     expect(isCurrentAssetAccount({ code: '1300', type: 'NON_CURRENT_ASSET', name: '固定资产' })).toBe(false)
   })
@@ -22,12 +24,15 @@ describe('balance sheet HKFRS sections', () => {
     expect(isCurrentLiabilityAccount({ code: '2201', type: 'LIABILITY' })).toBe(true) // 应付账款 → current
     expect(isCurrentLiabilityAccount({ code: '2211', type: 'LIABILITY' })).toBe(true) // 应交税费 → current
     expect(isCurrentLiabilityAccount({ code: '2300', type: 'LIABILITY' })).toBe(true)
-    // 25xx–29xx → non-current liabilities (long-term borrowings)
-    expect(isNonCurrentLiabilityAccount({ code: '2500', type: 'LIABILITY' })).toBe(true) // 长期借款 → non-current
-    expect(isNonCurrentLiabilityAccount({ code: '2600', type: 'LIABILITY' })).toBe(true)
+    expect(isCurrentLiabilityAccount({ code: '4004', type: 'LIABILITY' })).toBe(true)
+    expect(isCurrentLiabilityAccount({ code: '2500', type: 'LIABILITY' })).toBe(true)
+    expect(isCurrentLiabilityAccount({ code: '9999', type: 'CURRENT_ACCOUNT' })).toBe(true)
+    // Explicit NON_CURRENT_LIABILITY → non-current liabilities (long-term borrowings)
+    expect(isNonCurrentLiabilityAccount({ code: '2500', type: 'LIABILITY' })).toBe(false)
+    expect(isNonCurrentLiabilityAccount({ code: '2600', type: 'LIABILITY' })).toBe(false)
     expect(isNonCurrentLiabilityAccount({ code: '2500', type: 'NON_CURRENT_LIABILITY' })).toBe(true)
     expect(isCurrentLiabilityAccount({ code: '2500', type: 'NON_CURRENT_LIABILITY' })).toBe(false)
-    // 22xx is NOT non-current
+    // 22xx is NOT non-current unless the account type explicitly says so.
     expect(isNonCurrentLiabilityAccount({ code: '2200', type: 'LIABILITY' })).toBe(false)
     expect(isNonCurrentLiabilityAccount({ code: '2201', type: 'LIABILITY' })).toBe(false)
   })
@@ -45,13 +50,13 @@ describe('balance sheet HKFRS sections', () => {
 
     const layout = buildBalanceSheetSections({
       assetLines: [
-        { accountId: 'a1', code: '1300', name: '固定资产', type: 'ASSET', level: 1, amount: 500 },
-        { accountId: 'a2', code: '1301', name: '厂房', type: 'ASSET', level: 2, amount: 500 },
+        { accountId: 'a1', code: '1300', name: '固定资产', type: 'NON_CURRENT_ASSET', level: 1, amount: 500 },
+        { accountId: 'a2', code: '1301', name: '厂房', type: 'NON_CURRENT_ASSET', level: 2, amount: 500 },
         { accountId: 'b1', code: '1000', name: '流动资产', type: 'ASSET', level: 1, amount: 100 },
         { accountId: 'b2', code: '1001', name: '现金', type: 'ASSET', level: 2, amount: 100 },
       ],
       liabilityLines: [
-        { accountId: 'l1', code: '2500', name: '长期借款', type: 'LIABILITY', level: 1, amount: 300 },
+        { accountId: 'l1', code: '2500', name: '长期借款', type: 'NON_CURRENT_LIABILITY', level: 1, amount: 300 },
         { accountId: 'l2', code: '2001', name: '应付账款', type: 'LIABILITY', level: 2, amount: 50 },
       ],
       equityLines: [

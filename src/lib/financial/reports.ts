@@ -1,5 +1,7 @@
 import type { AccountType, JournalSourceType, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
+import { isFinancingAccount } from '@/lib/financial/cash-flow-classification'
+import { classifyCurrentAccountBalance } from '@/lib/financial/current-account-classification'
 import { isDebitNormalAccountType } from '@/lib/financial/account-types'
 import {
   buildBalanceSheetSections,
@@ -164,29 +166,16 @@ function isCashAccount(account: { code: string; name: string }) {
   return /^(1001|1002|1010|1020)/.test(account.code) || /cash|bank|現金|銀行/i.test(account.name)
 }
 
-function isCurrentAccountReceivable(account: { code: string; type: AccountType }) {
-  return account.type === 'CURRENT_ACCOUNT' && /^1/.test(account.code)
-}
-
 function isWorkingCapitalAccount(account: { code: string; type: AccountType; name: string }) {
   return (
     isCurrentAssetAccount(account)
     || isCurrentLiabilityAccount(account)
-    || isCurrentAccountReceivable(account)
-    || (account.type === 'CURRENT_ACCOUNT' && /^2/.test(account.code))
+    || account.type === 'CURRENT_ACCOUNT'
   )
 }
 
 function isNonCurrentAsset(account: ReportAccountRow & { name: string }) {
   return isNonCurrentAssetAccount(account)
-}
-
-function isFinancingAccount(account: { code: string; type: AccountType }) {
-  return (
-    account.type === 'EQUITY'
-    || account.type === 'NON_CURRENT_LIABILITY'
-    || (account.type === 'LIABILITY' && /^2[3-9]/.test(account.code))
-  )
 }
 
 export type FinancialReportScope = {
@@ -763,11 +752,14 @@ export async function buildFinancialReports(
         // so we don't double-count it when adding netProfit to totalEquity below.
         closingEquityEffect = roundMoney(closingEquityEffect + (closingBalance - bsClosingBalance))
       }
-      if (isCurrentAccountReceivable(account) && closingBalance !== 0) {
-        assetLines.push({ ...reportRow, amount: closingBalance })
-      }
-      if (account.type === 'CURRENT_ACCOUNT' && /^2/.test(account.code) && closingBalance !== 0) {
-        liabilityLines.push({ ...reportRow, amount: closingBalance })
+      if (account.type === 'CURRENT_ACCOUNT') {
+        const currentAccountSide = classifyCurrentAccountBalance(closingBalance)
+        if (currentAccountSide?.side === 'ASSET') {
+          assetLines.push({ ...reportRow, amount: currentAccountSide.amount })
+        }
+        if (currentAccountSide?.side === 'LIABILITY') {
+          liabilityLines.push({ ...reportRow, amount: currentAccountSide.amount })
+        }
       }
     }
   }

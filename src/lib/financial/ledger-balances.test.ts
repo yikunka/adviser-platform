@@ -14,7 +14,7 @@ describe('ledger balance calculations', () => {
   }
   const accountsById = new Map([[liability.id, liability]])
 
-  const creditNormalCurrentAccount: LedgerBalanceAccount = {
+  const currentAccount: LedgerBalanceAccount = {
     id: 'current-account-payable',
     type: 'CURRENT_ACCOUNT',
     code: '22020086',
@@ -48,13 +48,13 @@ describe('ledger balance calculations', () => {
     expect(entries.map(entry => entry.calculatedBalance)).toEqual([1300, 1350])
   })
 
-  it('normalizes credit-normal current-account balances to zero after offsetting vouchers', () => {
+  it('keeps current-account credit balances negative and normalizes offsetting vouchers to zero', () => {
     const entries = calculateLedgerRunningBalances([
-      { accountId: creditNormalCurrentAccount.id, debit: 0, credit: 1250, voucherNo: 'JE20260531111' },
-      { accountId: creditNormalCurrentAccount.id, debit: 1250.004, credit: 0, voucherNo: 'JE20260531160' },
-    ], new Map([[creditNormalCurrentAccount.id, creditNormalCurrentAccount]]), new Map())
+      { accountId: currentAccount.id, debit: 0, credit: 1250, voucherNo: 'JE20260531111' },
+      { accountId: currentAccount.id, debit: 1250.004, credit: 0, voucherNo: 'JE20260531160' },
+    ], new Map([[currentAccount.id, currentAccount]]), new Map())
 
-    expect(entries.map(entry => entry.calculatedBalance)).toEqual([1250, 0])
+    expect(entries.map(entry => entry.calculatedBalance)).toEqual([-1250, 0])
     expect(Object.is(entries[1].calculatedBalance, -0)).toBe(false)
   })
 })

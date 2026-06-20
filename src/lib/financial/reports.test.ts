@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { shouldIncludeProfitAndLossExpenseLine } from './account-types'
+import { isFinancingAccount } from './cash-flow-classification'
+import { classifyCurrentAccountBalance } from './current-account-classification'
 import { trialBalanceColumns } from './report-balances'
 
 describe('trialBalanceColumns', () => {
@@ -17,9 +19,9 @@ describe('trialBalanceColumns', () => {
     expect(trialBalanceColumns(-125, 'LIABILITY')).toEqual({ closingDebit: 125, closingCredit: 0 })
   })
 
-  it('uses account code for current-account normal direction', () => {
-    expect(trialBalanceColumns(125, 'CURRENT_ACCOUNT', '2001')).toEqual({ closingDebit: 0, closingCredit: 125 })
-    expect(trialBalanceColumns(125, 'CURRENT_ACCOUNT', '1001')).toEqual({ closingDebit: 125, closingCredit: 0 })
+  it('uses balance direction rather than account code for current-account columns', () => {
+    expect(trialBalanceColumns(125, 'CURRENT_ACCOUNT', '2001')).toEqual({ closingDebit: 125, closingCredit: 0 })
+    expect(trialBalanceColumns(-125, 'CURRENT_ACCOUNT', '1001')).toEqual({ closingDebit: 0, closingCredit: 125 })
   })
 
   it('shows rounded zero balances as zero columns without negative zero', () => {
@@ -101,5 +103,21 @@ describe('shouldIncludeProfitAndLossExpenseLine', () => {
       topLevelHasChildren: false,
       periodNet: 0,
     })).toBe(false)
+  })
+})
+
+describe('isFinancingAccount', () => {
+  it('uses account type rather than liability code range for financing classification', () => {
+    expect(isFinancingAccount({ code: '2500', type: 'LIABILITY' })).toBe(false)
+    expect(isFinancingAccount({ code: '2500', type: 'NON_CURRENT_LIABILITY' })).toBe(true)
+    expect(isFinancingAccount({ code: '4004', type: 'LIABILITY' })).toBe(false)
+  })
+})
+
+describe('classifyCurrentAccountBalance', () => {
+  it('classifies debit balances as current assets and credit balances as current liabilities', () => {
+    expect(classifyCurrentAccountBalance(125)).toEqual({ side: 'ASSET', amount: 125 })
+    expect(classifyCurrentAccountBalance(-125)).toEqual({ side: 'LIABILITY', amount: 125 })
+    expect(classifyCurrentAccountBalance(0)).toBeNull()
   })
 })
