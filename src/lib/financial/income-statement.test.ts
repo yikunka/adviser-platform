@@ -2,8 +2,27 @@ import { describe, expect, it } from 'vitest'
 import {
   buildIncomeStatementExpenseCategories,
   classifyIncomeStatementExpenseCategory,
+  inferProfitAndLossStatementType,
   shouldIncludeIncomeStatementLine,
 } from './income-statement'
+
+describe('inferProfitAndLossStatementType', () => {
+  it('does not treat balance-sheet accounts as revenue only because their code starts with 4', () => {
+    expect(inferProfitAndLossStatementType({
+      type: 'LIABILITY',
+      code: '4004',
+      name: 'Accruals',
+    })).toBeNull()
+  })
+
+  it('still recognizes clearly named income statement accounts when imported with a wrong type', () => {
+    expect(inferProfitAndLossStatementType({
+      type: 'LIABILITY',
+      code: '4001',
+      name: 'Service Revenue',
+    })).toBe('REVENUE')
+  })
+})
 
 describe('shouldIncludeIncomeStatementLine', () => {
   it('includes top-level revenue when it has no child accounts', () => {

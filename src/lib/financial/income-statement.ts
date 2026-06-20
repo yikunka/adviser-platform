@@ -36,6 +36,11 @@ function isRevenueCandidate(account: { code: string; name: string }) {
   )
 }
 
+function hasRevenueName(account: { name: string }) {
+  const text = normalize(account.name)
+  return /收入|收益|營業收入|营业收入|销售收入|銷售收入|主营业务收入|主營業務收入|revenue|income|turnover/.test(text)
+}
+
 function isCostOfSalesCandidate(account: { code: string; name: string }) {
   const text = normalize(`${account.code} ${account.name}`)
   return (
@@ -43,6 +48,11 @@ function isCostOfSalesCandidate(account: { code: string; name: string }) {
     || /^06/.test(account.code)
     || /^5/.test(account.code)
   )
+}
+
+function hasCostOfSalesName(account: { name: string }) {
+  const text = normalize(account.name)
+  return /销售成本|銷售成本|主营业务成本|主營業務成本|采购成本|採購成本|costofsales|\bcogs\b|purchasecost/.test(text)
 }
 
 function isExpenseCandidate(account: { code: string; name: string }) {
@@ -54,12 +64,32 @@ function isExpenseCandidate(account: { code: string; name: string }) {
   )
 }
 
+function hasExpenseName(account: { name: string }) {
+  const text = normalize(account.name)
+  return /费用|費用|expense|bankfee|bankcharge|interest|administrative|admin|selling|marketing|promotion|distribution/.test(text)
+}
+
+function isBalanceSheetType(type: AccountType) {
+  return type === 'ASSET'
+    || type === 'NON_CURRENT_ASSET'
+    || type === 'LIABILITY'
+    || type === 'NON_CURRENT_LIABILITY'
+    || type === 'EQUITY'
+    || type === 'CURRENT_ACCOUNT'
+}
+
 export function inferProfitAndLossStatementType(account: {
   type: AccountType
   code: string
   name: string
 }): ProfitAndLossStatementType | null {
   if (isProfitAndLossStatementType(account.type)) return account.type
+  if (isBalanceSheetType(account.type)) {
+    if (hasExpenseName(account)) return 'EXPENSE'
+    if (hasCostOfSalesName(account)) return 'CGS'
+    if (hasRevenueName(account)) return 'REVENUE'
+    return null
+  }
   if (isExpenseCandidate(account)) return 'EXPENSE'
   if (isCostOfSalesCandidate(account)) return 'CGS'
   if (isRevenueCandidate(account)) return 'REVENUE'

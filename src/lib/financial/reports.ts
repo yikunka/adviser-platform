@@ -536,6 +536,7 @@ export async function buildFinancialReports(
 
   const openingByAccount = new Map<string, number>()
   const closingByAccount = new Map<string, number>()
+  let closingEquityEffect = 0
 
   function accountHasChildren(account: InternalReportAccountRow): boolean {
     if (shouldConsolidateAccounts) {
@@ -647,7 +648,7 @@ export async function buildFinancialReports(
     const bsClosingBalance = roundMoney(bsLedgerClosingBalance + yearToDateBalance)
 
     openingByAccount.set(account.accountId, openingBalance)
-    closingByAccount.set(account.accountId, bsClosingBalance)
+    closingByAccount.set(account.accountId, closingBalance)
 
     const reportRow: ReportAccountRow = {
       accountId: account.accountId,
@@ -750,18 +751,23 @@ export async function buildFinancialReports(
     }
 
     if (shouldIncludeAccountInBalanceSheet(account.level)) {
-      if ((account.type === 'ASSET' || account.type === 'NON_CURRENT_ASSET') && bsClosingBalance !== 0) {
-        assetLines.push({ ...reportRow, amount: bsClosingBalance })
+      if ((account.type === 'ASSET' || account.type === 'NON_CURRENT_ASSET') && closingBalance !== 0) {
+        assetLines.push({ ...reportRow, amount: closingBalance })
       }
-      if ((account.type === 'LIABILITY' || account.type === 'NON_CURRENT_LIABILITY') && bsClosingBalance !== 0) {
-        liabilityLines.push({ ...reportRow, amount: bsClosingBalance })
+      if ((account.type === 'LIABILITY' || account.type === 'NON_CURRENT_LIABILITY') && closingBalance !== 0) {
+        liabilityLines.push({ ...reportRow, amount: closingBalance })
       }
-      if (account.type === 'EQUITY' && bsClosingBalance !== 0) equityLines.push({ ...reportRow, amount: bsClosingBalance })
-      if (isCurrentAccountReceivable(account) && bsClosingBalance !== 0) {
-        assetLines.push({ ...reportRow, amount: bsClosingBalance })
+      if (account.type === 'EQUITY' && closingBalance !== 0) equityLines.push({ ...reportRow, amount: closingBalance })
+      if (account.type === 'EQUITY') {
+        // Track how much P&L was already transferred to equity via CLOSING entries,
+        // so we don't double-count it when adding netProfit to totalEquity below.
+        closingEquityEffect = roundMoney(closingEquityEffect + (closingBalance - bsClosingBalance))
       }
-      if (account.type === 'CURRENT_ACCOUNT' && /^2/.test(account.code) && bsClosingBalance !== 0) {
-        liabilityLines.push({ ...reportRow, amount: bsClosingBalance })
+      if (isCurrentAccountReceivable(account) && closingBalance !== 0) {
+        assetLines.push({ ...reportRow, amount: closingBalance })
+      }
+      if (account.type === 'CURRENT_ACCOUNT' && /^2/.test(account.code) && closingBalance !== 0) {
+        liabilityLines.push({ ...reportRow, amount: closingBalance })
       }
     }
   }
@@ -806,7 +812,9 @@ export async function buildFinancialReports(
   })
   const totalAssets = balanceSheetLayout.totalAssets
   const totalLiabilities = balanceSheetLayout.totalLiabilities
-  const totalEquityWithProfit = roundMoney(balanceSheetLayout.totalEquity + netProfit)
+  // Subtract closingEquityEffect (P&L already transferred to equity via CLOSING entries)
+  // to avoid double-counting it alongside netProfit from the income statement.
+  const totalEquityWithProfit = roundMoney(balanceSheetLayout.totalEquity + netProfit - closingEquityEffect)
   const totalLiabilitiesAndEquity = roundMoney(totalLiabilities + totalEquityWithProfit)
   const balanceSheetEquation = buildAccountingEquationCheck(totalAssets, totalLiabilities, totalEquityWithProfit)
   const trialBalanceEquation = buildAccountingEquationCheck(totalAssets, totalLiabilities, totalEquityWithProfit)
