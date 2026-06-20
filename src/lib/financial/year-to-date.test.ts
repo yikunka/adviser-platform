@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { calculateYearToDateAmount, calculateYearToDateBalance, isCurrentYearProfitAccountName } from '@/lib/financial/year-to-date'
 
 describe('year-to-date account calculations', () => {
-  it('detects current year profit accounts in simplified and traditional Chinese', () => {
+  it('detects current year profit accounts in Chinese and English', () => {
     expect(isCurrentYearProfitAccountName('本年利润')).toBe(true)
     expect(isCurrentYearProfitAccountName('本年利潤')).toBe(true)
+    expect(isCurrentYearProfitAccountName('Current Year Profit')).toBe(true)
+    expect(isCurrentYearProfitAccountName('Profit for the Year')).toBe(true)
     expect(isCurrentYearProfitAccountName('未分配利润')).toBe(false)
   })
 

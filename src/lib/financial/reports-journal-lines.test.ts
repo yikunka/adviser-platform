@@ -391,6 +391,107 @@ describe('buildFinancialReports journal-line source', () => {
     expect(reports.incomeStatement.netProfit).toBe(-200)
   })
 
+  it('keeps credit-balance asset accounts in the asset section as negative balances', async () => {
+    periodMovementLines = [
+      { accountId: 'bank', debit: 0, credit: 10193.9 },
+    ]
+
+    const reports = await buildFinancialReports('2026-05', { companyId })
+    const currentAssets = reports.balanceSheet.assetSections.find(section => section.label === '流动资产')
+    const currentLiabilities = reports.balanceSheet.liabilitySections.find(section => section.label === '流动负债')
+
+    expect(currentAssets?.lines).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        accountId: 'bank',
+        amount: -10193.9,
+      }),
+    ]))
+    expect(currentLiabilities?.lines).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ accountId: 'bank' }),
+    ]))
+  })
+
+  it('includes current-period profit in the visible current-year-profit equity line', async () => {
+    reportAccounts = [
+      ...baseReportAccounts,
+      {
+        id: 'current-year-profit',
+        code: '8003',
+        name: 'Current Year Profit',
+        type: 'EQUITY',
+        level: 1,
+        parentId: null,
+        sortOrder: 30,
+        yearToDateDebit: 0,
+        yearToDateCredit: 0,
+      },
+    ]
+    periodMovementLines = [
+      { accountId: 'bank', debit: 1000, credit: 0 },
+      { accountId: 'rev-child', debit: 0, credit: 1000 },
+    ]
+
+    const reports = await buildFinancialReports('2026-05', { companyId })
+    const equityLineSum = reports.balanceSheet.equitySection.lines.reduce((sum, line) => sum + line.amount, 0)
+
+    expect(reports.balanceSheet.equitySection.lines).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        accountId: 'current-year-profit',
+        amount: 1000,
+      }),
+    ]))
+    expect(reports.balanceSheet.equitySection.total).toBe(equityLineSum)
+    expect(reports.balanceSheet.totalEquity).toBe(equityLineSum)
+  })
+
+  it('rolls current-period profit into a nested current-year-profit equity account and its parent summary', async () => {
+    reportAccounts = [
+      ...baseReportAccounts,
+      {
+        id: 'equity-parent',
+        code: '8000',
+        name: 'Equity',
+        type: 'EQUITY',
+        level: 1,
+        parentId: null,
+        sortOrder: 30,
+        yearToDateDebit: 0,
+        yearToDateCredit: 0,
+      },
+      {
+        id: 'current-year-profit',
+        code: '8003',
+        name: 'Current Year Profit',
+        type: 'EQUITY',
+        level: 2,
+        parentId: 'equity-parent',
+        sortOrder: 31,
+        yearToDateDebit: 0,
+        yearToDateCredit: 0,
+      },
+    ]
+    periodMovementLines = [
+      { accountId: 'bank', debit: 1000, credit: 0 },
+      { accountId: 'rev-child', debit: 0, credit: 1000 },
+    ]
+
+    const reports = await buildFinancialReports('2026-05', { companyId })
+
+    expect(reports.balanceSheet.equitySection.lines).toEqual([
+      expect.objectContaining({
+        accountId: 'equity-parent',
+        amount: 1000,
+        children: [
+          expect.objectContaining({
+            accountId: 'current-year-profit',
+            amount: 1000,
+          }),
+        ],
+      }),
+    ])
+    expect(reports.balanceSheet.equitySection.total).toBe(1000)
+  })
+
   it('uses only the selected accounting period movement for the P&L, not cumulative balances', async () => {
     priorMovementLines = [
       { accountId: 'bank', debit: 5000, credit: 0 },

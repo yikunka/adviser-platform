@@ -15,7 +15,10 @@ function roundMoney(value: number) {
 
 export function isCurrentYearProfitAccountName(name: string | null | undefined) {
   const normalized = (name ?? '').replace(/\s/g, '').toLowerCase()
-  return normalized.includes('本年利润') || normalized.includes('本年利潤')
+  return normalized.includes('本年利润')
+    || normalized.includes('本年利潤')
+    || normalized.includes('currentyearprofit')
+    || normalized.includes('profitfortheyear')
 }
 
 export function calculateYearToDateBalance(input: YearToDateInput) {

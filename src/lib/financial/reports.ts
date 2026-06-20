@@ -35,6 +35,7 @@ import {
   type IncomeStatementExpenseCategoryKey,
   type ProfitAndLossStatementType,
 } from '@/lib/financial/income-statement'
+import { isCurrentYearProfitAccountName } from '@/lib/financial/year-to-date'
 
 export type { BalanceSheetSection } from '@/lib/financial/balance-sheet-sections'
 export type { ReportAccountRow, StatementLineRow } from '@/lib/financial/report-line-types'
@@ -795,6 +796,48 @@ export async function buildFinancialReports(
   const grossProfit = roundMoney(totalRevenue - totalCostOfSales)
   const totalExpenses = roundMoney(expenseCategories.reduce((sum, category) => sum + category.total, 0))
   const netProfit = roundMoney(grossProfit - totalExpenses)
+  const equityProfitAdjustment = roundMoney(netProfit - closingEquityEffect)
+  const currentYearProfitAccount = accounts.find(
+    account => account.type === 'EQUITY' && isCurrentYearProfitAccountName(account.name),
+  )
+
+  if (equityProfitAdjustment !== 0 && currentYearProfitAccount) {
+    const existingLine = equityLines.find(line => line.accountId === currentYearProfitAccount.accountId)
+    if (existingLine) {
+      existingLine.amount = roundMoney(existingLine.amount + equityProfitAdjustment)
+    } else {
+      equityLines.push({
+        accountId: currentYearProfitAccount.accountId,
+        parentId: currentYearProfitAccount.parentId ?? null,
+        code: currentYearProfitAccount.code,
+        name: currentYearProfitAccount.name,
+        type: currentYearProfitAccount.type,
+        level: currentYearProfitAccount.level,
+        amount: equityProfitAdjustment,
+      })
+    }
+
+    const level1GroupId = level1AccountIdByReportAccountId.get(currentYearProfitAccount.accountId)
+    if (level1GroupId && level1GroupId !== currentYearProfitAccount.accountId) {
+      const parentLine = equityLines.find(line => line.accountId === level1GroupId)
+      if (parentLine) {
+        parentLine.amount = roundMoney(parentLine.amount + equityProfitAdjustment)
+      } else {
+        const parentAccount = accounts.find(account => account.accountId === level1GroupId)
+        if (parentAccount) {
+          equityLines.push({
+            accountId: parentAccount.accountId,
+            parentId: parentAccount.parentId ?? null,
+            code: parentAccount.code,
+            name: parentAccount.name,
+            type: parentAccount.type,
+            level: parentAccount.level,
+            amount: equityProfitAdjustment,
+          })
+        }
+      }
+    }
+  }
 
   const balanceSheetLayout = buildBalanceSheetSections({
     assetLines,
@@ -806,7 +849,9 @@ export async function buildFinancialReports(
   const totalLiabilities = balanceSheetLayout.totalLiabilities
   // Subtract closingEquityEffect (P&L already transferred to equity via CLOSING entries)
   // to avoid double-counting it alongside netProfit from the income statement.
-  const totalEquityWithProfit = roundMoney(balanceSheetLayout.totalEquity + netProfit - closingEquityEffect)
+  const totalEquityWithProfit = currentYearProfitAccount
+    ? balanceSheetLayout.totalEquity
+    : roundMoney(balanceSheetLayout.totalEquity + equityProfitAdjustment)
   const totalLiabilitiesAndEquity = roundMoney(totalLiabilities + totalEquityWithProfit)
   const balanceSheetEquation = buildAccountingEquationCheck(totalAssets, totalLiabilities, totalEquityWithProfit)
   const trialBalanceEquation = buildAccountingEquationCheck(totalAssets, totalLiabilities, totalEquityWithProfit)
