@@ -345,6 +345,7 @@ export default function AdminFinancialJournalPage() {
       const params = new URLSearchParams({ companyId: company.id })
       if (filterPeriod) params.append('period', filterPeriod)
       if (filterStatus !== 'ALL') params.append('status', filterStatus)
+      if (search.trim()) params.append('search', search.trim())
       const res = await fetch(`/api/admin/financial/journal-entries?${params}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || '载入日记账失败')
@@ -354,7 +355,7 @@ export default function AdminFinancialJournalPage() {
     } finally {
       setLoading(false)
     }
-  }, [company.id, filterPeriod, filterStatus])
+  }, [company.id, filterPeriod, filterStatus, search])
 
   useEffect(() => {
     fetchEntries()
@@ -601,13 +602,7 @@ export default function AdminFinancialJournalPage() {
     void importExcel(file)
   }
 
-  const filtered = entries.filter(
-    e =>
-      (e.voucherNo.toLowerCase().includes(search.toLowerCase()) ||
-        e.description.toLowerCase().includes(search.toLowerCase())) &&
-      (filterStatus === 'ALL' || e.status === filterStatus) &&
-      (!filterPeriod || e.date.startsWith(filterPeriod)),
-  )
+  const filtered = entries
 
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize)
   const totalPages = Math.ceil(filtered.length / pageSize)
@@ -721,19 +716,31 @@ export default function AdminFinancialJournalPage() {
           <div className="flex flex-wrap items-center gap-4">
             <Input
               value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="搜索凭证号或摘要..."
+              onChange={e => {
+                setSearch(e.target.value)
+                setPage(1)
+              }}
+              placeholder="搜索凭证号、摘要、科目..."
               className="max-w-xs"
               style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
             />
             <Input
               type="month"
               value={filterPeriod}
-              onChange={e => setFilterPeriod(e.target.value)}
+              onChange={e => {
+                setFilterPeriod(e.target.value)
+                setPage(1)
+              }}
               className="max-w-[160px]"
               style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
             />
-            <Select value={filterStatus} onValueChange={value => setFilterStatus(value ?? 'ALL')}>
+            <Select
+              value={filterStatus}
+              onValueChange={value => {
+                setFilterStatus(value ?? 'ALL')
+                setPage(1)
+              }}
+            >
               <SelectTrigger className="w-[140px]" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
                 <SelectValue placeholder="全部状态" />
               </SelectTrigger>

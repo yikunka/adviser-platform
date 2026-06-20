@@ -34,6 +34,8 @@ export type CosEmployeeRow = {
   createdById: string | null
   createdAt: string
   updatedAt: string
+  hasLaborContract?: boolean
+  hasIdCardFile?: boolean
   laborContracts?: CosEmployeeFileRow[]
   resumes?: CosEmployeeFileRow[]
   idCards?: CosEmployeeFileRow[]

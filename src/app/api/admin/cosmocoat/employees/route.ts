@@ -166,7 +166,30 @@ export async function GET(req: NextRequest) {
       .map(item => serializeEmployee(item))
       .filter(item => employeeMatchesFiveElement(item, normalizedFiveElement))
     const total = filtered.length
-    const items = filtered.slice(skip, skip + limit)
+    const pageItems = filtered.slice(skip, skip + limit)
+    const requiredFiles = pageItems.length > 0
+      ? await prisma.cosEmployeeFile.findMany({
+          where: {
+            employeeId: { in: pageItems.map(item => item.id) },
+            fileType: { in: ['LABOR_CONTRACT', 'ID_CARD'] },
+          },
+          select: { employeeId: true, fileType: true },
+        })
+      : []
+    const uploadedFileTypesByEmployee = new Map<string, Set<CosEmployeeFileType>>()
+    requiredFiles.forEach(file => {
+      const fileTypes = uploadedFileTypesByEmployee.get(file.employeeId) ?? new Set<CosEmployeeFileType>()
+      fileTypes.add(file.fileType)
+      uploadedFileTypesByEmployee.set(file.employeeId, fileTypes)
+    })
+    const items = pageItems.map(item => {
+      const fileTypes = uploadedFileTypesByEmployee.get(item.id)
+      return {
+        ...item,
+        hasLaborContract: fileTypes?.has('LABOR_CONTRACT') ?? false,
+        hasIdCardFile: fileTypes?.has('ID_CARD') ?? false,
+      }
+    })
 
     return NextResponse.json({
       employees: items,

@@ -92,6 +92,21 @@ function formatFiveElement(employee: CosEmployeeRow) {
   return `${employee.birthInfo.fiveElement}（${employee.birthInfo.dayMaster}日主）`
 }
 
+function FileStatusBadge({ label, uploaded }: { label: string; uploaded: boolean }) {
+  return (
+    <span
+      className="inline-flex items-center justify-center rounded px-2 py-0.5 text-[11px] font-medium"
+      style={{
+        background: uploaded ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.14)',
+        color: uploaded ? '#10b981' : '#ef4444',
+        border: uploaded ? '1px solid rgba(16,185,129,0.22)' : '1px solid rgba(239,68,68,0.28)',
+      }}
+    >
+      {label}{uploaded ? '已上传' : '缺失'}
+    </span>
+  )
+}
+
 export default function AdminCosmoCoatEmployeesPage() {
   const canViewDetail = useAdminPermission('cosmocoatEmployees.view')
   const [employees, setEmployees] = useState<CosEmployeeRow[]>([])
@@ -204,7 +219,7 @@ export default function AdminCosmoCoatEmployeesPage() {
           <table className="w-full">
             <thead>
               <tr>
-                {['员工编码', '姓名', '员工类型', '职位', '电话', '状态', '入职日期', '工龄', '五行', '更新时间'].map(h => (
+                {['员工编码', '姓名', '员工类型', '职位', '电话', '状态', '入职日期', '工龄', '五行', '必需文件', '更新时间'].map(h => (
                   <th key={h} style={th}>{h}</th>
                 ))}
               </tr>
@@ -212,11 +227,11 @@ export default function AdminCosmoCoatEmployeesPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>加载中...</td>
+                  <td colSpan={11} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>加载中...</td>
                 </tr>
               ) : employees.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-12 text-center">
+                  <td colSpan={11} className="px-4 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <UserRound size={28} style={{ color: '#C9A96E', opacity: 0.45 }} />
                       <span style={{ color: 'var(--muted-foreground)' }}>
@@ -258,6 +273,12 @@ export default function AdminCosmoCoatEmployeesPage() {
                   <td style={td}>{formatDate(employee.hireDate)}</td>
                   <td style={td}>{formatServiceYears(employee.hireDate)}</td>
                   <td style={td}>{formatFiveElement(employee)}</td>
+                  <td style={td}>
+                    <div className="flex flex-col gap-1.5">
+                      <FileStatusBadge label="合同" uploaded={Boolean(employee.hasLaborContract)} />
+                      <FileStatusBadge label="身份证" uploaded={Boolean(employee.hasIdCardFile)} />
+                    </div>
+                  </td>
                   <td style={td}>{formatDate(employee.updatedAt)}</td>
                 </tr>
               ))}

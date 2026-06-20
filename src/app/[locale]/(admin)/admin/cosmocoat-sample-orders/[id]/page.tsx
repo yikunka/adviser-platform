@@ -492,16 +492,16 @@ function SampleOrderPrintView({
               <td colSpan={3} style={{ ...printCell, whiteSpace: 'pre-wrap' }}>{specialProcessRequirement.trim()}</td>
             </tr>
           )}
-          {areaRemark.trim() && (
-            <tr>
-              <td style={printLabelCell}>区域备注</td>
-              <td colSpan={3} style={{ ...printCell, whiteSpace: 'pre-wrap' }}>{areaRemark.trim()}</td>
-            </tr>
-          )}
           {notes.trim() && (
             <tr>
               <td style={printLabelCell}>备注</td>
               <td colSpan={3} style={{ ...printCell, whiteSpace: 'pre-wrap' }}>{notes.trim()}</td>
+            </tr>
+          )}
+          {areaRemark.trim() && (
+            <tr>
+              <td style={printLabelCell}>区域备注（技术人员反馈）</td>
+              <td colSpan={3} style={{ ...printCell, whiteSpace: 'pre-wrap' }}>{areaRemark.trim()}</td>
             </tr>
           )}
         </tbody>
@@ -1434,17 +1434,6 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
             placeholder="记录超出标准工艺的定制制作要求"
           />
         </Field>
-        <Field label="区域备注">
-          <textarea
-            value={areaRemark}
-            disabled={isReadOnly}
-            onChange={e => setAreaRemark(e.target.value)}
-            rows={3}
-            className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-y disabled:opacity-60"
-            style={inputStyle()}
-            placeholder="记录区域相关的打样细节、注意事项或特殊说明"
-          />
-        </Field>
         <Field label="备注">
           <textarea
             value={notes}
@@ -1454,6 +1443,17 @@ export default function AdminCosmoCoatSampleOrderDetailPage() {
             className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-y disabled:opacity-60"
             style={inputStyle()}
             placeholder="打样要求、交付说明等"
+          />
+        </Field>
+        <Field label="区域备注（技术人员反馈）">
+          <textarea
+            value={areaRemark}
+            disabled={isReadOnly}
+            onChange={e => setAreaRemark(e.target.value)}
+            rows={3}
+            className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-y disabled:opacity-60"
+            style={inputStyle()}
+            placeholder="记录技术人员反馈的区域相关打样细节、注意事项或特殊说明"
           />
         </Field>
       </div>

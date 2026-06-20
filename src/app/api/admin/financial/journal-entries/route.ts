@@ -53,6 +53,9 @@ export async function GET(req: NextRequest) {
           OR: [
             { voucherNo: { contains: parsed.data.search, mode: 'insensitive' } },
             { description: { contains: parsed.data.search, mode: 'insensitive' } },
+            { lines: { some: { description: { contains: parsed.data.search, mode: 'insensitive' } } } },
+            { lines: { some: { account: { code: { contains: parsed.data.search, mode: 'insensitive' } } } } },
+            { lines: { some: { account: { name: { contains: parsed.data.search, mode: 'insensitive' } } } } },
           ],
         }
       : {}),

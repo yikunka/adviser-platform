@@ -21,6 +21,8 @@ export type AccountPickerOption = {
   level?: number
   parentId?: string | null
   sortOrder?: number
+  balanceDebit?: number
+  balanceCredit?: number
 }
 
 export type AccountComboboxSpecialOption = {
@@ -87,6 +89,21 @@ function accountTypeMeta(type: string) {
   return ACCOUNT_TYPE_META[type] ?? { label: type, accent: '#C9A96E', background: 'rgba(201,169,110,0.12)' }
 }
 
+function money(value: number | null | undefined) {
+  return Number(value ?? 0).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
+function accountBalanceLabel(account: AccountPickerOption) {
+  const debit = Number(account.balanceDebit ?? 0)
+  const credit = Number(account.balanceCredit ?? 0)
+  if (debit > 0) return `借方余额 ${money(debit)}`
+  if (credit > 0) return `贷方余额 ${money(credit)}`
+  return '余额 0.00'
+}
+
 function isSelectableJournalAccount(account: AccountPickerOption, accounts: AccountPickerOption[]) {
   if (account.level === 2 || account.level === 3) return true
   if (account.level !== 1) return false
@@ -134,12 +151,13 @@ function AccountTreeRows({
         const expanded = expandedIds.has(node.id)
         const selectable = isSelectableJournalAccount(node, accounts)
         const selected = node.id === value
+        const showBalance = !hasChildren
 
         return (
           <div key={node.id}>
             <div
               className={cn(
-                'grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-md px-2 py-1.5 text-sm',
+                'grid grid-cols-[auto_1fr_auto_auto] items-center gap-2 rounded-md px-2 py-1.5 text-sm',
                 selected ? 'bg-[#2A2418] text-[#FFF7E6]' : 'text-[#EADDC3]',
                 selectable ? 'hover:bg-[#1E1A12]' : 'opacity-80',
               )}
@@ -184,6 +202,14 @@ function AccountTreeRows({
                   {!selectable && <span className="text-[#8F846F]">选择下级明细科目</span>}
                 </div>
               </button>
+
+              {showBalance ? (
+                <div className="whitespace-nowrap rounded border border-[#2A2418] bg-[#0B0B08] px-2 py-1 text-right text-xs font-medium text-[#C9A96E]">
+                  {accountBalanceLabel(node)}
+                </div>
+              ) : (
+                <div className="hidden sm:block" />
+              )}
 
               <div className="grid size-6 place-items-center">
                 {selected ? <Check size={15} className="text-[#C9A96E]" /> : null}

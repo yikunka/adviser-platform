@@ -105,7 +105,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { session, error } = await requireFinancialWriteRole()
+  const { session, error } = await requireFinancialWriteRole('financialAccounts.create')
   if (error) return error
 
   const body = await req.json().catch(() => null)

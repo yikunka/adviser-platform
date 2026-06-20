@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import type { Session } from 'next-auth'
-import { requireRole } from '@/lib/auth/rbac'
+import { requirePermission, requireRole } from '@/lib/auth/rbac'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
 import { prisma } from '@/lib/db/prisma'
 import { MappingNotFoundError } from '@/lib/financial/account-mappings'
@@ -59,10 +59,15 @@ Promise<{ session: Session; error?: undefined } | { session?: undefined; error: 
   return { session: session! }
 }
 
-export async function requireFinancialWriteRole():
+export async function requireFinancialWriteRole(permission?: string):
 Promise<{ session: Session; error?: undefined } | { session?: undefined; error: NextResponse }> {
   const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
   if (error) return { error }
+  if (permission) {
+    const permissionResult = await requirePermission(permission, 'STAFF')
+    if (permissionResult.error) return { error: permissionResult.error }
+    return { session: permissionResult.session! }
+  }
   const writeError = assertFinancialWriteAllowed(session!)
   if (writeError) return { error: writeError }
   return { session: session! }
