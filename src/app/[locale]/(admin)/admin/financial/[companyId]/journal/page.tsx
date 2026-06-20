@@ -17,6 +17,7 @@ import { JournalEntryForm, type JournalEntryForForm } from '@/components/admin/f
 import { JournalViewModal, type JournalEntryDetails } from '@/components/admin/financial/JournalViewModal'
 import { FinancialBreadcrumbs } from '@/components/admin/financial/FinancialBreadcrumbs'
 import { useFinancialCompany } from '@/components/admin/financial/FinancialCompanyContext'
+import { isDirectlyUnpostableJournalSourceType, journalSourceTypeListLabel } from '@/lib/financial/journal-entry-source-types'
 
 type JournalEntry = JournalEntryDetails &
   JournalEntryForForm & {
@@ -123,27 +124,24 @@ function JournalEntryPrintArea({
               <th>行</th>
               <th>行摘要</th>
               <th>科目</th>
-              <th>方向</th>
-              <th className="amount">金额</th>
+              <th className="amount">借方</th>
+              <th className="amount">贷方</th>
             </tr>
           </thead>
           <tbody>
-            {entry.lines.map((line, index) => {
-              const isDebit = line.debit > 0
-              const amount = isDebit ? line.debit : line.credit
-              return (
-                <tr key={`${entry.id}-${index}`}>
-                  <td>{index + 1}</td>
-                  <td>{line.description || '-'}</td>
-                  <td>{journalPrintAccountLabel(line)}</td>
-                  <td>{isDebit ? '借方' : '贷方'}</td>
-                  <td className="amount">{money(amount)}</td>
-                </tr>
-              )
-            })}
+            {entry.lines.map((line, index) => (
+              <tr key={`${entry.id}-${index}`}>
+                <td>{index + 1}</td>
+                <td>{line.description || '-'}</td>
+                <td>{journalPrintAccountLabel(line)}</td>
+                <td className="amount">{money(line.debit)}</td>
+                <td className="amount">{money(line.credit)}</td>
+              </tr>
+            ))}
             <tr className="journal-print-total">
-              <td colSpan={4}>借方合计 / 贷方合计</td>
-              <td className="amount">{money(totalDebit)} / {money(totalCredit)}</td>
+              <td colSpan={3}>合计</td>
+              <td className="amount">{money(totalDebit)}</td>
+              <td className="amount">{money(totalCredit)}</td>
             </tr>
           </tbody>
         </table>
@@ -279,18 +277,12 @@ function JournalPrintStyles() {
 
         .journal-print-table th:nth-child(2),
         .journal-print-table td:nth-child(2) {
-          width: 32%;
+          width: 30%;
         }
 
         .journal-print-table th:nth-child(3),
         .journal-print-table td:nth-child(3) {
           width: 36%;
-        }
-
-        .journal-print-table th:nth-child(4),
-        .journal-print-table td:nth-child(4) {
-          width: 42px;
-          text-align: center;
         }
 
         .journal-print-table .amount {
@@ -301,6 +293,10 @@ function JournalPrintStyles() {
         .journal-print-total td {
           font-weight: 700;
           background: #f7f7f7 !important;
+        }
+
+        .journal-print-total td:first-child {
+          text-align: center;
         }
 
         .journal-print-footer {
@@ -623,7 +619,7 @@ export default function AdminFinancialJournalPage() {
   }
 
   function canUnpostEntry(entry: JournalEntry) {
-    return entry.status === 'POSTED' && (!entry.sourceType || entry.sourceType === 'MANUAL')
+    return entry.status === 'POSTED' && isDirectlyUnpostableJournalSourceType(entry.sourceType)
   }
 
   function toggleSelectAllDraftOnPage() {
@@ -809,6 +805,7 @@ export default function AdminFinancialJournalPage() {
                     </TableHead>
                     <TableHead>凭证号</TableHead>
                     <TableHead className="min-w-[260px]">日期 / 摘要</TableHead>
+                    <TableHead>类型</TableHead>
                     <TableHead>状态</TableHead>
                     <TableHead className="text-right">金额合计</TableHead>
                     <TableHead className="text-right">操作</TableHead>
@@ -840,6 +837,11 @@ export default function AdminFinancialJournalPage() {
                             {entry.description}
                           </span>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" style={{ borderColor: '#2A2418', color: '#C9A96E' }}>
+                          {journalSourceTypeListLabel(entry.sourceType)}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge

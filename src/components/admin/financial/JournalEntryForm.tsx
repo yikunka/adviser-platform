@@ -78,6 +78,7 @@ const lineTableCellClassName = 'py-4 align-middle'
 const selectContentClassName = 'financial-select-content border-[#2A2418] bg-[#11110E] text-[#FFF7E6]'
 const secondaryButtonClassName = 'border-[#3A3428] bg-[#0E0E0A] text-[#FFF7E6] hover:bg-[#1E1A12] hover:text-[#FFF7E6]'
 const warningTextClassName = 'text-xs text-[#f59e0b]'
+const sourceTypeOptionClassName = 'flex cursor-pointer items-center gap-2 rounded-lg border border-[#2A2418] bg-[#0E0E0A] px-3 py-2 text-sm text-[#EADDC3] has-checked:border-[#C9A96E] has-checked:bg-[#C9A96E1F] has-checked:text-[#FFF7E6]'
 
 function selectedCompanyLabel(companies: ScopeCompany[], id: string) {
   const company = companies.find(row => row.id === id)
@@ -364,15 +365,30 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
             </div>
             <div className="space-y-2">
               <Label className={labelClassName}>分录类型</Label>
-              <Select value={sourceType} onValueChange={value => setSourceType(value as 'MANUAL' | 'CLOSING')}>
-                <SelectTrigger className={`w-full ${fieldClassName}`}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className={selectContentClassName}>
-                  <SelectItem value="MANUAL">手工录入</SelectItem>
-                  <SelectItem value="CLOSING">期末结转</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="grid gap-2">
+                <label className={sourceTypeOptionClassName}>
+                  <input
+                    type="radio"
+                    name="journal-source-type"
+                    value="MANUAL"
+                    checked={sourceType === 'MANUAL'}
+                    onChange={() => setSourceType('MANUAL')}
+                    className="accent-[#C9A96E]"
+                  />
+                  手工录入
+                </label>
+                <label className={sourceTypeOptionClassName}>
+                  <input
+                    type="radio"
+                    name="journal-source-type"
+                    value="CLOSING"
+                    checked={sourceType === 'CLOSING'}
+                    onChange={() => setSourceType('CLOSING')}
+                    className="accent-[#C9A96E]"
+                  />
+                  期末结转
+                </label>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="journal-description" className={labelClassName}>摘要</Label>

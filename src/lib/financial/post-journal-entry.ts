@@ -6,6 +6,7 @@ import { writeLedgerRows } from '@/lib/financial/ledger-writer'
 import { serializeJournalEntry } from '@/lib/financial/serializers'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
 import { assertFinancialManager } from '@/lib/financial/api-guard'
+import { isDirectlyUnpostableJournalSourceType } from '@/lib/financial/journal-entry-source-types'
 
 const journalInclude = {
   company: { select: { id: true, nameEn: true, companyCode: true } },
@@ -83,7 +84,7 @@ export async function unpostJournalEntryById(id: string, session: Session): Prom
   if (!before) return { ok: false, error: 'Journal entry not found.', status: 404 }
   if (before.status !== 'POSTED') return { ok: false, error: '只有已过账的日记账可以撤销过账。', status: 400 }
   if (!before.companyId) return { ok: false, error: 'Journal entry must be assigned to a company before unposting.', status: 400 }
-  if (before.sourceType !== 'MANUAL') {
+  if (!isDirectlyUnpostableJournalSourceType(before.sourceType)) {
     return { ok: false, error: '子分类账自动生成的凭证不能直接撤销过账，请从源单据作废或红冲。', status: 400 }
   }
 

@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatJournalLineAccountLevels, type AccountLevelRef } from '@/lib/financial/account-hierarchy'
+import { isDirectlyUnpostableJournalSourceType } from '@/lib/financial/journal-entry-source-types'
 
 export type JournalEntryDetails = {
   id: string
@@ -66,7 +67,7 @@ function money(value: number) {
 export function JournalViewModal({ open, onOpenChange, entry, onPosted, onPrint, onEdit, readOnly = false }: Props) {
   const [posting, setPosting] = useState(false)
   const [unposting, setUnposting] = useState(false)
-  const canUnpost = entry?.status === 'POSTED' && (!entry.sourceType || entry.sourceType === 'MANUAL')
+  const canUnpost = entry?.status === 'POSTED' && isDirectlyUnpostableJournalSourceType(entry.sourceType)
   const totalDebit = entry?.lines.reduce((sum, line) => sum + line.debit, 0) ?? 0
   const totalCredit = entry?.lines.reduce((sum, line) => sum + line.credit, 0) ?? 0
 
