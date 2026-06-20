@@ -155,7 +155,7 @@ describe('buildFinancialReports journal-line source', () => {
       expect.objectContaining({
         accountId: '__current_period_profit__',
         name: '本期利润',
-        note: '包含截至期末累计未结转损益，用于使资产负债表满足「资产 = 负债 + 所有者权益」。',
+        note: '包含截至期末从损益类科目基础数据计算的累计未结转损益；如基础数据不平衡，资产负债表仍会显示差异。',
         amount: 1000,
       }),
     ]))
@@ -445,13 +445,77 @@ describe('buildFinancialReports journal-line source', () => {
     expect(reports.balanceSheet.equitySection.lines).toEqual(expect.arrayContaining([
       expect.objectContaining({
         accountId: 'current-year-profit',
-        note: '包含截至期末累计未结转损益，用于使资产负债表满足「资产 = 负债 + 所有者权益」。',
+        note: '包含截至期末从损益类科目基础数据计算的累计未结转损益；如基础数据不平衡，资产负债表仍会显示差异。',
         amount: 1000,
       }),
     ]))
     expect(reports.balanceSheet.equitySection.total).toBe(equityLineSum)
     expect(reports.balanceSheet.totalEquity).toBe(equityLineSum)
     expect(reports.balanceSheet.totalEquity).toBe(1000)
+  })
+
+  it('calculates current-year-profit from P&L source data instead of plugging the balance-sheet difference', async () => {
+    periodMovementLines = [
+      { accountId: 'bank', debit: 500, credit: 0 },
+      { accountId: 'rev-child', debit: 0, credit: 1000 },
+    ]
+
+    const reports = await buildFinancialReports('2026-05', { companyId })
+
+    expect(reports.incomeStatement.netProfit).toBe(1000)
+    expect(reports.balanceSheet.equitySection.lines).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        accountId: '__current_period_profit__',
+        amount: 1000,
+        noteAmount: 1000,
+      }),
+    ]))
+    expect(reports.balanceSheet.equation.balanced).toBe(false)
+    expect(reports.balanceSheet.equation.difference).toBe(-500)
+  })
+
+  it('keeps the current-year-profit explanation when the account already has a balance', async () => {
+    reportAccounts = [
+      ...baseReportAccounts,
+      {
+        id: 'retained-earnings',
+        code: '8001',
+        name: 'Retained Earnings',
+        type: 'EQUITY',
+        level: 1,
+        parentId: null,
+        sortOrder: 10,
+        yearToDateDebit: 0,
+        yearToDateCredit: 500,
+      },
+      {
+        id: 'current-year-profit',
+        code: '8003',
+        name: 'Current Year Profit',
+        type: 'EQUITY',
+        level: 1,
+        parentId: null,
+        sortOrder: 30,
+        yearToDateDebit: 200,
+        yearToDateCredit: 0,
+      },
+    ]
+    periodMovementLines = [
+      { accountId: 'bank', debit: 1000, credit: 0 },
+      { accountId: 'rev-child', debit: 0, credit: 1000 },
+    ]
+
+    const reports = await buildFinancialReports('2026-05', { companyId })
+
+    expect(reports.balanceSheet.equitySection.lines).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        accountId: 'current-year-profit',
+        amount: 800,
+        note: '包含截至期末从损益类科目基础数据计算的累计未结转损益；如基础数据不平衡，资产负债表仍会显示差异。',
+        noteAmount: 1000,
+      }),
+    ]))
+    expect(reports.balanceSheet.equation.balanced).toBe(false)
   })
 
   it('rolls current-period profit into a nested current-year-profit equity account and parent summary', async () => {

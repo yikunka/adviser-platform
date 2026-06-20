@@ -97,6 +97,12 @@ function reportLineLabel(value: string) {
   return CASH_FLOW_LABELS[value] ?? (value === 'Profit for the period' ? '本期利润' : value)
 }
 
+function reportLineNote(row: { note?: string; noteAmount?: number }) {
+  if (!row.note && row.noteAmount === undefined) return ''
+  const amountNote = row.noteAmount === undefined ? '' : `期末累计未结转损益：${money(row.noteAmount)}`
+  return [row.note, amountNote].filter(Boolean).join(' ')
+}
+
 export function FinancialReportsPanel() {
   const company = useFinancialCompany()
   return (
@@ -299,7 +305,7 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
           [],
           ['分类', 'HKFRS 分组', '科目编码', '科目名称', '说明', '金额'],
           ...reports.balanceSheet.assetSections.flatMap(section => [
-            ...section.lines.map(row => ['资产', section.label, row.code, row.name, row.note ?? '', row.amount]),
+            ...section.lines.map(row => ['资产', section.label, row.code, row.name, reportLineNote(row), row.amount]),
             [`${section.label}合计`, section.label, '', '', '', section.total],
             [],
           ]),
@@ -310,14 +316,14 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
             reports.balanceSheet.equitySection.label,
             row.code,
             reportLineLabel(row.name),
-            row.note ?? '',
+            reportLineNote(row),
             row.amount,
           ]),
           [`${reports.balanceSheet.equitySection.label}合计`, reports.balanceSheet.equitySection.label, '', '', '', reports.balanceSheet.equitySection.total],
           ['权益合计', '', '', '', '', reports.balanceSheet.totalEquity],
           [],
           ...reports.balanceSheet.liabilitySections.flatMap(section => [
-            ...section.lines.map(row => ['负债', section.label, row.code, row.name, row.note ?? '', row.amount]),
+            ...section.lines.map(row => ['负债', section.label, row.code, row.name, reportLineNote(row), row.amount]),
             [`${section.label}合计`, section.label, '', '', '', section.total],
             [],
           ]),
@@ -680,6 +686,12 @@ function ExpandableBalanceSheetTable({
                       <span>{reportLineLabel(line.name)}</span>
                       {line.note ? (
                         <span className="mt-1 text-xs leading-relaxed text-muted-foreground">{line.note}</span>
+                      ) : null}
+                      {line.noteAmount !== undefined ? (
+                        <span className="mt-0.5 text-xs leading-relaxed text-[#C9A96E]">
+                          期末累计未结转损益：
+                          <span className="font-mono">{money(line.noteAmount)}</span>
+                        </span>
                       ) : null}
                     </span>
                   </div>

@@ -14,4 +14,5 @@ export type StatementLineRow = ReportAccountRow & {
   periodDebit?: number
   periodCredit?: number
   note?: string
+  noteAmount?: number
 }

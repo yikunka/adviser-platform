@@ -124,7 +124,7 @@ export type FinancialReportsBundle = {
 }
 
 const EQUATION_TOLERANCE = 0.01
-const CURRENT_PERIOD_PROFIT_NOTE = '包含截至期末累计未结转损益，用于使资产负债表满足「资产 = 负债 + 所有者权益」。'
+const CURRENT_PERIOD_PROFIT_NOTE = '包含截至期末从损益类科目基础数据计算的累计未结转损益；如基础数据不平衡，资产负债表仍会显示差异。'
 
 function buildAccountingEquationCheck(
   totalAssets: number,
@@ -313,6 +313,8 @@ function addOrUpdateStatementLine(lines: StatementLineRow[], line: StatementLine
   const existing = lines.find(existingLine => existingLine.accountId === line.accountId)
   if (existing) {
     existing.amount = roundMoney(existing.amount + line.amount)
+    if (line.note) existing.note = line.note
+    if (line.noteAmount !== undefined) existing.noteAmount = line.noteAmount
     return existing
   }
   lines.push(line)
@@ -341,6 +343,7 @@ function addCurrentPeriodProfitToEquity(input: {
       level: 1,
       amount: input.profitAmount,
       note: CURRENT_PERIOD_PROFIT_NOTE,
+      noteAmount: input.profitAmount,
     })
     return
   }
@@ -354,6 +357,7 @@ function addCurrentPeriodProfitToEquity(input: {
     level: currentYearProfitAccount.level,
     amount: input.profitAmount,
     note: CURRENT_PERIOD_PROFIT_NOTE,
+    noteAmount: input.profitAmount,
   })
 
   const level1GroupId = input.level1AccountIdByReportAccountId.get(currentYearProfitAccount.accountId)
@@ -370,6 +374,8 @@ function addCurrentPeriodProfitToEquity(input: {
     type: parentAccount.type,
     level: parentAccount.level,
     amount: input.profitAmount,
+    note: CURRENT_PERIOD_PROFIT_NOTE,
+    noteAmount: input.profitAmount,
   })
 }
 
@@ -533,6 +539,7 @@ export async function buildFinancialReports(
   // vouchers do not cancel out the revenue/expense figures.
   // Trial balance still uses the full periodMovements (including CLOSING) to show true movements.
   const plPeriodMovements = new Map(plSourceMovements)
+  const plClosingMovements = new Map(bsClosingMovements)
   if (!shouldConsolidateAccounts) {
     for (const rawAccount of rawAccounts) {
       const statementType = inferProfitAndLossStatementType(rawAccount)
@@ -549,6 +556,11 @@ export async function buildFinancialReports(
         debit: roundMoney(existing.debit + legacyTotals.debit),
         credit: roundMoney(existing.credit + legacyTotals.credit),
       })
+      const existingClosing = plClosingMovements.get(rawAccount.id) ?? { debit: 0, credit: 0 }
+      plClosingMovements.set(rawAccount.id, {
+        debit: roundMoney(existingClosing.debit + legacyTotals.debit),
+        credit: roundMoney(existingClosing.credit + legacyTotals.credit),
+      })
     }
 
     for (const rawAccount of rawAccounts) {
@@ -562,6 +574,9 @@ export async function buildFinancialReports(
       const fallbackTotals = trialBalanceTotalsFromBalance(balance, rawAccount.type, rawAccount.code)
       if (!hasMovement(fallbackTotals)) continue
       plPeriodMovements.set(rawAccount.id, fallbackTotals)
+      if (!hasMovement(plClosingMovements.get(rawAccount.id) ?? { debit: 0, credit: 0 })) {
+        plClosingMovements.set(rawAccount.id, fallbackTotals)
+      }
     }
   }
 
@@ -585,6 +600,12 @@ export async function buildFinancialReports(
     sourceAccountIds: string[]
   }> = []
   const coveredProfitAndLossSourceAccountIds = new Set<string>()
+  const uncoveredCumulativeProfitAndLossCandidates: Array<{
+    statementType: ProfitAndLossStatementType
+    sourceAccountIds: string[]
+  }> = []
+  const coveredCumulativeProfitAndLossSourceAccountIds = new Set<string>()
+  let cumulativeProfitAndLoss = 0
   const assetLines: StatementLineRow[] = []
   const liabilityLines: StatementLineRow[] = []
   const equityLines: StatementLineRow[] = []
@@ -673,6 +694,17 @@ export async function buildFinancialReports(
     }
   }
 
+  function addCumulativeProfitAndLossSource(input: {
+    amount: number
+    sourceAccountIds: string[]
+  }) {
+    if (input.amount === 0) return
+    cumulativeProfitAndLoss = roundMoney(cumulativeProfitAndLoss + input.amount)
+    for (const accountId of input.sourceAccountIds) {
+      coveredCumulativeProfitAndLossSourceAccountIds.add(accountId)
+    }
+  }
+
   for (const account of accounts) {
     const openingTotals = sumMovements(openingMovements, account.sourceAccountIds)
     const periodTotals = sumMovements(periodMovements, account.sourceAccountIds)
@@ -682,6 +714,8 @@ export async function buildFinancialReports(
     const ownAccountIds = ownSourceAccountIds(account)
     const statementPeriodTotals = sumMovements(plPeriodMovements, statementAccountIds)
     const ownPeriodTotals = sumMovements(plPeriodMovements, ownAccountIds)
+    const cumulativeStatementTotals = sumMovements(plClosingMovements, statementAccountIds)
+    const cumulativeOwnTotals = sumMovements(plClosingMovements, ownAccountIds)
     const profitAndLossType = inferProfitAndLossStatementType(account)
 
     const openingBalance = movementSignedBalance(openingTotals, account.type, account.code)
@@ -691,6 +725,12 @@ export async function buildFinancialReports(
     const ownPeriodNet = profitAndLossType
       ? profitAndLossMovementAmount(ownPeriodTotals, profitAndLossType)
       : movementSignedBalance(ownPeriodTotals, account.type, account.code)
+    const cumulativeStatementNet = profitAndLossType
+      ? profitAndLossMovementAmount(cumulativeStatementTotals, profitAndLossType)
+      : 0
+    const cumulativeOwnNet = profitAndLossType
+      ? profitAndLossMovementAmount(cumulativeOwnTotals, profitAndLossType)
+      : 0
     const ledgerClosingBalance = movementSignedBalance(closingTotals, account.type, account.code)
     const yearToDateTotals = shouldConsolidateAccounts
       ? undefined
@@ -803,6 +843,28 @@ export async function buildFinancialReports(
         sourceAccountIds: ownAccountIds,
       })
     }
+    if (profitAndLossType && shouldIncludeIncomeStatementLine({
+      type: profitAndLossType,
+      level: account.level,
+      topLevelHasChildren,
+      periodNet: cumulativeStatementNet,
+    })) {
+      addCumulativeProfitAndLossSource({
+        amount: cumulativeStatementNet,
+        sourceAccountIds: statementAccountIds,
+      })
+    } else if (profitAndLossType && account.level === 1 && hasChildren && cumulativeOwnNet !== 0) {
+      addCumulativeProfitAndLossSource({
+        amount: cumulativeOwnNet,
+        sourceAccountIds: ownAccountIds,
+      })
+    }
+    if (profitAndLossType && cumulativeOwnNet !== 0) {
+      uncoveredCumulativeProfitAndLossCandidates.push({
+        statementType: profitAndLossType,
+        sourceAccountIds: ownAccountIds,
+      })
+    }
 
     if (shouldIncludeAccountInBalanceSheet(account.level)) {
       if ((account.type === 'ASSET' || account.type === 'NON_CURRENT_ASSET') && balanceSheetClosingBalance !== 0) {
@@ -850,6 +912,20 @@ export async function buildFinancialReports(
     })
   }
 
+  for (const candidate of uncoveredCumulativeProfitAndLossCandidates) {
+    const uncoveredSourceAccountIds = candidate.sourceAccountIds.filter(
+      accountId => !coveredCumulativeProfitAndLossSourceAccountIds.has(accountId),
+    )
+    if (uncoveredSourceAccountIds.length === 0) continue
+
+    const uncoveredTotals = sumMovements(plClosingMovements, uncoveredSourceAccountIds)
+    const amount = profitAndLossMovementAmount(uncoveredTotals, candidate.statementType)
+    addCumulativeProfitAndLossSource({
+      amount,
+      sourceAccountIds: uncoveredSourceAccountIds,
+    })
+  }
+
   const expenseCategories = buildIncomeStatementExpenseCategories(expenseEntries)
   const expenseLines = expenseEntries.map(entry => entry.line)
   const totalRevenue = roundMoney(revenueLines.reduce((sum, row) => sum + row.amount, 0))
@@ -857,22 +933,11 @@ export async function buildFinancialReports(
   const grossProfit = roundMoney(totalRevenue - totalCostOfSales)
   const totalExpenses = roundMoney(expenseCategories.reduce((sum, category) => sum + category.total, 0))
   const netProfit = roundMoney(grossProfit - totalExpenses)
-  const baseBalanceSheetLayout = buildBalanceSheetSections({
-    assetLines,
-    liabilityLines,
-    equityLines,
-    level1AccountIdByReportAccountId,
-  })
-  const currentPeriodProfitForBalanceSheet = roundMoney(
-    baseBalanceSheetLayout.totalAssets
-      - baseBalanceSheetLayout.totalLiabilities
-      - baseBalanceSheetLayout.totalEquity,
-  )
   addCurrentPeriodProfitToEquity({
     equityLines,
     accounts,
     level1AccountIdByReportAccountId,
-    profitAmount: currentPeriodProfitForBalanceSheet,
+    profitAmount: cumulativeProfitAndLoss,
   })
 
   const balanceSheetLayout = buildBalanceSheetSections({
