@@ -30,6 +30,14 @@ const STATUS_COLOR: Record<string, string> = {
   DEREGISTERED: 'bg-[rgba(120,113,108,0.15)] text-[#9A8060]',
 }
 
+function annualReturnDeadline(dateOfIncorporation: string | null | undefined) {
+  if (!dateOfIncorporation) return '—'
+  const date = new Date(dateOfIncorporation)
+  if (Number.isNaN(date.getTime())) return '—'
+  const deadline = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 42))
+  return `${String(deadline.getUTCMonth() + 1).padStart(2, '0')}-${String(deadline.getUTCDate()).padStart(2, '0')}`
+}
+
 export default function CompaniesPage() {
   const t = useTranslations('admin.companies')
   const router = useRouter()
@@ -106,6 +114,7 @@ export default function CompaniesPage() {
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('companyName')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('companyNumber')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('incorporationDate')}</th>
+                <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>Annual Return Deadline</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('status')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('client')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('financialModule')}</th>
@@ -114,9 +123,9 @@ export default function CompaniesPage() {
             </thead>
             <tbody className="divide-y divide-[#2A2418]">
               {loading ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>Loading...</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>Loading...</td></tr>
               ) : companies.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>{t('empty')}</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>{t('empty')}</td></tr>
               ) : companies.map(c => (
                 <tr
                   key={c.id}
@@ -135,6 +144,9 @@ export default function CompaniesPage() {
                   <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>{c.companyNumber}</td>
                   <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
                     {c.dateOfIncorporation ? new Date(c.dateOfIncorporation).toLocaleDateString() : '—'}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                    {annualReturnDeadline(c.dateOfIncorporation)}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[c.status] ?? ''}`}>

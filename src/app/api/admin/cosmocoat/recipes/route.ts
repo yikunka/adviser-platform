@@ -28,7 +28,7 @@ const recipeSchema = z.object({
   packagingRequirements: z.string().trim().max(2000).optional().default(''),
   productionNotes: z.string().trim().max(2000).optional().default(''),
   qcTestStandard: z.string().trim().max(2000).optional().default(''),
-  qcTestItems: z.array(z.enum(['VISCOSITY', 'CROSSHATCH', 'BOILING_WATER_80C30M', 'WET_OIL_APPEARANCE', 'DRY_PLATE_APPEARANCE'])).optional().default([]),
+  qcTestItems: z.array(z.enum(['VISCOSITY', 'MATTE', 'CROSSHATCH', 'BOILING_WATER_80C30M', 'WET_OIL_APPEARANCE', 'DRY_PLATE_APPEARANCE'])).optional().default([]),
   qcResult: z.string().trim().max(2000).optional().default(''),
   items: z.array(itemSchema).optional().default([]),
 })

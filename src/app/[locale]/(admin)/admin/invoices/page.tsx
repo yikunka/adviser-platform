@@ -4,12 +4,21 @@
 
 import { type ChangeEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Download, Upload } from 'lucide-react'
+import { Download, Edit3, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { Link } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 type InvoiceRow = {
   id: string
@@ -30,6 +39,7 @@ type HistoricalInvoiceFile = {
   title: string
   fileName: string
   fileSize: number
+  notes: string
   createdAt: string
   uploadedBy: string
 }
@@ -59,6 +69,12 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(false)
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyUploading, setHistoryUploading] = useState(false)
+  const [historyUploadOpen, setHistoryUploadOpen] = useState(false)
+  const [historyUploadFile, setHistoryUploadFile] = useState<File | null>(null)
+  const [historyUploadNotes, setHistoryUploadNotes] = useState('')
+  const [editingHistoryFileId, setEditingHistoryFileId] = useState<string | null>(null)
+  const [historyNoteDrafts, setHistoryNoteDrafts] = useState<Record<string, string>>({})
+  const [historySavingId, setHistorySavingId] = useState<string | null>(null)
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true)
@@ -88,7 +104,11 @@ export default function InvoicesPage() {
       const res = await fetch('/api/admin/invoices/history')
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json.toast || json.error || '载入历史发票失败。')
-      setHistoricalFiles(Array.isArray(json.files) ? json.files : [])
+      const files = Array.isArray(json.files) ? json.files : []
+      setHistoricalFiles(files)
+      setHistoryNoteDrafts(Object.fromEntries(
+        files.map((file: HistoricalInvoiceFile) => [file.id, file.notes ?? '']),
+      ))
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '载入历史发票失败。')
     } finally {
@@ -100,11 +120,16 @@ export default function InvoicesPage() {
     fetchHistoricalFiles()
   }, [fetchHistoricalFiles])
 
-  async function uploadHistoricalInvoice(file: File) {
+  async function uploadHistoricalInvoice() {
+    if (!historyUploadFile) {
+      toast.error('请选择历史发票 PDF 文件。')
+      return
+    }
     setHistoryUploading(true)
     try {
       const formData = new FormData()
-      formData.append('file', file)
+      formData.append('file', historyUploadFile)
+      formData.append('notes', historyUploadNotes)
       const res = await fetch('/api/admin/invoices/history', {
         method: 'POST',
         body: formData,
@@ -112,6 +137,9 @@ export default function InvoicesPage() {
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json.toast || json.error || '上传历史发票失败。')
       toast.success(json.toast || '历史发票已上传。')
+      setHistoryUploadOpen(false)
+      setHistoryUploadFile(null)
+      setHistoryUploadNotes('')
       await fetchHistoricalFiles()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '上传历史发票失败。')
@@ -124,7 +152,30 @@ export default function InvoicesPage() {
   function handleHistoryFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (!file) return
-    void uploadHistoricalInvoice(file)
+    setHistoryUploadFile(file)
+  }
+
+  async function saveHistoricalInvoiceNotes(file: HistoricalInvoiceFile) {
+    const notes = historyNoteDrafts[file.id] ?? ''
+    setHistorySavingId(file.id)
+    try {
+      const res = await fetch(`/api/admin/invoices/history/${file.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.toast || json.error || '保存备注失败。')
+      const updatedFile = json.file as HistoricalInvoiceFile
+      setHistoricalFiles(current => current.map(row => row.id === file.id ? updatedFile : row))
+      setHistoryNoteDrafts(current => ({ ...current, [file.id]: updatedFile.notes ?? '' }))
+      setEditingHistoryFileId(null)
+      toast.success(json.toast || '历史发票备注已更新。')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '保存备注失败。')
+    } finally {
+      setHistorySavingId(null)
+    }
   }
 
   async function downloadHistoricalInvoice(file: HistoricalInvoiceFile) {
@@ -147,17 +198,9 @@ export default function InvoicesPage() {
           {t('title')}
         </h1>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <input
-            ref={historyFileRef}
-            type="file"
-            accept="application/pdf,.pdf"
-            className="hidden"
-            onChange={handleHistoryFileChange}
-            disabled={historyUploading}
-          />
           <Button
             variant="outline"
-            onClick={() => historyFileRef.current?.click()}
+            onClick={() => setHistoryUploadOpen(true)}
             disabled={historyUploading}
           >
             <Upload size={15} className="mr-2" />
@@ -168,6 +211,71 @@ export default function InvoicesPage() {
           </Link>
         </div>
       </div>
+
+      <Dialog
+        open={historyUploadOpen}
+        onOpenChange={open => {
+          setHistoryUploadOpen(open)
+          if (!open) {
+            setHistoryUploadFile(null)
+            setHistoryUploadNotes('')
+            if (historyFileRef.current) historyFileRef.current.value = ''
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>添加历史发票</DialogTitle>
+            <DialogDescription>
+              上传 PDF 历史发票文件，可同时填写备注。文件只作为档案保存。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                PDF 文件
+              </label>
+              <input
+                ref={historyFileRef}
+                type="file"
+                accept="application/pdf,.pdf"
+                onChange={handleHistoryFileChange}
+                disabled={historyUploading}
+                className="block w-full rounded-md border border-[#2A2418] bg-[#0A0A0A] px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                备注
+              </label>
+              <Textarea
+                value={historyUploadNotes}
+                onChange={event => setHistoryUploadNotes(event.target.value)}
+                maxLength={1000}
+                rows={4}
+                placeholder="例如：客户提供的旧账单、付款状态、对应期间等"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => setHistoryUploadOpen(false)}
+              disabled={historyUploading}
+            >
+              取消
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void uploadHistoricalInvoice()}
+              disabled={historyUploading || !historyUploadFile}
+            >
+              {historyUploading ? '上传中...' : '上传'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex gap-2 flex-wrap">
         <Input
@@ -289,6 +397,55 @@ export default function InvoicesPage() {
                     >
                       <Download size={15} />
                     </Button>
+                  </div>
+                  <div className="mt-3 border-t border-[#2A2418] pt-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>备注</p>
+                      {editingHistoryFileId === file.id ? (
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setHistoryNoteDrafts(current => ({ ...current, [file.id]: file.notes ?? '' }))
+                              setEditingHistoryFileId(null)
+                            }}
+                            disabled={historySavingId === file.id}
+                          >
+                            取消
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => void saveHistoricalInvoiceNotes(file)}
+                            disabled={historySavingId === file.id}
+                          >
+                            {historySavingId === file.id ? '保存中...' : '保存'}
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingHistoryFileId(file.id)}
+                        >
+                          <Edit3 size={14} className="mr-1" />
+                          编辑
+                        </Button>
+                      )}
+                    </div>
+                    {editingHistoryFileId === file.id ? (
+                      <Textarea
+                        value={historyNoteDrafts[file.id] ?? ''}
+                        onChange={event => setHistoryNoteDrafts(current => ({ ...current, [file.id]: event.target.value }))}
+                        maxLength={1000}
+                        rows={3}
+                        placeholder="填写此历史发票的备注"
+                      />
+                    ) : (
+                      <p className="whitespace-pre-wrap text-xs leading-5" style={{ color: file.notes ? 'var(--foreground)' : 'var(--muted-foreground)' }}>
+                        {file.notes || '暂无备注'}
+                      </p>
+                    )}
                   </div>
                 </div>
               ))}

@@ -159,7 +159,7 @@ export async function GET(req: NextRequest) {
   try {
     const rows = await prisma.cosEmployee.findMany({
       where,
-      orderBy: [{ updatedAt: 'desc' }],
+      orderBy: [{ code: 'asc' }, { id: 'asc' }],
     })
 
     const filtered = rows

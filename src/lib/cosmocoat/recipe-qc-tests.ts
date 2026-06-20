@@ -1,6 +1,7 @@
 /** Predefined QC test items selectable on recipe detail pages. */
 export const RECIPE_QC_TEST_ITEMS = [
   { id: 'VISCOSITY', label: '黏度' },
+  { id: 'MATTE', label: '啞度' },
   { id: 'CROSSHATCH', label: '百格' },
   { id: 'BOILING_WATER_80C30M', label: '水煮80C/30M' },
   { id: 'WET_OIL_APPEARANCE', label: '湿油外观' },
