@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { z } from 'zod'
 import { Prisma } from '@prisma/client'
-import { requireRole } from '@/lib/auth/rbac'
+import { requirePermission, requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import {
   buildProductionOrderItems,
@@ -55,7 +55,7 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatProductionOrders' })
+  const { error } = await requirePermission('cosmocoatProductionOrders.edit', 'STAFF')
   if (error) return error
 
   const { id } = await params

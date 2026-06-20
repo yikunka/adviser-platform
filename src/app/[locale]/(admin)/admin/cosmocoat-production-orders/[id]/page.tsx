@@ -460,7 +460,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
 
   const fetchProductionEmployees = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/cosmocoat/employees?employeeType=PRODUCTION&activeOnly=true&limit=200')
+      const res = await fetch('/api/admin/cosmocoat/production-orders/picker/production-employees?limit=200')
       const data = await res.json()
       if (!res.ok) return
       setProductionEmployeeOptions(data.employees ?? [])

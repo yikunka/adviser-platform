@@ -50,6 +50,7 @@ import {
 import type { AdminMenuKey } from '@/lib/auth/admin-access'
 import { pathnameToAdminMenuKey, adminMenusAllow } from '@/lib/auth/admin-access'
 import { isAdminNavHrefActive } from '@/lib/admin-navigation'
+import { ADMIN_SHELL_CLASSNAMES } from '@/lib/admin-shell-layout'
 
 type MenuAccess = ReadonlySet<AdminMenuKey> | 'all'
 
@@ -233,14 +234,12 @@ export default function AdminShell({
 
   return (
     <div
-      className="theme-dark admin-console h-screen overflow-hidden flex"
+      className={ADMIN_SHELL_CLASSNAMES.root}
       style={{ background: 'var(--background)', color: 'var(--foreground)' }}
     >
       <aside
         className={`
-          fixed inset-y-0 left-0 z-50 w-64 flex flex-col h-screen flex-shrink-0
-          transform transition-transform duration-300 ease-in-out
-          md:sticky md:top-0 md:translate-x-0
+          ${ADMIN_SHELL_CLASSNAMES.sidebar}
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
         style={{ background: '#080808', borderRight: '1px solid var(--sidebar-border)' }}
@@ -418,7 +417,7 @@ export default function AdminShell({
         />
       )}
 
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+      <div className={ADMIN_SHELL_CLASSNAMES.frame}>
         <header
           className="h-14 flex items-center justify-between px-4 flex-shrink-0"
           style={{ background: '#080808', borderBottom: '1px solid var(--sidebar-border)' }}
@@ -456,7 +455,7 @@ export default function AdminShell({
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-6" style={{ background: 'var(--background)' }}>
+        <main className={ADMIN_SHELL_CLASSNAMES.main} style={{ background: 'var(--background)' }}>
           <AdminRouteGuard menuAccess={menuAccess} userRole={userRole} locale={navLocale}>
             <AdminPermissionProvider permissions={permissions}>
               {children}

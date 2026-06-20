@@ -152,6 +152,18 @@ html {
   color: var(--foreground);
 }
 
+.admin-shell-viewport {
+  height: 100vh;
+  min-height: 100vh;
+}
+
+@supports (height: 100dvh) {
+  .admin-shell-viewport {
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+}
+
 .admin-console h1,
 .admin-console h2,
 .admin-console h3,

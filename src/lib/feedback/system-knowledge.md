@@ -321,7 +321,7 @@ CosmoCoat factory staff registry (内务、销售、生产、技术、编外人�
 
 ### Production Orders (`/admin/cosmocoat-production-orders`)
 Manufacturing batch tracking.
-- Fields: order code, factory product, recipe, total weight, optional assigned production employee (dropdown only; no employee detail panel on the detail page; batch number is not shown or editable on the detail page, though list view still has a 批次 column)
+- Fields: order code, factory product, recipe, total weight, optional assigned production employee (dropdown only; no employee detail panel on the detail page; batch number is not shown or editable on the detail page, though list view still has a 批次 column). Querying and assigning production-employee options follows `cosmocoatProductionOrders.edit` permission, not Employee Management access.
 - Detail page shows recipe code, name, and viscosity range (read-only, e.g. `9.7-9.8 S` or `9.7-9.8 KU` from the linked recipe); there is no link/button to open the linked recipe detail page
 - New order page: factory product picker supports type-to-search with fuzzy matching (product code, name, current recipe); loads options on demand via lightweight API instead of bulk-fetching all products
 - Product list auto-excludes factory products without a current recipe; optional `?recipeId=` URL param further limits choices to products linked to that recipe
