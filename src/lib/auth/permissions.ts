@@ -36,6 +36,7 @@ export const PERMISSION_GROUPS: PermGroup[] = [
       { menuKey: 'cosmocoatOverview',         label: '物料流向总览',  actions: [] },
       { menuKey: 'cosmocoatRawMaterials',     label: '原材料',       actions: ['view', 'create', 'edit', 'delete', 'import', 'export'] },
       { menuKey: 'cosmocoatRecipes',          label: '配方',         actions: ['view', 'create', 'edit', 'delete', 'approve'] },
+      { menuKey: 'cosmocoatRecipeApprovals',  label: '待审批工艺书变更', actions: [] },
       { menuKey: 'cosmocoatProducts',         label: '官网产品',     actions: ['create', 'edit', 'delete'] },
       { menuKey: 'cosmocoatFactoryProducts',  label: '工厂产品',     actions: ['create', 'edit', 'delete'] },
       { menuKey: 'cosmocoatColorFormulas',    label: '调色配方',     actions: ['view', 'create', 'edit', 'delete', 'export'] },

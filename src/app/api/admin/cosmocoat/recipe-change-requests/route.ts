@@ -8,7 +8,7 @@ function isMissingTable(error: unknown) {
 }
 
 export async function GET(req: NextRequest) {
-  const { session, error } = await requireRole('STAFF', { adminMenu: 'cosmocoatRecipes' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'cosmocoatRecipeApprovals' })
   if (error) return error
 
   const status = req.nextUrl.searchParams.get('status')?.trim() ?? 'PENDING'

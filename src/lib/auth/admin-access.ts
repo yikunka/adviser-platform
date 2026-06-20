@@ -25,6 +25,7 @@ export const ADMIN_MENU_KEYS = [
   'cosmocoatProducts',
   'cosmocoatRawMaterials',
   'cosmocoatRecipes',
+  'cosmocoatRecipeApprovals',
   'cosmocoatColorFormulas',
   'cosmocoatFactoryProducts',
   'cosmocoatProductionOrders',
@@ -68,6 +69,7 @@ export const MENU_PLATFORM: Record<AdminMenuKey, Platform | 'GLOBAL'> = {
   cosmocoatProducts: 'COSMICOAT',
   cosmocoatRawMaterials: 'COSMICOAT',
   cosmocoatRecipes: 'COSMICOAT',
+  cosmocoatRecipeApprovals: 'COSMICOAT',
   cosmocoatColorFormulas: 'COSMICOAT',
   cosmocoatFactoryProducts: 'COSMICOAT',
   cosmocoatProductionOrders: 'COSMICOAT',
@@ -201,6 +203,8 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
       return 'cosmocoatRawMaterials'
     case 'cosmocoat-recipes':
       return 'cosmocoatRecipes'
+    case 'cosmocoat-recipe-approvals':
+      return 'cosmocoatRecipeApprovals'
     case 'cosmocoat-color-formulas':
       return 'cosmocoatColorFormulas'
     case 'cosmocoat-factory-products':
@@ -257,6 +261,7 @@ export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: stri
   { key: 'cosmocoatProducts', label: 'Product management', group: 'CosmoCoat' },
   { key: 'cosmocoatRawMaterials', label: 'Raw material management', group: 'CosmoCoat' },
   { key: 'cosmocoatRecipes', label: 'Recipe management', group: 'CosmoCoat' },
+  { key: 'cosmocoatRecipeApprovals', label: 'Pending recipe approvals', group: 'CosmoCoat' },
   { key: 'cosmocoatColorFormulas', label: 'Color matching formulas', group: 'CosmoCoat' },
   { key: 'cosmocoatFactoryProducts', label: 'Factory product management', group: 'CosmoCoat' },
   { key: 'cosmocoatProductionOrders', label: 'Production orders', group: 'CosmoCoat' },

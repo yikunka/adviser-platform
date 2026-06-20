@@ -112,7 +112,7 @@ Service invoicing for TCSP professional fees.
 Staff access control.
 - System roles: `SUPER_ADMIN`, `COMPLIANCE`, `STAFF`
 - Per-staff platform access flags (Adviser / SFS Diamond / CosmoCoat)
-- Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, team, feedback, sfs-customers, sfs-orders, sfs-invoices, cosmocoat-* including cosmocoat-customers, cosmocoat-suppliers, cosmocoat-employees, cosmocoat-qualification-files, cosmocoat-sample-orders)
+- Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, team, feedback, sfs-customers, sfs-orders, sfs-invoices, cosmocoat-* including cosmocoat-customers, cosmocoat-suppliers, cosmocoat-employees, cosmocoat-qualification-files, cosmocoat-sample-orders, cosmocoat-recipe-approvals)
 - Dynamic role assignment: each staff member can be assigned multiple dynamic `AdminRole` records (from Role Management); effective access is the union of all selected roles' page + button-level permissions
 - Legacy mode: no restrictions; new mode: explicit per-menu grants
 - Create / edit / deactivate staff accounts
@@ -121,7 +121,7 @@ Staff access control.
 ### 7b. Role Management (`/admin/admin-roles`)
 Dynamic permission roles. **SUPER_ADMIN only.**
 - Create, edit, delete custom roles with name, color, and description
-- Each role has a permission matrix covering all admin pages across all modules (CosmoCoat, Adviser, SFS Diamond, System)
+- Each role has a permission matrix covering all admin pages across all modules (CosmoCoat, Adviser, SFS Diamond, System); every newly added admin page or feature entry must be added to Role Management in the same change
 - Permissions are per-page (list/menu view access) and per-action (view detail, create, edit, delete, approve, export, import)
 - "查看详情/view" is a distinct action for CosmoCoat modules (raw materials, recipes, color formulas, production orders, process kits, sample orders, customers, suppliers, employees): without it a user sees the list page but cannot open record detail pages (detail links/row navigation are hidden)
 - System roles cannot be deleted
@@ -293,7 +293,7 @@ Product formulation management.
 - Packaging requirements: button quick-select presets (200目、300目、400目、色装机); clicking a preset fills the field; new recipes start with an empty packaging field (no default preset)
 - QC section (separate card): multi-select checkboxes for standard tests (黏度, 啞度, 百格, 水煮80C/30M, 湿油外观, 干板外观) plus optional free-text test standard; each checked test shows its own result input on the same row (unchecked tests hide result inputs); selected tests and custom text are carried into production order quality-check requirements when creating orders (viscosity checkbox includes recipe viscosity value when set)
 - Material rows can be reordered by drag-and-drop; new order is auto-saved immediately
-- **Change approval workflow**: non–`SUPER_ADMIN` roles cannot directly modify or delete existing recipes; PATCH/DELETE (including refresh-prices) create a pending change request (`UPDATE` or `DELETE`) for super-admin review; `SUPER_ADMIN` applies changes immediately; a dedicated page at `/admin/cosmocoat-recipe-approvals` lists pending / approved / rejected requests with requester info, review records, automatic core-change summaries, and before-vs-after difference rows (including material additions/removals/quantity or price changes, batch quantity changes, unit-cost changes, and basic/process/QC field changes); the recipe list page still shows a pending-only panel with a shortcut to the full approval page; non–super-admin users see **提交审批** on the detail page and get HTTP 202 when a request is queued; only one pending request per recipe at a time; creating new recipes does not require approval
+- **Change approval workflow**: non–`SUPER_ADMIN` roles cannot directly modify or delete existing recipes; PATCH/DELETE (including refresh-prices) create a pending change request (`UPDATE` or `DELETE`) for super-admin review; `SUPER_ADMIN` applies changes immediately; a dedicated page at `/admin/cosmocoat-recipe-approvals` lists pending / approved / rejected requests with requester info, review records, automatic core-change summaries, and before-vs-after difference rows (including material additions/removals/quantity or price changes, batch quantity changes, unit-cost changes, and basic/process/QC field changes); access to this page is controlled by the independent `cosmocoatRecipeApprovals` Role Management page permission; the recipe list page still shows a pending-only panel with a shortcut to the full approval page; non–super-admin users see **提交审批** on the detail page and get HTTP 202 when a request is queued; only one pending request per recipe at a time; creating new recipes does not require approval
 
 ### Color Matching Formulas (`/admin/cosmocoat-color-formulas`)
 Custom color formulations for specific customers or products.
