@@ -110,6 +110,13 @@ function isSelectableJournalAccount(account: AccountPickerOption, accounts: Acco
   return !accounts.some(row => row.parentId === account.id)
 }
 
+export function restoreAccountDialogTriggerFocus(trigger: HTMLElement | null) {
+  if (!trigger || typeof window === 'undefined') return
+  window.setTimeout(() => {
+    trigger.focus()
+  }, 0)
+}
+
 type AccountTreeNode = AccountPickerOption & { children: AccountTreeNode[] }
 
 function getVisibleNodes(nodes: AccountTreeNode[], expandedIds: Set<string>): AccountTreeNode[] {
@@ -180,6 +187,7 @@ function AccountTreeRows({
             >
               <button
                 type="button"
+                onMouseDown={event => event.preventDefault()}
                 onClick={() => hasChildren && onToggle(node.id)}
                 disabled={!hasChildren}
                 className="grid size-6 place-items-center rounded text-[#B8AD98] disabled:opacity-30"
@@ -195,6 +203,11 @@ function AccountTreeRows({
               <button
                 type="button"
                 disabled={!selectable}
+                onMouseDown={event => {
+                  if (event.button !== 0 || !selectable) return
+                  event.preventDefault()
+                  onSelect(node)
+                }}
                 onClick={() => onSelect(node)}
                 className="min-w-0 text-left disabled:cursor-not-allowed"
                 title={selectable ? `${node.code} - ${node.name}` : '该科目有下级，请选择可入账的明细科目'}
@@ -265,6 +278,8 @@ export function AccountCombobox({
   dialogTitle = '选择会计科目',
 }: AccountComboboxProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const dialogTriggerRef = useRef<HTMLButtonElement>(null)
+  const restoreDialogFocusOnCloseRef = useRef(false)
   const listboxRef = useRef<HTMLDivElement>(null)
   const dialogListRef = useRef<HTMLDivElement>(null)
   const listboxId = useId()
@@ -450,12 +465,23 @@ export function AccountCombobox({
     el?.scrollIntoView({ block: 'nearest' })
   }, [dialogHighlightedId])
 
-  function selectAccount(account: AccountPickerOption) {
+  useEffect(() => {
+    if (treeDialogOpen || !restoreDialogFocusOnCloseRef.current) return
+    restoreDialogFocusOnCloseRef.current = false
+    restoreAccountDialogTriggerFocus(dialogTriggerRef.current)
+  }, [treeDialogOpen])
+
+  function commitAccountSelection(account: AccountPickerOption) {
     setSelectedAccount(account)
     onChange(account.id)
     setOpen(false)
     setTreeDialogOpen(false)
     setSearch('')
+  }
+
+  function selectAccountFromDialog(account: AccountPickerOption) {
+    restoreDialogFocusOnCloseRef.current = true
+    commitAccountSelection(account)
   }
 
   function selectOption(option: RenderOption) {
@@ -466,7 +492,7 @@ export function AccountCombobox({
       setSearch('')
       return
     }
-    selectAccount(option.account)
+    commitAccountSelection(option.account)
   }
 
   function toggleExpanded(accountId: string) {
@@ -482,6 +508,7 @@ export function AccountCombobox({
     return (
       <>
         <Button
+          ref={dialogTriggerRef}
           type="button"
           variant="outline"
           disabled={disabled || !companyId}
@@ -500,6 +527,7 @@ export function AccountCombobox({
           className={cn(
             'h-9 w-full justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm font-normal',
             'focus-visible:border-[#C9A96E] focus-visible:ring-3 focus-visible:ring-[#C9A96E]/25',
+            'hover:bg-[#1E1A12] hover:text-[#FFF7E6] aria-expanded:bg-[#1E1A12]',
             inputClassName,
           )}
         >
@@ -566,7 +594,7 @@ export function AccountCombobox({
                     if (node.children.length > 0) {
                       toggleExpanded(node.id)
                     } else if (isSelectableJournalAccount(node, treeAccounts)) {
-                      selectAccount(node)
+                      selectAccountFromDialog(node)
                     }
                   }
                 }}
@@ -591,7 +619,7 @@ export function AccountCombobox({
                   value={value}
                   expandedIds={activeExpandedIds}
                   onToggle={toggleExpanded}
-                  onSelect={selectAccount}
+                  onSelect={selectAccountFromDialog}
                   highlightedId={dialogHighlightedId}
                 />
               )}

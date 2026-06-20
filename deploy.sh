@@ -337,7 +337,7 @@ cmd_deploy() {
         return 0
       else
         echo "▶ 增量比对：rev=${REV_FROM:0:12}（记录值 ${REV_FROM_RAW:0:12}）→ HEAD=${HEAD_NOW:0:12}"
-        git -C "$SCRIPT_DIR" diff --name-only "${REV_FROM}..${HEAD_NOW}" | _deploy_local_classify_diff_lines
+        _deploy_local_classify_diff_lines < <(git -C "$SCRIPT_DIR" diff --name-only "${REV_FROM}..${HEAD_NOW}")
 
         if [[ "$_DL_N_ALL" -gt 0 ]] && [[ "$_DL_N_REL" -eq 0 ]]; then
           echo "✓ 有新提交但仅文档等非运行路径，跳过构建。（.adviser-deploy-rev 保持不变，下次重新核对）"
@@ -813,7 +813,7 @@ cmd_deploy_local() {
       NEED_DEPS=0 NEED_BUILD=0 NEED_PRISMA_GEN=0 NEED_MIGRATE=0 NEED_RSYNC_PUBLIC=0
       _DL_N_ALL=0
       _DL_N_REL=0
-      git -C "$SCRIPT_DIR" diff --name-only "${DIFF_FROM}..${HEAD_NOW}" | _deploy_local_classify_diff_lines
+      _deploy_local_classify_diff_lines < <(git -C "$SCRIPT_DIR" diff --name-only "${DIFF_FROM}..${HEAD_NOW}")
       echo "▶ 变更文件数：全部=$_DL_N_ALL，运行相关=$_DL_N_REL"
 
       if [[ "$_DL_N_ALL" -gt 0 ]] && [[ "$_DL_N_REL" -eq 0 ]]; then
