@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
 import { getTranslations } from 'next-intl/server'
+import { redirect } from 'next/navigation'
 import { Link } from '@/i18n/navigation'
 import {
   Building2, ShieldCheck, Bell,
@@ -23,29 +24,32 @@ export default async function DashboardPage({
 }) {
   const session = await auth()
   const { locale } = await params
+  const user = session?.user
+  if (!user?.id || !user.email) redirect(`/${locale}/login`)
+
   const t = await getTranslations('dashboard')
 
   const [companies, notifications, kycRecord] = await Promise.all([
     prisma.company.findMany({
       where: {
         OR: [
-          { clientUserId: session!.user.id },
-          { pendingClientEmail: session!.user.email.toLowerCase() },
+          { clientUserId: user.id },
+          { pendingClientEmail: user.email.toLowerCase() },
         ],
       },
       select: { id: true, nameEn: true, nameZh: true, companyNumber: true },
       take: 5,
     }),
     prisma.notification.findMany({
-      where: { userId: session!.user.id, isRead: false },
+      where: { userId: user.id, isRead: false },
       orderBy: { createdAt: 'desc' },
       take: 5,
     }),
     prisma.keyPerson.findFirst({
       where: {
         OR: [
-          { submittedByUserId: session!.user.id },
-          { companyLinks: { some: { company: { clientUserId: session!.user.id } } } },
+          { submittedByUserId: user.id },
+          { companyLinks: { some: { company: { clientUserId: user.id } } } },
         ],
       },
       orderBy: { updatedAt: 'desc' },
@@ -70,7 +74,7 @@ export default async function DashboardPage({
           {t('title')}
         </h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-          {t('welcome', { name: session!.user.name })}
+          {t('welcome', { name: user.name })}
         </p>
       </div>
 

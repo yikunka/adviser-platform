@@ -21,13 +21,13 @@ export default async function AdminLayout({
 }) {
   const session = await auth()
   const { locale } = await params
+  const user = session?.user
 
-  if (!session) redirect(`/${locale}/admin-login`)
-  if (!STAFF_ROLES.has(session.user.role)) redirect(`/${locale}/dashboard`)
-  if (!session.user.id) redirectToInvalidateSession(locale)
+  if (!user?.id || !user.role) redirect(`/${locale}/admin-login`)
+  if (!STAFF_ROLES.has(user.role)) redirect(`/${locale}/dashboard`)
 
   const userRow = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: user.id },
     select: {
       role: true,
       adminMenuKeys: true,
@@ -53,8 +53,8 @@ export default async function AdminLayout({
 
   return (
     <AdminShell
-      userName={session.user.name ?? session.user.email}
-      userRole={session.user.role}
+      userName={user.name ?? user.email}
+      userRole={user.role}
       menuAccess={menuAccess}
       permissions={permissions}
       locale={locale}

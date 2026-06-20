@@ -27,8 +27,9 @@ declare module 'next-auth' {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  // 生产环境务必设置与浏览器一致的应用根 URL：AUTH_URL（或 AUTH_TRUST_HOST=true，见 .env.example）
-  trustHost: process.env.AUTH_TRUST_HOST === 'true',
+  // Production commonly runs behind nginx/PM2; trust the forwarded Host so Auth.js
+  // does not reject the public domain before session lookup.
+  trustHost: process.env.AUTH_TRUST_HOST === 'true' || process.env.NODE_ENV === 'production',
   session: { strategy: 'jwt' },
   pages: {
     signIn: '/zh/login',

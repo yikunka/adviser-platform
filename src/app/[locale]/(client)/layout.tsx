@@ -13,26 +13,26 @@ export default async function ClientLayout({
 }) {
   const session = await auth()
   const { locale } = await params
+  const user = session?.user
 
-  if (!session) redirect(`/${locale}/login`)
+  if (!user?.id || !user.role) redirect(`/${locale}/login`)
 
   // Staff / admin accounts go to the admin portal
   const ADMIN_ROLES = new Set(['STAFF', 'COMPLIANCE', 'SUPER_ADMIN'])
-  if (ADMIN_ROLES.has(session.user.role)) redirect(`/${locale}/admin/dashboard`)
+  if (ADMIN_ROLES.has(user.role)) redirect(`/${locale}/admin/dashboard`)
 
-  if (session.user.role === 'CLIENT') {
-    if (!session.user.id) redirect(`/${locale}/login`)
+  if (user.role === 'CLIENT') {
     const email =
-      session.user.email ||
+      user.email ||
       (await prisma.user.findUnique({
-        where: { id: session.user.id },
+        where: { id: user.id },
         select: { email: true },
       }))?.email
-    if (email) await claimPendingCompaniesForUser(session.user.id, email)
+    if (email) await claimPendingCompaniesForUser(user.id, email)
   }
 
   return (
-    <ClientShell userName={session.user.name ?? session.user.email}>
+    <ClientShell userName={user.name ?? user.email}>
       {children}
     </ClientShell>
   )
