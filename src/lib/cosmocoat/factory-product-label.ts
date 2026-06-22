@@ -11,9 +11,7 @@ export type FactoryProductLabelSource = {
 export type FactoryProductLabelDraft = {
   title: string
   productName: string
-  category: string
-  unit: string
-  viscosity: string
+  quantity: string
   currentRecipe: string
 }
 
@@ -21,9 +19,7 @@ export function buildFactoryProductLabelDraft(product: FactoryProductLabelSource
   return {
     title: product.productCode,
     productName: product.name,
-    category: product.category?.name ?? '—',
-    unit: product.unit,
-    viscosity: product.viscosityLabel ?? product.viscosity ?? '—',
+    quantity: product.unit,
     currentRecipe: product.currentRecipe ? `${product.currentRecipe.code} ${product.currentRecipe.name}` : '—',
   }
 }

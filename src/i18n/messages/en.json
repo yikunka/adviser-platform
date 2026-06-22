@@ -27,6 +27,8 @@
     "financialBanking": "Banking & Cash",
     "financialParties": "Business Parties",
     "invoices": "Invoices",
+    "contracts": "Contracts",
+    "tcspPricing": "TCSP Pricing",
     "settings": "Settings",
     "users": "Customer Account Management",
     "sfsCustomers": "SFS Customers",

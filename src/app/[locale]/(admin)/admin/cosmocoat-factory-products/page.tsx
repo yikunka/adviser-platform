@@ -147,12 +147,8 @@ function FactoryProductLabelPrintView({ label }: { label: FactoryProductLabelDra
           <div className="factory-product-label-title">{label.title || '—'}</div>
           <div className="factory-product-label-name">{label.productName || '—'}</div>
           <div className="factory-product-label-grid">
-            <span>类别</span>
-            <strong>{label.category || '—'}</strong>
-            <span>单位</span>
-            <strong>{label.unit || '—'}</strong>
-            <span>粘度</span>
-            <strong>{label.viscosity || '—'}</strong>
+            <span>数量</span>
+            <strong>{label.quantity || '—'}</strong>
             <span>当前配方</span>
             <strong>{label.currentRecipe || '—'}</strong>
           </div>
@@ -1070,9 +1066,7 @@ export default function AdminCosmoCoatFactoryProductsPage() {
               {([
                 ['title', '产品标题'],
                 ['productName', '产品名称'],
-                ['category', '类别'],
-                ['unit', '单位'],
-                ['viscosity', '粘度'],
+                ['quantity', '数量'],
                 ['currentRecipe', '当前配方'],
               ] as const).map(([key, label]) => (
                 <div key={key} className="space-y-1.5">

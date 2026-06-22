@@ -27,6 +27,8 @@
     "financialBanking": "銀行與現金",
     "financialParties": "往來單位",
     "invoices": "發票",
+    "contracts": "合同管理",
+    "tcspPricing": "TCSP服务价格单",
     "settings": "設定",
     "users": "客戶帳號管理",
     "sfsCustomers": "SFS 客戶",

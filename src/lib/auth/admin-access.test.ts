@@ -13,3 +13,19 @@ describe('CosmoCoat recipe approvals access', () => {
     expect(pathnameToAdminMenuKey('/zh/admin/cosmocoat-recipe-approvals')).toBe('cosmocoatRecipeApprovals')
   })
 })
+
+describe('Adviser contract and TCSP pricing access', () => {
+  it('registers new Adviser modules in Role Management permissions', () => {
+    expect(ADMIN_MENU_KEYS).toContain('contracts')
+    expect(ADMIN_MENU_KEYS).toContain('tcspPricing')
+    expect(MENU_PLATFORM.contracts).toBe('ADVISER')
+    expect(MENU_PLATFORM.tcspPricing).toBe('ADVISER')
+    expect(isValidPermission('contracts.create')).toBe(true)
+    expect(isValidPermission('tcspPricing.edit')).toBe(true)
+  })
+
+  it('maps new Adviser module routes to independent permission keys', () => {
+    expect(pathnameToAdminMenuKey('/zh/admin/contracts')).toBe('contracts')
+    expect(pathnameToAdminMenuKey('/zh/admin/tcsp-pricing')).toBe('tcspPricing')
+  })
+})

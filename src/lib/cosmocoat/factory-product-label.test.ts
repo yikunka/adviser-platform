@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildFactoryProductLabelDraft } from './factory-product-label'
 
 describe('buildFactoryProductLabelDraft', () => {
-  it('uses product master data as editable thermal label defaults', () => {
+  it('uses only printable factory product fields on thermal label defaults', () => {
     expect(buildFactoryProductLabelDraft({
       productCode: 'FP001',
       name: 'Clear Coat',
@@ -13,9 +13,7 @@ describe('buildFactoryProductLabelDraft', () => {
     })).toEqual({
       title: 'FP001',
       productName: 'Clear Coat',
-      category: 'PU漆',
-      unit: 'kg',
-      viscosity: '12 S',
+      quantity: 'kg',
       currentRecipe: 'R001 Recipe 1',
     })
   })

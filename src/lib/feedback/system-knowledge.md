@@ -108,11 +108,24 @@ Service invoicing for TCSP professional fees.
 - Upload historical invoice PDFs from the invoice list via **添加历史发票**; admins can add/edit a text note for each uploaded historical PDF and the note is shown directly in the historical-file list; uploaded historical files are stored as downloadable archives and do not create or modify formal invoice records, numbering, totals, or statuses
 - Link invoices to client companies or approved individual KYC records
 
+### 6b. Contracts (`/admin/contracts`)
+Independent Adviser contract management, not linked to client companies.
+- Upload and download contract files (PDF, Word, JPG, PNG, WEBP; max 10 MB; Chinese file names are preserved for download)
+- Contract metadata includes contract name, start date, end date, and notes; metadata can be edited after upload
+- Access and actions are controlled by Role Management permissions `contracts`, `contracts.create`, `contracts.edit`, and `contracts.delete`
+
+### 6c. TCSP Service Pricing (`/admin/tcsp-pricing`)
+Central price-list management for TCSP service quotes.
+- Maintains service pricing by jurisdiction (`HK`, `BVI`, `CAYMAN`, `MARSHALL`), customer level (`经销客户` / `普通客户`), service category, service name, currency, amount, and notes
+- Service categories include company incorporation, address change, annual return, accounting, consulting, company secretary, bank account opening, and other services; service names remain editable so admins can cover all current and future service items
+- The same jurisdiction + customer level + service category + service name combination is unique to prevent duplicate quote rows
+- Access and actions are controlled by Role Management permissions `tcspPricing`, `tcspPricing.create`, `tcspPricing.edit`, and `tcspPricing.delete`
+
 ### 7. Team Management (`/admin/team`)
 Staff access control.
 - System roles: `SUPER_ADMIN`, `COMPLIANCE`, `STAFF`
 - Per-staff platform access flags (Adviser / SFS Diamond / CosmoCoat)
-- Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, team, feedback, sfs-customers, sfs-orders, sfs-invoices, cosmocoat-* including cosmocoat-customers, cosmocoat-suppliers, cosmocoat-employees, cosmocoat-qualification-files, cosmocoat-sample-orders, cosmocoat-recipe-approvals)
+- Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, contracts, tcspPricing, team, feedback, sfs-customers, sfs-orders, sfs-invoices, cosmocoat-* including cosmocoat-customers, cosmocoat-suppliers, cosmocoat-employees, cosmocoat-qualification-files, cosmocoat-sample-orders, cosmocoat-recipe-approvals)
 - Dynamic role assignment: each staff member can be assigned multiple dynamic `AdminRole` records (from Role Management); effective access is the union of all selected roles' page + button-level permissions
 - Legacy mode: no restrictions; new mode: explicit per-menu grants
 - Create / edit / deactivate staff accounts
