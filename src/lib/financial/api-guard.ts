@@ -14,7 +14,7 @@ export function apiError(error: string, status = 400) {
 }
 
 /**
- * 财务子分类账路由公共守卫：STAFF 角色 + financial 菜单 + 公司访问范围。
+ * 财务子分类账路由公共守卫：financial 菜单权限 + 公司访问范围。
  * 返回 { session } 或 { error }（直接 return 给路由）。
  */
 export async function guardFinancialCompany(
@@ -37,19 +37,11 @@ export async function guardFinancialCompany(
   if (
     options?.requireManager
     && session!.user.role !== 'SUPER_ADMIN'
-    && session!.user.role !== 'STAFF'
     && company.financialManagerId !== session!.user.id
   ) {
     return { error: apiError('Only the assigned financial manager can perform financial operations for this company.', 403) }
   }
   return { session: session! }
-}
-
-export function assertFinancialWriteAllowed(session: Session): NextResponse | null {
-  if (session.user.role === 'STAFF') {
-    return apiError('Staff 角色在财务模块仅可查看和导出，不能修改任何财务数据。', 403)
-  }
-  return null
 }
 
 export async function requireFinancialReadRole():
@@ -61,15 +53,13 @@ Promise<{ session: Session; error?: undefined } | { session?: undefined; error: 
 
 export async function requireFinancialWriteRole(permission?: string):
 Promise<{ session: Session; error?: undefined } | { session?: undefined; error: NextResponse }> {
+  if (permission) {
+    const result = await requirePermission(permission, 'STAFF')
+    if (result.error) return { error: result.error }
+    return { session: result.session! }
+  }
   const { session, error } = await requireRole('STAFF', { adminMenu: 'financial' })
   if (error) return { error }
-  if (permission) {
-    const permissionResult = await requirePermission(permission, 'STAFF')
-    if (permissionResult.error) return { error: permissionResult.error }
-    return { session: permissionResult.session! }
-  }
-  const writeError = assertFinancialWriteAllowed(session!)
-  if (writeError) return { error: writeError }
   return { session: session! }
 }
 
@@ -77,11 +67,7 @@ export async function guardFinancialMutationCompany(
   companyId: string | null | undefined,
   options?: { requireManager?: boolean },
 ): Promise<{ session: Session; error?: undefined } | { session?: undefined; error: NextResponse }> {
-  const guard = await guardFinancialCompany(companyId, options)
-  if (guard.error) return guard
-  const writeError = assertFinancialWriteAllowed(guard.session)
-  if (writeError) return { error: writeError }
-  return guard
+  return guardFinancialCompany(companyId, options)
 }
 
 export async function assertFinancialManager(
