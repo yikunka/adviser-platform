@@ -709,6 +709,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
   const [hasLocalProductChanges, setHasLocalProductChanges] = useState(false)
   const [hasLocalProcessFlowChanges, setHasLocalProcessFlowChanges] = useState(false)
   const [hasLocalTestChanges, setHasLocalTestChanges] = useState(false)
+  const testReportInputRef = useRef<HTMLInputElement | null>(null)
 
   const [showProductForm, setShowProductForm] = useState(false)
   const [addingProduct, setAddingProduct] = useState(false)
@@ -2755,7 +2756,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                   <div className="space-y-1.5 sm:col-span-2">
                     <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('reportLink')}</label>
                     <input
-                      id="process-kit-test-report-upload"
+                      ref={testReportInputRef}
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
                       onChange={handleTestReportImageChange}
@@ -2763,8 +2764,13 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                       className="sr-only"
                     />
                     <div className="flex flex-wrap items-center gap-2">
-                      <label
-                        htmlFor="process-kit-test-report-upload"
+                      <button
+                        type="button"
+                        disabled={uploadingTestReport}
+                        onClick={event => {
+                          event.preventDefault()
+                          testReportInputRef.current?.click()
+                        }}
                         className={cn(
                           'inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium',
                           uploadingTestReport ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
@@ -2773,7 +2779,7 @@ export default function AdminCosmoCoatProcessKitDetailPage() {
                       >
                         <Upload size={14} />
                         {testForm.reportLink ? t('replaceReportImage') : t('uploadReportImage')}
-                      </label>
+                      </button>
                       {testForm.reportLink && (
                         <button
                           type="button"
