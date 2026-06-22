@@ -1,6 +1,6 @@
 'use client'
 
-import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
+import { type CSSProperties, type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Link } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
@@ -18,6 +18,7 @@ type CustomerRow = {
   phone: string | null
   mailingAddress: string | null
   notes: string | null
+  discountRate: number | null
   isActive: boolean | null
   emailVerified: string | null
   createdAt: string
@@ -42,7 +43,25 @@ type CustomerFormValues = {
   phone: string
   mailingAddress: string
   notes: string
+  discountPct: string
 }
+
+const OVERRIDE_CATEGORIES = [
+  { value: 'CARAT', label: 'Carat (base price)' },
+  { value: 'COLOR', label: 'Color (adjustment)' },
+  { value: 'SHAPE', label: 'Shape (adjustment)' },
+  { value: 'METAL', label: 'Metal (adjustment)' },
+  { value: 'RING_DESIGN', label: 'Ring Design (price)' },
+  { value: 'NECKLACE_DESIGN', label: 'Necklace Design (price)' },
+  { value: 'EARRING_DESIGN', label: 'Earring Design (price)' },
+  { value: 'BRACELET_DESIGN', label: 'Bracelet Design (price)' },
+] as const
+
+type OverrideCategory = (typeof OVERRIDE_CATEGORIES)[number]['value']
+
+const OVERRIDE_CATEGORY_LABEL = Object.fromEntries(
+  OVERRIDE_CATEGORIES.map(c => [c.value, c.label]),
+) as Record<OverrideCategory, string>
 
 const SOURCE_STYLE: Record<CustomerRow['source'], { label: string; bg: string; color: string }> = {
   ACCOUNT: { label: 'Account', bg: 'rgba(56,189,248,0.13)', color: '#38bdf8' },
@@ -269,6 +288,188 @@ function CustomerContractsSection({
   )
 }
 
+type PriceOverride = { category: OverrideCategory; value: string; price: string | number }
+type SpecOptionLite = { category: string; value: string; label: string; isActive: boolean }
+
+const SELECT_STYLE: CSSProperties = {
+  background: '#0A0A0A',
+  border: '1px solid #2A2418',
+  color: 'var(--foreground)',
+}
+
+function CustomerPriceOverridesSection({
+  customer,
+  onCustomerBound,
+}: {
+  customer: CustomerRow
+  onCustomerBound: (customerId: string) => void
+}) {
+  const [overrides, setOverrides] = useState<PriceOverride[]>([])
+  const [specOptions, setSpecOptions] = useState<SpecOptionLite[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [draft, setDraft] = useState<{ category: OverrideCategory; value: string; price: string }>({
+    category: 'CARAT',
+    value: '',
+    price: '',
+  })
+  const resolvedCustomerId = customer.customerId
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [overridesRes, specsRes] = await Promise.all([
+        fetch(`/api/admin/sfs-customers/${encodeURIComponent(customer.id)}/price-overrides`),
+        fetch('/api/admin/sfs-diamond-specs'),
+      ])
+      const overridesJson = await overridesRes.json().catch(() => ({}))
+      const specsJson = await specsRes.json().catch(() => ({}))
+      if (!overridesRes.ok) throw new Error(overridesJson.error ?? 'Failed to load overrides')
+      if (overridesJson.customerId && !resolvedCustomerId) onCustomerBound(overridesJson.customerId)
+      setOverrides(overridesJson.overrides ?? [])
+      setSpecOptions(specsJson.options ?? [])
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to load overrides.')
+    } finally {
+      setLoading(false)
+    }
+  }, [customer.id, onCustomerBound, resolvedCustomerId])
+
+  useEffect(() => { void load() }, [load])
+
+  const valueOptions = specOptions.filter(o => o.category === draft.category)
+
+  async function persist(next: PriceOverride[]) {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/admin/sfs-customers/${encodeURIComponent(customer.id)}/price-overrides`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          overrides: next.map(o => ({ category: o.category, value: o.value, price: Number(o.price) })),
+        }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error ?? 'Save failed')
+      if (json.customerId && !resolvedCustomerId) onCustomerBound(json.customerId)
+      setOverrides(json.overrides ?? next)
+      return true
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Save failed.')
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function addOverride() {
+    if (!draft.value.trim()) {
+      toast.error('Select a value to override.')
+      return
+    }
+    if (draft.price.trim() === '' || Number.isNaN(Number(draft.price))) {
+      toast.error('Enter a valid price.')
+      return
+    }
+    const next = [
+      ...overrides.filter(o => !(o.category === draft.category && o.value === draft.value)),
+      { category: draft.category, value: draft.value.trim(), price: Number(draft.price) },
+    ]
+    if (await persist(next)) {
+      setDraft(d => ({ ...d, value: '', price: '' }))
+      toast.success('Override saved.')
+    }
+  }
+
+  async function removeOverride(target: PriceOverride) {
+    const next = overrides.filter(o => !(o.category === target.category && o.value === target.value))
+    if (await persist(next)) toast.success('Override removed.')
+  }
+
+  return (
+    <div className="space-y-3 rounded-md p-4" style={{ background: '#0A0A0A', border: '1px solid #2A2418' }}>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Customer price overrides</h3>
+          <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
+            Override the global base price of specific specs for this customer. Applied before the discount rate.
+          </p>
+        </div>
+      </div>
+
+      {!resolvedCustomerId && (
+        <p className="text-xs rounded-md px-3 py-2" style={{ background: 'rgba(201,169,110,0.08)', color: '#C9A96E' }}>
+          Save the customer profile first to enable price overrides.
+        </p>
+      )}
+
+      {loading ? (
+        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Loading overrides...</p>
+      ) : (
+        <>
+          {overrides.length > 0 && (
+            <div className="space-y-2">
+              {overrides.map(o => (
+                <div
+                  key={`${o.category}|${o.value}`}
+                  className="flex items-center justify-between gap-3 rounded-md px-3 py-2"
+                  style={{ border: '1px solid #2A2418' }}
+                >
+                  <div className="min-w-0">
+                    <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{OVERRIDE_CATEGORY_LABEL[o.category]}</span>
+                    <div className="text-sm font-medium truncate" style={{ color: 'var(--foreground)' }}>
+                      {o.value} · <span style={{ color: '#C9A96E' }}>{Number(o.price).toFixed(2)} HKD</span>
+                    </div>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" disabled={saving} onClick={() => void removeOverride(o)}>
+                    <Trash2 size={13} />
+                    Remove
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="grid gap-2 md:grid-cols-[1fr_1fr_110px_auto] items-end">
+            <label className="space-y-1 block">
+              <span className="text-[11px]" style={{ color: 'var(--muted-foreground)' }}>Category</span>
+              <select
+                value={draft.category}
+                onChange={e => setDraft(d => ({ ...d, category: e.target.value as OverrideCategory, value: '' }))}
+                className="w-full rounded-md px-2.5 py-2 text-sm outline-none"
+                style={SELECT_STYLE}
+                disabled={!resolvedCustomerId}
+              >
+                {OVERRIDE_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+            </label>
+            <label className="space-y-1 block">
+              <span className="text-[11px]" style={{ color: 'var(--muted-foreground)' }}>Value</span>
+              <select
+                value={draft.value}
+                onChange={e => setDraft(d => ({ ...d, value: e.target.value }))}
+                className="w-full rounded-md px-2.5 py-2 text-sm outline-none"
+                style={SELECT_STYLE}
+                disabled={!resolvedCustomerId}
+              >
+                <option value="">Select…</option>
+                {valueOptions.map(o => <option key={o.value} value={o.value}>{o.label}{o.isActive ? '' : ' (hidden)'}</option>)}
+              </select>
+            </label>
+            <label className="space-y-1 block">
+              <span className="text-[11px]" style={{ color: 'var(--muted-foreground)' }}>Price (HKD)</span>
+              <Input type="number" step="0.01" value={draft.price} onChange={e => setDraft(d => ({ ...d, price: e.target.value }))} disabled={!resolvedCustomerId} />
+            </label>
+            <Button type="button" size="sm" disabled={saving || !resolvedCustomerId} onClick={() => void addOverride()}>
+              Add override
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 function CustomerModal({
   customer,
   onClose,
@@ -285,6 +486,7 @@ function CustomerModal({
     phone: customer?.phone ?? '',
     mailingAddress: customer?.mailingAddress ?? '',
     notes: customer?.notes ?? '',
+    discountPct: customer?.discountRate != null ? String(Number((customer.discountRate * 100).toFixed(4))) : '',
   })
   const [saving, setSaving] = useState(false)
   const [boundCustomerId, setBoundCustomerId] = useState<string | null>(customer?.customerId ?? null)
@@ -299,14 +501,27 @@ function CustomerModal({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    const discountPct = form.discountPct.trim()
+    if (discountPct !== '') {
+      const pct = Number(discountPct)
+      if (Number.isNaN(pct) || pct < 0 || pct > 100) {
+        toast.error('Discount rate must be between 0 and 100%.')
+        return
+      }
+    }
     setSaving(true)
     try {
+      const { discountPct: _omit, ...rest } = form
+      const payload = {
+        ...rest,
+        ...(isEdit ? { discountRate: discountPct === '' ? null : Number(discountPct) / 100 } : {}),
+      }
       const res = await fetch(
         isEdit ? `/api/admin/sfs-customers/${encodeURIComponent(customer!.id)}` : '/api/admin/sfs-customers',
         {
           method: isEdit ? 'PATCH' : 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(form),
+          body: JSON.stringify(payload),
         },
       )
       const json = await res.json().catch(() => ({}))
@@ -328,7 +543,7 @@ function CustomerModal({
       style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="w-full max-w-lg rounded-lg p-6 space-y-5" style={{ background: '#111111', border: '1px solid #2A2418' }}>
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg p-6 space-y-5" style={{ background: '#111111', border: '1px solid #2A2418' }}>
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>
@@ -392,8 +607,30 @@ function CustomerModal({
             />
           </label>
 
+          {isEdit && (
+            <label className="space-y-1.5 block">
+              <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Discount rate (%)</span>
+              <Input
+                type="number"
+                step="0.01"
+                min={0}
+                max={100}
+                value={form.discountPct}
+                onChange={e => updateField('discountPct', e.target.value)}
+                placeholder="e.g. 10 — applied to this customer's computed prices"
+              />
+            </label>
+          )}
+
           {isEdit && displayCustomer && (
             <CustomerContractsSection
+              customer={displayCustomer}
+              onCustomerBound={setBoundCustomerId}
+            />
+          )}
+
+          {isEdit && displayCustomer && (
+            <CustomerPriceOverridesSection
               customer={displayCustomer}
               onCustomerBound={setBoundCustomerId}
             />

@@ -11,6 +11,8 @@ const createSchema = z.object({
   label: z.string().trim().min(1).max(120),
   value: z.string().trim().max(120).optional(),
   imageUrl: z.string().trim().max(2000).optional().nullable(),
+  // Price meaning depends on category; COLOR/SHAPE/METAL may be negative adjustments.
+  price: z.coerce.number().finite().min(-1_000_000).max(1_000_000).optional().nullable(),
   sortOrder: z.coerce.number().int().min(0).max(100000).default(0),
   isActive: z.boolean().default(true),
 })
@@ -55,6 +57,7 @@ export async function POST(req: NextRequest) {
         label: parsed.data.label,
         value,
         imageUrl: parsed.data.imageUrl?.trim() || null,
+        price: parsed.data.price ?? null,
         sortOrder: parsed.data.sortOrder,
         isActive: parsed.data.isActive,
         createdById: session.user.id,

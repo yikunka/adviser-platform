@@ -1,4 +1,11 @@
 import { prisma } from '@/lib/db/prisma'
+import { getSfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options-server'
+import {
+  computeSfsOrderPricing,
+  type SfsPriceOverride,
+  type SfsPriceTier,
+  type SfsPricingDiamond,
+} from '@/lib/sfs/pricing'
 
 type DiamondRow = {
   carat?: string
@@ -41,18 +48,52 @@ export async function sfsOrderBillingSnapshot(orderId: string): Promise<SfsOrder
       contactNumber: true,
       memorialName: true,
       sampleCode: true,
+      color: true,
       diamonds: true,
+      customer: {
+        select: {
+          discountRate: true,
+          priceOverrides: { select: { category: true, value: true, price: true } },
+        },
+      },
     },
   })
   if (!order) return null
 
   const diamonds = (Array.isArray(order.diamonds) ? order.diamonds : []) as DiamondRow[]
+
+  // Compute suggested unit prices from the pricing engine (carat/color/shape additive
+  // base + count-tier discount on the diamond portion + per-design jewellery price +
+  // customer discount/overrides). Unpriced spec options resolve to 0.
+  const [specOptions, tierRows] = await Promise.all([
+    getSfsOrderSpecOptions(),
+    prisma.sfsDiamondPriceTier.findMany({ orderBy: [{ sortOrder: 'asc' }, { minCount: 'asc' }] }),
+  ])
+  const tiers: SfsPriceTier[] = tierRows.map(t => ({
+    minCount: t.minCount,
+    maxCount: t.maxCount,
+    discountRate: Number(t.discountRate),
+  }))
+  const overrides: SfsPriceOverride[] = (order.customer?.priceOverrides ?? []).map(o => ({
+    category: o.category,
+    value: o.value,
+    price: Number(o.price),
+  }))
+  const pricing = computeSfsOrderPricing({
+    diamonds: diamonds as SfsPricingDiamond[],
+    color: order.color,
+    specOptions,
+    tiers,
+    customerDiscountRate: order.customer?.discountRate != null ? Number(order.customer.discountRate) : 0,
+    overrides,
+  })
+
   const suggestedLines =
     diamonds.length > 0
-      ? diamonds.map(d => ({
+      ? diamonds.map((d, index) => ({
           description: diamondLineDescription(d, order.memorialName),
           quantity: 1,
-          unitPrice: 0,
+          unitPrice: pricing.lines[index]?.unitPrice ?? 0,
         }))
       : [
           {

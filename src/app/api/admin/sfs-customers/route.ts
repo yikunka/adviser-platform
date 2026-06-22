@@ -24,6 +24,7 @@ type SfsCustomerRow = {
   phone: string | null
   mailingAddress: string | null
   notes: string | null
+  discountRate: number | null
   isActive: boolean | null
   emailVerified: string | null
   createdAt: string
@@ -163,6 +164,7 @@ export async function GET(req: NextRequest) {
       phone: profile?.phone ?? latest?.contactNumber ?? user.phone,
       mailingAddress: profile?.mailingAddress ?? latest?.mailingAddress ?? user.mailingAddress,
       notes: profile?.notes ?? null,
+      discountRate: profile?.discountRate != null ? Number(profile.discountRate) : null,
       isActive: user.isActive,
       emailVerified: user.emailVerified?.toISOString() ?? null,
       createdAt: (profile?.createdAt ?? user.createdAt).toISOString(),
@@ -185,6 +187,7 @@ export async function GET(req: NextRequest) {
       phone: customer.phone,
       mailingAddress: customer.mailingAddress,
       notes: customer.notes,
+      discountRate: customer.discountRate != null ? Number(customer.discountRate) : null,
       isActive: null,
       emailVerified: null,
       createdAt: customer.createdAt.toISOString(),
@@ -215,6 +218,7 @@ export async function GET(req: NextRequest) {
       phone: latest.contactNumber,
       mailingAddress: latest.mailingAddress,
       notes: null,
+      discountRate: null,
       isActive: null,
       emailVerified: null,
       createdAt: latest.createdAt.toISOString(),

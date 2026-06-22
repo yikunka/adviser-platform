@@ -1298,18 +1298,39 @@ model SfsCustomer {
   phone          String?
   mailingAddress String?
   notes          String?
+  // Customer-wide discount applied to the final computed unit price (e.g. 0.10 = 10% off). Null = none.
+  discountRate   Decimal? @db.Decimal(5, 4)
   createdById    String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  user      User?                 @relation("SfsCustomerUser", fields: [userId], references: [id], onDelete: SetNull)
-  createdBy User?                 @relation("SfsCustomerCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  orders    SfsOrder[]
-  contracts SfsCustomerContract[]
+  user           User?                       @relation("SfsCustomerUser", fields: [userId], references: [id], onDelete: SetNull)
+  createdBy      User?                       @relation("SfsCustomerCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  orders         SfsOrder[]
+  contracts      SfsCustomerContract[]
+  priceOverrides SfsCustomerPriceOverride[]
 
   @@index([email])
   @@index([createdAt])
   @@map("sfs_customers")
+}
+
+/// Per-customer base-price override for a specific spec option (category + value).
+/// When present it replaces the global SfsDiamondSpecOption.price for that customer.
+model SfsCustomerPriceOverride {
+  id         String                 @id @default(cuid())
+  customerId String
+  category   SfsDiamondSpecCategory
+  value      String
+  price      Decimal                @db.Decimal(18, 2)
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+
+  customer SfsCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, category, value])
+  @@index([customerId])
+  @@map("sfs_customer_price_overrides")
 }
 
 model SfsCustomerContract {
@@ -1374,6 +1395,13 @@ model SfsDiamondSpecOption {
   label       String
   value       String
   imageUrl    String?
+  // Pricing — meaning depends on category:
+  //   CARAT          → diamond base price
+  //   COLOR / SHAPE  → additive price adjustment (may be negative)
+  //   *_DESIGN       → jewellery design price
+  //   METAL          → additive metal price adjustment
+  // Null/unset is treated as 0 by the pricing engine.
+  price       Decimal?               @db.Decimal(18, 2)
   sortOrder   Int                    @default(0)
   isActive    Boolean                @default(true)
   createdById String?
@@ -1383,6 +1411,21 @@ model SfsDiamondSpecOption {
   @@unique([category, value])
   @@index([category, sortOrder])
   @@map("sfs_diamond_spec_options")
+}
+
+/// Order-total diamond-count tiers that grant a discount on the diamond price portion.
+model SfsDiamondPriceTier {
+  id           String   @id @default(cuid())
+  minCount     Int
+  maxCount     Int? // null = no upper bound
+  discountRate Decimal  @db.Decimal(5, 4) // e.g. 0.05 = 5% off
+  sortOrder    Int      @default(0)
+  createdById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([sortOrder])
+  @@map("sfs_diamond_price_tiers")
 }
 
 // ─────────────────────────────────────────────

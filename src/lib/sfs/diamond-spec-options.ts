@@ -6,8 +6,38 @@ export type SfsSpecOption = {
   label: string
   value: string
   imageUrl: string | null
+  /**
+   * Pricing value; meaning depends on category (CARAT = base price, COLOR/SHAPE/METAL =
+   * additive adjustment, *_DESIGN = jewellery design price). Null = unset, treated as 0.
+   */
+  price: number | null
   sortOrder: number
   isActive: boolean
+}
+
+/** Loose shape accepted by {@link groupSfsSpecOptions} — covers Prisma rows whose `price` is a Decimal. */
+export type SfsSpecOptionRow = {
+  id: string
+  category: SfsDiamondSpecCategory
+  label: string
+  value: string
+  imageUrl: string | null
+  price?: number | string | { toString(): string } | null
+  sortOrder: number
+  isActive: boolean
+}
+
+function normalizeSpecOption(row: SfsSpecOptionRow): SfsSpecOption {
+  return {
+    id: row.id,
+    category: row.category,
+    label: row.label,
+    value: row.value,
+    imageUrl: row.imageUrl ?? null,
+    price: row.price == null ? null : Number(row.price),
+    sortOrder: row.sortOrder,
+    isActive: row.isActive,
+  }
 }
 
 export type SfsOrderSpecOptions = {
@@ -118,16 +148,17 @@ function option(
     label,
     value: label,
     imageUrl,
+    price: null,
     sortOrder,
     isActive: true,
   }
 }
 
-export function groupSfsSpecOptions(options: SfsSpecOption[]): SfsOrderSpecOptions {
+export function groupSfsSpecOptions(options: SfsSpecOptionRow[]): SfsOrderSpecOptions {
   const byCategory = new Map<SfsDiamondSpecCategory, SfsSpecOption[]>()
   for (const category of SFS_SPEC_CATEGORIES) byCategory.set(category, [])
   for (const item of options) {
-    byCategory.get(item.category)?.push(item)
+    byCategory.get(item.category)?.push(normalizeSpecOption(item))
   }
 
   return {
