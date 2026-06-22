@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   const requireCurrentRecipe =
     req.nextUrl.searchParams.get('requireCurrentRecipe') !== 'false'
   const limit = Math.min(
-    100,
+    500,
     Math.max(1, Number(req.nextUrl.searchParams.get('limit') ?? '50') || 50),
   )
 

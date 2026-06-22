@@ -10,6 +10,7 @@ import {
   Package,
   Pencil,
   Plus,
+  Printer,
   Search,
   Star,
   Trash2,
@@ -22,6 +23,10 @@ import {
 } from '@/lib/cosmocoat/product-category-tree'
 import { VISCOSITY_UNITS, type ViscosityUnit } from '@/lib/cosmocoat/product-viscosity'
 import { notifyFactoryProductChanged } from '@/lib/cosmocoat/factory-product-events'
+import {
+  buildFactoryProductLabelDraft,
+  type FactoryProductLabelDraft,
+} from '@/lib/cosmocoat/factory-product-label'
 
 type ProductCategoryRef = {
   id: string
@@ -94,6 +99,32 @@ type ProductForm = {
   currentRecipeId: string | null
 }
 
+type LabelRotation = '0' | '90' | '180' | '270'
+
+const LABEL_ROTATION_STORAGE_KEY = 'cosmocoat-factory-product-label-rotation'
+
+const LABEL_ROTATION_OPTIONS: { value: LabelRotation; label: string }[] = [
+  { value: '0', label: '横向 100×70（正常）' },
+  { value: '90', label: '旋转 90°（纵向走纸）' },
+  { value: '180', label: '旋转 180°（倒转）' },
+  { value: '270', label: '旋转 270°（纵向走纸）' },
+]
+
+const LABEL_DESIGN_W_MM = 100
+const LABEL_DESIGN_H_MM = 70
+
+function labelPrintGeometry(rotation: LabelRotation) {
+  const portraitFeed = rotation === '90' || rotation === '270'
+  const pageW = portraitFeed ? LABEL_DESIGN_H_MM : LABEL_DESIGN_W_MM
+  const pageH = portraitFeed ? LABEL_DESIGN_W_MM : LABEL_DESIGN_H_MM
+  const transform =
+    rotation === '90' ? `translateX(${LABEL_DESIGN_H_MM}mm) rotate(90deg)`
+    : rotation === '180' ? `translate(${LABEL_DESIGN_W_MM}mm, ${LABEL_DESIGN_H_MM}mm) rotate(180deg)`
+    : rotation === '270' ? `translateY(${LABEL_DESIGN_W_MM}mm) rotate(270deg)`
+    : 'none'
+  return { pageW, pageH, transform }
+}
+
 const emptyForm: ProductForm = {
   productCode: '',
   name: '',
@@ -106,6 +137,29 @@ const emptyForm: ProductForm = {
   sortOrder: 0,
   recipeIds: [],
   currentRecipeId: null,
+}
+
+function FactoryProductLabelPrintView({ label }: { label: FactoryProductLabelDraft }) {
+  return (
+    <div id="cosmocoat-factory-product-label-print-area">
+      <div className="factory-product-label-frame">
+        <div className="factory-product-label-card">
+          <div className="factory-product-label-title">{label.title || '—'}</div>
+          <div className="factory-product-label-name">{label.productName || '—'}</div>
+          <div className="factory-product-label-grid">
+            <span>类别</span>
+            <strong>{label.category || '—'}</strong>
+            <span>单位</span>
+            <strong>{label.unit || '—'}</strong>
+            <span>粘度</span>
+            <strong>{label.viscosity || '—'}</strong>
+            <span>当前配方</span>
+            <strong>{label.currentRecipe || '—'}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 const card: React.CSSProperties = {
@@ -257,11 +311,7 @@ function ProductEditor({
       viscosity: currentRecipeOption.viscosity ?? '',
       viscosityUnit: currentRecipeOption.viscosityUnit ?? 'S',
     }))
-  }, [
-    currentRecipeOption?.id,
-    currentRecipeOption?.viscosity,
-    currentRecipeOption?.viscosityUnit,
-  ])
+  }, [currentRecipeOption])
 
   const availableRecipes = useMemo(() => {
     const q = recipeSearch.trim().toLowerCase()
@@ -561,8 +611,24 @@ export default function AdminCosmoCoatFactoryProductsPage() {
   const [recipeOptions, setRecipeOptions] = useState<RecipeOption[]>([])
   const [editorProduct, setEditorProduct] = useState<FactoryProduct | null | 'new'>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [labelDraft, setLabelDraft] = useState<FactoryProductLabelDraft | null>(null)
+  const [labelPrintData, setLabelPrintData] = useState<FactoryProductLabelDraft | null>(null)
+  const [printingLabel, setPrintingLabel] = useState(false)
+  const [labelRotation, setLabelRotation] = useState<LabelRotation>('0')
 
   const flatCategories = useMemo(() => flattenCategoryTree(categoryTree), [categoryTree])
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(LABEL_ROTATION_STORAGE_KEY)
+    if (stored === '0' || stored === '90' || stored === '180' || stored === '270') {
+      setLabelRotation(stored)
+    }
+  }, [])
+
+  function updateLabelRotation(value: LabelRotation) {
+    setLabelRotation(value)
+    window.localStorage.setItem(LABEL_ROTATION_STORAGE_KEY, value)
+  }
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -658,8 +724,172 @@ export default function AdminCosmoCoatFactoryProductsPage() {
     }
   }
 
+  useEffect(() => {
+    function clearPrintedLabel() {
+      setPrintingLabel(false)
+      setLabelPrintData(null)
+    }
+
+    window.addEventListener('afterprint', clearPrintedLabel)
+    return () => window.removeEventListener('afterprint', clearPrintedLabel)
+  }, [])
+
+  function openLabelDialog(product: FactoryProduct) {
+    setLabelDraft(buildFactoryProductLabelDraft(product))
+  }
+
+  function printProductLabel() {
+    if (!labelDraft) return
+    setLabelPrintData(labelDraft)
+    setLabelDraft(null)
+    setPrintingLabel(true)
+    window.setTimeout(() => window.print(), 50)
+  }
+
+  const labelGeometry = labelPrintGeometry(labelRotation)
+
   return (
-    <div className="p-6 space-y-6">
+    <>
+      {labelPrintData && (
+        <>
+          <style>{`
+            @media print {
+              @page { size: ${labelGeometry.pageW}mm ${labelGeometry.pageH}mm; margin: 0; }
+
+              html,
+              body {
+                width: ${labelGeometry.pageW}mm !important;
+                height: ${labelGeometry.pageH}mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #fff !important;
+              }
+
+              .admin-console {
+                display: block !important;
+                min-height: auto !important;
+                background: #fff !important;
+              }
+
+              .admin-console > aside,
+              .admin-console > .flex-1 > header,
+              .feedback-widget,
+              .cosmocoat-factory-products-screen {
+                display: none !important;
+              }
+
+              .admin-console > .flex-1,
+              .admin-console main {
+                display: block !important;
+                min-width: 0 !important;
+                padding: 0 !important;
+                overflow: visible !important;
+                background: #fff !important;
+              }
+
+              #cosmocoat-factory-product-label-print-area {
+                display: block !important;
+                position: relative;
+                width: ${labelGeometry.pageW}mm;
+                height: ${labelGeometry.pageH}mm;
+                overflow: hidden;
+                box-sizing: border-box;
+                color: #000 !important;
+                background: #fff !important;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+              }
+
+              #cosmocoat-factory-product-label-print-area * {
+                box-sizing: border-box;
+                color: #000 !important;
+                background: #fff !important;
+                box-shadow: none !important;
+                text-shadow: none !important;
+              }
+
+              .factory-product-label-frame {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: ${LABEL_DESIGN_W_MM}mm;
+                height: ${LABEL_DESIGN_H_MM}mm;
+                padding: 4mm;
+                box-sizing: border-box;
+                transform-origin: top left;
+                transform: ${labelGeometry.transform};
+                font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+              }
+
+              .factory-product-label-card {
+                width: 100%;
+                height: 100%;
+                border: 1.6pt solid #000;
+                padding: 3mm;
+                display: flex;
+                flex-direction: column;
+                gap: 2mm;
+                overflow: hidden;
+              }
+
+              .factory-product-label-title {
+                text-align: center;
+                font-size: 16pt;
+                font-weight: 800;
+                letter-spacing: 0;
+                border-bottom: 1pt solid #000;
+                padding-bottom: 1.5mm;
+                line-height: 1.1;
+                word-break: break-word;
+                overflow-wrap: anywhere;
+              }
+
+              .factory-product-label-name {
+                min-height: 10mm;
+                max-height: 15mm;
+                font-size: 12pt;
+                font-weight: 700;
+                line-height: 1.2;
+                word-break: break-word;
+                overflow-wrap: anywhere;
+                overflow: hidden;
+              }
+
+              .factory-product-label-grid {
+                display: grid;
+                grid-template-columns: 22mm 1fr;
+                border-top: 1pt solid #000;
+                border-left: 1pt solid #000;
+                font-size: 9.5pt;
+                line-height: 1.18;
+                flex: 1;
+                min-height: 0;
+              }
+
+              .factory-product-label-grid span,
+              .factory-product-label-grid strong {
+                min-height: 7mm;
+                padding: 1mm 1.6mm;
+                border-right: 1pt solid #000;
+                border-bottom: 1pt solid #000;
+                word-break: break-word;
+                overflow-wrap: anywhere;
+                overflow: hidden;
+              }
+
+              .factory-product-label-grid span {
+                font-weight: 700;
+              }
+            }
+
+            @media screen {
+              #cosmocoat-factory-product-label-print-area { display: none; }
+            }
+          `}</style>
+          <FactoryProductLabelPrintView label={labelPrintData} />
+        </>
+      )}
+    <div className="cosmocoat-factory-products-screen p-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>CosmoCoat 产品管理</h1>
@@ -761,6 +991,16 @@ export default function AdminCosmoCoatFactoryProductsPage() {
                     <td style={td}>{product.recipes.length} 个</td>
                     <td style={{ ...td, textAlign: 'right' }}>
                       <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={e => { e.stopPropagation(); openLabelDialog(product) }}
+                          disabled={printingLabel}
+                          className="p-1.5 rounded-md disabled:opacity-40"
+                          title="打印标签"
+                          style={{ color: 'var(--muted-foreground)' }}
+                        >
+                          <Printer size={14} />
+                        </button>
                         <button type="button" onClick={e => { e.stopPropagation(); setEditorProduct(product) }} className="p-1.5 rounded-md" style={{ color: 'var(--muted-foreground)' }}>
                           <Pencil size={14} />
                         </button>
@@ -797,6 +1037,93 @@ export default function AdminCosmoCoatFactoryProductsPage() {
           onSaved={fetchItems}
         />
       )}
+
+      {labelDraft && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ background: 'rgba(0, 0, 0, 0.55)' }}
+          onClick={() => setLabelDraft(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-lg p-5 shadow-xl"
+            style={{ ...card, background: '#0A0805' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold" style={{ color: 'var(--foreground)' }}>打印产品标签</h2>
+                <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                  打印前可编辑标签文字，尺寸为 100mm × 70mm。
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLabelDraft(null)}
+                className="rounded-md p-1.5"
+                style={{ color: 'var(--muted-foreground)' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              {([
+                ['title', '产品标题'],
+                ['productName', '产品名称'],
+                ['category', '类别'],
+                ['unit', '单位'],
+                ['viscosity', '粘度'],
+                ['currentRecipe', '当前配方'],
+              ] as const).map(([key, label]) => (
+                <div key={key} className="space-y-1.5">
+                  <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>{label}</label>
+                  <input
+                    value={labelDraft[key]}
+                    onChange={e => setLabelDraft(prev => prev ? { ...prev, [key]: e.target.value } : prev)}
+                    className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+                    style={inputStyle()}
+                  />
+                </div>
+              ))}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>打印方向</label>
+                <select
+                  value={labelRotation}
+                  onChange={e => updateLabelRotation(e.target.value as LabelRotation)}
+                  className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+                  style={inputStyle()}
+                >
+                  {LABEL_ROTATION_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setLabelDraft(null)}
+                className="rounded-lg px-4 py-2 text-sm"
+                style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={printProductLabel}
+                disabled={printingLabel}
+                className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-60"
+                style={{ background: '#C9A96E', color: '#0A0805' }}
+              >
+                <Printer size={14} />
+                打印
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+    </>
   )
 }

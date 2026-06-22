@@ -250,7 +250,7 @@ Animated SVG flow diagram showing all entity relationships across the CosmoCoat 
 - Visualises: 原材料 → 配方 → 半成品 → 工厂产品 → 调色单 / 工艺书 in vertical bands
 - Each node = one actual database record; edges = real relationships (recipe items, product links, color formula sources, process kit products)
 - Hover a node to highlight all connected paths and see name/code/relationship count; the page also has a raw-material search box that matches by material code or name and highlights every downstream impacted node/path from 原材料 → 配方 → 半成品 → 工厂产品 → 调色单 / 工艺书
-- Data fetched client-side from `/api/admin/cosmocoat/overview-graph`; up to 200 records per entity type
+- Data fetched client-side from `/api/admin/cosmocoat/overview-graph`; raw materials default to records actually used in recipe items, entity queries are not capped by the previous 200-record display limit, and raw-material search covers the displayed used materials and their downstream chains
 - Menu item: "物料流向" (zh) / "Flow Overview" (en) in the CosmoCoat group
 
 ### Public Pages (`/cosmocoat/`)
@@ -266,6 +266,7 @@ Finished goods produced by the factory.
 - Without a current recipe, viscosity can be entered manually (free-text range e.g. `9.7-9.8`, unit S or KU)
 - Assign / change current recipe; link multiple recipe candidates
 - Search / filter by name or category
+- Product list rows have a print-label action; it opens an editable preview for product-label text and prints a 100mm x 70mm black-and-white thermal-paper label with rotation options for printer feed direction
 
 ### Product Categories (`/admin/cosmocoat-product-categories`)
 Hierarchical category tree (up to 3 levels) for the website catalog.
@@ -324,6 +325,7 @@ Manufacturing batch tracking.
 - Fields: order code, factory product, recipe, total weight, optional assigned production employee (dropdown only; no employee detail panel on the detail page; batch number is not shown or editable on the detail page, though list view still has a 批次 column). Querying and assigning production-employee options follows `cosmocoatProductionOrders.edit` permission, not Employee Management access.
 - Detail page shows recipe code, name, and viscosity range (read-only, e.g. `9.7-9.8 S` or `9.7-9.8 KU` from the linked recipe); there is no link/button to open the linked recipe detail page
 - New order page: factory product picker supports type-to-search with fuzzy matching (product code, name, current recipe); loads options on demand via lightweight API instead of bulk-fetching all products
+- List page supports search plus filters for a single factory product and created-date start/end range
 - Product list auto-excludes factory products without a current recipe; optional `?recipeId=` URL param further limits choices to products linked to that recipe
 - Recipes containing only nested sub-recipes or semifinished components (no raw-material lines) show an empty materials table instead of crashing
 - Statuses: `DRAFT` → `IN_PROGRESS` → `COMPLETED`
@@ -375,7 +377,7 @@ Unified customer registry for CosmoCoat manufacturing clients (raw material purc
 
 ### Suppliers (`/admin/cosmocoat-suppliers`)
 Independent supplier registry for CosmoCoat sourcing; data and permission key are separate from customer management.
-- Fields: supplier code (auto-generated `SC####` if omitted), name, contact information, address
+- Fields: supplier code (auto-generated `SC####` if omitted), name, contact information, dedicated contact person, address
 - Supplier list defaults to supplier-code ascending order (`SC0001`, `SC0002`, ...)
 - List with search (code / name / contact information / address); paginated table
 - Bulk import from Excel/CSV on the list page: supplier name is required; optional supplier code can be provided, otherwise the system auto-generates `SC####`; contact information and address can also be imported when those columns exist

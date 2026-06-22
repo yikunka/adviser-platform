@@ -14,6 +14,7 @@ import {
   resolveProductCurrentRecipe,
   serializeProductionOrder,
 } from '@/lib/cosmocoat/production-orders'
+import { buildProductionOrderWhere } from '@/lib/cosmocoat/production-order-filters'
 
 const itemInputSchema = z.object({
   rawMaterialId: z.string().trim().min(1).optional(),
@@ -70,21 +71,14 @@ export async function GET(req: NextRequest) {
   if (error) return error
 
   const q = req.nextUrl.searchParams.get('q')?.trim() ?? ''
+  const factoryProductId = req.nextUrl.searchParams.get('factoryProductId')?.trim() ?? ''
+  const createdFrom = req.nextUrl.searchParams.get('createdFrom')?.trim() ?? ''
+  const createdTo = req.nextUrl.searchParams.get('createdTo')?.trim() ?? ''
   const page = Math.max(1, Number(req.nextUrl.searchParams.get('page') ?? '1') || 1)
   const limit = Math.min(200, Math.max(1, Number(req.nextUrl.searchParams.get('limit') ?? '50') || 50))
   const skip = (page - 1) * limit
 
-  const where: Prisma.CosTableProductionOrderWhereInput = q
-    ? {
-        OR: [
-          { code: { contains: q, mode: 'insensitive' } },
-          { batchNo: { contains: q, mode: 'insensitive' } },
-          { factoryProduct: { name: { contains: q, mode: 'insensitive' } } },
-          { factoryProduct: { productCode: { contains: q, mode: 'insensitive' } } },
-          { recipe: { code: { contains: q, mode: 'insensitive' } } },
-        ],
-      }
-    : {}
+  const where = buildProductionOrderWhere({ q, factoryProductId, createdFrom, createdTo })
 
   try {
     const [total, items] = await Promise.all([

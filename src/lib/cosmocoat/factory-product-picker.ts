@@ -76,7 +76,7 @@ export async function listFactoryProductPickerOptions(params: {
   requireCurrentRecipe?: boolean
   limit?: number
 }): Promise<FactoryProductPickerOption[]> {
-  const limit = Math.min(100, Math.max(1, params.limit ?? 50))
+  const limit = Math.min(500, Math.max(1, params.limit ?? 50))
   const q = params.q?.trim() ?? ''
   const id = params.id?.trim() ?? ''
 

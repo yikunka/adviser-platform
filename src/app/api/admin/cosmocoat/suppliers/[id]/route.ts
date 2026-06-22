@@ -14,6 +14,7 @@ import { deleteCosSupplierFile } from '@/lib/cosmocoat/supplier-files'
 const updateSchema = z.object({
   code: z.string().trim().min(1).max(32).optional(),
   name: z.string().trim().min(1).max(200).optional(),
+  contactPerson: z.string().trim().max(200).optional().nullable(),
   contactInfo: z.string().trim().max(500).optional().nullable(),
   address: z.string().trim().max(500).optional().nullable(),
 })
@@ -76,6 +77,7 @@ export async function PATCH(
       data: {
         ...(parsed.data.code !== undefined ? { code: parsed.data.code } : {}),
         ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
+        ...(parsed.data.contactPerson !== undefined ? { contactPerson: nullableText(parsed.data.contactPerson) } : {}),
         ...(parsed.data.contactInfo !== undefined ? { contactInfo: nullableText(parsed.data.contactInfo) } : {}),
         ...(parsed.data.address !== undefined ? { address: nullableText(parsed.data.address) } : {}),
       },

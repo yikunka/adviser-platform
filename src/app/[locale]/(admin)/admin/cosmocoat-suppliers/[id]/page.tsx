@@ -12,6 +12,7 @@ import type { CosSupplierRow } from '@/lib/cosmocoat/suppliers'
 type FormState = {
   code: string
   name: string
+  contactPerson: string
   contactInfo: string
   address: string
 }
@@ -236,6 +237,7 @@ export default function AdminCosmoCoatSupplierDetailPage() {
   const [form, setForm] = useState<FormState>({
     code: '',
     name: '',
+    contactPerson: '',
     contactInfo: '',
     address: '',
   })
@@ -267,6 +269,7 @@ export default function AdminCosmoCoatSupplierDetailPage() {
       setForm({
         code: row.code,
         name: row.name,
+        contactPerson: row.contactPerson ?? '',
         contactInfo: row.contactInfo ?? '',
         address: row.address ?? '',
       })
@@ -298,6 +301,7 @@ export default function AdminCosmoCoatSupplierDetailPage() {
       const payload = {
         code: form.code.trim() || undefined,
         name: form.name.trim(),
+        contactPerson: form.contactPerson.trim() || null,
         contactInfo: form.contactInfo.trim() || null,
         address: form.address.trim() || null,
       }
@@ -324,6 +328,7 @@ export default function AdminCosmoCoatSupplierDetailPage() {
         setForm({
           code: data.supplier.code,
           name: data.supplier.name,
+          contactPerson: data.supplier.contactPerson ?? '',
           contactInfo: data.supplier.contactInfo ?? '',
           address: data.supplier.address ?? '',
         })
@@ -419,17 +424,29 @@ export default function AdminCosmoCoatSupplierDetailPage() {
             </Field>
           </div>
 
-          <Field label="联系方式">
-            <textarea
-              value={form.contactInfo}
-              onChange={e => patch('contactInfo', e.target.value)}
-              maxLength={500}
-              rows={3}
-              placeholder="联系人、电话、邮箱等"
-              className="w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-y"
-              style={inputStyle()}
-            />
-          </Field>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Field label="联系方式">
+              <textarea
+                value={form.contactInfo}
+                onChange={e => patch('contactInfo', e.target.value)}
+                maxLength={500}
+                rows={3}
+                placeholder="电话、邮箱等"
+                className="w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-y"
+                style={inputStyle()}
+              />
+            </Field>
+            <Field label="联系人">
+              <input
+                value={form.contactPerson}
+                onChange={e => patch('contactPerson', e.target.value)}
+                maxLength={200}
+                placeholder="负责对接人员"
+                className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+                style={inputStyle()}
+              />
+            </Field>
+          </div>
 
           <Field label="地址">
             <textarea

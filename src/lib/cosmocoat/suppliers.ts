@@ -5,6 +5,7 @@ export type CosSupplierRow = {
   id: string
   code: string
   name: string
+  contactPerson: string | null
   contactInfo: string | null
   address: string | null
   createdById: string | null
@@ -18,6 +19,7 @@ export function serializeSupplier(supplier: {
   id: string
   code: string
   name: string
+  contactPerson: string | null
   contactInfo: string | null
   address: string | null
   createdById: string | null
@@ -28,6 +30,7 @@ export function serializeSupplier(supplier: {
     id: supplier.id,
     code: supplier.code,
     name: supplier.name,
+    contactPerson: supplier.contactPerson,
     contactInfo: supplier.contactInfo,
     address: supplier.address,
     createdById: supplier.createdById,

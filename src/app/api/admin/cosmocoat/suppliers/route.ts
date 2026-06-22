@@ -16,6 +16,7 @@ const PAGE_SIZE = 20
 const createSchema = z.object({
   code: z.string().trim().min(1).max(32).optional(),
   name: z.string().trim().min(1).max(200),
+  contactPerson: z.string().trim().max(200).optional().nullable(),
   contactInfo: z.string().trim().max(500).optional().nullable(),
   address: z.string().trim().max(500).optional().nullable(),
 })
@@ -94,6 +95,7 @@ export async function POST(req: NextRequest) {
       data: {
         code,
         name: parsed.data.name,
+        contactPerson: nullableText(parsed.data.contactPerson),
         contactInfo: nullableText(parsed.data.contactInfo),
         address: nullableText(parsed.data.address),
         createdById: session!.user.id,

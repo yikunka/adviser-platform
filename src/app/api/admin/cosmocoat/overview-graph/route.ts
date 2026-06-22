@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
+import { buildOverviewRawMaterialWhere } from '@/lib/cosmocoat/overview-graph'
 
 export async function GET() {
   const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatRawMaterials' })
@@ -10,9 +11,9 @@ export async function GET() {
     const [rawMaterials, recipes, semiFinished, factoryProducts, colorFormulas, processKits, productionOrders] =
       await Promise.all([
         prisma.cosTableRawMaterial.findMany({
+          where: buildOverviewRawMaterialWhere(),
           select: { id: true, productionCode: true, name: true, category: true },
           orderBy: { productionCode: 'asc' },
-          take: 300,
         }),
         prisma.cosTableRecipe.findMany({
           select: {
@@ -28,12 +29,10 @@ export async function GET() {
             },
           },
           orderBy: { code: 'asc' },
-          take: 300,
         }),
         prisma.cosTableProductSemifinished.findMany({
           select: { id: true, code: true, name: true },
           orderBy: { code: 'asc' },
-          take: 300,
         }),
         prisma.cosTableFactoryProduct.findMany({
           select: {
@@ -44,7 +43,6 @@ export async function GET() {
             recipeLinks: { select: { recipeId: true } },
           },
           orderBy: { productCode: 'asc' },
-          take: 300,
         }),
         prisma.cosTableColorFormula.findMany({
           select: {
@@ -61,7 +59,6 @@ export async function GET() {
             },
           },
           orderBy: { code: 'asc' },
-          take: 300,
         }),
         prisma.cosProcessKit.findMany({
           select: {
@@ -71,7 +68,6 @@ export async function GET() {
             products: { select: { productId: true } },
           },
           orderBy: { code: 'asc' },
-          take: 200,
         }),
         // Production orders to derive recipe → semi-finished edges
         prisma.cosTableProductionOrder.findMany({
@@ -79,7 +75,6 @@ export async function GET() {
             recipeId: true,
             semifinishedProducts: { select: { id: true } },
           },
-          take: 500,
         }),
       ])
 

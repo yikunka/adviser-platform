@@ -2249,6 +2249,7 @@ model CosSupplier {
   id          String   @id @default(cuid())
   code        String   @unique
   name        String
+  contactPerson String?
   contactInfo String?
   address     String?
   createdById String?

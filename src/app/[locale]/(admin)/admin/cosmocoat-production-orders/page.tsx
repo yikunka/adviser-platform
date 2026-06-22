@@ -33,6 +33,12 @@ type ProductLabelDraft = {
   weight: string
 }
 
+type FactoryProductFilterOption = {
+  id: string
+  productCode: string
+  name: string
+}
+
 type ProductLabelPrintData = {
   productCode: string
   productName: string
@@ -153,6 +159,10 @@ export default function AdminCosmoCoatProductionOrdersPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [factoryProductId, setFactoryProductId] = useState('')
+  const [createdFrom, setCreatedFrom] = useState('')
+  const [createdTo, setCreatedTo] = useState('')
+  const [productOptions, setProductOptions] = useState<FactoryProductFilterOption[]>([])
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [labelDraft, setLabelDraft] = useState<ProductLabelDraft | null>(null)
   const [labelPrintData, setLabelPrintData] = useState<ProductLabelPrintData | null>(null)
@@ -171,11 +181,21 @@ export default function AdminCosmoCoatProductionOrdersPage() {
     window.localStorage.setItem(LABEL_ROTATION_STORAGE_KEY, value)
   }
 
+  useEffect(() => {
+    fetch('/api/admin/cosmocoat/factory-products/picker-options?limit=500&requireCurrentRecipe=false')
+      .then(res => res.json())
+      .then(data => setProductOptions(data.items ?? []))
+      .catch(() => setProductOptions([]))
+  }, [])
+
   const fetchItems = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams({ page: String(page), limit: '50' })
       if (search.trim()) params.set('q', search.trim())
+      if (factoryProductId) params.set('factoryProductId', factoryProductId)
+      if (createdFrom) params.set('createdFrom', createdFrom)
+      if (createdTo) params.set('createdTo', createdTo)
       const res = await fetch(`/api/admin/cosmocoat/production-orders?${params}`)
       const data = await res.json()
       if (!res.ok) {
@@ -190,7 +210,7 @@ export default function AdminCosmoCoatProductionOrdersPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search])
+  }, [page, search, factoryProductId, createdFrom, createdTo])
 
   useEffect(() => {
     const t = setTimeout(fetchItems, search ? 300 : 0)
@@ -199,7 +219,7 @@ export default function AdminCosmoCoatProductionOrdersPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [search])
+  }, [search, factoryProductId, createdFrom, createdTo])
 
   async function deleteOrder(order: ProductionOrderRow) {
     if (!window.confirm(`确定删除生产单「${order.code}」？`)) return
@@ -425,7 +445,8 @@ export default function AdminCosmoCoatProductionOrdersPage() {
       </div>
 
       <div style={card} className="p-4">
-        <div className="relative max-w-md">
+        <div className="grid gap-3 lg:grid-cols-[minmax(260px,1.4fr)_minmax(220px,1fr)_160px_160px_auto]">
+        <div className="relative">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
           <input
             value={search}
@@ -434,6 +455,51 @@ export default function AdminCosmoCoatProductionOrdersPage() {
             className="w-full pl-8 pr-3 py-2 rounded-lg text-sm outline-none"
             style={inputStyle()}
           />
+        </div>
+        <select
+          value={factoryProductId}
+          onChange={e => setFactoryProductId(e.target.value)}
+          className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+          style={inputStyle()}
+          aria-label="产品筛选"
+        >
+          <option value="">全部产品</option>
+          {productOptions.map(product => (
+            <option key={product.id} value={product.id}>
+              {product.productCode} · {product.name}
+            </option>
+          ))}
+        </select>
+        <input
+          type="date"
+          value={createdFrom}
+          onChange={e => setCreatedFrom(e.target.value)}
+          className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+          style={inputStyle()}
+          aria-label="创建日期开始"
+        />
+        <input
+          type="date"
+          value={createdTo}
+          onChange={e => setCreatedTo(e.target.value)}
+          className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+          style={inputStyle()}
+          aria-label="创建日期结束"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            setSearch('')
+            setFactoryProductId('')
+            setCreatedFrom('')
+            setCreatedTo('')
+          }}
+          className="inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm"
+          style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}
+        >
+          <X size={14} />
+          清空
+        </button>
         </div>
       </div>
 
