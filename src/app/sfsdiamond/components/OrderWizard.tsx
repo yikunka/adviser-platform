@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { getDesignOptionsForSettingType, type SfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options'
+import { getDesignOptionGroupsForSettingType, type SfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -344,7 +344,7 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
   onRemove: () => void; showRemove: boolean; collapsed: boolean; onToggleCollapse: () => void
   specOptions: SfsOrderSpecOptions
 }) {
-  const designOptions = getDesignOptionsForSettingType(item.type, specOptions)
+  const designOptionGroups = getDesignOptionGroupsForSettingType(item.type, specOptions)
   const summary = [item.carat ? `${item.carat} ct` : '', item.shape, item.type].filter(Boolean).join(' · ')
 
   if (collapsed) {
@@ -475,18 +475,18 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
         </Field>
       )}
 
-      {designOptions.length > 0 && (
-        <div>
+      {designOptionGroups.map(group => (
+        <div key={group.label}>
           <p className="text-sm font-medium mb-3" style={{ color: DARK }}>
-            {item.type} Design<span style={{ color: GOLD }}> *</span>
+            {group.label}<span style={{ color: GOLD }}> *</span>
           </p>
           <div className={`grid gap-3 ${item.type === 'Ring' ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3 sm:grid-cols-5'}`}>
-            {designOptions.map(d => (
+            {group.options.map(d => (
               <ImageCard key={d.id} label={d.label} src={d.imageUrl} selected={item.design === d.value} onClick={() => onChange({ design: d.value })} tall />
             ))}
           </div>
         </div>
-      )}
+      ))}
 
       {item.type !== 'Diamond only' && (
         <div>

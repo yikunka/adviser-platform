@@ -94,7 +94,7 @@ async function redirectToOss(
     900,
     download
       ? { responseContentDisposition: contentDispositionHeader('attachment', filename) }
-      : undefined,
+      : { responseContentDisposition: contentDispositionHeader('inline', filename || path.basename(key)) },
   )
   return NextResponse.redirect(url, { status: 302 })
 }

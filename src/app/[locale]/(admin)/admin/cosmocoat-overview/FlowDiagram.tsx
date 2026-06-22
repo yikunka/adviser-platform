@@ -211,6 +211,47 @@ function getFullChain(startId: string, edges: GraphEdge[]) {
   return { chainNodes, chainEdges }
 }
 
+export function findMatchingRawMaterialIds(
+  rawMaterials: RawNode[],
+  query: string,
+) {
+  const normalizedQuery = query.trim().toLowerCase()
+  if (!normalizedQuery) return new Set<string>()
+  return new Set(
+    rawMaterials
+      .filter(raw => `${raw.code} ${raw.name}`.toLowerCase().includes(normalizedQuery))
+      .map(raw => raw.id),
+  )
+}
+
+export function getForwardImpactChain(startIds: Iterable<string>, edges: GraphEdge[]) {
+  const fwd = new Map<string, string[]>()
+  for (const e of edges) {
+    if (!fwd.has(e.from)) fwd.set(e.from, [])
+    fwd.get(e.from)!.push(e.to)
+  }
+
+  const chainNodes = new Set<string>()
+  const chainEdges = new Set<string>()
+  const queue = Array.from(startIds)
+  for (const id of queue) chainNodes.add(id)
+
+  const visited = new Set(queue)
+  while (queue.length) {
+    const current = queue.shift()!
+    for (const next of fwd.get(current) ?? []) {
+      chainEdges.add(`${current}::${next}`)
+      if (!visited.has(next)) {
+        visited.add(next)
+        chainNodes.add(next)
+        queue.push(next)
+      }
+    }
+  }
+
+  return { chainNodes, chainEdges }
+}
+
 // ── Helpers ────────────────────────────────────────────────────────
 function trunc(s: string, n: number) { return s.length > n ? s.slice(0, n - 1) + '…' : s }
 
@@ -220,6 +261,7 @@ export function FlowDiagram() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
+  const [rawSearch, setRawSearch] = useState('')
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null)
   // SVG-coordinate mouse position (only updated when chain is selected)
   const [svgMouse, setSvgMouse] = useState<{ x: number; y: number } | null>(null)
@@ -239,8 +281,19 @@ export function FlowDiagram() {
   const graph = useMemo(() => data ? buildGraph(data) : null, [data])
 
   const chain = useMemo(
-    () => selected && graph ? getFullChain(selected, graph.edges) : null,
-    [selected, graph],
+    () => {
+      if (!graph) return null
+      if (selected) return getFullChain(selected, graph.edges)
+      const matchingRawIds = data ? findMatchingRawMaterialIds(data.nodes.rawMaterials, rawSearch) : new Set<string>()
+      if (matchingRawIds.size === 0) return null
+      return getForwardImpactChain(matchingRawIds, graph.edges)
+    },
+    [selected, graph, data, rawSearch],
+  )
+
+  const rawSearchMatchCount = useMemo(
+    () => data ? findMatchingRawMaterialIds(data.nodes.rawMaterials, rawSearch).size : 0,
+    [data, rawSearch],
   )
 
   // ── Density-based auto-labels: sparse chain nodes show label always ──
@@ -338,14 +391,42 @@ export function FlowDiagram() {
         ))}
         <span className="text-xs ml-auto" style={{ color: 'var(--muted-foreground)' }}>
           {nodes.length} 节点 · {edges.length} 关联
-          {chain && ` · 链路 ${chain.chainNodes.size} 个节点`}
+          {chain && ` · 高亮 ${chain.chainNodes.size} 个节点`}
         </span>
-        {selected && (
-          <button onClick={() => { setSelected(null); setSvgMouse(null) }}
+        {(selected || rawSearch.trim()) && (
+          <button onClick={() => { setSelected(null); setRawSearch(''); setSvgMouse(null) }}
             className="text-xs px-2 py-0.5 rounded"
             style={{ background: 'rgba(201,169,110,0.15)', color: '#C9A96E' }}>
-            清除选择
+            清除高亮
           </button>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
+        <input
+          value={rawSearch}
+          onChange={event => {
+            setRawSearch(event.target.value)
+            setSelected(null)
+            setSvgMouse(null)
+          }}
+          placeholder="搜索原材料编码 / 名称"
+          className="h-9 min-w-[260px] rounded-md border px-3 text-sm outline-none"
+          style={{
+            background: '#0E0E0A',
+            borderColor: '#2A2418',
+            color: 'var(--foreground)',
+          }}
+        />
+        {rawSearch.trim() ? (
+          <span className="text-xs" style={{ color: rawSearchMatchCount ? '#C9A96E' : 'var(--muted-foreground)' }}>
+            {rawSearchMatchCount
+              ? `匹配 ${rawSearchMatchCount} 个原材料，已高亮其下游影响路径`
+              : '未找到匹配原材料'}
+          </span>
+        ) : (
+          <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+            输入后高亮原材料 → 配方 → 半成品 → 工厂产品 → 调色单 / 工艺书路径
+          </span>
         )}
       </div>
 

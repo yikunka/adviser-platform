@@ -147,15 +147,25 @@ export function getDesignOptionsForSettingType(
   settingType: string,
   options: SfsOrderSpecOptions,
 ): SfsSpecOption[] {
+  return getDesignOptionGroupsForSettingType(settingType, options).flatMap(group => group.options)
+}
+
+export function getDesignOptionGroupsForSettingType(
+  settingType: string,
+  options: SfsOrderSpecOptions,
+): Array<{ label: string; options: SfsSpecOption[] }> {
   switch (settingType) {
     case 'Ring':
-      return options.ringDesigns
+      return [{ label: 'Ring Design', options: options.ringDesigns }]
     case 'Necklace':
-      return options.necklaceDesigns
+      return [{ label: 'Necklace Design', options: options.necklaceDesigns }]
     case 'Earring':
-      return options.earringDesigns
+      return [
+        { label: 'Earring Design', options: options.earringDesigns },
+        { label: 'Bracelet Design', options: options.braceletDesigns },
+      ].filter(group => group.options.length > 0)
     case 'Bracelet':
-      return options.braceletDesigns
+      return [{ label: 'Bracelet Design', options: options.braceletDesigns }]
     default:
       return []
   }
