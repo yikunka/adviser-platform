@@ -19,6 +19,7 @@ const createSchema = z.object({
   contactPerson: z.string().trim().max(200).optional().nullable(),
   contactInfo: z.string().trim().max(500).optional().nullable(),
   address: z.string().trim().max(500).optional().nullable(),
+  shippingAddress: z.string().trim().max(500).optional().nullable(),
 })
 
 function nullableText(v: string | null | undefined) {
@@ -98,6 +99,7 @@ export async function POST(req: NextRequest) {
         contactPerson: nullableText(parsed.data.contactPerson),
         contactInfo: nullableText(parsed.data.contactInfo),
         address: nullableText(parsed.data.address),
+        shippingAddress: nullableText(parsed.data.shippingAddress),
         createdById: session!.user.id,
       },
       include: supplierInclude,

@@ -15,10 +15,12 @@ type FormState = {
   contactPerson: string
   contactInfo: string
   address: string
+  shippingAddress: string
 }
 
 type SupplierFile = {
   id: string
+  kind: SupplierFileKind
   fileName: string
   storageKey: string
   mimeType: string
@@ -26,6 +28,48 @@ type SupplierFile = {
   notes: string | null
   createdAt: string
   uploadedBy: { nameEn: string | null; email: string } | null
+}
+
+type SupplierFileKind = 'GENERAL' | 'BUSINESS_LICENSE' | 'QUALITY_GUARANTEE'
+
+const SUPPLIER_FILE_SECTIONS: Array<{
+  kind: SupplierFileKind
+  title: string
+  description: string
+  uploadLabel: string
+  emptyLabel: string
+  notesPlaceholder: string
+}> = [
+  {
+    kind: 'BUSINESS_LICENSE',
+    title: '营业执照',
+    description: '上传、查看、下载与删除供应商营业执照',
+    uploadLabel: '上传营业执照',
+    emptyLabel: '暂无营业执照文件',
+    notesPlaceholder: '版本、有效期等',
+  },
+  {
+    kind: 'QUALITY_GUARANTEE',
+    title: '质量保証函',
+    description: '上传、查看、下载与删除供应商质量保証函',
+    uploadLabel: '上传质量保証函',
+    emptyLabel: '暂无质量保証函文件',
+    notesPlaceholder: '版本、适用产品等',
+  },
+  {
+    kind: 'GENERAL',
+    title: '供应商文件',
+    description: '上传、查看、下载与删除供应商资料文件',
+    uploadLabel: '上传文件',
+    emptyLabel: '暂无供应商文件',
+    notesPlaceholder: '合同、证照、报价单等',
+  },
+]
+
+const EMPTY_SUPPLIER_FILES: Record<SupplierFileKind, SupplierFile[]> = {
+  GENERAL: [],
+  BUSINESS_LICENSE: [],
+  QUALITY_GUARANTEE: [],
 }
 
 const card: React.CSSProperties = {
@@ -64,10 +108,22 @@ function Field({ label, hint, children, className = '' }: { label: string; hint?
 
 function SupplierFilesSection({
   supplierId,
+  kind,
+  title,
+  description,
+  uploadLabel,
+  emptyLabel,
+  notesPlaceholder,
   files,
   onRefresh,
 }: {
   supplierId: string
+  kind: SupplierFileKind
+  title: string
+  description: string
+  uploadLabel: string
+  emptyLabel: string
+  notesPlaceholder: string
   files: SupplierFile[]
   onRefresh: () => void
 }) {
@@ -83,6 +139,7 @@ function SupplierFilesSection({
     try {
       const fd = new FormData()
       fd.append('file', file)
+      fd.append('kind', kind)
       if (notes.trim()) fd.append('notes', notes.trim())
       const res = await fetch(`/api/admin/cosmocoat/suppliers/${supplierId}/files`, {
         method: 'POST',
@@ -90,7 +147,7 @@ function SupplierFilesSection({
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json.error ?? '上传失败')
-      toast.success('供应商文件已上传')
+      toast.success(`${title}已上传`)
       setNotes('')
       if (fileRef.current) fileRef.current.value = ''
       onRefresh()
@@ -102,7 +159,7 @@ function SupplierFilesSection({
   }
 
   async function handleDelete(fileId: string) {
-    if (!window.confirm('确定删除此供应商文件？')) return
+    if (!window.confirm(`确定删除此${title}文件？`)) return
     setDeletingId(fileId)
     try {
       const res = await fetch(
@@ -124,9 +181,9 @@ function SupplierFilesSection({
     <div className="p-5 space-y-4" style={card}>
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>供应商文件</h2>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{title}</h2>
           <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
-            上传、查看、下载与删除供应商资料文件
+            {description}
           </p>
         </div>
         <FileText size={16} style={{ color: '#C9A96E' }} />
@@ -138,7 +195,7 @@ function SupplierFilesSection({
             value={notes}
             onChange={e => setNotes(e.target.value)}
             maxLength={500}
-            placeholder="合同、证照、报价单等"
+            placeholder={notesPlaceholder}
             className="w-full rounded-lg px-3 py-2 text-sm outline-none"
             style={inputStyle()}
           />
@@ -159,14 +216,14 @@ function SupplierFilesSection({
             style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
           >
             <Upload size={13} />
-            {uploading ? '上传中...' : '上传文件'}
+            {uploading ? '上传中...' : uploadLabel}
           </button>
           <span className="text-[11px]" style={{ color: '#756A58' }}>PDF、Word、JPG、PNG、WEBP，最大 10 MB</span>
         </div>
       </div>
 
       {files.length === 0 ? (
-        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>暂无供应商文件</p>
+        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{emptyLabel}</p>
       ) : (
         <div className="space-y-2">
           {files.map(file => (
@@ -233,26 +290,31 @@ export default function AdminCosmoCoatSupplierDetailPage() {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [supplier, setSupplier] = useState<CosSupplierRow | null>(null)
-  const [files, setFiles] = useState<SupplierFile[]>([])
+  const [files, setFiles] = useState<Record<SupplierFileKind, SupplierFile[]>>(EMPTY_SUPPLIER_FILES)
   const [form, setForm] = useState<FormState>({
     code: '',
     name: '',
     contactPerson: '',
     contactInfo: '',
     address: '',
+    shippingAddress: '',
   })
 
-  const fetchFiles = useCallback(async () => {
+  const fetchFiles = useCallback(async (kind: SupplierFileKind) => {
     if (isNew) return
     try {
-      const res = await fetch(`/api/admin/cosmocoat/suppliers/${supplierId}/files`)
+      const res = await fetch(`/api/admin/cosmocoat/suppliers/${supplierId}/files?kind=${kind}`)
       const data = await res.json()
       if (!res.ok) return
-      setFiles(data.files ?? [])
+      setFiles(prev => ({ ...prev, [kind]: data.files ?? [] }))
     } catch {
-      setFiles([])
+      setFiles(prev => ({ ...prev, [kind]: [] }))
     }
   }, [supplierId, isNew])
+
+  const fetchAllFiles = useCallback(async () => {
+    await Promise.all(SUPPLIER_FILE_SECTIONS.map(section => fetchFiles(section.kind)))
+  }, [fetchFiles])
 
   const fetchSupplier = useCallback(async () => {
     if (isNew) return
@@ -272,14 +334,15 @@ export default function AdminCosmoCoatSupplierDetailPage() {
         contactPerson: row.contactPerson ?? '',
         contactInfo: row.contactInfo ?? '',
         address: row.address ?? '',
+        shippingAddress: row.shippingAddress ?? '',
       })
-      await fetchFiles()
+      await fetchAllFiles()
     } catch {
       toast.error('加载供应商详情失败')
     } finally {
       setLoading(false)
     }
-  }, [supplierId, fetchFiles, isNew])
+  }, [supplierId, fetchAllFiles, isNew])
 
   useEffect(() => {
     fetchSupplier()
@@ -304,6 +367,7 @@ export default function AdminCosmoCoatSupplierDetailPage() {
         contactPerson: form.contactPerson.trim() || null,
         contactInfo: form.contactInfo.trim() || null,
         address: form.address.trim() || null,
+        shippingAddress: form.shippingAddress.trim() || null,
       }
 
       const res = await fetch(
@@ -331,6 +395,7 @@ export default function AdminCosmoCoatSupplierDetailPage() {
           contactPerson: data.supplier.contactPerson ?? '',
           contactInfo: data.supplier.contactInfo ?? '',
           address: data.supplier.address ?? '',
+          shippingAddress: data.supplier.shippingAddress ?? '',
         })
       }
     } catch {
@@ -458,14 +523,31 @@ export default function AdminCosmoCoatSupplierDetailPage() {
               style={inputStyle()}
             />
           </Field>
+
+          <Field label="发货地址">
+            <textarea
+              value={form.shippingAddress}
+              onChange={e => patch('shippingAddress', e.target.value)}
+              maxLength={500}
+              rows={3}
+              className="w-full rounded-lg px-3 py-2.5 text-sm outline-none resize-y"
+              style={inputStyle()}
+            />
+          </Field>
         </div>
 
         {!isNew && supplier && (
-          <SupplierFilesSection
-            supplierId={supplier.id}
-            files={files}
-            onRefresh={fetchFiles}
-          />
+          <div className="space-y-4">
+            {SUPPLIER_FILE_SECTIONS.map(section => (
+              <SupplierFilesSection
+                key={section.kind}
+                supplierId={supplier.id}
+                {...section}
+                files={files[section.kind]}
+                onRefresh={() => fetchFiles(section.kind)}
+              />
+            ))}
+          </div>
         )}
 
         {isNew && (

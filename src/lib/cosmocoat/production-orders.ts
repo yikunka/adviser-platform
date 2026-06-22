@@ -160,7 +160,9 @@ function serializeOrderItem(item: {
     ? 'component_recipe' as const
     : item.productSemifinished
       ? 'product_semifinished' as const
-      : 'raw_material' as const
+      : item.rawMaterial
+        ? 'raw_material' as const
+        : 'manual' as const
   return {
     id: item.id,
     itemType,
@@ -251,16 +253,18 @@ export async function syncProductionOrderItemsFromRecipe(
   if (expectedDrafts.length === 0) return false
 
   const currentKeys = new Set(
-    currentItems.map(item => productionOrderItemKey({
-      itemType: item.componentRecipeId
-        ? 'component_recipe'
-        : item.productSemifinishedId
-          ? 'product_semifinished'
-          : 'raw_material',
-      rawMaterialId: item.rawMaterialId ?? undefined,
-      componentRecipeId: item.componentRecipeId ?? undefined,
-      productSemifinishedId: item.productSemifinishedId ?? undefined,
-    })),
+    currentItems
+      .filter(item => item.rawMaterialId || item.componentRecipeId || item.productSemifinishedId)
+      .map(item => productionOrderItemKey({
+        itemType: item.componentRecipeId
+          ? 'component_recipe'
+          : item.productSemifinishedId
+            ? 'product_semifinished'
+            : 'raw_material',
+        rawMaterialId: item.rawMaterialId ?? undefined,
+        componentRecipeId: item.componentRecipeId ?? undefined,
+        productSemifinishedId: item.productSemifinishedId ?? undefined,
+      })),
   )
   const expectedKeys = new Set(expectedDrafts.map(productionOrderItemKey))
   const needsSync = expectedKeys.size !== currentKeys.size
@@ -270,6 +274,7 @@ export async function syncProductionOrderItemsFromRecipe(
 
   const actualByKey = new Map<string, number | null>()
   for (const item of currentItems) {
+    if (!item.rawMaterialId && !item.componentRecipeId && !item.productSemifinishedId) continue
     actualByKey.set(
       productionOrderItemKey({
         itemType: item.componentRecipeId
@@ -285,7 +290,16 @@ export async function syncProductionOrderItemsFromRecipe(
     )
   }
 
-  await prisma.cosTableProductionOrderItem.deleteMany({ where: { orderId } })
+  await prisma.cosTableProductionOrderItem.deleteMany({
+    where: {
+      orderId,
+      OR: [
+        { rawMaterialId: { not: null } },
+        { componentRecipeId: { not: null } },
+        { productSemifinishedId: { not: null } },
+      ],
+    },
+  })
   await prisma.cosTableProductionOrderItem.createMany({
     data: expectedDrafts.map(item => orderItemDraftToCreateData(
       orderId,

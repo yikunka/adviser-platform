@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, FlaskConical, Printer, RefreshCw, Save } from 'lucide-react'
+import { ArrowLeft, FlaskConical, Plus, Printer, RefreshCw, Save, Trash2 } from 'lucide-react'
 import type { CosEmployeeType } from '@prisma/client'
 import {
   formatPercent,
@@ -304,7 +304,7 @@ function PrintView({
 
 function mapOrderItemsToEditable(items: Array<{
   id: string
-  itemType?: 'raw_material' | 'component_recipe' | 'product_semifinished'
+  itemType?: 'raw_material' | 'component_recipe' | 'product_semifinished' | 'manual'
   sortOrder: number
   productionCode: string
   materialName: string
@@ -324,7 +324,9 @@ function mapOrderItemsToEditable(items: Array<{
         ? 'component_recipe'
         : item.productSemifinished
           ? 'product_semifinished'
-          : 'raw_material'
+          : item.rawMaterial
+            ? 'raw_material'
+            : 'manual'
     ),
     rawMaterialId: item.rawMaterial?.id,
     componentRecipeId: item.componentRecipe?.id,
@@ -597,7 +599,9 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
 
   useEffect(() => {
     if (recipeItems.length === 0 || totalWeight <= 0) {
-      if (isNew && recipeItems.length === 0) setItems([])
+      if (isNew && recipeItems.length === 0) {
+        setItems(prev => prev.filter(item => item.itemType === 'manual'))
+      }
       return
     }
     if (!isNew && status !== 'draft') return
@@ -618,6 +622,40 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
     )))
   }
 
+  function patchItem<K extends keyof EditableItem>(key: string, field: K, value: EditableItem[K]) {
+    setItems(prev => prev.map(item => (
+      item.key === key ? { ...item, [field]: value } : item
+    )))
+  }
+
+  function addManualItem() {
+    setItems(prev => {
+      const key = `manual-${Date.now()}`
+      const sortOrder = prev.length + 1
+      return [
+        ...prev,
+        {
+          key,
+          itemType: 'manual',
+          sortOrder,
+          productionCode: '',
+          materialName: '',
+          percentage: 0,
+          requiredWeight: 0,
+          actualWeight: null,
+          notes: '',
+        },
+      ]
+    })
+  }
+
+  function removeItem(key: string) {
+    setItems(prev => prev.filter(item => item.key !== key).map((item, index) => ({
+      ...item,
+      sortOrder: index + 1,
+    })))
+  }
+
   async function saveOrder() {
     if (isNew && !factoryProductId) {
       toast.error('请选择产品')
@@ -631,6 +669,14 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       toast.error('当前配方无可投料明细，无法创建生产单')
       return
     }
+    const invalidManualItem = items.find(item => (
+      item.itemType === 'manual'
+      && (!item.productionCode.trim() || !item.materialName.trim())
+    ))
+    if (invalidManualItem) {
+      toast.error('请填写手工物料的编号和名称')
+      return
+    }
 
     setSaving(true)
     const processPayload = productionOrderProcessFieldsToPayload(processFields, {
@@ -638,11 +684,20 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       viscosityUnit: recipeViscosityUnit,
     })
     const itemPayload = items.map(item => ({
+      id: item.id,
+      itemType: item.itemType,
       ...(item.itemType === 'component_recipe'
         ? { componentRecipeId: item.componentRecipeId }
         : item.itemType === 'product_semifinished'
           ? { productSemifinishedId: item.productSemifinishedId }
-          : { rawMaterialId: item.rawMaterialId }),
+          : item.itemType === 'raw_material'
+            ? { rawMaterialId: item.rawMaterialId }
+            : {}),
+      sortOrder: item.sortOrder,
+      productionCode: item.productionCode,
+      materialName: item.materialName,
+      percentage: item.percentage,
+      requiredWeight: item.requiredWeight,
       actualWeight: item.actualWeight,
       notes: item.notes,
     }))
@@ -669,11 +724,7 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
           ...processPayload,
           ...employeePayload,
           status,
-          items: items.map(item => ({
-            id: item.id,
-            actualWeight: item.actualWeight,
-            notes: item.notes,
-          })),
+          items: itemPayload,
         }
 
     try {
@@ -1014,16 +1065,26 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
       <div style={{ ...card, overflow: 'hidden' }}>
         <div className="px-4 py-3 border-b flex flex-wrap items-center justify-between gap-2" style={{ borderColor: '#2A2418' }}>
           <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>物料投料明细</h3>
-          {!isNew && linkedRecipeId && status === 'draft' && (
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={reloadFromRecipe}
+              onClick={addManualItem}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
               style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
             >
-              <RefreshCw size={12} /> 从配方重新加载
+              <Plus size={12} /> 手动新增行
             </button>
-          )}
+            {!isNew && linkedRecipeId && status === 'draft' && (
+              <button
+                type="button"
+                onClick={reloadFromRecipe}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
+                style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
+              >
+                <RefreshCw size={12} /> 从配方重新加载
+              </button>
+            )}
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -1034,35 +1095,84 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
                 <th style={th}>比例</th>
                 <th style={th}>参考投料 ({productUnit})</th>
                 <th style={th}>本次实投 ({productUnit})</th>
+                <th style={th}>备注</th>
+                <th style={{ ...th, textAlign: 'right' }}>操作</th>
               </tr>
             </thead>
             <tbody>
               {items.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ ...td, textAlign: 'center', padding: '2rem' }}>
-                    {isNew ? '请选择有当前配方的产品' : '暂无物料明细'}
+                  <td colSpan={7} style={{ ...td, textAlign: 'center', padding: '2rem' }}>
+                    {isNew ? '请选择有当前配方的产品，或手动新增临时物料行' : '暂无物料明细'}
                   </td>
                 </tr>
               ) : items.map((item, index) => (
                 <tr key={item.key}>
                   <td style={td}>{index + 1}</td>
                   <td style={td}>
-                    <span className="inline-flex items-center gap-1">
-                      {productionOrderItemDisplayCode(item)}
-                      {item.itemType === 'component_recipe' && (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded" style={{ background: 'rgba(201,169,110,0.15)', color: '#C9A96E' }}>
-                          <FlaskConical size={10} /> 半成品
-                        </span>
-                      )}
-                      {item.itemType === 'product_semifinished' && (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded" style={{ background: 'rgba(201,169,110,0.15)', color: '#C9A96E' }}>
-                          <FlaskConical size={10} /> Sol.
-                        </span>
-                      )}
-                    </span>
+                    {item.itemType === 'manual' ? (
+                      <div className="grid min-w-[260px] gap-2 sm:grid-cols-[110px_1fr]">
+                        <input
+                          value={item.productionCode}
+                          onChange={e => patchItem(item.key, 'productionCode', e.target.value)}
+                          placeholder="物料编号"
+                          className="rounded px-2 py-1 text-sm outline-none"
+                          style={inputStyle()}
+                        />
+                        <input
+                          value={item.materialName}
+                          onChange={e => patchItem(item.key, 'materialName', e.target.value)}
+                          placeholder="物料名称"
+                          className="rounded px-2 py-1 text-sm outline-none"
+                          style={inputStyle()}
+                        />
+                      </div>
+                    ) : (
+                      <span className="inline-flex items-center gap-1">
+                        {productionOrderItemDisplayCode(item)}
+                        {item.itemType === 'component_recipe' && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded" style={{ background: 'rgba(201,169,110,0.15)', color: '#C9A96E' }}>
+                            <FlaskConical size={10} /> 半成品
+                          </span>
+                        )}
+                        {item.itemType === 'product_semifinished' && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded" style={{ background: 'rgba(201,169,110,0.15)', color: '#C9A96E' }}>
+                            <FlaskConical size={10} /> Sol.
+                          </span>
+                        )}
+                      </span>
+                    )}
                   </td>
-                  <td style={td}>{formatPercent(item.percentage)}</td>
-                  <td style={td}>{formatWeight(item.requiredWeight)}</td>
+                  <td style={td}>
+                    {item.itemType === 'manual' ? (
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.001"
+                        value={item.percentage}
+                        onChange={e => {
+                          const percentage = Number(e.target.value) || 0
+                          patchItem(item.key, 'percentage', percentage)
+                          patchItem(item.key, 'requiredWeight', totalWeight > 0 ? (totalWeight * percentage) / 100 : 0)
+                        }}
+                        className="w-24 rounded px-2 py-1 text-sm outline-none"
+                        style={inputStyle()}
+                      />
+                    ) : formatPercent(item.percentage)}
+                  </td>
+                  <td style={td}>
+                    {item.itemType === 'manual' ? (
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.001"
+                        value={item.requiredWeight}
+                        onChange={e => patchItem(item.key, 'requiredWeight', Number(e.target.value) || 0)}
+                        className="w-28 rounded px-2 py-1 text-sm outline-none"
+                        style={inputStyle()}
+                      />
+                    ) : formatWeight(item.requiredWeight)}
+                  </td>
                   <td style={td}>
                     <input
                       type="number"
@@ -1073,6 +1183,26 @@ export default function AdminCosmoCoatProductionOrderEditorPage() {
                       className="w-28 rounded px-2 py-1 text-sm outline-none"
                       style={inputStyle()}
                     />
+                  </td>
+                  <td style={td}>
+                    <input
+                      value={item.notes}
+                      onChange={e => patchItem(item.key, 'notes', e.target.value)}
+                      className="w-40 rounded px-2 py-1 text-sm outline-none"
+                      style={inputStyle()}
+                    />
+                  </td>
+                  <td style={{ ...td, textAlign: 'right' }}>
+                    {item.itemType === 'manual' ? (
+                      <button
+                        type="button"
+                        onClick={() => removeItem(item.key)}
+                        className="inline-flex rounded p-1.5"
+                        style={{ color: '#E57373' }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    ) : '—'}
                   </td>
                 </tr>
               ))}

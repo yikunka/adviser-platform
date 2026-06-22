@@ -27,6 +27,7 @@ type FormState = {
 
 type BusinessLicenseFile = {
   id: string
+  kind: CustomerFileKind
   fileName: string
   storageKey: string
   mimeType: string
@@ -34,6 +35,52 @@ type BusinessLicenseFile = {
   notes: string | null
   createdAt: string
   uploadedBy: { nameEn: string | null; email: string } | null
+}
+
+type CustomerFileKind = 'BUSINESS_LICENSE' | 'LEGAL_REP_ID' | 'TIANYANCHA_REPORT' | 'OTHER'
+
+const CUSTOMER_FILE_SECTIONS: Array<{
+  kind: CustomerFileKind
+  title: string
+  description: string
+  uploadLabel: string
+  emptyLabel: string
+}> = [
+  {
+    kind: 'BUSINESS_LICENSE',
+    title: '营业执照',
+    description: '上传、查看、下载与删除客户营业执照文件',
+    uploadLabel: '上传营业执照',
+    emptyLabel: '暂无营业执照文件',
+  },
+  {
+    kind: 'LEGAL_REP_ID',
+    title: '法人身份证',
+    description: '上传、查看、下载与删除法人身份证文件',
+    uploadLabel: '上传法人身份证',
+    emptyLabel: '暂无法人身份证文件',
+  },
+  {
+    kind: 'TIANYANCHA_REPORT',
+    title: '天眼查报告',
+    description: '上传、查看、下载与删除天眼查报告文件',
+    uploadLabel: '上传天眼查报告',
+    emptyLabel: '暂无天眼查报告文件',
+  },
+  {
+    kind: 'OTHER',
+    title: '其他文件',
+    description: '上传、查看、下载与删除客户其他资料文件',
+    uploadLabel: '上传其他文件',
+    emptyLabel: '暂无其他文件',
+  },
+]
+
+const EMPTY_CUSTOMER_FILES: Record<CustomerFileKind, BusinessLicenseFile[]> = {
+  BUSINESS_LICENSE: [],
+  LEGAL_REP_ID: [],
+  TIANYANCHA_REPORT: [],
+  OTHER: [],
 }
 
 function fileUrl(storageKey: string) {
@@ -46,12 +93,22 @@ function formatFileSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-function BusinessLicensesSection({
+function CustomerFilesSection({
   customerId,
+  kind,
+  title,
+  description,
+  uploadLabel,
+  emptyLabel,
   files,
   onRefresh,
 }: {
   customerId: string
+  kind: CustomerFileKind
+  title: string
+  description: string
+  uploadLabel: string
+  emptyLabel: string
   files: BusinessLicenseFile[]
   onRefresh: () => void
 }) {
@@ -67,6 +124,7 @@ function BusinessLicensesSection({
     try {
       const fd = new FormData()
       fd.append('file', file)
+      fd.append('kind', kind)
       if (notes.trim()) fd.append('notes', notes.trim())
       const res = await fetch(`/api/admin/cosmocoat/customers/${customerId}/business-licenses`, {
         method: 'POST',
@@ -74,7 +132,7 @@ function BusinessLicensesSection({
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json.error ?? '上传失败')
-      toast.success('营业执照已上传')
+      toast.success(`${title}已上传`)
       setNotes('')
       if (fileRef.current) fileRef.current.value = ''
       onRefresh()
@@ -86,7 +144,7 @@ function BusinessLicensesSection({
   }
 
   async function handleDelete(fileId: string) {
-    if (!window.confirm('确定删除此营业执照文件？')) return
+    if (!window.confirm(`确定删除此${title}文件？`)) return
     setDeletingId(fileId)
     try {
       const res = await fetch(
@@ -108,9 +166,9 @@ function BusinessLicensesSection({
     <div className="p-5 space-y-4" style={card}>
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>营业执照</h2>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{title}</h2>
           <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
-            上传、查看、下载与删除客户营业执照文件
+            {description}
           </p>
         </div>
         <FileText size={16} style={{ color: '#C9A96E' }} />
@@ -143,14 +201,14 @@ function BusinessLicensesSection({
             style={{ border: '1px solid #2A2418', color: 'var(--foreground)' }}
           >
             <Upload size={13} />
-            {uploading ? '上传中...' : '上传营业执照'}
+            {uploading ? '上传中...' : uploadLabel}
           </button>
           <span className="text-[11px]" style={{ color: '#756A58' }}>PDF、JPG、PNG、WEBP，最大 10 MB</span>
         </div>
       </div>
 
       {files.length === 0 ? (
-        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>暂无营业执照文件</p>
+        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{emptyLabel}</p>
       ) : (
         <div className="space-y-2">
           {files.map(file => (
@@ -242,7 +300,7 @@ export default function AdminCosmoCoatCustomerDetailPage() {
   const [deleting, setDeleting] = useState(false)
   const [platformUsers, setPlatformUsers] = useState<PlatformUser[]>([])
   const [customer, setCustomer] = useState<CosCustomerRow | null>(null)
-  const [businessLicenses, setBusinessLicenses] = useState<BusinessLicenseFile[]>([])
+  const [customerFiles, setCustomerFiles] = useState<Record<CustomerFileKind, BusinessLicenseFile[]>>(EMPTY_CUSTOMER_FILES)
   const [form, setForm] = useState<FormState>({
     code: '',
     name: '',
@@ -263,17 +321,21 @@ export default function AdminCosmoCoatCustomerDetailPage() {
     }
   }, [])
 
-  const fetchBusinessLicenses = useCallback(async () => {
+  const fetchCustomerFiles = useCallback(async (kind: CustomerFileKind) => {
     if (isNew) return
     try {
-      const res = await fetch(`/api/admin/cosmocoat/customers/${customerId}/business-licenses`)
+      const res = await fetch(`/api/admin/cosmocoat/customers/${customerId}/business-licenses?kind=${kind}`)
       const data = await res.json()
       if (!res.ok) return
-      setBusinessLicenses(data.files ?? [])
+      setCustomerFiles(prev => ({ ...prev, [kind]: data.files ?? [] }))
     } catch {
-      setBusinessLicenses([])
+      setCustomerFiles(prev => ({ ...prev, [kind]: [] }))
     }
   }, [customerId, isNew])
+
+  const fetchAllCustomerFiles = useCallback(async () => {
+    await Promise.all(CUSTOMER_FILE_SECTIONS.map(section => fetchCustomerFiles(section.kind)))
+  }, [fetchCustomerFiles])
 
   const fetchCustomer = useCallback(async () => {
     if (isNew) return
@@ -295,13 +357,13 @@ export default function AdminCosmoCoatCustomerDetailPage() {
         address: row.address ?? '',
         productionEquipmentParams: row.productionEquipmentParams ?? '',
       })
-      await fetchBusinessLicenses()
+      await fetchAllCustomerFiles()
     } catch {
       toast.error('加载客户详情失败')
     } finally {
       setLoading(false)
     }
-  }, [customerId, fetchBusinessLicenses, isNew])
+  }, [customerId, fetchAllCustomerFiles, isNew])
 
   useEffect(() => {
     fetchPlatformUsers()
@@ -526,16 +588,22 @@ export default function AdminCosmoCoatCustomerDetailPage() {
         </div>
 
         {!isNew && customer && (
-          <BusinessLicensesSection
-            customerId={customer.id}
-            files={businessLicenses}
-            onRefresh={fetchBusinessLicenses}
-          />
+          <div className="grid gap-4 lg:grid-cols-2">
+            {CUSTOMER_FILE_SECTIONS.map(section => (
+              <CustomerFilesSection
+                key={section.kind}
+                customerId={customer.id}
+                {...section}
+                files={customerFiles[section.kind]}
+                onRefresh={() => fetchCustomerFiles(section.kind)}
+              />
+            ))}
+          </div>
         )}
 
         {isNew && (
           <div className="p-5 text-xs rounded-lg" style={{ ...card, color: '#C9A96E', background: 'rgba(201,169,110,0.08)' }}>
-            请先保存客户资料，再上传营业执照文件。
+            请先保存客户资料，再上传营业执照、法人身份证、天眼查报告和其他文件。
           </div>
         )}
 

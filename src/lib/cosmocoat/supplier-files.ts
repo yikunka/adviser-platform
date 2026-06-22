@@ -2,6 +2,21 @@ import crypto from 'crypto'
 import { uploadToR2, deleteFromR2, getOssConfigError } from '@/lib/storage/r2'
 import { contentDispositionHeader } from '@/lib/http/content-disposition'
 
+export const COS_SUPPLIER_FILE_KINDS = [
+  'GENERAL',
+  'BUSINESS_LICENSE',
+  'QUALITY_GUARANTEE',
+] as const
+
+export type CosSupplierFileKind = typeof COS_SUPPLIER_FILE_KINDS[number]
+
+export function normalizeCosSupplierFileKind(value: string | null | undefined): CosSupplierFileKind {
+  const text = (value ?? '').trim()
+  return COS_SUPPLIER_FILE_KINDS.includes(text as CosSupplierFileKind)
+    ? text as CosSupplierFileKind
+    : 'GENERAL'
+}
+
 const ALLOWED_TYPES = [
   'application/pdf',
   'application/msword',

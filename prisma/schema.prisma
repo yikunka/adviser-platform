@@ -2226,6 +2226,7 @@ model CosCustomer {
 model CosCustomerBusinessLicense {
   id           String   @id @default(cuid())
   customerId   String
+  kind         String   @default("BUSINESS_LICENSE")
   fileName     String
   storageKey   String
   mimeType     String
@@ -2238,6 +2239,7 @@ model CosCustomerBusinessLicense {
   uploadedBy User        @relation("CosCustomerBusinessLicenseUploader", fields: [uploadedById], references: [id])
 
   @@index([customerId])
+  @@index([customerId, kind])
   @@map("cos_customer_business_licenses")
 }
 
@@ -2252,6 +2254,7 @@ model CosSupplier {
   contactPerson String?
   contactInfo String?
   address     String?
+  shippingAddress String?
   createdById String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -2268,6 +2271,7 @@ model CosSupplier {
 model CosSupplierFile {
   id           String   @id @default(cuid())
   supplierId   String
+  kind         String   @default("GENERAL")
   fileName     String
   storageKey   String
   mimeType     String
@@ -2280,6 +2284,7 @@ model CosSupplierFile {
   uploadedBy User        @relation("CosSupplierFileUploader", fields: [uploadedById], references: [id])
 
   @@index([supplierId])
+  @@index([supplierId, kind])
   @@map("cos_supplier_files")
 }
 

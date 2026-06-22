@@ -153,7 +153,7 @@ export function formatWeight(value: number | null | undefined, digits = 2): stri
 }
 
 export type ProductionOrderItemDraft = {
-  itemType: 'raw_material' | 'component_recipe' | 'product_semifinished'
+  itemType: 'raw_material' | 'component_recipe' | 'product_semifinished' | 'manual'
   rawMaterialId?: string
   componentRecipeId?: string
   productSemifinishedId?: string
@@ -324,7 +324,7 @@ export function mergeProductionOrderEditableItems(
     )
   }
 
-  return buildProductionOrderItems(recipeItems, totalWeight).map(item => {
+  const mergedRecipeItems = buildProductionOrderItems(recipeItems, totalWeight).map(item => {
     const materialKey = productionOrderItemKey(item)
     const existing = existingByKey.get(materialKey)
     return {
@@ -343,9 +343,20 @@ export function mergeProductionOrderEditableItems(
       notes: existing?.notes ?? item.notes,
     }
   })
+
+  const manualItems = existingItems
+    .filter(item => item.itemType === 'manual')
+    .map((item, index) => ({
+      ...item,
+      sortOrder: Math.max(item.sortOrder, mergedRecipeItems.length + index + 1),
+      requiredWeight: computeRequiredWeight(totalWeight, item.percentage),
+    }))
+
+  return [...mergedRecipeItems, ...manualItems]
 }
 
 export function productionOrderItemKey(item: Pick<ProductionOrderItemDraft, 'itemType' | 'rawMaterialId' | 'componentRecipeId' | 'productSemifinishedId'>): string {
+  if (item.itemType === 'manual') return ''
   if (item.itemType === 'component_recipe' && item.componentRecipeId) {
     return `component-recipe:${item.componentRecipeId}`
   }

@@ -23,11 +23,13 @@ describe('serializeSupplier', () => {
       contactPerson: 'Alex Chan',
       contactInfo: 'alex@example.com',
       address: 'Hong Kong',
+      shippingAddress: 'Warehouse A',
       createdById: 'user-1',
       createdAt: now,
       updatedAt: now,
     })).toMatchObject({
       contactPerson: 'Alex Chan',
+      shippingAddress: 'Warehouse A',
     })
   })
 })

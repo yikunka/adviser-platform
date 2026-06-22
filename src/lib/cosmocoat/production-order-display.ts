@@ -1,5 +1,5 @@
 type ProductionOrderItemDisplaySource = {
-  itemType?: 'raw_material' | 'component_recipe' | 'product_semifinished'
+  itemType?: 'raw_material' | 'component_recipe' | 'product_semifinished' | 'manual'
   productionCode: string
   materialName: string
   componentRecipe?: { id: string; code?: string; name: string } | null
@@ -11,6 +11,9 @@ export function productionOrderItemDisplayCode(item: ProductionOrderItemDisplayS
   if (item.productSemifinished) return item.productSemifinished.name || item.materialName || item.productionCode
   if (item.itemType === 'component_recipe' || item.itemType === 'product_semifinished') {
     return item.materialName || item.productionCode
+  }
+  if (item.itemType === 'manual') {
+    return [item.productionCode, item.materialName].filter(Boolean).join(' ') || '-'
   }
   return item.productionCode
 }

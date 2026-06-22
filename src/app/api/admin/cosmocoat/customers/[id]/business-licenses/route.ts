@@ -3,9 +3,10 @@ import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
 import { uploadCosCustomerBusinessLicenseFile } from '@/lib/cosmocoat/customer-business-licenses'
+import { normalizeCosCustomerFileKind } from '@/lib/cosmocoat/customer-files'
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatCustomers' })
@@ -14,12 +15,14 @@ export async function GET(
   const { id } = await params
   const customer = await prisma.cosCustomer.findUnique({ where: { id }, select: { id: true } })
   if (!customer) return NextResponse.json({ error: '客户不存在' }, { status: 404 })
+  const kind = normalizeCosCustomerFileKind(req.nextUrl.searchParams.get('kind'))
 
   const files = await prisma.cosCustomerBusinessLicense.findMany({
-    where: { customerId: id },
+    where: { customerId: id, kind },
     orderBy: { createdAt: 'desc' },
     select: {
       id: true,
+      kind: true,
       fileName: true,
       storageKey: true,
       mimeType: true,
@@ -52,6 +55,7 @@ export async function POST(
   const formData = await req.formData()
   const file = formData.get('file') as File | null
   const notes = (formData.get('notes') as string | null)?.trim() || null
+  const kind = normalizeCosCustomerFileKind(formData.get('kind') as string | null)
 
   if (!file) return NextResponse.json({ error: '未提供文件' }, { status: 400 })
 
@@ -61,6 +65,7 @@ export async function POST(
     const record = await prisma.cosCustomerBusinessLicense.create({
       data: {
         customerId: id,
+        kind,
         fileName: file.name,
         storageKey: key,
         mimeType: contentType,

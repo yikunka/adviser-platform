@@ -14,8 +14,29 @@ import {
 
 const itemPatchSchema = z.object({
   id: z.string().trim().min(1).optional(),
+  itemType: z.enum(['raw_material', 'component_recipe', 'product_semifinished', 'manual']).optional(),
+  rawMaterialId: z.string().trim().min(1).optional(),
+  componentRecipeId: z.string().trim().min(1).optional(),
+  productSemifinishedId: z.string().trim().min(1).optional(),
+  sortOrder: z.coerce.number().int().min(0).optional(),
+  productionCode: z.string().trim().max(100).optional(),
+  materialName: z.string().trim().max(200).optional(),
+  percentage: z.coerce.number().min(0).optional(),
+  requiredWeight: z.coerce.number().min(0).optional(),
   actualWeight: z.coerce.number().min(0).nullable().optional(),
   notes: z.string().trim().max(500).optional(),
+}).superRefine((data, ctx) => {
+  const sourceCount = [
+    Boolean(data.rawMaterialId),
+    Boolean(data.componentRecipeId),
+    Boolean(data.productSemifinishedId),
+  ].filter(Boolean).length
+  if (sourceCount > 1) {
+    ctx.addIssue({ code: 'custom', message: 'Each item can reference at most one material source' })
+  }
+  if (sourceCount === 0 && (!data.productionCode?.trim() || !data.materialName?.trim())) {
+    ctx.addIssue({ code: 'custom', message: 'Manual item requires production code and material name' })
+  }
 })
 
 const patchSchema = z.object({
@@ -36,6 +57,22 @@ const patchSchema = z.object({
 
 function isMissingTable(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021'
+}
+
+function itemPatchToCreateData(orderId: string, item: z.infer<typeof itemPatchSchema>, index: number) {
+  return {
+    orderId,
+    rawMaterialId: item.rawMaterialId ?? null,
+    componentRecipeId: item.componentRecipeId ?? null,
+    productSemifinishedId: item.productSemifinishedId ?? null,
+    sortOrder: item.sortOrder ?? index + 1,
+    productionCode: item.productionCode!.trim(),
+    materialName: item.materialName!.trim(),
+    percentage: item.percentage ?? 0,
+    requiredWeight: item.requiredWeight ?? 0,
+    actualWeight: item.actualWeight ?? null,
+    notes: item.notes ?? '',
+  }
 }
 
 async function resolveProductionEmployeeId(raw: string | null | undefined) {
@@ -168,15 +205,11 @@ export async function PATCH(
       }
     }
 
-    if (parsed.data.items?.length) {
-      for (const patch of parsed.data.items) {
-        if (!patch.id) continue
-        await prisma.cosTableProductionOrderItem.updateMany({
-          where: { id: patch.id, orderId: id },
-          data: {
-            ...(patch.actualWeight !== undefined ? { actualWeight: patch.actualWeight } : {}),
-            ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
-          },
+    if (parsed.data.items) {
+      await prisma.cosTableProductionOrderItem.deleteMany({ where: { orderId: id } })
+      if (parsed.data.items.length > 0) {
+        await prisma.cosTableProductionOrderItem.createMany({
+          data: parsed.data.items.map((item, index) => itemPatchToCreateData(id, item, index)),
         })
       }
     }

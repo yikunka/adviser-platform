@@ -17,6 +17,7 @@ const updateSchema = z.object({
   contactPerson: z.string().trim().max(200).optional().nullable(),
   contactInfo: z.string().trim().max(500).optional().nullable(),
   address: z.string().trim().max(500).optional().nullable(),
+  shippingAddress: z.string().trim().max(500).optional().nullable(),
 })
 
 function nullableText(v: string | null | undefined) {
@@ -80,6 +81,7 @@ export async function PATCH(
         ...(parsed.data.contactPerson !== undefined ? { contactPerson: nullableText(parsed.data.contactPerson) } : {}),
         ...(parsed.data.contactInfo !== undefined ? { contactInfo: nullableText(parsed.data.contactInfo) } : {}),
         ...(parsed.data.address !== undefined ? { address: nullableText(parsed.data.address) } : {}),
+        ...(parsed.data.shippingAddress !== undefined ? { shippingAddress: nullableText(parsed.data.shippingAddress) } : {}),
       },
       include: supplierInclude,
     })
