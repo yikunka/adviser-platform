@@ -8,6 +8,7 @@ function opt(category: SfsSpecOption['category'], value: string, price: number |
 
 function specOptions(overrides: Partial<SfsOrderSpecOptions> = {}): SfsOrderSpecOptions {
   return {
+    sources: [opt('SOURCE', 'Hairs', 25), opt('SOURCE', 'Ashes', null)],
     colors: [opt('COLOR', 'Natural Color', 100), opt('COLOR', 'Transparent', null)],
     carats: [opt('CARAT', '1.0', 1000), opt('CARAT', '2.0', 2500)],
     shapes: [opt('SHAPE', 'Round', 50), opt('SHAPE', 'Heart', 200)],
@@ -60,6 +61,18 @@ describe('computeSfsOrderPricing', () => {
     expect(result.lines[0].jewelleryPart).toBe(300)
     expect(result.lines[0].unitPrice).toBe(1450)
     expect(result.subtotal).toBe(1450)
+  })
+
+  it('includes the source material adjustment in the diamond price portion', () => {
+    const result = computeSfsOrderPricing({
+      diamonds: [{ carat: '1.0', shape: 'Round', type: 'Diamond only' }],
+      sourceType: 'Hairs',
+      color: 'Natural Color',
+      specOptions: specOptions(),
+    })
+
+    expect(result.lines[0].diamondPart).toBe(1175)
+    expect(result.lines[0].unitPrice).toBe(1175)
   })
 
   it('treats unpriced spec options as 0', () => {

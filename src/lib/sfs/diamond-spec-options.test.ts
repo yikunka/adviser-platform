@@ -1,11 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import {
+  SFS_DESIGN_IMAGE_CATEGORIES,
+  SFS_SPEC_CATEGORIES,
   getDefaultSfsOrderSpecOptions,
   getDesignOptionGroupsForSettingType,
   getDesignOptionsForSettingType,
 } from './diamond-spec-options'
 
 describe('SFS diamond design options', () => {
+  it('exposes source options before color with image and additive pricing support', () => {
+    const options = getDefaultSfsOrderSpecOptions()
+
+    expect(SFS_SPEC_CATEGORIES.slice(0, 2)).toEqual(['SOURCE', 'COLOR'])
+    expect(SFS_DESIGN_IMAGE_CATEGORIES.has('SOURCE')).toBe(true)
+    expect(options.sources.map(option => option.value)).toEqual(['Hairs', 'Ashes', 'Mix'])
+  })
+
   it('shows bracelet design as an additional customer option group under earring', () => {
     const options = getDefaultSfsOrderSpecOptions()
     const groups = getDesignOptionGroupsForSettingType('Earring', options)

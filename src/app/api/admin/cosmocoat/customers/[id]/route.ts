@@ -16,6 +16,8 @@ const updateSchema = z.object({
   name: z.string().trim().min(1).max(200).optional(),
   userId: z.union([z.string().trim().min(1), z.literal(''), z.null()]).optional(),
   phone: z.string().trim().max(50).optional().nullable(),
+  contactPerson: z.string().trim().max(200).optional().nullable(),
+  contactPhone: z.string().trim().max(50).optional().nullable(),
   address: z.string().trim().max(500).optional().nullable(),
   productionEquipmentParams: z.string().trim().max(5000).optional().nullable(),
 })
@@ -103,6 +105,8 @@ export async function PATCH(
         ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
         ...(userId !== undefined ? { userId } : {}),
         ...(parsed.data.phone !== undefined ? { phone: nullableText(parsed.data.phone) } : {}),
+        ...(parsed.data.contactPerson !== undefined ? { contactPerson: nullableText(parsed.data.contactPerson) } : {}),
+        ...(parsed.data.contactPhone !== undefined ? { contactPhone: nullableText(parsed.data.contactPhone) } : {}),
         ...(parsed.data.address !== undefined ? { address: nullableText(parsed.data.address) } : {}),
         ...(parsed.data.productionEquipmentParams !== undefined
           ? { productionEquipmentParams: nullableText(parsed.data.productionEquipmentParams) }

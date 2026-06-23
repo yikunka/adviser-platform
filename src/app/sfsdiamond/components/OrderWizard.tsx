@@ -259,8 +259,12 @@ function Step1({ data, update }: { data: WizardFormData; update: (p: Partial<Wiz
 
 // ─── Step 2 ───────────────────────────────────────────────────────────────────
 
-function Step2({ data, update }: { data: WizardFormData; update: (p: Partial<WizardFormData>) => void }) {
-  const SOURCES = ['Hairs', 'Ashes', 'Mix']
+function Step2({ data, update, specOptions }: {
+  data: WizardFormData
+  update: (p: Partial<WizardFormData>) => void
+  specOptions: SfsOrderSpecOptions
+}) {
+  const sourceOptions = specOptions.sources
   return (
     <div className="space-y-6">
       <SectionTitle
@@ -269,11 +273,16 @@ function Step2({ data, update }: { data: WizardFormData; update: (p: Partial<Wiz
         sub="Approximately 60 g of bone ash or 1 g of hair is needed per carat. The amount scales linearly with the number of diamonds."
       />
       <Field label="Source Type" required>
-        <div className="flex flex-wrap gap-2">
-          {SOURCES.map(s => (
-            <CheckCard key={s} checked={data.sourceType === s} onChange={() => update({ sourceType: s, sourceOther: '' })}>
-              {s}
-            </CheckCard>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {sourceOptions.map(source => (
+            <ImageCard
+              key={source.id}
+              label={source.label}
+              src={source.imageUrl}
+              selected={data.sourceType === source.value}
+              onClick={() => update({ sourceType: source.value, sourceOther: '' })}
+              tall
+            />
           ))}
           <CheckCard checked={data.sourceType === 'Other'} onChange={() => update({ sourceType: 'Other', sourceOther: '' })}>
             Other carbon source
@@ -809,7 +818,7 @@ export default function OrderWizard({
 
       <div className="max-w-3xl mx-auto px-6 py-12">
         {step === 1 && <Step1 data={data} update={update} />}
-        {step === 2 && <Step2 data={data} update={update} />}
+        {step === 2 && <Step2 data={data} update={update} specOptions={specOptions} />}
         {step === 3 && <Step3 data={data} update={update} specOptions={specOptions} />}
         {step === 4 && <Step4 data={data} update={update} specOptions={specOptions} />}
         {step === 5 && <Step5 data={data} />}

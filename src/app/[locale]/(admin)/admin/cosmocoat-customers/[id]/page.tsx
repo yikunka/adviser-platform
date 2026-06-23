@@ -21,6 +21,8 @@ type FormState = {
   name: string
   userId: string
   phone: string
+  contactPerson: string
+  contactPhone: string
   address: string
   productionEquipmentParams: string
 }
@@ -306,6 +308,8 @@ export default function AdminCosmoCoatCustomerDetailPage() {
     name: '',
     userId: '',
     phone: '',
+    contactPerson: '',
+    contactPhone: '',
     address: '',
     productionEquipmentParams: '',
   })
@@ -354,6 +358,8 @@ export default function AdminCosmoCoatCustomerDetailPage() {
         name: row.name,
         userId: row.userId ?? '',
         phone: row.phone ?? '',
+        contactPerson: row.contactPerson ?? '',
+        contactPhone: row.contactPhone ?? '',
         address: row.address ?? '',
         productionEquipmentParams: row.productionEquipmentParams ?? '',
       })
@@ -391,6 +397,8 @@ export default function AdminCosmoCoatCustomerDetailPage() {
         name: form.name.trim(),
         userId: form.userId || null,
         phone: form.phone.trim() || null,
+        contactPerson: form.contactPerson.trim() || null,
+        contactPhone: form.contactPhone.trim() || null,
         address: form.address.trim() || null,
         productionEquipmentParams: form.productionEquipmentParams.trim() || null,
       }
@@ -419,6 +427,8 @@ export default function AdminCosmoCoatCustomerDetailPage() {
           name: data.customer.name,
           userId: data.customer.userId ?? '',
           phone: data.customer.phone ?? '',
+          contactPerson: data.customer.contactPerson ?? '',
+          contactPhone: data.customer.contactPhone ?? '',
           address: data.customer.address ?? '',
           productionEquipmentParams: data.customer.productionEquipmentParams ?? '',
         })
@@ -559,6 +569,27 @@ export default function AdminCosmoCoatCustomerDetailPage() {
               style={inputStyle()}
             />
           </Field>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Field label="联系人">
+              <input
+                value={form.contactPerson}
+                onChange={e => patch('contactPerson', e.target.value)}
+                maxLength={200}
+                className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+                style={inputStyle()}
+              />
+            </Field>
+            <Field label="联系人电话">
+              <input
+                value={form.contactPhone}
+                onChange={e => patch('contactPhone', e.target.value)}
+                maxLength={50}
+                className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+                style={inputStyle()}
+              />
+            </Field>
+          </div>
 
           <Field label="客户地址">
             <textarea

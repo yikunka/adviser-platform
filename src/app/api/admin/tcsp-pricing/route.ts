@@ -4,13 +4,12 @@ import { z } from 'zod'
 import { requirePermission, requireRole } from '@/lib/auth/rbac'
 import { logAudit } from '@/lib/audit/logger'
 import { prisma } from '@/lib/db/prisma'
-import { normalizeTcspCustomerLevel, normalizeTcspJurisdiction } from '@/lib/adviser/tcsp-pricing'
+import { normalizeTcspCustomerLevel, normalizeTcspJurisdiction, normalizeTcspServiceContent } from '@/lib/adviser/tcsp-pricing'
 
 const priceSchema = z.object({
   jurisdiction: z.string().min(1).max(20),
   customerLevel: z.string().min(1).max(30),
-  serviceCategory: z.string().min(1).max(100),
-  serviceName: z.string().min(1).max(200),
+  serviceContent: z.string().min(1).max(300),
   currency: z.string().min(3).max(3).default('HKD'),
   amount: z.number().min(0).max(999999999),
   notes: z.string().max(2000).optional().nullable(),
@@ -20,8 +19,7 @@ const priceSelect = {
   id: true,
   jurisdiction: true,
   customerLevel: true,
-  serviceCategory: true,
-  serviceName: true,
+  serviceContent: true,
   currency: true,
   amount: true,
   notes: true,
@@ -63,8 +61,7 @@ export async function GET(req: NextRequest) {
       ...(search
         ? {
             OR: [
-              { serviceCategory: { contains: search, mode: 'insensitive' } },
-              { serviceName: { contains: search, mode: 'insensitive' } },
+              { serviceContent: { contains: search, mode: 'insensitive' } },
               { notes: { contains: search, mode: 'insensitive' } },
             ],
           }
@@ -73,8 +70,7 @@ export async function GET(req: NextRequest) {
     orderBy: [
       { jurisdiction: 'asc' },
       { customerLevel: 'asc' },
-      { serviceCategory: 'asc' },
-      { serviceName: 'asc' },
+      { serviceContent: 'asc' },
     ],
     select: priceSelect,
   })
@@ -93,12 +89,16 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const serviceContent = normalizeTcspServiceContent(parsed.data.serviceContent)
+    if (!serviceContent) {
+      return NextResponse.json({ error: '请填写服务内容。' }, { status: 400 })
+    }
+
     const price = await prisma.tcspServicePrice.create({
       data: {
         jurisdiction: normalizeTcspJurisdiction(parsed.data.jurisdiction),
         customerLevel: normalizeTcspCustomerLevel(parsed.data.customerLevel),
-        serviceCategory: parsed.data.serviceCategory.trim(),
-        serviceName: parsed.data.serviceName.trim(),
+        serviceContent,
         currency: parsed.data.currency.trim().toUpperCase(),
         amount: parsed.data.amount,
         notes: parsed.data.notes?.trim() || null,
@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ price: serializePrice(price), toast: '价格配置已新增。' }, { status: 201 })
   } catch (err) {
     if (isUniqueConflict(err)) {
-      return NextResponse.json({ error: '同一司法管辖区、客户级别、服务分类和服务项已存在价格配置。' }, { status: 409 })
+      return NextResponse.json({ error: '同一司法管辖区、客户级别和服务内容已存在价格配置。' }, { status: 409 })
     }
     throw err
   }

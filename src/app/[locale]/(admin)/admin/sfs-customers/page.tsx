@@ -47,6 +47,7 @@ type CustomerFormValues = {
 }
 
 const OVERRIDE_CATEGORIES = [
+  { value: 'SOURCE', label: 'Source (adjustment)' },
   { value: 'CARAT', label: 'Carat (base price)' },
   { value: 'COLOR', label: 'Color (adjustment)' },
   { value: 'SHAPE', label: 'Shape (adjustment)' },
@@ -135,6 +136,7 @@ function CustomerContractsSection({
   }, [customer.id, onCustomerBound, resolvedCustomerId])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchContracts updates state asynchronously after loading attachments.
     fetchContracts()
   }, [fetchContracts])
 
@@ -335,6 +337,7 @@ function CustomerPriceOverridesSection({
     }
   }, [customer.id, onCustomerBound, resolvedCustomerId])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- load() updates state asynchronously after fetching pricing options.
   useEffect(() => { void load() }, [load])
 
   const valueOptions = specOptions.filter(o => o.category === draft.category)

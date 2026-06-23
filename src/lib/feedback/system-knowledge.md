@@ -116,9 +116,9 @@ Independent Adviser contract management, not linked to client companies.
 
 ### 6c. TCSP Service Pricing (`/admin/tcsp-pricing`)
 Central price-list management for TCSP service quotes.
-- Maintains service pricing by jurisdiction (`HK`, `BVI`, `CAYMAN`, `MARSHALL`), customer level (`经销客户` / `普通客户`), service category, service name, currency, amount, and notes
-- Service categories include company incorporation, address change, annual return, accounting, consulting, company secretary, bank account opening, and other services; service names remain editable so admins can cover all current and future service items
-- The same jurisdiction + customer level + service category + service name combination is unique to prevent duplicate quote rows
+- Maintains service pricing by jurisdiction (`HK`, `BVI`, `CAYMAN`, `MARSHALL`), customer level (`经销客户` / `普通客户`), free-text service content, currency, amount, and notes
+- Service content is a single admin-entered description field, so admins can cover any current or future TCSP service without selecting a preset category or item
+- The same jurisdiction + customer level + service content combination is unique to prevent duplicate quote rows
 - Access and actions are controlled by Role Management permissions `tcspPricing`, `tcspPricing.create`, `tcspPricing.edit`, and `tcspPricing.delete`
 
 ### 7. Team Management (`/admin/team`)
@@ -202,7 +202,7 @@ Memorial diamond jewellery service (lab-grown diamonds from cremation remains). 
 - **Technology**: diamond creation process (CVD growth explained)
 - **Memorial Diamonds**: product showcase
 - **Q&A**: FAQ
-- **Order** (`/order`): public order placement form; Diamond Specs options are database-driven from SFS Diamond Specs admin, including image-backed Color / Shape / Ring Design / Necklace Design / Earring Design / Bracelet Design options (color step shows admin-uploaded preview thumbnails); setting types include Ring, Necklace, Earring, Bracelet, and Diamond only; selecting Earring shows both Earring Design and Bracelet Design customer option groups; anonymous submissions create an order and SFS customer record, while logged-in SFS clients also get the order linked to their account
+- **Order** (`/order`): public order placement form; Diamond Specs options are database-driven from SFS Diamond Specs admin, including image-backed Source / Color / Shape / Ring Design / Necklace Design / Earring Design / Bracelet Design options (source and color steps show admin-uploaded preview thumbnails); setting types include Ring, Necklace, Earring, Bracelet, and Diamond only; selecting Earring shows both Earring Design and Bracelet Design customer option groups; anonymous submissions create an order and SFS customer record, while logged-in SFS clients also get the order linked to their account
 - **Order Success** (`/order/success`): confirmation page
 - **Dashboard** (authenticated): client's orders with milestone progress; each order includes an editable **Your Internal Order Code** field for the customer's own reference numbering (updatable at any time on My Orders and order detail)
 - **Dashboard Detail** (`/dashboard/[id]`): specific order status and phase timeline; internal order code field alongside order details
@@ -216,17 +216,17 @@ Customer registry for SFS Diamond.
 - Edit SFS customer profile fields (name, email, phone, mailing address, notes); order-only contacts are converted to bound customer profiles when edited
 - Delete customer profiles that have no order history; customers linked to any order cannot be deleted; deletion requires a confirmation dialog
 - Each bound customer profile includes a cooperation-contract attachments module on the edit dialog: upload, view, download, and delete partnership agreement files (PDF, Word, JPG, PNG, WEBP; max 10 MB)
-- **Customer-differentiated pricing** (edit dialog): each customer can set an overall **discount rate (%)** applied to their computed unit prices, plus per-customer **price overrides** that replace the global base price of specific spec options (carat / color / shape / metal / any design); both feed the SFS invoice pricing engine
+- **Customer-differentiated pricing** (edit dialog): each customer can set an overall **discount rate (%)** applied to their computed unit prices, plus per-customer **price overrides** that replace the global base price of specific spec options (source / carat / color / shape / metal / any design); both feed the SFS invoice pricing engine
 
 ### SFS Diamond Specs Admin (`/admin/sfs-diamond-specs`)
 Customer-facing order option management for SFS Diamond.
-- Page opens with the **Color** category filter selected by default; admins can switch to All or any other category tab
-- Maintains active/inactive options for Color, Carat, Shape, Setting Type, Ring Design, Necklace Design, Earring Design, Bracelet Design, and Metal
-- Color, Shape, Ring Design, Necklace Design, Earring Design, and Bracelet Design options can store preview image URLs; admin can upload images to OSS/local storage or paste an existing URL
+- Page opens with the **Source** category filter selected by default; admins can switch to All or any other category tab
+- Maintains active/inactive options for Source, Color, Carat, Shape, Setting Type, Ring Design, Necklace Design, Earring Design, Bracelet Design, and Metal
+- Source, Color, Shape, Ring Design, Necklace Design, Earring Design, and Bracelet Design options can store preview image URLs; admin can upload images to OSS/local storage or paste an existing URL
 - Active options are shown on `/sfsdiamond/order`; submitted orders keep saved text values
-- **Pricing**: each spec option has a price whose meaning depends on category — CARAT = diamond base price, COLOR/SHAPE/METAL = additive adjustment (may be negative), each design (Ring/Necklace/Earring/Bracelet) = its own jewellery price (finer than Setting Type); unset price counts as 0
+- **Pricing**: each spec option has a price whose meaning depends on category — CARAT = diamond base price, SOURCE/COLOR/SHAPE/METAL = additive adjustment (may be negative), each design (Ring/Necklace/Earring/Bracelet) = its own jewellery price (finer than Setting Type); unset price counts as 0
 - **Quantity discount tiers**: an editable tier table (min count / max count / discount %) grants a discount on the diamond price portion (carat + color + shape) based on the order's total diamond count; the most specific matching tier applies
-- Diamond pricing model (per diamond): `(caratBase + colorAdj + shapeAdj) × (1 − count-tier discount)` for the diamond portion, plus the design price + metal adjustment for the jewellery portion, then × `(1 − customer discount)`; per-customer overrides replace the matching global prices
+- Diamond pricing model (per diamond): `(caratBase + sourceAdj + colorAdj + shapeAdj) × (1 − count-tier discount)` for the diamond portion, plus the design price + metal adjustment for the jewellery portion, then × `(1 − customer discount)`; per-customer overrides replace the matching global prices
 
 ### SFS Orders Admin (`/admin/sfs-orders`)
 Order lifecycle management for memorial diamond commissions.
@@ -386,8 +386,8 @@ Product application method documentation (產品配套工藝書).
 
 ### Customers (`/admin/cosmocoat-customers`)
 Unified customer registry for CosmoCoat manufacturing clients (raw material purchases, recipe services, finished goods).
-- Fields: customer code (auto-generated `KH####` if omitted), name, optional linked CosmoCoat platform login account (from Customer Account Management), phone, address, production equipment parameters (free-text multi-line field below address on create/edit form)
-- List with search (code / name / phone / address / linked account email); paginated table; list rows can be exported to Excel using all rows that match the current search filter, including customer code, name, linked account email/name, phone, address, and updated date
+- Fields: customer code (auto-generated `KH####` if omitted), name, optional linked CosmoCoat platform login account (from Customer Account Management), phone, optional contact person, optional contact phone, address, production equipment parameters (free-text multi-line field below address on create/edit form)
+- List with search (code / name / phone / contact person / contact phone / address / linked account email); paginated table shows customer name, linked account, address, and updated date (customer code and phone are hidden from the table); list rows can be exported to Excel using all rows that match the current search filter, including customer code, name, linked account email/name, phone, address, and updated date
 - Bulk import from Excel/CSV on the list page: upload a table containing customer names only; the system creates customer records and auto-generates `KH####` codes
 - Create, view, edit, and delete customer profiles; detail page at `/admin/cosmocoat-customers/[id]`; new at `/admin/cosmocoat-customers/new`; **Save changes** / **Create customer** and **Cancel** actions are in the page header for quick access (no bottom save bar)
 - Upload, view, download, and delete independent customer file modules on saved customer profiles: **营业执照**, **法人身份证**, **天眼查报告**, and **其他文件** (PDF, JPG, PNG, WEBP; max 10 MB; Chinese file names are preserved for display/download); new customers must be saved before uploading

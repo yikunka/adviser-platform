@@ -4,6 +4,7 @@ import {
   TCSP_JURISDICTIONS,
   normalizeTcspCustomerLevel,
   normalizeTcspJurisdiction,
+  normalizeTcspServiceContent,
 } from './tcsp-pricing'
 
 describe('TCSP pricing dimensions', () => {
@@ -17,5 +18,10 @@ describe('TCSP pricing dimensions', () => {
     expect(normalizeTcspJurisdiction('unknown')).toBe('HK')
     expect(normalizeTcspCustomerLevel('distributor')).toBe('DISTRIBUTOR')
     expect(normalizeTcspCustomerLevel('vip')).toBe('STANDARD')
+  })
+
+  it('keeps free-text service content as the unique service descriptor', () => {
+    expect(normalizeTcspServiceContent('  Company incorporation - HK  ')).toBe('Company incorporation - HK')
+    expect(normalizeTcspServiceContent('')).toBeNull()
   })
 })

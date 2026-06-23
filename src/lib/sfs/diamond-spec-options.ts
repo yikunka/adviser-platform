@@ -7,7 +7,7 @@ export type SfsSpecOption = {
   value: string
   imageUrl: string | null
   /**
-   * Pricing value; meaning depends on category (CARAT = base price, COLOR/SHAPE/METAL =
+   * Pricing value; meaning depends on category (CARAT = base price, SOURCE/COLOR/SHAPE/METAL =
    * additive adjustment, *_DESIGN = jewellery design price). Null = unset, treated as 0.
    */
   price: number | null
@@ -41,6 +41,7 @@ function normalizeSpecOption(row: SfsSpecOptionRow): SfsSpecOption {
 }
 
 export type SfsOrderSpecOptions = {
+  sources: SfsSpecOption[]
   colors: SfsSpecOption[]
   carats: SfsSpecOption[]
   shapes: SfsSpecOption[]
@@ -53,6 +54,7 @@ export type SfsOrderSpecOptions = {
 }
 
 export const SFS_SPEC_CATEGORIES = [
+  'SOURCE',
   'COLOR',
   'CARAT',
   'SHAPE',
@@ -65,6 +67,7 @@ export const SFS_SPEC_CATEGORIES = [
 ] as const satisfies readonly SfsDiamondSpecCategory[]
 
 export const SFS_SPEC_CATEGORY_LABELS: Record<SfsDiamondSpecCategory, string> = {
+  SOURCE: 'Source',
   COLOR: 'Color',
   CARAT: 'Carat',
   SHAPE: 'Shape',
@@ -77,6 +80,7 @@ export const SFS_SPEC_CATEGORY_LABELS: Record<SfsDiamondSpecCategory, string> = 
 }
 
 export const SFS_DESIGN_IMAGE_CATEGORIES = new Set<SfsDiamondSpecCategory>([
+  'SOURCE',
   'COLOR',
   'SHAPE',
   'RING_DESIGN',
@@ -86,6 +90,10 @@ export const SFS_DESIGN_IMAGE_CATEGORIES = new Set<SfsDiamondSpecCategory>([
 ])
 
 const DEFAULT_SPEC_OPTIONS: SfsSpecOption[] = [
+  option('SOURCE', 'Hairs', null, 10),
+  option('SOURCE', 'Ashes', null, 20),
+  option('SOURCE', 'Mix', null, 30),
+
   option('COLOR', 'Natural Color', null, 10),
   option('COLOR', 'Transparent', null, 20),
 
@@ -162,6 +170,7 @@ export function groupSfsSpecOptions(options: SfsSpecOptionRow[]): SfsOrderSpecOp
   }
 
   return {
+    sources: byCategory.get('SOURCE') ?? [],
     colors: byCategory.get('COLOR') ?? [],
     carats: byCategory.get('CARAT') ?? [],
     shapes: byCategory.get('SHAPE') ?? [],

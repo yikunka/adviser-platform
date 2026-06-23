@@ -18,7 +18,12 @@ export async function getSfsOrderSpecOptions(): Promise<SfsOrderSpecOptions> {
       orderBy: [{ category: 'asc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
     })
     if (rows.length === 0) return getDefaultSfsOrderSpecOptions()
-    return groupSfsSpecOptions(rows)
+    const grouped = groupSfsSpecOptions(rows)
+    if (grouped.sources.length > 0) return grouped
+    return {
+      ...grouped,
+      sources: getDefaultSfsOrderSpecOptions().sources,
+    }
   } catch (error) {
     if (isMissingSpecTable(error)) return getDefaultSfsOrderSpecOptions()
     throw error

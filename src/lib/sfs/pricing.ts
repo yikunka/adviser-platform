@@ -10,13 +10,14 @@ import {
  *
  * Per diamond in an order (order-level `color` is shared):
  *   1. caratBase = override(CARAT,carat) ?? global(CARAT,carat)
- *   2. colorAdj  = override(COLOR,color) ?? global(COLOR,color)
- *   3. shapeAdj  = override(SHAPE,shape) ?? global(SHAPE,shape)
- *   4. diamondPart = (caratBase + colorAdj + shapeAdj) × (1 − countTierDiscount)
+ *   2. sourceAdj = override(SOURCE,sourceType) ?? global(SOURCE,sourceType)
+ *   3. colorAdj  = override(COLOR,color) ?? global(COLOR,color)
+ *   4. shapeAdj  = override(SHAPE,shape) ?? global(SHAPE,shape)
+ *   5. diamondPart = (caratBase + sourceAdj + colorAdj + shapeAdj) × (1 − countTierDiscount)
  *        — the count-based tier discount applies to the diamond price portion only,
  *          keyed on the order's total diamond count.
- *   5. jewelleryPart = designPrice(by setting type) + metalAdj   (no count discount)
- *   6. unitPrice = (diamondPart + jewelleryPart) × (1 − customerDiscountRate)
+ *   6. jewelleryPart = designPrice(by setting type) + metalAdj   (no count discount)
+ *   7. unitPrice = (diamondPart + jewelleryPart) × (1 − customerDiscountRate)
  *
  * Any spec option without a configured price is treated as 0, preserving the legacy
  * "unpriced ⇒ 0" behaviour.
@@ -58,6 +59,7 @@ export type SfsPricingResult = {
 
 export type ComputeSfsOrderPricingInput = {
   diamonds: SfsPricingDiamond[]
+  sourceType?: string | null
   color?: string | null
   specOptions: SfsOrderSpecOptions
   tiers?: SfsPriceTier[]
@@ -99,7 +101,7 @@ export function selectCountDiscountTier(count: number, tiers: SfsPriceTier[]): n
 }
 
 export function computeSfsOrderPricing(input: ComputeSfsOrderPricingInput): SfsPricingResult {
-  const { diamonds, color, specOptions, tiers = [], overrides = [] } = input
+  const { diamonds, sourceType, color, specOptions, tiers = [], overrides = [] } = input
 
   const overrideMap = new Map<string, number>()
   for (const override of overrides) {
@@ -140,12 +142,13 @@ export function computeSfsOrderPricing(input: ComputeSfsOrderPricingInput): SfsP
   const count = diamonds.length
   const countDiscountRate = selectCountDiscountTier(count, tiers)
   const customerDiscountRate = clampRate(input.customerDiscountRate)
+  const sourceAdj = priced('SOURCE', sourceType, specOptions.sources)
   const colorAdj = priced('COLOR', color, specOptions.colors)
 
   const lines: SfsPricedLine[] = diamonds.map(diamond => {
     const caratBase = priced('CARAT', diamond.carat, specOptions.carats)
     const shapeAdj = priced('SHAPE', diamond.shape, specOptions.shapes)
-    const diamondPart = round2((caratBase + colorAdj + shapeAdj) * (1 - countDiscountRate))
+    const diamondPart = round2((caratBase + sourceAdj + colorAdj + shapeAdj) * (1 - countDiscountRate))
     const jewellery = round2(jewelleryPart(diamond))
     const unitPrice = round2((diamondPart + jewellery) * (1 - customerDiscountRate))
     return { diamondPart, jewelleryPart: jewellery, unitPrice }

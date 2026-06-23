@@ -1050,23 +1050,22 @@ model AdviserContract {
 }
 
 model TcspServicePrice {
-  id              String   @id @default(cuid())
-  jurisdiction    String
-  customerLevel   String
-  serviceCategory String
-  serviceName     String
-  currency        String   @default("HKD")
-  amount          Decimal  @db.Decimal(18, 2)
-  notes           String?
-  createdById     String
-  updatedById     String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(cuid())
+  jurisdiction   String
+  customerLevel  String
+  serviceContent String
+  currency       String   @default("HKD")
+  amount         Decimal  @db.Decimal(18, 2)
+  notes          String?
+  createdById    String
+  updatedById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   createdBy User  @relation("TcspServicePriceCreator", fields: [createdById], references: [id])
   updatedBy User? @relation("TcspServicePriceUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
 
-  @@unique([jurisdiction, customerLevel, serviceCategory, serviceName])
+  @@unique([jurisdiction, customerLevel, serviceContent])
   @@index([jurisdiction, customerLevel])
   @@map("adv_tcsp_service_prices")
 }
@@ -1204,6 +1203,7 @@ enum SfsOrderStatus {
 }
 
 enum SfsDiamondSpecCategory {
+  SOURCE
   COLOR
   CARAT
   SHAPE
@@ -1397,7 +1397,7 @@ model SfsDiamondSpecOption {
   imageUrl    String?
   // Pricing — meaning depends on category:
   //   CARAT          → diamond base price
-  //   COLOR / SHAPE  → additive price adjustment (may be negative)
+  //   SOURCE / COLOR / SHAPE → additive price adjustment (may be negative)
   //   *_DESIGN       → jewellery design price
   //   METAL          → additive metal price adjustment
   // Null/unset is treated as 0 by the pricing engine.
@@ -2295,6 +2295,8 @@ model CosCustomer {
   name                      String
   userId                    String?  @unique
   phone                     String?
+  contactPerson             String?
+  contactPhone              String?
   address                   String?
   productionEquipmentParams String?
   createdById               String?

@@ -10,7 +10,6 @@ import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 import {
   TCSP_CUSTOMER_LEVELS,
   TCSP_JURISDICTIONS,
-  TCSP_SERVICE_CATEGORIES,
   tcspCustomerLevelLabel,
 } from '@/lib/adviser/tcsp-pricing'
 
@@ -18,8 +17,7 @@ type TcspPrice = {
   id: string
   jurisdiction: string
   customerLevel: string
-  serviceCategory: string
-  serviceName: string
+  serviceContent: string
   currency: string
   amount: string
   notes: string | null
@@ -29,8 +27,7 @@ type TcspPrice = {
 type PriceDraft = {
   jurisdiction: string
   customerLevel: string
-  serviceCategory: string
-  serviceName: string
+  serviceContent: string
   currency: string
   amount: string
   notes: string
@@ -39,8 +36,7 @@ type PriceDraft = {
 const emptyDraft: PriceDraft = {
   jurisdiction: 'HK',
   customerLevel: 'STANDARD',
-  serviceCategory: '公司注册',
-  serviceName: '',
+  serviceContent: '',
   currency: 'HKD',
   amount: '',
   notes: '',
@@ -66,8 +62,7 @@ function priceToDraft(price: TcspPrice): PriceDraft {
   return {
     jurisdiction: price.jurisdiction,
     customerLevel: price.customerLevel,
-    serviceCategory: price.serviceCategory,
-    serviceName: price.serviceName,
+    serviceContent: price.serviceContent,
     currency: price.currency,
     amount: price.amount,
     notes: price.notes ?? '',
@@ -78,8 +73,7 @@ function payloadFromDraft(draft: PriceDraft) {
   return {
     jurisdiction: draft.jurisdiction,
     customerLevel: draft.customerLevel,
-    serviceCategory: draft.serviceCategory,
-    serviceName: draft.serviceName,
+    serviceContent: draft.serviceContent,
     currency: draft.currency,
     amount: Number(draft.amount),
     notes: draft.notes,
@@ -124,14 +118,15 @@ function PriceFields({
         </SelectField>
       </label>
       <label className="space-y-1.5">
-        <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>服务分类</span>
-        <SelectField value={value.serviceCategory} onChange={next => onChange({ ...value, serviceCategory: next })}>
-          {TCSP_SERVICE_CATEGORIES.map(option => <option key={option} value={option}>{option}</option>)}
-        </SelectField>
-      </label>
-      <label className="space-y-1.5">
-        <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>服务项</span>
-        <input value={value.serviceName} onChange={event => onChange({ ...value, serviceName: event.target.value })} className={inputClass} style={inputStyle()} />
+        <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>服务内容</span>
+        <input
+          value={value.serviceContent}
+          onChange={event => onChange({ ...value, serviceContent: event.target.value })}
+          maxLength={300}
+          placeholder="例如：HK 公司注册、BVI 年审、会计服务等"
+          className={inputClass}
+          style={inputStyle()}
+        />
       </label>
       <label className="space-y-1.5">
         <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>币种</span>
@@ -189,8 +184,8 @@ export default function TcspPricingPage() {
   }, [fetchPrices])
 
   async function createPrice() {
-    if (!draft.serviceName.trim()) {
-      toast.error('请填写服务项名称。')
+    if (!draft.serviceContent.trim()) {
+      toast.error('请填写服务内容。')
       return
     }
     if (!Number.isFinite(Number(draft.amount))) {
@@ -242,7 +237,7 @@ export default function TcspPricingPage() {
   }
 
   async function deletePrice(price: TcspPrice) {
-    if (!window.confirm(`删除「${price.serviceName}」的价格配置？`)) return
+    if (!window.confirm(`删除「${price.serviceContent}」的价格配置？`)) return
     setDeletingId(price.id)
     try {
       const res = await fetch(`/api/admin/tcsp-pricing/${price.id}`, { method: 'DELETE' })
@@ -263,7 +258,7 @@ export default function TcspPricingPage() {
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>TCSP服务价格单</h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-            按司法管辖区、客户级别和服务项目维护差异化报价。
+            按司法管辖区、客户级别和服务内容维护差异化报价。
           </p>
         </div>
         {canCreate && (
@@ -279,7 +274,7 @@ export default function TcspPricingPage() {
           <input
             value={search}
             onChange={event => setSearch(event.target.value)}
-            placeholder="搜索服务分类、服务项或备注..."
+            placeholder="搜索服务内容或备注..."
             className="flex-1 bg-transparent text-sm outline-none"
             style={{ color: 'var(--foreground)' }}
           />
@@ -321,8 +316,7 @@ export default function TcspPricingPage() {
                         <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{tcspCustomerLevelLabel(price.customerLevel)}</p>
                       </td>
                       <td className="px-4 py-3 align-top">
-                        <p className="font-medium" style={{ color: 'var(--foreground)' }}>{price.serviceName}</p>
-                        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{price.serviceCategory}</p>
+                        <p className="font-medium" style={{ color: 'var(--foreground)' }}>{price.serviceContent}</p>
                       </td>
                       <td className="px-4 py-3 text-right align-top font-mono" style={{ color: 'var(--foreground)' }}>
                         {price.currency} {Number(price.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -387,7 +381,7 @@ export default function TcspPricingPage() {
               <div>
                 <h2 className="text-base font-semibold" style={{ color: 'var(--foreground)' }}>新增价格配置</h2>
                 <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                  同一司法管辖区、客户级别、服务分类和服务项只能有一条价格。
+                  同一司法管辖区、客户级别和服务内容只能有一条价格。
                 </p>
               </div>
               <button type="button" onClick={() => setCreateOpen(false)} className="rounded-md p-1.5" style={{ color: 'var(--muted-foreground)' }}>

@@ -48,6 +48,7 @@ export async function sfsOrderBillingSnapshot(orderId: string): Promise<SfsOrder
       contactNumber: true,
       memorialName: true,
       sampleCode: true,
+      sourceType: true,
       color: true,
       diamonds: true,
       customer: {
@@ -81,6 +82,7 @@ export async function sfsOrderBillingSnapshot(orderId: string): Promise<SfsOrder
   }))
   const pricing = computeSfsOrderPricing({
     diamonds: diamonds as SfsPricingDiamond[],
+    sourceType: order.sourceType,
     color: order.color,
     specOptions,
     tiers,

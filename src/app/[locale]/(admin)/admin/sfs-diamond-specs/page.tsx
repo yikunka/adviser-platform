@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ImagePlus, Loader2, Pencil, Plus, SlidersHorizontal, Trash2, X } from 'lucide-react'
 
 type Category =
+  | 'SOURCE'
   | 'COLOR'
   | 'CARAT'
   | 'SHAPE'
@@ -47,6 +48,7 @@ function priceFieldHint(category: Category): string {
   switch (category) {
     case 'CARAT':
       return 'Diamond base price for this carat'
+    case 'SOURCE':
     case 'COLOR':
     case 'SHAPE':
       return 'Additive adjustment (may be negative)'
@@ -66,6 +68,7 @@ function priceFieldLabel(category: Category): string {
   switch (category) {
     case 'CARAT':
       return 'Base price'
+    case 'SOURCE':
     case 'COLOR':
     case 'SHAPE':
     case 'METAL':
@@ -88,6 +91,7 @@ function formatPrice(price: string | number | null): string {
 }
 
 const CATEGORIES: { value: Category; label: string; needsImage?: boolean }[] = [
+  { value: 'SOURCE', label: 'Source', needsImage: true },
   { value: 'COLOR', label: 'Color', needsImage: true },
   { value: 'CARAT', label: 'Carat' },
   { value: 'SHAPE', label: 'Shape', needsImage: true },
@@ -100,7 +104,7 @@ const CATEGORIES: { value: Category; label: string; needsImage?: boolean }[] = [
 ]
 
 const EMPTY_FORM: FormValues = {
-  category: 'SHAPE',
+  category: 'SOURCE',
   label: '',
   value: '',
   imageUrl: '',
@@ -112,7 +116,7 @@ const EMPTY_FORM: FormValues = {
 const CATEGORY_LABEL = Object.fromEntries(CATEGORIES.map(c => [c.value, c.label])) as Record<Category, string>
 const IMAGE_CATEGORIES = new Set<Category>(CATEGORIES.filter(c => c.needsImage).map(c => c.value))
 
-function toForm(option?: SpecOption | null, category: Category = 'SHAPE'): FormValues {
+function toForm(option?: SpecOption | null, category: Category = 'SOURCE'): FormValues {
   if (!option) return { ...EMPTY_FORM, category }
   return {
     category: option.category,
@@ -313,7 +317,7 @@ function SpecModal({
                   Upload image
                 </Button>
                 <span className="text-xs" style={{ color: showImageHint ? '#C9A96E' : 'var(--muted-foreground)' }}>
-                  Images are used for Color, Shape, Ring Design, Necklace Design, Earring Design, and Bracelet Design.
+                  Images are used for Source, Color, Shape, Ring Design, Necklace Design, Earring Design, and Bracelet Design.
                 </span>
               </div>
             </div>
@@ -375,6 +379,7 @@ function PriceTierSection() {
     }
   }, [])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- load() updates state asynchronously after fetching saved tiers.
   useEffect(() => { void load() }, [load])
 
   async function addTier() {
@@ -493,7 +498,7 @@ function PriceTierSection() {
 export default function SfsDiamondSpecsPage() {
   const [options, setOptions] = useState<SpecOption[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<Category | 'ALL'>('COLOR')
+  const [filter, setFilter] = useState<Category | 'ALL'>('SOURCE')
   const [editing, setEditing] = useState<SpecOption | null>(null)
   const [creating, setCreating] = useState(false)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
@@ -578,7 +583,7 @@ export default function SfsDiamondSpecsPage() {
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>SFS Diamond Specs</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-            Manage customer-facing order options for diamond color, carat, shape, setting, design, and metal.
+            Manage customer-facing order options for source material, diamond color, carat, shape, setting, design, and metal.
           </p>
         </div>
         <Button onClick={() => setCreating(true)}>
@@ -700,7 +705,7 @@ export default function SfsDiamondSpecsPage() {
       {creating && (
         <SpecModal
           option={null}
-          defaultCategory={filter === 'ALL' ? 'SHAPE' : filter}
+          defaultCategory={filter === 'ALL' ? 'SOURCE' : filter}
           onClose={() => setCreating(false)}
           onSaved={fetchOptions}
         />

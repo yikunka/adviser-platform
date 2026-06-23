@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { ContactRound, Download, Mail, MapPin, Phone, Plus, Search, Upload } from 'lucide-react'
+import { ContactRound, Download, Mail, MapPin, Plus, Search, Upload } from 'lucide-react'
 import type { CosCustomerRow } from '@/lib/cosmocoat/customers'
 import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 
@@ -216,7 +216,7 @@ export default function AdminCosmoCoatCustomersPage() {
           <table className="w-full">
             <thead>
               <tr>
-                {['客户编码', '客户名称', '客户账号', '电话', '地址', '更新时间'].map(h => (
+                {['客户名称', '客户账号', '地址', '更新时间'].map(h => (
                   <th key={h} style={th}>{h}</th>
                 ))}
               </tr>
@@ -224,11 +224,11 @@ export default function AdminCosmoCoatCustomersPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>加载中...</td>
+                  <td colSpan={4} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>加载中...</td>
                 </tr>
               ) : customers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center">
+                  <td colSpan={4} className="px-4 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <ContactRound size={28} style={{ color: '#C9A96E', opacity: 0.45 }} />
                       <span style={{ color: 'var(--muted-foreground)' }}>
@@ -239,20 +239,19 @@ export default function AdminCosmoCoatCustomersPage() {
                 </tr>
               ) : customers.map(customer => (
                 <tr key={customer.id} className="hover:bg-[#1A1A12]/50 align-top">
-                  <td style={td}>
+                  <td style={{ ...td, color: 'var(--foreground)' }} className="min-w-[180px]">
                     {canViewDetail ? (
                       <Link
                         href={`/admin/cosmocoat-customers/${customer.id}`}
                         className="font-medium underline-offset-4 hover:underline"
                         style={{ color: '#C9A96E' }}
                       >
-                        {customer.code}
+                        {customer.name}
                       </Link>
                     ) : (
-                      <span className="font-medium" style={{ color: 'var(--foreground)' }}>{customer.code}</span>
+                      <span className="font-medium" style={{ color: 'var(--foreground)' }}>{customer.name}</span>
                     )}
                   </td>
-                  <td style={{ ...td, color: 'var(--foreground)' }} className="min-w-[160px]">{customer.name}</td>
                   <td style={td} className="min-w-[200px]">
                     {customer.user ? (
                       <div className="space-y-1">
@@ -265,14 +264,6 @@ export default function AdminCosmoCoatCustomersPage() {
                     ) : (
                       <span style={{ color: 'var(--muted-foreground)' }}>—</span>
                     )}
-                  </td>
-                  <td style={td} className="min-w-[140px]">
-                    <div className="flex items-center gap-2">
-                      <Phone size={13} style={{ color: '#756A58' }} />
-                      <span style={{ color: customer.phone ? 'var(--foreground)' : 'var(--muted-foreground)' }}>
-                        {customer.phone ?? '—'}
-                      </span>
-                    </div>
                   </td>
                   <td style={td} className="min-w-[220px] max-w-[360px]">
                     <div className="flex items-start gap-2">
