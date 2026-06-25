@@ -9,12 +9,20 @@ export type CosSupplierRow = {
   contactInfo: string | null
   address: string | null
   shippingAddress: string | null
+  hasBusinessLicense: boolean
+  hasQualityGuarantee: boolean
   createdById: string | null
   createdAt: string
   updatedAt: string
 }
 
-const supplierInclude = {} as const
+const supplierInclude = {
+  files: {
+    select: {
+      kind: true,
+    },
+  },
+} as const
 
 export function serializeSupplier(supplier: {
   id: string
@@ -27,7 +35,10 @@ export function serializeSupplier(supplier: {
   createdById: string | null
   createdAt: Date
   updatedAt: Date
+  files?: { kind: string }[]
 }): CosSupplierRow {
+  const fileKinds = new Set((supplier.files ?? []).map(file => file.kind))
+
   return {
     id: supplier.id,
     code: supplier.code,
@@ -36,6 +47,8 @@ export function serializeSupplier(supplier: {
     contactInfo: supplier.contactInfo,
     address: supplier.address,
     shippingAddress: supplier.shippingAddress,
+    hasBusinessLicense: fileKinds.has('BUSINESS_LICENSE'),
+    hasQualityGuarantee: fileKinds.has('QUALITY_GUARANTEE'),
     createdById: supplier.createdById,
     createdAt: supplier.createdAt.toISOString(),
     updatedAt: supplier.updatedAt.toISOString(),

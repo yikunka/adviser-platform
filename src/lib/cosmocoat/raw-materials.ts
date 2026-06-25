@@ -7,15 +7,23 @@ export type RawMaterialInput = {
   productionCode: string
   huaxingCode: string
   name: string
+  primarySupplierId: string | null
   primarySupplierCode: string
   primarySupplierName: string
+  primarySupplierContactPerson: string
+  primarySupplierContactInfo: string
+  primarySupplierAddress: string
   primaryPackageKg: number | null
   primaryPricePerKg: number | null
   primaryTaxIncluded: string
   primaryFreightIncluded: string
   primaryNotes: string
+  secondarySupplierId: string | null
   secondarySupplierCode: string
   secondarySupplierName: string
+  secondarySupplierContactPerson: string
+  secondarySupplierContactInfo: string
+  secondarySupplierAddress: string
   secondaryPackageKg: number | null
   secondaryPricePerKg: number | null
   secondaryTaxIncluded: string
@@ -96,15 +104,23 @@ export function parseExcelRow(row: Record<string, unknown>): RawMaterialInput | 
     productionCode,
     huaxingCode: str(excelValue(row, MEANINGFUL_KEYS.huaxingCode, LEGACY_MEANINGFUL_KEYS.huaxingCode)),
     name: str(row[MEANINGFUL_KEYS.name]),
+    primarySupplierId: null,
     primarySupplierCode: str(row[MEANINGFUL_KEYS.primarySupplierCode]),
     primarySupplierName: str(row[MEANINGFUL_KEYS.primarySupplierName]),
+    primarySupplierContactPerson: '',
+    primarySupplierContactInfo: '',
+    primarySupplierAddress: '',
     primaryPackageKg: num(row[MEANINGFUL_KEYS.primaryPackageKg]),
     primaryPricePerKg: num(row[MEANINGFUL_KEYS.primaryPricePerKg]),
     primaryTaxIncluded: yn(row[MEANINGFUL_KEYS.primaryTaxIncluded]),
     primaryFreightIncluded: yn(row[MEANINGFUL_KEYS.primaryFreightIncluded]),
     primaryNotes: str(row[MEANINGFUL_KEYS.primaryNotes]),
+    secondarySupplierId: null,
     secondarySupplierCode: str(row[MEANINGFUL_KEYS.secondarySupplierCode]),
     secondarySupplierName: str(row[MEANINGFUL_KEYS.secondarySupplierName]),
+    secondarySupplierContactPerson: '',
+    secondarySupplierContactInfo: '',
+    secondarySupplierAddress: '',
     secondaryPackageKg: num(row[MEANINGFUL_KEYS.secondaryPackageKg]),
     secondaryPricePerKg: num(row[MEANINGFUL_KEYS.secondaryPricePerKg]),
     secondaryTaxIncluded: yn(row[MEANINGFUL_KEYS.secondaryTaxIncluded]),
@@ -121,22 +137,30 @@ export function dedupeByProductionCode(rows: RawMaterialInput[]): RawMaterialInp
   return [...map.values()]
 }
 
-export function toPrismaCreateData(input: RawMaterialInput): Prisma.CosTableRawMaterialCreateInput {
+export function toPrismaCreateData(input: RawMaterialInput): Prisma.CosTableRawMaterialUncheckedCreateInput {
   return {
     category: input.category,
     attributeCode: input.attributeCode,
     productionCode: input.productionCode,
     huaxingCode: input.huaxingCode,
     name: input.name,
+    primarySupplierId: input.primarySupplierId,
     primarySupplierCode: input.primarySupplierCode,
     primarySupplierName: input.primarySupplierName,
+    primarySupplierContactPerson: input.primarySupplierContactPerson,
+    primarySupplierContactInfo: input.primarySupplierContactInfo,
+    primarySupplierAddress: input.primarySupplierAddress,
     primaryPackageKg: input.primaryPackageKg,
     primaryPricePerKg: input.primaryPricePerKg,
     primaryTaxIncluded: input.primaryTaxIncluded,
     primaryFreightIncluded: input.primaryFreightIncluded,
     primaryNotes: input.primaryNotes,
+    secondarySupplierId: input.secondarySupplierId,
     secondarySupplierCode: input.secondarySupplierCode,
     secondarySupplierName: input.secondarySupplierName,
+    secondarySupplierContactPerson: input.secondarySupplierContactPerson,
+    secondarySupplierContactInfo: input.secondarySupplierContactInfo,
+    secondarySupplierAddress: input.secondarySupplierAddress,
     secondaryPackageKg: input.secondaryPackageKg,
     secondaryPricePerKg: input.secondaryPricePerKg,
     secondaryTaxIncluded: input.secondaryTaxIncluded,
@@ -200,15 +224,23 @@ export function serializeRawMaterial(row: {
   productionCode: string
   huaxingCode: string
   name: string
+  primarySupplierId: string | null
   primarySupplierCode: string
   primarySupplierName: string
+  primarySupplierContactPerson: string
+  primarySupplierContactInfo: string
+  primarySupplierAddress: string
   primaryPackageKg: unknown
   primaryPricePerKg: unknown
   primaryTaxIncluded: string
   primaryFreightIncluded: string
   primaryNotes: string
+  secondarySupplierId: string | null
   secondarySupplierCode: string
   secondarySupplierName: string
+  secondarySupplierContactPerson: string
+  secondarySupplierContactInfo: string
+  secondarySupplierAddress: string
   secondaryPackageKg: unknown
   secondaryPricePerKg: unknown
   secondaryTaxIncluded: string
@@ -226,15 +258,23 @@ export function serializeRawMaterial(row: {
     productionCode: row.productionCode,
     huaxingCode: row.huaxingCode,
     name: row.name,
+    primarySupplierId: row.primarySupplierId,
     primarySupplierCode: row.primarySupplierCode,
     primarySupplierName: row.primarySupplierName,
+    primarySupplierContactPerson: row.primarySupplierContactPerson,
+    primarySupplierContactInfo: row.primarySupplierContactInfo,
+    primarySupplierAddress: row.primarySupplierAddress,
     primaryPackageKg: row.primaryPackageKg != null ? Number(row.primaryPackageKg) : null,
     primaryPricePerKg: row.primaryPricePerKg != null ? Number(row.primaryPricePerKg) : null,
     primaryTaxIncluded: row.primaryTaxIncluded,
     primaryFreightIncluded: row.primaryFreightIncluded,
     primaryNotes: row.primaryNotes,
+    secondarySupplierId: row.secondarySupplierId,
     secondarySupplierCode: row.secondarySupplierCode,
     secondarySupplierName: row.secondarySupplierName,
+    secondarySupplierContactPerson: row.secondarySupplierContactPerson,
+    secondarySupplierContactInfo: row.secondarySupplierContactInfo,
+    secondarySupplierAddress: row.secondarySupplierAddress,
     secondaryPackageKg: row.secondaryPackageKg != null ? Number(row.secondaryPackageKg) : null,
     secondaryPricePerKg: row.secondaryPricePerKg != null ? Number(row.secondaryPricePerKg) : null,
     secondaryTaxIncluded: row.secondaryTaxIncluded,

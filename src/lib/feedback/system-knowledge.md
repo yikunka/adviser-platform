@@ -202,7 +202,7 @@ Memorial diamond jewellery service (lab-grown diamonds from cremation remains). 
 - **Technology**: diamond creation process (CVD growth explained)
 - **Memorial Diamonds**: product showcase
 - **Q&A**: FAQ
-- **Order** (`/order`): public order placement form; Diamond Specs options are database-driven from SFS Diamond Specs admin, including image-backed Source / Color / Shape / Ring Design / Necklace Design / Earring Design / Bracelet Design options (source and color steps show admin-uploaded preview thumbnails); setting types include Ring, Necklace, Earring, Bracelet, and Diamond only; selecting Earring shows both Earring Design and Bracelet Design customer option groups; anonymous submissions create an order and SFS customer record, while logged-in SFS clients also get the order linked to their account
+- **Order** (`/order`): public order placement form; Diamond Specs options are database-driven from SFS Diamond Specs admin, including image-backed Source / Color / Carat / Shape / Ring Design / Necklace Design / Earring Design / Bracelet Design options (source, color, and carat steps show preview thumbnails; carat falls back to generated visual size previews when no image is uploaded); setting types include Ring, Necklace, Earring, Bracelet, and Diamond only; selecting Earring shows only the Earring Design customer option group; anonymous submissions create an order and SFS customer record, while logged-in SFS clients also get the order linked to their account
 - **Order Success** (`/order/success`): confirmation page
 - **Dashboard** (authenticated): client's orders with milestone progress; each order includes an editable **Your Internal Order Code** field for the customer's own reference numbering (updatable at any time on My Orders and order detail)
 - **Dashboard Detail** (`/dashboard/[id]`): specific order status and phase timeline; internal order code field alongside order details
@@ -222,7 +222,7 @@ Customer registry for SFS Diamond.
 Customer-facing order option management for SFS Diamond.
 - Page opens with the **Source** category filter selected by default; admins can switch to All or any other category tab
 - Maintains active/inactive options for Source, Color, Carat, Shape, Setting Type, Ring Design, Necklace Design, Earring Design, Bracelet Design, and Metal
-- Source, Color, Shape, Ring Design, Necklace Design, Earring Design, and Bracelet Design options can store preview image URLs; admin can upload images to OSS/local storage or paste an existing URL
+- Source, Color, Carat, Shape, Ring Design, Necklace Design, Earring Design, and Bracelet Design options can store preview image URLs; admin can upload images to OSS/local storage or paste an existing URL
 - Active options are shown on `/sfsdiamond/order`; submitted orders keep saved text values
 - **Pricing**: each spec option has a price whose meaning depends on category — CARAT = diamond base price, SOURCE/COLOR/SHAPE/METAL = additive adjustment (may be negative), each design (Ring/Necklace/Earring/Bracelet) = its own jewellery price (finer than Setting Type); unset price counts as 0
 - **Quantity discount tiers**: an editable tier table (min count / max count / discount %) grants a discount on the diamond price portion (carat + color + shape) based on the order's total diamond count; the most specific matching tier applies
@@ -293,7 +293,7 @@ Hierarchical category tree (up to 3 levels) for the website catalog.
 ### Raw Materials (`/admin/cosmocoat-raw-materials`)
 Purchasing and sourcing registry.
 - Fields: production code, CAS (stored as `huaxingCode`), attribute code, category, name; list and detail pages display the field as CAS
-- Dual supplier support: primary and secondary (name, package size kg, price/kg, tax flag, freight flag, notes)
+- Dual supplier support: primary and secondary supplier snapshots (supplier code/name, contact person, contact info, address, package size kg, price/kg, tax flag, freight flag, notes); on raw-material detail pages users can search/select an existing Supplier record to auto-fill the supplier code, name, contact person, contact info, and address while retaining editable snapshot fields; list rows show primary supplier code
 - Changing a raw material's primary price/kg (including via bulk import) automatically refreshes all referencing recipe and semifinished costs; no manual batch refresh is required
 - Attach and download TDS (Technical Data Sheet) and MSDS (Material Safety Data Sheet) files
 - Bulk import from file
@@ -303,7 +303,7 @@ Product formulation management.
 - Fields: recipe code, name, category, batch quantity, unit cost, product viscosity (free-text range e.g. `9.7-9.8`, unit S or KU — in basic info above notes), optional shelf life in days
 - Line items: raw materials, factory finished products (from factory products module), component recipes (nested semifinished), or Sol semifinished inventory, with quantity, unit price, percentage
 - Material list on recipe detail: unified columns for all line types (raw material, semifinished, factory product); 单价 is the editable saved line cost for every row type
-- Material picker on new/edit recipe page: tabs for 原材料, 半成品, and 成品; finished-product tab loads live `unitPrice` from factory products via a dedicated recipe picker API (always fresh from DB, refreshes when switching to the 成品 tab or when the page becomes visible again), with category filter and search, same click-to-select and "添加选中" flow as raw materials
+- Material picker on new/edit recipe page: tabs for 原材料, 半成品, and 成品; finished-product tab displays the linked factory product's Current Recipe `unitCost` as the selectable unit price (blank if the product has no Current Recipe), with category filter and search, same click-to-select and "添加选中" flow as raw materials
 - Unit cost is calculated by percentage: each line contributes `(quantity ÷ total quantity) × unit price`; accurate even when material quantities do not sum to 100
 - Automatic cost calculation; line prices can be refreshed from latest source pricing, and raw-material primary price or factory-product unit price changes automatically cascade through dependent production recipes, nested semifinished recipes, and source-linked semifinished inventory unit prices
 - Link to factory products; mark recipe as active/used
@@ -386,8 +386,8 @@ Product application method documentation (產品配套工藝書).
 
 ### Customers (`/admin/cosmocoat-customers`)
 Unified customer registry for CosmoCoat manufacturing clients (raw material purchases, recipe services, finished goods).
-- Fields: customer code (auto-generated `KH####` if omitted), name, optional linked CosmoCoat platform login account (from Customer Account Management), phone, optional contact person, optional contact phone, address, production equipment parameters (free-text multi-line field below address on create/edit form)
-- List with search (code / name / phone / contact person / contact phone / address / linked account email); paginated table shows customer name, linked account, address, and updated date (customer code and phone are hidden from the table); list rows can be exported to Excel using all rows that match the current search filter, including customer code, name, linked account email/name, phone, address, and updated date
+- Fields: customer code (auto-generated `KH####` if omitted), name, optional linked CosmoCoat platform login account (from Customer Account Management), optional assigned sales employee (`SALES` employees only), optional technical responsible employee (`TECHNICAL` employees only), phone, optional contact person, optional contact phone, address, production equipment parameters (free-text multi-line field below address on create/edit form)
+- List with search (code / name / phone / contact person / contact phone / address / sales employee / technical employee / linked account email); paginated table shows customer code, customer name, assigned sales employee, technical responsible employee, address, and updated date (linked account email and phone are hidden from the table); list rows can be exported to Excel using all rows that match the current search filter, including customer code, name, linked account email/name, phone, address, and updated date
 - Bulk import from Excel/CSV on the list page: upload a table containing customer names only; the system creates customer records and auto-generates `KH####` codes
 - Create, view, edit, and delete customer profiles; detail page at `/admin/cosmocoat-customers/[id]`; new at `/admin/cosmocoat-customers/new`; **Save changes** / **Create customer** and **Cancel** actions are in the page header for quick access (no bottom save bar)
 - Upload, view, download, and delete independent customer file modules on saved customer profiles: **营业执照**, **法人身份证**, **天眼查报告**, and **其他文件** (PDF, JPG, PNG, WEBP; max 10 MB; Chinese file names are preserved for display/download); new customers must be saved before uploading
@@ -397,7 +397,7 @@ Unified customer registry for CosmoCoat manufacturing clients (raw material purc
 Independent supplier registry for CosmoCoat sourcing; data and permission key are separate from customer management.
 - Fields: supplier code (auto-generated `SC####` if omitted), name, contact information, dedicated contact person, address, shipping address
 - Supplier list defaults to supplier-code ascending order (`SC0001`, `SC0002`, ...)
-- List with search (code / name / contact information / address); paginated table
+- List with search (code / name / contact information / address); paginated table shows upload-status markers for **营业执照** and **质量保証函** so missing required supplier documents are visible from the list
 - Bulk import from Excel/CSV on the list page: supplier name is required; optional supplier code can be provided, otherwise the system auto-generates `SC####`; contact information and address can also be imported when those columns exist
 - Create, view, edit, and delete supplier profiles; detail page at `/admin/cosmocoat-suppliers/[id]`; new at `/admin/cosmocoat-suppliers/new`
 - Upload, view, download, and delete independent supplier file modules on saved supplier profiles: **营业执照**, **质量保証函**, and general supplier files (PDF, Word, JPG, PNG, WEBP; max 10 MB; Chinese file names are preserved for display/download); new suppliers must be saved before uploading

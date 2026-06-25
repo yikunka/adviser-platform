@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { ContactRound, Download, Mail, MapPin, Plus, Search, Upload } from 'lucide-react'
+import { ContactRound, Download, MapPin, Plus, Search, Upload } from 'lucide-react'
 import type { CosCustomerRow } from '@/lib/cosmocoat/customers'
 import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 
@@ -205,7 +205,7 @@ export default function AdminCosmoCoatCustomersPage() {
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="搜索客户编码、名称、电话、地址或账号..."
+          placeholder="搜索客户编码、名称、电话、联系人、地址、销售或技术负责人..."
           className="w-full rounded-lg pl-9 pr-3 py-2.5 text-sm outline-none"
           style={{ background: '#0E0E0A', border: '1px solid #2A2418', color: 'var(--foreground)' }}
         />
@@ -216,7 +216,7 @@ export default function AdminCosmoCoatCustomersPage() {
           <table className="w-full">
             <thead>
               <tr>
-                {['客户名称', '客户账号', '地址', '更新时间'].map(h => (
+                {['客户编号', '客户名称', '关联销售人员', '指定技术负责人', '地址', '更新时间'].map(h => (
                   <th key={h} style={th}>{h}</th>
                 ))}
               </tr>
@@ -224,11 +224,11 @@ export default function AdminCosmoCoatCustomersPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>加载中...</td>
+                  <td colSpan={6} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>加载中...</td>
                 </tr>
               ) : customers.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-12 text-center">
+                  <td colSpan={6} className="px-4 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <ContactRound size={28} style={{ color: '#C9A96E', opacity: 0.45 }} />
                       <span style={{ color: 'var(--muted-foreground)' }}>
@@ -239,6 +239,9 @@ export default function AdminCosmoCoatCustomersPage() {
                 </tr>
               ) : customers.map(customer => (
                 <tr key={customer.id} className="hover:bg-[#1A1A12]/50 align-top">
+                  <td style={td} className="whitespace-nowrap">
+                    <span className="font-mono" style={{ color: 'var(--foreground)' }}>{customer.code}</span>
+                  </td>
                   <td style={{ ...td, color: 'var(--foreground)' }} className="min-w-[180px]">
                     {canViewDetail ? (
                       <Link
@@ -252,18 +255,21 @@ export default function AdminCosmoCoatCustomersPage() {
                       <span className="font-medium" style={{ color: 'var(--foreground)' }}>{customer.name}</span>
                     )}
                   </td>
-                  <td style={td} className="min-w-[200px]">
-                    {customer.user ? (
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Mail size={13} style={{ color: '#756A58' }} />
-                          <span className="break-all" style={{ color: 'var(--foreground)' }}>{customer.user.email}</span>
-                        </div>
-                        <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{customer.user.nameEn}</div>
+                  <td style={td} className="min-w-[150px]">
+                    {customer.salesEmployee ? (
+                      <div className="space-y-0.5">
+                        <div style={{ color: 'var(--foreground)' }}>{customer.salesEmployee.name}</div>
+                        <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{customer.salesEmployee.code}</div>
                       </div>
-                    ) : (
-                      <span style={{ color: 'var(--muted-foreground)' }}>—</span>
-                    )}
+                    ) : <span style={{ color: 'var(--muted-foreground)' }}>—</span>}
+                  </td>
+                  <td style={td} className="min-w-[150px]">
+                    {customer.technicalEmployee ? (
+                      <div className="space-y-0.5">
+                        <div style={{ color: 'var(--foreground)' }}>{customer.technicalEmployee.name}</div>
+                        <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{customer.technicalEmployee.code}</div>
+                      </div>
+                    ) : <span style={{ color: 'var(--muted-foreground)' }}>—</span>}
                   </td>
                   <td style={td} className="min-w-[220px] max-w-[360px]">
                     <div className="flex items-start gap-2">

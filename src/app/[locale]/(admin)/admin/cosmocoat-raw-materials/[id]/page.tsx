@@ -11,6 +11,17 @@ import { CategoryComboField } from '@/components/cosmocoat/category-combo-field'
 import type { RawMaterialRow } from '@/lib/cosmocoat/raw-materials'
 
 type FileType = 'tds' | 'msds'
+type RawMaterialForm = Omit<RawMaterialRow, 'id' | 'createdAt' | 'updatedAt'>
+
+type SupplierOption = {
+  id: string
+  code: string
+  name: string
+  contactPerson: string | null
+  contactInfo: string | null
+  address: string | null
+  shippingAddress: string | null
+}
 
 type DownloadUrlResponse = {
   success: boolean
@@ -36,9 +47,62 @@ function Field({ label, children, className = '' }: { label: string; children: R
   )
 }
 
+function mergeSupplierOptions(options: SupplierOption[], selected: SupplierOption | null) {
+  if (!selected || options.some(option => option.id === selected.id)) return options
+  return [selected, ...options]
+}
+
+function SupplierPickerField({
+  label,
+  value,
+  options,
+  search,
+  onSearch,
+  onChange,
+  inputStyle,
+}: {
+  label: string
+  value: string
+  options: SupplierOption[]
+  search: string
+  onSearch: (value: string) => void
+  onChange: (supplier: SupplierOption | null) => void
+  inputStyle: React.CSSProperties
+}) {
+  return (
+    <Field label={label} className="sm:col-span-2 lg:col-span-3">
+      <div className="grid sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-2">
+        <input
+          value={search}
+          onChange={e => onSearch(e.target.value)}
+          placeholder="搜索供应商编号、名称、联系人、电话或地址"
+          className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+          style={inputStyle}
+        />
+        <select
+          value={value}
+          onChange={e => {
+            const supplier = options.find(option => option.id === e.target.value) ?? null
+            onChange(supplier)
+          }}
+          className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+          style={inputStyle}
+        >
+          <option value="">不关联供应商</option>
+          {options.map(supplier => (
+            <option key={supplier.id} value={supplier.id}>
+              {supplier.code} · {supplier.name}
+              {supplier.contactPerson ? ` · ${supplier.contactPerson}` : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+    </Field>
+  )
+}
+
 function TechDocCard({
   title,
-  fileType,
   fileKey,
   busy,
   onUpload,
@@ -46,7 +110,6 @@ function TechDocCard({
   onDelete,
 }: {
   title: string
-  fileType: FileType
   fileKey: string | null
   busy: boolean
   onUpload: (file: File) => void
@@ -140,21 +203,33 @@ export default function AdminCosmoCoatRawMaterialDetailPage() {
   const [fileBusy, setFileBusy] = useState<FileType | null>(null)
   const [item, setItem] = useState<RawMaterialRow | null>(null)
   const [categories, setCategories] = useState<string[]>([])
-  const [form, setForm] = useState<Omit<RawMaterialRow, 'id' | 'createdAt' | 'updatedAt'>>({
+  const [primarySuppliers, setPrimarySuppliers] = useState<SupplierOption[]>([])
+  const [secondarySuppliers, setSecondarySuppliers] = useState<SupplierOption[]>([])
+  const [primarySupplierSearch, setPrimarySupplierSearch] = useState('')
+  const [secondarySupplierSearch, setSecondarySupplierSearch] = useState('')
+  const [form, setForm] = useState<RawMaterialForm>({
     category: '',
     attributeCode: '',
     productionCode: '',
     huaxingCode: '',
     name: '',
+    primarySupplierId: null,
     primarySupplierCode: '',
     primarySupplierName: '',
+    primarySupplierContactPerson: '',
+    primarySupplierContactInfo: '',
+    primarySupplierAddress: '',
     primaryPackageKg: null,
     primaryPricePerKg: null,
     primaryTaxIncluded: '',
     primaryFreightIncluded: '',
     primaryNotes: '',
+    secondarySupplierId: null,
     secondarySupplierCode: '',
     secondarySupplierName: '',
+    secondarySupplierContactPerson: '',
+    secondarySupplierContactInfo: '',
+    secondarySupplierAddress: '',
     secondaryPackageKg: null,
     secondaryPricePerKg: null,
     secondaryTaxIncluded: '',
@@ -178,15 +253,23 @@ export default function AdminCosmoCoatRawMaterialDetailPage() {
       productionCode: row.productionCode,
       huaxingCode: row.huaxingCode,
       name: row.name,
+      primarySupplierId: row.primarySupplierId,
       primarySupplierCode: row.primarySupplierCode,
       primarySupplierName: row.primarySupplierName,
+      primarySupplierContactPerson: row.primarySupplierContactPerson,
+      primarySupplierContactInfo: row.primarySupplierContactInfo,
+      primarySupplierAddress: row.primarySupplierAddress,
       primaryPackageKg: row.primaryPackageKg,
       primaryPricePerKg: row.primaryPricePerKg,
       primaryTaxIncluded: row.primaryTaxIncluded,
       primaryFreightIncluded: row.primaryFreightIncluded,
       primaryNotes: row.primaryNotes,
+      secondarySupplierId: row.secondarySupplierId,
       secondarySupplierCode: row.secondarySupplierCode,
       secondarySupplierName: row.secondarySupplierName,
+      secondarySupplierContactPerson: row.secondarySupplierContactPerson,
+      secondarySupplierContactInfo: row.secondarySupplierContactInfo,
+      secondarySupplierAddress: row.secondarySupplierAddress,
       secondaryPackageKg: row.secondaryPackageKg,
       secondaryPricePerKg: row.secondaryPricePerKg,
       secondaryTaxIncluded: row.secondaryTaxIncluded,
@@ -229,8 +312,88 @@ export default function AdminCosmoCoatRawMaterialDetailPage() {
     return () => { cancelled = true }
   }, [])
 
+  const fetchSupplierOptions = useCallback(async (target: 'primary' | 'secondary', q: string) => {
+    try {
+      const params = new URLSearchParams({ limit: '50' })
+      if (q.trim()) params.set('q', q.trim())
+      const res = await fetch(`/api/admin/cosmocoat/raw-materials/picker/suppliers?${params}`)
+      const data = await res.json()
+      if (!res.ok) return
+      const suppliers = (data.suppliers ?? []) as SupplierOption[]
+      if (target === 'primary') {
+        const selected = form.primarySupplierId
+          ? {
+              id: form.primarySupplierId,
+              code: form.primarySupplierCode,
+              name: form.primarySupplierName,
+              contactPerson: form.primarySupplierContactPerson || null,
+              contactInfo: form.primarySupplierContactInfo || null,
+              address: form.primarySupplierAddress || null,
+              shippingAddress: null,
+            }
+          : null
+        setPrimarySuppliers(mergeSupplierOptions(suppliers, selected))
+      } else {
+        const selected = form.secondarySupplierId
+          ? {
+              id: form.secondarySupplierId,
+              code: form.secondarySupplierCode,
+              name: form.secondarySupplierName,
+              contactPerson: form.secondarySupplierContactPerson || null,
+              contactInfo: form.secondarySupplierContactInfo || null,
+              address: form.secondarySupplierAddress || null,
+              shippingAddress: null,
+            }
+          : null
+        setSecondarySuppliers(mergeSupplierOptions(suppliers, selected))
+      }
+    } catch {
+      // Supplier selection is progressive enhancement; form fields remain editable on failure.
+    }
+  }, [
+    form.primarySupplierAddress,
+    form.primarySupplierCode,
+    form.primarySupplierContactInfo,
+    form.primarySupplierContactPerson,
+    form.primarySupplierId,
+    form.primarySupplierName,
+    form.secondarySupplierAddress,
+    form.secondarySupplierCode,
+    form.secondarySupplierContactInfo,
+    form.secondarySupplierContactPerson,
+    form.secondarySupplierId,
+    form.secondarySupplierName,
+  ])
+
+  useEffect(() => {
+    const timer = setTimeout(() => fetchSupplierOptions('primary', primarySupplierSearch), primarySupplierSearch ? 300 : 0)
+    return () => clearTimeout(timer)
+  }, [fetchSupplierOptions, primarySupplierSearch])
+
+  useEffect(() => {
+    const timer = setTimeout(() => fetchSupplierOptions('secondary', secondarySupplierSearch), secondarySupplierSearch ? 300 : 0)
+    return () => clearTimeout(timer)
+  }, [fetchSupplierOptions, secondarySupplierSearch])
+
   function patch<K extends keyof typeof form>(key: K, value: typeof form[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
+  }
+
+  function applySupplier(prefix: 'primary' | 'secondary', supplier: SupplierOption | null) {
+    const patchValues = supplier
+      ? {
+          [`${prefix}SupplierId`]: supplier.id,
+          [`${prefix}SupplierCode`]: supplier.code,
+          [`${prefix}SupplierName`]: supplier.name,
+          [`${prefix}SupplierContactPerson`]: supplier.contactPerson ?? '',
+          [`${prefix}SupplierContactInfo`]: supplier.contactInfo ?? '',
+          [`${prefix}SupplierAddress`]: supplier.address ?? '',
+        }
+      : {
+          [`${prefix}SupplierId`]: null,
+        }
+
+    setForm(prev => ({ ...prev, ...patchValues }))
   }
 
   async function uploadFile(type: FileType, file: File) {
@@ -376,7 +539,6 @@ export default function AdminCosmoCoatRawMaterialDetailPage() {
         <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <TechDocCard
             title="TDS (技术数据表)"
-            fileType="tds"
             fileKey={form.tdsFileKey ?? null}
             busy={fileBusy === 'tds'}
             onUpload={file => uploadFile('tds', file)}
@@ -385,7 +547,6 @@ export default function AdminCosmoCoatRawMaterialDetailPage() {
           />
           <TechDocCard
             title="MSDS (安全数据表)"
-            fileType="msds"
             fileKey={form.msdsFileKey ?? null}
             busy={fileBusy === 'msds'}
             onUpload={file => uploadFile('msds', file)}
@@ -432,11 +593,29 @@ export default function AdminCosmoCoatRawMaterialDetailPage() {
         </div>
         <div className="p-4">
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <SupplierPickerField
+              label="关联供应商"
+              value={form.primarySupplierId ?? ''}
+              options={primarySuppliers}
+              search={primarySupplierSearch}
+              onSearch={setPrimarySupplierSearch}
+              onChange={supplier => applySupplier('primary', supplier)}
+              inputStyle={inputStyle}
+            />
             <Field label="供应商编号">
               <input value={form.primarySupplierCode} onChange={e => patch('primarySupplierCode', e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle} />
             </Field>
             <Field label="供应商名称" className="sm:col-span-2">
               <input value={form.primarySupplierName} onChange={e => patch('primarySupplierName', e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle} />
+            </Field>
+            <Field label="联系人">
+              <input value={form.primarySupplierContactPerson} onChange={e => patch('primarySupplierContactPerson', e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle} />
+            </Field>
+            <Field label="联系方式">
+              <input value={form.primarySupplierContactInfo} onChange={e => patch('primarySupplierContactInfo', e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle} />
+            </Field>
+            <Field label="地址">
+              <input value={form.primarySupplierAddress} onChange={e => patch('primarySupplierAddress', e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle} />
             </Field>
             <Field label="包装 (KG)">
               <input type="number" min={0} step="0.01" value={form.primaryPackageKg ?? ''} onChange={e => patch('primaryPackageKg', e.target.value === '' ? null : Number(e.target.value))} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle} />
@@ -471,11 +650,29 @@ export default function AdminCosmoCoatRawMaterialDetailPage() {
         </div>
         <div className="p-4">
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <SupplierPickerField
+              label="关联供应商"
+              value={form.secondarySupplierId ?? ''}
+              options={secondarySuppliers}
+              search={secondarySupplierSearch}
+              onSearch={setSecondarySupplierSearch}
+              onChange={supplier => applySupplier('secondary', supplier)}
+              inputStyle={inputStyle}
+            />
             <Field label="供应商编号">
               <input value={form.secondarySupplierCode} onChange={e => patch('secondarySupplierCode', e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle} />
             </Field>
             <Field label="供应商名称" className="sm:col-span-2">
               <input value={form.secondarySupplierName} onChange={e => patch('secondarySupplierName', e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle} />
+            </Field>
+            <Field label="联系人">
+              <input value={form.secondarySupplierContactPerson} onChange={e => patch('secondarySupplierContactPerson', e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle} />
+            </Field>
+            <Field label="联系方式">
+              <input value={form.secondarySupplierContactInfo} onChange={e => patch('secondarySupplierContactInfo', e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle} />
+            </Field>
+            <Field label="地址">
+              <input value={form.secondarySupplierAddress} onChange={e => patch('secondarySupplierAddress', e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle} />
             </Field>
             <Field label="包装 (KG)">
               <input type="number" min={0} step="0.01" value={form.secondaryPackageKg ?? ''} onChange={e => patch('secondaryPackageKg', e.target.value === '' ? null : Number(e.target.value))} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle} />

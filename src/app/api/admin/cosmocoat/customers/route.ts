@@ -16,6 +16,8 @@ const createSchema = z.object({
   code: z.string().trim().min(1).max(32).optional(),
   name: z.string().trim().min(1).max(200),
   userId: z.union([z.string().trim().min(1), z.literal(''), z.null()]).optional(),
+  salesEmployeeId: z.union([z.string().trim().min(1), z.literal(''), z.null()]).optional(),
+  technicalEmployeeId: z.union([z.string().trim().min(1), z.literal(''), z.null()]).optional(),
   phone: z.string().trim().max(50).optional().nullable(),
   contactPerson: z.string().trim().max(200).optional().nullable(),
   contactPhone: z.string().trim().max(50).optional().nullable(),
@@ -48,6 +50,19 @@ async function validateUserId(userId: string | null | undefined) {
   return id
 }
 
+async function validateEmployeeId(employeeId: string | null | undefined, employeeType: 'SALES' | 'TECHNICAL') {
+  const id = nullableText(employeeId ?? null)
+  if (!id) return null
+
+  const employee = await prisma.cosEmployee.findFirst({
+    where: { id, employeeType },
+    select: { id: true },
+  })
+  if (!employee) throw new Error(employeeType === 'SALES' ? 'SALES_EMPLOYEE_NOT_FOUND' : 'TECHNICAL_EMPLOYEE_NOT_FOUND')
+
+  return id
+}
+
 export async function GET(req: NextRequest) {
   const { error } = await requireRole('STAFF', { adminMenu: 'cosmocoatCustomers' })
   if (error) return error
@@ -66,6 +81,10 @@ export async function GET(req: NextRequest) {
           { contactPerson: { contains: q, mode: 'insensitive' } },
           { contactPhone: { contains: q, mode: 'insensitive' } },
           { address: { contains: q, mode: 'insensitive' } },
+          { salesEmployee: { name: { contains: q, mode: 'insensitive' } } },
+          { salesEmployee: { code: { contains: q, mode: 'insensitive' } } },
+          { technicalEmployee: { name: { contains: q, mode: 'insensitive' } } },
+          { technicalEmployee: { code: { contains: q, mode: 'insensitive' } } },
           { user: { email: { contains: q, mode: 'insensitive' } } },
           { user: { nameEn: { contains: q, mode: 'insensitive' } } },
         ],
@@ -114,12 +133,16 @@ export async function POST(req: NextRequest) {
     if (existing) return NextResponse.json({ error: '客户编码已存在' }, { status: 409 })
 
     const userId = await validateUserId(parsed.data.userId)
+    const salesEmployeeId = await validateEmployeeId(parsed.data.salesEmployeeId, 'SALES')
+    const technicalEmployeeId = await validateEmployeeId(parsed.data.technicalEmployeeId, 'TECHNICAL')
 
     const customer = await prisma.cosCustomer.create({
       data: {
         code,
         name: parsed.data.name,
         userId,
+        salesEmployeeId,
+        technicalEmployeeId,
         phone: nullableText(parsed.data.phone),
         contactPerson: nullableText(parsed.data.contactPerson),
         contactPhone: nullableText(parsed.data.contactPhone),
@@ -139,6 +162,12 @@ export async function POST(req: NextRequest) {
       }
       if (err.message === 'USER_ALREADY_BOUND') {
         return NextResponse.json({ error: '该账号已关联其他客户档案' }, { status: 409 })
+      }
+      if (err.message === 'SALES_EMPLOYEE_NOT_FOUND') {
+        return NextResponse.json({ error: '所选销售人员不存在或类型不正确' }, { status: 400 })
+      }
+      if (err.message === 'TECHNICAL_EMPLOYEE_NOT_FOUND') {
+        return NextResponse.json({ error: '所选技术负责人不存在或类型不正确' }, { status: 400 })
       }
     }
     if (isMissingTable(err)) {

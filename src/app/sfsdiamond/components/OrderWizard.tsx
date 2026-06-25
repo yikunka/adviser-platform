@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { getDesignOptionGroupsForSettingType, type SfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options'
+import { getCaratPreviewDiameter } from '@/lib/sfs/carat-preview'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -158,6 +159,55 @@ function ImageCard({ label, src, selected, onClick, tall, hideLabel }: {
           {label}
         </span>
       )}
+    </button>
+  )
+}
+
+function CaratCard({
+  label,
+  value,
+  src,
+  selected,
+  onClick,
+}: {
+  label: string
+  value: string
+  src: string | null
+  selected: boolean
+  onClick: () => void
+}) {
+  const diameter = getCaratPreviewDiameter(value)
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex flex-col items-center gap-2 rounded-2xl border-2 p-3 transition-all"
+      style={{
+        borderColor: selected ? GOLD : BORDER,
+        background: selected ? '#FDF8F0' : '#fff',
+        boxShadow: selected ? `0 0 0 1px ${GOLD}` : '0 1px 6px rgba(0,0,0,0.04)',
+      }}
+    >
+      <div className="relative flex h-24 w-full items-center justify-center overflow-hidden rounded-xl" style={{ background: '#FBF7EF' }}>
+        {src ? (
+          <img src={src} alt={`${label} ct`} className="h-full w-full object-contain" />
+        ) : (
+          <div
+            className="rounded-full border"
+            style={{
+              width: diameter,
+              height: diameter,
+              borderColor: selected ? GOLD : '#D8CCB7',
+              background: selected ? 'rgba(201,169,110,0.16)' : 'rgba(201,169,110,0.08)',
+              boxShadow: 'inset 0 0 18px rgba(255,255,255,0.72)',
+            }}
+          />
+        )}
+      </div>
+      <span className="text-xs font-semibold text-center" style={{ color: selected ? GOLD : MUTED }}>
+        {label} ct
+      </span>
     </button>
   )
 }
@@ -420,21 +470,16 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
           Carat<span style={{ color: GOLD }}> *</span>
         </p>
         <Image src="/sfsdiamond/order/size-chart.png" alt="Diamond size chart" width={420} height={80} className="mb-4 rounded-xl" />
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {specOptions.carats.map(c => (
-            <button
+            <CaratCard
               key={c.id}
-              type="button"
+              label={c.label}
+              value={c.value}
+              src={c.imageUrl}
+              selected={item.carat === c.value}
               onClick={() => onChange({ carat: c.value })}
-              className="px-5 py-2 rounded-full text-sm font-semibold border-2 transition-all"
-              style={{
-                borderColor: item.carat === c.value ? GOLD : BORDER,
-                background: item.carat === c.value ? '#FDF8F0' : '#fff',
-                color: item.carat === c.value ? GOLD : DARK,
-              }}
-            >
-              {c.label} ct
-            </button>
+            />
           ))}
         </div>
       </div>

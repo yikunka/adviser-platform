@@ -82,6 +82,7 @@ export const SFS_SPEC_CATEGORY_LABELS: Record<SfsDiamondSpecCategory, string> = 
 export const SFS_DESIGN_IMAGE_CATEGORIES = new Set<SfsDiamondSpecCategory>([
   'SOURCE',
   'COLOR',
+  'CARAT',
   'SHAPE',
   'RING_DESIGN',
   'NECKLACE_DESIGN',
@@ -200,10 +201,7 @@ export function getDesignOptionGroupsForSettingType(
     case 'Necklace':
       return [{ label: 'Necklace Design', options: options.necklaceDesigns }]
     case 'Earring':
-      return [
-        { label: 'Earring Design', options: options.earringDesigns },
-        { label: 'Bracelet Design', options: options.braceletDesigns },
-      ].filter(group => group.options.length > 0)
+      return [{ label: 'Earring Design', options: options.earringDesigns }].filter(group => group.options.length > 0)
     case 'Bracelet':
       return [{ label: 'Bracelet Design', options: options.braceletDesigns }]
     default:

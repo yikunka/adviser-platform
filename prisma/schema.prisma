@@ -1545,21 +1545,29 @@ model CosTableRawMaterial {
   huaxingCode    String @default("")
   name           String
 
-  primarySupplierCode    String   @default("")
-  primarySupplierName    String   @default("")
-  primaryPackageKg       Decimal? @db.Decimal(12, 2)
-  primaryPricePerKg      Decimal? @db.Decimal(12, 4)
-  primaryTaxIncluded     String   @default("")
-  primaryFreightIncluded String   @default("")
-  primaryNotes           String   @default("")
+  primarySupplierId            String?
+  primarySupplierCode          String   @default("")
+  primarySupplierName          String   @default("")
+  primarySupplierContactPerson String   @default("")
+  primarySupplierContactInfo   String   @default("")
+  primarySupplierAddress       String   @default("")
+  primaryPackageKg             Decimal? @db.Decimal(12, 2)
+  primaryPricePerKg            Decimal? @db.Decimal(12, 4)
+  primaryTaxIncluded           String   @default("")
+  primaryFreightIncluded       String   @default("")
+  primaryNotes                 String   @default("")
 
-  secondarySupplierCode    String   @default("")
-  secondarySupplierName    String   @default("")
-  secondaryPackageKg       Decimal? @db.Decimal(12, 2)
-  secondaryPricePerKg      Decimal? @db.Decimal(12, 4)
-  secondaryTaxIncluded     String   @default("")
-  secondaryFreightIncluded String   @default("")
-  secondaryNotes           String   @default("")
+  secondarySupplierId            String?
+  secondarySupplierCode          String   @default("")
+  secondarySupplierName          String   @default("")
+  secondarySupplierContactPerson String   @default("")
+  secondarySupplierContactInfo   String   @default("")
+  secondarySupplierAddress       String   @default("")
+  secondaryPackageKg             Decimal? @db.Decimal(12, 2)
+  secondaryPricePerKg            Decimal? @db.Decimal(12, 4)
+  secondaryTaxIncluded           String   @default("")
+  secondaryFreightIncluded       String   @default("")
+  secondaryNotes                 String   @default("")
 
   // TDS (Technical Data Sheet) and MSDS (Material Safety Data Sheet) file keys
   tdsFileKey  String? @map("tds_file_key")
@@ -1571,7 +1579,11 @@ model CosTableRawMaterial {
   recipeItems          CosTableRecipeItem[]
   colorFormulaItems    CosTableColorFormulaItem[]
   productionOrderItems CosTableProductionOrderItem[]
+  primarySupplier      CosSupplier? @relation("RawMaterialPrimarySupplier", fields: [primarySupplierId], references: [id], onDelete: SetNull)
+  secondarySupplier    CosSupplier? @relation("RawMaterialSecondarySupplier", fields: [secondarySupplierId], references: [id], onDelete: SetNull)
 
+  @@index([primarySupplierId])
+  @@index([secondarySupplierId])
   @@index([category])
   @@index([attributeCode])
   @@index([name])
@@ -2294,6 +2306,8 @@ model CosCustomer {
   code                      String   @unique
   name                      String
   userId                    String?  @unique
+  salesEmployeeId           String?
+  technicalEmployeeId       String?
   phone                     String?
   contactPerson             String?
   contactPhone              String?
@@ -2304,6 +2318,8 @@ model CosCustomer {
   updatedAt                 DateTime @updatedAt
 
   user             User?                        @relation("CosCustomerUser", fields: [userId], references: [id], onDelete: SetNull)
+  salesEmployee    CosEmployee?                 @relation("CosCustomerSalesEmployee", fields: [salesEmployeeId], references: [id], onDelete: SetNull)
+  technicalEmployee CosEmployee?                @relation("CosCustomerTechnicalEmployee", fields: [technicalEmployeeId], references: [id], onDelete: SetNull)
   createdBy        User?                        @relation("CosCustomerCreator", fields: [createdById], references: [id], onDelete: SetNull)
   sampleOrders     CosSampleOrder[]
   colorFormulas    CosTableColorFormula[]
@@ -2311,6 +2327,8 @@ model CosCustomer {
 
   @@index([name])
   @@index([code])
+  @@index([salesEmployeeId])
+  @@index([technicalEmployeeId])
   @@index([createdAt])
   @@map("cos_customers")
 }
@@ -2353,6 +2371,8 @@ model CosSupplier {
 
   createdBy User?             @relation("CosSupplierCreator", fields: [createdById], references: [id], onDelete: SetNull)
   files     CosSupplierFile[]
+  primaryRawMaterials   CosTableRawMaterial[] @relation("RawMaterialPrimarySupplier")
+  secondaryRawMaterials CosTableRawMaterial[] @relation("RawMaterialSecondarySupplier")
 
   @@index([name])
   @@index([code])
@@ -2423,6 +2443,8 @@ model CosEmployee {
   processTests           CosProcessTest[]          @relation("ProcessTestTechnicalEmployee")
   salesSampleOrders      CosSampleOrder[]          @relation("SampleOrderSalesEmployee")
   technicalSampleOrders  CosSampleOrder[]          @relation("SampleOrderTechnicalEmployee")
+  salesCustomers         CosCustomer[]             @relation("CosCustomerSalesEmployee")
+  technicalCustomers     CosCustomer[]             @relation("CosCustomerTechnicalEmployee")
 
   @@index([employeeType])
   @@index([name])

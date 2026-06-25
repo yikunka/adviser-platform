@@ -17,21 +17,23 @@ export function serializeRecipeFactoryProductPickerOption(product: {
   name: string
   unit: string
   unitPrice: unknown
+  currentRecipe: { unitCost: unknown } | null
   notes: string
   category: { id: string; name: string } | null
 }): RecipeFactoryProductPickerOption {
   let unitPrice: number | null = null
-  if (product.unitPrice != null) {
-    if (typeof product.unitPrice === 'number') {
-      unitPrice = product.unitPrice
+  const sourceUnitCost = product.currentRecipe?.unitCost ?? null
+  if (sourceUnitCost != null) {
+    if (typeof sourceUnitCost === 'number') {
+      unitPrice = sourceUnitCost
     } else if (
-      typeof product.unitPrice === 'object' &&
-      'toNumber' in product.unitPrice &&
-      typeof product.unitPrice.toNumber === 'function'
+      typeof sourceUnitCost === 'object' &&
+      'toNumber' in sourceUnitCost &&
+      typeof sourceUnitCost.toNumber === 'function'
     ) {
-      unitPrice = product.unitPrice.toNumber()
+      unitPrice = sourceUnitCost.toNumber()
     } else {
-      unitPrice = Number(product.unitPrice)
+      unitPrice = Number(sourceUnitCost)
     }
   }
 
@@ -76,6 +78,7 @@ export async function listRecipeFactoryProductPickerOptions(params: {
       name: true,
       unit: true,
       unitPrice: true,
+      currentRecipe: { select: { unitCost: true } },
       notes: true,
       category: { select: { id: true, name: true } },
     },

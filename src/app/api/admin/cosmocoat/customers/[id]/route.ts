@@ -15,6 +15,8 @@ const updateSchema = z.object({
   code: z.string().trim().min(1).max(32).optional(),
   name: z.string().trim().min(1).max(200).optional(),
   userId: z.union([z.string().trim().min(1), z.literal(''), z.null()]).optional(),
+  salesEmployeeId: z.union([z.string().trim().min(1), z.literal(''), z.null()]).optional(),
+  technicalEmployeeId: z.union([z.string().trim().min(1), z.literal(''), z.null()]).optional(),
   phone: z.string().trim().max(50).optional().nullable(),
   contactPerson: z.string().trim().max(200).optional().nullable(),
   contactPhone: z.string().trim().max(50).optional().nullable(),
@@ -48,6 +50,21 @@ async function validateUserId(userId: string | null | undefined, customerId: str
     select: { id: true },
   })
   if (bound) throw new Error('USER_ALREADY_BOUND')
+
+  return id
+}
+
+async function validateEmployeeId(employeeId: string | null | undefined, employeeType: 'SALES' | 'TECHNICAL') {
+  if (employeeId === undefined) return undefined
+
+  const id = nullableText(employeeId ?? null)
+  if (!id) return null
+
+  const employee = await prisma.cosEmployee.findFirst({
+    where: { id, employeeType },
+    select: { id: true },
+  })
+  if (!employee) throw new Error(employeeType === 'SALES' ? 'SALES_EMPLOYEE_NOT_FOUND' : 'TECHNICAL_EMPLOYEE_NOT_FOUND')
 
   return id
 }
@@ -97,6 +114,8 @@ export async function PATCH(
     }
 
     const userId = await validateUserId(parsed.data.userId, id)
+    const salesEmployeeId = await validateEmployeeId(parsed.data.salesEmployeeId, 'SALES')
+    const technicalEmployeeId = await validateEmployeeId(parsed.data.technicalEmployeeId, 'TECHNICAL')
 
     const customer = await prisma.cosCustomer.update({
       where: { id },
@@ -104,6 +123,8 @@ export async function PATCH(
         ...(parsed.data.code !== undefined ? { code: parsed.data.code } : {}),
         ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
         ...(userId !== undefined ? { userId } : {}),
+        ...(salesEmployeeId !== undefined ? { salesEmployeeId } : {}),
+        ...(technicalEmployeeId !== undefined ? { technicalEmployeeId } : {}),
         ...(parsed.data.phone !== undefined ? { phone: nullableText(parsed.data.phone) } : {}),
         ...(parsed.data.contactPerson !== undefined ? { contactPerson: nullableText(parsed.data.contactPerson) } : {}),
         ...(parsed.data.contactPhone !== undefined ? { contactPhone: nullableText(parsed.data.contactPhone) } : {}),
@@ -124,6 +145,12 @@ export async function PATCH(
       }
       if (err.message === 'USER_ALREADY_BOUND') {
         return NextResponse.json({ error: '该账号已关联其他客户档案' }, { status: 409 })
+      }
+      if (err.message === 'SALES_EMPLOYEE_NOT_FOUND') {
+        return NextResponse.json({ error: '所选销售人员不存在或类型不正确' }, { status: 400 })
+      }
+      if (err.message === 'TECHNICAL_EMPLOYEE_NOT_FOUND') {
+        return NextResponse.json({ error: '所选技术负责人不存在或类型不正确' }, { status: 400 })
       }
     }
     if (isMissingTable(err)) {

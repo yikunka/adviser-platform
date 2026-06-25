@@ -27,9 +27,12 @@ describe('serializeSupplier', () => {
       createdById: 'user-1',
       createdAt: now,
       updatedAt: now,
+      files: [{ kind: 'BUSINESS_LICENSE' }],
     })).toMatchObject({
       contactPerson: 'Alex Chan',
       shippingAddress: 'Warehouse A',
+      hasBusinessLicense: true,
+      hasQualityGuarantee: false,
     })
   })
 })

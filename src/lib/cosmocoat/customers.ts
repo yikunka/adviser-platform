@@ -5,6 +5,8 @@ export type CosCustomerRow = {
   code: string
   name: string
   userId: string | null
+  salesEmployeeId: string | null
+  technicalEmployeeId: string | null
   phone: string | null
   contactPerson: string | null
   contactPhone: string | null
@@ -21,6 +23,20 @@ export type CosCustomerRow = {
     isActive: boolean
     emailVerified: string | null
   } | null
+  salesEmployee: CustomerEmployeeSummary | null
+  technicalEmployee: CustomerEmployeeSummary | null
+}
+
+type CustomerEmployeeSummary = {
+  id: string
+  code: string
+  name: string
+  employeeType: string
+  position: string | null
+  department: string | null
+  phone: string | null
+  email: string | null
+  isActive: boolean
 }
 
 const customerInclude = {
@@ -34,6 +50,32 @@ const customerInclude = {
       emailVerified: true,
     },
   },
+  salesEmployee: {
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      employeeType: true,
+      position: true,
+      department: true,
+      phone: true,
+      email: true,
+      isActive: true,
+    },
+  },
+  technicalEmployee: {
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      employeeType: true,
+      position: true,
+      department: true,
+      phone: true,
+      email: true,
+      isActive: true,
+    },
+  },
 } as const
 
 export function serializeCustomer(customer: {
@@ -41,6 +83,8 @@ export function serializeCustomer(customer: {
   code: string
   name: string
   userId: string | null
+  salesEmployeeId: string | null
+  technicalEmployeeId: string | null
   phone: string | null
   contactPerson: string | null
   contactPhone: string | null
@@ -57,12 +101,16 @@ export function serializeCustomer(customer: {
     isActive: boolean
     emailVerified: Date | null
   } | null
+  salesEmployee: CustomerEmployeeSummary | null
+  technicalEmployee: CustomerEmployeeSummary | null
 }): CosCustomerRow {
   return {
     id: customer.id,
     code: customer.code,
     name: customer.name,
     userId: customer.userId,
+    salesEmployeeId: customer.salesEmployeeId,
+    technicalEmployeeId: customer.technicalEmployeeId,
     phone: customer.phone,
     contactPerson: customer.contactPerson,
     contactPhone: customer.contactPhone,
@@ -77,6 +125,8 @@ export function serializeCustomer(customer: {
           emailVerified: customer.user.emailVerified?.toISOString() ?? null,
         }
       : null,
+    salesEmployee: customer.salesEmployee,
+    technicalEmployee: customer.technicalEmployee,
   }
 }
 

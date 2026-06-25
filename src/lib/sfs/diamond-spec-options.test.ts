@@ -13,24 +13,20 @@ describe('SFS diamond design options', () => {
 
     expect(SFS_SPEC_CATEGORIES.slice(0, 2)).toEqual(['SOURCE', 'COLOR'])
     expect(SFS_DESIGN_IMAGE_CATEGORIES.has('SOURCE')).toBe(true)
+    expect(SFS_DESIGN_IMAGE_CATEGORIES.has('CARAT')).toBe(true)
     expect(options.sources.map(option => option.value)).toEqual(['Hairs', 'Ashes', 'Mix'])
   })
 
-  it('shows bracelet design as an additional customer option group under earring', () => {
+  it('shows only earring design options under earring', () => {
     const options = getDefaultSfsOrderSpecOptions()
     const groups = getDesignOptionGroupsForSettingType('Earring', options)
 
-    expect(groups.map(group => group.label)).toEqual(['Earring Design', 'Bracelet Design'])
-    expect(groups.find(group => group.label === 'Bracelet Design')?.options.map(option => option.value)).toEqual([
-      'Classic',
-      'Plain',
-      'Tennis',
-      'Chain',
-    ])
+    expect(groups.map(group => group.label)).toEqual(['Earring Design'])
+    expect(groups[0]?.options.map(option => option.value)).toEqual(['Stud', 'Drop', 'Hoop'])
   })
 
-  it('accepts bracelet design values for earring validation through flattened design options', () => {
+  it('does not accept bracelet design values for earring validation through flattened design options', () => {
     const options = getDefaultSfsOrderSpecOptions()
-    expect(getDesignOptionsForSettingType('Earring', options).map(option => option.value)).toContain('Tennis')
+    expect(getDesignOptionsForSettingType('Earring', options).map(option => option.value)).not.toContain('Tennis')
   })
 })

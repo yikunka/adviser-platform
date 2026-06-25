@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from '@/i18n/navigation'
 import { toast } from 'sonner'
-import { MapPin, Phone, Plus, Search, Truck, Upload } from 'lucide-react'
+import { CheckCircle, MapPin, Phone, Plus, Search, Truck, Upload, XCircle } from 'lucide-react'
 import type { CosSupplierRow } from '@/lib/cosmocoat/suppliers'
 import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 
@@ -36,6 +36,24 @@ const td: React.CSSProperties = {
 function formatDate(value: string | null) {
   if (!value) return '—'
   return new Date(value).toLocaleDateString('zh-HK', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function UploadStatus({ uploaded, label }: { uploaded: boolean; label: string }) {
+  if (uploaded) {
+    return (
+      <span title={`${label}已上传`} className="inline-flex items-center gap-1.5">
+        <CheckCircle size={16} style={{ color: '#4A9F52', flexShrink: 0 }} />
+        <span className="text-xs font-medium" style={{ color: '#4A9F52' }}>已上传</span>
+      </span>
+    )
+  }
+
+  return (
+    <span title={`${label}缺失`} className="inline-flex items-center gap-1.5">
+      <XCircle size={16} style={{ color: '#E57373', flexShrink: 0 }} />
+      <span className="text-xs font-medium" style={{ color: '#E57373' }}>缺失</span>
+    </span>
+  )
 }
 
 export default function AdminCosmoCoatSuppliersPage() {
@@ -158,7 +176,7 @@ export default function AdminCosmoCoatSuppliersPage() {
           <table className="w-full">
             <thead>
               <tr>
-                {['供应商编码', '供应商名称', '联系方式', '地址', '更新时间'].map(h => (
+                {['供应商编码', '供应商名称', '联系方式', '地址', '更新时间', '营业执照', '质量保証函'].map(h => (
                   <th key={h} style={th}>{h}</th>
                 ))}
               </tr>
@@ -166,11 +184,11 @@ export default function AdminCosmoCoatSuppliersPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>加载中...</td>
+                  <td colSpan={7} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>加载中...</td>
                 </tr>
               ) : suppliers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center">
+                  <td colSpan={7} className="px-4 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <Truck size={28} style={{ color: '#C9A96E', opacity: 0.45 }} />
                       <span style={{ color: 'var(--muted-foreground)' }}>
@@ -212,6 +230,12 @@ export default function AdminCosmoCoatSuppliersPage() {
                     </div>
                   </td>
                   <td style={td} className="whitespace-nowrap">{formatDate(supplier.updatedAt)}</td>
+                  <td style={td} className="whitespace-nowrap">
+                    <UploadStatus uploaded={supplier.hasBusinessLicense} label="营业执照" />
+                  </td>
+                  <td style={td} className="whitespace-nowrap">
+                    <UploadStatus uploaded={supplier.hasQualityGuarantee} label="质量保証函" />
+                  </td>
                 </tr>
               ))}
             </tbody>

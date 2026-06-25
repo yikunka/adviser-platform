@@ -18,15 +18,23 @@ const emptyForm: RawMaterialForm = {
   productionCode: '',
   huaxingCode: '',
   name: '',
+  primarySupplierId: null,
   primarySupplierCode: '',
   primarySupplierName: '',
+  primarySupplierContactPerson: '',
+  primarySupplierContactInfo: '',
+  primarySupplierAddress: '',
   primaryPackageKg: null,
   primaryPricePerKg: null,
   primaryTaxIncluded: '',
   primaryFreightIncluded: '',
   primaryNotes: '',
+  secondarySupplierId: null,
   secondarySupplierCode: '',
   secondarySupplierName: '',
+  secondarySupplierContactPerson: '',
+  secondarySupplierContactInfo: '',
+  secondarySupplierAddress: '',
   secondaryPackageKg: null,
   secondaryPricePerKg: null,
   secondaryTaxIncluded: '',
@@ -64,12 +72,6 @@ function inputStyle(): React.CSSProperties {
     border: '1px solid #2A2418',
     color: 'var(--foreground)',
   }
-}
-
-function ynLabel(value: string) {
-  if (value === 'Y') return '是'
-  if (value === 'N') return '否'
-  return '—'
 }
 
 function numOrEmpty(value: number | null) {
@@ -118,6 +120,9 @@ function SupplierFields({
 }) {
   const codeKey = `${prefix}SupplierCode` as keyof RawMaterialForm
   const nameKey = `${prefix}SupplierName` as keyof RawMaterialForm
+  const contactPersonKey = `${prefix}SupplierContactPerson` as keyof RawMaterialForm
+  const contactInfoKey = `${prefix}SupplierContactInfo` as keyof RawMaterialForm
+  const addressKey = `${prefix}SupplierAddress` as keyof RawMaterialForm
   const pkgKey = `${prefix}PackageKg` as keyof RawMaterialForm
   const priceKey = `${prefix}PricePerKg` as keyof RawMaterialForm
   const taxKey = `${prefix}TaxIncluded` as keyof RawMaterialForm
@@ -131,6 +136,15 @@ function SupplierFields({
       </Field>
       <Field label="供应商名称" className="sm:col-span-2">
         <input value={String(form[nameKey] ?? '')} onChange={e => patch(nameKey, e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
+      </Field>
+      <Field label="联系人">
+        <input value={String(form[contactPersonKey] ?? '')} onChange={e => patch(contactPersonKey, e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
+      </Field>
+      <Field label="联系方式">
+        <input value={String(form[contactInfoKey] ?? '')} onChange={e => patch(contactInfoKey, e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
+      </Field>
+      <Field label="地址">
+        <input value={String(form[addressKey] ?? '')} onChange={e => patch(addressKey, e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
       </Field>
       <Field label="包装 (KG)">
         <input type="number" min={0} step="0.01" value={form[pkgKey] ?? ''} onChange={e => patch(pkgKey, e.target.value === '' ? null : Number(e.target.value))} className="w-full rounded-lg px-3 py-2.5 text-sm outline-none" style={inputStyle()} />
@@ -442,6 +456,7 @@ export default function AdminCosmoCoatRawMaterialsPage() {
                   <th style={th}>分类</th>
                   <th style={th}>属性</th>
                   <th style={th}>名称</th>
+                  <th style={th}>主供应商编号</th>
                   <th style={th}>主供应商</th>
                   <th style={th}>包装/KG</th>
                   <th style={th}>价格/KG</th>
@@ -461,6 +476,7 @@ export default function AdminCosmoCoatRawMaterialsPage() {
                     <td style={{ ...td, minWidth: '14rem', maxWidth: '20rem' }}>
                       <p className="truncate" title={item.name}>{item.name}</p>
                     </td>
+                    <td style={td}>{item.primarySupplierCode || '—'}</td>
                     <td style={td}>{item.primarySupplierName || '—'}</td>
                     <td style={td}>{numOrEmpty(item.primaryPackageKg)}</td>
                     <td style={td}>{numOrEmpty(item.primaryPricePerKg)}</td>

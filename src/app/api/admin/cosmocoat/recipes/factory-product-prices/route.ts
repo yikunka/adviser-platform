@@ -25,13 +25,13 @@ export async function GET(req: NextRequest) {
   try {
     const products = await prisma.cosTableFactoryProduct.findMany({
       where: { id: { in: ids } },
-      select: { id: true, unitPrice: true },
+      select: { id: true, currentRecipe: { select: { unitCost: true } } },
     })
 
     const prices = Object.fromEntries(
       products.map(product => [
         product.id,
-        product.unitPrice != null ? Number(product.unitPrice) : null,
+        product.currentRecipe?.unitCost != null ? Number(product.currentRecipe.unitCost) : null,
       ]),
     )
 

@@ -93,7 +93,7 @@ function formatPrice(price: string | number | null): string {
 const CATEGORIES: { value: Category; label: string; needsImage?: boolean }[] = [
   { value: 'SOURCE', label: 'Source', needsImage: true },
   { value: 'COLOR', label: 'Color', needsImage: true },
-  { value: 'CARAT', label: 'Carat' },
+  { value: 'CARAT', label: 'Carat', needsImage: true },
   { value: 'SHAPE', label: 'Shape', needsImage: true },
   { value: 'SETTING_TYPE', label: 'Setting Type' },
   { value: 'RING_DESIGN', label: 'Ring Design', needsImage: true },
@@ -317,7 +317,7 @@ function SpecModal({
                   Upload image
                 </Button>
                 <span className="text-xs" style={{ color: showImageHint ? '#C9A96E' : 'var(--muted-foreground)' }}>
-                  Images are used for Source, Color, Shape, Ring Design, Necklace Design, Earring Design, and Bracelet Design.
+                  Images are used for Source, Color, Carat, Shape, Ring Design, Necklace Design, Earring Design, and Bracelet Design.
                 </span>
               </div>
             </div>

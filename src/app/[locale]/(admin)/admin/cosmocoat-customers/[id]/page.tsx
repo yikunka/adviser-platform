@@ -16,10 +16,24 @@ type PlatformUser = {
   isActive: boolean
 }
 
+type EmployeeOption = {
+  id: string
+  code: string
+  name: string
+  employeeType: string
+  position: string | null
+  department: string | null
+  phone: string | null
+  email: string | null
+  isActive: boolean
+}
+
 type FormState = {
   code: string
   name: string
   userId: string
+  salesEmployeeId: string
+  technicalEmployeeId: string
   phone: string
   contactPerson: string
   contactPhone: string
@@ -291,6 +305,55 @@ function Field({ label, hint, children, className = '' }: { label: string; hint?
   )
 }
 
+function mergeEmployeeOption(options: EmployeeOption[], employee: EmployeeOption | null | undefined): EmployeeOption[] {
+  if (!employee || options.some(option => option.id === employee.id)) return options
+  return [employee, ...options]
+}
+
+function EmployeeSelectField({
+  label,
+  value,
+  options,
+  search,
+  onSearch,
+  onChange,
+}: {
+  label: string
+  value: string
+  options: EmployeeOption[]
+  search: string
+  onSearch: (value: string) => void
+  onChange: (value: string) => void
+}) {
+  return (
+    <Field label={label}>
+      <div className="grid gap-2 sm:grid-cols-[1fr_1.2fr]">
+        <input
+          value={search}
+          onChange={e => onSearch(e.target.value)}
+          placeholder="输入姓名、编号、电话搜索"
+          className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+          style={inputStyle()}
+        />
+        <select
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+          style={inputStyle()}
+        >
+          <option value="">不指定</option>
+          {options.map(employee => (
+            <option key={employee.id} value={employee.id}>
+              {employee.code} · {employee.name}
+              {employee.position ? ` · ${employee.position}` : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+    </Field>
+  )
+}
+
 export default function AdminCosmoCoatCustomerDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -301,12 +364,18 @@ export default function AdminCosmoCoatCustomerDetailPage() {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [platformUsers, setPlatformUsers] = useState<PlatformUser[]>([])
+  const [salesEmployees, setSalesEmployees] = useState<EmployeeOption[]>([])
+  const [technicalEmployees, setTechnicalEmployees] = useState<EmployeeOption[]>([])
+  const [salesEmployeeSearch, setSalesEmployeeSearch] = useState('')
+  const [technicalEmployeeSearch, setTechnicalEmployeeSearch] = useState('')
   const [customer, setCustomer] = useState<CosCustomerRow | null>(null)
   const [customerFiles, setCustomerFiles] = useState<Record<CustomerFileKind, BusinessLicenseFile[]>>(EMPTY_CUSTOMER_FILES)
   const [form, setForm] = useState<FormState>({
     code: '',
     name: '',
     userId: '',
+    salesEmployeeId: '',
+    technicalEmployeeId: '',
     phone: '',
     contactPerson: '',
     contactPhone: '',
@@ -324,6 +393,30 @@ export default function AdminCosmoCoatCustomerDetailPage() {
       // optional field — silent fail
     }
   }, [])
+
+  const fetchEmployeeOptions = useCallback(async (employeeType: 'SALES' | 'TECHNICAL', q = '') => {
+    try {
+      const params = new URLSearchParams({ employeeType, limit: '50' })
+      if (q.trim()) params.set('q', q.trim())
+      const res = await fetch(`/api/admin/cosmocoat/customers/picker/employees?${params}`)
+      const data = await res.json()
+      if (!res.ok) return
+      const employees = (data.employees ?? []) as EmployeeOption[]
+      if (employeeType === 'SALES') {
+        setSalesEmployees(prev => {
+          const selected = prev.find(item => item.id === form.salesEmployeeId)
+          return selected ? mergeEmployeeOption(employees, selected) : employees
+        })
+      } else {
+        setTechnicalEmployees(prev => {
+          const selected = prev.find(item => item.id === form.technicalEmployeeId)
+          return selected ? mergeEmployeeOption(employees, selected) : employees
+        })
+      }
+    } catch {
+      // optional field — silent fail
+    }
+  }, [form.salesEmployeeId, form.technicalEmployeeId])
 
   const fetchCustomerFiles = useCallback(async (kind: CustomerFileKind) => {
     if (isNew) return
@@ -357,12 +450,16 @@ export default function AdminCosmoCoatCustomerDetailPage() {
         code: row.code,
         name: row.name,
         userId: row.userId ?? '',
+        salesEmployeeId: row.salesEmployeeId ?? '',
+        technicalEmployeeId: row.technicalEmployeeId ?? '',
         phone: row.phone ?? '',
         contactPerson: row.contactPerson ?? '',
         contactPhone: row.contactPhone ?? '',
         address: row.address ?? '',
         productionEquipmentParams: row.productionEquipmentParams ?? '',
       })
+      setSalesEmployees(prev => mergeEmployeeOption(prev, row.salesEmployee))
+      setTechnicalEmployees(prev => mergeEmployeeOption(prev, row.technicalEmployee))
       await fetchAllCustomerFiles()
     } catch {
       toast.error('加载客户详情失败')
@@ -374,6 +471,16 @@ export default function AdminCosmoCoatCustomerDetailPage() {
   useEffect(() => {
     fetchPlatformUsers()
   }, [fetchPlatformUsers])
+
+  useEffect(() => {
+    const timer = setTimeout(() => fetchEmployeeOptions('SALES', salesEmployeeSearch), salesEmployeeSearch ? 300 : 0)
+    return () => clearTimeout(timer)
+  }, [fetchEmployeeOptions, salesEmployeeSearch])
+
+  useEffect(() => {
+    const timer = setTimeout(() => fetchEmployeeOptions('TECHNICAL', technicalEmployeeSearch), technicalEmployeeSearch ? 300 : 0)
+    return () => clearTimeout(timer)
+  }, [fetchEmployeeOptions, technicalEmployeeSearch])
 
   useEffect(() => {
     fetchCustomer()
@@ -396,6 +503,8 @@ export default function AdminCosmoCoatCustomerDetailPage() {
         code: form.code.trim() || undefined,
         name: form.name.trim(),
         userId: form.userId || null,
+        salesEmployeeId: form.salesEmployeeId || null,
+        technicalEmployeeId: form.technicalEmployeeId || null,
         phone: form.phone.trim() || null,
         contactPerson: form.contactPerson.trim() || null,
         contactPhone: form.contactPhone.trim() || null,
@@ -426,12 +535,16 @@ export default function AdminCosmoCoatCustomerDetailPage() {
           code: data.customer.code,
           name: data.customer.name,
           userId: data.customer.userId ?? '',
+          salesEmployeeId: data.customer.salesEmployeeId ?? '',
+          technicalEmployeeId: data.customer.technicalEmployeeId ?? '',
           phone: data.customer.phone ?? '',
           contactPerson: data.customer.contactPerson ?? '',
           contactPhone: data.customer.contactPhone ?? '',
           address: data.customer.address ?? '',
           productionEquipmentParams: data.customer.productionEquipmentParams ?? '',
         })
+        setSalesEmployees(prev => mergeEmployeeOption(prev, data.customer.salesEmployee))
+        setTechnicalEmployees(prev => mergeEmployeeOption(prev, data.customer.technicalEmployee))
       }
     } catch {
       toast.error('保存失败')
@@ -559,6 +672,25 @@ export default function AdminCosmoCoatCustomerDetailPage() {
               ))}
             </select>
           </Field>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <EmployeeSelectField
+              label="关联销售人员"
+              value={form.salesEmployeeId}
+              options={salesEmployees}
+              search={salesEmployeeSearch}
+              onSearch={setSalesEmployeeSearch}
+              onChange={value => patch('salesEmployeeId', value)}
+            />
+            <EmployeeSelectField
+              label="指定技术负责人"
+              value={form.technicalEmployeeId}
+              options={technicalEmployees}
+              search={technicalEmployeeSearch}
+              onSearch={setTechnicalEmployeeSearch}
+              onChange={value => patch('technicalEmployeeId', value)}
+            />
+          </div>
 
           <Field label="客户电话">
             <input
