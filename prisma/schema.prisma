@@ -217,6 +217,11 @@ enum InvoiceStatus {
   CANCELLED
 }
 
+enum InvoiceLineDiscountType {
+  PERCENT
+  FIXED
+}
+
 enum InvoiceCustomerType {
   COMPANY
   INDIVIDUAL
@@ -1110,13 +1115,15 @@ model Invoice {
 }
 
 model InvoiceLineItem {
-  id          String  @id @default(cuid())
-  invoiceId   String
-  sortOrder   Int     @default(0)
-  description String
-  quantity    Decimal @default(1) @db.Decimal(12, 4)
-  unitPrice   Decimal @db.Decimal(18, 2)
-  amount      Decimal @db.Decimal(18, 2)
+  id            String                   @id @default(cuid())
+  invoiceId     String
+  sortOrder     Int                      @default(0)
+  description   String
+  quantity      Decimal                  @default(1) @db.Decimal(12, 4)
+  unitPrice     Decimal                  @db.Decimal(18, 2)
+  discountType  InvoiceLineDiscountType?
+  discountValue Decimal?                 @db.Decimal(10, 4)
+  amount        Decimal                  @db.Decimal(18, 2)
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 

@@ -26,7 +26,13 @@ type CustomerOption = {
   billToEmail?: string | null
 }
 
-const emptyLine = (): InvoiceLineDraft => ({ description: '', quantity: '1', unitPrice: '0' })
+const emptyLine = (): InvoiceLineDraft => ({
+  description: '',
+  quantity: '1',
+  unitPrice: '0',
+  discountType: '',
+  discountValue: '',
+})
 const dueDatePresets: InvoiceDueDatePreset[] = ['MONTH_END', 'MONTH_END_30', 'MONTH_END_60']
 
 export default function NewInvoicePage() {
@@ -64,6 +70,8 @@ export default function NewInvoicePage() {
         description: l.description,
         quantity: parseFloat(l.quantity) || 0,
         unitPrice: parseFloat(l.unitPrice) || 0,
+        discountType: l.discountType || null,
+        discountValue: l.discountType ? (parseFloat(l.discountValue) || 0) : 0,
       }))
       .filter(l => l.quantity > 0)
     if (parsed.length === 0) return { subtotal: 0, taxAmount: 0, total: 0 }
@@ -94,6 +102,8 @@ export default function NewInvoicePage() {
         description: l.description.trim(),
         quantity: parseFloat(l.quantity) || 0,
         unitPrice: parseFloat(l.unitPrice) || 0,
+        discountType: l.discountType || null,
+        discountValue: l.discountType ? (parseFloat(l.discountValue) || 0) : 0,
       }))
       .filter(l => l.quantity > 0 && l.description)
     if (lineItems.length === 0) {
@@ -256,6 +266,12 @@ export default function NewInvoicePage() {
             descriptionLabel={t('description')}
             quantityLabel={t('quantity')}
             unitPriceLabel={t('unitPrice')}
+            discountLabel={t('discount')}
+            discountTypeLabel={t('discountType')}
+            discountValueLabel={t('discountValue')}
+            discountPercentOptionLabel={t('discountPercent')}
+            discountFixedOptionLabel={t('discountFixed')}
+            originalAmountLabel={t('originalAmount')}
             lines={lines}
             onAddLine={() => setLines(current => [...current, emptyLine()])}
             onRemoveLine={index => setLines(current => current.filter((_, currentIndex) => currentIndex !== index))}
@@ -263,7 +279,6 @@ export default function NewInvoicePage() {
           />
           <div className="pt-4 border-t text-sm space-y-1" style={{ borderColor: '#2A2418' }}>
             <div className="flex justify-between"><span>{t('subtotal')}</span><span>HKD {totals.subtotal.toFixed(2)}</span></div>
-            <div className="flex justify-between"><span>{t('tax')}</span><span>HKD {totals.taxAmount.toFixed(2)}</span></div>
             <div className="flex justify-between font-semibold"><span>{t('total')}</span><span>HKD {totals.total.toFixed(2)}</span></div>
           </div>
         </CardContent>

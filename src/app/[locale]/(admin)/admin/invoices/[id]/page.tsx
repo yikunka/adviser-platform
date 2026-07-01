@@ -20,6 +20,8 @@ type LineItem = {
   description: string
   quantity: string
   unitPrice: string
+  discountType?: '' | 'PERCENT' | 'FIXED' | null
+  discountValue?: string | null
   amount: string
 }
 
@@ -74,6 +76,8 @@ function mapInvoiceToDraft(invoice: InvoiceDetail): DraftFormState {
       description: line.description,
       quantity: String(Number(line.quantity)),
       unitPrice: String(Number(line.unitPrice)),
+      discountType: line.discountType ?? '',
+      discountValue: line.discountValue == null ? '' : String(Number(line.discountValue)),
     })),
   }
 }
@@ -134,6 +138,8 @@ export default function InvoiceDetailPage() {
         description: line.description.trim(),
         quantity: parseFloat(line.quantity) || 0,
         unitPrice: parseFloat(line.unitPrice) || 0,
+        discountType: line.discountType || null,
+        discountValue: line.discountType ? (parseFloat(line.discountValue) || 0) : 0,
       }))
       .filter(line => line.quantity > 0)
     if (parsed.length === 0) return { subtotal: 0, taxAmount: 0, total: 0 }
@@ -161,6 +167,8 @@ export default function InvoiceDetailPage() {
         description: line.description.trim(),
         quantity: parseFloat(line.quantity) || 0,
         unitPrice: parseFloat(line.unitPrice) || 0,
+        discountType: line.discountType || null,
+        discountValue: line.discountType ? (parseFloat(line.discountValue) || 0) : 0,
       }))
       .filter(line => line.quantity > 0 && line.description)
 
@@ -326,8 +334,14 @@ export default function InvoiceDetailPage() {
                 descriptionLabel={t('description')}
                 quantityLabel={t('quantity')}
                 unitPriceLabel={t('unitPrice')}
+                discountLabel={t('discount')}
+                discountTypeLabel={t('discountType')}
+                discountValueLabel={t('discountValue')}
+                discountPercentOptionLabel={t('discountPercent')}
+                discountFixedOptionLabel={t('discountFixed')}
+                originalAmountLabel={t('originalAmount')}
                 lines={draft.lines}
-                onAddLine={() => setDraft(current => (current ? { ...current, lines: [...current.lines, { description: '', quantity: '1', unitPrice: '0' }] } : current))}
+                onAddLine={() => setDraft(current => (current ? { ...current, lines: [...current.lines, { description: '', quantity: '1', unitPrice: '0', discountType: '', discountValue: '' }] } : current))}
                 onRemoveLine={index => setDraft(current => (
                   current ? { ...current, lines: current.lines.filter((_, lineIndex) => lineIndex !== index) } : current
                 ))}
@@ -335,7 +349,6 @@ export default function InvoiceDetailPage() {
               />
               <div className="pt-4 border-t text-sm space-y-1" style={{ borderColor: '#2A2418' }}>
                 <div className="flex justify-between"><span>{t('subtotal')}</span><span>{invoice.currency} {totals.subtotal.toFixed(2)}</span></div>
-                <div className="flex justify-between"><span>{t('tax')}</span><span>{invoice.currency} {totals.taxAmount.toFixed(2)}</span></div>
                 <div className="flex justify-between font-semibold"><span>{t('total')}</span><span>{invoice.currency} {totals.total.toFixed(2)}</span></div>
               </div>
             </>
@@ -356,17 +369,22 @@ export default function InvoiceDetailPage() {
                       <td className="px-4 py-3 whitespace-pre-wrap">{line.description}</td>
                       <td className="px-4 py-3 text-right">{Number(line.quantity)}</td>
                       <td className="px-4 py-3 text-right">{invoice.currency} {Number(line.unitPrice).toFixed(2)}</td>
-                      <td className="px-4 py-3 text-right">{invoice.currency} {Number(line.amount).toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right">
+                        <div>{invoice.currency} {Number(line.amount).toFixed(2)}</div>
+                        {line.discountType && Number(line.discountValue ?? 0) > 0 ? (
+                          <div className="mt-1 text-[11px]" style={{ color: 'var(--muted-foreground)' }}>
+                            {t('discount')}: {line.discountType === 'PERCENT'
+                              ? `${Number(line.discountValue).toFixed(2)}%`
+                              : `${invoice.currency} ${Number(line.discountValue).toFixed(2)}`}
+                          </div>
+                        ) : null}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               <div className="px-4 py-4 text-sm space-y-1 border-t" style={{ borderColor: '#2A2418' }}>
                 <div className="flex justify-between"><span>{t('subtotal')}</span><span>{invoice.currency} {Number(invoice.subtotal).toFixed(2)}</span></div>
-                <div className="flex justify-between">
-                  <span>{t('tax')} ({(Number(invoice.taxRate) * 100).toFixed(1)}%)</span>
-                  <span>{invoice.currency} {Number(invoice.taxAmount).toFixed(2)}</span>
-                </div>
                 <div className="flex justify-between font-semibold text-base">
                   <span>{t('total')}</span>
                   <span>{invoice.currency} {Number(invoice.total).toFixed(2)}</span>

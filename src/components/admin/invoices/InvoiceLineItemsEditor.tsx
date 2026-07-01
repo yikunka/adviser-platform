@@ -3,11 +3,16 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { lineAmount, lineSubtotal } from '@/lib/invoice/calc'
+
+export type InvoiceLineDiscountType = '' | 'PERCENT' | 'FIXED'
 
 export type InvoiceLineDraft = {
   description: string
   quantity: string
   unitPrice: string
+  discountType: InvoiceLineDiscountType
+  discountValue: string
 }
 
 type InvoiceLineItemsEditorProps = {
@@ -18,6 +23,12 @@ type InvoiceLineItemsEditorProps = {
   descriptionLabel: string
   quantityLabel: string
   unitPriceLabel: string
+  discountLabel: string
+  discountTypeLabel: string
+  discountValueLabel: string
+  discountPercentOptionLabel: string
+  discountFixedOptionLabel: string
+  originalAmountLabel: string
   lines: InvoiceLineDraft[]
   onAddLine: () => void
   onRemoveLine: (index: number) => void
@@ -32,6 +43,12 @@ export function InvoiceLineItemsEditor({
   descriptionLabel,
   quantityLabel,
   unitPriceLabel,
+  discountLabel,
+  discountTypeLabel,
+  discountValueLabel,
+  discountPercentOptionLabel,
+  discountFixedOptionLabel,
+  originalAmountLabel,
   lines,
   onAddLine,
   onRemoveLine,
@@ -46,7 +63,13 @@ export function InvoiceLineItemsEditor({
       </div>
 
       {lines.map((line, index) => {
-        const amount = ((parseFloat(line.quantity) || 0) * (parseFloat(line.unitPrice) || 0)).toFixed(2)
+        const quantity = parseFloat(line.quantity) || 0
+        const unitPrice = parseFloat(line.unitPrice) || 0
+        const discountValue = parseFloat(line.discountValue) || 0
+        const discountType = line.discountType || null
+        const originalAmount = lineSubtotal(quantity, unitPrice).toFixed(2)
+        const amount = lineAmount(quantity, unitPrice, discountType, discountValue).toFixed(2)
+        const hasDiscount = discountType && discountValue > 0
 
         return (
           <div
@@ -109,6 +132,54 @@ export function InvoiceLineItemsEditor({
                   </div>
                   <div className="mt-1 text-sm font-semibold" style={{ color: 'var(--foreground)' }}>
                     {currency} {amount}
+                  </div>
+                  {hasDiscount ? (
+                    <div className="mt-1 text-[11px]" style={{ color: 'var(--muted-foreground)' }}>
+                      {originalAmountLabel}: {currency} {originalAmount}
+                    </div>
+                  ) : null}
+                  <div className="mt-3 space-y-1.5 text-left">
+                    <div className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--muted-foreground)' }}>
+                      {discountLabel}
+                    </div>
+                    <div className="grid gap-2">
+                      <label className="space-y-1">
+                        <span className="text-[11px]" style={{ color: 'var(--muted-foreground)' }}>
+                          {discountTypeLabel}
+                        </span>
+                        <select
+                          value={line.discountType}
+                          onChange={e => {
+                            const nextType = e.target.value as InvoiceLineDiscountType
+                            onUpdateLine(index, {
+                              discountType: nextType,
+                              discountValue: nextType ? line.discountValue : '',
+                            })
+                          }}
+                          className="h-9 w-full rounded-md px-2 text-xs"
+                          style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: '#F0EAD8' }}
+                        >
+                          <option value="">{discountLabel}</option>
+                          <option value="PERCENT">{discountPercentOptionLabel}</option>
+                          <option value="FIXED">{discountFixedOptionLabel}</option>
+                        </select>
+                      </label>
+                      <label className="space-y-1">
+                        <span className="text-[11px]" style={{ color: 'var(--muted-foreground)' }}>
+                          {discountValueLabel}
+                        </span>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder={line.discountType === 'PERCENT' ? '%' : currency}
+                          value={line.discountValue}
+                          onChange={e => onUpdateLine(index, { discountValue: e.target.value })}
+                          className="h-9"
+                          disabled={!line.discountType}
+                        />
+                      </label>
+                    </div>
                   </div>
                 </div>
                 {lines.length > 1 && (

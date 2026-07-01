@@ -120,11 +120,14 @@ export async function renderInvoicePdf(invoice: InvoicePdfPayload): Promise<Uint
     ['Due date', fmtDate(invoice.dueDate)],
     ['Status', invoice.status],
   ]
+  const metaLabelX = rightX - 180
+  const metaValueRightX = rightX
   let metaY = H - 76
   for (const [label, value] of metaLines) {
-    const lw = bold.widthOfTextAtSize(label, 9)
-    page.drawText(label, { x: rightX - 160, y: metaY, size: 9, font: bold, color: GREY })
-    page.drawText(safe(value), { x: rightX - lw - 4, y: metaY, size: 9, font: reg, color: BLACK })
+    const renderedValue = safe(value)
+    const valueWidth = reg.widthOfTextAtSize(renderedValue, 9)
+    page.drawText(label, { x: metaLabelX, y: metaY, size: 9, font: bold, color: GREY })
+    page.drawText(renderedValue, { x: metaValueRightX - valueWidth, y: metaY, size: 9, font: reg, color: BLACK })
     metaY -= 14
   }
 

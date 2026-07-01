@@ -145,7 +145,7 @@ export default function CompaniesPage() {
                   <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
                     {c.dateOfIncorporation ? new Date(c.dateOfIncorporation).toLocaleDateString() : '—'}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                  <td className="px-4 py-3 font-semibold" style={{ color: '#C9A96E' }}>
                     {annualReturnDeadline(c.dateOfIncorporation)}
                   </td>
                   <td className="px-4 py-3">

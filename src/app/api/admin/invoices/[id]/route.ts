@@ -11,6 +11,8 @@ const lineSchema = z.object({
   description: z.string().min(1).max(500),
   quantity: z.number().positive().max(999999),
   unitPrice: z.number().min(0).max(999999999),
+  discountType: z.enum(['PERCENT', 'FIXED']).optional().nullable(),
+  discountValue: z.number().min(0).max(999999999).optional().nullable(),
 })
 
 const updateSchema = z.object({
@@ -120,6 +122,8 @@ export async function PATCH(
           description: line.description,
           quantity: toQuantity(line.quantity),
           unitPrice: toMoney(line.unitPrice),
+          discountType: line.discountType ?? null,
+          discountValue: line.discountType ? toQuantity(line.discountValue ?? 0) : null,
           amount: toMoney(lineAmounts[i]!),
         })),
       })
