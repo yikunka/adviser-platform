@@ -16,6 +16,7 @@ import { z } from 'zod'
 const INVOICE_CREATE_MAX_ATTEMPTS = 3
 
 const lineSchema = z.object({
+  tcspServicePriceId: z.string().cuid().optional().nullable(),
   description: z.string().min(1).max(500),
   quantity: z.number().positive().max(999999),
   unitPrice: z.number().min(0).max(999999999),
@@ -48,6 +49,14 @@ function isInvoiceNumberConflict(error: unknown): boolean {
   }
   const target = error.meta?.target
   return Array.isArray(target) ? target.includes('invoiceNumber') : target === 'invoiceNumber'
+}
+
+async function assertTcspServicePricesExist(ids: Array<string | null | undefined>) {
+  const uniqueIds = Array.from(new Set(ids.filter((id): id is string => Boolean(id))))
+  if (uniqueIds.length === 0) return true
+
+  const count = await prisma.tcspServicePrice.count({ where: { id: { in: uniqueIds } } })
+  return count === uniqueIds.length
 }
 
 export async function GET(req: NextRequest) {
@@ -131,6 +140,9 @@ export async function POST(req: NextRequest) {
   if (companyId && !(await assertCompanyAccessible(access, companyId))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
+  if (!(await assertTcspServicePricesExist(parsed.data.lineItems.map(line => line.tcspServicePriceId)))) {
+    return NextResponse.json({ error: 'Invalid TCSP service price selection' }, { status: 400 })
+  }
 
   const billing = companyId
     ? await companyBillingSnapshot(companyId)
@@ -174,6 +186,7 @@ export async function POST(req: NextRequest) {
             lineItems: {
               create: parsed.data.lineItems.map((line, i) => ({
                 sortOrder: i,
+                tcspServicePriceId: line.tcspServicePriceId ?? null,
                 description: line.description,
                 quantity: toQuantity(line.quantity),
                 unitPrice: toMoney(line.unitPrice),

@@ -829,6 +829,8 @@
       "description": "Description",
       "quantity": "Qty",
       "unitPrice": "Unit price",
+      "tcspServicePrice": "TCSP service price",
+      "tcspServicePricePlaceholder": "Manual entry (no linked price)",
       "discount": "Discount",
       "discountType": "Discount type",
       "discountValue": "Discount value",

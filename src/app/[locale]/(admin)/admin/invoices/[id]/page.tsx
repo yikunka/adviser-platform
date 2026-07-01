@@ -13,15 +13,27 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Download } from 'lucide-react'
 import { InvoiceLineItemsEditor, type InvoiceLineDraft } from '@/components/admin/invoices/InvoiceLineItemsEditor'
+import { tcspCustomerLevelLabel } from '@/lib/adviser/tcsp-pricing'
 import { computeTotals } from '@/lib/invoice/calc'
+import { applyTcspServicePriceToLine, buildTcspServicePriceOptionLabel } from '@/lib/invoice/tcsp-service-pricing'
 
 type LineItem = {
   id: string
+  tcspServicePriceId?: string | null
   description: string
   quantity: string
   unitPrice: string
   discountType?: '' | 'PERCENT' | 'FIXED' | null
   discountValue?: string | null
+  amount: string
+}
+
+type TcspServicePriceOption = {
+  id: string
+  jurisdiction: string
+  customerLevel: string
+  serviceContent: string
+  currency: string
   amount: string
 }
 
@@ -73,6 +85,7 @@ function mapInvoiceToDraft(invoice: InvoiceDetail): DraftFormState {
     billToEmail: invoice.billToEmail ?? '',
     notes: invoice.notes ?? '',
     lines: invoice.lineItems.map(line => ({
+      tcspServicePriceId: line.tcspServicePriceId ?? '',
       description: line.description,
       quantity: String(Number(line.quantity)),
       unitPrice: String(Number(line.unitPrice)),
@@ -87,6 +100,7 @@ export default function InvoiceDetailPage() {
   const params = useParams()
   const id = params.id as string
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null)
+  const [tcspServicePrices, setTcspServicePrices] = useState<TcspServicePriceOption[]>([])
   const [draft, setDraft] = useState<DraftFormState | null>(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
@@ -107,6 +121,13 @@ export default function InvoiceDetailPage() {
   }, [id, t])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    fetch('/api/admin/tcsp-pricing')
+      .then(r => r.json())
+      .then(json => setTcspServicePrices(json.prices ?? []))
+      .catch(() => toast.error(t('loadFailed')))
+  }, [t])
 
   async function updateStatus(status: string) {
     setUpdating(true)
@@ -145,6 +166,19 @@ export default function InvoiceDetailPage() {
     if (parsed.length === 0) return { subtotal: 0, taxAmount: 0, total: 0 }
     return computeTotals(parsed, 0)
   }, [draft])
+  const tcspServicePriceOptions = useMemo(
+    () => tcspServicePrices.map(price => ({
+      id: price.id,
+      label: buildTcspServicePriceOptionLabel({
+        jurisdiction: price.jurisdiction,
+        customerLevelLabel: tcspCustomerLevelLabel(price.customerLevel),
+        serviceContent: price.serviceContent,
+        currency: price.currency,
+        amount: price.amount,
+      }),
+    })),
+    [tcspServicePrices],
+  )
 
   function updateDraftField(patch: Partial<Omit<DraftFormState, 'lines'>>) {
     setDraft(current => (current ? { ...current, ...patch } : current))
@@ -158,12 +192,39 @@ export default function InvoiceDetailPage() {
     ))
   }
 
+  function selectTcspServicePrice(index: number, tcspServicePriceId: string) {
+    if (!tcspServicePriceId) {
+      updateLine(index, { tcspServicePriceId: '' })
+      return
+    }
+    const price = tcspServicePrices.find(item => item.id === tcspServicePriceId)
+    if (!price) return
+
+    setDraft(current => (
+      current
+        ? {
+            ...current,
+            lines: current.lines.map((line, lineIndex) => (
+              lineIndex === index
+                ? applyTcspServicePriceToLine(line, {
+                    id: price.id,
+                    serviceContent: price.serviceContent,
+                    amount: price.amount,
+                  })
+                : line
+            )),
+          }
+        : current
+    ))
+  }
+
   async function saveDraftChanges() {
     if (!invoice || !draft) return
 
     const lineItems = draft.lines
       .filter(line => line.description.trim())
       .map(line => ({
+        tcspServicePriceId: line.tcspServicePriceId || null,
         description: line.description.trim(),
         quantity: parseFloat(line.quantity) || 0,
         unitPrice: parseFloat(line.unitPrice) || 0,
@@ -340,12 +401,16 @@ export default function InvoiceDetailPage() {
                 discountPercentOptionLabel={t('discountPercent')}
                 discountFixedOptionLabel={t('discountFixed')}
                 originalAmountLabel={t('originalAmount')}
+                tcspServicePriceLabel={t('tcspServicePrice')}
+                tcspServicePricePlaceholderLabel={t('tcspServicePricePlaceholder')}
+                tcspServicePrices={tcspServicePriceOptions}
                 lines={draft.lines}
-                onAddLine={() => setDraft(current => (current ? { ...current, lines: [...current.lines, { description: '', quantity: '1', unitPrice: '0', discountType: '', discountValue: '' }] } : current))}
+                onAddLine={() => setDraft(current => (current ? { ...current, lines: [...current.lines, { tcspServicePriceId: '', description: '', quantity: '1', unitPrice: '0', discountType: '', discountValue: '' }] } : current))}
                 onRemoveLine={index => setDraft(current => (
                   current ? { ...current, lines: current.lines.filter((_, lineIndex) => lineIndex !== index) } : current
                 ))}
                 onUpdateLine={updateLine}
+                onSelectTcspServicePrice={selectTcspServicePrice}
               />
               <div className="pt-4 border-t text-sm space-y-1" style={{ borderColor: '#2A2418' }}>
                 <div className="flex justify-between"><span>{t('subtotal')}</span><span>{invoice.currency} {totals.subtotal.toFixed(2)}</span></div>

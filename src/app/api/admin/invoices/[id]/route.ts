@@ -8,6 +8,7 @@ import { computeTotals, toMoney, toQuantity, toTaxRate } from '@/lib/invoice/cal
 import { z } from 'zod'
 
 const lineSchema = z.object({
+  tcspServicePriceId: z.string().cuid().optional().nullable(),
   description: z.string().min(1).max(500),
   quantity: z.number().positive().max(999999),
   unitPrice: z.number().min(0).max(999999999),
@@ -48,6 +49,14 @@ async function assertInvoiceAccessible(invoice: Awaited<ReturnType<typeof loadIn
   return assertCompanyAccessible(access, invoice.companyId)
 }
 
+async function assertTcspServicePricesExist(ids: Array<string | null | undefined>) {
+  const uniqueIds = Array.from(new Set(ids.filter((id): id is string => Boolean(id))))
+  if (uniqueIds.length === 0) return true
+
+  const count = await prisma.tcspServicePrice.count({ where: { id: { in: uniqueIds } } })
+  return count === uniqueIds.length
+}
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -86,6 +95,12 @@ export async function PATCH(
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
   }
+  if (
+    parsed.data.lineItems &&
+    !(await assertTcspServicePricesExist(parsed.data.lineItems.map(line => line.tcspServicePriceId)))
+  ) {
+    return NextResponse.json({ error: 'Invalid TCSP service price selection' }, { status: 400 })
+  }
 
   const taxRate = parsed.data.taxRate ?? Number(before.taxRate.toString())
   let subtotal = Number(before.subtotal.toString())
@@ -119,6 +134,7 @@ export async function PATCH(
         data: parsed.data.lineItems.map((line, i) => ({
           invoiceId: id,
           sortOrder: i,
+          tcspServicePriceId: line.tcspServicePriceId ?? null,
           description: line.description,
           quantity: toQuantity(line.quantity),
           unitPrice: toMoney(line.unitPrice),

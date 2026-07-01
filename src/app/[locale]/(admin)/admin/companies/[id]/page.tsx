@@ -11,6 +11,11 @@ import { DatePickerPopover } from '@/components/ui/date-picker-popover'
 import { BUSINESS_NATURE_OPTIONS } from '@/lib/kyc/kycFieldOptions'
 import { type NAR1UiAnalysisResult } from '@/lib/company/nar1-analysis'
 import { COMPANY_LEGAL_TYPE_VALUES, type CompanyLegalType } from '@/lib/company/company-legal-type'
+import {
+  buildCompanyFileManagementSections,
+  type CompanyFileManagementAssetType,
+  type CompanyFileManagementMovementType,
+} from '@/lib/company/file-management'
 
 // ── KYC Person type (for pre-fill picker) ────────────────────────────────────
 
@@ -140,6 +145,16 @@ type FileCase = {
   documents: CaseDocument[]
 }
 
+type CompanyFileManagementRecord = {
+  id: string
+  assetType: CompanyFileManagementAssetType
+  movementType: CompanyFileManagementMovementType
+  movementDate: string
+  handler: string
+  notes: string | null
+  createdAt: string
+}
+
 type Company = {
   id: string
   nameEn: string
@@ -159,12 +174,16 @@ type Company = {
   businessNature: string | null
   status: string
   financialEnabled: boolean
+  hasCompanyBox: boolean
+  hasCompanySquareSeal: boolean
+  hasCompanyRoundSeal: boolean
   directors: Director[]
   members: Member[]
   significantControllers: Controller[]
   designatedReps: DesignatedRep[]
   documents: { id: string; name: string; documentType: string; createdAt: string; notes: string | null; effectiveDate: string | null }[]
   fileCases: FileCase[]
+  fileManagementRecords: CompanyFileManagementRecord[]
 }
 
 type OwnershipNode = {
@@ -214,6 +233,14 @@ const tdStyle: React.CSSProperties = { padding: '0.75rem 1rem', color: 'var(--mu
 const tdPrimaryStyle: React.CSSProperties = { ...tdStyle, color: 'var(--foreground)', fontWeight: 500 }
 const fieldStyle: React.CSSProperties = { width: '100%', background: '#0A0A0A', border: '1px solid #2A2418', color: '#F0EAD8', borderRadius: '0.375rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', outline: 'none' }
 const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.75rem', fontWeight: 500, color: '#7A7060', marginBottom: '0.375rem' }
+
+const defaultFileManagementForm = (assetType: CompanyFileManagementAssetType) => ({
+  assetType,
+  movementType: 'OUT' as CompanyFileManagementMovementType,
+  movementDate: '',
+  handler: '',
+  notes: '',
+})
 
 // ── Helper ───────────────────────────────────────────────────────────────────
 
@@ -1828,6 +1855,10 @@ export default function CompanyDetailPage() {
   const [generatingRegister, setGeneratingRegister] = useState<'ROD' | 'ROM' | 'ROSC' | null>(null)
   const [showOlderDdr, setShowOlderDdr] = useState(false)
   const ensuredDocsForRef = useRef<string | null>(null)
+  const [savingFileManagementFlag, setSavingFileManagementFlag] = useState<string | null>(null)
+  const [savingFileManagementRecordFor, setSavingFileManagementRecordFor] = useState<string | null>(null)
+  const [deletingFileManagementRecordId, setDeletingFileManagementRecordId] = useState<string | null>(null)
+  const [fileManagementForms, setFileManagementForms] = useState<Record<string, ReturnType<typeof defaultFileManagementForm>>>({})
 
   // ── NAR1 Analysis state ──────────────────────────────────────────────────
   const [analyzingNar1, setAnalyzingNar1] = useState(false)
@@ -1856,6 +1887,10 @@ export default function CompanyDetailPage() {
       notes: '',
       submissionDate: '',
     }
+  }
+
+  function getFileManagementForm(assetType: CompanyFileManagementAssetType) {
+    return fileManagementForms[assetType] ?? defaultFileManagementForm(assetType)
   }
 
   const reload = useCallback(() => {
@@ -2037,6 +2072,86 @@ export default function CompanyDetailPage() {
     else toast.error('Failed to delete')
   }
 
+  async function updateFileManagementFlag(
+    key: 'hasCompanyBox' | 'hasCompanySquareSeal' | 'hasCompanyRoundSeal',
+    value: boolean,
+  ) {
+    setSavingFileManagementFlag(key)
+    try {
+      const res = await fetch(`/api/admin/companies/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: value }),
+      })
+      if (!res.ok) {
+        toast.error('Failed to update file management setting')
+        return
+      }
+      toast.success('File management setting updated')
+      reload()
+    } finally {
+      setSavingFileManagementFlag(null)
+    }
+  }
+
+  async function createFileManagementRecord(assetType: CompanyFileManagementAssetType) {
+    const form = getFileManagementForm(assetType)
+    if (!form.movementDate) {
+      toast.error('Please select a movement date')
+      return
+    }
+    if (!form.handler.trim()) {
+      toast.error('Please enter a handler')
+      return
+    }
+
+    setSavingFileManagementRecordFor(assetType)
+    try {
+      const res = await fetch(`/api/admin/companies/${id}/file-management-records`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assetType,
+          movementType: form.movementType,
+          movementDate: form.movementDate,
+          handler: form.handler.trim(),
+          notes: form.notes.trim() || null,
+        }),
+      })
+      if (!res.ok) {
+        toast.error('Failed to add movement record')
+        return
+      }
+      toast.success('Movement record added')
+      setFileManagementForms(current => ({
+        ...current,
+        [assetType]: defaultFileManagementForm(assetType),
+      }))
+      reload()
+    } finally {
+      setSavingFileManagementRecordFor(null)
+    }
+  }
+
+  async function deleteFileManagementRecord(recordId: string) {
+    if (!window.confirm('Delete this movement record?')) return
+
+    setDeletingFileManagementRecordId(recordId)
+    try {
+      const res = await fetch(`/api/admin/companies/${id}/file-management-records/${recordId}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        toast.error('Failed to delete movement record')
+        return
+      }
+      toast.success('Movement record deleted')
+      reload()
+    } finally {
+      setDeletingFileManagementRecordId(null)
+    }
+  }
+
   function closeModal() {
     setModal(null)
     ensuredDocsForRef.current = null
@@ -2069,6 +2184,14 @@ export default function CompanyDetailPage() {
   const ddrDocs = company.documents
     .filter(d => d.documentType === 'DDR' && isGeneratedDoc(d))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  const fileManagementSections = buildCompanyFileManagementSections(
+    {
+      hasCompanyBox: company.hasCompanyBox,
+      hasCompanySquareSeal: company.hasCompanySquareSeal,
+      hasCompanyRoundSeal: company.hasCompanyRoundSeal,
+    },
+    company.fileManagementRecords ?? [],
+  )
 
   return (
     <div className="p-6 space-y-4">
@@ -2132,6 +2255,149 @@ export default function CompanyDetailPage() {
                 <span className="text-sm" style={{ color: 'var(--foreground)' }}>{value}</span>
               </div>
             ))}
+          </div>
+
+          <div style={cardStyle}>
+            <div className="px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>文件管理</h3>
+              <p className="mt-1 text-xs" style={{ color: '#5A5040' }}>
+                勾选需要管理的物品后，可在下方记录入库/出库日期、经手人和备注。
+              </p>
+            </div>
+            <div className="space-y-4 px-4 py-4">
+              {fileManagementSections.map(section => {
+                const form = getFileManagementForm(section.assetType)
+                const isSavingFlag = savingFileManagementFlag === section.key
+                const isSavingRecord = savingFileManagementRecordFor === section.assetType
+
+                return (
+                  <div
+                    key={section.assetType}
+                    className="rounded-lg border p-4"
+                    style={{ borderColor: '#2A2418', background: 'rgba(26, 26, 18, 0.35)' }}
+                  >
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={section.enabled}
+                        disabled={isSavingFlag}
+                        onChange={e => updateFileManagementFlag(section.key, e.target.checked)}
+                      />
+                      <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
+                        {section.labelZh}
+                      </span>
+                      <span className="text-xs" style={{ color: '#5A5040' }}>
+                        {isSavingFlag ? 'Saving…' : `${section.records.length} 条记录`}
+                      </span>
+                    </label>
+
+                    {section.enabled ? (
+                      <div className="mt-4 space-y-4">
+                        <div className="grid gap-3 lg:grid-cols-[10rem_11rem_minmax(12rem,1fr)_minmax(14rem,1.3fr)_auto] lg:items-end">
+                          <div>
+                            <label style={labelStyle}>出入库类型</label>
+                            <select
+                              value={form.movementType}
+                              onChange={e => setFileManagementForms(current => ({
+                                ...current,
+                                [section.assetType]: {
+                                  ...form,
+                                  movementType: e.target.value as CompanyFileManagementMovementType,
+                                },
+                              }))}
+                              style={fieldStyle}
+                            >
+                              <option value="IN" style={{ background: '#141414' }}>入库</option>
+                              <option value="OUT" style={{ background: '#141414' }}>出库</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label style={labelStyle}>日期</label>
+                            <DatePickerPopover
+                              value={form.movementDate}
+                              onChange={value => setFileManagementForms(current => ({
+                                ...current,
+                                [section.assetType]: { ...form, movementDate: value },
+                              }))}
+                              style={fieldStyle}
+                            />
+                          </div>
+                          <div>
+                            <label style={labelStyle}>经手人</label>
+                            <Input
+                              value={form.handler}
+                              onChange={e => setFileManagementForms(current => ({
+                                ...current,
+                                [section.assetType]: { ...form, handler: e.target.value },
+                              }))}
+                            />
+                          </div>
+                          <div>
+                            <label style={labelStyle}>备注</label>
+                            <textarea
+                              rows={2}
+                              value={form.notes}
+                              onChange={e => setFileManagementForms(current => ({
+                                ...current,
+                                [section.assetType]: { ...form, notes: e.target.value },
+                              }))}
+                              style={{ ...fieldStyle, minHeight: '3.5rem', resize: 'vertical' }}
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={isSavingRecord}
+                            onClick={() => createFileManagementRecord(section.assetType)}
+                          >
+                            {isSavingRecord ? 'Saving…' : '新增记录'}
+                          </Button>
+                        </div>
+
+                        {section.records.length === 0 ? (
+                          <p className="text-sm" style={{ color: '#5A5040' }}>暂无出入库记录。</p>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-[#2A2418] text-sm">
+                              <thead>
+                                <tr>
+                                  <th style={thStyle}>类型</th>
+                                  <th style={thStyle}>日期</th>
+                                  <th style={thStyle}>经手人</th>
+                                  <th style={thStyle}>备注</th>
+                                  <th style={thStyle}>操作</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-[#2A2418]">
+                                {section.records.map(record => (
+                                  <tr key={record.id}>
+                                    <td style={tdPrimaryStyle}>{record.movementType === 'IN' ? '入库' : '出库'}</td>
+                                    <td style={tdStyle}>{fmt(record.movementDate)}</td>
+                                    <td style={tdStyle}>{record.handler}</td>
+                                    <td style={tdStyle}>{record.notes || '—'}</td>
+                                    <td style={tdStyle}>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={deletingFileManagementRecordId === record.id}
+                                        onClick={() => deleteFileManagementRecord(record.id)}
+                                      >
+                                        {deletingFileManagementRecordId === record.id ? 'Deleting…' : 'Delete'}
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
           </div>
 
           {/* Company statutory uploads */}

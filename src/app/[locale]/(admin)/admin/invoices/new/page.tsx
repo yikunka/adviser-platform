@@ -9,11 +9,13 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { InvoiceLineItemsEditor, type InvoiceLineDraft } from '@/components/admin/invoices/InvoiceLineItemsEditor'
+import { tcspCustomerLevelLabel } from '@/lib/adviser/tcsp-pricing'
 import { computeTotals } from '@/lib/invoice/calc'
 import {
   computeInvoiceDueDate,
   type InvoiceDueDatePreset,
 } from '@/lib/invoice/due-date-presets'
+import { applyTcspServicePriceToLine, buildTcspServicePriceOptionLabel } from '@/lib/invoice/tcsp-service-pricing'
 
 type CustomerType = 'COMPANY' | 'INDIVIDUAL'
 type CustomerOption = {
@@ -26,7 +28,17 @@ type CustomerOption = {
   billToEmail?: string | null
 }
 
+type TcspServicePriceOption = {
+  id: string
+  jurisdiction: string
+  customerLevel: string
+  serviceContent: string
+  currency: string
+  amount: string
+}
+
 const emptyLine = (): InvoiceLineDraft => ({
+  tcspServicePriceId: '',
   description: '',
   quantity: '1',
   unitPrice: '0',
@@ -39,6 +51,7 @@ export default function NewInvoicePage() {
   const t = useTranslations('admin.invoices')
   const router = useRouter()
   const [customers, setCustomers] = useState<CustomerOption[]>([])
+  const [tcspServicePrices, setTcspServicePrices] = useState<TcspServicePriceOption[]>([])
   const [customerType, setCustomerType] = useState<CustomerType>('COMPANY')
   const [customerId, setCustomerId] = useState('')
   const [billToName, setBillToName] = useState('')
@@ -58,9 +71,29 @@ export default function NewInvoicePage() {
       .catch(() => toast.error(t('loadFailed')))
   }, [t])
 
+  useEffect(() => {
+    fetch('/api/admin/tcsp-pricing')
+      .then(r => r.json())
+      .then(json => setTcspServicePrices(json.prices ?? []))
+      .catch(() => toast.error(t('loadFailed')))
+  }, [t])
+
   const customerOptions = useMemo(
     () => customers.filter(customer => customer.type === customerType),
     [customerType, customers],
+  )
+  const tcspServicePriceOptions = useMemo(
+    () => tcspServicePrices.map(price => ({
+      id: price.id,
+      label: buildTcspServicePriceOptionLabel({
+        jurisdiction: price.jurisdiction,
+        customerLevelLabel: tcspCustomerLevelLabel(price.customerLevel),
+        serviceContent: price.serviceContent,
+        currency: price.currency,
+        amount: price.amount,
+      }),
+    })),
+    [tcspServicePrices],
   )
 
   const totals = useMemo(() => {
@@ -82,6 +115,25 @@ export default function NewInvoicePage() {
     setLines(prev => prev.map((row, idx) => (idx === i ? { ...row, ...patch } : row)))
   }
 
+  function selectTcspServicePrice(index: number, tcspServicePriceId: string) {
+    if (!tcspServicePriceId) {
+      updateLine(index, { tcspServicePriceId: '' })
+      return
+    }
+    const price = tcspServicePrices.find(item => item.id === tcspServicePriceId)
+    if (!price) return
+
+    setLines(prev => prev.map((line, lineIndex) => (
+      lineIndex === index
+        ? applyTcspServicePriceToLine(line, {
+            id: price.id,
+            serviceContent: price.serviceContent,
+            amount: price.amount,
+          })
+        : line
+    )))
+  }
+
   function selectCustomer(nextCustomerId: string) {
     setCustomerId(nextCustomerId)
     const customer = customers.find(c => c.type === customerType && c.id === nextCustomerId)
@@ -99,6 +151,7 @@ export default function NewInvoicePage() {
     const lineItems = lines
       .filter(l => l.description.trim())
       .map(l => ({
+        tcspServicePriceId: l.tcspServicePriceId || null,
         description: l.description.trim(),
         quantity: parseFloat(l.quantity) || 0,
         unitPrice: parseFloat(l.unitPrice) || 0,
@@ -272,10 +325,14 @@ export default function NewInvoicePage() {
             discountPercentOptionLabel={t('discountPercent')}
             discountFixedOptionLabel={t('discountFixed')}
             originalAmountLabel={t('originalAmount')}
+            tcspServicePriceLabel={t('tcspServicePrice')}
+            tcspServicePricePlaceholderLabel={t('tcspServicePricePlaceholder')}
+            tcspServicePrices={tcspServicePriceOptions}
             lines={lines}
             onAddLine={() => setLines(current => [...current, emptyLine()])}
             onRemoveLine={index => setLines(current => current.filter((_, currentIndex) => currentIndex !== index))}
             onUpdateLine={updateLine}
+            onSelectTcspServicePrice={selectTcspServicePrice}
           />
           <div className="pt-4 border-t text-sm space-y-1" style={{ borderColor: '#2A2418' }}>
             <div className="flex justify-between"><span>{t('subtotal')}</span><span>HKD {totals.subtotal.toFixed(2)}</span></div>

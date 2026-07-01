@@ -19,6 +19,9 @@ const updateSchema = z.object({
   financialEnabled: z.boolean().optional(),
   assignedStaffId: z.string().cuid().optional().nullable(),
   financialManagerId: z.string().cuid().optional().nullable(),
+  hasCompanyBox: z.boolean().optional(),
+  hasCompanySquareSeal: z.boolean().optional(),
+  hasCompanyRoundSeal: z.boolean().optional(),
   staffUserIds: z.array(z.string().cuid()).optional(),
   clientUserId: z.string().cuid().optional().nullable(),
 })
@@ -47,6 +50,9 @@ export async function GET(
             orderBy: { createdAt: 'desc' },
           },
         },
+      },
+      fileManagementRecords: {
+        orderBy: [{ movementDate: 'desc' }, { createdAt: 'desc' }],
       },
       auditLogs: { orderBy: { createdAt: 'desc' }, take: 20 },
       assignedStaff: { select: { nameEn: true, email: true } },

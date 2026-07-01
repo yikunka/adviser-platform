@@ -4,16 +4,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { lineAmount, lineSubtotal } from '@/lib/invoice/calc'
+import type { InvoiceLineTcspDraft } from '@/lib/invoice/tcsp-service-pricing'
 
 export type InvoiceLineDiscountType = '' | 'PERCENT' | 'FIXED'
 
-export type InvoiceLineDraft = {
-  description: string
-  quantity: string
-  unitPrice: string
-  discountType: InvoiceLineDiscountType
-  discountValue: string
-}
+export type InvoiceLineDraft = InvoiceLineTcspDraft
 
 type InvoiceLineItemsEditorProps = {
   amountLabel: string
@@ -29,10 +24,14 @@ type InvoiceLineItemsEditorProps = {
   discountPercentOptionLabel: string
   discountFixedOptionLabel: string
   originalAmountLabel: string
+  tcspServicePriceLabel: string
+  tcspServicePricePlaceholderLabel: string
+  tcspServicePrices: { id: string; label: string }[]
   lines: InvoiceLineDraft[]
   onAddLine: () => void
   onRemoveLine: (index: number) => void
   onUpdateLine: (index: number, patch: Partial<InvoiceLineDraft>) => void
+  onSelectTcspServicePrice: (index: number, tcspServicePriceId: string) => void
 }
 
 export function InvoiceLineItemsEditor({
@@ -49,10 +48,14 @@ export function InvoiceLineItemsEditor({
   discountPercentOptionLabel,
   discountFixedOptionLabel,
   originalAmountLabel,
+  tcspServicePriceLabel,
+  tcspServicePricePlaceholderLabel,
+  tcspServicePrices,
   lines,
   onAddLine,
   onRemoveLine,
   onUpdateLine,
+  onSelectTcspServicePrice,
 }: InvoiceLineItemsEditorProps) {
   return (
     <div className="space-y-3">
@@ -78,6 +81,25 @@ export function InvoiceLineItemsEditor({
             style={{ borderColor: '#2A2418', background: 'rgba(26, 26, 18, 0.35)' }}
           >
             <div className="grid gap-3 xl:grid-cols-[minmax(0,2.9fr)_minmax(260px,1.45fr)_auto] xl:items-start">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--muted-foreground)' }}>
+                  {tcspServicePriceLabel}
+                </label>
+                <select
+                  value={line.tcspServicePriceId}
+                  onChange={e => onSelectTcspServicePrice(index, e.target.value)}
+                  className="h-10 w-full rounded-md px-3 text-sm"
+                  style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: '#F0EAD8' }}
+                >
+                  <option value="">{tcspServicePricePlaceholderLabel}</option>
+                  {tcspServicePrices.map(price => (
+                    <option key={price.id} value={price.id} style={{ background: '#141414' }}>
+                      {price.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="space-y-1.5">
                 <label className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--muted-foreground)' }}>
                   {descriptionLabel}

@@ -829,6 +829,8 @@
       "description": "描述",
       "quantity": "數量",
       "unitPrice": "單價",
+      "tcspServicePrice": "TCSP 服務價格項",
+      "tcspServicePricePlaceholder": "手動輸入（不關聯價格單）",
       "discount": "折扣",
       "discountType": "折扣類型",
       "discountValue": "折扣值",

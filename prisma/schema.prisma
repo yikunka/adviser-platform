@@ -57,6 +57,17 @@ enum ServiceTier {
   PREMIUM
 }
 
+enum CompanyFileAssetType {
+  COMPANY_BOX
+  COMPANY_SQUARE_SEAL
+  COMPANY_ROUND_SEAL
+}
+
+enum CompanyFileMovementType {
+  IN
+  OUT
+}
+
 enum KYCStatus {
   DRAFT
   SUBMITTED
@@ -255,6 +266,7 @@ model User {
   assignedCompanies              Company[]                @relation("AssignedStaff")
   companyStaffAssignments        CompanyStaffAssignment[]
   createdCompanyStaffAssignments CompanyStaffAssignment[] @relation("CompanyStaffAssignmentCreator")
+  createdCompanyFileManagementRecords CompanyFileManagementRecord[] @relation("CompanyFileManagementRecordCreator")
   financialManagedCompanies      Company[]                @relation("FinancialManager")
   createdFinancialReportGroups   FinancialReportGroup[]   @relation("FinancialReportGroupCreator")
   uploadedFinancialHistoryBooks  FinancialHistoryLedgerBook[] @relation("FinancialHistoryLedgerBookUploader")
@@ -382,6 +394,9 @@ model Company {
   pendingClientEmail    String?
   assignedStaffId       String?
   financialManagerId    String?
+  hasCompanyBox         Boolean       @default(false)
+  hasCompanySquareSeal  Boolean       @default(false)
+  hasCompanyRoundSeal   Boolean       @default(false)
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 
@@ -395,6 +410,7 @@ model Company {
   designatedReps         DesignatedRepresentative[]
   documents              Document[]
   fileCases              CompanyFileCase[]
+  fileManagementRecords  CompanyFileManagementRecord[]
   amlChecks              AMLCheck[]                    @relation("CompanyAMLCheck")
   dueDiligenceReports    DueDiligenceReport[]
   riskAssessments        RiskAssessmentAnswer[]
@@ -424,6 +440,26 @@ model Company {
   @@index([pendingClientEmail])
   @@index([financialManagerId])
   @@map("companies")
+}
+
+model CompanyFileManagementRecord {
+  id           String                  @id @default(cuid())
+  companyId    String
+  assetType    CompanyFileAssetType
+  movementType CompanyFileMovementType
+  movementDate DateTime
+  handler      String
+  notes        String?
+  createdById  String?
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation("CompanyFileManagementRecordCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([companyId, assetType, movementDate])
+  @@index([createdById])
+  @@map("company_file_management_records")
 }
 
 /// Staff users who can operate a company. This augments legacy Company.assignedStaffId.
@@ -1069,6 +1105,7 @@ model TcspServicePrice {
 
   createdBy User  @relation("TcspServicePriceCreator", fields: [createdById], references: [id])
   updatedBy User? @relation("TcspServicePriceUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  invoiceLineItems InvoiceLineItem[]
 
   @@unique([jurisdiction, customerLevel, serviceContent])
   @@index([jurisdiction, customerLevel])
@@ -1118,6 +1155,7 @@ model InvoiceLineItem {
   id            String                   @id @default(cuid())
   invoiceId     String
   sortOrder     Int                      @default(0)
+  tcspServicePriceId String?
   description   String
   quantity      Decimal                  @default(1) @db.Decimal(12, 4)
   unitPrice     Decimal                  @db.Decimal(18, 2)
@@ -1125,9 +1163,11 @@ model InvoiceLineItem {
   discountValue Decimal?                 @db.Decimal(10, 4)
   amount        Decimal                  @db.Decimal(18, 2)
 
-  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoice          Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  tcspServicePrice TcspServicePrice? @relation(fields: [tcspServicePriceId], references: [id], onDelete: SetNull)
 
   @@index([invoiceId, sortOrder])
+  @@index([tcspServicePriceId])
   @@map("invoice_line_items")
 }
 
