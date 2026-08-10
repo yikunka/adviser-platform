@@ -4,13 +4,13 @@ import { useState, useEffect, useCallback } from 'react'
 import { toast } from 'sonner'
 import { UserPlus, Search, Eye, EyeOff, Pencil, Trash2, Ban, CheckCircle } from 'lucide-react'
 
-type PlatformKey = 'ALL' | 'ADVISER' | 'SFS_DIAMOND' | 'COSMICOAT'
+type PlatformKey = 'ALL' | 'ADVISER' | 'SFS_DIAMOND'
 
 type User = {
   id: string
   email: string
   nameEn: string
-  platform: 'ADVISER' | 'SFS_DIAMOND' | 'COSMICOAT'
+  platform: 'ADVISER' | 'SFS_DIAMOND'
   isActive: boolean
   emailVerified: string | null
   createdAt: string
@@ -41,17 +41,15 @@ const td: React.CSSProperties = {
   borderBottom: '1px solid #1E1C15',
 }
 
-const PLATFORM_BADGE: Record<'ADVISER' | 'SFS_DIAMOND' | 'COSMICOAT', { bg: string; text: string; label: string }> = {
+const PLATFORM_BADGE: Record<'ADVISER' | 'SFS_DIAMOND', { bg: string; text: string; label: string }> = {
   ADVISER:     { bg: 'rgba(201,169,110,0.15)', text: '#C9A96E', label: 'Adviser'    },
   SFS_DIAMOND: { bg: 'rgba(56,189,248,0.15)',  text: '#38bdf8', label: 'SFS Diamond' },
-  COSMICOAT:   { bg: 'rgba(255,34,0,0.12)',     text: '#ff6b4a', label: 'CosmoCoat' },
 }
 
 const TABS: { key: PlatformKey; label: string }[] = [
   { key: 'ALL',        label: 'All'        },
   { key: 'ADVISER',    label: 'Adviser'    },
   { key: 'SFS_DIAMOND',label: 'SFS Diamond'},
-  { key: 'COSMICOAT',  label: 'CosmoCoat' },
 ]
 
 function inputStyle(focused: boolean): React.CSSProperties {
@@ -68,7 +66,7 @@ function AddUserModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const [nameEn, setNameEn]     = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw]     = useState(false)
-  const [platform, setPlatform] = useState<'ADVISER' | 'SFS_DIAMOND' | 'COSMICOAT'>('ADVISER')
+  const [platform, setPlatform] = useState<'ADVISER' | 'SFS_DIAMOND'>('ADVISER')
   const [loading, setLoading]   = useState(false)
   const [focusField, setFocusField] = useState('')
 
@@ -146,8 +144,8 @@ function AddUserModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
           </div>
           <div className="space-y-2">
             <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Platform</label>
-            <div className="grid grid-cols-3 gap-2">
-              {(['ADVISER', 'SFS_DIAMOND', 'COSMICOAT'] as const).map(p => {
+            <div className="grid grid-cols-2 gap-2">
+              {(['ADVISER', 'SFS_DIAMOND'] as const).map(p => {
                 const badge = PLATFORM_BADGE[p]
                 const selected = platform === p
                 return (
@@ -420,7 +418,7 @@ export default function AdminUsersPage() {
               </thead>
               <tbody>
                 {users.map(u => {
-                  const badge    = PLATFORM_BADGE[u.platform]
+                  const badge    = PLATFORM_BADGE[u.platform] ?? { bg: 'rgba(148,163,184,0.15)', text: '#94a3b8', label: u.platform }
                   const verified = !!u.emailVerified
                   const disabled = !u.isActive
                   return (

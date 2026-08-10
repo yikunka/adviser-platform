@@ -2,18 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { ADMIN_MENU_KEYS, MENU_PLATFORM, pathnameToAdminMenuKey } from '@/lib/auth/admin-access'
 import { isValidPermission } from '@/lib/auth/permissions'
 
-describe('CosmoCoat recipe approvals access', () => {
-  it('is an independent Role Management page permission', () => {
-    expect(ADMIN_MENU_KEYS).toContain('cosmocoatRecipeApprovals')
-    expect(MENU_PLATFORM.cosmocoatRecipeApprovals).toBe('COSMICOAT')
-    expect(isValidPermission('cosmocoatRecipeApprovals')).toBe(true)
-  })
-
-  it('maps the approval page route to the independent permission key', () => {
-    expect(pathnameToAdminMenuKey('/zh/admin/cosmocoat-recipe-approvals')).toBe('cosmocoatRecipeApprovals')
-  })
-})
-
 describe('Adviser contract and TCSP pricing access', () => {
   it('registers new Adviser modules in Role Management permissions', () => {
     expect(ADMIN_MENU_KEYS).toContain('contracts')
@@ -27,5 +15,18 @@ describe('Adviser contract and TCSP pricing access', () => {
   it('maps new Adviser module routes to independent permission keys', () => {
     expect(pathnameToAdminMenuKey('/zh/admin/contracts')).toBe('contracts')
     expect(pathnameToAdminMenuKey('/zh/admin/tcsp-pricing')).toBe('tcspPricing')
+  })
+})
+
+describe('SFS Diamond access', () => {
+  it('registers SFS Diamond modules in Role Management permissions', () => {
+    expect(ADMIN_MENU_KEYS).toContain('sfsOrders')
+    expect(MENU_PLATFORM.sfsOrders).toBe('SFS_DIAMOND')
+    expect(isValidPermission('sfsOrders.create')).toBe(true)
+  })
+
+  it('maps SFS Diamond routes to permission keys', () => {
+    expect(pathnameToAdminMenuKey('/zh/admin/sfs-orders')).toBe('sfsOrders')
+    expect(pathnameToAdminMenuKey('/zh/admin/sfs-customers')).toBe('sfsCustomers')
   })
 })

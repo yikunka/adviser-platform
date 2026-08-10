@@ -98,20 +98,3 @@ export const sfsSeo = {
   ],
   image: '/sfsdiamond/hero-diamond.jpg',
 }
-
-export const cosmoSeo = {
-  title: 'CosmoCoat | Industrial Coatings, UV Paint and Water-Based Coating Solutions',
-  description:
-    'CosmoCoat provides industrial coating solutions including UV coatings, water-based paints, special effect coatings, tactile paints and supporting coating materials.',
-  keywords: [
-    'CosmoCoat',
-    'industrial coatings',
-    'UV paint',
-    'water-based coatings',
-    'special effect coating',
-    'tactile paint',
-    '环保UV漆',
-    '工业涂料',
-  ],
-  image: '/cosmocoat/hero-banner.jpeg',
-}

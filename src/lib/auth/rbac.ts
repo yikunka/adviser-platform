@@ -61,7 +61,7 @@ export async function requireRole(minRole: UserRole, opts?: RequireRoleOptions):
 }
 
 /**
- * Checks a specific permission string (page key OR action key like 'cosmocoatRecipes.delete').
+ * Checks a specific permission string (page key OR action key like 'sfsOrders.create').
  * Use this for granular button-level API protection.
  */
 export async function requirePermission(perm: string, minRole: UserRole = 'STAFF'): Promise<RBACResult> {

@@ -35,22 +35,7 @@
     "sfsOrders": "SFS Orders",
     "sfsInvoices": "SFS Invoices",
     "sfsDiamondSpecs": "Diamond Specs",
-    "cosmocoatProducts": "Products",
-    "cosmocoatFactoryProductCategories": "Factory product categories",
     "adminTeam": "Admin users & access",
-    "cosmocoatRawMaterials": "Raw Materials",
-    "cosmocoatRecipes": "Recipes",
-    "cosmocoatRecipeApprovals": "Pending Process Book Changes",
-    "cosmocoatColorFormulas": "Color Formulas",
-    "cosmocoatFactoryProducts": "Factory Product Management",
-    "cosmocoatProductionOrders": "Production Orders",
-    "cosmocoatProcessKits": "Process Kits",
-    "cosmocoatSampleOrders": "Sample Orders",
-    "cosmocoatCustomers": "Customer Management",
-    "cosmocoatSuppliers": "Supplier Management",
-    "cosmocoatEmployees": "Employee Management",
-    "cosmocoatQualificationFiles": "Qualification Files",
-    "cosmocoatOverview": "Flow Overview",
     "adminRoles": "Role Management"
   },
   "home": {
@@ -633,8 +618,6 @@
       "invoice": "Invoice",
       "sfsDiamond": "SFS Diamond",
       "sfsInvoices": "SFS Invoices",
-      "cosmocoat": "CosmoCoat",
-      "cosmocoatColorFormulas": "Color Matching",
       "system": "System"
     },
     "users": {
@@ -695,11 +678,6 @@
       "noRole": "No role assigned",
       "dynamicRoleNote": "Permissions from all assigned roles are unioned and override legacy menu settings."
     },
-    "cosmocoatHub": {
-      "title": "CosmoCoat",
-      "desc": "Browse the public product site. Grant access to this hub separately in Admin users.",
-      "openSite": "Open CosmoCoat site"
-    },
     "dashboard": {
       "title": "Admin Dashboard",
       "totalCompanies": "Active Companies",
@@ -727,14 +705,6 @@
           "COMPLETED": "Completed",
           "CANCELLED": "Cancelled"
         }
-      },
-      "cosmocoat": {
-        "title": "CosmoCoat Samples & Recipes",
-        "subtitle": "Track pending recipe approvals and sample-order progress.",
-        "viewOperations": "View sample orders",
-        "pendingRecipeChanges": "Pending recipe changes",
-        "draftSampleOrders": "Draft sample orders",
-        "inProgressSampleOrders": "In-progress sample orders"
       },
       "recentActivity": "Recent Activity",
       "noActivity": "No recent activity."

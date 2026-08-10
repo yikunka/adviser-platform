@@ -334,7 +334,7 @@ function RoleEditor({
                 value={name}
                 onChange={e => setName(e.target.value)}
                 disabled={role?.isSystem}
-                placeholder="e.g. CosmoCoat 操作员"
+                placeholder="e.g. SFS 操作员"
                 className="w-full rounded-lg px-3 py-2 text-sm outline-none"
                 style={{ background: '#1A1A12', border: '1px solid #2A2418', color: 'var(--foreground)' }}
               />

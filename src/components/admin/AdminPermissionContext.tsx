@@ -32,7 +32,7 @@ export function AdminPermissionProvider({
  * Hook for checking a permission inside any client component within the admin shell.
  *
  * Usage:
- *   const canCreate = useAdminPermission('cosmocoatRecipes.create')
+ *   const canCreate = useAdminPermission('sfsOrders.create')
  */
 export function useAdminPermission(perm: string): boolean {
   const { permissions } = useContext(AdminPermissionContext)

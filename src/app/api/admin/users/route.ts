@@ -8,7 +8,7 @@ import type { Platform } from '@prisma/client'
 // ── GET /api/admin/users ──────────────────────────────────────────────
 // Returns all CLIENT users across all platforms.
 // Query params:
-//   ?platform=ADVISER|SFS_DIAMOND|COSMICOAT  — filter by platform (optional)
+//   ?platform=ADVISER|SFS_DIAMOND  — filter by platform (optional)
 //   ?q=<search>                    — search by email or name (optional)
 export async function GET(req: NextRequest) {
   const { error } = await requireRole('STAFF', { adminMenu: 'users' })
@@ -54,7 +54,7 @@ const createSchema = z.object({
   email:    z.string().email().max(255),
   nameEn:   z.string().min(1).max(100),
   password: z.string().min(8).max(100),
-  platform: z.enum(['ADVISER', 'SFS_DIAMOND', 'COSMICOAT']),
+  platform: z.enum(['ADVISER', 'SFS_DIAMOND']),
 })
 
 export async function POST(req: NextRequest) {

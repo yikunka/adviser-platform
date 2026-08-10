@@ -10,12 +10,6 @@ datasource db {
 // ENUMS
 // ─────────────────────────────────────────────
 
-enum ProcessKitStatus {
-  DRAFT // 草稿
-  ACTIVE // 已启用
-  ARCHIVED // 已归档
-}
-
 enum ProcessTestType {
   PERFORMANCE // 性能测试
   DURABILITY // 耐久性测试
@@ -41,7 +35,6 @@ enum UserRole {
 enum Platform {
   ADVISER
   SFS_DIAMOND
-  COSMICOAT
 }
 
 enum CompanyStatus {
@@ -261,41 +254,37 @@ model User {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
-  verificationTokens             VerificationToken[]
-  clientCompanies                Company[]                @relation("ClientCompany")
-  assignedCompanies              Company[]                @relation("AssignedStaff")
-  companyStaffAssignments        CompanyStaffAssignment[]
-  createdCompanyStaffAssignments CompanyStaffAssignment[] @relation("CompanyStaffAssignmentCreator")
+  verificationTokens                  VerificationToken[]
+  clientCompanies                     Company[]                     @relation("ClientCompany")
+  assignedCompanies                   Company[]                     @relation("AssignedStaff")
+  companyStaffAssignments             CompanyStaffAssignment[]
+  createdCompanyStaffAssignments      CompanyStaffAssignment[]      @relation("CompanyStaffAssignmentCreator")
   createdCompanyFileManagementRecords CompanyFileManagementRecord[] @relation("CompanyFileManagementRecordCreator")
-  financialManagedCompanies      Company[]                @relation("FinancialManager")
-  createdFinancialReportGroups   FinancialReportGroup[]   @relation("FinancialReportGroupCreator")
-  uploadedFinancialHistoryBooks  FinancialHistoryLedgerBook[] @relation("FinancialHistoryLedgerBookUploader")
-  uploadedHistoricalInvoices     HistoricalInvoiceFile[]   @relation("HistoricalInvoiceFileUploader")
-  uploadedAdviserContracts       AdviserContract[]         @relation("AdviserContractUploader")
-  createdTcspServicePrices       TcspServicePrice[]        @relation("TcspServicePriceCreator")
-  updatedTcspServicePrices       TcspServicePrice[]        @relation("TcspServicePriceUpdater")
-  uploadedDocuments              Document[]
-  kycReviews                     KeyPerson[]              @relation("KYCReviewer")
-  kycSubmissions                 KeyPerson[]              @relation("ClientKycSubmissions")
-  amlChecksTriggered             AMLCheck[]               @relation("AMLCheckTrigger")
-  amlAlertsReviewed              AMLAlert[]               @relation("AMLAlertReviewer")
-  auditLogs                      AuditLog[]
-  notifications                  Notification[]
-  processedChanges               ShareholderChange[]
-  processedAddress               AddressChange[]
-  processedFilings               AnnualFiling[]
-  orders                         ServiceOrder[]
-  sfsOrders                      SfsOrder[]
-  sfsCustomers                   SfsCustomer[]            @relation("SfsCustomerUser")
-  sfsCustomersCreated            SfsCustomer[]            @relation("SfsCustomerCreator")
-  cosCustomers                   CosCustomer[]            @relation("CosCustomerUser")
-  cosCustomersCreated            CosCustomer[]            @relation("CosCustomerCreator")
-  cosSuppliersCreated            CosSupplier[]            @relation("CosSupplierCreator")
-  cosJournalEntries              CosTableJournalEntry[]
-  financialJournalEntries        JournalEntry[]           @relation("FinancialJournalCreatedBy")
-  invoicesCreated                Invoice[]                @relation("InvoiceCreatedBy")
-  sfsInvoicesCreated             SfsInvoice[]             @relation("SfsInvoiceCreatedBy")
-  sfsStepAttachmentsReviewed     SfsOrderStepAttachment[] @relation("SfsStepAttachmentReviewer")
+  financialManagedCompanies           Company[]                     @relation("FinancialManager")
+  createdFinancialReportGroups        FinancialReportGroup[]        @relation("FinancialReportGroupCreator")
+  uploadedFinancialHistoryBooks       FinancialHistoryLedgerBook[]  @relation("FinancialHistoryLedgerBookUploader")
+  uploadedHistoricalInvoices          HistoricalInvoiceFile[]       @relation("HistoricalInvoiceFileUploader")
+  uploadedAdviserContracts            AdviserContract[]             @relation("AdviserContractUploader")
+  createdTcspServicePrices            TcspServicePrice[]            @relation("TcspServicePriceCreator")
+  updatedTcspServicePrices            TcspServicePrice[]            @relation("TcspServicePriceUpdater")
+  uploadedDocuments                   Document[]
+  kycReviews                          KeyPerson[]                   @relation("KYCReviewer")
+  kycSubmissions                      KeyPerson[]                   @relation("ClientKycSubmissions")
+  amlChecksTriggered                  AMLCheck[]                    @relation("AMLCheckTrigger")
+  amlAlertsReviewed                   AMLAlert[]                    @relation("AMLAlertReviewer")
+  auditLogs                           AuditLog[]
+  notifications                       Notification[]
+  processedChanges                    ShareholderChange[]
+  processedAddress                    AddressChange[]
+  processedFilings                    AnnualFiling[]
+  orders                              ServiceOrder[]
+  sfsOrders                           SfsOrder[]
+  sfsCustomers                        SfsCustomer[]                 @relation("SfsCustomerUser")
+  sfsCustomersCreated                 SfsCustomer[]                 @relation("SfsCustomerCreator")
+  financialJournalEntries             JournalEntry[]                @relation("FinancialJournalCreatedBy")
+  invoicesCreated                     Invoice[]                     @relation("InvoiceCreatedBy")
+  sfsInvoicesCreated                  SfsInvoice[]                  @relation("SfsInvoiceCreatedBy")
+  sfsStepAttachmentsReviewed          SfsOrderStepAttachment[]      @relation("SfsStepAttachmentReviewer")
 
   fiscalPeriodsClosed    FiscalPeriod[]       @relation("FiscalPeriodClosedBy")
   salesInvoicesCreated   SalesInvoice[]       @relation("SalesInvoiceCreatedBy")
@@ -305,38 +294,26 @@ model User {
   bankStatementsImported BankStatement[]      @relation("BankStatementImportedBy")
   bankReconsCreated      BankReconciliation[] @relation("BankReconCreatedBy")
 
-  createdProcessKits                  CosProcessKit[]               @relation("ProcessKitCreator")
-  updatedProcessKits                  CosProcessKit[]               @relation("ProcessKitUpdater")
-  createdSampleOrders                 CosSampleOrder[]              @relation("SampleOrderCreator")
-  featureRequests                     FeatureRequest[]              @relation("FeatureRequestSubmitter")
-  sfsCustomerContractsUploaded        SfsCustomerContract[]         @relation("SfsCustomerContractUploader")
-  cosEmployeesCreated                 CosEmployee[]                 @relation("CosEmployeeCreator")
-  cosEmployeeFilesUploaded            CosEmployeeFile[]             @relation("CosEmployeeFileUploader")
-  cosCustomerBusinessLicensesUploaded CosCustomerBusinessLicense[]  @relation("CosCustomerBusinessLicenseUploader")
-  cosSupplierFilesUploaded            CosSupplierFile[]             @relation("CosSupplierFileUploader")
-  cosQualificationFilesUploaded       CosQualificationFile[]        @relation("CosQualificationFileUploader")
-  cosRecipeChangeRequestsSubmitted    CosTableRecipeChangeRequest[] @relation("CosRecipeChangeRequester")
-  cosRecipeChangeRequestsReviewed     CosTableRecipeChangeRequest[] @relation("CosRecipeChangeReviewer")
-  cosProcessKitChangeRequestsSubmitted CosProcessKitChangeRequest[]  @relation("CosProcessKitChangeRequester")
-  cosProcessKitChangeRequestsReviewed  CosProcessKitChangeRequest[]  @relation("CosProcessKitChangeReviewer")
+  featureRequests              FeatureRequest[]      @relation("FeatureRequestSubmitter")
+  sfsCustomerContractsUploaded SfsCustomerContract[] @relation("SfsCustomerContractUploader")
 
   /// Dynamic RBAC role assignments (multi-role, union of all permissions)
-  adminRoles  UserAdminRole[]
+  adminRoles UserAdminRole[]
 
   @@map("users")
 }
 
 model AdminRole {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  description String   @default("")
-  color       String   @default("#6b7280")
-  /// All permission strings: page keys (e.g. 'cosmocoatRecipes') + action keys (e.g. 'cosmocoatRecipes.create')
-  permissions String[] @default([])
+  id          String          @id @default(cuid())
+  name        String          @unique
+  description String          @default("")
+  color       String          @default("#6b7280")
+  /// All permission strings: page keys (e.g. 'companies') + action keys (e.g. 'companies.create')
+  permissions String[]        @default([])
   /// System roles cannot be deleted
-  isSystem    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isSystem    Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
   users       UserAdminRole[]
 
   @@map("admin_roles")
@@ -400,9 +377,9 @@ model Company {
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 
-  clientUser        User? @relation("ClientCompany", fields: [clientUserId], references: [id])
-  assignedStaff     User? @relation("AssignedStaff", fields: [assignedStaffId], references: [id])
-  financialManager  User? @relation("FinancialManager", fields: [financialManagerId], references: [id], onDelete: SetNull)
+  clientUser       User? @relation("ClientCompany", fields: [clientUserId], references: [id])
+  assignedStaff    User? @relation("AssignedStaff", fields: [assignedStaffId], references: [id])
+  financialManager User? @relation("FinancialManager", fields: [financialManagerId], references: [id], onDelete: SetNull)
 
   directors              Director[]
   members                Member[]
@@ -1103,8 +1080,8 @@ model TcspServicePrice {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  createdBy User  @relation("TcspServicePriceCreator", fields: [createdById], references: [id])
-  updatedBy User? @relation("TcspServicePriceUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdBy        User              @relation("TcspServicePriceCreator", fields: [createdById], references: [id])
+  updatedBy        User?             @relation("TcspServicePriceUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
   invoiceLineItems InvoiceLineItem[]
 
   @@unique([jurisdiction, customerLevel, serviceContent])
@@ -1152,16 +1129,16 @@ model Invoice {
 }
 
 model InvoiceLineItem {
-  id            String                   @id @default(cuid())
-  invoiceId     String
-  sortOrder     Int                      @default(0)
+  id                 String                   @id @default(cuid())
+  invoiceId          String
+  sortOrder          Int                      @default(0)
   tcspServicePriceId String?
-  description   String
-  quantity      Decimal                  @default(1) @db.Decimal(12, 4)
-  unitPrice     Decimal                  @db.Decimal(18, 2)
-  discountType  InvoiceLineDiscountType?
-  discountValue Decimal?                 @db.Decimal(10, 4)
-  amount        Decimal                  @db.Decimal(18, 2)
+  description        String
+  quantity           Decimal                  @default(1) @db.Decimal(12, 4)
+  unitPrice          Decimal                  @db.Decimal(18, 2)
+  discountType       InvoiceLineDiscountType?
+  discountValue      Decimal?                 @db.Decimal(10, 4)
+  amount             Decimal                  @db.Decimal(18, 2)
 
   invoice          Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   tcspServicePrice TcspServicePrice? @relation(fields: [tcspServicePriceId], references: [id], onDelete: SetNull)
@@ -1351,8 +1328,8 @@ model SfsCustomer {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  user           User?                       @relation("SfsCustomerUser", fields: [userId], references: [id], onDelete: SetNull)
-  createdBy      User?                       @relation("SfsCustomerCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  user           User?                      @relation("SfsCustomerUser", fields: [userId], references: [id], onDelete: SetNull)
+  createdBy      User?                      @relation("SfsCustomerCreator", fields: [createdById], references: [id], onDelete: SetNull)
   orders         SfsOrder[]
   contracts      SfsCustomerContract[]
   priceOverrides SfsCustomerPriceOverride[]
@@ -1527,466 +1504,7 @@ model SfsInvoiceLineItem {
 }
 
 // ─────────────────────────────────────────────
-// CosmoCoat — PRODUCTS
-// ─────────────────────────────────────────────
-
-/// Factory product categories — hierarchical taxonomy (max 3 levels)
-model CosTableProductCategory {
-  id               String   @id @default(cuid())
-  name             String
-  description      String   @default("")
-  parentCategoryId String?
-  slug             String   @unique
-  image            String?
-  isActive         Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  parent          CosTableProductCategory?  @relation("ProductCategoryHierarchy", fields: [parentCategoryId], references: [id], onDelete: SetNull)
-  children        CosTableProductCategory[] @relation("ProductCategoryHierarchy")
-  factoryProducts CosTableFactoryProduct[]
-
-  @@index([parentCategoryId])
-  @@index([isActive])
-  @@map("cos_table_product_categories")
-}
-
-model CosTableProduct {
-  id                    String   @id @default(cuid())
-  pid                   String   @unique
-  type                  String
-  title                 String
-  teaser                String   @default("")
-  detail                String   @db.Text
-  imagePath             String
-  irCuringTime          Int?     @map("ir_curing_time")
-  irCuringTemp          Int?     @map("ir_curing_temp")
-  uvCuringIntensity     Decimal? @map("uv_curing_intensity") @db.Decimal(8, 2)
-  uvCuringUnit          String?  @map("uv_curing_unit")
-  viscosity             Decimal? @map("viscosity") @db.Decimal(10, 3)
-  viscosityUnit         String?  @map("viscosity_unit")
-  mixingRatio           String?  @map("mixing_ratio")
-  compatibleProducts    String?  @map("compatible_products")
-  requiresCompatibility Boolean  @default(false) @map("requires_compatibility")
-  sortOrder             Int      @default(0)
-  isFeatured            Boolean  @default(false)
-  isVisible             Boolean  @default(true)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-
-  @@index([type, sortOrder])
-  @@index([isFeatured, sortOrder])
-  @@index([isVisible, sortOrder])
-  @@map("cos_table_products")
-}
-
-// ─────────────────────────────────────────────
-// CosmoCoat — RAW MATERIALS (原料)
-// ─────────────────────────────────────────────
-
-model CosTableRawMaterial {
-  id             String @id @default(cuid())
-  category       String
-  attributeCode  String
-  productionCode String @unique
-  huaxingCode    String @default("")
-  name           String
-
-  primarySupplierId            String?
-  primarySupplierCode          String   @default("")
-  primarySupplierName          String   @default("")
-  primarySupplierContactPerson String   @default("")
-  primarySupplierContactInfo   String   @default("")
-  primarySupplierAddress       String   @default("")
-  primaryPackageKg             Decimal? @db.Decimal(12, 2)
-  primaryPricePerKg            Decimal? @db.Decimal(12, 4)
-  primaryTaxIncluded           String   @default("")
-  primaryFreightIncluded       String   @default("")
-  primaryNotes                 String   @default("")
-
-  secondarySupplierId            String?
-  secondarySupplierCode          String   @default("")
-  secondarySupplierName          String   @default("")
-  secondarySupplierContactPerson String   @default("")
-  secondarySupplierContactInfo   String   @default("")
-  secondarySupplierAddress       String   @default("")
-  secondaryPackageKg             Decimal? @db.Decimal(12, 2)
-  secondaryPricePerKg            Decimal? @db.Decimal(12, 4)
-  secondaryTaxIncluded           String   @default("")
-  secondaryFreightIncluded       String   @default("")
-  secondaryNotes                 String   @default("")
-
-  // TDS (Technical Data Sheet) and MSDS (Material Safety Data Sheet) file keys
-  tdsFileKey  String? @map("tds_file_key")
-  msdsFileKey String? @map("msds_file_key")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  recipeItems          CosTableRecipeItem[]
-  colorFormulaItems    CosTableColorFormulaItem[]
-  productionOrderItems CosTableProductionOrderItem[]
-  primarySupplier      CosSupplier? @relation("RawMaterialPrimarySupplier", fields: [primarySupplierId], references: [id], onDelete: SetNull)
-  secondarySupplier    CosSupplier? @relation("RawMaterialSecondarySupplier", fields: [secondarySupplierId], references: [id], onDelete: SetNull)
-
-  @@index([primarySupplierId])
-  @@index([secondarySupplierId])
-  @@index([category])
-  @@index([attributeCode])
-  @@index([name])
-  @@map("cos_table_raw_materials")
-}
-
-// ─────────────────────────────────────────────
-// CosmoCoat — RECIPES (配方)
-// ─────────────────────────────────────────────
-
-model CosTableRecipeCategory {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  name      String
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  recipes CosTableRecipe[]
-
-  @@index([sortOrder])
-  @@map("cos_table_recipe_categories")
-}
-
-model CosTableRecipe {
-  id                          String   @id @default(cuid())
-  categoryId                  String
-  code                        String   @unique
-  name                        String
-  batchQuantity               Decimal  @default(100) @db.Decimal(12, 3)
-  unitCost                    Decimal? @db.Decimal(12, 4)
-  viscosity                   String?
-  viscosityUnit               String?  @map("viscosity_unit")
-  shelfLifeDays               Int?     @map("shelf_life_days")
-  notes                       String   @default("")
-  productionSpeedRequirements String   @default("") @map("production_speed_requirements")
-  productionTimeRequirements  String   @default("") @map("production_time_requirements")
-  packagingRequirements       String   @default("") @map("packaging_requirements")
-  productionNotes             String   @default("") @map("production_notes")
-  qcTestStandard              String   @default("") @map("qc_test_standard")
-  qcTestItems                 String[] @default([]) @map("qc_test_items")
-  qcResult                    String   @default("") @map("qc_result")
-  /// Cached: true when linked to a factory product directly or as a nested component recipe.
-  formulaIsUsed               Boolean  @default(false) @map("formula_is_used")
-  createdAt                   DateTime @default(now())
-  updatedAt                   DateTime @updatedAt
-
-  category                        CosTableRecipeCategory        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  items                           CosTableRecipeItem[]
-  componentInItems                CosTableRecipeItem[]          @relation("RecipeItemComponent")
-  productLinks                    CosTableProductRecipe[]
-  currentForProducts              CosTableFactoryProduct[]      @relation("CurrentFactoryRecipe")
-  productionOrders                CosTableProductionOrder[]
-  componentInProductionOrderItems CosTableProductionOrderItem[] @relation("ProductionOrderItemComponentRecipe")
-  sourceColorFormulas             CosTableColorFormula[]
-  changeRequests                  CosTableRecipeChangeRequest[]
-
-  @@index([categoryId, name])
-  @@map("cos_table_recipes")
-}
-
-enum CosTableRecipeChangeAction {
-  UPDATE
-  DELETE
-}
-
-enum CosTableRecipeChangeRequestStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
-model CosTableRecipeChangeRequest {
-  id            String                            @id @default(cuid())
-  recipeId      String
-  action        CosTableRecipeChangeAction
-  payload       Json?
-  status        CosTableRecipeChangeRequestStatus @default(PENDING)
-  requestNote   String                            @default("")
-  reviewNote    String                            @default("")
-  requestedById String
-  reviewedById  String?
-  reviewedAt    DateTime?
-  createdAt     DateTime                          @default(now())
-  updatedAt     DateTime                          @updatedAt
-
-  recipe      CosTableRecipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  requestedBy User           @relation("CosRecipeChangeRequester", fields: [requestedById], references: [id], onDelete: Restrict)
-  reviewedBy  User?          @relation("CosRecipeChangeReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
-
-  @@index([status, createdAt])
-  @@index([recipeId, status])
-  @@map("cos_table_recipe_change_requests")
-}
-
-model CosTableRecipeItem {
-  id                    String   @id @default(cuid())
-  recipeId              String
-  rawMaterialId         String?
-  componentRecipeId     String?
-  productSemifinishedId String?
-  factoryProductId      String?
-  sortOrder             Int      @default(0)
-  quantity              Decimal  @db.Decimal(12, 3)
-  unitPrice             Decimal? @db.Decimal(12, 4)
-  amount                Decimal? @db.Decimal(14, 4)
-  percentage            Decimal? @db.Decimal(8, 4)
-  notes                 String   @default("")
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-
-  recipe              CosTableRecipe               @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  rawMaterial         CosTableRawMaterial?         @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
-  componentRecipe     CosTableRecipe?              @relation("RecipeItemComponent", fields: [componentRecipeId], references: [id], onDelete: Restrict)
-  productSemifinished CosTableProductSemifinished? @relation(fields: [productSemifinishedId], references: [id], onDelete: Restrict)
-  factoryProduct      CosTableFactoryProduct?      @relation(fields: [factoryProductId], references: [id], onDelete: Restrict)
-
-  @@index([recipeId, sortOrder])
-  @@index([componentRecipeId])
-  @@index([productSemifinishedId])
-  @@index([factoryProductId])
-  @@map("cos_table_recipe_items")
-}
-
-// ─────────────────────────────────────────────
-// CosmoCoat — PRODUCT SEMIFINISHED (Sol. 半成品库存)
-// ─────────────────────────────────────────────
-
-model CosTableProductSemifinished {
-  id                      String   @id @default(cuid())
-  code                    String   @unique
-  name                    String
-  description             String   @default("")
-  category                String   @default("Sol.")
-  stock                   Decimal  @default(0) @db.Decimal(12, 3)
-  unit                    String   @default("kg")
-  unitPrice               Decimal? @db.Decimal(12, 4)
-  sourceProductionOrderId String?
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-
-  sourceProductionOrder CosTableProductionOrder?      @relation(fields: [sourceProductionOrderId], references: [id], onDelete: SetNull)
-  recipeItems           CosTableRecipeItem[]
-  productionOrderItems  CosTableProductionOrderItem[]
-  colorFormulaItems     CosTableColorFormulaItem[]
-
-  @@index([category])
-  @@index([name])
-  @@index([sourceProductionOrderId])
-  @@map("cos_table_product_semifinished")
-}
-
-// ─────────────────────────────────────────────
-// CosmoCoat — FACTORY PRODUCTS (工厂产品)
-// ─────────────────────────────────────────────
-
-model CosTableFactoryProduct {
-  id              String   @id @default(cuid())
-  productCode     String   @unique
-  name            String
-  categoryId      String?
-  unit            String   @default("kg")
-  unitPrice       Decimal? @db.Decimal(12, 4)
-  notes           String   @default("")
-  viscosity       String?  @map("viscosity")
-  viscosityUnit   String?  @map("viscosity_unit")
-  currentRecipeId String?
-  sortOrder       Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  category         CosTableProductCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  currentRecipe    CosTableRecipe?           @relation("CurrentFactoryRecipe", fields: [currentRecipeId], references: [id], onDelete: SetNull)
-  recipeLinks      CosTableProductRecipe[]
-  productionOrders CosTableProductionOrder[]
-  colorFormulas    CosTableColorFormula[]
-  recipeItems      CosTableRecipeItem[]
-
-  @@index([name])
-  @@index([sortOrder])
-  @@index([categoryId])
-  @@map("cos_table_factory_products")
-}
-
-model CosTableProductRecipe {
-  id        String   @id @default(cuid())
-  productId String
-  recipeId  String
-  createdAt DateTime @default(now())
-
-  product CosTableFactoryProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
-  recipe  CosTableRecipe         @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-
-  @@unique([productId, recipeId])
-  @@index([recipeId])
-  @@map("cos_table_product_recipes")
-}
-
-// ─────────────────────────────────────────────
-// CosmoCoat — COLOR MATCHING FORMULAS (調色配方)
-// ─────────────────────────────────────────────
-
-enum CosColorFormulaCategory {
-  PU
-  BAKING_PAINT
-  HT_BAKING_PAINT
-  LT_BAKING_PAINT
-}
-
-/// @deprecated Legacy static subcategories — new formulas use factoryProductId on CosTableColorFormula.
-model CosTableColorFormulaSubcategory {
-  id             String                  @id @default(cuid())
-  parentCategory CosColorFormulaCategory
-  code           String
-  name           String
-  sortOrder      Int                     @default(0)
-  isActive       Boolean                 @default(true)
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
-
-  colorFormulas CosTableColorFormula[]
-
-  @@unique([parentCategory, code])
-  @@index([parentCategory, sortOrder])
-  @@map("cos_table_color_formula_subcategories")
-}
-
-model CosTableColorFormula {
-  id               String                  @id @default(cuid())
-  code             String                  @unique
-  name             String
-  category         CosColorFormulaCategory
-  /// @deprecated Legacy static subcategory — use factoryProductId for product-specific scope.
-  subcategoryId    String?
-  /// Specific factory product scope; null = applies to all products in category.
-  factoryProductId String?
-  sourceRecipeId   String?
-  colorCode        String                  @default("")
-  customerId       String?
-  customerName     String                  @default("")
-  technicalOwnerId String?
-  targetColor      String                  @default("")
-  batchQuantity    Decimal                 @default(100) @db.Decimal(12, 3)
-  notes            String                  @default("")
-  createdAt        DateTime                @default(now())
-  updatedAt        DateTime                @updatedAt
-
-  subcategory      CosTableColorFormulaSubcategory? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
-  factoryProduct   CosTableFactoryProduct?          @relation(fields: [factoryProductId], references: [id], onDelete: SetNull)
-  sourceRecipe     CosTableRecipe?                  @relation(fields: [sourceRecipeId], references: [id], onDelete: SetNull)
-  customer         CosCustomer?                     @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  technicalOwner   CosEmployee?                     @relation("CosColorFormulaTechnicalOwner", fields: [technicalOwnerId], references: [id], onDelete: SetNull)
-  items            CosTableColorFormulaItem[]
-  sampleOrderLines CosSampleOrderColorFormula[]
-
-  @@index([category, updatedAt])
-  @@index([subcategoryId])
-  @@index([factoryProductId])
-  @@index([customerId])
-  @@index([technicalOwnerId])
-  @@map("cos_table_color_formulas")
-}
-
-model CosTableColorFormulaItem {
-  id                    String   @id @default(cuid())
-  formulaId             String
-  rawMaterialId         String?
-  productSemifinishedId String?
-  manualProductionCode  String   @default("") @map("manual_production_code")
-  manualName            String   @default("") @map("manual_name")
-  manualAttributeCode   String   @default("") @map("manual_attribute_code")
-  sortOrder             Int      @default(0)
-  quantity              Decimal  @db.Decimal(12, 3)
-  actualWeight          Decimal? @db.Decimal(12, 3)
-  unitPrice             Decimal? @db.Decimal(12, 4)
-  amount                Decimal? @db.Decimal(14, 4)
-  percentage            Decimal? @db.Decimal(8, 4)
-  notes                 String   @default("")
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-
-  formula             CosTableColorFormula         @relation(fields: [formulaId], references: [id], onDelete: Cascade)
-  rawMaterial         CosTableRawMaterial?         @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
-  productSemifinished CosTableProductSemifinished? @relation(fields: [productSemifinishedId], references: [id], onDelete: Restrict)
-
-  @@index([formulaId, sortOrder])
-  @@index([rawMaterialId])
-  @@index([productSemifinishedId])
-  @@map("cos_table_color_formula_items")
-}
-
-// ─────────────────────────────────────────────
-// CosmoCoat — PRODUCTION ORDERS (生产单)
-// ─────────────────────────────────────────────
-
-model CosTableProductionOrder {
-  id                       String    @id @default(cuid())
-  code                     String    @unique
-  factoryProductId         String
-  recipeId                 String
-  productionEmployeeId     String?
-  totalWeight              Decimal   @db.Decimal(12, 3)
-  batchNo                  String    @default("")
-  startedAt                DateTime?
-  finishedAt               DateTime?
-  productionNotes          String    @default("")
-  qualityNotes             String    @default("")
-  packagingNotes           String    @default("")
-  productionRequirements   String    @default("") @map("production_requirements")
-  qualityCheckRequirements String    @default("") @map("quality_check_requirements")
-  packagingRequirements    String    @default("") @map("packaging_requirements")
-  status                   String    @default("draft")
-  createdAt                DateTime  @default(now())
-  updatedAt                DateTime  @updatedAt
-
-  factoryProduct       CosTableFactoryProduct        @relation(fields: [factoryProductId], references: [id], onDelete: Restrict)
-  recipe               CosTableRecipe                @relation(fields: [recipeId], references: [id], onDelete: Restrict)
-  productionEmployee   CosEmployee?                  @relation(fields: [productionEmployeeId], references: [id], onDelete: SetNull)
-  items                CosTableProductionOrderItem[]
-  semifinishedProducts CosTableProductSemifinished[]
-
-  @@index([factoryProductId])
-  @@index([productionEmployeeId])
-  @@index([createdAt])
-  @@map("cos_table_production_orders")
-}
-
-model CosTableProductionOrderItem {
-  id                    String   @id @default(cuid())
-  orderId               String
-  rawMaterialId         String?
-  componentRecipeId     String?
-  productSemifinishedId String?
-  sortOrder             Int      @default(0)
-  productionCode        String
-  materialName          String
-  percentage            Decimal  @db.Decimal(8, 4)
-  requiredWeight        Decimal  @db.Decimal(12, 3)
-  actualWeight          Decimal? @db.Decimal(12, 3)
-  notes                 String   @default("")
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-
-  order               CosTableProductionOrder      @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  rawMaterial         CosTableRawMaterial?         @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
-  componentRecipe     CosTableRecipe?              @relation("ProductionOrderItemComponentRecipe", fields: [componentRecipeId], references: [id], onDelete: Restrict)
-  productSemifinished CosTableProductSemifinished? @relation(fields: [productSemifinishedId], references: [id], onDelete: Restrict)
-
-  @@index([orderId, sortOrder])
-  @@index([componentRecipeId])
-  @@index([productSemifinishedId])
-  @@map("cos_table_production_order_items")
-}
-
-// ─────────────────────────────────────────────
-// CosmoCoat — FINANCIAL MODULE (HKFRS Compliant)
+// SHARED FINANCIAL ENUMS (Adviser accounting)
 // ─────────────────────────────────────────────
 
 enum AccountType {
@@ -2096,531 +1614,6 @@ enum BankReconciliationStatus {
   COMPLETED // 已完成
 }
 
-model CosTableAccount {
-  id        String      @id @default(cuid())
-  code      String      @unique // 科目编号：1001, 2001 等
-  name      String // 科目名称
-  type      AccountType
-  parentId  String? // 父科目（支持层级结构）
-  level     Int         @default(1) // 层级深度
-  sortOrder Int         @default(0)
-  isSystem  Boolean     @default(false) // 系统科目锁定
-  notes     String      @default("")
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-
-  parent        CosTableAccount?         @relation("AccountHierarchy", fields: [parentId], references: [id])
-  children      CosTableAccount[]        @relation("AccountHierarchy")
-  journalLines  CosTableJournalLine[]
-  ledgerEntries CosTableLedger[]
-  accountBalls  CosTableAccountBalance[]
-
-  @@index([type, sortOrder])
-  @@map("cos_accounts")
-}
-
-model CosTableJournalEntry {
-  id          String        @id @default(cuid())
-  voucherNo   String        @unique // 凭证号
-  entryDate   DateTime // 入账日期
-  description String // 摘要
-  period      String // YYYY-MM 会计期间
-  status      JournalStatus @default(DRAFT)
-  attachments String[] // 附件 URL 数组
-  createdById String?
-  postedAt    DateTime?
-  reversedAt  DateTime?
-
-  createdBy     User?                 @relation(fields: [createdById], references: [id])
-  lines         CosTableJournalLine[]
-  ledgerEntries CosTableLedger[]
-
-  @@index([period, status])
-  @@index([entryDate])
-  @@map("cos_journal_entries")
-}
-
-model CosTableJournalLine {
-  id          String  @id @default(cuid())
-  entryId     String
-  accountId   String
-  lineNum     Int     @default(0) // 显示顺序
-  description String // 行描述
-  debit       Decimal @default(0.0) @db.Decimal(18, 4)
-  credit      Decimal @default(0.0) @db.Decimal(18, 4)
-  notes       String  @default("")
-
-  entry   CosTableJournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
-  account CosTableAccount      @relation(fields: [accountId], references: [id])
-
-  @@index([entryId, lineNum])
-  @@index([accountId])
-  @@map("cos_journal_lines")
-}
-
-model CosTableLedger {
-  id          String   @id @default(cuid())
-  accountId   String
-  entryId     String? // 过账时关联 EntryID
-  date        DateTime
-  voucherNo   String? // 凭证号引用
-  description String
-  debit       Decimal  @default(0.0) @db.Decimal(18, 4)
-  credit      Decimal  @default(0.0) @db.Decimal(18, 4)
-  balance     Decimal  @default(0.0) @db.Decimal(18, 4) // 累计余额
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  account CosTableAccount       @relation(fields: [accountId], references: [id])
-  entry   CosTableJournalEntry? @relation(fields: [entryId], references: [id])
-
-  @@index([accountId, date])
-  @@index([date])
-  @@index([voucherNo])
-  @@map("cos_ledger")
-}
-
-model CosTableAccountBalance {
-  id            String  @id @default(cuid())
-  accountId     String
-  period        String // YYYY-MM
-  openingDebit  Decimal @default(0.0) @db.Decimal(18, 4)
-  openingCredit Decimal @default(0.0) @db.Decimal(18, 4)
-  closingDebit  Decimal @default(0.0) @db.Decimal(18, 4)
-  closingCredit Decimal @default(0.0) @db.Decimal(18, 4)
-  endingBalance Decimal @default(0.0) @db.Decimal(18, 4) // 期末余额（带符号）
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  account CosTableAccount @relation(fields: [accountId], references: [id])
-
-  @@unique([accountId, period])
-  @@index([period])
-  @@map("cos_account_balances")
-}
-
-model CosTableExchangeRate {
-  id            String   @id @default(cuid())
-  fromCurrency  String // HKD, USD, RMB
-  toCurrency    String
-  rate          Decimal  @db.Decimal(10, 6)
-  effectiveDate DateTime
-  isActive      Boolean  @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([fromCurrency, toCurrency, effectiveDate])
-  @@index([fromCurrency, toCurrency])
-  @@map("cos_exchange_rates")
-}
-
-// ─────────────────────────────────────────────
-// CosmoCoat — Process Kits (產品配套工藝書)
-// ─────────────────────────────────────────────
-
-/// Process Kit - 产品配套工艺书（组合多个产品 + 使用方法）
-model CosProcessKit {
-  id                   String           @id @default(cuid())
-  code                 String           @unique
-  name                 String
-  description          String?
-  materials            String[]
-  performanceStandards String[]         @default([])
-  otherNote            String?
-  processDescription   String?
-  processFlowNote      String?
-  processFlowItems     Json             @default("[]")
-  status               ProcessKitStatus @default(DRAFT)
-  createdBy            String?
-  createdByName        String?
-  updatedBy            String?
-  updatedByName        String?
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
-
-  createdByUser User? @relation("ProcessKitCreator", fields: [createdBy], references: [id])
-  updatedByUser User? @relation("ProcessKitUpdater", fields: [updatedBy], references: [id])
-
-  products         CosProcessKitProduct[]
-  tests            CosProcessTest[]
-  sampleOrderLines CosSampleOrderProcessKit[]
-  changeRequests   CosProcessKitChangeRequest[]
-
-  @@index([status])
-  @@map("cos_process_kits")
-}
-
-enum CosProcessKitChangeAction {
-  UPDATE
-  DELETE
-}
-
-enum CosProcessKitChangeRequestStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
-model CosProcessKitChangeRequest {
-  id            String                              @id @default(cuid())
-  kitId         String
-  action        CosProcessKitChangeAction
-  payload       Json?
-  status        CosProcessKitChangeRequestStatus    @default(PENDING)
-  requestNote   String                              @default("")
-  reviewNote    String                              @default("")
-  requestedById String
-  reviewedById  String?
-  reviewedAt    DateTime?
-  createdAt     DateTime                            @default(now())
-  updatedAt     DateTime                            @updatedAt
-
-  kit         CosProcessKit @relation(fields: [kitId], references: [id], onDelete: Cascade)
-  requestedBy User          @relation("CosProcessKitChangeRequester", fields: [requestedById], references: [id], onDelete: Restrict)
-  reviewedBy  User?         @relation("CosProcessKitChangeReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
-
-  @@index([status, createdAt])
-  @@index([kitId, status])
-  @@map("cos_process_kit_change_requests")
-}
-
-/// Product in a Process Kit - 工艺书中的产品组合
-model CosProcessKitProduct {
-  id                  String  @id @default(cuid())
-  kitId               String
-  productId           String
-  productName         String
-  sortOrder           Int     @default(0)
-  quantityRatio       String?
-  usageMethod         String
-  hardenerProductId   String?
-  hardenerProductName String?
-  hardenerRatio       String?
-  thinnerProductId    String?
-  thinnerProductName  String?
-  thinnerRatio        String?
-  irMinutes           String?
-  irTemperature       String?
-  uvEnergy            String?
-  filmThickness       String?
-  sprayViscosity      String?
-  notes               String?
-  processBlocks       Json    @default("[]")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  kit CosProcessKit @relation(fields: [kitId], references: [id], onDelete: Cascade)
-
-  @@index([kitId])
-  @@index([productId])
-  @@map("cos_process_kit_products")
-}
-
-/// Test Records for Process Kit - 工艺书的测试记录
-model CosProcessTest {
-  id         String            @id @default(cuid())
-  kitId      String
-  testType   ProcessTestType
-  testResult ProcessTestResult @default(PENDING)
-  testDate   DateTime
-  testerName String
-  testerId   String?
-  reportLink String?
-  testNotes  String?
-  passedAt   DateTime?
-
-  kit    CosProcessKit @relation(fields: [kitId], references: [id], onDelete: Cascade)
-  tester CosEmployee?  @relation("ProcessTestTechnicalEmployee", fields: [testerId], references: [id], onDelete: SetNull)
-
-  @@index([kitId])
-  @@index([testerId])
-  @@index([testType])
-  @@index([testResult])
-  @@index([testDate])
-  @@map("cos_process_tests")
-}
-
-// ─────────────────────────────────────────────
-// CosmoCoat — Customers (客户管理)
-// ─────────────────────────────────────────────
-
-model CosCustomer {
-  id                        String   @id @default(cuid())
-  code                      String   @unique
-  name                      String
-  userId                    String?  @unique
-  salesEmployeeId           String?
-  technicalEmployeeId       String?
-  phone                     String?
-  contactPerson             String?
-  contactPhone              String?
-  address                   String?
-  productionEquipmentParams String?
-  createdById               String?
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
-
-  user             User?                        @relation("CosCustomerUser", fields: [userId], references: [id], onDelete: SetNull)
-  salesEmployee    CosEmployee?                 @relation("CosCustomerSalesEmployee", fields: [salesEmployeeId], references: [id], onDelete: SetNull)
-  technicalEmployee CosEmployee?                @relation("CosCustomerTechnicalEmployee", fields: [technicalEmployeeId], references: [id], onDelete: SetNull)
-  createdBy        User?                        @relation("CosCustomerCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  sampleOrders     CosSampleOrder[]
-  colorFormulas    CosTableColorFormula[]
-  businessLicenses CosCustomerBusinessLicense[]
-
-  @@index([name])
-  @@index([code])
-  @@index([salesEmployeeId])
-  @@index([technicalEmployeeId])
-  @@index([createdAt])
-  @@map("cos_customers")
-}
-
-model CosCustomerBusinessLicense {
-  id           String   @id @default(cuid())
-  customerId   String
-  kind         String   @default("BUSINESS_LICENSE")
-  fileName     String
-  storageKey   String
-  mimeType     String
-  fileSize     Int
-  notes        String?
-  uploadedById String
-  createdAt    DateTime @default(now())
-
-  customer   CosCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  uploadedBy User        @relation("CosCustomerBusinessLicenseUploader", fields: [uploadedById], references: [id])
-
-  @@index([customerId])
-  @@index([customerId, kind])
-  @@map("cos_customer_business_licenses")
-}
-
-// ─────────────────────────────────────────────
-// CosmoCoat — Suppliers (供应商管理)
-// ─────────────────────────────────────────────
-
-model CosSupplier {
-  id          String   @id @default(cuid())
-  code        String   @unique
-  name        String
-  contactPerson String?
-  contactInfo String?
-  address     String?
-  shippingAddress String?
-  createdById String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  createdBy User?             @relation("CosSupplierCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  files     CosSupplierFile[]
-  primaryRawMaterials   CosTableRawMaterial[] @relation("RawMaterialPrimarySupplier")
-  secondaryRawMaterials CosTableRawMaterial[] @relation("RawMaterialSecondarySupplier")
-
-  @@index([name])
-  @@index([code])
-  @@index([createdAt])
-  @@map("cos_suppliers")
-}
-
-model CosSupplierFile {
-  id           String   @id @default(cuid())
-  supplierId   String
-  kind         String   @default("GENERAL")
-  fileName     String
-  storageKey   String
-  mimeType     String
-  fileSize     Int
-  notes        String?
-  uploadedById String
-  createdAt    DateTime @default(now())
-
-  supplier   CosSupplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  uploadedBy User        @relation("CosSupplierFileUploader", fields: [uploadedById], references: [id])
-
-  @@index([supplierId])
-  @@index([supplierId, kind])
-  @@map("cos_supplier_files")
-}
-
-// ─────────────────────────────────────────────
-// CosmoCoat — Employees (员工管理)
-// ─────────────────────────────────────────────
-
-enum CosEmployeeType {
-  INTERNAL // 内务人员
-  SALES // 销售人员
-  PRODUCTION // 生产人员
-  TECHNICAL // 技术人员
-  OUTSOURCED // 编外人员
-}
-
-enum CosEmployeeFileType {
-  LABOR_CONTRACT // 劳动合同
-  RESUME // 简历
-  ID_CARD // 身份证
-}
-
-model CosEmployee {
-  id           String          @id @default(cuid())
-  code         String          @unique
-  name         String
-  employeeType CosEmployeeType
-  phone        String?
-  email        String?
-  position     String?
-  department   String?
-  idCardNumber String?
-  birthDate    DateTime?
-  hireDate     DateTime?
-  notes        String          @default("")
-  isActive     Boolean         @default(true)
-  createdById  String?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-
-  createdBy              User?                     @relation("CosEmployeeCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  files                  CosEmployeeFile[]
-  productionOrders       CosTableProductionOrder[]
-  technicalColorFormulas CosTableColorFormula[]    @relation("CosColorFormulaTechnicalOwner")
-  processTests           CosProcessTest[]          @relation("ProcessTestTechnicalEmployee")
-  salesSampleOrders      CosSampleOrder[]          @relation("SampleOrderSalesEmployee")
-  technicalSampleOrders  CosSampleOrder[]          @relation("SampleOrderTechnicalEmployee")
-  salesCustomers         CosCustomer[]             @relation("CosCustomerSalesEmployee")
-  technicalCustomers     CosCustomer[]             @relation("CosCustomerTechnicalEmployee")
-
-  @@index([employeeType])
-  @@index([name])
-  @@index([code])
-  @@map("cos_employees")
-}
-
-model CosEmployeeFile {
-  id           String              @id @default(cuid())
-  employeeId   String
-  fileType     CosEmployeeFileType
-  fileName     String
-  storageKey   String
-  mimeType     String
-  fileSize     Int
-  notes        String?
-  uploadedById String
-  createdAt    DateTime            @default(now())
-
-  employee   CosEmployee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  uploadedBy User        @relation("CosEmployeeFileUploader", fields: [uploadedById], references: [id])
-
-  @@index([employeeId, fileType])
-  @@map("cos_employee_files")
-}
-
-model CosQualificationFile {
-  id           String   @id @default(cuid())
-  title        String
-  documentType String
-  fileName     String
-  storageKey   String
-  mimeType     String
-  fileSize     Int
-  notes        String?
-  uploadedById String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  uploadedBy User @relation("CosQualificationFileUploader", fields: [uploadedById], references: [id])
-
-  @@index([documentType])
-  @@index([title])
-  @@index([createdAt])
-  @@map("cos_qualification_files")
-}
-
-// ─────────────────────────────────────────────
-// CosmoCoat — Sample Orders (打样单 / 样品单)
-// ─────────────────────────────────────────────
-
-enum CosSampleOrderStatus {
-  DRAFT
-  IN_PROGRESS
-  COMPLETED
-}
-
-model CosSampleOrder {
-  id                        String               @id @default(cuid())
-  code                      String               @unique
-  customerId                String
-  salesEmployeeId           String?
-  technicalEmployeeId       String?
-  isUrgent                  Boolean              @default(false)
-  status                    CosSampleOrderStatus @default(DRAFT)
-  sampleKind                String               @default("")
-  substrateType             String               @default("")
-  samplePanelRequirement    String               @default("")
-  sampleOilRequirement      String               @default("")
-  specialProcessRequirement String               @default("")
-  areaRemark                String               @default("")
-  notes                     String               @default("")
-  referenceImageUrl         String?
-  startedAt                 DateTime?
-  completedAt               DateTime?
-  createdById               String?
-  createdAt                 DateTime             @default(now())
-  updatedAt                 DateTime             @updatedAt
-
-  customer          CosCustomer                  @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  salesEmployee     CosEmployee?                 @relation("SampleOrderSalesEmployee", fields: [salesEmployeeId], references: [id], onDelete: SetNull)
-  technicalEmployee CosEmployee?                 @relation("SampleOrderTechnicalEmployee", fields: [technicalEmployeeId], references: [id], onDelete: SetNull)
-  createdBy         User?                        @relation("SampleOrderCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  processKits       CosSampleOrderProcessKit[]
-  colorFormulas     CosSampleOrderColorFormula[]
-
-  @@index([customerId])
-  @@index([salesEmployeeId])
-  @@index([technicalEmployeeId])
-  @@index([status, createdAt])
-  @@map("cos_sample_orders")
-}
-
-model CosSampleOrderProcessKit {
-  id            String   @id @default(cuid())
-  sampleOrderId String
-  processKitId  String
-  quantityKg    Decimal  @db.Decimal(12, 3)
-  sortOrder     Int      @default(0)
-  notes         String   @default("")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  sampleOrder CosSampleOrder @relation(fields: [sampleOrderId], references: [id], onDelete: Cascade)
-  processKit  CosProcessKit  @relation(fields: [processKitId], references: [id], onDelete: Restrict)
-
-  @@unique([sampleOrderId])
-  @@index([processKitId])
-  @@map("cos_sample_order_process_kits")
-}
-
-model CosSampleOrderColorFormula {
-  id             String   @id @default(cuid())
-  sampleOrderId  String
-  colorFormulaId String
-  quantityKg     Decimal  @db.Decimal(12, 3)
-  sortOrder      Int      @default(0)
-  notes          String   @default("")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  sampleOrder  CosSampleOrder       @relation(fields: [sampleOrderId], references: [id], onDelete: Cascade)
-  colorFormula CosTableColorFormula @relation(fields: [colorFormulaId], references: [id], onDelete: Restrict)
-
-  @@index([sampleOrderId, sortOrder])
-  @@index([colorFormulaId])
-  @@map("cos_sample_order_color_formulas")
-}
-
 // ─────────────────────────────────────────────
 // Adviser — FINANCIAL ACCOUNTING MODULE
 // ─────────────────────────────────────────────
@@ -2722,9 +1715,9 @@ model JournalLine {
   origCredit   Decimal? @db.Decimal(18, 4) // 原币贷方
   exchangeRate Decimal? @db.Decimal(12, 6) // 交易汇率（原币→本位币）
 
-  entry      JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
-  account    FinAccount   @relation(fields: [accountId], references: [id])
-  party      Party?       @relation(fields: [partyId], references: [id], onDelete: SetNull)
+  entry   JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  account FinAccount   @relation(fields: [accountId], references: [id])
+  party   Party?       @relation(fields: [partyId], references: [id], onDelete: SetNull)
 
   @@index([entryId, lineNum])
   @@index([accountId])

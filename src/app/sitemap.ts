@@ -23,42 +23,15 @@ const publicRoutes: SitemapRoute[] = [
   { path: '/sfsdiamond/technology', priority: 0.8 },
   { path: '/sfsdiamond/qa', priority: 0.7 },
   { path: '/sfsdiamond/about', priority: 0.7 },
-  { path: '/cosmocoat', priority: 0.95 },
-  { path: '/cosmocoat/about', priority: 0.75 },
-  { path: '/cosmocoat/products', priority: 0.9 },
-  { path: '/cosmocoat/supporting', priority: 0.75 },
-]
-
-const cosmoProductPids = [
-  '1791543',
-  '1791541',
-  '1791539',
-  '1791537',
-  '1791533',
-  '1314593',
-  '1314591',
-  '1314589',
-  '1224565',
-  '1224563',
-  '439905',
-  '439903',
-  '367407',
-  '24142',
-  '24518',
-  '367403',
 ]
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date()
-  const productRoutes: SitemapRoute[] = cosmoProductPids.map(pid => ({
-    path: `/cosmocoat/products/${pid}`,
-    priority: 0.65,
-  }))
 
-  return [...publicRoutes, ...productRoutes].map(route => ({
+  return publicRoutes.map(route => ({
     url: absoluteUrl(route.path),
     lastModified,
-    changeFrequency: route.path.includes('/products/') ? 'monthly' : 'weekly',
+    changeFrequency: 'weekly' as const,
     priority: route.priority,
     images: route.image ? [absoluteUrl(route.image)] : undefined,
   }))

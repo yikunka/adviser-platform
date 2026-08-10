@@ -32,14 +32,6 @@ export default function AdminLoginLayout({ children }: { children: React.ReactNo
             height={48}
             className="object-contain max-h-12 w-auto"
           />
-          <Image
-            src="/cosmocoat/logo.png"
-            alt="CosmoCoat"
-            width={160}
-            height={44}
-            className="object-contain max-h-11 w-auto"
-            style={{ filter: 'drop-shadow(0 0 8px rgba(255,34,0,0.35))' }}
-          />
         </div>
       </div>
       <div className="w-full max-w-md">{children}</div>

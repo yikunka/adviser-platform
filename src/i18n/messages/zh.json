@@ -35,22 +35,7 @@
     "sfsOrders": "SFS 訂單",
     "sfsInvoices": "SFS 發票",
     "sfsDiamondSpecs": "鑽石規格",
-    "cosmocoatProducts": "官网產品管理",
-    "cosmocoatFactoryProductCategories": "工厂产品类别",
     "adminTeam": "後台帳號與權限",
-    "cosmocoatRawMaterials": "原料管理",
-    "cosmocoatRecipes": "配方管理",
-    "cosmocoatRecipeApprovals": "待审批工艺书变更",
-    "cosmocoatColorFormulas": "调色配方",
-    "cosmocoatFactoryProducts": "工厂产品管理",
-    "cosmocoatProductionOrders": "生产单管理",
-    "cosmocoatProcessKits": "工艺书管理",
-    "cosmocoatSampleOrders": "打样单管理",
-    "cosmocoatCustomers": "客户管理",
-    "cosmocoatSuppliers": "供应商管理",
-    "cosmocoatEmployees": "员工管理",
-    "cosmocoatQualificationFiles": "资质文件管理",
-    "cosmocoatOverview": "物料流向",
     "adminRoles": "角色管理"
   },
   "home": {
@@ -633,8 +618,6 @@
       "invoice": "發票",
       "sfsDiamond": "SFS Diamond",
       "sfsInvoices": "SFS 發票",
-      "cosmocoat": "CosmoCoat",
-      "cosmocoatColorFormulas": "調色配方",
       "system": "系統"
     },
     "users": {
@@ -695,11 +678,6 @@
       "noRole": "不指定角色",
       "dynamicRoleNote": "已分配角色的權限將聯合生效，覆蓋下方傳統選單設定。"
     },
-    "cosmocoatHub": {
-      "title": "CosmoCoat",
-      "desc": "檢視公開產品站與品牌內容。此區塊權限可由後台帳號管理頁單獨授予。",
-      "openSite": "開啟 CosmoCoat 網站"
-    },
     "dashboard": {
       "title": "管理後台",
       "totalCompanies": "活躍公司",
@@ -727,14 +705,6 @@
           "COMPLETED": "已完成",
           "CANCELLED": "已取消"
         }
-      },
-      "cosmocoat": {
-        "title": "CosmoCoat 打樣與配方",
-        "subtitle": "快速查看待審批配方變更與打樣單進度。",
-        "viewOperations": "查看打樣單",
-        "pendingRecipeChanges": "待審批配方變更",
-        "draftSampleOrders": "草稿打樣單",
-        "inProgressSampleOrders": "進行中打樣單"
       },
       "recentActivity": "最近活動",
       "noActivity": "暫無活動記錄。"

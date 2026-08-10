@@ -24,20 +24,6 @@ export const ADMIN_MENU_KEYS = [
   'sfsInvoices',
   'sfsDiamondSpecs',
   'settings',
-  'cosmocoatProducts',
-  'cosmocoatRawMaterials',
-  'cosmocoatRecipes',
-  'cosmocoatRecipeApprovals',
-  'cosmocoatColorFormulas',
-  'cosmocoatFactoryProducts',
-  'cosmocoatProductionOrders',
-  'cosmocoatProcessKits',
-  'cosmocoatSampleOrders',
-  'cosmocoatCustomers',
-  'cosmocoatSuppliers',
-  'cosmocoatEmployees',
-  'cosmocoatQualificationFiles',
-  'cosmocoatOverview',
   'adminTeam',
   'adminRoles',
 ] as const
@@ -70,20 +56,6 @@ export const MENU_PLATFORM: Record<AdminMenuKey, Platform | 'GLOBAL'> = {
   sfsOrders: 'SFS_DIAMOND',
   sfsInvoices: 'SFS_DIAMOND',
   sfsDiamondSpecs: 'SFS_DIAMOND',
-  cosmocoatProducts: 'COSMICOAT',
-  cosmocoatRawMaterials: 'COSMICOAT',
-  cosmocoatRecipes: 'COSMICOAT',
-  cosmocoatRecipeApprovals: 'COSMICOAT',
-  cosmocoatColorFormulas: 'COSMICOAT',
-  cosmocoatFactoryProducts: 'COSMICOAT',
-  cosmocoatProductionOrders: 'COSMICOAT',
-  cosmocoatProcessKits: 'COSMICOAT',
-  cosmocoatSampleOrders: 'COSMICOAT',
-  cosmocoatCustomers: 'COSMICOAT',
-  cosmocoatSuppliers: 'COSMICOAT',
-  cosmocoatEmployees: 'COSMICOAT',
-  cosmocoatQualificationFiles: 'COSMICOAT',
-  cosmocoatOverview: 'COSMICOAT',
 }
 
 export type AdminAccessUser = {
@@ -203,36 +175,6 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
       return 'adminTeam'
     case 'admin-roles':
       return 'adminRoles'
-    case 'cosmocoat-products':
-      return 'cosmocoatProducts'
-    case 'cosmocoat-product-categories':
-      return 'cosmocoatFactoryProducts'
-    case 'cosmocoat-raw-materials':
-      return 'cosmocoatRawMaterials'
-    case 'cosmocoat-recipes':
-      return 'cosmocoatRecipes'
-    case 'cosmocoat-recipe-approvals':
-      return 'cosmocoatRecipeApprovals'
-    case 'cosmocoat-color-formulas':
-      return 'cosmocoatColorFormulas'
-    case 'cosmocoat-factory-products':
-      return 'cosmocoatFactoryProducts'
-    case 'cosmocoat-production-orders':
-      return 'cosmocoatProductionOrders'
-    case 'cosmocoat-process-kits':
-      return 'cosmocoatProcessKits'
-    case 'cosmocoat-sample-orders':
-      return 'cosmocoatSampleOrders'
-    case 'cosmocoat-customers':
-      return 'cosmocoatCustomers'
-    case 'cosmocoat-suppliers':
-      return 'cosmocoatSuppliers'
-    case 'cosmocoat-employees':
-      return 'cosmocoatEmployees'
-    case 'cosmocoat-qualification-files':
-      return 'cosmocoatQualificationFiles'
-    case 'cosmocoat-overview':
-      return 'cosmocoatOverview'
     default:
       return null
   }
@@ -242,7 +184,6 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
 export const ADMIN_PLATFORM_OPTIONS: { value: Platform; label: string }[] = [
   { value: 'ADVISER', label: '6M Advise' },
   { value: 'SFS_DIAMOND', label: 'SFS Diamond' },
-  { value: 'COSMICOAT', label: 'CosmoCoat' },
 ]
 
 export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: string }[] = [
@@ -268,20 +209,6 @@ export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: stri
   { key: 'sfsOrders', label: 'SFS orders', group: 'SFS Diamond' },
   { key: 'sfsInvoices', label: 'SFS invoices', group: 'SFS Invoices' },
   { key: 'sfsDiamondSpecs', label: 'Diamond specs', group: 'SFS Diamond' },
-  { key: 'cosmocoatProducts', label: 'Product management', group: 'CosmoCoat' },
-  { key: 'cosmocoatRawMaterials', label: 'Raw material management', group: 'CosmoCoat' },
-  { key: 'cosmocoatRecipes', label: 'Recipe management', group: 'CosmoCoat' },
-  { key: 'cosmocoatRecipeApprovals', label: 'Pending recipe approvals', group: 'CosmoCoat' },
-  { key: 'cosmocoatColorFormulas', label: 'Color matching formulas', group: 'CosmoCoat' },
-  { key: 'cosmocoatFactoryProducts', label: 'Factory product management', group: 'CosmoCoat' },
-  { key: 'cosmocoatProductionOrders', label: 'Production orders', group: 'CosmoCoat' },
-  { key: 'cosmocoatProcessKits', label: 'Process kits', group: 'CosmoCoat' },
-  { key: 'cosmocoatSampleOrders', label: 'Sample orders', group: 'CosmoCoat' },
-  { key: 'cosmocoatCustomers', label: 'Customer management', group: 'CosmoCoat' },
-  { key: 'cosmocoatSuppliers', label: 'Supplier management', group: 'CosmoCoat' },
-  { key: 'cosmocoatEmployees', label: 'Employee management', group: 'CosmoCoat' },
-  { key: 'cosmocoatQualificationFiles', label: 'Qualification files', group: 'CosmoCoat' },
-  { key: 'cosmocoatOverview', label: 'Material flow overview', group: 'CosmoCoat' },
   { key: 'settings', label: 'Settings', group: 'System' },
   { key: 'adminTeam', label: 'Admin users & access', group: 'System' },
   { key: 'adminRoles', label: 'Role management', group: 'System' },

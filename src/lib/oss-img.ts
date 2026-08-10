@@ -9,8 +9,8 @@
  * path unchanged so local dev works without OSS.
  *
  * Usage:
- *   <img src={ossImg('/cosmocoat/hero-banner.jpeg', { w: 1920, format: 'webp', quality: 80 })} />
- *   <img src={ossImg('/cosmocoat/logo.png')} />          // skip optimization for SVG/PNG logos
+ *   <img src={ossImg('/sfsdiamond/hero-diamond.jpg', { w: 1920, format: 'webp', quality: 80 })} />
+ *   <img src={ossImg('/logo.png')} />          // skip optimization for SVG/PNG logos
  */
 
 type ResizeMode = 'lfit' | 'mfit' | 'fill' | 'pad' | 'fixed'

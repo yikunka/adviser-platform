@@ -75,5 +75,5 @@ export default auth((req) => {
 })
 
 export const config = {
-  matcher: ['/((?!api|_next|_vercel|sfsdiamond|cosmocoat|.*\\..*).*)', '/'],
+  matcher: ['/((?!api|_next|_vercel|sfsdiamond|.*\\..*).*)', '/'],
 }

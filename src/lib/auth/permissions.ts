@@ -30,26 +30,6 @@ export interface PermGroup {
 
 export const PERMISSION_GROUPS: PermGroup[] = [
   {
-    group: 'CosmoCoat',
-    platform: 'COSMICOAT',
-    pages: [
-      { menuKey: 'cosmocoatOverview',         label: '物料流向总览',  actions: [] },
-      { menuKey: 'cosmocoatRawMaterials',     label: '原材料',       actions: ['view', 'create', 'edit', 'delete', 'import', 'export'] },
-      { menuKey: 'cosmocoatRecipes',          label: '配方',         actions: ['view', 'create', 'edit', 'delete', 'approve'] },
-      { menuKey: 'cosmocoatRecipeApprovals',  label: '待审批工艺书变更', actions: [] },
-      { menuKey: 'cosmocoatProducts',         label: '官网产品',     actions: ['create', 'edit', 'delete'] },
-      { menuKey: 'cosmocoatFactoryProducts',  label: '工厂产品',     actions: ['create', 'edit', 'delete'] },
-      { menuKey: 'cosmocoatColorFormulas',    label: '调色配方',     actions: ['view', 'create', 'edit', 'delete', 'export'] },
-      { menuKey: 'cosmocoatProductionOrders', label: '生产单',       actions: ['view', 'create', 'edit', 'complete'] },
-      { menuKey: 'cosmocoatProcessKits',      label: '工艺书',       actions: ['view', 'create', 'edit', 'delete', 'approve'] },
-      { menuKey: 'cosmocoatSampleOrders',     label: '打样单',       actions: ['view', 'create', 'edit', 'complete'] },
-      { menuKey: 'cosmocoatCustomers',        label: '客户',         actions: ['view', 'create', 'edit', 'delete'] },
-      { menuKey: 'cosmocoatSuppliers',        label: '供应商',       actions: ['view', 'create', 'edit', 'delete'] },
-      { menuKey: 'cosmocoatEmployees',        label: '员工',         actions: ['view', 'create', 'edit', 'delete'] },
-      { menuKey: 'cosmocoatQualificationFiles', label: '资质文件',   actions: ['create', 'edit', 'delete'] },
-    ],
-  },
-  {
     group: 'Adviser',
     platform: 'ADVISER',
     pages: [

@@ -2,13 +2,12 @@
 
 ## Overview
 
-A multi-platform back-office system operated by a licensed TCSP (Trust and Company Services Provider) firm. Three independent platforms share one Next.js codebase and one PostgreSQL database:
+A multi-platform back-office system operated by a licensed TCSP (Trust and Company Services Provider) firm. Two independent platforms share one Next.js codebase and one PostgreSQL database:
 
 | Platform | URL prefix | DB prefix | Purpose |
 |---|---|---|---|
 | **Adviser** | `/[locale]/` | `adv_` | TCSP back-office (main platform) |
 | **SFS Diamond** | `/sfsdiamond/` | `sfs_` | Memorial diamond jewellery e-commerce |
-| **CosmoCoat** | `/cosmocoat/` | `cos_` | Cosmetics manufacturing ERP |
 
 Admin console is at `/[locale]/admin/`. Roles: `SUPER_ADMIN`, `COMPLIANCE`, `STAFF`, `CLIENT`. Staff access is further restricted by per-menu permission keys and per-platform flags.
 
@@ -20,8 +19,6 @@ Admin left navigation is grouped by module. Menu groups can be collapsed/expande
 
 ### 1. Dashboard (`/admin`)
 Key metrics at a glance are grouped into a distinct Adviser corporate-services module: active companies count, pending KYC submissions, open AML alerts, annual filings due within 30 days. Each metric links to the relevant module.
-
-Includes a separate CosmoCoat operations module showing pending non-super-admin recipe change requests, sample orders in `DRAFT`, and sample orders in `IN_PROGRESS`; the pending-change metric links to the dedicated approval page, while the sample-order metrics link to filtered list views.
 
 ### 2. Companies (`/admin/companies`)
 Manages the full portfolio of client companies.
@@ -125,8 +122,8 @@ Central price-list management for TCSP service quotes.
 ### 7. Team Management (`/admin/team`)
 Staff access control.
 - System roles: `SUPER_ADMIN`, `COMPLIANCE`, `STAFF`
-- Per-staff platform access flags (Adviser / SFS Diamond / CosmoCoat)
-- Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, contracts, tcspPricing, team, feedback, sfs-customers, sfs-orders, sfs-invoices, cosmocoat-* including cosmocoat-customers, cosmocoat-suppliers, cosmocoat-employees, cosmocoat-qualification-files, cosmocoat-sample-orders, cosmocoat-recipe-approvals)
+- Per-staff platform access flags (Adviser / SFS Diamond)
+- Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, contracts, tcspPricing, team, feedback, sfs-customers, sfs-orders, sfs-invoices)
 - Dynamic role assignment: each staff member can be assigned multiple dynamic `AdminRole` records (from Role Management); effective access is the union of all selected roles' page + button-level permissions
 - Legacy mode: no restrictions; new mode: explicit per-menu grants
 - Create / edit / deactivate staff accounts
@@ -135,9 +132,8 @@ Staff access control.
 ### 7b. Role Management (`/admin/admin-roles`)
 Dynamic permission roles. **SUPER_ADMIN only.**
 - Create, edit, delete custom roles with name, color, and description
-- Each role has a permission matrix covering all admin pages across all modules (CosmoCoat, Adviser, SFS Diamond, System); every newly added admin page or feature entry must be added to Role Management in the same change
+- Each role has a permission matrix covering all admin pages across all modules (Adviser, SFS Diamond, System); every newly added admin page or feature entry must be added to Role Management in the same change
 - Permissions are per-page (list/menu view access) and per-action (view detail, create, edit, delete, approve, export, import)
-- "查看详情/view" is a distinct action for CosmoCoat modules (raw materials, recipes, color formulas, production orders, process kits, sample orders, customers, suppliers, employees): without it a user sees the list page but cannot open record detail pages (detail links/row navigation are hidden)
 - System roles cannot be deleted
 - Assigned to staff via Team Management; effective permissions = role permissions + direct menu key grants
 
@@ -260,177 +256,6 @@ Order lifecycle management for memorial diamond commissions.
 
 ---
 
-## CosmoCoat Platform
-
-Cosmetics manufacturing ERP. Public product site at `/cosmocoat/`; manufacturing management under Adviser admin console.
-
-### Material Flow Overview (`/admin/cosmocoat-overview`)
-Animated SVG flow diagram showing all entity relationships across the CosmoCoat production chain.
-- Visualises: 原材料 → 配方 → 半成品 → 工厂产品 → 调色单 / 工艺书 in vertical bands
-- Each node = one actual database record; edges = real relationships (recipe items, product links, color formula sources, process kit products)
-- Hover a node to highlight all connected paths and see name/code/relationship count; the page also has a raw-material search box that matches by material code or name and highlights every downstream impacted node/path from 原材料 → 配方 → 半成品 → 工厂产品 → 调色单 / 工艺书
-- Data fetched client-side from `/api/admin/cosmocoat/overview-graph`; raw materials default to records actually used in recipe items, entity queries are not capped by the previous 200-record display limit, and raw-material search covers the displayed used materials and their downstream chains
-- Menu item: "物料流向" (zh) / "Flow Overview" (en) in the CosmoCoat group
-
-### Public Pages (`/cosmocoat/`)
-Home, Products catalog, Product detail, About, Supporting.
-
-- **Floating AI Chat Widget**: cyan (#00d4ff) square button fixed at bottom-right of all CosmoCoat pages; opens a 340×480 terminal-themed chat panel; answers questions about product formulas, process parameters, and material lists; powered by `claude-haiku-4-5-20251001` via `/api/cosmocoat/chat`; knowledge is fetched live from the `cos_table_recipes` DB table on each request (includes category, batch quantity, viscosity, shelf life, material items with quantities); no authentication required
-
-### Factory Products (`/admin/cosmocoat-factory-products`)
-Finished goods produced by the factory.
-- Fields: product code, name, category, unit (kg), unit price, viscosity, current recipe, linked recipes, sort order
-- Product list shows viscosity column (text value + optional unit S or KU)
-- When a current recipe is assigned, product viscosity is read-only and automatically synced from that recipe's viscosity; updating recipe viscosity propagates to all linked factory products using it as current recipe
-- Without a current recipe, viscosity can be entered manually (free-text range e.g. `9.7-9.8`, unit S or KU)
-- Assign / change current recipe; link multiple recipe candidates
-- Search / filter by name or category
-- Product list rows have a print-label action; it opens an editable preview for product-label text and prints a 100mm x 70mm black-and-white thermal-paper label with rotation options for printer feed direction
-
-### Product Categories (`/admin/cosmocoat-product-categories`)
-Hierarchical category tree (up to 3 levels) for the website catalog.
-- Create parent / child categories; upload category image; set slug and active status; reorder
-
-### Raw Materials (`/admin/cosmocoat-raw-materials`)
-Purchasing and sourcing registry.
-- Fields: production code, CAS (stored as `huaxingCode`), attribute code, category, name; list and detail pages display the field as CAS
-- Dual supplier support: primary and secondary supplier snapshots (supplier code/name, contact person, contact info, address, package size kg, price/kg, tax flag, freight flag, notes); on raw-material detail pages users can search/select an existing Supplier record to auto-fill the supplier code, name, contact person, contact info, and address while retaining editable snapshot fields; list rows show primary supplier code
-- Changing a raw material's primary price/kg (including via bulk import) automatically refreshes all referencing recipe and semifinished costs; no manual batch refresh is required
-- Attach and download TDS (Technical Data Sheet) and MSDS (Material Safety Data Sheet) files
-- Bulk import from file
-
-### Recipes (`/admin/cosmocoat-recipes`)
-Product formulation management.
-- Fields: recipe code, name, category, batch quantity, unit cost, product viscosity (free-text range e.g. `9.7-9.8`, unit S or KU — in basic info above notes), optional shelf life in days
-- Line items: raw materials, factory finished products (from factory products module), component recipes (nested semifinished), or Sol semifinished inventory, with quantity, unit price, percentage
-- Material list on recipe detail: unified columns for all line types (raw material, semifinished, factory product); 单价 is the editable saved line cost for every row type
-- Material picker on new/edit recipe page: tabs for 原材料, 半成品, and 成品; finished-product tab displays the linked factory product's Current Recipe `unitCost` as the selectable unit price (blank if the product has no Current Recipe), with category filter and search, same click-to-select and "添加选中" flow as raw materials
-- Unit cost is calculated by percentage: each line contributes `(quantity ÷ total quantity) × unit price`; accurate even when material quantities do not sum to 100
-- Automatic cost calculation; line prices can be refreshed from latest source pricing, and raw-material primary price or factory-product unit price changes automatically cascade through dependent production recipes, nested semifinished recipes, and source-linked semifinished inventory unit prices
-- Link to factory products; mark recipe as active/used
-- Print recipe: downloads a simplified recipe detail DOCX containing only recipe code, name, category, batch quantity, unit cost, and material list with material code, name, source/category, quantity, and percentage
-- Production process section: production speed requirements, production time requirements, packaging requirements, production notes (separate from QC)
-- Packaging requirements: button quick-select presets (200目、300目、400目、色装机); clicking a preset fills the field; new recipes start with an empty packaging field (no default preset)
-- QC section (separate card): multi-select checkboxes for standard tests (黏度, 啞度, 百格, 水煮80C/30M, 湿油外观, 干板外观) plus optional free-text test standard; each checked test shows its own result input on the same row (unchecked tests hide result inputs); selected tests and custom text are carried into production order quality-check requirements when creating orders (viscosity checkbox includes recipe viscosity value when set)
-- Material rows can be reordered by drag-and-drop; new order is auto-saved immediately
-- **Change approval workflow**: non–`SUPER_ADMIN` roles cannot directly modify or delete existing recipes; PATCH/DELETE (including refresh-prices) create a pending change request (`UPDATE` or `DELETE`) for super-admin review; `SUPER_ADMIN` applies changes immediately; a dedicated page at `/admin/cosmocoat-recipe-approvals` lists pending / approved / rejected requests with requester info, review records, automatic core-change summaries, and before-vs-after difference rows (including material additions/removals/quantity or price changes, batch quantity changes, unit-cost changes, and basic/process/QC field changes); access to this page is controlled by the independent `cosmocoatRecipeApprovals` Role Management page permission; the recipe list page still shows a pending-only panel with a shortcut to the full approval page; non–super-admin users see **提交审批** on the detail page and get HTTP 202 when a request is queued; only one pending request per recipe at a time; creating new recipes does not require approval
-
-### Color Matching Formulas (`/admin/cosmocoat-color-formulas`)
-Custom color formulations for specific customers or products.
-- Categories shown to users: PU, 色漆, 烤漆; stored enum identifiers remain `PU`, `BAKING_PAINT`, `HT_BAKING_PAINT` (legacy `LT_BAKING_PAINT` records may still exist)
-- Scope: product-specific (linked to a factory product) or category-wide
-- Fields: formula code, name, source recipe, linked CosmoCoat customer (search dropdown from Customer registry), optional technical responsible employee (TECHNICAL employees only), batch quantity, notes, and Pantone target color input with a 4× enlarged approximate preview swatch on the formula form (color code / target color remain hidden from list and print UI)
-- Auto-generated formula codes use `{factoryProductCode}-{4-digit suffix}`; legacy formulas keep existing suffixes (e.g. `-0001`); newly created formulas start at `-5001` and increment within the 5001+ sequence per factory product
-- Line items: raw material library entries, Sol semifinished inventory entries, or manual blank/custom material rows, with quantity, actual weight (实投), percentage, unit price
-- List page: only the header "新建配方" button; empty state shows message only (no duplicate create button); supports filtering by linked CosmoCoat customer
-- First line item is always the pinned "适用产品" row when a factory product is linked; it cannot be deleted but quantity is editable; unit price auto-fills from the linked factory product's `unitPrice` (read-only in the UI)
-- Material details use the same split layout as recipe management: selected item table above, candidate material table below with click-to-select and "添加选中"; picker category filter is single-select (default none — user picks one of AD, SO, Sol semifinished, DY, CO, CA, CC); selecting Sol semifinished loads only Sol semifinished inventory records, not raw materials
-- Category tabs filter the factory-product sub-filters below: PU tab shows only factory products whose product category name is exactly「PU漆」; 色漆 and 烤漆 tabs use inferred category matching
-- Clicking "新建配方" while a product filter is active pre-fills that product in the new formula form
-- Formula detail/new page includes a linked sample-order field: users can search and attach one or more CosmoCoat sample orders, set per-order sample quantity (kg) and notes, and open the linked sample order directly from the formula page
-- Detail page has a "打印文件" action: opens a dialog to enter target production weight (kg), scales product and raw-material line quantities proportionally, then triggers browser PDF print (A4, no page header/footer). Print header shows 调色单号 (formula code), name, category, linked factory product, production weight, and notes. Material table shows 序号 / 生产编号 / 原料·产品名称 / 用量(kg) / 占比 / 实投(kg) / 备注 only (hides attribute, color code, target color, source recipe, customer, unit price, and amount columns); 实投 scales with the entered production weight from each line's saved actual-weight value. Production instructions from the linked source recipe are not included in print output.
-
-### Employees (`/admin/cosmocoat-employees`)
-CosmoCoat factory staff registry (内务、销售、生产、技术、编外人员).
-- Employee types: `INTERNAL` (内务人员), `SALES` (销售人员), `PRODUCTION` (生产人员), `TECHNICAL` (技术人员), `OUTSOURCED` (编外人员); sales and technical staff can be assigned to CosmoCoat sample orders
-- Fields: employee code (auto `YG####` if omitted), name, type, phone, email, position, department, ID card number (15- or 18-digit with checksum validation), birth date (auto-filled from ID card on create; manual birth-date edits take precedence over ID card thereafter), system-calculated five element (by day master / day stem from birth date) and zodiac (by lunar birth year), hire date, notes, active status
-- List with search (code / name / phone / email / position / department) plus dropdown filters for employee type, five element (`金` / `木` / `水` / `火` / `土`), and status (active / inactive); results update immediately and default-sort by employee code ascending; the paginated table shows hire date, complete-year service years (工龄), five element column (五行, auto-calculated from birth date), required-file status badges for 劳动合同 and 身份证 (red when missing), and update time
-- Create, view, edit, and delete at `/admin/cosmocoat-employees/[id]`; new at `/admin/cosmocoat-employees/new`
-- Upload, preview, download, and delete **劳动合同**, **简历**, and **身份证** files (PDF, Word, JPG, PNG, WEBP; max 10 MB); Chinese file names are preserved for display, preview, and download; PDFs and images open in an in-page preview dialog, Word files use online preview when the storage URL is publicly accessible and otherwise keep a download fallback; new employee forms can select files before saving, and creation saves the employee record and selected files together (if file upload fails, the employee is not created)
-- Production orders can assign an active **生产人员** via a dropdown on the detail page; assigned employee profile details are not shown on the production order detail page
-
-### Production Orders (`/admin/cosmocoat-production-orders`)
-Manufacturing batch tracking.
-- Fields: order code, factory product, recipe, total weight, optional assigned production employee (dropdown only; no employee detail panel on the detail page; batch number is not shown or editable on the detail page, though list view still has a 批次 column). Querying and assigning production-employee options follows `cosmocoatProductionOrders.edit` permission, not Employee Management access.
-- Detail page shows recipe code, name, and viscosity range (read-only, e.g. `9.7-9.8 S` or `9.7-9.8 KU` from the linked recipe); there is no link/button to open the linked recipe detail page
-- New order page: factory product picker supports type-to-search with fuzzy matching (product code, name, current recipe); loads options on demand via lightweight API instead of bulk-fetching all products
-- List page supports search plus filters for a single factory product and created-date start/end range
-- Product list auto-excludes factory products without a current recipe; optional `?recipeId=` URL param further limits choices to products linked to that recipe
-- Recipes containing only nested sub-recipes or semifinished components (no raw-material lines) show an empty materials table instead of crashing
-- Statuses: `DRAFT` → `IN_PROGRESS` → `COMPLETED`
-- Line items: raw materials, semifinished component recipes, Sol. semifinished inventory components, and manually added temporary/new material rows with editable code, name, percentage, required weight, actual weight, and notes; material tables show raw-material production codes, but semifinished recipe / Sol. semifinished rows show the semifinished/product name instead of the recipe or semifinished code; selecting a product on new order or opening a draft order loads the full linked recipe material list and preserves saved actual weights and manual rows when rows are synced; draft orders have **从配方重新加载** on both the materials table and 生产工艺 sections to refresh recipe-derived material lines and process/QC fields from the current recipe without deleting manual rows
-- Loading the recipe material detail for a production order only requires production-order access (`cosmocoatProductionOrders`); it does NOT require recipe-management (`cosmocoatRecipes`) permission — material detail is served via a production-order-scoped endpoint that exposes material codes/ratios but no recipe pricing
-- Detail page **生产工艺** section: selecting a product on new order (or opening an existing order) auto-loads the linked recipe's production speed, production time, packaging requirements, and production notes; fields are editable on the order, with a **从配方重新加载** action on draft orders to reset from the current recipe
-- Detail page **QC** section: auto-loads recipe QC test checkboxes (黏度, 啞度, 百格, 水煮80C/30M, 湿油外观, 干板外观 — viscosity checkbox shows recipe viscosity when set), optional custom test standard, and per-item result inputs (only for checked tests); all editable on the order
-- Print production order: A4 sheet with enlarged text, no page header/footer, darker high-contrast print colors, and a material table constrained to page margins; raw-material rows keep material codes, while semifinished recipe / Sol. semifinished rows show names, with ratios, required weight, and actual weight retained
-- Print output includes structured 生产工艺 and QC sections from the order's saved process/QC fields; QC print layout lists each selected test item on its own row (测试项目 / 测试结果) with a bordered result box per item (pre-filled when saved, blank for handwriting on paper); optional custom test standard appears as an additional row
-- Production-order list rows have a product-label print action next to edit; it prints a 100mm x 70mm black-and-white thermal-paper label headed by the product code, with product name (editable before printing), production order number, smaller recipe code / recipe shelf-life text, production date, and weight (editable before printing), laid out to stay within the thermal-label boundary
-- The label print dialog has a 打印方向 (print direction) selector to match the label printer's paper-feed direction: 横向 100×70（正常）/ 旋转 90° / 180° / 270°; rotating 90°/270° switches the page to portrait 70×100 and rotates the label content. The choice is remembered per-browser (localStorage). Use this when the printed label is offset, cropped, or rotated wrong
-- Output: creates semifinished product inventory entries on completion
-
-### Semifinished Products (`/admin/cosmocoat-product-semifinished`)
-Intermediate inventory from production.
-- Fields: code, name, category (Sol.), stock quantity (kg), unit price, source production order
-- Used as components in recipes
-
-### Process Kits (`/admin/cosmocoat-process-kits`)
-Product application method documentation (產品配套工藝書).
-- List page with search (code / name / description), status filter (`DRAFT` / `ACTIVE` / `ARCHIVED`), date-field dropdown (`updatedAt` / `createdAt`), date-range dropdown (last 7 / 30 / 90 days or custom start/end date), and paginated table; create, edit, and delete from the list
-- Fields: kit code, name, status, materials list, performance standards, usage notes
-- Performance standards are multi-select checkboxes: 百格(5B), water-boiling tests (80C30M/60M, 100C30M/60M/120M), RCA (30/50/100/150/200), hardness (B/HB/H/2H), chemical resistance (耐醇 99%/50, 耐醇 99%/100, 耐醇 99%/200, 耐 MEK/50, 耐 MEK/100, 香水包裹 24H, 香水浸泡 4H, 香水浸泡 8H), high temp/humidity & salt spray group title with four selectable tests (65°C/85%RH 24H, 65°C/85%RH 48H, 5% NaCl 盐雾 24H, 5% NaCl 盐雾 48H)
-- Kit statuses: `DRAFT` → `ACTIVE` → `ARCHIVED`
-- Process flow module is available on the new/detail process-kit page below performance tests; admins can add multiple reference factory products and optionally set each product's IR minutes (min), IR temperature (°C), UV energy (MJ/CM²), film thickness (μm), spray viscosity (`噴塗粘度 2#杯/25C`, 2# flow cup at 25C, unit S), and notes — all process-parameter fields are optional and a product row can be saved without filling them; field labels, table/preview values, and print/Word export append the standard unit when the saved value does not already include it
-- When adding a reference product in the process-flow module, the main product picker supports manual type-to-search with fuzzy matching on factory product code and name so large product catalogs can be searched without scrolling a long dropdown
-- After adding products to the process flow list, each row has Edit and Delete actions; Edit allows updating HD Hardener and Diluent thinner selections plus their ratios, IR minutes, IR temperature, UV energy, film thickness, spray viscosity, and notes for that product (works on both new and saved process kits); process parameters remain optional on edit as well
-- Process-kit product rows are linked to Factory Products by ID; when a linked factory product is updated (code, name, viscosity, etc.), all referencing process kits automatically refresh their linked product display names in the database, touch the process-kit `updatedAt`, and hot-refresh any open process-kit detail page and linked product options without manual reload or sync (same tab and other tabs immediately; other active admin sessions auto-refresh via linked-product polling)
-- Each selected product can optionally include an HD Hardener product with ratio to the main product, and a Diluent thinner product with ratio to the main product
-- A4 print and Word export for process-kit detail pages include the CosmoCoat logo in the top-left page header and fixed CosmoCoat sales-company, production-factory, address, phone, and website contact information in the top-right page header
-- The process-kit page builds a complete process-flow document from an ordered list of products and standalone process steps plus the global process-flow note; use **添加工艺** in the process-flow section header to add numbered process steps even when no reference product is selected
-- Products and standalone process steps share one continuous sequence (1, 2, 3…); hover any item in the document preview and use **在该产品下方添加工艺** to insert a new process at the next position (automatic renumbering); each process step can be edited or deleted
-- Legacy product-nested process blocks are migrated into the unified ordered list on read when stored `processFlowItems` is empty
-- Detail page actions include browser-based A4 printing and browser-generated Word document download for the current process-kit content; no backend export job is used
-- Print and Word export use darker high-contrast colors and include only core process information: basic info, performance standards (grouped by test category — 百格, 水煮测试, RCA, 硬度, 耐化学性, 高温高湿/盐雾 — listing selected test item names only, no test results), and the process-flow document (numbered products and process steps only); the **全局备注** / global process-flow note field remains editable and visible on the detail page and in the on-screen document preview but is omitted from A4 print and Word export to avoid duplication; the standalone **产品组合** / product-parameters table, **产品材料清单**, and **测试记录** are omitted because product details are already shown inside the process flow
-- In the Process Flow section of print and Word export, the table uses a fixed narrow label column and wide content column so long process notes and full process documents stay readable in both browser print preview and downloaded Word files
-- Every process-kit detail page includes a standardized operation notes section at the bottom covering pretreatment, filtering, recommended spray environment, coating storage conditions, disclaimer, and first-article testing requirements; these standardized notes are omitted from A4 print and Word export so exported documents contain only the core process-kit content
-- Test records (detail page only, not in print/Word): type (`PERFORMANCE`, `DURABILITY`, `ADHESION`, `COLOR_STABILITY`, `BOND_STRENGTH`, `OTHER`), result (`PASSED`, `FAILED`, `PENDING`), test date, tester selected from active CosmoCoat Employee Management `TECHNICAL` employees, optional notes, and one internal-only JPG/PNG/WEBP report image uploaded from the inline form without leaving the page and stored as the report link
-- **Change approval workflow**: only `SUPER_ADMIN` can see and operate process-kit pending-change features, including the list-page **待审批变更** panel, approve/reject actions, pending-request status, and before-vs-after diff details; non-`SUPER_ADMIN` users cannot modify or delete existing process kits and see saved kits as read-only, while creating a new process kit still takes effect immediately
-
-### Customers (`/admin/cosmocoat-customers`)
-Unified customer registry for CosmoCoat manufacturing clients (raw material purchases, recipe services, finished goods).
-- Fields: customer code (auto-generated `KH####` if omitted), name, optional linked CosmoCoat platform login account (from Customer Account Management), optional assigned sales employee (`SALES` employees only), optional technical responsible employee (`TECHNICAL` employees only), phone, optional contact person, optional contact phone, address, production equipment parameters (free-text multi-line field below address on create/edit form)
-- List with search (code / name / phone / contact person / contact phone / address / sales employee / technical employee / linked account email); paginated table shows customer code, customer name, assigned sales employee, technical responsible employee, address, and updated date (linked account email and phone are hidden from the table); list rows can be exported to Excel using all rows that match the current search filter, including customer code, name, linked account email/name, phone, address, and updated date
-- Bulk import from Excel/CSV on the list page: upload a table containing customer names only; the system creates customer records and auto-generates `KH####` codes
-- Create, view, edit, and delete customer profiles; detail page at `/admin/cosmocoat-customers/[id]`; new at `/admin/cosmocoat-customers/new`; **Save changes** / **Create customer** and **Cancel** actions are in the page header for quick access (no bottom save bar)
-- Upload, view, download, and delete independent customer file modules on saved customer profiles: **营业执照**, **法人身份证**, **天眼查报告**, and **其他文件** (PDF, JPG, PNG, WEBP; max 10 MB; Chinese file names are preserved for display/download); new customers must be saved before uploading
-- Each CosmoCoat platform account can be linked to at most one customer profile
-
-### Suppliers (`/admin/cosmocoat-suppliers`)
-Independent supplier registry for CosmoCoat sourcing; data and permission key are separate from customer management.
-- Fields: supplier code (auto-generated `SC####` if omitted), name, contact information, dedicated contact person, address, shipping address
-- Supplier list defaults to supplier-code ascending order (`SC0001`, `SC0002`, ...)
-- List with search (code / name / contact information / address); paginated table shows upload-status markers for **营业执照** and **质量保証函** so missing required supplier documents are visible from the list
-- Bulk import from Excel/CSV on the list page: supplier name is required; optional supplier code can be provided, otherwise the system auto-generates `SC####`; contact information and address can also be imported when those columns exist
-- Create, view, edit, and delete supplier profiles; detail page at `/admin/cosmocoat-suppliers/[id]`; new at `/admin/cosmocoat-suppliers/new`
-- Upload, view, download, and delete independent supplier file modules on saved supplier profiles: **营业执照**, **质量保証函**, and general supplier files (PDF, Word, JPG, PNG, WEBP; max 10 MB; Chinese file names are preserved for display/download); new suppliers must be saved before uploading
-
-### Qualification Files (`/admin/cosmocoat-qualification-files`)
-CosmoCoat 系统资质文件管理模块，用于保存公司官方资质文件档案。
-- List with search (title / qualification type / original filename), pagination, and row actions
-- Fields: title, qualification type, original filename, optional notes, upload/update time, uploader
-- Upload, inline preview, download, edit, and delete qualification files (PDF, JPG, PNG, WEBP; max 10 MB; Chinese file names are preserved for display/download); clicking 查看 opens an in-page preview modal for PDFs/images instead of triggering a browser download
-- Create and edit use the same modal: title and qualification type are required; editing can optionally replace the uploaded file while keeping the record
-
-### Sample Orders (`/admin/cosmocoat-sample-orders`)
-打样单（样品单）管理，用于客户打样需求的全流程跟踪。
-- List with search (order code / customer / sales employee / technical responsible employee) and status filter; columns: 特急标识（勾选特急时显示红色“特急”）, customer, sales employee, responsible employee, status, creation date
-- Statuses: `DRAFT` → `IN_PROGRESS` → `COMPLETED`
-- Create at `/admin/cosmocoat-sample-orders/new`; detail at `/admin/cosmocoat-sample-orders/[id]`
-- Link to a CosmoCoat customer profile (required), optional sales employee (`SALES` type), and optional responsible employee (`TECHNICAL` type)
-- **One process kit per order** (database unique constraint on `sampleOrderId`); line items also support multiple Color Formulas, each with quantity in kg; no duplicate formulas on the same order
-- Process kit lines do not require a sample weight: the process-kit picker is a searchable dropdown that matches by code or name and shows code, name, and **适用材料** (substrate types) before selection; adding a kit loads the full process-flow document on expand (performance standards shown with the same Chinese labels as Process Kits, product parameters, complete process flow); **适用材料** (substrate types with readable labels) and **适用产品** (reference factory product names) are always shown on the kit card header without expanding; kit **materials** checkbox selections and `otherNote` for「其他」are included in the applicable-materials summary; only color formulas use quantity (kg)
-- Basic info: customer (required), sales employee dropdown from CosmoCoat Employee Management `SALES` employees, responsible employee dropdown from `TECHNICAL` employees, a **特急** checkbox flag, optional **reference sample image** (max 1, upload to OSS), then order-level fields for **素材选择** (single value from Process Kit substrate presets or custom text), **打样种类** (`调色种类` / `UV种类` / `性能测试`), **样板要求**, **样油要求**, **特别工艺(常规不能满足)**, **notes**, and **区域备注（技术人员反馈）** below notes; list shows 4× enlarged thumbnail; detail page shows enlarged image (up to 480px height) in all statuses
-- Auto-generated order codes: `YP####` (e.g. `YP0001`)
-- Progress tracking: step indicator (草稿 → 进行中 → 已完成), `startedAt` when moving to IN_PROGRESS, `completedAt` when marked COMPLETED
-- Actions: Save (DRAFT), 开始打样 (→ IN_PROGRESS), 标记完成 (→ COMPLETED); completed orders lock line items, customer, and employee assignments but remain viewable
-- Detail page shows linked color-formula information in both the editable/read-only 调色配方明细 table and the expanded scaled material tables below; formulas linked from the color-formula module appear here automatically
-- **Print** on detail page (`/admin/cosmocoat-sample-orders/[id]`): browser print (A4) exports full order — customer profile, **特急** checkbox marker (red 特急 text when enabled), sales and responsible employees, reference sample image, sample kind, substrate/sample-panel/sample-oil/special-process requirements, notes, **区域备注（技术人员反馈）**, process-kit details (applicable materials/products, performance standards, product parameters, process flow), color-formula line items, and scaled material tables; signature row for 打样人员 / 质检确认 / 客户签收
-- Delete allowed for DRAFT and COMPLETED orders; IN_PROGRESS orders cannot be deleted
-
-### CosmoCoat Financial Accounting
-Same double-entry accounting structure as Adviser (chart of accounts, journal entries, ledger, HKFRS reports). Data is fully isolated from Adviser companies via separate `cos_` prefixed tables.
-
----
-
 ## Shared Infrastructure
 
 ### Authentication
@@ -454,9 +279,8 @@ Same double-entry accounting structure as Adviser (chart of accounts, journal en
 - **KYC document analysis**: batch AI-assisted review of uploaded KYC documents
 - **NAR1 sync**: AI-assisted data extraction from Companies Registry annual return documents
 - **SFS Diamond public chat** (`/api/sfsdiamond/chat`): NDJSON streaming endpoint; static knowledge base embedded in system prompt; no auth
-- **CosmoCoat public chat** (`/api/cosmocoat/chat`): NDJSON streaming endpoint; live recipe knowledge fetched from DB per request; no auth
 
 ### Internationalisation
 - Supported locales: `en`, `zh-HK`
 - All Adviser and client portal pages are localised via `next-intl`
-- SFS Diamond and CosmoCoat public pages are not locale-prefixed
+- SFS Diamond public pages are not locale-prefixed
