@@ -190,7 +190,7 @@ export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: stri
   { key: 'dashboard', label: 'Dashboard', group: 'main' },
   { key: 'companies', label: 'Companies', group: 'Adviser' },
   { key: 'kyc', label: 'KYC queue', group: 'Adviser' },
-  { key: 'aml', label: 'AML', group: 'Adviser' },
+  { key: 'aml', label: 'AML & PEP Screening', group: 'Adviser' },
   { key: 'financial',           label: 'Financial (company select)', group: 'Finance Management' },
   { key: 'financialAccounts',   label: 'Chart of accounts',          group: 'Finance Management' },
   { key: 'financialJournal',    label: 'Journal entries',            group: 'Finance Management' },

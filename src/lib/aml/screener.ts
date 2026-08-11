@@ -1,6 +1,7 @@
 import { compareTwoStrings } from 'string-similarity'
 import { prisma } from '@/lib/db/prisma'
 import type { AMLEntityType, AMLCheckResult, AMLSubjectType } from '@prisma/client'
+import { runAdverseMediaScreen, shouldRunAdverseMedia } from './adverseMedia'
 
 const STRONG_HIT_THRESHOLD = 0.98
 const POTENTIAL_HIT_THRESHOLD = 0.92
@@ -138,6 +139,18 @@ export async function screenKeyPerson(
     })
   }
 
+  if (shouldRunAdverseMedia(trigger)) {
+    try {
+      await runAdverseMediaScreen({
+        subjectType: 'KEY_PERSON',
+        keyPersonId,
+        names: subjectNames,
+      })
+    } catch (err) {
+      console.error(`[AML] Adverse media screen failed for KeyPerson ${keyPersonId}:`, (err as Error).message)
+    }
+  }
+
   return overallResult
 }
 
@@ -187,6 +200,18 @@ export async function screenCompany(
         result: match.result,
       },
     })
+  }
+
+  if (shouldRunAdverseMedia(trigger)) {
+    try {
+      await runAdverseMediaScreen({
+        subjectType: 'COMPANY',
+        companyId,
+        names: subjectNames,
+      })
+    } catch (err) {
+      console.error(`[AML] Adverse media screen failed for Company ${companyId}:`, (err as Error).message)
+    }
   }
 
   return overallResult

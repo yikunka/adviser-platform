@@ -102,7 +102,7 @@ export default function AMLAlertDetailPage() {
         <button onClick={() => router.back()} className="text-sm transition-colors" style={{ color: 'var(--muted-foreground)' }}>
           ← Back
         </button>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>AML Alert Detail</h1>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>{t('detailTitle')}</h1>
       </div>
 
       <div className={`border rounded-lg p-4 ${resultStyle.banner}`}>

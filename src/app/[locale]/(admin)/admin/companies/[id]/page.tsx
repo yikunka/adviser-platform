@@ -1859,6 +1859,10 @@ export default function CompanyDetailPage() {
   const [savingFileManagementRecordFor, setSavingFileManagementRecordFor] = useState<string | null>(null)
   const [deletingFileManagementRecordId, setDeletingFileManagementRecordId] = useState<string | null>(null)
   const [fileManagementForms, setFileManagementForms] = useState<Record<string, ReturnType<typeof defaultFileManagementForm>>>({})
+  /** Per-asset history tables default collapsed to keep overview readable. */
+  const [expandedFileManagementHistory, setExpandedFileManagementHistory] = useState<
+    Partial<Record<CompanyFileManagementAssetType, boolean>>
+  >({})
 
   // ── NAR1 Analysis state ──────────────────────────────────────────────────
   const [analyzingNar1, setAnalyzingNar1] = useState(false)
@@ -2261,7 +2265,7 @@ export default function CompanyDetailPage() {
             <div className="px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
               <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>文件管理</h3>
               <p className="mt-1 text-xs" style={{ color: '#5A5040' }}>
-                勾选需要管理的物品后，可在下方记录入库/出库日期、经手人和备注。
+                勾选需要管理的物品后，可在下方记录入库/出库日期、经手人和备注。出入库历史默认折叠，点击可展开查看全部记录。
               </p>
             </div>
             <div className="space-y-4 px-4 py-4">
@@ -2269,6 +2273,8 @@ export default function CompanyDetailPage() {
                 const form = getFileManagementForm(section.assetType)
                 const isSavingFlag = savingFileManagementFlag === section.key
                 const isSavingRecord = savingFileManagementRecordFor === section.assetType
+                const historyExpanded = expandedFileManagementHistory[section.assetType] ?? false
+                const latestRecord = section.records[0]
 
                 return (
                   <div
@@ -2357,39 +2363,67 @@ export default function CompanyDetailPage() {
                         {section.records.length === 0 ? (
                           <p className="text-sm" style={{ color: '#5A5040' }}>暂无出入库记录。</p>
                         ) : (
-                          <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-[#2A2418] text-sm">
-                              <thead>
-                                <tr>
-                                  <th style={thStyle}>类型</th>
-                                  <th style={thStyle}>日期</th>
-                                  <th style={thStyle}>经手人</th>
-                                  <th style={thStyle}>备注</th>
-                                  <th style={thStyle}>操作</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-[#2A2418]">
-                                {section.records.map(record => (
-                                  <tr key={record.id}>
-                                    <td style={tdPrimaryStyle}>{record.movementType === 'IN' ? '入库' : '出库'}</td>
-                                    <td style={tdStyle}>{fmt(record.movementDate)}</td>
-                                    <td style={tdStyle}>{record.handler}</td>
-                                    <td style={tdStyle}>{record.notes || '—'}</td>
-                                    <td style={tdStyle}>
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={deletingFileManagementRecordId === record.id}
-                                        onClick={() => deleteFileManagementRecord(record.id)}
-                                      >
-                                        {deletingFileManagementRecordId === record.id ? 'Deleting…' : 'Delete'}
-                                      </Button>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                          <div className="space-y-2">
+                            <button
+                              type="button"
+                              className="flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2 text-left text-sm transition-colors hover:bg-[rgba(201,169,110,0.06)]"
+                              style={{ borderColor: '#2A2418', color: 'var(--foreground)' }}
+                              onClick={() => setExpandedFileManagementHistory(current => ({
+                                ...current,
+                                [section.assetType]: !historyExpanded,
+                              }))}
+                              aria-expanded={historyExpanded}
+                            >
+                              <span className="min-w-0 flex-1">
+                                <span className="font-medium">出入库记录</span>
+                                <span className="ml-2 text-xs" style={{ color: '#5A5040' }}>
+                                  共 {section.records.length} 条
+                                  {latestRecord
+                                    ? ` · 最近：${latestRecord.movementType === 'IN' ? '入库' : '出库'} ${fmt(latestRecord.movementDate)}${latestRecord.handler ? ` · ${latestRecord.handler}` : ''}`
+                                    : ''}
+                                </span>
+                              </span>
+                              <span className="shrink-0 text-xs tabular-nums" style={{ color: '#C9A96E' }}>
+                                {historyExpanded ? '▲ 收起' : '▼ 展开'}
+                              </span>
+                            </button>
+
+                            {historyExpanded ? (
+                              <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-[#2A2418] text-sm">
+                                  <thead>
+                                    <tr>
+                                      <th style={thStyle}>类型</th>
+                                      <th style={thStyle}>日期</th>
+                                      <th style={thStyle}>经手人</th>
+                                      <th style={thStyle}>备注</th>
+                                      <th style={thStyle}>操作</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-[#2A2418]">
+                                    {section.records.map(record => (
+                                      <tr key={record.id}>
+                                        <td style={tdPrimaryStyle}>{record.movementType === 'IN' ? '入库' : '出库'}</td>
+                                        <td style={tdStyle}>{fmt(record.movementDate)}</td>
+                                        <td style={tdStyle}>{record.handler}</td>
+                                        <td style={tdStyle}>{record.notes || '—'}</td>
+                                        <td style={tdStyle}>
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={deletingFileManagementRecordId === record.id}
+                                            onClick={() => deleteFileManagementRecord(record.id)}
+                                          >
+                                            {deletingFileManagementRecordId === record.id ? 'Deleting…' : 'Delete'}
+                                          </Button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : null}
                           </div>
                         )}
                       </div>

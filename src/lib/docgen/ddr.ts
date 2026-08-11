@@ -5,6 +5,12 @@ import type { Font, Fontkit } from 'pdf-lib/es/types/fontkit'
 import * as pdfLibFontkit from '@pdf-lib/fontkit'
 import { prisma } from '@/lib/db/prisma'
 import { screenSubjectNames } from '@/lib/aml/screener'
+import {
+  isAdverseMediaConfigured,
+  listAdverseMediaForSubjects,
+  runAdverseMediaScreen,
+  type AdverseMediaFindingView,
+} from '@/lib/aml/adverseMedia'
 
 // ── Colour palette ────────────────────────────────────────────────────────────
 const PRIMARY    = rgb(0.365, 0.306, 0.216)  // warm brown
@@ -273,6 +279,95 @@ async function ensureReportAmlCheck(person: ReportPerson) {
     entityType: amlEntityType(person),
   })
   person.amlChecks = [{ result, matches }]
+}
+
+function categoryLabel(cats: string[]): string {
+  return cats
+    .map(c =>
+      c === 'CRIME' ? '犯罪/Crime'
+        : c === 'PEP' ? 'PEP'
+          : c === 'FINANCIAL_FRAUD' ? '金融詐騙/Financial fraud'
+            : c,
+    )
+    .join(', ')
+}
+
+async function ensureAdverseMediaForReport(opts: {
+  subjectType: 'KEY_PERSON' | 'COMPANY'
+  keyPersonId?: string
+  companyId?: string
+  names: string[]
+}) {
+  if (!isAdverseMediaConfigured()) return
+  try {
+    await runAdverseMediaScreen(opts)
+  } catch (err) {
+    console.error('[DDR] Adverse media search failed:', (err as Error).message)
+  }
+}
+
+async function drawAdverseMediaSection(
+  ps: PageState,
+  doc: PDFDocument,
+  findings: AdverseMediaFindingView[],
+  subjectNameByKey: Map<string, string>,
+) {
+  await ensureSpace(ps, doc, 40)
+  subHeader(ps, '1.3  負面新聞／公開媒體篩查  Adverse Media / News Screening')
+
+  if (!isAdverseMediaConfigured()) {
+    drawText(ps.page, '未配置 Google Custom Search（GOOGLE_CSE_API_KEY / GOOGLE_CSE_CX），略過新聞篩查。', {
+      x: MARGIN + 4, y: ps.y, size: 8.5, font: ps.regular, color: GRAY,
+    })
+    ps.y -= 12
+    drawText(ps.page, 'Google CSE not configured — adverse media screening skipped.', {
+      x: MARGIN + 4, y: ps.y, size: 8.5, font: ps.regular, color: GRAY,
+    })
+    ps.y -= 16
+    return
+  }
+
+  if (findings.length === 0) {
+    drawBanner(ps,
+      '未發現與犯罪／PEP／金融詐騙相關的公開新聞命中',
+      'No adverse media hits related to crime, PEP, or financial fraud',
+      true,
+    )
+    return
+  }
+
+  drawBanner(ps,
+    `發現 ${findings.length} 則相關公開新聞／媒體報導`,
+    `${findings.length} adverse media hit(s) found — review titles, summaries and links below.`,
+    false,
+  )
+
+  for (let i = 0; i < findings.length; i++) {
+    const f = findings[i]
+    const subjectKey = f.keyPersonId ? `kp:${f.keyPersonId}` : f.companyId ? `co:${f.companyId}` : ''
+    const subjectName = subjectNameByKey.get(subjectKey) || '—'
+    await ensureSpace(ps, doc, 70)
+    drawText(ps.page, `${i + 1}. [${categoryLabel(f.categories)}]  ${f.title}`, {
+      x: MARGIN + 4, y: ps.y, size: 8.5, font: ps.bold, color: RED,
+    })
+    ps.y -= 12
+    drawText(ps.page, `Subject 對象: ${subjectName}${f.publisher ? `  |  ${f.publisher}` : ''}`, {
+      x: MARGIN + 10, y: ps.y, size: 8, font: ps.regular, color: GRAY,
+    })
+    ps.y -= 11
+    const snippet = (f.snippet || '—').replace(/\s+/g, ' ')
+    for (const line of wrapText(`摘要 Summary: ${snippet}`, ps.regular, 8, CW - 20)) {
+      await ensureSpace(ps, doc, 12)
+      drawText(ps.page, line, { x: MARGIN + 10, y: ps.y, size: 8, font: ps.regular, color: BLACK })
+      ps.y -= 11
+    }
+    for (const line of wrapText(`連結 Link: ${f.url}`, ps.regular, 7.5, CW - 20)) {
+      await ensureSpace(ps, doc, 11)
+      drawText(ps.page, line, { x: MARGIN + 10, y: ps.y, size: 7.5, font: ps.regular, color: PRIMARY })
+      ps.y -= 10
+    }
+    ps.y -= 6
+  }
 }
 
 const DEFAULT_RISK_ITEMS: RiskTemplateItem[] = [
@@ -870,6 +965,33 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
   const searchSubjects = [companySubject, ...keyPersons]
   await Promise.all(searchSubjects.map(ensureReportAmlCheck))
 
+  // Adverse media (Google CSE) — refresh when configured, then load for section 1.3
+  await Promise.all([
+    ensureAdverseMediaForReport({
+      subjectType: 'COMPANY',
+      companyId,
+      names: [company.nameEn, company.nameZh].filter(Boolean) as string[],
+    }),
+    ...keyPersons
+      .filter((kp): kp is ReportPerson & { id: string } => Boolean(kp.id))
+      .map(kp =>
+        ensureAdverseMediaForReport({
+          subjectType: 'KEY_PERSON',
+          keyPersonId: kp.id,
+          names: [kp.nameEn, kp.nameZh].filter(Boolean) as string[],
+        }),
+      ),
+  ])
+  const adverseFindings = await listAdverseMediaForSubjects({
+    companyIds: [companyId],
+    keyPersonIds: keyPersons.map(kp => kp.id).filter((id): id is string => Boolean(id)),
+  })
+  const adverseSubjectNames = new Map<string, string>()
+  adverseSubjectNames.set(`co:${companyId}`, personDisplayName(companySubject))
+  for (const kp of keyPersons) {
+    if (kp.id) adverseSubjectNames.set(`kp:${kp.id}`, personDisplayName(kp))
+  }
+
   const ddr = ddrId
     ? await prisma.dueDiligenceReport.findUniqueOrThrow({ where: { id: ddrId } })
     : await prisma.dueDiligenceReport.findFirst({
@@ -1052,13 +1174,8 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
     )
   }
 
-  // ── 1.3 Web AI Assessment Results ─────────────────────────────────────────
-  await ensureSpace(ps, doc, 40)
-  subHeader(ps, '1.3  網絡AI評估結果  Web AI Assessment Results')
-  drawText(ps.page, '暫無網絡AI評估結果資料。', { x: MARGIN + 4, y: ps.y, size: 8.5, font: ps.regular, color: GRAY })
-  ps.y -= 12
-  drawText(ps.page, 'No web AI assessment results data available.', { x: MARGIN + 4, y: ps.y, size: 8.5, font: ps.regular, color: GRAY })
-  ps.y -= 16
+  // ── 1.3 Adverse media / news screening ────────────────────────────────────
+  await drawAdverseMediaSection(ps, doc, adverseFindings, adverseSubjectNames)
 
   // ════════════════════════════════════════════════════════════════════════════
   // SECTION 2: 風險評估項目詳情 Risk Assessment Items Details
@@ -1470,6 +1587,16 @@ export async function generatePersonDDR(keyPersonId: string): Promise<Buffer> {
     })
     latestCheck = { result, matches, checkedAt: new Date() }
   }
+
+  await ensureAdverseMediaForReport({
+    subjectType: 'KEY_PERSON',
+    keyPersonId: person.id,
+    names: [person.nameEn, person.nameZh].filter(Boolean) as string[],
+  })
+  const personAdverseFindings = await listAdverseMediaForSubjects({ keyPersonIds: [person.id] })
+  const personAdverseNames = new Map<string, string>([
+    [`kp:${person.id}`, [person.nameEn, person.nameZh].filter(Boolean).join(' / ')],
+  ])
   drawTableRow(ps, [
     { text: '1', width: COL_NO, center: true },
     { text: [person.nameEn, person.nameZh].filter(Boolean).join(' / '), width: COL_NAME },
@@ -1529,13 +1656,8 @@ export async function generatePersonDDR(keyPersonId: string): Promise<Buffer> {
     drawBanner(ps, '未發現制裁名單匹配項', 'No sanctions list matches found', true)
   }
 
-  // 1.3 Web AI Assessment
-  await ensureSpace(ps, doc, 40)
-  subHeader(ps, '1.3  網絡AI評估結果  Web AI Assessment Results')
-  drawText(ps.page, '暫無網絡AI評估結果資料。  No web AI assessment results data available.', {
-    x: MARGIN + 4, y: ps.y, size: 8.5, font: ps.regular, color: GRAY,
-  })
-  ps.y -= 16
+  // 1.3 Adverse media / news screening
+  await drawAdverseMediaSection(ps, doc, personAdverseFindings, personAdverseNames)
 
   // ══════════════════════════════════════════════════════════════════════════
   // SECTION 2: 個人資料 Personal Information

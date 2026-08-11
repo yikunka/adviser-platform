@@ -15,7 +15,7 @@
     "logout": "登出",
     "companies": "公司管理",
     "entities": "客戶實體",
-    "aml": "AML篩查",
+    "aml": "AML&PEP篩查",
     "financial": "財務",
     "financialAccounts": "會計科目",
     "financialJournal": "日記賬",
@@ -682,7 +682,7 @@
       "title": "管理後台",
       "totalCompanies": "活躍公司",
       "pendingKyc": "待審KYC",
-      "amlAlerts": "待處理AML警報",
+      "amlAlerts": "待處理AML&PEP篩查",
       "upcomingAR": "30日內到期周年申報",
       "adviser": {
         "title": "Adviser 企業服務",
@@ -1163,7 +1163,8 @@
       "cancelApproval": "取消批准"
     },
     "aml": {
-      "title": "AML警報",
+      "title": "AML&PEP篩查",
+      "detailTitle": "AML&PEP篩查詳情",
       "runScan": "執行AML掃描",
       "ingest": "下載制裁名單",
       "extractLocal": "提取制裁数据",

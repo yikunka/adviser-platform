@@ -35,7 +35,7 @@ export const PERMISSION_GROUPS: PermGroup[] = [
     pages: [
       { menuKey: 'companies', label: '企业管理', actions: ['create', 'edit'] },
       { menuKey: 'kyc',       label: 'KYC',      actions: ['approve'] },
-      { menuKey: 'aml',       label: 'AML',      actions: ['approve'] },
+      { menuKey: 'aml',       label: 'AML&PEP篩查', actions: ['approve'] },
       { menuKey: 'invoices',  label: '发票管理', actions: ['create', 'edit', 'delete'] },
       { menuKey: 'contracts', label: '合同管理', actions: ['create', 'edit', 'delete'] },
       { menuKey: 'tcspPricing', label: 'TCSP服务价格单', actions: ['create', 'edit', 'delete'] },

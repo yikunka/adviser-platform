@@ -5,6 +5,7 @@ import { parseXLSX } from './parsers/xlsx'
 import { parseJSON } from './parsers/json'
 import type { AMLEntry } from './parsers/xml'
 import { fetchOfacSdnListBuffer, isOfacSdnList } from './ofacSdn'
+import { isFatfBuiltinList, loadFatfListBuffer } from './fatfLists'
 import crypto from 'crypto'
 import fs from 'fs'
 import path from 'path'
@@ -222,7 +223,12 @@ async function ingestSource(source: {
     buffer = fs.readFileSync(filePath)
     skippedReason = 'file_reused'
   } else {
-    if (isOfacSdnList(source)) {
+    if (isFatfBuiltinList(source)) {
+      console.log(
+        `[AML] Source ${source.seqNo}: FATF jurisdiction list — loading bundled JSON → ${source.nameEn}`,
+      )
+      buffer = loadFatfListBuffer(source)
+    } else if (isOfacSdnList(source)) {
       console.log(
         `[AML] Source ${source.seqNo}: OFAC SDN — dedicated long download (≈25m max) → ${source.nameEn}`,
       )
@@ -369,14 +375,24 @@ async function ingestSourceFromLocalFileOnly(source: {
 }): Promise<{ upserted: number; savedFile: string | null; skippedReason?: 'no_local_file' }> {
   const ext = FORMAT_EXT[source.format] ?? 'bin'
   const filePath = path.join(DOWNLOAD_DIR, `${source.seqNo}_${todayStr()}.${ext}`)
-  if (!fs.existsSync(filePath)) {
+
+  let buffer: Buffer | null = null
+  let savedFile: string | null = filePath
+
+  if (fs.existsSync(filePath)) {
+    buffer = fs.readFileSync(filePath)
+  } else if (isFatfBuiltinList(source)) {
+    // FATF has no remote download — fall back to bundled JSON for local extract too
+    console.log(`[AML] Source ${source.seqNo}: no local file; loading bundled FATF JSON`)
+    buffer = loadFatfListBuffer(source)
+    savedFile = saveAndClean(buffer, source.seqNo, source.format)
+  } else {
     console.log(`[AML] Source ${source.seqNo}: no local file for today (${filePath})`)
     return { upserted: 0, savedFile: null, skippedReason: 'no_local_file' }
   }
 
-  const buffer = fs.readFileSync(filePath)
   const entries = parseBufferToEntries(buffer, source)
-  console.log(`[AML] Local extract ${source.seqNo}: parsed ${entries.length} entries from ${filePath}`)
+  console.log(`[AML] Local extract ${source.seqNo}: parsed ${entries.length} entries from ${savedFile}`)
 
   const upserted = await upsertEntriesForSource(source, entries)
 
@@ -386,5 +402,5 @@ async function ingestSourceFromLocalFileOnly(source: {
   })
 
   console.log(`[AML] Local extract ${source.seqNo}: upserted ${upserted} records`)
-  return { upserted, savedFile: filePath }
+  return { upserted, savedFile }
 }

@@ -145,7 +145,7 @@ npm install
 # 首次（或拉齊遠端 migration）：套用 prisma/migrations 內既有遷移
 npm run db:deploy
 
-# Seed：13 個 AML 來源（含需翻牆/官方 403 時改用的 OpenSanctions 鏡像 URL）+ 預設 Super Admin
+# Seed：15 個 AML 來源（含 OpenSanctions 鏡像 URL、FATF 黑/灰名單 builtin JSON）+ 預設 Super Admin
 npm run db:seed
 ```
 
@@ -779,6 +779,19 @@ pm2 logs adviser --lines 200
 sudo tail -f /var/log/nginx/access.log
 sudo tail -f /var/log/nginx/error.log
 ```
+
+### 負面新聞篩查（Google Custom Search）
+
+在 `.env` / `.env.local` 設定：
+
+```bash
+GOOGLE_CSE_API_KEY="..."
+GOOGLE_CSE_CX="..."
+# 可選：每日排程也跑（預設關閉）
+# ADVERSE_MEDIA_ON_SCHEDULED="true"
+```
+
+未設定時制裁名單篩查與 DDR 仍正常；DDR §1.3 會註明略過新聞篩查。KYC 提交與手動 AML 篩查會呼叫 Google CSE，並將犯罪／PEP／金融詐騙相關結果寫入 `adverse_media_findings` 與 DDR。
 
 ### 手動觸發 AML 制裁名單拉取
 

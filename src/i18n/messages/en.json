@@ -15,7 +15,7 @@
     "logout": "Logout",
     "companies": "Companies",
     "entities": "Client Entities",
-    "aml": "AML Screening",
+    "aml": "AML & PEP Screening",
     "financial": "Financial",
     "financialAccounts": "Chart of Accounts",
     "financialJournal": "Journal Entries",
@@ -682,7 +682,7 @@
       "title": "Admin Dashboard",
       "totalCompanies": "Active Companies",
       "pendingKyc": "Pending KYC",
-      "amlAlerts": "Open AML Alerts",
+      "amlAlerts": "Open AML & PEP Alerts",
       "upcomingAR": "AR Due in 30 Days",
       "adviser": {
         "title": "Adviser Corporate Services",
@@ -1163,7 +1163,8 @@
       "cancelApproval": "Cancel Approved"
     },
     "aml": {
-      "title": "AML Alerts",
+      "title": "AML & PEP Screening",
+      "detailTitle": "AML & PEP Screening Detail",
       "runScan": "Run AML Scan",
       "ingest": "Ingest Sanctions Lists",
       "extractLocal": "Extract from local files",

@@ -28,7 +28,7 @@ Manages the full portfolio of client companies.
 - Auto-generates company codes by company-code jurisdiction type: `AA#####` (HK), `BV#####` (BVI), `CA#####` (Cayman), `MS#####` (Marshall)
 - Company detail editing includes a separate **Company Type** field for legal/entity category values such as `private company limited by shares`, `public company limited by shares`, `company limited by guarantee`, `branch office`, `BVI`, `CAYMAN`, `BERMUDA`, and `MARSHALL`; this field is independent from the company-code type and does not affect code generation
 - Company detail overview shows **Annual Return Deadline** below Business Nature, calculated as the date of incorporation's month/day plus 42 days and displayed as `MM-DD`
-- Company detail overview includes a **文件管理** group with three toggles for `公司盒`, `公司方印`, and `公司圆印`; each enabled item can store dated `IN` / `OUT` movement records with handler and notes
+- Company detail overview includes a **文件管理** group with three toggles for `公司盒`, `公司方印`, and `公司圆印`; each enabled item can store dated `IN` / `OUT` movement records with handler and notes; the movement history list is collapsed by default and expands on click, while the collapsed row shows record count and the latest movement summary
 - Create new company; assign client user or pending-client email; assign staff
 - Companies with the financial module enabled can optionally be assigned a **Financial Manager** from existing active back-office staff accounts; assignment can be left blank and filled later from the company edit form
 
@@ -60,14 +60,17 @@ Know Your Customer compliance workflow.
 - Export KYC data
 - Generate compliance documents (DOCX): Due Diligence Reports (DDR), KYC summaries
 
-### 4. AML Screening (`/admin/aml`)
-Anti-Money Laundering screening and alert management.
+### 4. AML&PEP篩查 (`/admin/aml`)
+Anti-Money Laundering and PEP screening and alert management. Admin nav/page title: `AML&PEP篩查` (EN: AML & PEP Screening).
 - Subjects: individuals (key persons) and entities (companies)
 - Check result levels: `CLEAR`, `WEAK_HIT`, `POTENTIAL_HIT`, `STRONG_HIT`
 - Alert resolution workflow: `PENDING` → `FALSE_POSITIVE` / `CONFIRMED` / `ESCALATED`
 - Alert details: match score, aliases, addresses, ID numbers, listing reason and date, source list info
 - Review: add notes, mark resolution
 - Data sources: XML, CSV, XLSX, JSON list formats; each source tracks last fetch date
+- Sanctions list status shows the original 13 sanctions sources (seq 1–13)
+- Below that, a separate FATF Lists panel shows FATF 黑名單（呼籲採取行動／Call for Action）and FATF 灰名單（加強監控／Increased Monitoring）— jurisdiction lists loaded from bundled JSON (FATF has no machine-readable export); update JSON after each FATF plenary
+- Adverse media / news screening (Google Custom Search): after sanctions match on KYC submit and manual screen (not daily cron unless `ADVERSE_MEDIA_ON_SCHEDULED=true`), searches subject names for crime / PEP / financial-fraud related public results; requires `GOOGLE_CSE_API_KEY` + `GOOGLE_CSE_CX`; hits stored in `adverse_media_findings` and written into company/person DDR section 1.3 (title, summary, link)
 - Trigger modes: manual (screen a subject on demand), KYC-triggered (auto-runs on KYC submission), scheduled cron
 - Ingest new AML lists from URL or local file
 

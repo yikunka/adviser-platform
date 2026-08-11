@@ -23,7 +23,7 @@ const amlRecordSelect = {
 }
 
 async function getAMLData(keyPersonId: string) {
-  const [lastCheck, alerts] = await Promise.all([
+  const [lastCheck, alerts, adverseMedia] = await Promise.all([
     prisma.aMLCheck.findFirst({
       where: { keyPersonId, subjectType: 'KEY_PERSON' },
       orderBy: { checkedAt: 'desc' },
@@ -33,8 +33,24 @@ async function getAMLData(keyPersonId: string) {
       orderBy: { result: 'desc' },
       include: { amlRecord: amlRecordSelect },
     }),
+    prisma.adverseMediaFinding.findMany({
+      where: { keyPersonId, resolution: { not: 'FALSE_POSITIVE' } },
+      orderBy: [{ relevanceScore: 'desc' }, { createdAt: 'desc' }],
+      select: {
+        id: true,
+        title: true,
+        snippet: true,
+        url: true,
+        publisher: true,
+        categories: true,
+        relevanceScore: true,
+        resolution: true,
+        source: true,
+        createdAt: true,
+      },
+    }),
   ])
-  return { lastCheck, alerts }
+  return { lastCheck, alerts, adverseMedia }
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

@@ -272,6 +272,7 @@ model User {
   kycSubmissions                      KeyPerson[]                   @relation("ClientKycSubmissions")
   amlChecksTriggered                  AMLCheck[]                    @relation("AMLCheckTrigger")
   amlAlertsReviewed                   AMLAlert[]                    @relation("AMLAlertReviewer")
+  adverseMediaReviewed                AdverseMediaFinding[]         @relation("AdverseMediaReviewer")
   auditLogs                           AuditLog[]
   notifications                       Notification[]
   processedChanges                    ShareholderChange[]
@@ -389,6 +390,7 @@ model Company {
   fileCases              CompanyFileCase[]
   fileManagementRecords  CompanyFileManagementRecord[]
   amlChecks              AMLCheck[]                    @relation("CompanyAMLCheck")
+  adverseMediaFindings   AdverseMediaFinding[]         @relation("CompanyAdverseMedia")
   dueDiligenceReports    DueDiligenceReport[]
   riskAssessments        RiskAssessmentAnswer[]
   annualFilings          AnnualFiling[]
@@ -689,6 +691,7 @@ model KeyPerson {
   companyLinks           CompanyKeyPerson[]
   invoices               Invoice[]
   amlChecks              AMLCheck[]              @relation("KeyPersonAMLCheck")
+  adverseMediaFindings   AdverseMediaFinding[]   @relation("KeyPersonAdverseMedia")
   directors              Director[]
   members                Member[]
   significantControllers SignificantController[]
@@ -867,6 +870,43 @@ model AMLAlert {
   reviewedBy User?     @relation("AMLAlertReviewer", fields: [reviewedById], references: [id])
 
   @@map("aml_alerts")
+}
+
+/// Google CSE adverse-media / negative-news hits (crime, PEP, financial fraud).
+model AdverseMediaFinding {
+  id             String              @id @default(cuid())
+  subjectType    AMLSubjectType
+  /// Stable key for dedupe: `kp:<id>` or `co:<id>`
+  subjectKey     String
+  keyPersonId    String?
+  companyId      String?
+  query          String
+  title          String
+  snippet        String?
+  url            String
+  urlHash        String
+  publisher      String?
+  source         String              @default("GOOGLE")
+  /// Categories e.g. CRIME, PEP, FINANCIAL_FRAUD
+  categories     String[]
+  relevanceScore Float?
+  resolution     AMLAlertResolution  @default(PENDING)
+  reviewedById   String?
+  reviewedAt     DateTime?
+  reviewNotes    String?
+  rawData        Json?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  keyPerson  KeyPerson? @relation("KeyPersonAdverseMedia", fields: [keyPersonId], references: [id], onDelete: Cascade)
+  company    Company?   @relation("CompanyAdverseMedia", fields: [companyId], references: [id], onDelete: Cascade)
+  reviewedBy User?      @relation("AdverseMediaReviewer", fields: [reviewedById], references: [id])
+
+  @@unique([subjectKey, urlHash])
+  @@index([keyPersonId])
+  @@index([companyId])
+  @@index([resolution])
+  @@map("adverse_media_findings")
 }
 
 // ─────────────────────────────────────────────

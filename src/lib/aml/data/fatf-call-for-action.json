@@ -1,0 +1,44 @@
+{
+  "asOf": "2026-06-19",
+  "list": "call-for-action",
+  "titleEn": "FATF High-Risk Jurisdictions subject to a Call for Action",
+  "titleZh": "FATF 高風險司法管轄區（呼籲採取行動／黑名單）",
+  "referenceUrl": "https://www.fatf-gafi.org/en/topics/high-risk-and-other-monitored-jurisdictions.html",
+  "entries": [
+    {
+      "name": "Democratic People's Republic of Korea",
+      "aliases": [
+        "DPRK",
+        "North Korea",
+        "Korea, Democratic People's Republic of",
+        "朝鮮民主主義人民共和國",
+        "北韓",
+        "朝鲜"
+      ],
+      "listingReason": "FATF Call for Action — countermeasures (as of 2026-06-19)",
+      "listingDate": "2026-06-19"
+    },
+    {
+      "name": "Iran",
+      "aliases": [
+        "Islamic Republic of Iran",
+        "Iran (Islamic Republic of)",
+        "伊朗",
+        "伊朗伊斯蘭共和國"
+      ],
+      "listingReason": "FATF Call for Action — countermeasures (as of 2026-06-19)",
+      "listingDate": "2026-06-19"
+    },
+    {
+      "name": "Myanmar",
+      "aliases": [
+        "Burma",
+        "Republic of the Union of Myanmar",
+        "緬甸",
+        "缅甸"
+      ],
+      "listingReason": "FATF Call for Action — enhanced due diligence (as of 2026-06-19)",
+      "listingDate": "2026-06-19"
+    }
+  ]
+}

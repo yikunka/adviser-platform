@@ -50,6 +50,18 @@ type AMLAlert = {
 type AMLData = {
   lastCheck: { checkedAt: string; result: string } | null
   alerts: AMLAlert[]
+  adverseMedia?: Array<{
+    id: string
+    title: string
+    snippet: string | null
+    url: string
+    publisher: string | null
+    categories: string[]
+    relevanceScore: number | null
+    resolution: string
+    source: string
+    createdAt: string
+  }>
 }
 
 type ClientAccount = {
@@ -1458,6 +1470,45 @@ export default function KYCQueuePage() {
                         })}
                       </ul>
                     )}
+
+                    <div className="pt-2 space-y-2">
+                      <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                        Adverse media / 負面新聞
+                      </p>
+                      {!amlData.adverseMedia || amlData.adverseMedia.length === 0 ? (
+                        <p className="text-xs rounded-lg px-3 py-2" style={{ background: 'rgba(16,185,129,0.08)', color: '#10b981' }}>
+                          No crime / PEP / financial-fraud news hits
+                        </p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {amlData.adverseMedia.map(hit => (
+                            <li
+                              key={hit.id}
+                              className="rounded-lg px-3 py-2.5 text-sm space-y-1"
+                              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}
+                            >
+                              <p className="font-semibold" style={{ color: 'var(--foreground)' }}>{hit.title}</p>
+                              <p className="text-xs" style={{ color: '#ef4444' }}>
+                                {hit.categories.join(' · ')}
+                                {hit.publisher ? ` · ${hit.publisher}` : ''}
+                              </p>
+                              {hit.snippet && (
+                                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{hit.snippet}</p>
+                              )}
+                              <a
+                                href={hit.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-xs hover:underline break-all"
+                                style={{ color: '#C9A96E' }}
+                              >
+                                {hit.url}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                   </div>
                 )}
 

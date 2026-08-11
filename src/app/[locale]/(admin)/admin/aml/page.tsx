@@ -78,6 +78,10 @@ export default function AMLPage() {
   const [sources, setSources] = useState<AMLSource[]>([])
   const [ingestResults, setIngestResults] = useState<SourceIngestResult[] | null>(null)
   const [showSources, setShowSources] = useState(false)
+  const [showFatfSources, setShowFatfSources] = useState(true)
+
+  const isFatfSource = (s: { seqNo: number; nameEn: string }) =>
+    s.seqNo === 14 || s.seqNo === 15 || s.nameEn.toUpperCase().includes('FATF')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -214,11 +218,79 @@ export default function AMLPage() {
     load()
   }
 
-  // Merge ingestResults into sources for display
+  // Merge ingestResults into sources for display; FATF lists render in a separate panel
   const displaySources = sources.map(s => {
     const r = ingestResults?.find(r => r.seqNo === s.seqNo)
     return { ...s, ingestResult: r ?? null }
   })
+  const sanctionsSources = displaySources.filter(s => !isFatfSource(s))
+  const fatfSources = displaySources.filter(s => isFatfSource(s))
+
+  function renderSourceRows(rows: typeof displaySources) {
+    return rows.map(s => {
+      const r = s.ingestResult
+      const statusBadge = r ? (
+        r.status === 'ingesting'
+          ? <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[rgba(201,169,110,0.15)] text-[#C9A96E] animate-pulse">⟳ Ingesting…</span>
+          : r.status === 'pending'
+            ? <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[rgba(120,113,108,0.15)] text-[#9A8060]">· Pending</span>
+            : r.status === 'ok'
+              ? <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[rgba(16,185,129,0.12)] text-[#10b981]">✓ {r.upserted} upserted</span>
+              : r.status === 'skipped'
+                ? <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[rgba(120,113,108,0.15)] text-[#9A8060]">
+                    {r.skippedReason === 'no_local_file'
+                      ? t('skippedNoLocal')
+                      : r.skippedReason === 'already_upserted'
+                        ? '↩ Already done today'
+                        : '↩ File reused'}
+                  </span>
+                : <div className="space-y-1">
+                    <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-[rgba(239,68,68,0.12)] text-[#ef4444]" title={r.error}>✗ Error</span>
+                    {r.error ? (
+                      <p className="text-[11px] leading-snug max-w-[28rem] break-words font-mono" style={{ color: '#b91c1c' }}>{r.error}</p>
+                    ) : null}
+                  </div>
+      ) : s.lastFetched
+          ? <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[rgba(120,113,108,0.15)] text-[#9A8060]">—</span>
+          : <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[rgba(245,158,11,0.12)] text-[#f59e0b]">Never fetched</span>
+      return (
+        <tr key={s.id} className="hover:bg-[#1A1A12] transition-colors">
+          <td className="px-4 py-2.5 font-mono text-xs" style={{ color: 'var(--muted-foreground)' }}>{s.seqNo}</td>
+          <td className="px-4 py-2.5">
+            <p className="font-medium" style={{ color: 'var(--foreground)' }}>{s.nameEn}</p>
+            <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{s.nameZh}</p>
+          </td>
+          <td className="px-4 py-2.5 font-mono text-xs" style={{ color: 'var(--muted-foreground)' }}>{s.format}</td>
+          <td className="px-4 py-2.5 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+            {s.lastFetched ? new Date(s.lastFetched).toLocaleString() : '—'}
+          </td>
+          <td className="px-4 py-2.5 text-xs font-mono" style={{ color: r?.status === 'ok' ? '#10b981' : 'var(--foreground)' }}>
+            {r?.status === 'ok' ? r.totalInDb.toLocaleString() : s.recordCount.toLocaleString()}
+          </td>
+          <td className="px-4 py-2.5">{statusBadge}</td>
+        </tr>
+      )
+    })
+  }
+
+  function renderSourceTable(rows: typeof displaySources) {
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr style={{ background: '#1A1A12', borderBottom: '1px solid #2A2418' }}>
+              {['#', '名单 / List', 'Format', 'Last Downloaded', 'Records in DB', 'Last Run Status'].map(h => (
+                <th key={h} className="px-4 py-2 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#2A2418]">
+            {renderSourceRows(rows)}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -240,76 +312,33 @@ export default function AMLPage() {
         </div>
       </div>
 
-      {/* Sanctions list status panel */}
+      {/* Sanctions list status panel (excl. FATF) */}
       <div className="rounded-lg overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
         <button
           className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
           style={{ color: 'var(--foreground)', borderBottom: showSources ? '1px solid #2A2418' : 'none' }}
           onClick={() => setShowSources(v => !v)}
         >
-          <span>制裁名单状态 · Sanctions Lists ({sources.length})</span>
+          <span>制裁名单状态 · Sanctions Lists ({sanctionsSources.length})</span>
           <span style={{ color: 'var(--muted-foreground)' }}>{showSources ? '▲' : '▼'}</span>
         </button>
-        {showSources && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ background: '#1A1A12', borderBottom: '1px solid #2A2418' }}>
-                  {['#', '名单 / List', 'Format', 'Last Downloaded', 'Records in DB', 'Last Run Status'].map(h => (
-                    <th key={h} className="px-4 py-2 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#2A2418]">
-                {displaySources.map(s => {
-                  const r = s.ingestResult
-                  const statusBadge = r ? (
-                    r.status === 'ingesting'
-                      ? <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[rgba(201,169,110,0.15)] text-[#C9A96E] animate-pulse">⟳ Ingesting…</span>
-                      : r.status === 'pending'
-                        ? <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[rgba(120,113,108,0.15)] text-[#9A8060]">· Pending</span>
-                        : r.status === 'ok'
-                          ? <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[rgba(16,185,129,0.12)] text-[#10b981]">✓ {r.upserted} upserted</span>
-                          : r.status === 'skipped'
-                            ? <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[rgba(120,113,108,0.15)] text-[#9A8060]">
-                                {r.skippedReason === 'no_local_file'
-                                  ? t('skippedNoLocal')
-                                  : r.skippedReason === 'already_upserted'
-                                    ? '↩ Already done today'
-                                    : '↩ File reused'}
-                              </span>
-                            : <div className="space-y-1">
-                                <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-[rgba(239,68,68,0.12)] text-[#ef4444]" title={r.error}>✗ Error</span>
-                                {r.error ? (
-                                  <p className="text-[11px] leading-snug max-w-[28rem] break-words font-mono" style={{ color: '#b91c1c' }}>{r.error}</p>
-                                ) : null}
-                              </div>
-                  ) : s.lastFetched
-                      ? <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[rgba(120,113,108,0.15)] text-[#9A8060]">—</span>
-                      : <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[rgba(245,158,11,0.12)] text-[#f59e0b]">Never fetched</span>
-                  return (
-                    <tr key={s.id} className="hover:bg-[#1A1A12] transition-colors">
-                      <td className="px-4 py-2.5 font-mono text-xs" style={{ color: 'var(--muted-foreground)' }}>{s.seqNo}</td>
-                      <td className="px-4 py-2.5">
-                        <p className="font-medium" style={{ color: 'var(--foreground)' }}>{s.nameEn}</p>
-                        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{s.nameZh}</p>
-                      </td>
-                      <td className="px-4 py-2.5 font-mono text-xs" style={{ color: 'var(--muted-foreground)' }}>{s.format}</td>
-                      <td className="px-4 py-2.5 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        {s.lastFetched ? new Date(s.lastFetched).toLocaleString() : '—'}
-                      </td>
-                      <td className="px-4 py-2.5 text-xs font-mono" style={{ color: r?.status === 'ok' ? '#10b981' : 'var(--foreground)' }}>
-                        {r?.status === 'ok' ? r.totalInDb.toLocaleString() : s.recordCount.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-2.5">{statusBadge}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {showSources && renderSourceTable(sanctionsSources)}
       </div>
+
+      {/* FATF jurisdiction lists — separate from Sanctions Lists */}
+      {fatfSources.length > 0 && (
+        <div className="rounded-lg overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+          <button
+            className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
+            style={{ color: 'var(--foreground)', borderBottom: showFatfSources ? '1px solid #2A2418' : 'none' }}
+            onClick={() => setShowFatfSources(v => !v)}
+          >
+            <span>FATF 名单状态 · FATF Lists ({fatfSources.length})</span>
+            <span style={{ color: 'var(--muted-foreground)' }}>{showFatfSources ? '▲' : '▼'}</span>
+          </button>
+          {showFatfSources && renderSourceTable(fatfSources)}
+        </div>
+      )}
 
       <div className="flex gap-3">
         <Select value={result} onValueChange={v => setResult(v ?? 'all')}>
