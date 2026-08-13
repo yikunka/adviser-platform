@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,7 @@ import { DatePickerPopover } from '@/components/ui/date-picker-popover'
 import { BUSINESS_NATURE_OPTIONS } from '@/lib/kyc/kycFieldOptions'
 import { type NAR1UiAnalysisResult } from '@/lib/company/nar1-analysis'
 import { COMPANY_LEGAL_TYPE_VALUES, type CompanyLegalType } from '@/lib/company/company-legal-type'
+import { TCSP_REGISTERED_OFFICE_ADDRESS } from '@/lib/company/office-address'
 import {
   buildCompanyFileManagementSections,
   type CompanyFileManagementAssetType,
@@ -171,6 +172,7 @@ type Company = {
   staffAssignments: { user: StaffOption }[]
   dateOfIncorporation: string | null
   registeredAddress: string | null
+  financialYearEndMonth: number | null
   businessNature: string | null
   status: string
   financialEnabled: boolean
@@ -357,63 +359,86 @@ function YearGroupedDocs({
   )
 }
 
-function OwnershipNodeCard({ node, depth = 0 }: { node: OwnershipNode; depth?: number }) {
+function OwnershipLeafCard({ node }: { node: OwnershipNode }) {
   const isCompany = node.type === 'COMPANY'
   const hasMeta = node.sharesHeld != null || node.ownershipPercent != null || node.shareClass
 
   return (
-    <div className="relative">
-      {depth > 0 ? (
-        <div className="absolute left-0 top-0 h-full border-l border-[#2A2418]" />
-      ) : null}
-      <div
-        className="rounded-lg border px-3 py-3"
-        style={{
-          marginLeft: depth > 0 ? 18 : 0,
-          borderColor: isCompany ? '#38bdf866' : '#C9A96E55',
-          background: isCompany ? 'rgba(56,189,248,0.08)' : 'rgba(201,169,110,0.08)',
-        }}
-      >
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className="rounded px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide"
-                style={{
-                  background: isCompany ? 'rgba(56,189,248,0.14)' : 'rgba(201,169,110,0.14)',
-                  color: isCompany ? '#38bdf8' : '#C9A96E',
-                }}
-              >
-                {isCompany ? 'Company' : 'Natural Person'}
-              </span>
-              {node.circular ? (
-                <span className="rounded px-2 py-0.5 text-[11px] font-semibold" style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>
-                  Circular
-                </span>
-              ) : null}
-            </div>
-            <p className="mt-2 truncate text-sm font-semibold" style={{ color: 'var(--foreground)' }}>
-              {node.nameEn}
-            </p>
-            {node.nameZh ? <p className="mt-0.5 text-xs" style={{ color: '#7A7060' }}>{node.nameZh}</p> : null}
-            {node.companyNumber ? <p className="mt-0.5 text-xs" style={{ color: '#7A7060' }}>Co. No. {node.companyNumber}</p> : null}
-          </div>
-          {hasMeta ? (
-            <div className="shrink-0 text-left text-xs sm:text-right" style={{ color: '#B8AD98' }}>
-              {node.ownershipPercent != null ? <p className="font-semibold" style={{ color: '#F0EAD8' }}>{node.ownershipPercent}%</p> : null}
-              {node.sharesHeld != null ? <p>{node.sharesHeld.toLocaleString()} shares</p> : null}
-              {node.shareClass ? <p>{node.shareClass}</p> : null}
-            </div>
-          ) : null}
-        </div>
+    <div
+      className="min-w-[10.5rem] max-w-[14rem] rounded-lg border px-3 py-2.5 text-center shadow-sm"
+      style={{
+        borderColor: isCompany ? '#38bdf866' : '#C9A96E55',
+        background: isCompany ? 'rgba(56,189,248,0.10)' : 'rgba(201,169,110,0.10)',
+      }}
+    >
+      <div className="flex flex-wrap items-center justify-center gap-1.5">
+        <span
+          className="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+          style={{
+            background: isCompany ? 'rgba(56,189,248,0.16)' : 'rgba(201,169,110,0.16)',
+            color: isCompany ? '#38bdf8' : '#C9A96E',
+          }}
+        >
+          {isCompany ? 'Company' : 'Shareholder'}
+        </span>
+        {node.circular ? (
+          <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>
+            Circular
+          </span>
+        ) : null}
       </div>
-      {node.children.length > 0 ? (
-        <div className="mt-2 space-y-2">
-          {node.children.map(child => (
-            <OwnershipNodeCard key={`${child.type}-${child.id}`} node={child} depth={depth + 1} />
-          ))}
+      <p className="mt-1.5 text-sm font-semibold leading-snug" style={{ color: 'var(--foreground)' }}>
+        {node.nameEn}
+      </p>
+      {node.nameZh ? <p className="mt-0.5 text-[11px] leading-snug" style={{ color: '#7A7060' }}>{node.nameZh}</p> : null}
+      {node.companyNumber ? <p className="mt-0.5 text-[11px]" style={{ color: '#7A7060' }}>Co. No. {node.companyNumber}</p> : null}
+      {hasMeta ? (
+        <div className="mt-1.5 space-y-0.5 text-[11px]" style={{ color: '#B8AD98' }}>
+          {node.ownershipPercent != null ? (
+            <p className="font-semibold" style={{ color: '#F0EAD8' }}>{node.ownershipPercent}%</p>
+          ) : null}
+          {node.sharesHeld != null ? <p>{node.sharesHeld.toLocaleString()} shares</p> : null}
+          {node.shareClass ? <p>{node.shareClass}</p> : null}
         </div>
       ) : null}
+    </div>
+  )
+}
+
+/** Shareholders / parent owners on top, company at the bottom (inverted ownership tree). */
+function OwnershipTreeNode({ node }: { node: OwnershipNode }) {
+  const owners = node.children
+  const showOwnersAbove = node.type === 'COMPANY' && owners.length > 0
+
+  if (!showOwnersAbove) {
+    return <OwnershipLeafCard node={node} />
+  }
+
+  return (
+    <div className="inline-flex flex-col items-center">
+      <div className="relative flex justify-center">
+        {owners.map((child, index) => (
+          <div
+            key={`${child.type}-${child.id}-${index}`}
+            className="relative flex flex-col items-center px-3"
+          >
+            <OwnershipTreeNode node={child} />
+            <div className="h-4 w-px shrink-0" style={{ background: '#3D3428' }} />
+            <div className="flex h-px w-full min-w-[2rem]">
+              <div
+                className="h-px flex-1"
+                style={{ background: index === 0 ? 'transparent' : '#3D3428' }}
+              />
+              <div
+                className="h-px flex-1"
+                style={{ background: index === owners.length - 1 ? 'transparent' : '#3D3428' }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="h-4 w-px shrink-0" style={{ background: '#3D3428' }} />
+      <OwnershipLeafCard node={node} />
     </div>
   )
 }
@@ -424,14 +449,16 @@ function OwnershipStructurePanel({ structure, loading }: { structure: OwnershipN
       <div>
         <h3 className="text-base font-semibold" style={{ color: 'var(--foreground)' }}>Company Ownership Structure</h3>
         <p className="mt-1 text-xs" style={{ color: '#7A7060' }}>
-          Shareholders are shown recursively when a member name matches another company record.
+          樹形圖：股東在上、公司在下。公司股東若名稱對應系統內其他公司，會繼續向上展開其股東。
         </p>
       </div>
-      <div style={cardStyle} className="p-4">
+      <div style={cardStyle} className="overflow-x-auto p-4">
         {loading ? (
           <p className="text-sm" style={{ color: '#7A7060' }}>Loading ownership structure...</p>
         ) : structure ? (
-          <OwnershipNodeCard node={structure} />
+          <div className="flex min-w-min justify-center py-2">
+            <OwnershipTreeNode node={structure} />
+          </div>
         ) : (
           <p className="text-sm" style={{ color: '#5A5040' }}>No ownership structure available.</p>
         )}
@@ -457,6 +484,9 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
     clientUserId: company.clientUserId ?? '',
     dateOfIncorporation: company.dateOfIncorporation ? company.dateOfIncorporation.slice(0, 10) : '',
     registeredAddress: company.registeredAddress ?? '',
+    financialYearEndMonth: (company.financialYearEndMonth === 3 || company.financialYearEndMonth === 12
+      ? String(company.financialYearEndMonth)
+      : '') as '' | '3' | '12',
     businessNature: company.businessNature ?? '',
     status: company.status,
     serviceTier: '',
@@ -464,6 +494,9 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
     financialManagerId: company.financialManagerId ?? '',
     staffUserIds: company.staffAssignments?.map(assignment => assignment.user.id) ?? [],
   })
+  const [useOfficeAddress, setUseOfficeAddress] = useState(
+    (company.registeredAddress ?? '').trim() === TCSP_REGISTERED_OFFICE_ADDRESS,
+  )
 
   function set(k: string, v: string | boolean | string[]) { setForm(f => ({ ...f, [k]: v })) }
 
@@ -529,6 +562,9 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
       body.clientUserId = form.clientUserId || null
       if (form.dateOfIncorporation) body.dateOfIncorporation = new Date(form.dateOfIncorporation).toISOString()
       if (form.registeredAddress) body.registeredAddress = form.registeredAddress
+      body.financialYearEndMonth = form.financialYearEndMonth
+        ? Number(form.financialYearEndMonth)
+        : null
       if (form.businessNature) body.businessNature = form.businessNature
       if (form.serviceTier) body.serviceTier = form.serviceTier
 
@@ -600,8 +636,59 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
         </div>
       </div>
       <div>
-        <label style={labelStyle}>Registered Address</label>
-        <textarea value={form.registeredAddress} onChange={e => set('registeredAddress', e.target.value)} rows={2} maxLength={500} style={fieldStyle} />
+        <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+          <label style={{ ...labelStyle, marginBottom: 0 }}>Registered Address</label>
+          <label className="flex items-center gap-2 cursor-pointer text-xs" style={{ color: '#C9A96E' }}>
+            <input
+              type="checkbox"
+              checked={useOfficeAddress}
+              onChange={e => {
+                const checked = e.target.checked
+                setUseOfficeAddress(checked)
+                setForm(f => ({
+                  ...f,
+                  registeredAddress: checked
+                    ? TCSP_REGISTERED_OFFICE_ADDRESS
+                    : f.registeredAddress === TCSP_REGISTERED_OFFICE_ADDRESS
+                      ? ''
+                      : f.registeredAddress,
+                }))
+              }}
+            />
+            使用本公司地址
+          </label>
+        </div>
+        <textarea
+          value={form.registeredAddress}
+          onChange={e => {
+            setUseOfficeAddress(false)
+            set('registeredAddress', e.target.value)
+          }}
+          rows={2}
+          maxLength={500}
+          style={fieldStyle}
+        />
+      </div>
+      <div>
+        <label style={labelStyle}>Financial Year End</label>
+        <div className="flex flex-wrap gap-4 pt-1">
+          <label className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: 'var(--foreground)' }}>
+            <input
+              type="checkbox"
+              checked={form.financialYearEndMonth === '3'}
+              onChange={e => set('financialYearEndMonth', e.target.checked ? '3' : '')}
+            />
+            March 31st
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: 'var(--foreground)' }}>
+            <input
+              type="checkbox"
+              checked={form.financialYearEndMonth === '12'}
+              onChange={e => set('financialYearEndMonth', e.target.checked ? '12' : '')}
+            />
+            December 31st
+          </label>
+        </div>
       </div>
       <div>
         <label style={labelStyle}>Business Nature</label>
@@ -1854,15 +1941,12 @@ export default function CompanyDetailPage() {
   const [generatingDdr, setGeneratingDdr] = useState(false)
   const [generatingRegister, setGeneratingRegister] = useState<'ROD' | 'ROM' | 'ROSC' | null>(null)
   const [showOlderDdr, setShowOlderDdr] = useState(false)
-  const ensuredDocsForRef = useRef<string | null>(null)
   const [savingFileManagementFlag, setSavingFileManagementFlag] = useState<string | null>(null)
   const [savingFileManagementRecordFor, setSavingFileManagementRecordFor] = useState<string | null>(null)
   const [deletingFileManagementRecordId, setDeletingFileManagementRecordId] = useState<string | null>(null)
   const [fileManagementForms, setFileManagementForms] = useState<Record<string, ReturnType<typeof defaultFileManagementForm>>>({})
-  /** Per-asset history tables default collapsed to keep overview readable. */
-  const [expandedFileManagementHistory, setExpandedFileManagementHistory] = useState<
-    Partial<Record<CompanyFileManagementAssetType, boolean>>
-  >({})
+  /** Whole 文件管理 detail block: forms + history. Collapsed by default. */
+  const [fileManagementExpanded, setFileManagementExpanded] = useState(false)
 
   // ── NAR1 Analysis state ──────────────────────────────────────────────────
   const [analyzingNar1, setAnalyzingNar1] = useState(false)
@@ -2158,20 +2242,9 @@ export default function CompanyDetailPage() {
 
   function closeModal() {
     setModal(null)
-    ensuredDocsForRef.current = null
     reload()
     reloadOwnershipStructure()
   }
-
-  useEffect(() => {
-    if (!company || ensuredDocsForRef.current === company.id) return
-    ensuredDocsForRef.current = company.id
-    fetch(`/api/admin/companies/${company.id}/documents/ensure`, { method: 'POST' })
-      .then(r => {
-        if (r.ok) reload()
-      })
-      .catch(() => {})
-  }, [company, reload])
 
   const modalTitle = modal
     ? modal.type === 'company' ? 'Edit Company'
@@ -2184,7 +2257,6 @@ export default function CompanyDetailPage() {
 
   const isGeneratedDoc = (doc: Company['documents'][number]) => doc.name.startsWith(`${doc.documentType} —`)
   const latestDoc = (docType: string) => company.documents.find(d => d.documentType === docType && isGeneratedDoc(d))
-  const annualReturnPrefill = latestDoc('NAR1')
   const ddrDocs = company.documents
     .filter(d => d.documentType === 'DDR' && isGeneratedDoc(d))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -2251,6 +2323,7 @@ export default function CompanyDetailPage() {
               ['Registered Address', company.registeredAddress ?? '—'],
               ['Date of Incorporation', company.dateOfIncorporation ? new Date(company.dateOfIncorporation).toLocaleDateString('en-HK') : '—'],
               ['Company Type', company.companyLegalType ?? '—'],
+              ['Financial Year End', company.financialYearEndMonth === 3 ? 'March 31st' : company.financialYearEndMonth === 12 ? 'December 31st' : '—'],
               ['Business Nature', company.businessNature ?? '—'],
               ['Annual Return Deadline', annualReturnDeadline(company.dateOfIncorporation)],
             ].map(([label, value]) => (
@@ -2262,19 +2335,30 @@ export default function CompanyDetailPage() {
           </div>
 
           <div style={cardStyle}>
-            <div className="px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>文件管理</h3>
-              <p className="mt-1 text-xs" style={{ color: '#5A5040' }}>
-                勾选需要管理的物品后，可在下方记录入库/出库日期、经手人和备注。出入库历史默认折叠，点击可展开查看全部记录。
-              </p>
+            <div className="flex items-start justify-between gap-3 px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>文件管理</h3>
+                  <button
+                    type="button"
+                    className="shrink-0 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors hover:bg-[rgba(201,169,110,0.08)]"
+                    style={{ borderColor: '#2A2418', color: '#C9A96E' }}
+                    onClick={() => setFileManagementExpanded(v => !v)}
+                    aria-expanded={fileManagementExpanded}
+                  >
+                    {fileManagementExpanded ? '▲ 收起' : '▼ 展开'}
+                  </button>
+                </div>
+                <p className="mt-1 text-xs" style={{ color: '#5A5040' }}>
+                  勾选需要管理的物品。展开后可记录入库/出库并查看全部出入库历史。
+                </p>
+              </div>
             </div>
             <div className="space-y-4 px-4 py-4">
               {fileManagementSections.map(section => {
                 const form = getFileManagementForm(section.assetType)
                 const isSavingFlag = savingFileManagementFlag === section.key
                 const isSavingRecord = savingFileManagementRecordFor === section.assetType
-                const historyExpanded = expandedFileManagementHistory[section.assetType] ?? false
-                const latestRecord = section.records[0]
 
                 return (
                   <div
@@ -2297,7 +2381,7 @@ export default function CompanyDetailPage() {
                       </span>
                     </label>
 
-                    {section.enabled ? (
+                    {fileManagementExpanded && section.enabled ? (
                       <div className="mt-4 space-y-4">
                         <div className="grid gap-3 lg:grid-cols-[10rem_11rem_minmax(12rem,1fr)_minmax(14rem,1.3fr)_auto] lg:items-end">
                           <div>
@@ -2363,67 +2447,39 @@ export default function CompanyDetailPage() {
                         {section.records.length === 0 ? (
                           <p className="text-sm" style={{ color: '#5A5040' }}>暂无出入库记录。</p>
                         ) : (
-                          <div className="space-y-2">
-                            <button
-                              type="button"
-                              className="flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2 text-left text-sm transition-colors hover:bg-[rgba(201,169,110,0.06)]"
-                              style={{ borderColor: '#2A2418', color: 'var(--foreground)' }}
-                              onClick={() => setExpandedFileManagementHistory(current => ({
-                                ...current,
-                                [section.assetType]: !historyExpanded,
-                              }))}
-                              aria-expanded={historyExpanded}
-                            >
-                              <span className="min-w-0 flex-1">
-                                <span className="font-medium">出入库记录</span>
-                                <span className="ml-2 text-xs" style={{ color: '#5A5040' }}>
-                                  共 {section.records.length} 条
-                                  {latestRecord
-                                    ? ` · 最近：${latestRecord.movementType === 'IN' ? '入库' : '出库'} ${fmt(latestRecord.movementDate)}${latestRecord.handler ? ` · ${latestRecord.handler}` : ''}`
-                                    : ''}
-                                </span>
-                              </span>
-                              <span className="shrink-0 text-xs tabular-nums" style={{ color: '#C9A96E' }}>
-                                {historyExpanded ? '▲ 收起' : '▼ 展开'}
-                              </span>
-                            </button>
-
-                            {historyExpanded ? (
-                              <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-[#2A2418] text-sm">
-                                  <thead>
-                                    <tr>
-                                      <th style={thStyle}>类型</th>
-                                      <th style={thStyle}>日期</th>
-                                      <th style={thStyle}>经手人</th>
-                                      <th style={thStyle}>备注</th>
-                                      <th style={thStyle}>操作</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-[#2A2418]">
-                                    {section.records.map(record => (
-                                      <tr key={record.id}>
-                                        <td style={tdPrimaryStyle}>{record.movementType === 'IN' ? '入库' : '出库'}</td>
-                                        <td style={tdStyle}>{fmt(record.movementDate)}</td>
-                                        <td style={tdStyle}>{record.handler}</td>
-                                        <td style={tdStyle}>{record.notes || '—'}</td>
-                                        <td style={tdStyle}>
-                                          <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            disabled={deletingFileManagementRecordId === record.id}
-                                            onClick={() => deleteFileManagementRecord(record.id)}
-                                          >
-                                            {deletingFileManagementRecordId === record.id ? 'Deleting…' : 'Delete'}
-                                          </Button>
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            ) : null}
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-[#2A2418] text-sm">
+                              <thead>
+                                <tr>
+                                  <th style={thStyle}>类型</th>
+                                  <th style={thStyle}>日期</th>
+                                  <th style={thStyle}>经手人</th>
+                                  <th style={thStyle}>备注</th>
+                                  <th style={thStyle}>操作</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-[#2A2418]">
+                                {section.records.map(record => (
+                                  <tr key={record.id}>
+                                    <td style={tdPrimaryStyle}>{record.movementType === 'IN' ? '入库' : '出库'}</td>
+                                    <td style={tdStyle}>{fmt(record.movementDate)}</td>
+                                    <td style={tdStyle}>{record.handler}</td>
+                                    <td style={tdStyle}>{record.notes || '—'}</td>
+                                    <td style={tdStyle}>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={deletingFileManagementRecordId === record.id}
+                                        onClick={() => deleteFileManagementRecord(record.id)}
+                                      >
+                                        {deletingFileManagementRecordId === record.id ? 'Deleting…' : 'Delete'}
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
                           </div>
                         )}
                       </div>
@@ -2610,22 +2666,6 @@ export default function CompanyDetailPage() {
             />
           </div>
 
-          <div style={cardStyle} className="p-4 space-y-3">
-            <div>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Annual Return Pre-fill</h3>
-              <p className="text-xs mt-1" style={{ color: '#5A5040' }}>
-                {annualReturnPrefill ? `Latest prepared ${new Date(annualReturnPrefill.createdAt).toLocaleDateString('en-HK')}` : 'The pre-fill document will appear automatically when the annual return date is ready.'}
-              </p>
-            </div>
-            {annualReturnPrefill ? (
-              <Button size="sm" variant="outline" onClick={() => downloadDoc(annualReturnPrefill.id)}>
-                Download
-              </Button>
-            ) : (
-              <p className="text-sm" style={{ color: '#5A5040' }}>Not ready yet.</p>
-            )}
-          </div>
-
           <div style={cardStyle}>
             <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
               <div>
@@ -2741,18 +2781,35 @@ export default function CompanyDetailPage() {
                   </div>
                 </div>
 
-                {/* ── Case list ────────────────────────────────────────────── */}
+                {/* ── Case list (ordered by case date ascending) ──────────── */}
                 {(company.fileCases ?? []).length === 0 ? (
                   <p className="px-1 text-sm" style={{ color: '#5A5040' }}>No file cases yet. Create one above.</p>
                 ) : (
-                  (company.fileCases ?? []).map(fc => {
+                  [...(company.fileCases ?? [])]
+                    .sort((a, b) => {
+                      const aMissing = !a.caseDate
+                      const bMissing = !b.caseDate
+                      if (aMissing !== bMissing) return aMissing ? -1 : 1
+                      const aTime = a.caseDate ? new Date(a.caseDate).getTime() : 0
+                      const bTime = b.caseDate ? new Date(b.caseDate).getTime() : 0
+                      if (aTime !== bTime) return aTime - bTime
+                      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+                    })
+                    .map(fc => {
                     const edit = caseEdits[fc.id] ?? {
                       name: fc.name,
                       caseDate: fc.caseDate ? fc.caseDate.slice(0, 10) : '',
                       remark: fc.remark ?? '',
                     }
                     const mainFile  = fc.documents.find(d => d.caseFileRole === 'main')
-                    const supporting = fc.documents.filter(d => d.caseFileRole !== 'main')
+                    const supporting = fc.documents
+                      .filter(d => d.caseFileRole !== 'main')
+                      .slice()
+                      .sort((a, b) => {
+                        const aTime = a.submissionDate ? new Date(a.submissionDate).getTime() : new Date(a.createdAt).getTime()
+                        const bTime = b.submissionDate ? new Date(b.submissionDate).getTime() : new Date(b.createdAt).getTime()
+                        return aTime - bTime
+                      })
                     const sf = getSupForm(fc.id, pastDocTypes)
 
                     async function saveCase() {

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DatePickerPopover } from '@/components/ui/date-picker-popover'
 import { BUSINESS_NATURE_OPTIONS } from '@/lib/kyc/kycFieldOptions'
+import { TCSP_REGISTERED_OFFICE_ADDRESS } from '@/lib/company/office-address'
 
 const fieldStyle: React.CSSProperties = {
   width: '100%',
@@ -55,7 +56,8 @@ export default function NewCompanyPage() {
   const [clientsLoading, setClientsLoading] = useState(true)
   const [analyzing, setAnalyzing] = useState(false)
   const [companyUploads, setCompanyUploads] = useState<CompanyUpload[]>([])
-  const [clientMode, setClientMode] = useState<'verified' | 'email'>('verified')
+  const [clientMode, setClientMode] = useState<'verified' | 'email' | 'later'>('verified')
+  const [useOfficeAddress, setUseOfficeAddress] = useState(false)
   const [form, setForm] = useState({
     nameEn: '',
     nameZh: '',
@@ -64,6 +66,7 @@ export default function NewCompanyPage() {
     dateOfIncorporation: '',
     registeredAddress: '',
     businessNature: '',
+    financialYearEndMonth: '' as '' | '3' | '12',
     serviceTier: '' as '' | 'BASIC' | 'PROFESSIONAL' | 'PREMIUM',
     clientUserId: '',
     clientUserEmail: '',
@@ -131,15 +134,21 @@ export default function NewCompanyPage() {
       }
 
       const fields = data?.fields && typeof data.fields === 'object' ? data.fields as Record<string, unknown> : {}
+      const nextAddress = typeof fields.registeredAddress === 'string' && fields.registeredAddress
+        ? fields.registeredAddress
+        : null
       setForm(current => ({
         ...current,
         nameEn: typeof fields.nameEn === 'string' && fields.nameEn ? fields.nameEn : current.nameEn,
         nameZh: typeof fields.nameZh === 'string' && fields.nameZh ? fields.nameZh : current.nameZh,
         companyNumber: typeof fields.companyNumber === 'string' && fields.companyNumber ? fields.companyNumber : current.companyNumber,
         dateOfIncorporation: typeof fields.dateOfIncorporation === 'string' && fields.dateOfIncorporation ? fields.dateOfIncorporation : current.dateOfIncorporation,
-        registeredAddress: typeof fields.registeredAddress === 'string' && fields.registeredAddress ? fields.registeredAddress : current.registeredAddress,
+        registeredAddress: nextAddress ?? current.registeredAddress,
         businessNature: typeof fields.businessNature === 'string' && fields.businessNature ? fields.businessNature : current.businessNature,
       }))
+      if (nextAddress != null) {
+        setUseOfficeAddress(nextAddress.trim() === TCSP_REGISTERED_OFFICE_ADDRESS)
+      }
 
       toast.success(data?.source === 'bailian' ? 'Documents analyzed by Bailian' : 'Document hints applied')
     } catch {
@@ -176,18 +185,19 @@ export default function NewCompanyPage() {
 
     setLoading(true)
     try {
-      const body: Record<string, string> = { nameEn: form.nameEn }
+      const body: Record<string, string | number> = { nameEn: form.nameEn }
       if (form.nameZh) body.nameZh = form.nameZh
       if (form.companyNumber) body.companyNumber = form.companyNumber
       if (form.companyType) body.companyType = form.companyType
       if (form.dateOfIncorporation) body.dateOfIncorporation = form.dateOfIncorporation
       if (form.registeredAddress) body.registeredAddress = form.registeredAddress
       if (form.businessNature) body.businessNature = form.businessNature
+      if (form.financialYearEndMonth) body.financialYearEndMonth = Number(form.financialYearEndMonth)
       if (form.serviceTier) body.serviceTier = form.serviceTier
 
       if (clientMode === 'verified') {
         body.clientUserId = form.clientUserId.trim()
-      } else {
+      } else if (clientMode === 'email') {
         body.clientUserEmail = form.clientUserEmail.trim()
       }
 
@@ -217,7 +227,12 @@ export default function NewCompanyPage() {
         }
       }
       const suffix = companyUploads.length > 0 ? ` ${companyUploads.length} document${companyUploads.length === 1 ? '' : 's'} attached.` : ''
-      toast.success(`${data?.pendingClientEmail ? t('createSuccessPending') : t('createSuccess')}${suffix}`)
+      const baseMsg = data?.pendingClientEmail
+        ? t('createSuccessPending')
+        : clientMode === 'later'
+          ? t('createSuccessLater')
+          : t('createSuccess')
+      toast.success(`${baseMsg}${suffix}`)
       router.push(`/${locale}/admin/companies/${data.id}`)
     } catch {
       toast.error('Failed to create company')
@@ -250,7 +265,7 @@ export default function NewCompanyPage() {
           style={{ background: '#0A0A0A', border: '1px solid #2A2418' }}
         >
           <div>
-            <label style={{ ...labelStyle, color: '#C9A96E' }}>{t('clientOwner')} *</label>
+            <label style={{ ...labelStyle, color: '#C9A96E' }}>{t('clientOwner')}</label>
             <p className="text-xs mb-3" style={{ color: 'var(--muted-foreground)' }}>{t('clientOwnerHint')}</p>
           </div>
 
@@ -272,6 +287,18 @@ export default function NewCompanyPage() {
                 onChange={() => { setClientMode('email'); setForm(f => ({ ...f, clientUserId: '' })) }}
               />
               {t('clientModeEmail')}
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: 'var(--foreground)' }}>
+              <input
+                type="radio"
+                name="clientMode"
+                checked={clientMode === 'later'}
+                onChange={() => {
+                  setClientMode('later')
+                  setForm(f => ({ ...f, clientUserId: '', clientUserEmail: '' }))
+                }}
+              />
+              {t('clientModeLater')}
             </label>
           </div>
 
@@ -296,7 +323,7 @@ export default function NewCompanyPage() {
                 <p className="text-xs mt-1" style={{ color: '#b45309' }}>{t('noVerifiedClients')}</p>
               ) : null}
             </div>
-          ) : (
+          ) : clientMode === 'email' ? (
             <div>
               <label style={labelStyle}>{t('clientEmailLabel')} *</label>
               <Input
@@ -308,6 +335,8 @@ export default function NewCompanyPage() {
                 placeholder={t('clientEmailPlaceholder')}
               />
             </div>
+          ) : (
+            <p className="text-xs" style={{ color: '#7A7060' }}>{t('clientModeLaterHint')}</p>
           )}
         </div>
 
@@ -378,13 +407,13 @@ export default function NewCompanyPage() {
         </div>
 
         <div>
-          <label style={labelStyle}>Company Type</label>
+          <label style={labelStyle}>Company Jurisdiction</label>
           <select
             value={form.companyType}
             onChange={e => set('companyType', e.target.value)}
             style={fieldStyle}
           >
-            <option value="" style={{ background: '#141414' }}>— Select company type —</option>
+            <option value="" style={{ background: '#141414' }}>— Select company jurisdiction —</option>
             <option value="HONG_KONG" style={{ background: '#141414' }}>Hong Kong Company</option>
             <option value="CAYMAN" style={{ background: '#141414' }}>Cayman Company</option>
             <option value="BVI" style={{ background: '#141414' }}>BVI Company</option>
@@ -408,14 +437,60 @@ export default function NewCompanyPage() {
         </div>
 
         <div>
-          <label style={labelStyle}>Registered Address</label>
+          <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+            <label style={{ ...labelStyle, marginBottom: 0 }}>Registered Address</label>
+            <label className="flex items-center gap-2 cursor-pointer text-xs" style={{ color: '#C9A96E' }}>
+              <input
+                type="checkbox"
+                checked={useOfficeAddress}
+                onChange={e => {
+                  const checked = e.target.checked
+                  setUseOfficeAddress(checked)
+                  setForm(f => ({
+                    ...f,
+                    registeredAddress: checked
+                      ? TCSP_REGISTERED_OFFICE_ADDRESS
+                      : f.registeredAddress === TCSP_REGISTERED_OFFICE_ADDRESS
+                        ? ''
+                        : f.registeredAddress,
+                  }))
+                }}
+              />
+              使用本公司地址
+            </label>
+          </div>
           <textarea
             value={form.registeredAddress}
-            onChange={e => set('registeredAddress', e.target.value)}
+            onChange={e => {
+              setUseOfficeAddress(false)
+              set('registeredAddress', e.target.value)
+            }}
             maxLength={500}
             rows={3}
             style={fieldStyle}
           />
+        </div>
+
+        <div>
+          <label style={labelStyle}>Financial Year End</label>
+          <div className="flex flex-wrap gap-4 pt-1">
+            <label className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: 'var(--foreground)' }}>
+              <input
+                type="checkbox"
+                checked={form.financialYearEndMonth === '3'}
+                onChange={e => set('financialYearEndMonth', e.target.checked ? '3' : '')}
+              />
+              March 31st
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: 'var(--foreground)' }}>
+              <input
+                type="checkbox"
+                checked={form.financialYearEndMonth === '12'}
+                onChange={e => set('financialYearEndMonth', e.target.checked ? '12' : '')}
+              />
+              December 31st
+            </label>
+          </div>
         </div>
 
         <div>

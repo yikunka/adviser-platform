@@ -36,6 +36,8 @@ const createSchema = z
     dateOfIncorporation: z.string().optional(),
     registeredAddress: z.string().max(500).optional(),
     businessNature: z.string().max(500).optional(),
+    /** Calendar month of financial year end: 3 = 31 Mar, 12 = 31 Dec */
+    financialYearEndMonth: z.union([z.literal(3), z.literal(12)]).optional().nullable(),
     serviceTier: z.enum(['BASIC', 'PROFESSIONAL', 'PREMIUM']).optional(),
     /** Pick from verified CLIENT users (admin UI). */
     clientUserId: z.string().cuid().optional(),
@@ -43,17 +45,7 @@ const createSchema = z
     clientUserEmail: z.string().max(320).optional(),
     assignedStaffId: z.string().cuid().optional(),
   })
-  .superRefine((data, ctx) => {
-    const id = data.clientUserId?.trim()
-    const em = data.clientUserEmail?.trim()
-    if (!id && !em) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'clientRequired',
-        path: ['clientUserId'],
-      })
-    }
-  })
+  // clientUserId / clientUserEmail optional — UI may choose "provide later"
 
 export async function GET(req: NextRequest) {
   const { session, error } = await requireRole('STAFF', { adminMenu: 'companies' })
@@ -164,8 +156,6 @@ export async function POST(req: NextRequest) {
     } else {
       pendingClientEmail = emailNorm
     }
-  } else {
-    return NextResponse.json({ error: 'clientRequired' }, { status: 400 })
   }
 
   const { companyNumber, registeredAddress, companyType, ...companyFields } = rest

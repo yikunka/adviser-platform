@@ -24,25 +24,26 @@ Key metrics at a glance are grouped into a distinct Adviser corporate-services m
 Manages the full portfolio of client companies.
 - List with search (name / code / registration number), status badge, assigned client, company incorporation date, **Annual Return Deadline** (incorporation month/day + 42 days, shown as `MM-DD`), financial-module toggle
 - Company statuses: `ACTIVE`, `DORMANT`, `STRUCK_OFF`, `DEREGISTERED`
-- Company-code jurisdiction types: `HONG_KONG`, `BVI`, `CAYMAN`, `MARSHALL`
-- Auto-generates company codes by company-code jurisdiction type: `AA#####` (HK), `BV#####` (BVI), `CA#####` (Cayman), `MS#####` (Marshall)
-- Company detail editing includes a separate **Company Type** field for legal/entity category values such as `private company limited by shares`, `public company limited by shares`, `company limited by guarantee`, `branch office`, `BVI`, `CAYMAN`, `BERMUDA`, and `MARSHALL`; this field is independent from the company-code type and does not affect code generation
-- Company detail overview shows **Annual Return Deadline** below Business Nature, calculated as the date of incorporation's month/day plus 42 days and displayed as `MM-DD`
-- Company detail overview includes a **文件管理** group with three toggles for `公司盒`, `公司方印`, and `公司圆印`; each enabled item can store dated `IN` / `OUT` movement records with handler and notes; the movement history list is collapsed by default and expands on click, while the collapsed row shows record count and the latest movement summary
-- Create new company; assign client user or pending-client email; assign staff
+- Company create form uses **Company Jurisdiction** (`HONG_KONG`, `BVI`, `CAYMAN`, `MARSHALL`) for code-prefix jurisdiction
+- Auto-generates company codes by company jurisdiction: `AA#####` (HK), `BV#####` (BVI), `CA#####` (Cayman), `MS#####` (Marshall)
+- Company detail editing includes a separate **Company Type** field for legal/entity category values such as `private company limited by shares`, `public company limited by shares`, `company limited by guarantee`, `branch office`, `BVI`, `CAYMAN`, `BERMUDA`, and `MARSHALL`; this field is independent from the company jurisdiction and does not affect code generation
+- Company create/edit includes **Financial Year End** (before Business Nature): March 31st or December 31st checkboxes (mutually exclusive); stored as month `3` or `12`
+- Company detail overview shows Financial Year End above Business Nature, then **Annual Return Deadline** below Business Nature (incorporation month/day + 42 days, shown as `MM-DD`)
+- Company detail overview includes a **文件管理** group with three toggles for `公司盒`, `公司方印`, and `公司圆印`; a single expand/collapse control beside the section title shows or hides all enabled items' IN/OUT forms and full movement history (collapsed by default); each enabled item can store dated `IN` / `OUT` movement records with handler and notes
+- Create new company; assign client user, pending-client email, or **以後提供 / Provide later** (no client linked yet; can assign later on edit); assign staff; Registered Address has a **使用本公司地址** checkbox that fills `RM7 20F Boss Commercial Center 28 Ferry Street Yau Ma Tei Kowloon Hong Kong`
 - Companies with the financial module enabled can optionally be assigned a **Financial Manager** from existing active back-office staff accounts; assignment can be left blank and filled later from the company edit form
 
 **Company detail sub-pages** (`/admin/companies/[id]/...`):
 - **Directors** — Register of Directors (ROD): add / edit / remove; date of appointment / cessation
-- **Ownership Structure** — company detail People page shows a recursive shareholder structure chart above Directors; company shareholders are visually distinguished from natural persons and expanded when their member name matches another company record
+- **Ownership Structure** — company detail People page shows an inverted tree chart above Directors: shareholders on top, the company at the bottom; corporate shareholders expand upward when their member name matches another company record; natural persons and companies are visually distinguished
 - **Members** — Register of Members (ROM): shareholders with share class, share count, transfer history
 - **Significant Controllers** — ROSC entries
 - **Designated Representatives** — company representatives
 - Generated ROD / ROM / ROSC documents automatically use linked KYC records as the source for natural persons' date of birth and place of birth
-- **File Cases** — document groupings; upload / download documents (CI, BR, AA, NNC1, ROD, ROM, ROSC, AR, NAR1, AUDIT_TAX, DDR, RESOLUTION, MINUTES, KYC, OTHER)
+- **File Cases** — document groupings for long-term / other case files on the company Files tab; listed with no `caseDate` first, then ascending `caseDate` (then created date); supporting files within a case follow submission/created date ascending; upload / download documents (CI, BR, AA, NNC1, ROD, ROM, ROSC, AR, NAR1, AUDIT_TAX, DDR, RESOLUTION, MINUTES, KYC, OTHER)
 - **Address Changes** — registered address change tracking; NND1 filing status
 - **Shareholder Changes** — ownership change tracking with filing status
-- **NAR1** — Annual return generation and sync with Companies Registry data
+- **NAR1** — Annual return document upload (by year) and AI-assisted analysis/sync to company registers; no separate Annual Return Pre-fill download card
 - **Annual Filings** — status: `NOT_STARTED`, `IN_PREPARATION`, `FILED`, `OVERDUE`
 - **Document Analysis** — batch AI-assisted document review
 

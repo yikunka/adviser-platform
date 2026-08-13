@@ -14,6 +14,7 @@ const updateSchema = z.object({
   dateOfIncorporation: z.string().optional(),
   registeredAddress: z.string().max(500).optional(),
   businessNature: z.string().max(500).optional(),
+  financialYearEndMonth: z.union([z.literal(3), z.literal(12)]).optional().nullable(),
   status: z.enum(['ACTIVE', 'DORMANT', 'STRUCK_OFF', 'DEREGISTERED']).optional(),
   serviceTier: z.enum(['BASIC', 'PROFESSIONAL', 'PREMIUM']).optional(),
   financialEnabled: z.boolean().optional(),
@@ -43,11 +44,12 @@ export async function GET(
       designatedReps: { orderBy: { entryDate: 'asc' } },
       documents: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' } },
       fileCases: {
-        orderBy: { updatedAt: 'desc' },
+        // Null caseDate first, then ascending caseDate, then createdAt
+        orderBy: [{ caseDate: { sort: 'asc', nulls: 'first' } }, { createdAt: 'asc' }],
         include: {
           documents: {
             where: { deletedAt: null },
-            orderBy: { createdAt: 'desc' },
+            orderBy: [{ submissionDate: 'asc' }, { createdAt: 'asc' }],
           },
         },
       },

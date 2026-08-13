@@ -121,7 +121,6 @@ export default async function ClientCompanyDetailPage({ params }: Props) {
   ]
   const isGeneratedDoc = (doc: typeof company.documents[number]) => doc.name.startsWith(`${doc.documentType} —`)
   const latestGeneratedDoc = (docType: string) => company.documents.find(d => d.documentType === docType && isGeneratedDoc(d))
-  const annualReturnPrefill = latestGeneratedDoc('NAR1')
 
   return (
     <div className="p-6 space-y-6 max-w-4xl">
@@ -206,16 +205,6 @@ export default async function ClientCompanyDetailPage({ params }: Props) {
           <ClientYearGroupedDocList
             docs={company.documents.filter(d => d.documentType === 'AUDIT_TAX' && !isGeneratedDoc(d))}
           />
-        </div>
-
-        <div className="rounded-lg p-4 space-y-3" style={cardStyle}>
-          <div>
-            <h3 className="text-sm font-semibold" style={{ color: '#F0EAD8' }}>Annual Return Pre-fill</h3>
-            <p className="text-xs mt-1" style={{ color: '#5A5040' }}>
-              {annualReturnPrefill ? `Latest prepared ${fmt(annualReturnPrefill.createdAt)}` : 'The pre-fill document will appear when it is ready.'}
-            </p>
-          </div>
-          {annualReturnPrefill ? <DownloadLink id={annualReturnPrefill.id}>Download NAR1</DownloadLink> : <p className="text-sm" style={{ color: '#5A5040' }}>Not ready yet.</p>}
         </div>
       </section>
 
