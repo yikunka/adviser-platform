@@ -231,7 +231,7 @@ Customer-facing order option management for SFS Diamond.
 
 ### SFS Orders Admin (`/admin/sfs-orders`)
 Order lifecycle management for memorial diamond commissions.
-- List with search (client name / email / order ID); columns: status, sample code, memorial name, client, source type, colour, diamond count, creation date
+- List with search (client name / email / sample code) and **status filter** chips (`All` / `PENDING` / `QUOTED` / `CONFIRMED` / `COMPLETED` / `CANCELLED`); columns: status, sample code, memorial name, client, source type, colour, diamond count, creation date
 - Order detail shows the customer's self-entered internal order reference (read-only) when set
 - Order statuses: `PENDING` → `QUOTED` → `CONFIRMED` → `COMPLETED` / `CANCELLED`
 - Production phase tracking with milestone dates:

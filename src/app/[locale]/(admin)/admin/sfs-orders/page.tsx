@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from '@/i18n/navigation'
 import { Diamond, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 
+const STATUS_VALUES = ['PENDING', 'QUOTED', 'CONFIRMED', 'COMPLETED', 'CANCELLED'] as const
+
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   PENDING:   { bg: 'rgba(201,169,110,0.12)', color: '#C9A96E' },
   QUOTED:    { bg: 'rgba(59,130,246,0.12)',  color: '#3b82f6' },
@@ -51,13 +53,21 @@ export default function AdminSfsOrdersPage() {
   const [page, setPage]         = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [search, setSearch]     = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [status, setStatus]     = useState('')
   const [loading, setLoading]   = useState(true)
 
-  const fetchOrders = useCallback(async (q: string, p: number) => {
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), search ? 300 : 0)
+    return () => clearTimeout(t)
+  }, [search])
+
+  const fetchOrders = useCallback(async () => {
     setLoading(true)
     try {
-      const params = new URLSearchParams({ page: String(p) })
-      if (q) params.set('q', q)
+      const params = new URLSearchParams({ page: String(page) })
+      if (debouncedSearch) params.set('q', debouncedSearch)
+      if (status) params.set('status', status)
       const res = await fetch(`/api/sfsdiamond/admin/orders?${params}`)
       if (!res.ok) {
         console.error('SFS orders API error', res.status, await res.text())
@@ -72,19 +82,14 @@ export default function AdminSfsOrdersPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [debouncedSearch, status, page])
 
-  // Debounce search → reset to page 1
   useEffect(() => {
-    const t = setTimeout(() => { setPage(1); fetchOrders(search, 1) }, search ? 300 : 0)
-    return () => clearTimeout(t)
-  }, [search, fetchOrders])
+    void fetchOrders()
+  }, [fetchOrders])
 
-  // Re-fetch when page changes
-  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- fetchOrders updates state after the async request resolves.
-  useEffect(() => { fetchOrders(search, page) }, [page])
-
-  const totalPages = Math.ceil(total / pageSize)
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const hasFilter = Boolean(debouncedSearch || status)
 
   return (
     <div className="p-6 space-y-6">
@@ -95,25 +100,59 @@ export default function AdminSfsOrdersPage() {
             SFS Diamond Orders
           </h1>
           <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-            {total} order{total !== 1 ? 's' : ''} total
+            {total} order{total !== 1 ? 's' : ''}{status ? ` · ${status}` : ''}
           </p>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="rounded-xl p-4" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+      {/* Search + status filter */}
+      <div className="rounded-xl p-4 space-y-3" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
         <div className="relative max-w-sm">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
           <input
             type="text"
             value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search name, email, sample code, status…"
+            onChange={e => { setSearch(e.target.value); setPage(1) }}
+            placeholder="Search name, email, sample code…"
             className="w-full pl-8 pr-3 py-2 rounded-lg text-sm outline-none"
             style={{ background: '#0E0E0A', border: '1px solid #2A2418', color: 'var(--foreground)' }}
             onFocus={e => (e.currentTarget.style.borderColor = '#C9A96E')}
             onBlur={e  => (e.currentTarget.style.borderColor = '#2A2418')}
           />
+        </div>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by status">
+          <button
+            type="button"
+            onClick={() => { setStatus(''); setPage(1) }}
+            className="px-2.5 py-1 rounded-full text-xs font-semibold transition-colors"
+            style={{
+              background: !status ? 'rgba(201,169,110,0.2)' : 'rgba(201,169,110,0.06)',
+              color: !status ? '#C9A96E' : 'var(--muted-foreground)',
+              border: !status ? '1px solid #C9A96E' : '1px solid transparent',
+            }}
+          >
+            All
+          </button>
+          {STATUS_VALUES.map(s => {
+            const style = STATUS_STYLE[s]
+            const active = status === s
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => { setStatus(s); setPage(1) }}
+                className="px-2.5 py-1 rounded-full text-xs font-semibold transition-opacity"
+                style={{
+                  background: style.bg,
+                  color: style.color,
+                  border: active ? `1px solid ${style.color}` : '1px solid transparent',
+                  opacity: active || !status ? 1 : 0.5,
+                }}
+              >
+                {s}
+              </button>
+            )
+          })}
         </div>
       </div>
 
@@ -125,7 +164,7 @@ export default function AdminSfsOrdersPage() {
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <Diamond size={32} style={{ color: '#C9A96E', opacity: 0.4 }} />
             <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-              {search ? 'No orders match your search.' : 'No orders yet.'}
+              {hasFilter ? 'No orders match your filters.' : 'No orders yet.'}
             </p>
           </div>
         ) : (
