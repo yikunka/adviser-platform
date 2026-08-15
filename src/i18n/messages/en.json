@@ -1183,7 +1183,19 @@
         "falsePositive": "False Positive",
         "confirmed": "Confirmed",
         "escalated": "Escalated",
-        "pending": "Pending Review"
+        "pending": "Pending Review",
+        "notes": "Review Notes",
+        "notesPlaceholder": "Document your review findings...",
+        "supporting": "Supporting document",
+        "supportingHint": "Optional. Upload a PDF, JPG, or PNG (max 10MB) to support this resolution (e.g. false-positive memo or confirmation).",
+        "uploadFile": "Upload supporting file",
+        "changeFile": "Change file",
+        "removeFile": "Remove",
+        "noFileSelected": "No file selected",
+        "invalidFileType": "Invalid file type. Only PDF, JPG, PNG allowed.",
+        "fileTooLarge": "File too large. Max 10MB.",
+        "saved": "Resolution saved",
+        "saveFailed": "Failed to save resolution"
       }
     },
     "directors": {

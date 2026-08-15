@@ -877,6 +877,11 @@ model AMLAlert {
   reviewedById String?
   reviewedAt   DateTime?
   reviewNotes  String?
+  /// Optional supporting evidence uploaded when resolving a hit (e.g. PEP false-positive memo)
+  evidenceStorageKey String?
+  evidenceFileName   String?
+  evidenceMimeType   String?
+  evidenceFileSize   Int?
   isActive     Boolean            @default(true)
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt

@@ -1183,7 +1183,19 @@
         "falsePositive": "誤報",
         "confirmed": "已確認",
         "escalated": "已升級",
-        "pending": "待審查"
+        "pending": "待審查",
+        "notes": "審查備註",
+        "notesPlaceholder": "記錄審查發現…",
+        "supporting": "支持文件",
+        "supportingHint": "可選。上傳 PDF / JPG / PNG（最大 10MB）作為決議依據（例如誤報說明或確認文件）。",
+        "uploadFile": "上傳支持文件",
+        "changeFile": "更換文件",
+        "removeFile": "移除",
+        "noFileSelected": "尚未選擇文件",
+        "invalidFileType": "文件類型無效，僅支援 PDF、JPG、PNG。",
+        "fileTooLarge": "文件過大，最大 10MB。",
+        "saved": "決議已保存",
+        "saveFailed": "保存決議失敗"
       }
     },
     "directors": {

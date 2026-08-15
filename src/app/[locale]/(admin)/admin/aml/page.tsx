@@ -111,6 +111,7 @@ export default function AMLPage() {
   const [ingestResults, setIngestResults] = useState<SourceIngestResult[] | null>(null)
   const [showSources, setShowSources] = useState(false)
   const [showFatfSources, setShowFatfSources] = useState(true)
+  const [showPepScreening, setShowPepScreening] = useState(true)
   const [fatfLists, setFatfLists] = useState<FatfListPanel[]>([])
   const [expandedFatfKey, setExpandedFatfKey] = useState<string | null>(null)
   const [expandedSourceId, setExpandedSourceId] = useState<string | null>(null)
@@ -600,6 +601,73 @@ export default function AMLPage() {
                 </div>
               )
             })}
+          </div>
+        )}
+      </div>
+
+      {/* PEP screening — OpenSanctions Match API (not a local list) */}
+      <div className="rounded-lg overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+        <button
+          type="button"
+          className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
+          style={{ color: 'var(--foreground)', borderBottom: showPepScreening ? '1px solid #2A2418' : 'none' }}
+          onClick={() => setShowPepScreening(v => !v)}
+        >
+          <span>PEP Screening · OpenSanctions</span>
+          <span style={{ color: 'var(--muted-foreground)' }}>{showPepScreening ? '▲' : '▼'}</span>
+        </button>
+        {showPepScreening && (
+          <div className="px-4 py-4 space-y-3" style={{ background: '#0E0E0A' }}>
+            <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
+              PEP Screening
+            </p>
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--muted-foreground)' }}>
+              本篩查透過{' '}
+              <a
+                href="https://www.opensanctions.org/"
+                target="_blank"
+                rel="noreferrer"
+                className="hover:underline"
+                style={{ color: '#C9A96E' }}
+              >
+                OpenSanctions.org
+              </a>{' '}
+              API 執行（Match API · dataset <span className="font-mono">peps</span>），即時比對政治人物／PEP 名單。
+              非本機下載清單；於 KYC 第三步「PEP」或執行個人篩查時呼叫。
+            </p>
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--muted-foreground)' }}>
+              Screening is performed live via the{' '}
+              <a
+                href="https://www.opensanctions.org/docs/api/matching/"
+                target="_blank"
+                rel="noreferrer"
+                className="hover:underline"
+                style={{ color: '#C9A96E' }}
+              >
+                OpenSanctions.org Match API
+              </a>
+              {' '}(not a stored sanctions file). Requires <span className="font-mono">OPENSANCTIONS_API_KEY</span>.
+            </p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <a
+                href="https://www.opensanctions.org/"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium hover:underline"
+                style={{ borderColor: '#2A2418', color: '#C9A96E' }}
+              >
+                opensanctions.org →
+              </a>
+              <a
+                href="https://www.opensanctions.org/datasets/peps/"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium hover:underline"
+                style={{ borderColor: '#2A2418', color: '#C9A96E' }}
+              >
+                PEP dataset →
+              </a>
+            </div>
           </div>
         )}
       </div>

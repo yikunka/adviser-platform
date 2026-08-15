@@ -138,6 +138,23 @@ type KYCRecord = {
   companyLinks: Array<{
     company: { nameEn: string; clientUser: { id: string; email: string; nameEn: string } | null }
   }>
+  relatedCompanies?: RelatedCompany[]
+}
+
+type RelatedCompanyRole =
+  | 'CLIENT_ACCOUNT'
+  | 'LINKED'
+  | 'DIRECTOR'
+  | 'MEMBER'
+  | 'SIGNIFICANT_CONTROLLER'
+
+type RelatedCompany = {
+  id: string
+  nameEn: string
+  nameZh: string | null
+  companyNumber: string | null
+  status: string
+  roles: RelatedCompanyRole[]
 }
 
 const KYC_STATUS_OPTIONS = ['DRAFT', 'SUBMITTED', 'PENDING_INFO', 'APPROVED', 'REJECTED'] as const
@@ -167,7 +184,8 @@ const DOCUMENT_TYPE_LABEL: Record<string, string> = {
 }
 
 const REQUIRED_KYC_DOCUMENT_TYPES = ['KYC_ID', 'KYC_ADDRESS', 'KYC_DECLARATION'] as const
-const VISIBLE_KYC_DOCUMENT_TYPES = ['KYC_ID', 'KYC_ADDRESS', 'KYC_DECLARATION', 'KYC_OTHER', 'KYC_ADVERSE_MEDIA'] as const
+/** Identity / declaration uploads only — adverse media evidence lives under Screening step 4 */
+const VISIBLE_KYC_DOCUMENT_TYPES = ['KYC_ID', 'KYC_ADDRESS', 'KYC_DECLARATION', 'KYC_OTHER'] as const
 
 function documentTypeLabel(type: string) {
   return DOCUMENT_TYPE_LABEL[type] ?? type.replace(/^KYC_/, '').replace(/_/g, ' ')
@@ -244,6 +262,42 @@ function clientPortalAccount(r: KYCRecord): { email: string | null; name: string
   const u = r.companyLinks[0]?.company?.clientUser
   if (u?.email) return { email: u.email, name: u.nameEn }
   return { email: null, name: null }
+}
+
+function relatedCompanyRoleLabel(role: RelatedCompanyRole): string {
+  switch (role) {
+    case 'CLIENT_ACCOUNT':
+      return 'Client account'
+    case 'LINKED':
+      return 'Linked'
+    case 'DIRECTOR':
+      return 'Director'
+    case 'MEMBER':
+      return 'Member'
+    case 'SIGNIFICANT_CONTROLLER':
+      return 'SC'
+    default:
+      return role
+  }
+}
+
+function companyColumnLabel(r: KYCRecord): { text: string; title: string } {
+  const companies = r.relatedCompanies ?? []
+  if (companies.length === 0) {
+    const fallback = r.companyLinks[0]?.company.nameEn
+    return { text: fallback ?? '—', title: fallback ?? '' }
+  }
+  if (companies.length === 1) {
+    const c = companies[0]!
+    const title = `${c.nameEn}${c.roles.length ? ` (${c.roles.map(relatedCompanyRoleLabel).join(', ')})` : ''}`
+    return { text: c.nameEn, title }
+  }
+  const names = companies.map(c => c.nameEn)
+  const text = `${names[0]} +${companies.length - 1}`
+  const title = companies
+    .map(c => `${c.nameEn}${c.roles.length ? ` (${c.roles.map(relatedCompanyRoleLabel).join(', ')})` : ''}`)
+    .join('\n')
+  return { text, title }
 }
 
 function emptyKycPerson(): KycPersonInput {
@@ -975,7 +1029,14 @@ export default function KYCQueuePage() {
                     {client.name ? <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{client.name}</p> : null}
                   </td>
                   <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
-                    {r.companyLinks[0]?.company.nameEn ?? '—'}
+                    {(() => {
+                      const col = companyColumnLabel(r)
+                      return (
+                        <p className="max-w-48 truncate" title={col.title || undefined}>
+                          {col.text}
+                        </p>
+                      )
+                    })()}
                   </td>
                   <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
                     {r.kycDocuments.length}
@@ -1202,6 +1263,54 @@ export default function KYCQueuePage() {
                   </div>
                 )
               })()}
+
+              <div
+                className="rounded-lg px-3 py-3 space-y-2"
+                style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--muted-foreground)' }}>
+                  Related companies
+                </p>
+                {(selected.relatedCompanies ?? []).length === 0 ? (
+                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                    No companies linked via client account, director / member / SC, or company–KYC link.
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {(selected.relatedCompanies ?? []).map(co => (
+                      <li key={co.id} className="flex items-start justify-between gap-3 text-sm">
+                        <div className="min-w-0">
+                          <Link
+                            href={`/admin/companies/${co.id}`}
+                            className="font-medium hover:underline"
+                            style={{ color: '#C9A96E' }}
+                            onClick={e => e.stopPropagation()}
+                          >
+                            {co.nameEn}
+                          </Link>
+                          {co.nameZh ? (
+                            <p className="text-xs truncate" style={{ color: 'var(--muted-foreground)' }}>{co.nameZh}</p>
+                          ) : null}
+                          {co.companyNumber ? (
+                            <p className="text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{co.companyNumber}</p>
+                          ) : null}
+                        </div>
+                        <div className="shrink-0 flex flex-wrap justify-end gap-1">
+                          {co.roles.map(role => (
+                            <span
+                              key={role}
+                              className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                              style={{ background: 'rgba(201,169,110,0.12)', color: '#C9A96E' }}
+                            >
+                              {relatedCompanyRoleLabel(role)}
+                            </span>
+                          ))}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
 
               {editing && editValues ? (
                 <>
@@ -1437,7 +1546,9 @@ export default function KYCQueuePage() {
                   Screening (AML → FATF → PEP → Adverse media)
                 </p>
                 <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                  Run steps 1–3 in order, then complete manual adverse media. All four must be CLEAR before generating DDR.
+                  1 AML (sanctions) → 2 FATF → 3 PEP →{' '}
+                  <span style={{ color: 'var(--foreground)', fontWeight: 600 }}>4 Adverse media (manual)</span>.
+                  All four must be CLEAR before generating DDR.
                 </p>
                 {(() => {
                   const gate = amlData?.gate
@@ -1521,9 +1632,9 @@ export default function KYCQueuePage() {
                         )
                       })}
 
-                      {/* Step 4 — manual adverse media */}
+                      {/* Step 4 — manual adverse media (not Google API) */}
                       {(() => {
-                        const enabled = Boolean(gate?.canRunAdverseMedia)
+                        const canMark = Boolean(gate?.canRunAdverseMedia)
                         const status = gate?.adverseMedia
                         const result = status?.result
                         const resultColor =
@@ -1531,17 +1642,22 @@ export default function KYCQueuePage() {
                             : result === 'STRONG_HIT' ? '#ef4444'
                               : 'var(--muted-foreground)'
                         const loading = screenStepLoading === 'ADVERSE_MEDIA'
+                        const evidence = selected?.kycDocuments.filter(d => d.documentType === 'KYC_ADVERSE_MEDIA') ?? []
                         return (
                           <div
-                            className="rounded-lg border px-3 py-2.5 space-y-2"
-                            style={{ borderColor: '#2A2418', background: 'rgba(201,169,110,0.04)' }}
+                            className="rounded-lg border px-3 py-3 space-y-3"
+                            style={{ borderColor: '#2A2418', background: 'rgba(201,169,110,0.06)' }}
                           >
                             <div>
                               <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
-                                4. Adverse media · Manual review
+                                4. Adverse media · Manual screening
                               </p>
-                              <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
-                                Search news yourself (no Google API). Mark CLEAR or HIT. Supporting upload is optional.
+                              <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--muted-foreground)' }}>
+                                Done manually (search news yourself — no Google API). Upload supporting documents if needed, then mark{' '}
+                                <span style={{ color: '#10b981' }}>CLEAR</span>
+                                {' '}or{' '}
+                                <span style={{ color: '#ef4444' }}>HIT</span>
+                                . Marking unlocks after steps 1–3 are CLEAR.
                               </p>
                               {status?.checkedAt ? (
                                 <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
@@ -1555,54 +1671,25 @@ export default function KYCQueuePage() {
                                 <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>Not completed yet</p>
                               )}
                             </div>
-                            <textarea
-                              className="w-full rounded-md px-3 py-2 text-xs"
-                              style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: 'var(--foreground)', outline: 'none' }}
-                              rows={2}
-                              placeholder="Optional notes (sources checked, findings…)"
-                              value={adverseMediaNotes}
-                              onChange={e => setAdverseMediaNotes(e.target.value)}
-                              disabled={!enabled || amlLoading}
-                            />
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Button
-                                variant="outline"
-                                disabled={!enabled || amlLoading}
-                                onClick={() => void submitAdverseMedia('CLEAR')}
-                                className="text-xs h-7 px-3"
-                                style={{
-                                  borderColor: '#2A2418',
-                                  color: !enabled || amlLoading ? 'var(--muted-foreground)' : '#10b981',
-                                }}
-                              >
-                                {loading ? 'Saving…' : 'Mark CLEAR'}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                disabled={!enabled || amlLoading}
-                                onClick={() => void submitAdverseMedia('HIT')}
-                                className="text-xs h-7 px-3"
-                                style={{
-                                  borderColor: '#2A2418',
-                                  color: !enabled || amlLoading ? 'var(--muted-foreground)' : '#ef4444',
-                                }}
-                              >
-                                Mark HIT
-                              </Button>
+
+                            <div className="space-y-1.5">
+                              <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                                Supporting document (optional)
+                              </p>
                               <label
-                                className="inline-flex h-7 cursor-pointer items-center rounded-md border px-3 text-xs"
+                                className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border px-3 text-xs"
                                 style={{
                                   borderColor: '#2A2418',
-                                  color: !enabled || uploadingDocType ? 'var(--muted-foreground)' : '#C9A96E',
-                                  opacity: !enabled ? 0.5 : 1,
+                                  color: uploadingDocType ? 'var(--muted-foreground)' : '#C9A96E',
                                 }}
                               >
-                                {uploadingDocType === 'KYC_ADVERSE_MEDIA' ? 'Uploading…' : 'Upload evidence (optional)'}
+                                <Upload size={14} />
+                                {uploadingDocType === 'KYC_ADVERSE_MEDIA' ? 'Uploading…' : 'Upload PDF / JPG / PNG'}
                                 <input
                                   type="file"
                                   accept=".pdf,image/jpeg,image/png"
                                   className="hidden"
-                                  disabled={!enabled || Boolean(uploadingDocType)}
+                                  disabled={Boolean(uploadingDocType)}
                                   onChange={e => {
                                     const file = e.target.files?.[0] ?? null
                                     e.target.value = ''
@@ -1610,12 +1697,8 @@ export default function KYCQueuePage() {
                                   }}
                                 />
                               </label>
-                            </div>
-                            {selected && (() => {
-                              const evidence = selected.kycDocuments.filter(d => d.documentType === 'KYC_ADVERSE_MEDIA')
-                              if (evidence.length === 0) return null
-                              return (
-                                <ul className="space-y-1 pt-1">
+                              {evidence.length > 0 ? (
+                                <ul className="space-y-1">
                                   {evidence.map(doc => (
                                     <li key={doc.id} className="flex items-center justify-between gap-2 text-xs" style={{ color: 'var(--muted-foreground)' }}>
                                       <span className="truncate">{doc.fileName}</span>
@@ -1630,27 +1713,57 @@ export default function KYCQueuePage() {
                                     </li>
                                   ))}
                                 </ul>
-                              )
-                            })()}
-                            {amlData?.adverseMedia && amlData.adverseMedia.length > 0 ? (
-                              <div className="pt-1 space-y-1">
-                                <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
-                                  Prior auto findings (reference only)
-                                </p>
-                                {amlData.adverseMedia.map(hit => (
-                                  <a
-                                    key={hit.id}
-                                    href={hit.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="block text-xs hover:underline truncate"
-                                    style={{ color: '#C9A96E' }}
-                                  >
-                                    {hit.title}
-                                  </a>
-                                ))}
-                              </div>
-                            ) : null}
+                              ) : (
+                                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>No supporting file uploaded</p>
+                              )}
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                                Review notes (optional)
+                              </p>
+                              <textarea
+                                className="w-full rounded-md px-3 py-2 text-xs"
+                                style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: 'var(--foreground)', outline: 'none' }}
+                                rows={2}
+                                placeholder="Sources checked, findings, rationale…"
+                                value={adverseMediaNotes}
+                                onChange={e => setAdverseMediaNotes(e.target.value)}
+                                disabled={amlLoading}
+                              />
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Button
+                                variant="outline"
+                                disabled={!canMark || amlLoading}
+                                onClick={() => void submitAdverseMedia('CLEAR')}
+                                className="text-xs h-8 px-3"
+                                style={{
+                                  borderColor: 'rgba(16,185,129,0.35)',
+                                  color: !canMark || amlLoading ? 'var(--muted-foreground)' : '#10b981',
+                                }}
+                              >
+                                {loading ? 'Saving…' : 'Mark CLEAR'}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                disabled={!canMark || amlLoading}
+                                onClick={() => void submitAdverseMedia('HIT')}
+                                className="text-xs h-8 px-3"
+                                style={{
+                                  borderColor: 'rgba(239,68,68,0.35)',
+                                  color: !canMark || amlLoading ? 'var(--muted-foreground)' : '#ef4444',
+                                }}
+                              >
+                                Mark HIT
+                              </Button>
+                              {!canMark ? (
+                                <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                                  Complete AML → FATF → PEP (all CLEAR) first
+                                </span>
+                              ) : null}
+                            </div>
                           </div>
                         )
                       })()}

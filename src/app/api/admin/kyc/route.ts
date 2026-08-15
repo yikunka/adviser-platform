@@ -6,6 +6,7 @@ import { logAudit } from '@/lib/audit/logger'
 import { screenKeyPerson } from '@/lib/aml/screener'
 import { nextKycCode } from '@/lib/kyc/kyc-code'
 import { kycPersonDraftZod, kycPersonZod, inputToKeyPersonAdminUpdate } from '@/lib/kyc/personZod'
+import { getRelatedCompaniesForKeyPersons, getRelatedCompaniesForKeyPerson } from '@/lib/kyc/relatedCompanies'
 import { z } from 'zod'
 
 const createSchema = z.object({
@@ -120,7 +121,20 @@ export async function GET(req: NextRequest) {
     prisma.keyPerson.count({ where: idExpiryWhere() }),
   ])
 
-  return NextResponse.json({ records, total, page, limit, counts: { idExpiry: idExpiryCount } })
+  const relatedByPerson = await getRelatedCompaniesForKeyPersons(
+    records.map(r => ({
+      id: r.id,
+      submittedByUserId: r.submittedByUserId,
+      submittedByEmail: r.submittedByUser?.email ?? null,
+    })),
+  )
+
+  const enriched = records.map(r => ({
+    ...r,
+    relatedCompanies: relatedByPerson[r.id] ?? [],
+  }))
+
+  return NextResponse.json({ records: enriched, total, page, limit, counts: { idExpiry: idExpiryCount } })
 }
 
 export async function POST(req: NextRequest) {
@@ -182,5 +196,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json(created, { status: 201 })
+  const relatedCompanies = await getRelatedCompaniesForKeyPerson({
+    id: created.id,
+    submittedByUserId: created.submittedByUserId,
+    submittedByEmail: created.submittedByUser?.email ?? null,
+  })
+
+  return NextResponse.json({ ...created, relatedCompanies }, { status: 201 })
 }

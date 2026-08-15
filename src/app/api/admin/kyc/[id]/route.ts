@@ -5,6 +5,7 @@ import { logAudit } from '@/lib/audit/logger'
 import { createNotification } from '@/lib/notifications'
 import { nextKycCode } from '@/lib/kyc/kyc-code'
 import { kycPersonDraftZod, inputToKeyPersonAdminUpdate } from '@/lib/kyc/personZod'
+import { getRelatedCompaniesForKeyPerson } from '@/lib/kyc/relatedCompanies'
 import { z } from 'zod'
 
 const statusSchema = z.enum(['DRAFT', 'SUBMITTED', 'PENDING_INFO', 'APPROVED', 'REJECTED'])
@@ -61,7 +62,13 @@ export async function GET(
   })
   if (!record) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  return NextResponse.json(record)
+  const relatedCompanies = await getRelatedCompaniesForKeyPerson({
+    id: record.id,
+    submittedByUserId: record.submittedByUserId,
+    submittedByEmail: record.submittedByUser?.email ?? null,
+  })
+
+  return NextResponse.json({ ...record, relatedCompanies })
 }
 
 function isReviewBody(body: unknown): body is z.infer<typeof reviewSchema> {
@@ -180,7 +187,13 @@ export async function PATCH(
 
   await logAudit(session!.user.id, 'KYC_ADMIN_UPDATE', 'KeyPerson', id, before, keyPerson)
 
-  return NextResponse.json(keyPerson)
+  const relatedCompanies = await getRelatedCompaniesForKeyPerson({
+    id: keyPerson.id,
+    submittedByUserId: keyPerson.submittedByUserId,
+    submittedByEmail: keyPerson.submittedByUser?.email ?? null,
+  })
+
+  return NextResponse.json({ ...keyPerson, relatedCompanies })
 }
 
 export async function DELETE(
