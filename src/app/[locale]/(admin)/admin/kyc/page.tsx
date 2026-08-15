@@ -1426,7 +1426,7 @@ export default function KYCQueuePage() {
                     {
                       key: 'FATF',
                       title: '2. FATF · Black / Grey lists',
-                      hint: 'Enabled after AML is CLEAR',
+                      hint: 'Screens nationality, passport/ID place of issue, and place of birth (after AML CLEAR)',
                       enabled: Boolean(gate?.canRunFatf),
                       status: gate?.fatf,
                     },

@@ -33,6 +33,45 @@ function scoreNames(candidate: string, targets: string[]): number {
   return best
 }
 
+/** Jurisdiction / passport-country match: exact, containment, then fuzzy. */
+function scoreJurisdiction(subject: string, targets: string[]): number {
+  const normSubject = normalize(subject)
+  if (!normSubject) return 0
+  let best = 0
+  for (const t of targets) {
+    const normT = normalize(t)
+    if (!normT) continue
+    if (normSubject === normT) return 1
+    // e.g. "Tehran Iran" contains "Iran"; Chinese "伊朗德黑兰" contains "伊朗"
+    if (normSubject.includes(normT) || normT.includes(normSubject)) {
+      best = Math.max(best, 0.95)
+      continue
+    }
+    best = Math.max(best, compareTwoStrings(normSubject, normT))
+  }
+  return best
+}
+
+function personJurisdictionSubjects(person: {
+  nationality?: string | null
+  placeOfIssue?: string | null
+  placeOfBirth?: string | null
+}): string[] {
+  const values = [person.nationality, person.placeOfIssue, person.placeOfBirth]
+    .map(v => (typeof v === 'string' ? v.trim() : ''))
+    .filter(Boolean)
+  // De-dupe case-insensitively while keeping first spelling
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const v of values) {
+    const key = normalize(v)
+    if (!key || seen.has(key)) continue
+    seen.add(key)
+    out.push(v)
+  }
+  return out
+}
+
 function classify(score: number): AMLCheckResult | null {
   if (score >= STRONG_HIT_THRESHOLD) return 'STRONG_HIT'
   if (score >= POTENTIAL_HIT_THRESHOLD) return 'POTENTIAL_HIT'
@@ -82,11 +121,14 @@ export async function screenSubjectNames({
   dateOfBirth,
   entityType,
   scope = 'FULL',
+  matchMode = 'NAME',
 }: {
   names: string[]
   dateOfBirth?: Date | null
   entityType?: AMLEntityType
   scope?: Exclude<ScreenScope, 'PEP'>
+  /** NAME = person/company names; JURISDICTION = nationality / passport issue / birth place vs FATF countries */
+  matchMode?: 'NAME' | 'JURISDICTION'
 }): Promise<{ result: AMLCheckResult; matches: MatchDetail[] }> {
   const subjectNames = names.filter(Boolean)
 
@@ -109,6 +151,7 @@ export async function screenSubjectNames({
     throw new Error(`${label} screening cannot run because no records are loaded. Please ingest lists first.`)
   }
 
+  const scoreFn = matchMode === 'JURISDICTION' ? scoreJurisdiction : scoreNames
   const matches: MatchDetail[] = []
   let overallResult: AMLCheckResult = 'CLEAR'
 
@@ -116,7 +159,7 @@ export async function screenSubjectNames({
     const targets = [record.primaryName, ...record.aliases]
     let bestScore = 0
     for (const subjectName of subjectNames) {
-      const score = scoreNames(subjectName, targets)
+      const score = scoreFn(subjectName, targets)
       if (score > bestScore) bestScore = score
     }
 
@@ -124,7 +167,13 @@ export async function screenSubjectNames({
     if (!result) continue
 
     let finalResult = result
-    if (entityType !== 'ENTITY' && result === 'POTENTIAL_HIT' && dateOfBirth && record.dateOfBirth) {
+    if (
+      matchMode === 'NAME'
+      && entityType !== 'ENTITY'
+      && result === 'POTENTIAL_HIT'
+      && dateOfBirth
+      && record.dateOfBirth
+    ) {
       const sameYear = dateOfBirth.getFullYear() === record.dateOfBirth.getFullYear()
       const sameMonth = dateOfBirth.getMonth() === record.dateOfBirth.getMonth()
       if (sameYear && sameMonth) finalResult = 'STRONG_HIT'
@@ -136,6 +185,42 @@ export async function screenSubjectNames({
   }
 
   return { result: overallResult, matches }
+}
+
+async function screenPersonFatfJurisdictions(person: {
+  nationality?: string | null
+  placeOfIssue?: string | null
+  placeOfBirth?: string | null
+}): Promise<{ result: AMLCheckResult; matches: MatchDetail[] }> {
+  const jurisdictions = personJurisdictionSubjects(person)
+  if (jurisdictions.length === 0) {
+    throw new Error(
+      'FATF screening needs nationality, passport/ID place of issue, or place of birth on the KYC record',
+    )
+  }
+  return screenSubjectNames({
+    names: jurisdictions,
+    entityType: 'ENTITY',
+    scope: 'FATF',
+    matchMode: 'JURISDICTION',
+  })
+}
+
+function mergeScreenResults(
+  parts: Array<{ result: AMLCheckResult; matches: MatchDetail[] }>,
+): { result: AMLCheckResult; matches: MatchDetail[] } {
+  let overall: AMLCheckResult = 'CLEAR'
+  const matches: MatchDetail[] = []
+  const seen = new Set<string>()
+  for (const part of parts) {
+    if (RESULT_RANK[part.result] > RESULT_RANK[overall]) overall = part.result
+    for (const m of part.matches) {
+      if (seen.has(m.amlRecordId)) continue
+      seen.add(m.amlRecordId)
+      matches.push(m)
+    }
+  }
+  return { result: overall, matches }
 }
 
 async function persistCheckAndAlerts(opts: {
@@ -258,13 +343,41 @@ export async function screenKeyPerson(
     return pep.result
   }
 
-  const listScope = scope === 'FULL' ? 'FULL' : scope
-  const { result: overallResult, matches } = await screenSubjectNames({
-    names: subjectNames,
-    dateOfBirth: person.dateOfBirth,
-    entityType: 'INDIVIDUAL',
-    scope: listScope,
-  })
+  let overallResult: AMLCheckResult
+  let matches: MatchDetail[]
+  let listScope: Exclude<ScreenScope, 'PEP'>
+
+  if (scope === 'FATF') {
+    listScope = 'FATF'
+    ;({ result: overallResult, matches } = await screenPersonFatfJurisdictions(person))
+  } else if (scope === 'SANCTIONS') {
+    listScope = 'SANCTIONS'
+    ;({ result: overallResult, matches } = await screenSubjectNames({
+      names: subjectNames,
+      dateOfBirth: person.dateOfBirth,
+      entityType: 'INDIVIDUAL',
+      scope: 'SANCTIONS',
+      matchMode: 'NAME',
+    }))
+  } else {
+    // FULL: sanctions (name) + FATF (passport nationality / issue / birth place)
+    listScope = 'FULL'
+    const sanctions = await screenSubjectNames({
+      names: subjectNames,
+      dateOfBirth: person.dateOfBirth,
+      entityType: 'INDIVIDUAL',
+      scope: 'SANCTIONS',
+      matchMode: 'NAME',
+    })
+    let fatf: { result: AMLCheckResult; matches: MatchDetail[] } = { result: 'CLEAR', matches: [] }
+    try {
+      fatf = await screenPersonFatfJurisdictions(person)
+    } catch (err) {
+      // Missing jurisdiction fields: still allow FULL sanctions result; FATF step remains for three-step UI
+      console.warn(`[AML] FATF jurisdiction skip for KeyPerson ${keyPersonId}:`, (err as Error).message)
+    }
+    ;({ result: overallResult, matches } = mergeScreenResults([sanctions, fatf]))
+  }
 
   await persistCheckAndAlerts({
     subjectType: 'KEY_PERSON',
