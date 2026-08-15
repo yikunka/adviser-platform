@@ -112,6 +112,15 @@ enum AMLCheckTrigger {
   KYC_SUBMIT
 }
 
+/// Which list family a check was run against (three-step KYC review).
+enum AMLScreenScope {
+  SANCTIONS
+  FATF
+  PEP
+  /// Legacy combined screen (sanctions + FATF records together)
+  FULL
+}
+
 enum AMLAlertResolution {
   PENDING
   FALSE_POSITIVE
@@ -841,12 +850,16 @@ model AMLCheck {
   trigger       AMLCheckTrigger
   triggeredById String?
   result        AMLCheckResult
+  /// SANCTIONS | FATF | PEP | FULL — used to gate three-step KYC review
+  scope         AMLScreenScope  @default(FULL)
   matches       Json?
 
   keyPerson   KeyPerson? @relation("KeyPersonAMLCheck", fields: [keyPersonId], references: [id])
   company     Company?   @relation("CompanyAMLCheck", fields: [companyId], references: [id])
   triggeredBy User?      @relation("AMLCheckTrigger", fields: [triggeredById], references: [id])
 
+  @@index([keyPersonId, scope, checkedAt])
+  @@index([companyId, scope, checkedAt])
   @@map("aml_checks")
 }
 

@@ -44,12 +44,12 @@ export async function GET(
       designatedReps: { orderBy: { entryDate: 'asc' } },
       documents: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' } },
       fileCases: {
-        // Null caseDate first, then ascending caseDate, then createdAt
-        orderBy: [{ caseDate: { sort: 'asc', nulls: 'first' } }, { createdAt: 'asc' }],
+        // Undated first, then newest caseDate; then newest createdAt
+        orderBy: [{ caseDate: { sort: 'desc', nulls: 'first' } }, { createdAt: 'desc' }],
         include: {
           documents: {
             where: { deletedAt: null },
-            orderBy: [{ submissionDate: 'asc' }, { createdAt: 'asc' }],
+            orderBy: [{ submissionDate: 'desc' }, { createdAt: 'desc' }],
           },
         },
       },

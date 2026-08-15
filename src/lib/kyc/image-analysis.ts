@@ -4,20 +4,15 @@ import { access, mkdtemp, readFile, readdir, rm, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import path from 'path'
 import { promisify } from 'util'
+import {
+  buildKycAnalysisPrompt,
+  normalizeFullKycFields,
+  type KycAnalyzeDocRole,
+  type KycFullAnalysisFields,
+} from '@/lib/kyc/kyc-full-analysis'
 
-export type KycImageAnalysisFields = {
-  titlePrefix?: string
-  nameEn?: string
-  nameZh?: string
-  idType?: string
-  idNumber?: string
-  placeOfIssue?: string
-  placeOfBirth?: string
-  idExpiry?: string
-  dateOfBirth?: string
-  nationality?: string
-  homeAddress?: string
-}
+/** Alias kept for image-create callers. */
+export type KycImageAnalysisFields = KycFullAnalysisFields
 
 const KYC_IMAGE_MODEL = 'qwen3.5-flash'
 const MAX_TEXT_CHARS = 12000
@@ -33,14 +28,20 @@ const PDFTOPPM_CANDIDATES = [
   '/usr/bin/pdftoppm',
 ].filter(Boolean)
 
-export async function analyzeKycDocument(file: File): Promise<KycImageAnalysisFields> {
+export async function analyzeKycDocument(
+  file: File,
+  role: KycAnalyzeDocRole = 'GENERIC',
+): Promise<KycFullAnalysisFields> {
   if (file.type === 'application/pdf') {
-    return analyzeKycPdf(file)
+    return analyzeKycPdf(file, role)
   }
-  return analyzeKycImage(file)
+  return analyzeKycImage(file, role)
 }
 
-export async function analyzeKycImage(file: File): Promise<KycImageAnalysisFields> {
+export async function analyzeKycImage(
+  file: File,
+  role: KycAnalyzeDocRole = 'GENERIC',
+): Promise<KycFullAnalysisFields> {
   const apiKey = getBailianApiKey()
   if (!apiKey) return {}
 
@@ -61,7 +62,7 @@ export async function analyzeKycImage(file: File): Promise<KycImageAnalysisField
           content: [
             {
               type: 'text',
-              text: buildKycPrompt(),
+              text: buildKycAnalysisPrompt(role),
             },
             {
               type: 'image_url',
@@ -81,10 +82,13 @@ export async function analyzeKycImage(file: File): Promise<KycImageAnalysisField
 
   const data = await res.json()
   const raw = data?.choices?.[0]?.message?.content
-  return typeof raw === 'string' ? normalizeFields(parseJsonObject(raw)) : {}
+  return typeof raw === 'string' ? normalizeFullKycFields(parseJsonObject(raw)) : {}
 }
 
-async function analyzeKycPdf(file: File): Promise<KycImageAnalysisFields> {
+async function analyzeKycPdf(
+  file: File,
+  role: KycAnalyzeDocRole = 'GENERIC',
+): Promise<KycFullAnalysisFields> {
   const apiKey = getBailianApiKey()
   if (!apiKey) return {}
 
@@ -96,9 +100,8 @@ async function analyzeKycPdf(file: File): Promise<KycImageAnalysisFields> {
     {
       type: 'text',
       text: [
-        buildKycPrompt(),
+        buildKycAnalysisPrompt(role),
         text ? `Extracted PDF text:\n${text.slice(0, MAX_TEXT_CHARS)}` : '',
-        images.length > 0 ? `PDF rendered pages: ${images.map((_, i) => `page ${i + 1}`).join(', ')}` : '',
       ].filter(Boolean).join('\n\n'),
     },
   ]
@@ -130,16 +133,7 @@ async function analyzeKycPdf(file: File): Promise<KycImageAnalysisFields> {
 
   const data = await res.json()
   const raw = data?.choices?.[0]?.message?.content
-  return typeof raw === 'string' ? normalizeFields(parseJsonObject(raw)) : {}
-}
-
-function buildKycPrompt() {
-  return [
-    'Extract KYC identity information from this document.',
-    'Return strict JSON only with this shape:',
-    '{"titlePrefix":"","nameEn":"","nameZh":"","idType":"","idNumber":"","placeOfIssue":"","placeOfBirth":"","idExpiry":"YYYY-MM-DD","dateOfBirth":"YYYY-MM-DD","nationality":"","homeAddress":""}',
-    'Use HKID, PASSPORT, or OTHER for idType where possible. Leave unknown fields as empty strings.',
-  ].join('\n')
+  return typeof raw === 'string' ? normalizeFullKycFields(parseJsonObject(raw)) : {}
 }
 
 function getBailianApiKey() {
@@ -149,37 +143,6 @@ function getBailianApiKey() {
     process.env['ALIYUN_BAILIAN_API_KEY'] ??
     ''
   ).trim()
-}
-
-function normalizeFields(value: unknown): KycImageAnalysisFields {
-  const record = value && typeof value === 'object' ? value as Record<string, unknown> : {}
-  return {
-    titlePrefix: clean(record['titlePrefix']),
-    nameEn: clean(record['nameEn']),
-    nameZh: clean(record['nameZh']),
-    idType: clean(record['idType'])?.toUpperCase(),
-    idNumber: clean(record['idNumber']),
-    placeOfIssue: clean(record['placeOfIssue']),
-    placeOfBirth: clean(record['placeOfBirth']),
-    idExpiry: normalizeDate(clean(record['idExpiry'])),
-    dateOfBirth: normalizeDate(clean(record['dateOfBirth'])),
-    nationality: clean(record['nationality']),
-    homeAddress: clean(record['homeAddress']),
-  }
-}
-
-function clean(value: unknown) {
-  return typeof value === 'string' ? value.trim().replace(/\s+/g, ' ') : undefined
-}
-
-function normalizeDate(value: unknown) {
-  if (typeof value !== 'string' || !value.trim()) return undefined
-  const raw = value.trim()
-  const ymd = raw.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/)
-  if (ymd) return `${ymd[1]}-${ymd[2].padStart(2, '0')}-${ymd[3].padStart(2, '0')}`
-  const dmy = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/)
-  if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`
-  return undefined
 }
 
 function parseJsonObject(raw: string): unknown {
@@ -281,8 +244,8 @@ function extractPdfText(buffer: Buffer) {
   for (const match of source.matchAll(/stream\r?\n([\s\S]*?)\r?\nendstream/g)) {
     const raw = Buffer.from(match[1], 'latin1')
     const variants = [raw]
-    try { variants.push(inflateSync(raw)) } catch {}
-    try { variants.push(inflateRawSync(raw)) } catch {}
+    try { variants.push(inflateSync(raw)) } catch { /* ignore */ }
+    try { variants.push(inflateRawSync(raw)) } catch { /* ignore */ }
     for (const variant of variants) {
       const text = decodePdfStrings(variant.toString('latin1'))
       if (text) chunks.push(text)

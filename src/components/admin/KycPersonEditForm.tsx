@@ -104,13 +104,13 @@ export function KycPersonEditForm({ values, onChange, disabled }: Props) {
     <div className="space-y-6">
       <div>
         <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#C9A96E' }}>
-          Identity
+          A. Client Identity / 客戶身分
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="KYC Code">
             <TextInput value={values.kycCode} onChange={v => set('kycCode', v)} disabled={disabled} />
           </Field>
-          <Field label="Title">
+          <Field label="Title 稱謂">
             <KycTitleSelect
               value={values.titlePrefix}
               onChange={v => set('titlePrefix', v)}
@@ -127,29 +127,26 @@ export function KycPersonEditForm({ values, onChange, disabled }: Props) {
           <Field label="Other Name">
             <TextInput value={values.otherName} onChange={v => set('otherName', v)} disabled={disabled} />
           </Field>
-          <Field label="Chinese Name">
+          <Field label="Chinese Name 中文姓名">
             <TextInput value={values.nameZh} onChange={v => set('nameZh', v)} disabled={disabled} />
           </Field>
-          <Field label="ID Type">
-            <KycIdTypeSelect
-              value={values.idType}
-              onChange={v => set('idType', v)}
+          <Field label="Nationality 國籍" className="sm:col-span-2">
+            <KycCountrySelectField
+              value={values.nationality}
+              onChange={v => set('nationality', v)}
               disabled={disabled}
               fieldStyle={fieldStyle}
             />
           </Field>
-          <Field label="ID Number">
-            <TextInput value={values.idNumber} onChange={v => set('idNumber', v)} disabled={disabled} />
-          </Field>
-          <Field label="Place of Issue" className="sm:col-span-2">
-            <KycProvinceSelectField
-              value={values.placeOfIssue}
-              onChange={v => set('placeOfIssue', v)}
+          <Field label="Date of Birth 出生日期">
+            <DatePickerPopover
+              value={values.dateOfBirth ?? ''}
+              onChange={v => set('dateOfBirth', v)}
               disabled={disabled}
-              fieldStyle={fieldStyle}
+              style={fieldStyle}
             />
           </Field>
-          <Field label="Place of Birth" className="sm:col-span-2">
+          <Field label="Place of Birth 出生地">
             <KycProvinceSelectField
               value={values.placeOfBirth}
               onChange={v => set('placeOfBirth', v)}
@@ -157,7 +154,58 @@ export function KycPersonEditForm({ values, onChange, disabled }: Props) {
               fieldStyle={fieldStyle}
             />
           </Field>
-          <Field label="ID Expiry">
+          <Field label="Residential Address 住址" className="sm:col-span-2">
+            <TextArea value={values.homeAddress} onChange={v => set('homeAddress', v)} disabled={disabled} />
+          </Field>
+          <Field label="Correspondence Address 通訊地址" className="sm:col-span-2">
+            <TextArea value={values.contactAddress} onChange={v => set('contactAddress', v)} disabled={disabled} />
+          </Field>
+          <Field label="Home Phone 住宅電話">
+            <TextInput value={values.homePhone} onChange={v => set('homePhone', v)} disabled={disabled} />
+          </Field>
+          <Field label="Work Phone 辦公電話">
+            <TextInput value={values.workPhone} onChange={v => set('workPhone', v)} disabled={disabled} />
+          </Field>
+          <Field label="Mobile 手機">
+            <TextInput value={values.mobile} onChange={v => set('mobile', v)} disabled={disabled} />
+          </Field>
+          <Field label="Email 電郵">
+            <TextInput type="email" value={values.email} onChange={v => set('email', v)} disabled={disabled} />
+          </Field>
+          <Field label="WeChat 微信" className="sm:col-span-2">
+            <TextInput value={values.wechat} onChange={v => set('wechat', v)} disabled={disabled} />
+          </Field>
+          <Field label="Emergency Contact 緊急聯絡人" className="sm:col-span-2">
+            <TextInput value={values.emergencyContact} onChange={v => set('emergencyContact', v)} disabled={disabled} />
+          </Field>
+        </div>
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#C9A96E' }}>
+          B. Identity Document / 身分證明文件
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Document Type 證件類型">
+            <KycIdTypeSelect
+              value={values.idType}
+              onChange={v => set('idType', v)}
+              disabled={disabled}
+              fieldStyle={fieldStyle}
+            />
+          </Field>
+          <Field label="Document Number 證件號碼">
+            <TextInput value={values.idNumber} onChange={v => set('idNumber', v)} disabled={disabled} />
+          </Field>
+          <Field label="Place of Issue 簽發地" className="sm:col-span-2">
+            <KycProvinceSelectField
+              value={values.placeOfIssue}
+              onChange={v => set('placeOfIssue', v)}
+              disabled={disabled}
+              fieldStyle={fieldStyle}
+            />
+          </Field>
+          <Field label="Expiry Date 到期日">
             <div className="space-y-2">
               <DatePickerPopover
                 value={values.idExpiry ?? ''}
@@ -172,85 +220,19 @@ export function KycPersonEditForm({ values, onChange, disabled }: Props) {
                   onChange={e => onChange({ ...values, idExpiryPermanent: e.target.checked, idExpiry: e.target.checked ? '' : values.idExpiry })}
                   disabled={disabled}
                 />
-                Long-term
+                Long-term / 長期
               </label>
             </div>
           </Field>
-          <Field label="Date of Birth">
-            <DatePickerPopover
-              value={values.dateOfBirth ?? ''}
-              onChange={v => set('dateOfBirth', v)}
-              disabled={disabled}
-              style={fieldStyle}
-            />
-          </Field>
-          <Field label="Nationality" className="sm:col-span-2">
-            <KycCountrySelectField
-              value={values.nationality}
-              onChange={v => set('nationality', v)}
-              disabled={disabled}
-              fieldStyle={fieldStyle}
-            />
-          </Field>
-          <Field label="US Citizen" className="sm:col-span-2">
-            <KycUsCitizenRadios
-              value={values.isUsCitizen}
-              onChange={v => set('isUsCitizen', v)}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="PEP" className="sm:col-span-2">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                disabled={disabled}
-                checked={values.isPep ?? false}
-                onChange={e => set('isPep', e.target.checked)}
-                className="mt-0.5"
-              />
-              <span className="text-sm" style={{ color: 'var(--foreground)' }}>
-                Politically exposed person
-              </span>
-            </label>
-          </Field>
         </div>
       </div>
 
       <div>
         <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#C9A96E' }}>
-          Contact
+          C. Occupation / 職業
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Email">
-            <TextInput type="email" value={values.email} onChange={v => set('email', v)} disabled={disabled} />
-          </Field>
-          <Field label="Mobile">
-            <TextInput value={values.mobile} onChange={v => set('mobile', v)} disabled={disabled} />
-          </Field>
-          <Field label="Home Phone">
-            <TextInput value={values.homePhone} onChange={v => set('homePhone', v)} disabled={disabled} />
-          </Field>
-          <Field label="Work Phone">
-            <TextInput value={values.workPhone} onChange={v => set('workPhone', v)} disabled={disabled} />
-          </Field>
-          <Field label="WeChat" className="sm:col-span-2">
-            <TextInput value={values.wechat} onChange={v => set('wechat', v)} disabled={disabled} />
-          </Field>
-          <Field label="Contact Address" className="sm:col-span-2">
-            <TextArea value={values.contactAddress} onChange={v => set('contactAddress', v)} disabled={disabled} />
-          </Field>
-          <Field label="Emergency Contact" className="sm:col-span-2">
-            <TextInput value={values.emergencyContact} onChange={v => set('emergencyContact', v)} disabled={disabled} />
-          </Field>
-        </div>
-      </div>
-
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#C9A96E' }}>
-          Employment
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Status" className="sm:col-span-2">
+          <Field label="Employment Status 就業情況" className="sm:col-span-2">
             <KycEmploymentStatusSelect
               value={values.employmentStatus ?? ''}
               onChange={v => set('employmentStatus', v as KycPersonInput['employmentStatus'])}
@@ -266,16 +248,16 @@ export function KycPersonEditForm({ values, onChange, disabled }: Props) {
           </Field>
           {showEmploymentDetails ? (
             <>
-              <Field label="Employer" className="sm:col-span-2">
+              <Field label="Employer / Company 僱主/公司" className="sm:col-span-2">
                 <TextInput value={values.employerName} onChange={v => set('employerName', v)} disabled={disabled} />
               </Field>
-              <Field label="Employer Address" className="sm:col-span-2">
+              <Field label="Company Address 公司地址" className="sm:col-span-2">
                 <TextArea value={values.employerAddress} onChange={v => set('employerAddress', v)} disabled={disabled} />
               </Field>
-              <Field label="Position">
+              <Field label="Position 職位">
                 <TextInput value={values.position} onChange={v => set('position', v)} disabled={disabled} />
               </Field>
-              <Field label="Working Years">
+              <Field label="Years in Role 任職年數">
                 <input
                   type="number"
                   min={0}
@@ -290,7 +272,7 @@ export function KycPersonEditForm({ values, onChange, disabled }: Props) {
                   }}
                 />
               </Field>
-              <Field label="Business Natures" className="sm:col-span-2">
+              <Field label="Nature of Business 業務性質" className="sm:col-span-2">
                 <KycBusinessNaturesField
                   value={values.businessNaturesText}
                   onChange={v => set('businessNaturesText', v)}
@@ -305,10 +287,10 @@ export function KycPersonEditForm({ values, onChange, disabled }: Props) {
 
       <div>
         <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#C9A96E' }}>
-          Financial
+          D. Financial Profile / 財務狀況
         </p>
         <div className="space-y-4">
-          <Field label="Sources of Wealth">
+          <Field label="Source of Wealth 財富來源">
             <KycSourcesOfWealthField
               value={values.sourcesOfWealthText}
               onChange={v => set('sourcesOfWealthText', v)}
@@ -316,21 +298,24 @@ export function KycPersonEditForm({ values, onChange, disabled }: Props) {
               fieldStyle={fieldStyle}
             />
           </Field>
-          <Field label="Annual Income (USD)">
+          <Field label="Source of Funds 資金來源">
+            <TextArea value={values.sourceOfFunds} onChange={v => set('sourceOfFunds', v)} disabled={disabled} />
+          </Field>
+          <Field label="Annual Income (USD) 年收入">
             <KycAnnualIncomeRadios
               value={values.annualIncome}
               onChange={v => set('annualIncome', v)}
               disabled={disabled}
             />
           </Field>
-          <Field label="Net Asset Value (USD)">
+          <Field label="Net Assets (USD) 淨資產">
             <KycNetAssetRadios
               value={values.netAssetValue}
               onChange={v => set('netAssetValue', v)}
               disabled={disabled}
             />
           </Field>
-          <Field label="Asset Items">
+          <Field label="Main Asset Types 主要資產類別">
             <KycAssetItemsField
               value={values.assetItemsText}
               onChange={v => set('assetItemsText', v)}
@@ -342,13 +327,42 @@ export function KycPersonEditForm({ values, onChange, disabled }: Props) {
 
       <div>
         <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#C9A96E' }}>
-          Declaration
+          F. PEP / 政治人物
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Signature Name" className="sm:col-span-2">
+          <Field label="PEP" className="sm:col-span-2">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                disabled={disabled}
+                checked={values.isPep ?? false}
+                onChange={e => set('isPep', e.target.checked)}
+                className="mt-0.5"
+              />
+              <span className="text-sm" style={{ color: 'var(--foreground)' }}>
+                PEP / family member / close associate — 政治人物或其家庭成員/密切關係人
+              </span>
+            </label>
+          </Field>
+        </div>
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#C9A96E' }}>
+          G. Declaration / 聲明
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="US Citizen or US Tax Resident 美國公民或稅務居民" className="sm:col-span-2">
+            <KycUsCitizenRadios
+              value={values.isUsCitizen}
+              onChange={v => set('isUsCitizen', v)}
+              disabled={disabled}
+            />
+          </Field>
+          <Field label="Full Name (signature) 全名" className="sm:col-span-2">
             <TextInput value={values.signatureName} onChange={v => set('signatureName', v)} disabled={disabled} />
           </Field>
-          <Field label="Declaration Date">
+          <Field label="Date 日期">
             <DatePickerPopover
               value={values.declarationDate ?? ''}
               onChange={v => set('declarationDate', v)}
@@ -364,7 +378,7 @@ export function KycPersonEditForm({ values, onChange, disabled }: Props) {
                 onChange={e => set('declarationSigned', e.target.checked)}
                 disabled={disabled}
               />
-              Signed
+              Signed / 已簽署
             </label>
           </Field>
         </div>

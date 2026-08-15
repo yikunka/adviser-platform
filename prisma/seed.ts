@@ -24,9 +24,11 @@ async function main() {
     { seqNo: 12, nameEn: 'Australia Sanctions List (English)',         nameZh: '澳洲制裁名單（英文）',               sourceUrl: 'https://data.opensanctions.org/datasets/latest/au_dfat_sanctions/targets.simple.csv',                                                                              format: 'CSV' as const },
     // Official World Bank JSON now requires an API subscription key; use OpenSanctions daily mirror (same underlying list).
     { seqNo: 13, nameEn: 'World Bank Sanctions List (English)',        nameZh: '世界銀行制裁名單（英文）',           sourceUrl: 'https://data.opensanctions.org/datasets/latest/worldbank_debarred/targets.simple.csv',                                                                             format: 'CSV' as const },
-    // FATF publishes HTML only (no CSV/XML); fatf-gafi.org blocks bots — ingest loads bundled JSON via builtin: keys.
+    // 14–15 FATF builtin JSON
     { seqNo: 14, nameEn: 'FATF Black List (Call for Action)',          nameZh: 'FATF 黑名單（呼籲採取行動）',        sourceUrl: 'builtin:fatf-call-for-action',                                                                                                                                     format: 'JSON' as const },
     { seqNo: 15, nameEn: 'FATF Grey List (Increased Monitoring)',      nameZh: 'FATF 灰名單（加強監控）',            sourceUrl: 'builtin:fatf-increased-monitoring',                                                                                                                               format: 'JSON' as const },
+    // 16 OpenSanctions PEP via Match API (records upserted at screen time)
+    { seqNo: 16, nameEn: 'OpenSanctions PEP',                         nameZh: 'OpenSanctions 政治公眾人物',         sourceUrl: 'api:opensanctions/match/peps',                                                                                                                                    format: 'JSON' as const },
   ]
 
   for (const source of amlSources) {

@@ -40,7 +40,7 @@ Manages the full portfolio of client companies.
 - **Significant Controllers** — ROSC entries
 - **Designated Representatives** — company representatives
 - Generated ROD / ROM / ROSC documents automatically use linked KYC records as the source for natural persons' date of birth and place of birth
-- **File Cases** — document groupings for long-term / other case files on the company Files tab; listed with no `caseDate` first, then ascending `caseDate` (then created date); supporting files within a case follow submission/created date ascending; upload / download documents (CI, BR, AA, NNC1, ROD, ROM, ROSC, AR, NAR1, AUDIT_TAX, DDR, RESOLUTION, MINUTES, KYC, OTHER)
+- **File Cases** — document groupings for long-term / other case files on the company Files tab; listed undated first, then newest `caseDate`, then newest created date; supporting files within a case follow submission/created date descending; upload / download documents (CI, BR, AA, NNC1, ROD, ROM, ROSC, AR, NAR1, AUDIT_TAX, DDR, RESOLUTION, MINUTES, KYC, OTHER)
 - **Address Changes** — registered address change tracking; NND1 filing status
 - **Shareholder Changes** — ownership change tracking with filing status
 - **NAR1** — Annual return document upload (by year) and AI-assisted analysis/sync to company registers; no separate Annual Return Pre-fill download card
@@ -54,8 +54,11 @@ Know Your Customer compliance workflow.
 - List with search; columns: KYC code, name, status, PEP indicator, AML risk level, approval date
 - In the queue list status column, records with missing required KYC files show a red missing marker for ID proof, address proof, and/or declaration when the latest file for that type is absent or rejected
 - KYC statuses: `DRAFT` → `SUBMITTED` → `PENDING_INFO` → `APPROVED` / `REJECTED`
-- Each KYC record captures: personal info, ID type/number, address, employment, business nature, source of funds/wealth, asset declarations, declaration date
-- Upload and verify supporting documents (proof of ID, proof of address, etc.)
+- Detail / edit layout follows **KYC_Client.docx** sections: A Client Identity, B Identity Document, C Occupation, D Financial Profile, F PEP, G Declaration (section E purpose-of-relationship not yet stored as dedicated fields)
+- After uploading `KYC_ID`, `KYC_ADDRESS`, and/or `KYC_DECLARATION`, staff can run **Analyze docs**: Bailian extracts fields from the latest of each type, merges into an editable **draft** (declaration wins over ID/address on conflicts); nothing is saved until Confirm & save
+- **Three-step screening** on the KYC detail panel (manual, in order): **1 AML (sanctions lists)** → must be `CLEAR` → **2 FATF (black/grey)** → must be `CLEAR` → **3 PEP (OpenSanctions Match API `/match/peps`, requires `OPENSANCTIONS_API_KEY`)** → must be `CLEAR`; **Generate DDR** is enabled only after all three are CLEAR (DDR no longer auto-screens)
+- Each KYC record captures: personal info, ID type/number, residential/correspondence address, employment, business nature, source of funds/wealth, asset declarations, PEP, US tax residency, declaration date
+- Upload and verify supporting documents (proof of ID, proof of address, KYC declaration form, etc.)
 - Approve or reject with written reasons
 - View linked AML alerts directly from the KYC record
 - Export KYC data
@@ -69,8 +72,8 @@ Anti-Money Laundering and PEP screening and alert management. Admin nav/page tit
 - Alert details: match score, aliases, addresses, ID numbers, listing reason and date, source list info
 - Review: add notes, mark resolution
 - Data sources: XML, CSV, XLSX, JSON list formats; each source tracks last fetch date
-- Sanctions list status shows the original 13 sanctions sources (seq 1–13)
-- Below that, a separate FATF Lists panel shows FATF 黑名單（呼籲採取行動／Call for Action）and FATF 灰名單（加強監控／Increased Monitoring）— jurisdiction lists loaded from bundled JSON (FATF has no machine-readable export); update JSON after each FATF plenary
+- Sanctions list status shows the original 13 sanctions sources (seq 1–13); each source row expands to preview up to 50 DB records
+- Below that, a separate FATF Lists panel (always shown) expands to FATF 黑名單（呼籲採取行動／Call for Action）and FATF 灰名單（加強監控／Increased Monitoring）; each list expands to show jurisdiction names, aliases, listing reason and date from bundled JSON (FATF has no machine-readable export); update JSON after each FATF plenary
 - Adverse media / news screening (Google Custom Search): after sanctions match on KYC submit and manual screen (not daily cron unless `ADVERSE_MEDIA_ON_SCHEDULED=true`), searches subject names for crime / PEP / financial-fraud related public results; requires `GOOGLE_CSE_API_KEY` + `GOOGLE_CSE_CX`; hits stored in `adverse_media_findings` and written into company/person DDR section 1.3 (title, summary, link)
 - Trigger modes: manual (screen a subject on demand), KYC-triggered (auto-runs on KYC submission), scheduled cron
 - Ingest new AML lists from URL or local file

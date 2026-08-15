@@ -3,7 +3,7 @@ import { requireRole } from '@/lib/auth/rbac'
 import { logAudit } from '@/lib/audit/logger'
 import { uploadToR2 } from '@/lib/storage/r2'
 import { prisma } from '@/lib/db/prisma'
-import { screenKeyPerson } from '@/lib/aml/screener'
+import { getKeyPersonScreenGate } from '@/lib/aml/screener'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -26,9 +26,23 @@ export async function POST(req: NextRequest) {
   })
   if (!person) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  try {
-    await screenKeyPerson(keyPersonId, 'MANUAL', session!.user.id)
+  const gate = await getKeyPersonScreenGate(keyPersonId)
+  if (!gate.canGenerateDdr) {
+    const missing = [
+      !gate.sanctions.passed ? 'AML (sanctions)' : null,
+      !gate.fatf.passed ? 'FATF' : null,
+      !gate.pep.passed ? 'PEP' : null,
+    ].filter(Boolean)
+    return NextResponse.json(
+      {
+        error: `Complete three-step screening first (all CLEAR): missing ${missing.join(', ')}`,
+        gate,
+      },
+      { status: 400 },
+    )
+  }
 
+  try {
     const { generatePersonDDR } = await import('@/lib/docgen/ddr')
     const buffer = await generatePersonDDR(keyPersonId)
 

@@ -33,6 +33,38 @@ type AMLSource = {
   recordCount: number
 }
 
+type FatfListEntry = {
+  name: string
+  aliases: string[]
+  listingReason: string | null
+  listingDate: string | null
+}
+
+type FatfListPanel = {
+  seqNo: number
+  key: string
+  labelZh: string
+  labelEn: string
+  titleEn: string
+  titleZh: string
+  asOf: string | null
+  referenceUrl: string | null
+  sourceId: string | null
+  lastFetched: string | null
+  recordCountInDb: number
+  entries: FatfListEntry[]
+}
+
+type SourceRecordRow = {
+  id: string
+  primaryName: string
+  aliases: string[]
+  entityType: string
+  nationality: string | null
+  listingReason: string | null
+  listingDate: string | null
+}
+
 type SourceIngestResult = {
   seqNo: number
   nameEn: string
@@ -79,6 +111,10 @@ export default function AMLPage() {
   const [ingestResults, setIngestResults] = useState<SourceIngestResult[] | null>(null)
   const [showSources, setShowSources] = useState(false)
   const [showFatfSources, setShowFatfSources] = useState(true)
+  const [fatfLists, setFatfLists] = useState<FatfListPanel[]>([])
+  const [expandedFatfKey, setExpandedFatfKey] = useState<string | null>(null)
+  const [expandedSourceId, setExpandedSourceId] = useState<string | null>(null)
+  const [sourceRecords, setSourceRecords] = useState<Record<string, { total: number; records: SourceRecordRow[]; loading: boolean }>>({})
 
   const isFatfSource = (s: { seqNo: number; nameEn: string }) =>
     s.seqNo === 14 || s.seqNo === 15 || s.nameEn.toUpperCase().includes('FATF')
@@ -102,10 +138,57 @@ export default function AMLPage() {
     if (res.ok) setSources(await res.json())
   }, [])
 
+  const loadFatfLists = useCallback(async () => {
+    const res = await fetch('/api/aml/fatf-lists')
+    if (res.ok) {
+      const data = await res.json()
+      setFatfLists(Array.isArray(data.lists) ? data.lists : [])
+    }
+  }, [])
+
   // eslint-disable-next-line react-hooks/set-state-in-effect -- load updates state after the async request resolves.
   useEffect(() => { load() }, [load])
   // eslint-disable-next-line react-hooks/set-state-in-effect -- loadSources updates state after the async request resolves.
   useEffect(() => { loadSources() }, [loadSources])
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- loadFatfLists updates state after the async request resolves.
+  useEffect(() => { loadFatfLists() }, [loadFatfLists])
+
+  async function toggleSourceRecords(sourceId: string) {
+    if (expandedSourceId === sourceId) {
+      setExpandedSourceId(null)
+      return
+    }
+    setExpandedSourceId(sourceId)
+    if (sourceRecords[sourceId]?.records.length) return
+    setSourceRecords(prev => ({
+      ...prev,
+      [sourceId]: { total: prev[sourceId]?.total ?? 0, records: prev[sourceId]?.records ?? [], loading: true },
+    }))
+    try {
+      const res = await fetch(`/api/aml/sources/${sourceId}/records?page=1&pageSize=50`)
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setSourceRecords(prev => ({
+          ...prev,
+          [sourceId]: { total: 0, records: [], loading: false },
+        }))
+        return
+      }
+      setSourceRecords(prev => ({
+        ...prev,
+        [sourceId]: {
+          total: data.total ?? 0,
+          records: Array.isArray(data.records) ? data.records : [],
+          loading: false,
+        },
+      }))
+    } catch {
+      setSourceRecords(prev => ({
+        ...prev,
+        [sourceId]: { total: 0, records: [], loading: false },
+      }))
+    }
+  }
 
   async function handleIngest() {
     // Initialise all rows as pending immediately
@@ -155,6 +238,7 @@ export default function AMLPage() {
 
     setIngesting(false)
     loadSources()
+    loadFatfLists()
     load()
   }
 
@@ -208,6 +292,7 @@ export default function AMLPage() {
 
     setExtractingLocal(false)
     loadSources()
+    loadFatfLists()
     load()
   }
 
@@ -227,7 +312,7 @@ export default function AMLPage() {
   const fatfSources = displaySources.filter(s => isFatfSource(s))
 
   function renderSourceRows(rows: typeof displaySources) {
-    return rows.map(s => {
+    return rows.flatMap(s => {
       const r = s.ingestResult
       const statusBadge = r ? (
         r.status === 'ingesting'
@@ -253,12 +338,23 @@ export default function AMLPage() {
       ) : s.lastFetched
           ? <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[rgba(120,113,108,0.15)] text-[#9A8060]">—</span>
           : <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[rgba(245,158,11,0.12)] text-[#f59e0b]">Never fetched</span>
-      return (
+      const expanded = expandedSourceId === s.id
+      const bundle = sourceRecords[s.id]
+      const mainRow = (
         <tr key={s.id} className="hover:bg-[#1A1A12] transition-colors">
           <td className="px-4 py-2.5 font-mono text-xs" style={{ color: 'var(--muted-foreground)' }}>{s.seqNo}</td>
           <td className="px-4 py-2.5">
-            <p className="font-medium" style={{ color: 'var(--foreground)' }}>{s.nameEn}</p>
-            <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{s.nameZh}</p>
+            <button
+              type="button"
+              className="text-left w-full"
+              onClick={() => void toggleSourceRecords(s.id)}
+            >
+              <p className="font-medium flex items-center gap-2" style={{ color: 'var(--foreground)' }}>
+                <span style={{ color: '#C9A96E', fontSize: '0.7rem' }}>{expanded ? '▼' : '▶'}</span>
+                {s.nameEn}
+              </p>
+              <p className="text-xs pl-4" style={{ color: 'var(--muted-foreground)' }}>{s.nameZh}</p>
+            </button>
           </td>
           <td className="px-4 py-2.5 font-mono text-xs" style={{ color: 'var(--muted-foreground)' }}>{s.format}</td>
           <td className="px-4 py-2.5 text-xs" style={{ color: 'var(--muted-foreground)' }}>
@@ -270,6 +366,48 @@ export default function AMLPage() {
           <td className="px-4 py-2.5">{statusBadge}</td>
         </tr>
       )
+      if (!expanded) return [mainRow]
+      const detailRow = (
+        <tr key={`${s.id}-records`}>
+          <td colSpan={6} className="px-4 py-3" style={{ background: '#0E0E0A' }}>
+            {bundle?.loading ? (
+              <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Loading list content…</p>
+            ) : !bundle?.records.length ? (
+              <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>No records in database for this list.</p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                  Showing {bundle.records.length} of {bundle.total.toLocaleString()} records
+                </p>
+                <div className="max-h-64 overflow-y-auto rounded border border-[#2A2418]">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr style={{ background: '#1A1A12' }}>
+                        {['Name', 'Aliases', 'Type', 'Reason'].map(h => (
+                          <th key={h} className="px-3 py-2 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#2A2418]">
+                      {bundle.records.map(rec => (
+                        <tr key={rec.id}>
+                          <td className="px-3 py-1.5" style={{ color: 'var(--foreground)' }}>{rec.primaryName}</td>
+                          <td className="px-3 py-1.5" style={{ color: 'var(--muted-foreground)' }}>
+                            {rec.aliases?.slice(0, 3).join('; ') || '—'}
+                          </td>
+                          <td className="px-3 py-1.5" style={{ color: 'var(--muted-foreground)' }}>{rec.entityType}</td>
+                          <td className="px-3 py-1.5" style={{ color: 'var(--muted-foreground)' }}>{rec.listingReason || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </td>
+        </tr>
+      )
+      return [mainRow, detailRow]
     })
   }
 
@@ -286,6 +424,36 @@ export default function AMLPage() {
           </thead>
           <tbody className="divide-y divide-[#2A2418]">
             {renderSourceRows(rows)}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  function renderFatfEntryTable(entries: FatfListEntry[]) {
+    return (
+      <div className="max-h-80 overflow-y-auto rounded border border-[#2A2418]">
+        <table className="w-full text-xs">
+          <thead>
+            <tr style={{ background: '#1A1A12' }}>
+              {['Jurisdiction / 司法管轄區', 'Aliases / 別名', 'Listing reason', 'As of'].map(h => (
+                <th key={h} className="px-3 py-2 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#2A2418]">
+            {entries.map((e, i) => (
+              <tr key={`${e.name}-${i}`}>
+                <td className="px-3 py-2 font-medium" style={{ color: 'var(--foreground)' }}>{e.name}</td>
+                <td className="px-3 py-2" style={{ color: 'var(--muted-foreground)' }}>
+                  {e.aliases.length ? e.aliases.join('; ') : '—'}
+                </td>
+                <td className="px-3 py-2" style={{ color: 'var(--muted-foreground)' }}>{e.listingReason || '—'}</td>
+                <td className="px-3 py-2 whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>
+                  {e.listingDate || '—'}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -325,20 +493,116 @@ export default function AMLPage() {
         {showSources && renderSourceTable(sanctionsSources)}
       </div>
 
-      {/* FATF jurisdiction lists — separate from Sanctions Lists */}
-      {fatfSources.length > 0 && (
-        <div className="rounded-lg overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
-          <button
-            className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
-            style={{ color: 'var(--foreground)', borderBottom: showFatfSources ? '1px solid #2A2418' : 'none' }}
-            onClick={() => setShowFatfSources(v => !v)}
-          >
-            <span>FATF 名单状态 · FATF Lists ({fatfSources.length})</span>
-            <span style={{ color: 'var(--muted-foreground)' }}>{showFatfSources ? '▲' : '▼'}</span>
-          </button>
-          {showFatfSources && renderSourceTable(fatfSources)}
-        </div>
-      )}
+      {/* FATF jurisdiction lists — expandable content like sanctions status */}
+      <div className="rounded-lg overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+        <button
+          type="button"
+          className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
+          style={{ color: 'var(--foreground)', borderBottom: showFatfSources ? '1px solid #2A2418' : 'none' }}
+          onClick={() => setShowFatfSources(v => !v)}
+        >
+          <span>
+            FATF 黑名單與灰名單 · FATF Lists ({fatfLists.length || fatfSources.length || 2})
+          </span>
+          <span style={{ color: 'var(--muted-foreground)' }}>{showFatfSources ? '▲' : '▼'}</span>
+        </button>
+        {showFatfSources && (
+          <div className="divide-y divide-[#2A2418]">
+            {(fatfLists.length
+              ? fatfLists
+              : [
+                  {
+                    seqNo: 14,
+                    key: 'fatf-call-for-action',
+                    labelZh: 'FATF 黑名單（呼籲採取行動）',
+                    labelEn: 'Call for Action',
+                    titleEn: 'FATF Call for Action',
+                    titleZh: 'FATF 黑名單',
+                    asOf: null,
+                    referenceUrl: null,
+                    sourceId: fatfSources.find(s => s.seqNo === 14)?.id ?? null,
+                    lastFetched: null,
+                    recordCountInDb: fatfSources.find(s => s.seqNo === 14)?.recordCount ?? 0,
+                    entries: [] as FatfListEntry[],
+                  },
+                  {
+                    seqNo: 15,
+                    key: 'fatf-increased-monitoring',
+                    labelZh: 'FATF 灰名單（加強監控）',
+                    labelEn: 'Increased Monitoring',
+                    titleEn: 'FATF Increased Monitoring',
+                    titleZh: 'FATF 灰名單',
+                    asOf: null,
+                    referenceUrl: null,
+                    sourceId: fatfSources.find(s => s.seqNo === 15)?.id ?? null,
+                    lastFetched: null,
+                    recordCountInDb: fatfSources.find(s => s.seqNo === 15)?.recordCount ?? 0,
+                    entries: [] as FatfListEntry[],
+                  },
+                ]
+            ).map(list => {
+              const open = expandedFatfKey === list.key
+              const ingest = ingestResults?.find(r => r.seqNo === list.seqNo)
+              return (
+                <div key={list.key}>
+                  <button
+                    type="button"
+                    className="w-full flex items-start justify-between gap-3 px-4 py-3 text-left hover:bg-[#1A1A12] transition-colors"
+                    onClick={() => setExpandedFatfKey(open ? null : list.key)}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium flex items-center gap-2" style={{ color: 'var(--foreground)' }}>
+                        <span style={{ color: '#C9A96E', fontSize: '0.7rem' }}>{open ? '▼' : '▶'}</span>
+                        {list.labelZh}
+                      </p>
+                      <p className="text-xs pl-4 mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+                        {list.titleEn}
+                        {list.asOf ? ` · as of ${list.asOf}` : ''}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right space-y-1">
+                      <p className="text-xs font-mono" style={{ color: 'var(--foreground)' }}>
+                        {list.entries.length || list.recordCountInDb} jurisdictions
+                      </p>
+                      {ingest?.status === 'ok' ? (
+                        <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-[rgba(16,185,129,0.12)] text-[#10b981]">
+                          ✓ DB {ingest.totalInDb}
+                        </span>
+                      ) : list.recordCountInDb > 0 ? (
+                        <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-[rgba(120,113,108,0.15)] text-[#9A8060]">
+                          DB {list.recordCountInDb}
+                        </span>
+                      ) : null}
+                    </div>
+                  </button>
+                  {open ? (
+                    <div className="px-4 pb-4 space-y-2" style={{ background: '#0E0E0A' }}>
+                      {list.referenceUrl ? (
+                        <a
+                          href={list.referenceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs hover:underline"
+                          style={{ color: '#C9A96E' }}
+                        >
+                          FATF reference →
+                        </a>
+                      ) : null}
+                      {list.entries.length > 0
+                        ? renderFatfEntryTable(list.entries)
+                        : (
+                          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                            No jurisdiction entries loaded. Check bundled FATF JSON or run ingest.
+                          </p>
+                        )}
+                    </div>
+                  ) : null}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       <div className="flex gap-3">
         <Select value={result} onValueChange={v => setResult(v ?? 'all')}>

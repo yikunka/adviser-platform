@@ -2792,8 +2792,8 @@ export default function CompanyDetailPage() {
                       if (aMissing !== bMissing) return aMissing ? -1 : 1
                       const aTime = a.caseDate ? new Date(a.caseDate).getTime() : 0
                       const bTime = b.caseDate ? new Date(b.caseDate).getTime() : 0
-                      if (aTime !== bTime) return aTime - bTime
-                      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+                      if (aTime !== bTime) return bTime - aTime
+                      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                     })
                     .map(fc => {
                     const edit = caseEdits[fc.id] ?? {
@@ -2808,7 +2808,7 @@ export default function CompanyDetailPage() {
                       .sort((a, b) => {
                         const aTime = a.submissionDate ? new Date(a.submissionDate).getTime() : new Date(a.createdAt).getTime()
                         const bTime = b.submissionDate ? new Date(b.submissionDate).getTime() : new Date(b.createdAt).getTime()
-                        return aTime - bTime
+                        return bTime - aTime
                       })
                     const sf = getSupForm(fc.id, pastDocTypes)
 

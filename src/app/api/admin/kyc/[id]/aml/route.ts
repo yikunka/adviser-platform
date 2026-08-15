@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
-import { screenKeyPerson } from '@/lib/aml/screener'
+import { getKeyPersonScreenGate, screenKeyPerson, type ScreenScope } from '@/lib/aml/screener'
+import { z } from 'zod'
 
 const amlRecordSelect = {
   select: {
@@ -18,12 +19,16 @@ const amlRecordSelect = {
     listingDate: true,
     listVersionDate: true,
     rawData: true,
-    source: { select: { nameEn: true, sourceUrl: true } },
+    source: { select: { nameEn: true, sourceUrl: true, seqNo: true } },
   },
 }
 
+const postSchema = z.object({
+  step: z.enum(['SANCTIONS', 'FATF', 'PEP']).optional(),
+})
+
 async function getAMLData(keyPersonId: string) {
-  const [lastCheck, alerts, adverseMedia] = await Promise.all([
+  const [lastCheck, alerts, adverseMedia, gate] = await Promise.all([
     prisma.aMLCheck.findFirst({
       where: { keyPersonId, subjectType: 'KEY_PERSON' },
       orderBy: { checkedAt: 'desc' },
@@ -49,8 +54,9 @@ async function getAMLData(keyPersonId: string) {
         createdAt: true,
       },
     }),
+    getKeyPersonScreenGate(keyPersonId),
   ])
-  return { lastCheck, alerts, adverseMedia }
+  return { lastCheck, alerts, adverseMedia, gate }
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -62,7 +68,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   return NextResponse.json(data)
 }
 
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { session, error } = await requireRole('STAFF', { adminMenu: 'kyc' })
   if (error) return error
 
@@ -71,7 +77,40 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const person = await prisma.keyPerson.findUnique({ where: { id } })
   if (!person) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const result = await screenKeyPerson(id, 'MANUAL', session.user.id)
-  const data = await getAMLData(id)
-  return NextResponse.json({ result, ...data })
+  const body = await req.json().catch(() => ({}))
+  const parsed = postSchema.safeParse(body)
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
+
+  const step = (parsed.data.step ?? 'FULL') as ScreenScope
+  const gate = await getKeyPersonScreenGate(id)
+
+  if (step === 'FATF' && !gate.canRunFatf) {
+    return NextResponse.json(
+      { error: 'Run AML (sanctions) first and get CLEAR before FATF screening' },
+      { status: 400 },
+    )
+  }
+  if (step === 'PEP' && !gate.canRunPep) {
+    return NextResponse.json(
+      { error: 'Run AML and FATF first and get CLEAR before PEP screening' },
+      { status: 400 },
+    )
+  }
+
+  try {
+    const result = await screenKeyPerson(
+      id,
+      'MANUAL',
+      session!.user.id,
+      step === 'FULL' ? 'FULL' : step,
+    )
+    const data = await getAMLData(id)
+    return NextResponse.json({ result, step, ...data })
+  } catch (err) {
+    console.error('[admin/kyc/aml]', err)
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Screening failed' },
+      { status: 500 },
+    )
+  }
 }

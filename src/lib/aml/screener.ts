@@ -1,11 +1,16 @@
 import { compareTwoStrings } from 'string-similarity'
+import { createHash } from 'crypto'
 import { prisma } from '@/lib/db/prisma'
-import type { AMLEntityType, AMLCheckResult, AMLSubjectType } from '@prisma/client'
+import type { AMLCheckResult, AMLEntityType, AMLScreenScope, AMLSubjectType } from '@prisma/client'
 import { runAdverseMediaScreen, shouldRunAdverseMedia } from './adverseMedia'
+import { matchOpenSanctionsPep } from './openSanctionsPep'
 
 const STRONG_HIT_THRESHOLD = 0.98
 const POTENTIAL_HIT_THRESHOLD = 0.92
 const WEAK_HIT_THRESHOLD = 0.85
+
+const FATF_SEQ = [14, 15]
+const OPENSANCTIONS_PEP_SEQ = 16
 
 function normalize(name: string): string {
   return name
@@ -35,6 +40,13 @@ function classify(score: number): AMLCheckResult | null {
   return null
 }
 
+const RESULT_RANK: Record<AMLCheckResult, number> = {
+  CLEAR: 0,
+  WEAK_HIT: 1,
+  POTENTIAL_HIT: 2,
+  STRONG_HIT: 3,
+}
+
 export interface MatchDetail {
   amlRecordId: string
   primaryName: string
@@ -42,23 +54,59 @@ export interface MatchDetail {
   result: AMLCheckResult
 }
 
+export type ScreenScope = Extract<AMLScreenScope, 'SANCTIONS' | 'FATF' | 'PEP' | 'FULL'>
+
+async function ensureOpenSanctionsPepSource() {
+  return prisma.aMLSource.upsert({
+    where: { seqNo: OPENSANCTIONS_PEP_SEQ },
+    update: {
+      nameEn: 'OpenSanctions PEP',
+      nameZh: 'OpenSanctions 政治公眾人物',
+      sourceUrl: 'api:opensanctions/match/peps',
+      format: 'JSON',
+      isActive: true,
+    },
+    create: {
+      seqNo: OPENSANCTIONS_PEP_SEQ,
+      nameEn: 'OpenSanctions PEP',
+      nameZh: 'OpenSanctions 政治公眾人物',
+      sourceUrl: 'api:opensanctions/match/peps',
+      format: 'JSON',
+      isActive: true,
+    },
+  })
+}
+
 export async function screenSubjectNames({
   names,
   dateOfBirth,
   entityType,
+  scope = 'FULL',
 }: {
   names: string[]
   dateOfBirth?: Date | null
   entityType?: AMLEntityType
+  scope?: Exclude<ScreenScope, 'PEP'>
 }): Promise<{ result: AMLCheckResult; matches: MatchDetail[] }> {
   const subjectNames = names.filter(Boolean)
 
+  const sourceFilter =
+    scope === 'SANCTIONS'
+      ? { seqNo: { notIn: [...FATF_SEQ, OPENSANCTIONS_PEP_SEQ] } }
+      : scope === 'FATF'
+        ? { seqNo: { in: FATF_SEQ } }
+        : { seqNo: { notIn: [OPENSANCTIONS_PEP_SEQ] } }
+
   const records = await prisma.aMLRecord.findMany({
-    ...(entityType ? { where: { entityType } } : {}),
+    where: {
+      ...(entityType ? { entityType } : {}),
+      source: sourceFilter,
+    },
     select: { id: true, primaryName: true, aliases: true, dateOfBirth: true },
   })
   if (records.length === 0) {
-    throw new Error('AML screening cannot run because no sanctions records are loaded. Please ingest sanctions lists first.')
+    const label = scope === 'FATF' ? 'FATF' : scope === 'SANCTIONS' ? 'sanctions' : 'AML'
+    throw new Error(`${label} screening cannot run because no records are loaded. Please ingest lists first.`)
   }
 
   const matches: MatchDetail[] = []
@@ -84,46 +132,40 @@ export async function screenSubjectNames({
 
     matches.push({ amlRecordId: record.id, primaryName: record.primaryName, score: bestScore, result: finalResult })
 
-    const rank: Record<AMLCheckResult, number> = { CLEAR: 0, WEAK_HIT: 1, POTENTIAL_HIT: 2, STRONG_HIT: 3 }
-    if (rank[finalResult] > rank[overallResult]) overallResult = finalResult
+    if (RESULT_RANK[finalResult] > RESULT_RANK[overallResult]) overallResult = finalResult
   }
 
   return { result: overallResult, matches }
 }
 
-export async function screenKeyPerson(
-  keyPersonId: string,
-  trigger: 'SCHEDULED' | 'MANUAL' | 'KYC_SUBMIT',
+async function persistCheckAndAlerts(opts: {
+  subjectType: AMLSubjectType
+  keyPersonId?: string
+  companyId?: string
+  trigger: 'SCHEDULED' | 'MANUAL' | 'KYC_SUBMIT'
   triggeredById?: string
-): Promise<AMLCheckResult> {
-  const person = await prisma.keyPerson.findUnique({ where: { id: keyPersonId } })
-  if (!person) throw new Error(`KeyPerson ${keyPersonId} not found`)
-
-  const subjectNames = [person.nameEn, person.nameZh].filter(Boolean) as string[]
-
-  const { result: overallResult, matches } = await screenSubjectNames({
-    names: subjectNames,
-    dateOfBirth: person.dateOfBirth,
-    entityType: 'INDIVIDUAL',
-  })
-
+  scope: AMLScreenScope
+  result: AMLCheckResult
+  matches: MatchDetail[]
+}) {
   await prisma.aMLCheck.create({
     data: {
-      subjectType: 'KEY_PERSON' as AMLSubjectType,
-      keyPersonId,
-      trigger,
-      triggeredById,
-      result: overallResult,
-      matches: matches as never,
+      subjectType: opts.subjectType,
+      keyPersonId: opts.keyPersonId,
+      companyId: opts.companyId,
+      trigger: opts.trigger,
+      triggeredById: opts.triggeredById,
+      result: opts.result,
+      scope: opts.scope,
+      matches: opts.matches as never,
     },
   })
 
-  for (const match of matches) {
-    // Skip if an alert already exists for this subject + sanctions record combination.
-    // This prevents re-alerting on the same information when the alert has already
-    // been confirmed, escalated, or is still pending review.
+  for (const match of opts.matches) {
     const existing = await prisma.aMLAlert.findFirst({
-      where: { keyPersonId, amlRecordId: match.amlRecordId },
+      where: opts.keyPersonId
+        ? { keyPersonId: opts.keyPersonId, amlRecordId: match.amlRecordId }
+        : { companyId: opts.companyId!, amlRecordId: match.amlRecordId },
       select: { id: true },
     })
     if (existing) continue
@@ -131,15 +173,110 @@ export async function screenKeyPerson(
     await prisma.aMLAlert.create({
       data: {
         amlRecordId: match.amlRecordId,
-        subjectType: 'KEY_PERSON' as AMLSubjectType,
-        keyPersonId,
+        subjectType: opts.subjectType,
+        keyPersonId: opts.keyPersonId,
+        companyId: opts.companyId,
         matchScore: match.score,
         result: match.result,
       },
     })
   }
+}
 
-  if (shouldRunAdverseMedia(trigger)) {
+export async function screenKeyPerson(
+  keyPersonId: string,
+  trigger: 'SCHEDULED' | 'MANUAL' | 'KYC_SUBMIT',
+  triggeredById?: string,
+  scope: ScreenScope = 'FULL',
+): Promise<AMLCheckResult> {
+  const person = await prisma.keyPerson.findUnique({ where: { id: keyPersonId } })
+  if (!person) throw new Error(`KeyPerson ${keyPersonId} not found`)
+
+  const subjectNames = [person.nameEn, person.nameZh].filter(Boolean) as string[]
+
+  if (scope === 'PEP') {
+    const pep = await matchOpenSanctionsPep({
+      names: subjectNames,
+      dateOfBirth: person.dateOfBirth,
+      nationality: person.nationality,
+    })
+    if (pep.skipped) {
+      throw new Error(pep.skipReason || 'OPENSANCTIONS_API_KEY not set — cannot run PEP screening')
+    }
+
+    const source = await ensureOpenSanctionsPepSource()
+    const matches: MatchDetail[] = []
+    for (const hit of pep.hits) {
+      const recordHash = createHash('sha256').update(`opensanctions-pep:${hit.id}`).digest('hex')
+      const record = await prisma.aMLRecord.upsert({
+        where: { sourceId_recordHash: { sourceId: source.id, recordHash } },
+        update: {
+          primaryName: hit.caption,
+          aliases: hit.aliases,
+          listingReason: hit.topics.join(', ') || 'OpenSanctions PEP',
+          rawData: hit.raw as never,
+        },
+        create: {
+          sourceId: source.id,
+          listVersionDate: new Date(),
+          entityType: 'INDIVIDUAL',
+          primaryName: hit.caption,
+          aliases: hit.aliases,
+          nationality: hit.nationality,
+          listingReason: hit.topics.join(', ') || 'OpenSanctions PEP',
+          recordHash,
+          rawData: hit.raw as never,
+        },
+      })
+      matches.push({
+        amlRecordId: record.id,
+        primaryName: hit.caption,
+        score: hit.score,
+        result: pep.result === 'CLEAR' ? 'WEAK_HIT' : pep.result,
+      })
+    }
+
+    // Align match results with overall pep.result classification per hit score
+    const normalizedMatches = matches.map(m => {
+      let result: AMLCheckResult = 'WEAK_HIT'
+      if (m.score >= 0.85) result = 'STRONG_HIT'
+      else if (m.score >= 0.7) result = 'POTENTIAL_HIT'
+      else result = 'WEAK_HIT'
+      return { ...m, result }
+    })
+
+    await persistCheckAndAlerts({
+      subjectType: 'KEY_PERSON',
+      keyPersonId,
+      trigger,
+      triggeredById,
+      scope: 'PEP',
+      result: pep.result,
+      matches: normalizedMatches,
+    })
+
+    return pep.result
+  }
+
+  const listScope = scope === 'FULL' ? 'FULL' : scope
+  const { result: overallResult, matches } = await screenSubjectNames({
+    names: subjectNames,
+    dateOfBirth: person.dateOfBirth,
+    entityType: 'INDIVIDUAL',
+    scope: listScope,
+  })
+
+  await persistCheckAndAlerts({
+    subjectType: 'KEY_PERSON',
+    keyPersonId,
+    trigger,
+    triggeredById,
+    scope: listScope,
+    result: overallResult,
+    matches,
+  })
+
+  if (scope === 'FULL' && shouldRunAdverseMedia(trigger)) {
     try {
       await runAdverseMediaScreen({
         subjectType: 'KEY_PERSON',
@@ -157,7 +294,7 @@ export async function screenKeyPerson(
 export async function screenCompany(
   companyId: string,
   trigger: 'SCHEDULED' | 'MANUAL' | 'KYC_SUBMIT',
-  triggeredById?: string
+  triggeredById?: string,
 ): Promise<AMLCheckResult> {
   const company = await prisma.company.findUnique({
     where: { id: companyId },
@@ -170,37 +307,18 @@ export async function screenCompany(
   const { result: overallResult, matches } = await screenSubjectNames({
     names: subjectNames,
     entityType: 'ENTITY',
+    scope: 'FULL',
   })
 
-  await prisma.aMLCheck.create({
-    data: {
-      subjectType: 'COMPANY' as AMLSubjectType,
-      companyId,
-      trigger,
-      triggeredById,
-      result: overallResult,
-      matches: matches as never,
-    },
+  await persistCheckAndAlerts({
+    subjectType: 'COMPANY',
+    companyId,
+    trigger,
+    triggeredById,
+    scope: 'FULL',
+    result: overallResult,
+    matches,
   })
-
-  for (const match of matches) {
-    // Skip if an alert already exists for this subject + sanctions record combination.
-    const existing = await prisma.aMLAlert.findFirst({
-      where: { companyId, amlRecordId: match.amlRecordId },
-      select: { id: true },
-    })
-    if (existing) continue
-
-    await prisma.aMLAlert.create({
-      data: {
-        amlRecordId: match.amlRecordId,
-        subjectType: 'COMPANY' as AMLSubjectType,
-        companyId,
-        matchScore: match.score,
-        result: match.result,
-      },
-    })
-  }
 
   if (shouldRunAdverseMedia(trigger)) {
     try {
@@ -218,7 +336,7 @@ export async function screenCompany(
 }
 
 export async function screenAll(
-  trigger: 'SCHEDULED' | 'MANUAL' = 'SCHEDULED'
+  trigger: 'SCHEDULED' | 'MANUAL' = 'SCHEDULED',
 ): Promise<{ keyPersons: number; companies: number; hits: number }> {
   const [keyPersons, companies] = await Promise.all([
     prisma.keyPerson.findMany({ select: { id: true } }),
@@ -236,4 +354,54 @@ export async function screenAll(
   }
 
   return { keyPersons: keyPersons.length, companies: companies.length, hits }
+}
+
+/** Latest CLEAR required for each scope before DDR. */
+export async function getKeyPersonScreenGate(keyPersonId: string) {
+  const scopes: Array<'SANCTIONS' | 'FATF' | 'PEP'> = ['SANCTIONS', 'FATF', 'PEP']
+  const latest = await Promise.all(
+    scopes.map(async scope => {
+      const check = await prisma.aMLCheck.findFirst({
+        where: { keyPersonId, subjectType: 'KEY_PERSON', scope },
+        orderBy: { checkedAt: 'desc' },
+        select: { id: true, result: true, checkedAt: true, matches: true },
+      })
+      return { scope, check }
+    }),
+  )
+
+  const byScope = Object.fromEntries(
+    latest.map(({ scope, check }) => [
+      scope,
+      (() => {
+        const skipped = Boolean(
+          check?.matches
+          && typeof check.matches === 'object'
+          && !Array.isArray(check.matches)
+          && (check.matches as { skipped?: boolean }).skipped,
+        )
+        return check
+          ? {
+              result: check.result,
+              checkedAt: check.checkedAt,
+              // Skipped (e.g. missing API key) must never unlock the next step / DDR
+              passed: check.result === 'CLEAR' && !skipped,
+              skipped,
+            }
+          : { result: null, checkedAt: null, passed: false, skipped: false }
+      })(),
+    ]),
+  ) as Record<
+    'SANCTIONS' | 'FATF' | 'PEP',
+    { result: AMLCheckResult | null; checkedAt: Date | null; passed: boolean; skipped: boolean }
+  >
+
+  return {
+    sanctions: byScope.SANCTIONS,
+    fatf: byScope.FATF,
+    pep: byScope.PEP,
+    canRunFatf: byScope.SANCTIONS.passed,
+    canRunPep: byScope.SANCTIONS.passed && byScope.FATF.passed,
+    canGenerateDdr: byScope.SANCTIONS.passed && byScope.FATF.passed && byScope.PEP.passed,
+  }
 }

@@ -4,11 +4,12 @@ import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { ChevronLeft, ChevronRight, Download, Eye, Pencil, Plus, Search, Trash2, Upload, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Eye, Pencil, Plus, Search, Sparkles, Trash2, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { KycPersonEditForm } from '@/components/admin/KycPersonEditForm'
 import { keyPersonToFormValues, type KycPersonInput } from '@/lib/kyc/personZod'
+import { Link } from '@/i18n/navigation'
 
 type KYCDocument = {
   id: string
@@ -47,9 +48,26 @@ type AMLAlert = {
   }
 }
 
+type ScreenGateStep = {
+  result: string | null
+  checkedAt: string | null
+  passed: boolean
+  skipped: boolean
+}
+
+type ScreenGate = {
+  sanctions: ScreenGateStep
+  fatf: ScreenGateStep
+  pep: ScreenGateStep
+  canRunFatf: boolean
+  canRunPep: boolean
+  canGenerateDdr: boolean
+}
+
 type AMLData = {
-  lastCheck: { checkedAt: string; result: string } | null
+  lastCheck: { checkedAt: string; result: string; scope?: string } | null
   alerts: AMLAlert[]
+  gate?: ScreenGate
   adverseMedia?: Array<{
     id: string
     title: string
@@ -141,7 +159,7 @@ const STATUS_COLOR: Record<string, string> = {
 const DOCUMENT_TYPE_LABEL: Record<string, string> = {
   KYC_ID: 'ID',
   KYC_ADDRESS: 'Address',
-  KYC_DECLARATION: 'Declaration',
+  KYC_DECLARATION: 'KYC',
   KYC_OTHER: 'Other document',
 }
 
@@ -285,6 +303,7 @@ export default function KYCQueuePage() {
   const [loading, setLoading] = useState(false)
   const [amlData, setAmlData] = useState<AMLData | null>(null)
   const [amlLoading, setAmlLoading] = useState(false)
+  const [screenStepLoading, setScreenStepLoading] = useState<'SANCTIONS' | 'FATF' | 'PEP' | null>(null)
   const [clients, setClients] = useState<ClientAccount[]>([])
   const [createClientId, setCreateClientId] = useState('')
   const [createImage, setCreateImage] = useState<File | null>(null)
@@ -292,6 +311,8 @@ export default function KYCQueuePage() {
   const [generatingDdr, setGeneratingDdr] = useState(false)
   const [uploadingDocType, setUploadingDocType] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
+  const [analysisDraft, setAnalysisDraft] = useState(false)
+  const [analyzingDocs, setAnalyzingDocs] = useState(false)
   const [editValues, setEditValues] = useState<KycPersonInput | null>(null)
   const [editStatus, setEditStatus] = useState<KYCRecord['kycStatus']>('DRAFT')
   const [editClientId, setEditClientId] = useState('')
@@ -414,6 +435,7 @@ export default function KYCQueuePage() {
   async function selectRecord(r: KYCRecord) {
     setReason('')
     setEditing(false)
+    setAnalysisDraft(false)
     setEditValues(null)
     setSelected(r)
     void fetchAML(r.id)
@@ -428,20 +450,34 @@ export default function KYCQueuePage() {
     }
   }
 
-  async function runAMLScreen() {
+  async function runScreenStep(step: 'SANCTIONS' | 'FATF' | 'PEP') {
     if (!selected) return
+    setScreenStepLoading(step)
     setAmlLoading(true)
     try {
-      const res = await fetch(`/api/admin/kyc/${selected.id}/aml`, { method: 'POST' })
-      if (res.ok) setAmlData(await res.json())
-      else toast.error('AML screening failed')
+      const res = await fetch(`/api/admin/kyc/${selected.id}/aml`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ step }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(typeof json?.error === 'string' ? json.error : `${step} screening failed`)
+        return
+      }
+      setAmlData(json)
+      const result = typeof json?.result === 'string' ? json.result : '—'
+      if (result === 'CLEAR') toast.success(`${step} CLEAR`)
+      else toast.message(`${step}: ${result.replace('_', ' ')}`)
     } finally {
+      setScreenStepLoading(null)
       setAmlLoading(false)
     }
   }
 
   function startEdit() {
     if (!selected) return
+    setAnalysisDraft(false)
     setEditValues(keyPersonToFormValues(selected))
     setEditStatus(selected.kycStatus)
     setEditClientId(selected.submittedByUser?.id ?? selected.companyLinks[0]?.company.clientUser?.id ?? '')
@@ -450,9 +486,49 @@ export default function KYCQueuePage() {
 
   function cancelEdit() {
     setEditing(false)
+    setAnalysisDraft(false)
     setEditValues(null)
     setEditStatus('DRAFT')
     setEditClientId('')
+  }
+
+  async function analyzeUploadedDocs() {
+    if (!selected) return
+    const hasAny = selected.kycDocuments.some(d =>
+      REQUIRED_KYC_DOCUMENT_TYPES.includes(d.documentType as (typeof REQUIRED_KYC_DOCUMENT_TYPES)[number])
+      && d.status !== 'REJECTED',
+    )
+    if (!hasAny) {
+      toast.error('Upload ID, address proof, and/or KYC declaration first')
+      return
+    }
+    setAnalyzingDocs(true)
+    try {
+      const res = await fetch(`/api/admin/kyc/${selected.id}/analyze`, { method: 'POST' })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(typeof json?.error === 'string' ? json.error : 'Document analysis failed')
+        return
+      }
+      const draft = json.draft as KycPersonInput | undefined
+      if (!draft) {
+        toast.error('No draft returned from analysis')
+        return
+      }
+      setEditValues(draft)
+      setEditStatus(selected.kycStatus)
+      setEditClientId(selected.submittedByUser?.id ?? selected.companyLinks[0]?.company.clientUser?.id ?? '')
+      setAnalysisDraft(true)
+      setEditing(true)
+      const missing = REQUIRED_KYC_DOCUMENT_TYPES.filter(type => !json.sources?.[type])
+      if (missing.length) {
+        toast.message(`Draft ready — missing uploads: ${missing.map(documentTypeLabel).join(', ')}. Review and save.`)
+      } else {
+        toast.success('Draft filled from documents — review and save to apply')
+      }
+    } finally {
+      setAnalyzingDocs(false)
+    }
   }
 
   function startAdd() {
@@ -531,6 +607,7 @@ export default function KYCQueuePage() {
       setRecords(prev => prev.map(r => (r.id === updated.id ? updated : r)))
       fetchRecords()
       setEditing(false)
+      setAnalysisDraft(false)
       setEditValues(null)
       setEditStatus('DRAFT')
       setEditClientId('')
@@ -556,6 +633,7 @@ export default function KYCQueuePage() {
       setRecords(prev => prev.filter(r => r.id !== selected.id))
       setSelected(null)
       setEditing(false)
+      setAnalysisDraft(false)
       setEditValues(null)
       setEditStatus('DRAFT')
       setEditClientId('')
@@ -1003,7 +1081,7 @@ export default function KYCQueuePage() {
 
         {/* Right: collapsible detail + action panel */}
         {selected && (
-          <div className="fixed inset-0 z-50 flex justify-end bg-black/35" onClick={() => { setSelected(null); setEditing(false); setEditValues(null); setEditStatus('DRAFT'); setEditClientId('') }}>
+          <div className="fixed inset-0 z-50 flex justify-end bg-black/35" onClick={() => { setSelected(null); setEditing(false); setAnalysisDraft(false); setEditValues(null); setEditStatus('DRAFT'); setEditClientId('') }}>
             <Card
               className="h-full w-full max-w-2xl overflow-y-auto rounded-none border-y-0 border-r-0 shadow-2xl"
               onClick={e => e.stopPropagation()}
@@ -1030,6 +1108,17 @@ export default function KYCQueuePage() {
                         variant="outline"
                         className="h-8 gap-1.5 px-2.5 text-xs"
                         style={{ borderColor: '#2A2418', color: '#C9A96E' }}
+                        disabled={analyzingDocs}
+                        onClick={() => void analyzeUploadedDocs()}
+                      >
+                        <Sparkles size={14} />
+                        {analyzingDocs ? 'Analyzing…' : 'Analyze docs'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-8 gap-1.5 px-2.5 text-xs"
+                        style={{ borderColor: '#2A2418', color: '#C9A96E' }}
                         onClick={startEdit}
                       >
                         <Pencil size={14} />
@@ -1050,7 +1139,7 @@ export default function KYCQueuePage() {
                   ) : null}
                   <button
                     type="button"
-                    onClick={() => { setSelected(null); setEditing(false); setEditValues(null); setEditStatus('DRAFT'); setEditClientId('') }}
+                    onClick={() => { setSelected(null); setEditing(false); setAnalysisDraft(false); setEditValues(null); setEditStatus('DRAFT'); setEditClientId('') }}
                     className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#2A2418]"
                     aria-label="Close KYC details"
                   >
@@ -1084,6 +1173,14 @@ export default function KYCQueuePage() {
 
               {editing && editValues ? (
                 <>
+                  {analysisDraft ? (
+                    <div
+                      className="rounded-lg px-3 py-2 text-sm"
+                      style={{ background: 'rgba(201,169,110,0.12)', border: '1px solid rgba(201,169,110,0.35)', color: '#C9A96E' }}
+                    >
+                      Analysis draft from ID / address / KYC declaration — review and edit below, then Save to apply. Nothing is written until you save.
+                    </div>
+                  ) : null}
                   <div className="rounded-lg border border-[#2A2418] p-3">
                     <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
                       Client Account
@@ -1127,7 +1224,7 @@ export default function KYCQueuePage() {
                   />
                   <div className="flex gap-2 border-t pt-4" style={{ borderColor: '#2A2418' }}>
                     <Button disabled={savingEdit} onClick={saveEdit}>
-                      {savingEdit ? 'Saving…' : 'Save changes'}
+                      {savingEdit ? 'Saving…' : analysisDraft ? 'Confirm & save draft' : 'Save changes'}
                     </Button>
                     <Button variant="outline" disabled={savingEdit} onClick={cancelEdit}>
                       Cancel
@@ -1136,53 +1233,59 @@ export default function KYCQueuePage() {
                 </>
               ) : (
                 <>
-                  <DetailSection title="Identity">
+                  <DetailSection title="A. Client Identity / 客戶身分">
                     <DetailRow label="KYC Code" value={selected.kycCode} />
+                    <DetailRow label="Title" value={selected.titlePrefix} />
                     <DetailRow label="First Name" value={selected.firstName} />
                     <DetailRow label="Last Name" value={selected.lastName} />
                     <DetailRow label="Other Name" value={selected.otherName} />
                     <DetailRow label="Chinese Name" value={selected.nameZh} />
-                    <DetailRow label="ID Type" value={selected.idType} />
-                    <DetailRow label="ID Number" value={selected.idNumber} />
-                    <DetailRow label="Place of Issue" value={selected.placeOfIssue} />
-                    <DetailRow label="ID Expiry" value={selected.idExpiryDate ? new Date(selected.idExpiryDate).toLocaleDateString() : 'Long-term'} />
+                    <DetailRow label="Nationality" value={selected.nationality} />
                     <DetailRow label="Date of Birth" value={selected.dateOfBirth ? new Date(selected.dateOfBirth).toLocaleDateString() : null} />
                     <DetailRow label="Place of Birth" value={selected.placeOfBirth} />
-                    <DetailRow label="Nationality" value={selected.nationality} />
-                    <DetailRow label="US Citizen" value={selected.isUsCitizen == null ? null : selected.isUsCitizen ? 'Yes' : 'No'} />
-                    <DetailRow label="PEP" value={selected.isPep == null ? null : selected.isPep ? 'Yes' : 'No'} />
-                  </DetailSection>
-
-                  <DetailSection title="Contact">
-                    <DetailRow label="Email" value={selected.email} />
-                    <DetailRow label="Mobile" value={selected.mobile} />
+                    <DetailRow label="Residential Address" value={selected.homeAddress} />
+                    <DetailRow label="Correspondence Address" value={selected.contactAddress} />
                     <DetailRow label="Home Phone" value={selected.homePhone} />
                     <DetailRow label="Work Phone" value={selected.workPhone} />
+                    <DetailRow label="Mobile" value={selected.mobile} />
+                    <DetailRow label="Email" value={selected.email} />
                     <DetailRow label="WeChat" value={selected.wechat} />
-                    <DetailRow label="Contact Address" value={selected.contactAddress} />
                     <DetailRow label="Emergency Contact" value={selected.emergencyContact} />
                   </DetailSection>
 
-                  <DetailSection title="Employment">
-                    <DetailRow label="Status" value={selected.employmentStatus} />
-                    <DetailRow label="Employer" value={selected.employerName} />
-                    <DetailRow label="Employer Address" value={selected.employerAddress} />
+                  <DetailSection title="B. Identity Document / 身分證明文件">
+                    <DetailRow label="Document Type" value={selected.idType} />
+                    <DetailRow label="Document Number" value={selected.idNumber} />
+                    <DetailRow label="Place of Issue" value={selected.placeOfIssue} />
+                    <DetailRow label="Expiry Date" value={selected.idExpiryDate ? new Date(selected.idExpiryDate).toLocaleDateString() : 'Long-term'} />
+                  </DetailSection>
+
+                  <DetailSection title="C. Occupation / 職業">
+                    <DetailRow label="Employment Status" value={selected.employmentStatus} />
+                    <DetailRow label="Employer / Company" value={selected.employerName} />
+                    <DetailRow label="Company Address" value={selected.employerAddress} />
                     <DetailRow label="Position" value={selected.position} />
-                    <DetailRow label="Working Years" value={selected.workingYears != null ? String(selected.workingYears) : null} />
-                    <DetailRow label="Business Natures" value={selected.businessNatures?.join(', ') || null} />
+                    <DetailRow label="Years in Role" value={selected.workingYears != null ? String(selected.workingYears) : null} />
+                    <DetailRow label="Nature of Business" value={selected.businessNatures?.join(', ') || null} />
                   </DetailSection>
 
-                  <DetailSection title="Financial">
-                    <DetailRow label="Sources of Wealth" value={selected.sourcesOfWealth?.join(', ') || null} />
-                    <DetailRow label="Annual Income" value={selected.annualIncome} />
-                    <DetailRow label="Net Asset Value" value={selected.netAssetValue} />
-                    <DetailRow label="Assets" value={selected.assetItems?.join(', ') || null} />
+                  <DetailSection title="D. Financial Profile / 財務狀況">
+                    <DetailRow label="Source of Wealth" value={selected.sourcesOfWealth?.join(', ') || null} />
+                    <DetailRow label="Source of Funds" value={selected.sourceOfFunds} />
+                    <DetailRow label="Annual Income (USD)" value={selected.annualIncome} />
+                    <DetailRow label="Net Assets (USD)" value={selected.netAssetValue} />
+                    <DetailRow label="Main Asset Types" value={selected.assetItems?.join(', ') || null} />
                   </DetailSection>
 
-                  <DetailSection title="Declaration">
-                    <DetailRow label="Signature Name" value={selected.signatureName} />
+                  <DetailSection title="F. PEP / 政治人物">
+                    <DetailRow label="PEP" value={selected.isPep == null ? null : selected.isPep ? 'Yes' : 'No'} />
+                  </DetailSection>
+
+                  <DetailSection title="G. Declaration / 聲明">
+                    <DetailRow label="US Citizen / Tax Resident" value={selected.isUsCitizen == null ? null : selected.isUsCitizen ? 'Yes' : 'No'} />
+                    <DetailRow label="Full Name (signature)" value={selected.signatureName} />
                     <DetailRow
-                      label="Declaration Date"
+                      label="Date"
                       value={selected.declarationDate ? new Date(selected.declarationDate).toLocaleDateString() : null}
                     />
                     <DetailRow
@@ -1195,6 +1298,22 @@ export default function KYCQueuePage() {
 
               {/* Documents */}
               <DetailSection title="Documents">
+                <p className="mb-2 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                  Upload ID, address proof, and KYC declaration, then use Analyze docs to auto-fill a review draft.
+                </p>
+                <div className="mb-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-8 gap-1.5 px-2.5 text-xs"
+                    style={{ borderColor: '#2A2418', color: '#C9A96E' }}
+                    disabled={analyzingDocs || editing}
+                    onClick={() => void analyzeUploadedDocs()}
+                  >
+                    <Sparkles size={14} />
+                    {analyzingDocs ? 'Analyzing…' : 'Analyze ID + Address + KYC'}
+                  </Button>
+                </div>
                 <div className="grid gap-2 sm:grid-cols-4">
                   {VISIBLE_KYC_DOCUMENT_TYPES.map(docType => (
                     <label
@@ -1280,20 +1399,177 @@ export default function KYCQueuePage() {
                 })()}
               </DetailSection>
 
+              {/* Three-step screening: AML → FATF → PEP */}
+              <div className="border-t pt-4 space-y-3" style={{ borderColor: '#2A2418' }}>
+                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#C9A96E' }}>
+                  Screening (AML → FATF → PEP)
+                </p>
+                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                  Run each step in order. All three must be CLEAR before generating DDR.
+                </p>
+                {(() => {
+                  const gate = amlData?.gate
+                  const steps: Array<{
+                    key: 'SANCTIONS' | 'FATF' | 'PEP'
+                    title: string
+                    hint: string
+                    enabled: boolean
+                    status: ScreenGateStep | undefined
+                  }> = [
+                    {
+                      key: 'SANCTIONS',
+                      title: '1. AML · Sanctions lists',
+                      hint: 'OFAC / UN / HK / EU and other sanctions (excl. FATF)',
+                      enabled: true,
+                      status: gate?.sanctions,
+                    },
+                    {
+                      key: 'FATF',
+                      title: '2. FATF · Black / Grey lists',
+                      hint: 'Enabled after AML is CLEAR',
+                      enabled: Boolean(gate?.canRunFatf),
+                      status: gate?.fatf,
+                    },
+                    {
+                      key: 'PEP',
+                      title: '3. PEP · OpenSanctions',
+                      hint: 'Enabled after AML and FATF are CLEAR',
+                      enabled: Boolean(gate?.canRunPep),
+                      status: gate?.pep,
+                    },
+                  ]
+                  return (
+                    <div className="space-y-2">
+                      {steps.map(step => {
+                        const loading = screenStepLoading === step.key
+                        const result = step.status?.result
+                        const resultColor =
+                          result === 'CLEAR' ? '#10b981'
+                            : result === 'STRONG_HIT' ? '#ef4444'
+                              : result === 'POTENTIAL_HIT' ? '#f59e0b'
+                                : result === 'WEAK_HIT' ? '#eab308'
+                                  : 'var(--muted-foreground)'
+                        return (
+                          <div
+                            key={step.key}
+                            className="rounded-lg border px-3 py-2.5"
+                            style={{ borderColor: '#2A2418', background: 'rgba(201,169,110,0.04)' }}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{step.title}</p>
+                                <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{step.hint}</p>
+                                {step.status?.checkedAt ? (
+                                  <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
+                                    Last: {new Date(step.status.checkedAt).toLocaleString()}
+                                    {' · '}
+                                    <span style={{ color: resultColor, fontWeight: 600 }}>
+                                      {result ? result.replace('_', ' ') : '—'}
+                                      {step.status.skipped ? ' (API key skipped)' : ''}
+                                    </span>
+                                  </p>
+                                ) : (
+                                  <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>Not run yet</p>
+                                )}
+                              </div>
+                              <Button
+                                variant="outline"
+                                disabled={!step.enabled || amlLoading}
+                                onClick={() => void runScreenStep(step.key)}
+                                className="text-xs h-7 px-3 shrink-0"
+                                style={{
+                                  borderColor: '#2A2418',
+                                  color: !step.enabled || amlLoading ? 'var(--muted-foreground)' : '#C9A96E',
+                                }}
+                              >
+                                {loading ? 'Screening…' : `Run ${step.key === 'SANCTIONS' ? 'AML' : step.key}`}
+                              </Button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                })()}
+
+                {amlData && (
+                  <div className="space-y-2 pt-1">
+                    {amlData.alerts.length === 0 ? (
+                      <p className="text-xs rounded-lg px-3 py-2" style={{ background: 'rgba(16,185,129,0.08)', color: '#10b981' }}>
+                        No active screening hits
+                      </p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {amlData.alerts.map(alert => {
+                          const color = AML_HIT_COLOR[alert.result]
+                          return (
+                            <li
+                              key={alert.id}
+                              className="rounded-lg px-3 py-2.5 text-sm space-y-1.5"
+                              style={{ background: color?.bg ?? 'rgba(120,113,108,0.1)', border: `1px solid ${(color?.text ?? '#9A8060')}33` }}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="font-medium truncate" style={{ color: 'var(--foreground)' }}>
+                                    {alert.amlRecord.primaryName}
+                                  </p>
+                                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                                    {alert.amlRecord.entityType.replace('_', ' ')} · {alert.amlRecord.source.nameEn}
+                                  </p>
+                                </div>
+                                <span className="text-xs font-semibold shrink-0" style={{ color: color?.text ?? '#9A8060' }}>
+                                  {alert.result.replace('_', ' ')}
+                                  {alert.matchScore != null ? ` · ${(alert.matchScore * 100).toFixed(0)}%` : ''}
+                                </span>
+                              </div>
+                              {alert.amlRecord.aliases.length > 0 && (
+                                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                                  <span className="font-medium">Aliases:</span> {alert.amlRecord.aliases.join(', ')}
+                                </p>
+                              )}
+                              <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                                {alert.amlRecord.nationality && <span>Nationality: {alert.amlRecord.nationality}</span>}
+                                {alert.amlRecord.listingReason && <span>Reason: {alert.amlRecord.listingReason}</span>}
+                              </div>
+                              <Link
+                                href={`/admin/aml/${alert.id}`}
+                                className="inline-flex text-xs font-medium hover:underline"
+                                style={{ color: '#C9A96E' }}
+                              >
+                                Review alert →
+                              </Link>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Due Diligence Reports */}
               <div className="border-t pt-4" style={{ borderColor: '#2A2418' }}>
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#C9A96E' }}>Due Diligence Reports</p>
                   <Button
                     variant="outline"
-                    disabled={generatingDdr}
+                    disabled={generatingDdr || !amlData?.gate?.canGenerateDdr}
                     onClick={generatePersonDdr}
                     className="text-xs h-7 px-3"
-                    style={{ borderColor: '#2A2418', color: generatingDdr ? 'var(--muted-foreground)' : '#C9A96E' }}
+                    style={{
+                      borderColor: '#2A2418',
+                      color: generatingDdr || !amlData?.gate?.canGenerateDdr ? 'var(--muted-foreground)' : '#C9A96E',
+                    }}
+                    title={!amlData?.gate?.canGenerateDdr ? 'Complete AML → FATF → PEP (all CLEAR) first' : undefined}
                   >
                     {generatingDdr ? 'Generating…' : 'Generate DDR'}
                   </Button>
                 </div>
+                {!amlData?.gate?.canGenerateDdr ? (
+                  <p className="mb-2 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                    Unlock by running AML, FATF, and PEP — each must return CLEAR.
+                  </p>
+                ) : null}
                 {(() => {
                   const ddrDocs = selected.kycDocuments.filter(d => d.documentType === 'PERSON_DDR')
                   if (ddrDocs.length === 0) {
@@ -1345,177 +1621,43 @@ export default function KYCQueuePage() {
                 })()}
               </div>
 
-              {/* AML Screening */}
-              <div className="border-t pt-4" style={{ borderColor: '#2A2418' }}>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#C9A96E' }}>AML Screening</p>
-                  <Button
-                    variant="outline"
-                    disabled={amlLoading}
-                    onClick={runAMLScreen}
-                    className="text-xs h-7 px-3"
-                    style={{ borderColor: '#2A2418', color: amlLoading ? 'var(--muted-foreground)' : '#C9A96E' }}
-                  >
-                    {amlLoading ? 'Screening…' : 'Run Screen'}
-                  </Button>
-                </div>
-
-                {amlData && (
-                  <div className="space-y-2">
-                    {amlData.lastCheck && (
-                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        Last screened: {new Date(amlData.lastCheck.checkedAt).toLocaleString()}
-                        {' · '}
-                        <span style={{
-                          color: amlData.lastCheck.result === 'CLEAR' ? '#10b981'
-                            : amlData.lastCheck.result === 'STRONG_HIT' ? '#ef4444'
-                            : amlData.lastCheck.result === 'POTENTIAL_HIT' ? '#f59e0b'
-                            : '#eab308',
-                          fontWeight: 600,
-                        }}>
-                          {amlData.lastCheck.result.replace('_', ' ')}
-                        </span>
-                      </p>
-                    )}
-
-                    {amlData.alerts.length === 0 ? (
-                      <p className="text-xs rounded-lg px-3 py-2" style={{ background: 'rgba(16,185,129,0.08)', color: '#10b981' }}>
-                        No sanctions hits found
-                      </p>
-                    ) : (
-                      <ul className="space-y-2">
-                        {amlData.alerts.map(alert => {
-                          const color = AML_HIT_COLOR[alert.result]
-                          return (
-                            <li
-                              key={alert.id}
-                              className="rounded-lg px-3 py-2.5 text-sm space-y-1.5"
-                              style={{ background: color.bg, border: `1px solid ${color.text}33` }}
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <div>
-                                  <span className="font-semibold" style={{ color: 'var(--foreground)' }}>
-                                    {alert.amlRecord.primaryName}
-                                  </span>
-                                  <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
-                                    {alert.amlRecord.entityType.replace('_', ' ')} · {alert.amlRecord.source.nameEn}
-                                  </p>
-                                </div>
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                  <span
-                                    className="px-1.5 py-0.5 rounded text-xs font-semibold"
-                                    style={{ background: color.bg, color: color.text, border: `1px solid ${color.text}66` }}
-                                  >
-                                    {color.label}
-                                  </span>
-                                  {alert.matchScore != null && (
-                                    <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                                      {(alert.matchScore * 100).toFixed(0)}%
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-
-                              {alert.amlRecord.aliases.length > 0 && (
-                                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                                  <span className="font-medium">Aliases:</span> {alert.amlRecord.aliases.join(', ')}
-                                </p>
-                              )}
-
-                              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                                {alert.amlRecord.nationality && <span>Nationality: {alert.amlRecord.nationality}</span>}
-                                {alert.amlRecord.gender && <span>Gender: {alert.amlRecord.gender}</span>}
-                                {alert.amlRecord.dateOfBirth && (
-                                  <span>DOB: {new Date(alert.amlRecord.dateOfBirth).toLocaleDateString()}</span>
-                                )}
-                                {alert.amlRecord.placeOfBirth && <span>Place of birth: {alert.amlRecord.placeOfBirth}</span>}
-                                {alert.amlRecord.listingDate && (
-                                  <span>Listed: {new Date(alert.amlRecord.listingDate).toLocaleDateString()}</span>
-                                )}
-                                <span>List version: {new Date(alert.amlRecord.listVersionDate).toLocaleDateString()}</span>
-                              </div>
-
-                              {alert.amlRecord.listingReason && (
-                                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                                  <span className="font-medium">Reason:</span> {alert.amlRecord.listingReason}
-                                </p>
-                              )}
-
-                              <JsonBlock label="ID numbers" value={alert.amlRecord.idNumbers} />
-                              <JsonBlock label="Addresses" value={alert.amlRecord.addresses} />
-                              <JsonBlock label="Raw source record" value={alert.amlRecord.rawData} />
-
-                              <div className="flex items-center justify-between">
-                                <a
-                                  href={alert.amlRecord.source.sourceUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-xs hover:underline"
-                                  style={{ color: '#C9A96E' }}
-                                >
-                                  Source list
-                                </a>
-                                <span
-                                  className="text-xs px-1.5 py-0.5 rounded"
-                                  style={{
-                                    background: alert.resolution === 'PENDING' ? 'rgba(120,113,108,0.15)' : 'rgba(16,185,129,0.1)',
-                                    color: alert.resolution === 'PENDING' ? '#9A8060' : '#10b981',
-                                  }}
-                                >
-                                  {alert.resolution}
-                                </span>
-                              </div>
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    )}
-
-                    <div className="pt-2 space-y-2">
-                      <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
-                        Adverse media / 負面新聞
-                      </p>
-                      {!amlData.adverseMedia || amlData.adverseMedia.length === 0 ? (
-                        <p className="text-xs rounded-lg px-3 py-2" style={{ background: 'rgba(16,185,129,0.08)', color: '#10b981' }}>
-                          No crime / PEP / financial-fraud news hits
-                        </p>
-                      ) : (
-                        <ul className="space-y-2">
-                          {amlData.adverseMedia.map(hit => (
-                            <li
-                              key={hit.id}
-                              className="rounded-lg px-3 py-2.5 text-sm space-y-1"
-                              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}
-                            >
-                              <p className="font-semibold" style={{ color: 'var(--foreground)' }}>{hit.title}</p>
-                              <p className="text-xs" style={{ color: '#ef4444' }}>
-                                {hit.categories.join(' · ')}
-                                {hit.publisher ? ` · ${hit.publisher}` : ''}
-                              </p>
-                              {hit.snippet && (
-                                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{hit.snippet}</p>
-                              )}
-                              <a
-                                href={hit.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-xs hover:underline break-all"
-                                style={{ color: '#C9A96E' }}
-                              >
-                                {hit.url}
-                              </a>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {!amlData && !amlLoading && (
-                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                    Click &quot;Run Screen&quot; to check sanctions lists
+              {/* Adverse media */}
+              <div className="border-t pt-4 space-y-2" style={{ borderColor: '#2A2418' }}>
+                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#C9A96E' }}>
+                  Adverse media / 負面新聞
+                </p>
+                {!amlData?.adverseMedia || amlData.adverseMedia.length === 0 ? (
+                  <p className="text-xs rounded-lg px-3 py-2" style={{ background: 'rgba(16,185,129,0.08)', color: '#10b981' }}>
+                    No crime / PEP / financial-fraud news hits
                   </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {amlData.adverseMedia.map(hit => (
+                      <li
+                        key={hit.id}
+                        className="rounded-lg px-3 py-2.5 text-sm space-y-1"
+                        style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}
+                      >
+                        <p className="font-semibold" style={{ color: 'var(--foreground)' }}>{hit.title}</p>
+                        <p className="text-xs" style={{ color: '#ef4444' }}>
+                          {hit.categories.join(' · ')}
+                          {hit.publisher ? ` · ${hit.publisher}` : ''}
+                        </p>
+                        {hit.snippet && (
+                          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{hit.snippet}</p>
+                        )}
+                        <a
+                          href={hit.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs hover:underline break-all"
+                          style={{ color: '#C9A96E' }}
+                        >
+                          {hit.url}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
 
