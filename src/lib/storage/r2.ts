@@ -70,16 +70,6 @@ export function isLocalStorageEnabled(): boolean {
   return ossCredentialsMissing()
 }
 
-function getAppBaseUrl(): string {
-  const url = (
-    process.env['NEXT_PUBLIC_APP_URL']
-    ?? process.env['AUTH_URL']
-    ?? process.env['NEXTAUTH_URL']
-    ?? 'http://localhost:3000'
-  ).trim()
-  return url.replace(/\/$/, '')
-}
-
 function encodeStorageKeyPath(key: string): string {
   return key.split('/').map(part => encodeURIComponent(part)).join('/')
 }
@@ -180,22 +170,56 @@ export async function uploadToR2(
   )
 }
 
-export async function headObjectMeta(key: string): Promise<{ metadata: Record<string, string> } | null> {
+async function localObjectExists(key: string): Promise<boolean> {
+  try {
+    await access(resolveLocalPath(key))
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function ossObjectExists(key: string): Promise<boolean> {
+  if (!isOssConfigured()) return false
+  try {
+    await makeClient().send(new HeadObjectCommand({ Bucket: bucket(), Key: key }))
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * True when the object is readable from the active backend, or the other
+ * backend during mixed local/OSS migration (same fallback as GET /api/files).
+ */
+export async function storageObjectExists(key: string): Promise<boolean> {
   if (isLocalStorageEnabled()) {
+    if (await localObjectExists(key)) return true
+    return ossObjectExists(key)
+  }
+  if (await ossObjectExists(key)) return true
+  return localObjectExists(key)
+}
+
+export async function headObjectMeta(key: string): Promise<{ metadata: Record<string, string> } | null> {
+  if (!(await storageObjectExists(key))) return null
+
+  if (isLocalStorageEnabled() && (await localObjectExists(key))) {
+    return { metadata: {} }
+  }
+
+  if (isOssConfigured()) {
     try {
-      await access(resolveLocalPath(key))
-      return { metadata: {} }
+      const out = await makeClient().send(new HeadObjectCommand({ Bucket: bucket(), Key: key }))
+      return { metadata: out.Metadata ?? {} }
     } catch {
-      return null
+      // fall through to local empty meta when only local copy exists
     }
   }
 
-  try {
-    const out = await makeClient().send(new HeadObjectCommand({ Bucket: bucket(), Key: key }))
-    return { metadata: out.Metadata ?? {} }
-  } catch {
-    return null
-  }
+  if (await localObjectExists(key)) return { metadata: {} }
+  return null
 }
 
 export async function deleteFromR2(key: string): Promise<void> {
@@ -222,7 +246,8 @@ export async function getSignedDownloadUrl(
       const fileName = fileNameFromContentDisposition(disposition)
       if (fileName) params.set('filename', fileName)
     }
-    return `${getAppBaseUrl()}/api/files?${params.toString()}`
+    // Relative path keeps the browser on the same origin (session cookies).
+    return `/api/files?${params.toString()}`
   }
 
   return signOssDownloadUrl(key, expiresIn, opts)
@@ -235,7 +260,7 @@ export async function getSignedDownloadUrl(
 export function getStoredObjectUrl(key: string): string {
   if (isLocalStorageEnabled()) {
     const params = new URLSearchParams({ key })
-    return `${getAppBaseUrl()}/api/files?${params.toString()}`
+    return `/api/files?${params.toString()}`
   }
   return `${getOssBaseUrl()}/${encodeStorageKeyPath(key)}`
 }
@@ -251,6 +276,15 @@ async function signOssDownloadUrl(
     ResponseContentDisposition: opts?.responseContentDisposition,
   })
   return getSignedUrl(makeClient(), command, { expiresIn })
+}
+
+/** Always returns an OSS presigned URL (ignores local-storage mode). */
+export async function getOssPresignedDownloadUrl(
+  key: string,
+  expiresIn = 900,
+  opts?: { responseContentDisposition?: string },
+): Promise<string> {
+  return signOssDownloadUrl(key, expiresIn, opts)
 }
 
 /**

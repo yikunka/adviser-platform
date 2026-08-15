@@ -3,6 +3,7 @@ import { createHash } from 'crypto'
 import { prisma } from '@/lib/db/prisma'
 import type { AMLCheckResult, AMLEntityType, AMLScreenScope, AMLSubjectType } from '@prisma/client'
 import { runAdverseMediaScreen, shouldRunAdverseMedia } from './adverseMedia'
+import { loadAllFatfJurisdictionEntries } from './fatfLists'
 import { matchOpenSanctionsPep } from './openSanctionsPep'
 
 const STRONG_HIT_THRESHOLD = 0.98
@@ -187,6 +188,26 @@ export async function screenSubjectNames({
   return { result: overallResult, matches }
 }
 
+async function ensureFatfSource(seqNo: 14 | 15) {
+  const meta =
+    seqNo === 14
+      ? {
+          nameEn: 'FATF Black List (Call for Action)',
+          nameZh: 'FATF 黑名單（呼籲採取行動）',
+          sourceUrl: 'builtin:fatf-call-for-action',
+        }
+      : {
+          nameEn: 'FATF Grey List (Increased Monitoring)',
+          nameZh: 'FATF 灰名單（加強監控）',
+          sourceUrl: 'builtin:fatf-increased-monitoring',
+        }
+  return prisma.aMLSource.upsert({
+    where: { seqNo },
+    update: { ...meta, format: 'JSON', isActive: true },
+    create: { seqNo, ...meta, format: 'JSON', isActive: true },
+  })
+}
+
 async function screenPersonFatfJurisdictions(person: {
   nationality?: string | null
   placeOfIssue?: string | null
@@ -198,12 +219,64 @@ async function screenPersonFatfJurisdictions(person: {
       'FATF screening needs nationality, passport/ID place of issue, or place of birth on the KYC record',
     )
   }
-  return screenSubjectNames({
-    names: jurisdictions,
-    entityType: 'ENTITY',
-    scope: 'FATF',
-    matchMode: 'JURISDICTION',
-  })
+
+  // Same JSON the AML&PEP page displays — no DB ingest required
+  const entries = loadAllFatfJurisdictionEntries()
+  if (entries.length === 0) {
+    throw new Error('FATF bundled lists are empty — update fatf-*.json')
+  }
+
+  const matches: MatchDetail[] = []
+  let overallResult: AMLCheckResult = 'CLEAR'
+
+  for (const entry of entries) {
+    const targets = [entry.name, ...entry.aliases]
+    let bestScore = 0
+    for (const subject of jurisdictions) {
+      const score = scoreJurisdiction(subject, targets)
+      if (score > bestScore) bestScore = score
+    }
+
+    const hit = classify(bestScore)
+    if (!hit) continue
+
+    const source = await ensureFatfSource(entry.seqNo)
+    const recordHash = createHash('sha256')
+      .update(`fatf-json:${entry.seqNo}:${normalize(entry.name)}`)
+      .digest('hex')
+    const listingDate = entry.listingDate ? new Date(entry.listingDate) : null
+    const record = await prisma.aMLRecord.upsert({
+      where: { sourceId_recordHash: { sourceId: source.id, recordHash } },
+      update: {
+        primaryName: entry.name,
+        aliases: entry.aliases,
+        listingReason: entry.listingReason,
+        listingDate: listingDate && !Number.isNaN(listingDate.getTime()) ? listingDate : undefined,
+        rawData: entry as never,
+      },
+      create: {
+        sourceId: source.id,
+        listVersionDate: new Date(),
+        entityType: 'ENTITY',
+        primaryName: entry.name,
+        aliases: entry.aliases,
+        listingReason: entry.listingReason,
+        listingDate: listingDate && !Number.isNaN(listingDate.getTime()) ? listingDate : undefined,
+        recordHash,
+        rawData: entry as never,
+      },
+    })
+
+    matches.push({
+      amlRecordId: record.id,
+      primaryName: entry.name,
+      score: bestScore,
+      result: hit,
+    })
+    if (RESULT_RANK[hit] > RESULT_RANK[overallResult]) overallResult = hit
+  }
+
+  return { result: overallResult, matches }
 }
 
 function mergeScreenResults(
@@ -389,17 +462,8 @@ export async function screenKeyPerson(
     matches,
   })
 
-  if (scope === 'FULL' && shouldRunAdverseMedia(trigger)) {
-    try {
-      await runAdverseMediaScreen({
-        subjectType: 'KEY_PERSON',
-        keyPersonId,
-        names: subjectNames,
-      })
-    } catch (err) {
-      console.error(`[AML] Adverse media screen failed for KeyPerson ${keyPersonId}:`, (err as Error).message)
-    }
-  }
+  // Adverse media is a separate manual KYC step (no Google API required).
+  // Do not auto-run Google CSE on FULL / submit for key persons.
 
   return overallResult
 }
@@ -471,7 +535,12 @@ export async function screenAll(
 
 /** Latest CLEAR required for each scope before DDR. */
 export async function getKeyPersonScreenGate(keyPersonId: string) {
-  const scopes: Array<'SANCTIONS' | 'FATF' | 'PEP'> = ['SANCTIONS', 'FATF', 'PEP']
+  const scopes: Array<'SANCTIONS' | 'FATF' | 'PEP' | 'ADVERSE_MEDIA'> = [
+    'SANCTIONS',
+    'FATF',
+    'PEP',
+    'ADVERSE_MEDIA',
+  ]
   const latest = await Promise.all(
     scopes.map(async scope => {
       const check = await prisma.aMLCheck.findFirst({
@@ -505,16 +574,51 @@ export async function getKeyPersonScreenGate(keyPersonId: string) {
       })(),
     ]),
   ) as Record<
-    'SANCTIONS' | 'FATF' | 'PEP',
+    'SANCTIONS' | 'FATF' | 'PEP' | 'ADVERSE_MEDIA',
     { result: AMLCheckResult | null; checkedAt: Date | null; passed: boolean; skipped: boolean }
   >
 
+  const pepReady = byScope.SANCTIONS.passed && byScope.FATF.passed
   return {
     sanctions: byScope.SANCTIONS,
     fatf: byScope.FATF,
     pep: byScope.PEP,
+    adverseMedia: byScope.ADVERSE_MEDIA,
     canRunFatf: byScope.SANCTIONS.passed,
-    canRunPep: byScope.SANCTIONS.passed && byScope.FATF.passed,
-    canGenerateDdr: byScope.SANCTIONS.passed && byScope.FATF.passed && byScope.PEP.passed,
+    canRunPep: pepReady,
+    canRunAdverseMedia: pepReady && byScope.PEP.passed,
+    canGenerateDdr:
+      byScope.SANCTIONS.passed
+      && byScope.FATF.passed
+      && byScope.PEP.passed
+      && byScope.ADVERSE_MEDIA.passed,
   }
+}
+
+/** Manual adverse-media step (staff reviewed news offline; supporting docs optional). */
+export async function recordManualAdverseMedia(
+  keyPersonId: string,
+  outcome: 'CLEAR' | 'HIT',
+  triggeredById?: string,
+  notes?: string | null,
+): Promise<AMLCheckResult> {
+  const person = await prisma.keyPerson.findUnique({ where: { id: keyPersonId }, select: { id: true } })
+  if (!person) throw new Error(`KeyPerson ${keyPersonId} not found`)
+
+  const result: AMLCheckResult = outcome === 'CLEAR' ? 'CLEAR' : 'STRONG_HIT'
+  await prisma.aMLCheck.create({
+    data: {
+      subjectType: 'KEY_PERSON',
+      keyPersonId,
+      trigger: 'MANUAL',
+      triggeredById,
+      result,
+      scope: 'ADVERSE_MEDIA',
+      matches: {
+        manual: true,
+        notes: notes?.trim() || null,
+      } as never,
+    },
+  })
+  return result
 }

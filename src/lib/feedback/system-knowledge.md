@@ -56,13 +56,15 @@ Know Your Customer compliance workflow.
 - KYC statuses: `DRAFT` → `SUBMITTED` → `PENDING_INFO` → `APPROVED` / `REJECTED`
 - Detail / edit layout follows **KYC_Client.docx** sections: A Client Identity, B Identity Document, C Occupation, D Financial Profile, F PEP, G Declaration (section E purpose-of-relationship not yet stored as dedicated fields)
 - After uploading `KYC_ID`, `KYC_ADDRESS`, and/or `KYC_DECLARATION`, staff can run **Analyze docs**: Bailian extracts fields from the latest of each type, merges into an editable **draft** (declaration wins over ID/address on conflicts); nothing is saved until Confirm & save
-- **Three-step screening** on the KYC detail panel (manual, in order): **1 AML (sanctions lists by name)** → must be `CLEAR` → **2 FATF (black/grey jurisdictions)** matches **nationality, passport/ID place of issue, and place of birth** (not the person’s name) → must be `CLEAR` → **3 PEP (OpenSanctions Match API `/match/peps`, requires `OPENSANCTIONS_API_KEY`)** → must be `CLEAR`; **Generate DDR** is enabled only after all three are CLEAR (DDR no longer auto-screens)
+- **Four-step screening** on the KYC detail panel (manual, in order): **1 AML (sanctions by name)** → CLEAR → **2 FATF** (nationality / passport-ID place of issue / place of birth vs bundled black/grey JSON) → CLEAR → **3 PEP (OpenSanctions `/match/peps`, needs `OPENSANCTIONS_API_KEY`)** → CLEAR → **4 Adverse media (manual)** staff mark CLEAR or HIT after offline news review; optional supporting upload (`KYC_ADVERSE_MEDIA`); no Google API required → CLEAR; **Generate DDR** only when all four are CLEAR
+- **Person DDR** (`generatePersonDDR`) is an audit-oriented PDF: (1) identity & KYC documents, (2) screening evidence with separate proof blocks for Sanctions / FATF / PEP / Adverse media (result, timestamp, performer, inputs, matches or clear-screen statement — uses stored `aml_checks` by scope, does not re-screen or require Google CSE), (3) risk assessment, (4) four-step checklist conclusion, (5) data sources, (6) disclaimer
+- **Company DDR** (`generateDDR`) uses the same professional layout; includes ownership look-through tree; screens **UBOs with effective ownership > 25%** (AMLO), plus **all natural-person directors** and **all natural-person significant controllers**; each linked KYC person shows four-step evidence; company entity shows latest company AML check
 - Each KYC record captures: personal info, ID type/number, residential/correspondence address, employment, business nature, source of funds/wealth, asset declarations, PEP, US tax residency, declaration date
 - Upload and verify supporting documents (proof of ID, proof of address, KYC declaration form, etc.)
 - Approve or reject with written reasons
 - View linked AML alerts directly from the KYC record
 - Export KYC data
-- Generate compliance documents (DOCX): Due Diligence Reports (DDR), KYC summaries
+- Generate compliance documents (PDF): Due Diligence Reports (DDR), KYC summaries
 
 ### 4. AML&PEP篩查 (`/admin/aml`)
 Anti-Money Laundering and PEP screening and alert management. Admin nav/page title: `AML&PEP篩查` (EN: AML & PEP Screening).
@@ -74,7 +76,7 @@ Anti-Money Laundering and PEP screening and alert management. Admin nav/page tit
 - Data sources: XML, CSV, XLSX, JSON list formats; each source tracks last fetch date
 - Sanctions list status shows the original 13 sanctions sources (seq 1–13); each source row expands to preview up to 50 DB records
 - Below that, a separate FATF Lists panel (always shown) expands to FATF 黑名單（呼籲採取行動／Call for Action）and FATF 灰名單（加強監控／Increased Monitoring）; each list expands to show jurisdiction names, aliases, listing reason and date from bundled JSON (FATF has no machine-readable export); update JSON after each FATF plenary
-- Adverse media / news screening (Google Custom Search): after sanctions match on KYC submit and manual screen (not daily cron unless `ADVERSE_MEDIA_ON_SCHEDULED=true`), searches subject names for crime / PEP / financial-fraud related public results; requires `GOOGLE_CSE_API_KEY` + `GOOGLE_CSE_CX`; hits stored in `adverse_media_findings` and written into company/person DDR section 1.3 (title, summary, link)
+- Adverse media / news: Google Custom Search remains optional for company/legacy flows when `GOOGLE_CSE_API_KEY` + `GOOGLE_CSE_CX` are set; **person KYC step 4 is manual** (staff mark CLEAR/HIT). Hits stored in `adverse_media_findings` can still appear in DDR section 1.3 when present
 - Trigger modes: manual (screen a subject on demand), KYC-triggered (auto-runs on KYC submission), scheduled cron
 - Ingest new AML lists from URL or local file
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
-import { getSignedDownloadUrl } from '@/lib/storage/r2'
+import { getSignedDownloadUrl, storageObjectExists } from '@/lib/storage/r2'
 
 export async function GET(
   req: NextRequest,
@@ -30,9 +30,17 @@ export async function GET(
     }
   }
 
+  if (!(await storageObjectExists(doc.storageKey))) {
+    return NextResponse.json(
+      { error: 'File not found', code: 'STORAGE_MISSING' },
+      { status: 404 },
+    )
+  }
+
   const url = await getSignedDownloadUrl(doc.storageKey, 900)
   if (req.nextUrl.searchParams.get('redirect') === '1') {
-    return NextResponse.redirect(url)
+    const absolute = url.startsWith('http') ? url : new URL(url, req.nextUrl.origin).toString()
+    return NextResponse.redirect(absolute)
   }
   return NextResponse.json({ url })
 }

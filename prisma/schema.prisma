@@ -112,11 +112,13 @@ enum AMLCheckTrigger {
   KYC_SUBMIT
 }
 
-/// Which list family a check was run against (three-step KYC review).
+/// Which list family a check was run against (four-step KYC review).
 enum AMLScreenScope {
   SANCTIONS
   FATF
   PEP
+  /// Manual adverse-media review (no Google API required)
+  ADVERSE_MEDIA
   /// Legacy combined screen (sanctions + FATF records together)
   FULL
 }

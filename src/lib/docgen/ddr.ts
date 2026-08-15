@@ -6,6 +6,10 @@ import * as pdfLibFontkit from '@pdf-lib/fontkit'
 import { prisma } from '@/lib/db/prisma'
 import { screenSubjectNames } from '@/lib/aml/screener'
 import {
+  collectCompanyDdrScreeningSubjects,
+  type OwnershipNode,
+} from '@/lib/aml/ownershipLookThrough'
+import {
   isAdverseMediaConfigured,
   listAdverseMediaForSubjects,
   runAdverseMediaScreen,
@@ -755,242 +759,36 @@ function field(ps: PageState, label: string, value: string, valueColor?: ReturnT
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export async function generateDDR(companyId: string, ddrId?: string): Promise<Buffer> {
-  // ── 1. Load data ────────────────────────────────────────────────────────────
-  // Use select on keyPerson to avoid crashing if kyc_code column hasn't been
-  // migrated on the production database yet.
   const company = await prisma.company.findUniqueOrThrow({
     where: { id: companyId },
-    include: {
-      directors: { orderBy: { dateOfAppointment: 'asc' } },
-      members: { orderBy: { createdAt: 'asc' } },
-      significantControllers: { orderBy: { createdAt: 'asc' } },
-      amlChecks: {
-        where: { subjectType: 'COMPANY' },
-        orderBy: { checkedAt: 'desc' },
-        take: 1,
-        select: { result: true, matches: true },
-      },
-    },
-  })
-
-  const registerIds = [
-    ...company.directors.map(d => d.idNumber),
-    ...company.significantControllers.map(c => c.idPassportNo),
-  ].map(normalizeMatchValue).filter(Boolean)
-  const registerNames = [
-    ...company.directors.flatMap(d => [d.nameEn, d.nameZh]),
-    ...company.members.flatMap(m => [m.nameEn, m.nameZh]),
-    ...company.significantControllers.flatMap(c => [c.nameEn, c.nameZh]),
-  ].map(normalizeMatchValue).filter(Boolean)
-
-  const keyPersonFilters: Array<Record<string, unknown>> = [
-    { companyLinks: { some: { companyId } } },
-  ]
-  if (company.clientUserId) keyPersonFilters.push({ submittedByUserId: company.clientUserId })
-  if (registerIds.length > 0) keyPersonFilters.push({ idNumber: { in: registerIds } })
-  if (registerNames.length > 0) {
-    keyPersonFilters.push({ nameEn: { in: registerNames, mode: 'insensitive' } })
-    keyPersonFilters.push({ nameZh: { in: registerNames, mode: 'insensitive' } })
-  }
-
-  const kycPersons = await prisma.keyPerson.findMany({
-    where: { OR: keyPersonFilters as never },
-    orderBy: { createdAt: 'asc' },
     select: {
       id: true,
       nameEn: true,
       nameZh: true,
-      idType: true,
-      idNumber: true,
-      nationality: true,
-      dateOfBirth: true,
-      placeOfBirth: true,
-      placeOfIssue: true,
-      homeAddress: true,
-      contactAddress: true,
-      mobile: true,
-      email: true,
-      sourceOfFunds: true,
+      companyNumber: true,
+      businessRegNumber: true,
+      dateOfIncorporation: true,
+      registeredAddress: true,
+      businessNature: true,
+      status: true,
       amlChecks: {
+        where: { subjectType: 'COMPANY' },
         orderBy: { checkedAt: 'desc' },
         take: 1,
-        select: { result: true, matches: true },
-      },
-      companyLinks: {
-        where: { companyId },
-        select: { roles: true },
+        select: {
+          result: true,
+          matches: true,
+          checkedAt: true,
+          scope: true,
+          triggeredBy: { select: { nameEn: true, nameZh: true } },
+        },
       },
     },
   })
 
-  const personByKey = new Map<string, ReportPerson>()
-
-  function reportKey(person: Pick<ReportPerson, 'id' | 'nameEn' | 'nameZh' | 'idNumber'>) {
-    if (person.id) return `kyc:${person.id}`
-    const idNumber = normalizeMatchValue(person.idNumber)
-    if (idNumber) return `id:${idNumber}`
-    return `name:${normalizeMatchValue(person.nameEn)}:${normalizeMatchValue(person.nameZh)}`
-  }
-
-  function findExistingReportPerson(nameEn: string, nameZh: string | null | undefined, idNumber?: string | null) {
-    const normalizedId = normalizeMatchValue(idNumber)
-    const normalizedNameEn = normalizeMatchValue(nameEn)
-    const normalizedNameZh = normalizeMatchValue(nameZh)
-    return [...personByKey.values()].find(person => {
-      if (normalizedId && normalizeMatchValue(person.idNumber) === normalizedId) return true
-      return (
-        normalizedNameEn &&
-        normalizeMatchValue(person.nameEn) === normalizedNameEn &&
-        (!normalizedNameZh || normalizeMatchValue(person.nameZh) === normalizedNameZh)
-      )
-    })
-  }
-
-  function addPerson(person: ReportPerson) {
-    const key = reportKey(person)
-    const existing = personByKey.get(key)
-    if (existing) {
-      person.roles.forEach(role => addRole(existing, role))
-      return existing
-    }
-    personByKey.set(key, person)
-    return person
-  }
-
-  for (const person of kycPersons) {
-    addPerson({
-      id: person.id,
-      nameEn: person.nameEn,
-      nameZh: person.nameZh,
-      idType: person.idType,
-      idNumber: person.idNumber,
-      nationality: person.nationality,
-      dateOfBirth: person.dateOfBirth,
-      placeOfBirth: person.placeOfBirth,
-      placeOfIssue: person.placeOfIssue,
-      homeAddress: person.homeAddress,
-      contactAddress: person.contactAddress,
-      mobile: person.mobile,
-      email: person.email,
-      sourceOfFunds: person.sourceOfFunds,
-      amlChecks: person.amlChecks,
-      roles: person.companyLinks.flatMap(link => link.roles),
-    })
-  }
-
-  for (const director of company.directors) {
-    const person = findExistingReportPerson(director.nameEn, director.nameZh, director.idNumber)
-    if (person) addRole(person, 'Director')
-    else addPerson({
-      nameEn: director.nameEn,
-      nameZh: director.nameZh,
-      idType: director.idType,
-      idNumber: director.idNumber,
-      nationality: director.nationality,
-      dateOfBirth: director.dateOfBirth,
-      placeOfBirth: director.placeOfBirth,
-      placeOfIssue: director.countryOfIssuance,
-      homeAddress: null,
-      contactAddress: director.addressForService,
-      mobile: null,
-      email: null,
-      sourceOfFunds: null,
-      amlChecks: [],
-      roles: ['Director'],
-    })
-  }
-
-  for (const member of company.members) {
-    const person = findExistingReportPerson(member.nameEn, member.nameZh)
-    if (person) addRole(person, 'Member')
-    else addPerson({
-      nameEn: member.nameEn,
-      nameZh: member.nameZh,
-      idType: null,
-      idNumber: null,
-      nationality: null,
-      dateOfBirth: null,
-      placeOfBirth: null,
-      placeOfIssue: null,
-      homeAddress: null,
-      contactAddress: member.registeredAddress,
-      mobile: null,
-      email: null,
-      sourceOfFunds: null,
-      amlChecks: [],
-      roles: ['Member'],
-    })
-  }
-
-  for (const controller of company.significantControllers) {
-    const person = findExistingReportPerson(controller.nameEn, controller.nameZh, controller.idPassportNo)
-    if (person) addRole(person, 'Significant Controller')
-    else addPerson({
-      nameEn: controller.nameEn,
-      nameZh: controller.nameZh,
-      idType: controller.idType,
-      idNumber: controller.idPassportNo,
-      nationality: controller.issuingCountry,
-      dateOfBirth: null,
-      placeOfBirth: null,
-      placeOfIssue: controller.issuingCountry,
-      homeAddress: null,
-      contactAddress: controller.correspondenceAddress,
-      mobile: null,
-      email: null,
-      sourceOfFunds: null,
-      amlChecks: [],
-      roles: ['Significant Controller'],
-    })
-  }
-
-  const keyPersons = [...personByKey.values()]
-  const companySubject: ReportPerson = {
-    nameEn: company.nameEn,
-    nameZh: company.nameZh,
-    idType: null,
-    idNumber: company.companyNumber,
-    nationality: null,
-    dateOfBirth: null,
-    placeOfBirth: null,
-    placeOfIssue: null,
-    homeAddress: null,
-    contactAddress: company.registeredAddress,
-    mobile: null,
-    email: null,
-    sourceOfFunds: null,
-    amlChecks: company.amlChecks,
-    roles: ['Company'],
-  }
-  const searchSubjects = [companySubject, ...keyPersons]
-  await Promise.all(searchSubjects.map(ensureReportAmlCheck))
-
-  // Adverse media (Google CSE) — refresh when configured, then load for section 1.3
-  await Promise.all([
-    ensureAdverseMediaForReport({
-      subjectType: 'COMPANY',
-      companyId,
-      names: [company.nameEn, company.nameZh].filter(Boolean) as string[],
-    }),
-    ...keyPersons
-      .filter((kp): kp is ReportPerson & { id: string } => Boolean(kp.id))
-      .map(kp =>
-        ensureAdverseMediaForReport({
-          subjectType: 'KEY_PERSON',
-          keyPersonId: kp.id,
-          names: [kp.nameEn, kp.nameZh].filter(Boolean) as string[],
-        }),
-      ),
-  ])
-  const adverseFindings = await listAdverseMediaForSubjects({
-    companyIds: [companyId],
-    keyPersonIds: keyPersons.map(kp => kp.id).filter((id): id is string => Boolean(id)),
-  })
-  const adverseSubjectNames = new Map<string, string>()
-  adverseSubjectNames.set(`co:${companyId}`, personDisplayName(companySubject))
-  for (const kp of keyPersons) {
-    if (kp.id) adverseSubjectNames.set(`kp:${kp.id}`, personDisplayName(kp))
-  }
+  const collected = await collectCompanyDdrScreeningSubjects(companyId)
+  const structure = collected?.structure ?? null
+  const subjects = collected?.subjects ?? []
 
   const ddr = ddrId
     ? await prisma.dueDiligenceReport.findUniqueOrThrow({ where: { id: ddrId } })
@@ -999,20 +797,17 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
         orderBy: { createdAt: 'desc' },
       })
 
-  // Fetch all risk assessment answers for the company directly — answers may
-  // not always have a ddrId set, so querying via DDR relation misses them.
   const riskAnswers = await prisma.riskAssessmentAnswer.findMany({
     where: { companyId },
     orderBy: [{ category: 'asc' }, { questionKey: 'asc' }],
   })
 
   const amlSources = await prisma.aMLSource.findMany({
-    where: { isActive: true },
+    where: { isActive: true, seqNo: { notIn: [16] } },
     orderBy: { seqNo: 'asc' },
     select: { seqNo: true, nameEn: true, nameZh: true, lastFetched: true },
   })
 
-  // Approver / recommender names (relations not defined in schema — manual lookup)
   const approvedByUser = ddr?.approvedById
     ? await prisma.user.findUnique({ where: { id: ddr.approvedById }, select: { nameEn: true, nameZh: true } })
     : null
@@ -1020,16 +815,35 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
     ? await prisma.user.findUnique({ where: { id: ddr.recommendedById }, select: { nameEn: true, nameZh: true } })
     : null
 
-  // ── 2. Set up PDF ───────────────────────────────────────────────────────────
+  // Preload scoped checks for persons with KYC ids
+  const scopedByKp = new Map<string, Awaited<ReturnType<typeof loadPersonScopedChecks>>>()
+  await Promise.all(
+    subjects
+      .filter(s => s.keyPersonId)
+      .map(async s => {
+        const scoped = await loadPersonScopedChecks(s.keyPersonId!)
+        scopedByKp.set(s.keyPersonId!, scoped)
+      }),
+  )
+
+  const companyCheckRaw = company.amlChecks[0] ?? null
+  const companyCheck: PersonScopedCheck | null = companyCheckRaw
+    ? {
+        result: companyCheckRaw.result,
+        checkedAt: companyCheckRaw.checkedAt,
+        matches: companyCheckRaw.matches,
+        triggeredBy: companyCheckRaw.triggeredBy,
+      }
+    : null
+
   const doc = await PDFDocument.create()
   const fonts = await loadReportFonts(doc)
-
   if (!fonts.supportsUnicode) {
     throw new Error(
-      'DDR generation requires a CJK font because the report template contains Chinese text. ' +
-      'On Linux: apt-get install fonts-noto-cjk  OR  yum install google-noto-cjk-fonts. ' +
-      'Or place a font at assets/fonts/NotoSansCJK-Regular.otf. ' +
-      'Or set the DDR_PDF_FONT_PATH environment variable.'
+      'DDR generation requires a CJK font because the report template contains Chinese text. '
+      + 'On Linux: apt-get install fonts-noto-cjk  OR  yum install google-noto-cjk-fonts. '
+      + 'Or place a font at assets/fonts/NotoSansCJK-Regular.otf. '
+      + 'Or set the DDR_PDF_FONT_PATH environment variable.',
     )
   }
 
@@ -1040,22 +854,26 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
     regular: fonts.regular,
   }
 
-  const fmt = (d: Date | null | undefined) =>
+  const fmt = (d: Date | string | null | undefined) =>
     d ? new Date(d).toLocaleDateString('en-HK') : '—'
   const today = fmt(new Date())
+  const coDisplay = [company.nameEn, company.nameZh].filter(Boolean).join(' / ')
 
-  // ── 3. Cover page ──────────────────────────────────────────────────────────
-  ps.page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: rgb(1,1,1) })
-  // decorative frame
-  ps.page.drawRectangle({ x: 42.52, y: 328.03, width: 510.24, height: 457.17,
-    color: rgb(1,1,1), borderColor: ACCENT, borderWidth: 1.5 })
-  ps.page.drawRectangle({ x: 72.52, y: 566.8, width: 450.24, height: 70.5,
-    color: rgb(1,1,1), borderColor: ACCENT, borderWidth: 0.75 })
+  // Cover — same visual language as individual DDR
+  ps.page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: rgb(1, 1, 1) })
+  ps.page.drawRectangle({
+    x: 42.52, y: 328.03, width: 510.24, height: 457.17,
+    color: rgb(1, 1, 1), borderColor: ACCENT, borderWidth: 1.5,
+  })
+  ps.page.drawRectangle({
+    x: 72.52, y: 566.8, width: 450.24, height: 70.5,
+    color: rgb(1, 1, 1), borderColor: ACCENT, borderWidth: 0.75,
+  })
 
-  drawText(ps.page, '盡職審查報告', { x: 216, y: 694, size: 26, font: ps.bold, color: PRIMARY })
-  drawText(ps.page, 'Due Diligence Report', { x: 168, y: 661, size: 21.6, font: ps.bold, color: PRIMARY })
-  drawText(ps.page, '盡職審查報告', { x: 252, y: 607, size: 15, font: ps.bold, color: PRIMARY })
-  drawText(ps.page, 'Due Diligence Report', { x: 217, y: 586, size: 15, font: ps.regular, color: PRIMARY })
+  drawText(ps.page, '公司盡職審查報告', { x: 168, y: 694, size: 24, font: ps.bold, color: PRIMARY })
+  drawText(ps.page, 'Corporate Due Diligence Report', { x: 132, y: 661, size: 18, font: ps.bold, color: PRIMARY })
+  drawText(ps.page, '公司盡職審查報告', { x: 220, y: 607, size: 14, font: ps.bold, color: PRIMARY })
+  drawText(ps.page, 'Corporate Due Diligence Report', { x: 178, y: 586, size: 13, font: ps.regular, color: PRIMARY })
 
   ps.page.drawLine({ start: { x: 72.52, y: 542 }, end: { x: 522.76, y: 542 }, thickness: 1.5, color: ACCENT })
 
@@ -1063,245 +881,387 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
   if (company.nameZh) {
     drawText(ps.page, company.nameZh, { x: 72.52, y: 492, size: 12, font: ps.bold, color: BLACK })
   }
-  drawText(ps.page, `報告日期 Report date: ${today}`, { x: 72.52, y: 460, size: 9, font: ps.regular, color: GRAY })
+  if (company.companyNumber) {
+    drawText(ps.page, `公司編號 Company No.: ${company.companyNumber}`, {
+      x: 72.52, y: 472, size: 9, font: ps.regular, color: GRAY,
+    })
+  }
+  drawText(ps.page, `報告日期 Report date: ${today}`, { x: 72.52, y: 452, size: 9, font: ps.regular, color: GRAY })
+  drawText(ps.page, '本報告記錄公司身份、股權穿透（有效權益>25%）、董事／重要控制人及篩查證明。', {
+    x: 72.52, y: 420, size: 8.5, font: ps.regular, color: GRAY,
+  })
+  drawText(ps.page, 'Identity, ownership look-through (>25% effective), directors / SC, and screening evidence.', {
+    x: 72.52, y: 404, size: 8, font: ps.regular, color: GRAY,
+  })
 
-  // ── 4. Content pages ────────────────────────────────────────────────────────
   newPage(doc, ps)
   ps.y = H - MARGIN
 
-  // ════════════════════════════════════════════════════════════════════════════
-  // SECTION 1: 反洗錢/打擊金融恐怖主義查詢 AML/CFT Search
-  // ════════════════════════════════════════════════════════════════════════════
+  // 1. Company identity
   await ensureSpace(ps, doc, 60)
-  sectionHeader(ps, doc, '1. 反洗錢/打擊金融恐怖主義查詢  AML/CFT Search')
+  sectionHeader(ps, doc, '1. 客戶身份與核驗  Customer Identity & Verification')
 
-  // ── 1.1 System Matching Names ─────────────────────────────────────────────
-  await ensureSpace(ps, doc, 40)
-  subHeader(ps, '1.1  系統搜尋名稱  System Matching Names')
-
-  // Table: No. | Name | Search Status
-  const COL_NO    = 50
-  const COL_NAME  = CW - COL_NO - 120
-  const COL_STATUS = 120
-  drawTableHeader(ps, [
-    { label: '序號\nNo.', width: COL_NO, center: true },
-    { label: '姓名/名稱\nName', width: COL_NAME, center: true },
-    { label: '搜尋狀態\nSearch Status', width: COL_STATUS, center: true },
-  ], 28)
-
-  for (let i = 0; i < searchSubjects.length; i++) {
-    const kp = searchSubjects[i]
-    const nameDisplay = personDisplayName(kp)
-    const latestCheck = kp.amlChecks[0]
-    const isMonitored = Boolean(latestCheck)
+  const identityRows: Array<{ label: string; value: string }> = [
+    { label: '公司名稱（英文）\nName (EN)', value: company.nameEn },
+    { label: '公司名稱（中文）\nName (ZH)', value: company.nameZh || '—' },
+    { label: '公司編號\nCompany No.', value: company.companyNumber || '—' },
+    { label: '商業登記號\nBR No.', value: company.businessRegNumber || '—' },
+    { label: '成立日期\nIncorporation', value: fmt(company.dateOfIncorporation) },
+    { label: '註冊地址\nRegistered Address', value: company.registeredAddress || '—' },
+    { label: '業務性質\nBusiness Nature', value: company.businessNature || '—' },
+    { label: '公司狀態\nStatus', value: company.status || '—' },
+  ]
+  for (const row of identityRows) {
     await ensureSpace(ps, doc, ROW_H + 2)
-    drawTableRow(ps, [
-      { text: String(i + 1), width: COL_NO, center: true },
-      { text: nameDisplay, width: COL_NAME },
-      {
-        text: isMonitored ? '已啟用\nActive' : '未檢索\nNot screened',
-        width: COL_STATUS,
-        center: true,
-        color: isMonitored ? GREEN_TEXT : GRAY,
-      },
-    ])
-  }
-  if (searchSubjects.length === 0) {
-    drawTableRow(ps, [
-      { text: '—', width: CW, center: true, color: GRAY },
-    ])
+    drawInfoBox(ps, [{ label: row.label, value: row.value }])
   }
   ps.y -= 8
 
-  // ── 1.1.x Individual AML detail boxes ─────────────────────────────────────
-  for (let i = 0; i < searchSubjects.length; i++) {
-    const kp = searchSubjects[i]
-    const latestCheck = kp.amlChecks[0]
-    const matches = latestCheck?.matches as Array<{ amlRecordId: string; primaryName: string; score: number; result: string }> | null ?? []
-    const hasMatch = matches.length > 0
-
-    await ensureSpace(ps, doc, 70)
-    const nameLabel = kp.nameEn + (kp.nameZh ? `  ${kp.nameZh}` : '')
-    leafHeader(ps, `1.1.${i + 1}  ${nameLabel}`)
-
-    // 類型 Type row + KYC / register detail row
-    let entityType = kp.roles.includes('Member') && !kp.idNumber ? 'ENTITY / 實體' : 'INDIVIDUAL / 個人'
-    let detailText = personDetailText(kp)
-    if (hasMatch) {
-      const firstMatch = matches[0]
-      entityType = firstMatch.result === 'STRONG_HIT' ? 'INDIVIDUAL / 個人'
-        : firstMatch.result === 'POTENTIAL_HIT' ? 'INDIVIDUAL / 個人'
-        : entityType
-      detailText = `${detailText}\nAML Match Details:\n${matches
-        .map(m => `${m.primaryName}  (${m.result.replace('_', ' ')}  score: ${(m.score * 100).toFixed(0)}%)`)
-        .join('\n')}`
-    }
-
-    drawInfoBox(
-      ps,
-      [{ label: '類型  Type', value: entityType, valueColor: hasMatch ? ORANGE : GRAY }],
-      detailText,
-    )
-    ps.y -= 10
-  }
-
-  // ── 1.2 Sanctions List Matching Results ───────────────────────────────────
-  await ensureSpace(ps, doc, 60)
-  subHeader(ps, '1.2  制裁名單匹配結果  Sanctions List Matching Results')
-
-  const anyHit = searchSubjects.some(kp => {
-    const check = kp.amlChecks[0]
-    return check && check.result !== 'CLEAR'
+  // 1.1 Ownership structure
+  await ensureSpace(ps, doc, 40)
+  subHeader(ps, '1.1  股權結構（穿透）  Ownership Structure (Look-through)')
+  drawText(ps.page, '實益擁有人門檻：穿透後有效權益超過 25%（AMLO / CR TCSP Guideline）。', {
+    x: MARGIN + 4, y: ps.y, size: 8, font: ps.regular, color: GRAY,
   })
-  if (anyHit) {
-    drawBanner(ps, '發現制裁名單匹配項', 'Sanctions list matches found — please review alerts.', false)
-    // list persons with hits
-    for (const kp of searchSubjects) {
-      const check = kp.amlChecks[0]
-      if (!check || check.result === 'CLEAR') continue
-      await ensureSpace(ps, doc, 18)
-      const name = personDisplayName(kp)
-      drawText(ps.page, `• ${name}  —  ${check.result.replace('_', ' ')}`, {
-        x: MARGIN + 10, y: ps.y, size: 8.5, font: ps.regular, color: RED,
-      })
-      ps.y -= 14
-    }
+  ps.y -= 12
+  drawText(ps.page, 'UBO threshold: more than 25% effective ownership after look-through.', {
+    x: MARGIN + 4, y: ps.y, size: 8, font: ps.regular, color: GRAY,
+  })
+  ps.y -= 14
+
+  if (!structure) {
+    drawText(ps.page, '未能載入股權結構。  Ownership structure unavailable.', {
+      x: MARGIN + 4, y: ps.y, size: 8.5, font: ps.regular, color: GRAY,
+    })
+    ps.y -= 14
   } else {
-    drawBanner(ps,
-      '未發現制裁名單匹配項',
-      'No sanctions list matches found',
-      true,
-    )
-  }
-
-  // ── 1.3 Adverse media / news screening ────────────────────────────────────
-  await drawAdverseMediaSection(ps, doc, adverseFindings, adverseSubjectNames)
-
-  // ════════════════════════════════════════════════════════════════════════════
-  // SECTION 2: 風險評估項目詳情 Risk Assessment Items Details
-  // ════════════════════════════════════════════════════════════════════════════
-  await ensureSpace(ps, doc, 60)
-  sectionHeader(ps, doc, '2. 風險評估項目詳情  Risk Assessment Items Details')
-
-  // ── 2.1 People / Key Persons ─────────────────────────────────────────────
-  await ensureSpace(ps, doc, 40)
-  subHeader(ps, '2.1  相關人員  Relevant Persons')
-
-  const COL_P_NO   = 40
-  const COL_P_NAME = Math.floor((CW - COL_P_NO) * 0.34)
-  const COL_P_ROLE = Math.floor((CW - COL_P_NO) * 0.22)
-  const COL_P_ID   = Math.floor((CW - COL_P_NO) * 0.24)
-  const COL_P_NAT  = CW - COL_P_NO - COL_P_NAME - COL_P_ROLE - COL_P_ID
-  drawTableHeader(ps, [
-    { label: 'No.',           width: COL_P_NO,   center: true },
-    { label: '姓名  Name',   width: COL_P_NAME },
-    { label: '身份  Role',   width: COL_P_ROLE },
-    { label: '身份證明  ID', width: COL_P_ID },
-    { label: '國籍  Nationality', width: COL_P_NAT },
-  ])
-  if (keyPersons.length === 0) {
-    drawTableRow(ps, [{ text: '—  No key persons linked', width: CW, center: true, color: GRAY }])
-  }
-  for (let i = 0; i < keyPersons.length; i++) {
-    const kp = keyPersons[i]
-    await ensureSpace(ps, doc, ROW_H + 2)
-    drawTableRow(ps, [
-      { text: String(i + 1),                                         width: COL_P_NO,   center: true },
-      { text: personDisplayName(kp),                                width: COL_P_NAME },
-      { text: kp.roles.join(', ') || '—',                            width: COL_P_ROLE },
-      { text: [kp.idType, kp.idNumber].filter(Boolean).join(': ') || '—', width: COL_P_ID },
-      { text: kp.nationality ?? '—',                                 width: COL_P_NAT },
-    ])
+    const lines: string[] = []
+    const walk = (node: OwnershipNode, depth: number) => {
+      const indent = '  '.repeat(depth)
+      const pct = node.ownershipPercent != null ? ` ${node.ownershipPercent.toFixed(2)}%` : ''
+      const tag = node.type === 'COMPANY' ? '[Co]' : '[Person]'
+      const circ = node.circular ? ' (circular)' : ''
+      lines.push(`${indent}${tag} ${[node.nameEn, node.nameZh].filter(Boolean).join(' / ')}${pct}${circ}`)
+      for (const child of node.children) walk(child, depth + 1)
+    }
+    walk(structure, 0)
+    for (const line of lines.slice(0, 80)) {
+      await ensureSpace(ps, doc, 12)
+      for (const wrapped of wrapText(line, ps.regular, 8, CW - 8)) {
+        drawText(ps.page, wrapped, { x: MARGIN + 4, y: ps.y, size: 8, font: ps.regular, color: BLACK })
+        ps.y -= 10
+      }
+    }
+    if (lines.length > 80) {
+      drawText(ps.page, `… and ${lines.length - 80} more node(s)`, {
+        x: MARGIN + 4, y: ps.y, size: 8, font: ps.regular, color: GRAY,
+      })
+      ps.y -= 12
+    }
   }
   ps.y -= 8
 
-  // ── 2.2 Risk Assessment Items ─────────────────────────────────────────────
+  // 1.2 Screening subjects table
   await ensureSpace(ps, doc, 40)
-  subHeader(ps, '2.2  評估項目  Assessment Items')
+  subHeader(ps, '1.2  篩查對象  Screening Subjects')
+  drawText(ps.page, '包括：有效權益>25% 之實益擁有人；全體自然人董事；全體自然人重要控制人。', {
+    x: MARGIN + 4, y: ps.y, size: 8, font: ps.regular, color: GRAY,
+  })
+  ps.y -= 12
 
-  const answerByQuestion = new Map(riskAnswers.map(item => [normalizeMatchValue(item.questionKey), item]))
-  const usedRiskAnswerIds = new Set<string>()
-  const defaultRiskRows = DEFAULT_RISK_ITEMS.map(item => {
+  if (subjects.length === 0) {
+    drawBanner(ps, '未識別到需篩查之自然人對象', 'No natural-person screening subjects identified', false)
+  } else {
+    const COL_NO = 28
+    const COL_NAME = Math.floor((CW - COL_NO) * 0.32)
+    const COL_ROLE = Math.floor((CW - COL_NO) * 0.48)
+    const COL_PCT = CW - COL_NO - COL_NAME - COL_ROLE
+    drawTableHeader(ps, [
+      { label: 'No.', width: COL_NO, center: true },
+      { label: '姓名\nName', width: COL_NAME },
+      { label: '角色\nRoles', width: COL_ROLE },
+      { label: '有效權益\nEffective %', width: COL_PCT, center: true },
+    ], 28)
+    for (let i = 0; i < subjects.length; i++) {
+      const s = subjects[i]
+      await ensureSpace(ps, doc, ROW_H + 4)
+      drawTableRow(ps, [
+        { text: String(i + 1), width: COL_NO, center: true },
+        { text: [s.nameEn, s.nameZh].filter(Boolean).join(' / '), width: COL_NAME },
+        { text: s.roles.join('; '), width: COL_ROLE },
+        {
+          text: s.effectivePercent != null ? `${s.effectivePercent.toFixed(2)}%` : '—',
+          width: COL_PCT,
+          center: true,
+        },
+      ])
+    }
+  }
+  ps.y -= 10
+
+  // 2. Screening evidence
+  await ensureSpace(ps, doc, 60)
+  sectionHeader(ps, doc, '2. AML/CFT 篩查證明  Screening Evidence')
+
+  await drawScreeningProofBlock(ps, doc, {
+    title: '2.0  公司實體篩查  Company Entity Screening',
+    methodZh: '系統比對公司名稱與制裁／AML 名單（公司主體最近一次存檔結果）',
+    methodEn: 'Company name screening against AML lists (latest stored company check)',
+    check: companyCheck,
+    subjectLines: [
+      `公司名稱 Name: ${coDisplay}`,
+      `公司編號 Company No.: ${company.companyNumber || '—'}`,
+      companyCheckRaw?.scope ? `存檔範圍 Stored scope: ${companyCheckRaw.scope}` : '存檔範圍 Stored scope: —',
+    ],
+    emptyClearMessage: {
+      zh: '未發現公司名稱制裁／名單匹配',
+      en: 'No company-name sanctions / list matches found',
+    },
+  })
+
+  let personIdx = 0
+  for (const s of subjects) {
+    personIdx += 1
+    await ensureSpace(ps, doc, 40)
+    subHeader(ps, `2.${personIdx}  ${[s.nameEn, s.nameZh].filter(Boolean).join(' / ')}`)
+    drawText(ps.page, `角色 Roles: ${s.roles.join('; ')}`, {
+      x: MARGIN + 4, y: ps.y, size: 8.5, font: ps.regular, color: GRAY,
+    })
+    ps.y -= 12
+    if (s.effectivePercent != null) {
+      drawText(ps.page, `穿透後有效權益 Effective ownership: ${s.effectivePercent.toFixed(2)}%`, {
+        x: MARGIN + 4, y: ps.y, size: 8.5, font: ps.regular, color: GRAY,
+      })
+      ps.y -= 12
+    }
+
+    const scoped = s.keyPersonId ? scopedByKp.get(s.keyPersonId) : null
+    if (!scoped) {
+      drawBanner(
+        ps,
+        '尚無個人四步 KYC 篩查存檔 — 請完成個人 KYC 四步篩查',
+        'No four-step KYC screening on file — complete individual KYC screening',
+        false,
+      )
+      drawInfoBox(ps, [
+        { label: '證件\nID', value: [s.idType, s.idNumber].filter(Boolean).join(': ') || '—' },
+        { label: '國籍\nNationality', value: s.nationality || '—' },
+        { label: '出生日期\nDOB', value: fmt(s.dateOfBirth) },
+        { label: '簽發地／出生地\nIssue / Birth', value: [s.placeOfIssue, s.placeOfBirth].filter(Boolean).join(' / ') || '—' },
+      ])
+      ps.y -= 8
+      continue
+    }
+
+    await drawScreeningProofBlock(ps, doc, {
+      title: `${personIdx}.1  制裁名單  Sanctions (AML)`,
+      methodZh: '系統比對個人姓名與制裁名單（不含 FATF）',
+      methodEn: 'Name screening against sanctions lists (excl. FATF)',
+      check: scoped.SANCTIONS,
+      subjectLines: [
+        `姓名 Name: ${[s.nameEn, s.nameZh].filter(Boolean).join(' / ')}`,
+        `出生日期 DOB: ${fmt(s.dateOfBirth)}`,
+      ],
+      emptyClearMessage: {
+        zh: '未發現制裁名單匹配項',
+        en: 'No sanctions list matches found',
+      },
+    })
+
+    await drawScreeningProofBlock(ps, doc, {
+      title: `${personIdx}.2  FATF 黑／灰名單  FATF`,
+      methodZh: '國籍、證件簽發地、出生地對照 FATF 黑／灰名單',
+      methodEn: 'Nationality / place of issue / place of birth vs FATF lists',
+      check: scoped.FATF,
+      subjectLines: [
+        `國籍 Nationality: ${s.nationality || '—'}`,
+        `簽發地 Place of issue: ${s.placeOfIssue || '—'}`,
+        `出生地 Place of birth: ${s.placeOfBirth || '—'}`,
+      ],
+      emptyClearMessage: {
+        zh: '未命中 FATF 黑名單或灰名單',
+        en: 'No FATF black or grey list hit',
+      },
+    })
+
+    await drawScreeningProofBlock(ps, doc, {
+      title: `${personIdx}.3  PEP（OpenSanctions）`,
+      methodZh: 'OpenSanctions Match API PEP／RCA 比對',
+      methodEn: 'OpenSanctions Match API PEP / RCA screening',
+      check: scoped.PEP,
+      subjectLines: [
+        `姓名 Name: ${[s.nameEn, s.nameZh].filter(Boolean).join(' / ')}`,
+        `出生日期 DOB: ${fmt(s.dateOfBirth)}`,
+        `國籍 Nationality: ${s.nationality || '—'}`,
+      ],
+      emptyClearMessage: {
+        zh: '未發現 PEP／RCA 命中',
+        en: 'No PEP / RCA matches found',
+      },
+    })
+
+    await drawScreeningProofBlock(ps, doc, {
+      title: `${personIdx}.4  負面新聞（人工）  Adverse Media (Manual)`,
+      methodZh: '合規人員人工標記 CLEAR 或 HIT（不依賴 Google CSE）',
+      methodEn: 'Manual adverse-media review mark CLEAR or HIT (Google CSE not required)',
+      check: scoped.ADVERSE_MEDIA,
+      subjectLines: [
+        `姓名 Name: ${[s.nameEn, s.nameZh].filter(Boolean).join(' / ')}`,
+      ],
+      emptyClearMessage: {
+        zh: '人工審查：未發現相關負面新聞風險',
+        en: 'Manual review: no relevant adverse media risk',
+      },
+    })
+  }
+
+  // 3. Risk assessment
+  await ensureSpace(ps, doc, 60)
+  sectionHeader(ps, doc, '3. 風險評估  Risk Assessment')
+
+  await ensureSpace(ps, doc, 40)
+  subHeader(ps, '3.1  評估項目  Assessment Items')
+  const answerByQuestion = new Map(
+    riskAnswers.map(item => [normalizeMatchValue(item.questionKey), item]),
+  )
+  const used = new Set<string>()
+  const defaults = DEFAULT_RISK_ITEMS.map(item => {
     const answer = answerByQuestion.get(normalizeMatchValue(item.question))
-    if (answer) usedRiskAnswerIds.add(answer.id)
+    if (answer) used.add(answer.id)
     return {
-      category: item.category,
       question: item.question,
       answer: answer?.answer || '否\nNo',
-      notes: answer?.notes,
+      notes: answer?.notes ?? null,
     }
   })
-  const extraRiskRows = riskAnswers
-    .filter(item => !usedRiskAnswerIds.has(item.id))
+  const extras = riskAnswers
+    .filter(item => !used.has(item.id))
     .map(item => ({
-      category: item.category,
       question: item.questionKey,
       answer: item.answer,
       notes: item.notes,
     }))
-  const riskRows = [...defaultRiskRows, ...extraRiskRows]
-  const riskCategories = [...new Set(riskRows.map(item => item.category))]
-
-  for (const category of riskCategories) {
-    const items = riskRows.filter(item => item.category === category)
-    await ensureSpace(ps, doc, 80)
-    ps.y -= 6
-    drawText(ps.page, category, { x: MARGIN + 4, y: ps.y, size: 9, font: ps.bold, color: PRIMARY })
-    ps.y -= 14
-    await drawAssessmentTable(ps, doc, items)
-    ps.y -= 8
-  }
-
-  // ════════════════════════════════════════════════════════════════════════════
-  // SECTION 3: 風險評估 Risk Assessment
-  // ════════════════════════════════════════════════════════════════════════════
-  await ensureSpace(ps, doc, 80)
-  sectionHeader(ps, doc, '3. 風險評估  Risk Assessment')
+  await drawAssessmentTable(ps, doc, [...defaults, ...extras])
 
   const riskLevel = ddr?.overallRiskLevel ?? null
-  const riskText  = riskLabel(riskLevel)
-  const riskCol   = riskColor(riskLevel)
-  const recName  = recommendedByUser ? [recommendedByUser.nameEn, recommendedByUser.nameZh].filter(Boolean).join(' / ') : '—'
-  const appName  = approvedByUser    ? [approvedByUser.nameEn,    approvedByUser.nameZh   ].filter(Boolean).join(' / ') : '—'
-  const appStatus = ddr?.approvalStatus === true  ? '是  Yes'
-                  : ddr?.approvalStatus === false ? '否  No'
-                  : '—'
+  const riskText = riskLabel(riskLevel)
+  const riskCol = riskColor(riskLevel)
+  const recName = recommendedByUser
+    ? [recommendedByUser.nameEn, recommendedByUser.nameZh].filter(Boolean).join(' / ')
+    : '—'
+  const appName = approvedByUser
+    ? [approvedByUser.nameEn, approvedByUser.nameZh].filter(Boolean).join(' / ')
+    : '—'
+  const appStatus = ddr?.approvalStatus === true ? '已批准  Approved'
+    : ddr?.approvalStatus === false ? '未批准  Not approved'
+      : '待批  Pending'
 
-  await drawApprovalBox(ps, doc, '3.1  評估風險  Risk Assessment', [
+  await drawApprovalBox(ps, doc, '3.2  評估風險  Risk Summary', [
     { label: '整體風險等級\nOverall Risk Level', value: riskText, valueColor: riskCol },
     { label: '風險備註\nRisk Remark', value: '無備註  No Remark' },
     { label: '風險評估人員簽署\nRisk Assessor Signature', value: '', tall: true },
   ])
 
-  await drawApprovalBox(ps, doc, '3.2  推薦  Recommendation', [
+  await drawApprovalBox(ps, doc, '3.3  推薦  Recommendation', [
     { label: '推薦狀態\nRecommendation Status', value: recommendationLabel(ddr?.recommendation) },
     { label: '推薦備註\nRecommendation Remark', value: ddr?.recommendationNote || '' },
-    { label: '推薦日期\nRecommendation Date', value: fmt(ddr?.recommendedAt || ddr?.reportDate) },
+    { label: '推薦日期\nRecommendation Date', value: fmt(ddr?.recommendedAt ?? ddr?.reportDate) },
     { label: '推薦人員\nRecommending Officer', value: recName },
     { label: '推薦人員簽署\nRecommending Officer Signature', value: '', tall: true },
   ])
 
-  await drawApprovalBox(ps, doc, '3.3  批准  Approval', [
-    { label: '批准狀態\nApproval Status', value: appStatus, valueColor: ddr?.approvalStatus === true ? GREEN_TEXT : ddr?.approvalStatus === false ? RED : GRAY },
+  await drawApprovalBox(ps, doc, '3.4  批准  Approval', [
+    {
+      label: '批准狀態\nApproval Status',
+      value: appStatus,
+      valueColor: ddr?.approvalStatus === true ? GREEN_TEXT : ddr?.approvalStatus === false ? RED : GRAY,
+    },
     { label: '批准備註\nApproval Remark', value: ddr?.approvalNote || '' },
     { label: '批准日期\nApproval Date', value: fmt(ddr?.approvedAt) },
     { label: '批准人員\nApproval Officer', value: appName },
     { label: '批准人員簽署\nApproval Officer Signature', value: '', tall: true },
   ])
 
-  // ════════════════════════════════════════════════════════════════════════════
-  // SECTION 4: 資料來源與說明 Data Sources and Notes
-  // ════════════════════════════════════════════════════════════════════════════
-  await ensureSpace(ps, doc, 60)
-  sectionHeader(ps, doc, '4. 資料來源與說明  Data Sources and Notes')
+  // 4. Conclusion
+  await ensureSpace(ps, doc, 100)
+  sectionHeader(ps, doc, '4. 調查結論  Conclusion')
 
-  // Intro paragraph
+  await ensureSpace(ps, doc, 40)
+  subHeader(ps, '4.1  篩查完成度  Screening Completeness')
+
+  const companyOk = companyCheck?.result === 'CLEAR'
+  drawText(ps.page, `${companyOk ? '✓' : '○'}  Company entity screening`, {
+    x: MARGIN + 8, y: ps.y, size: 9, font: ps.bold, color: companyOk ? GREEN_TEXT : GRAY,
+  })
+  drawText(ps.page, screeningResultLabel(companyCheck?.result), {
+    x: MARGIN + 240, y: ps.y, size: 9, font: ps.regular, color: screeningResultColor(companyCheck?.result),
+  })
+  ps.y -= 16
+
+  let allPersonsClear = subjects.length > 0
+  for (const s of subjects) {
+    const scoped = s.keyPersonId ? scopedByKp.get(s.keyPersonId) : null
+    const ok = Boolean(
+      scoped
+      && scoped.SANCTIONS?.result === 'CLEAR'
+      && scoped.FATF?.result === 'CLEAR'
+      && scoped.PEP?.result === 'CLEAR'
+      && scoped.ADVERSE_MEDIA?.result === 'CLEAR',
+    )
+    if (!ok) allPersonsClear = false
+    const label = [s.nameEn, s.nameZh].filter(Boolean).join(' / ')
+    await ensureSpace(ps, doc, 16)
+    drawText(ps.page, `${ok ? '✓' : '○'}  ${label}`, {
+      x: MARGIN + 8, y: ps.y, size: 8.5, font: ps.bold, color: ok ? GREEN_TEXT : GRAY,
+    })
+    drawText(ps.page, ok ? '四步 CLEAR' : (scoped ? '未全部 CLEAR' : '無 KYC 存檔'), {
+      x: MARGIN + 280, y: ps.y, size: 8.5, font: ps.regular, color: ok ? GREEN_TEXT : ORANGE,
+    })
+    ps.y -= 14
+  }
+  ps.y -= 6
+
+  if (companyOk && allPersonsClear) {
+    drawBanner(
+      ps,
+      '公司及所列自然人篩查均為 CLEAR — 可作為盡職審查篩查證明',
+      'Company and listed natural persons all CLEAR — screening evidence supports CDD file',
+      true,
+    )
+  } else {
+    drawBanner(
+      ps,
+      '篩查尚未全部完成或存在命中 — 請完成四步篩查後再出具最終結論',
+      'Screening incomplete or hits present — complete four-step screening before final conclusion',
+      false,
+    )
+  }
+
+  if (ddr) {
+    ps.y -= 6
+    const rBg = riskCol === GREEN_TEXT ? GREEN_BG : riskCol === RED ? RED_BG : rgb(0.99, 0.96, 0.9)
+    ps.page.drawRectangle({ x: MARGIN + 4, y: ps.y - 24, width: CW - 8, height: 24, color: rBg })
+    drawText(ps.page, '整體風險級別  Overall Risk Level:', {
+      x: MARGIN + 10, y: ps.y - 16, size: 10, font: ps.bold, color: BLACK,
+    })
+    drawText(ps.page, riskText, { x: MARGIN + 220, y: ps.y - 16, size: 10, font: ps.bold, color: riskCol })
+    ps.y -= 30
+    if (ddr.recommendation) field(ps, '建議  Recommendation', ddr.recommendation)
+    if (ddr.recommendationNote) field(ps, '建議備註  Recommendation Note', ddr.recommendationNote)
+    if (ddr.approvalStatus !== null && ddr.approvalStatus !== undefined) {
+      field(ps, '審批狀態  Approval Status', ddr.approvalStatus ? 'APPROVED 已批准' : 'NOT APPROVED 未批准')
+    }
+    if (ddr.approvalNote) field(ps, '審批備註  Approval Note', ddr.approvalNote)
+  }
+
+  // 5. Sources
+  await ensureSpace(ps, doc, 60)
+  sectionHeader(ps, doc, '5. 資料來源與說明  Data Sources and Notes')
   ps.y -= 4
-  const dsIntroLines = wrapText(
-    '本報告所載制裁名單查詢結果，乃根據下列資料來源進行比對。各資料來源均定期更新，以確保資料的準確性及時效性。',
+  for (const line of wrapText(
+    '制裁名單來源如下。FATF 使用系統內建黑／灰名單 JSON。個人 PEP 使用 OpenSanctions；負面新聞為人工審查。實益擁有人按穿透後有效權益超過 25% 識別（AMLO）。',
     ps.regular, 8.5, CW - 8,
-  )
-  for (const line of dsIntroLines) {
+  )) {
     await ensureSpace(ps, doc, 12)
     drawText(ps.page, line, { x: MARGIN + 4, y: ps.y, size: 8.5, font: ps.regular, color: BLACK })
     ps.y -= 12
@@ -1314,108 +1274,248 @@ export async function generateDDR(companyId: string, ddrId?: string): Promise<Bu
     })
     ps.y -= 14
   } else {
-    const COL_SEQ   = 36
-    const COL_ZH    = Math.floor((CW - COL_SEQ) * 0.38)
-    const COL_EN    = Math.floor((CW - COL_SEQ) * 0.38)
+    const COL_SEQ = 36
+    const COL_ZH = Math.floor((CW - COL_SEQ) * 0.38)
+    const COL_EN = Math.floor((CW - COL_SEQ) * 0.38)
     const COL_FETCH = CW - COL_SEQ - COL_ZH - COL_EN
-
     drawTableHeader(ps, [
-      { label: '序號\nNo.',              width: COL_SEQ,   center: true },
+      { label: '序號\nNo.', width: COL_SEQ, center: true },
       { label: '名稱（中文）\nName (ZH)', width: COL_ZH },
       { label: '名稱（英文）\nName (EN)', width: COL_EN },
-      { label: '最後更新日期\nLast Updated', width: COL_FETCH, center: true },
+      { label: '最後更新\nLast Updated', width: COL_FETCH, center: true },
     ], 28)
     for (const src of amlSources) {
       await ensureSpace(ps, doc, ROW_H + 2)
       drawTableRow(ps, [
-        { text: String(src.seqNo),  width: COL_SEQ,   center: true },
-        { text: src.nameZh,         width: COL_ZH },
-        { text: src.nameEn,         width: COL_EN },
+        { text: String(src.seqNo), width: COL_SEQ, center: true },
+        { text: src.nameZh, width: COL_ZH },
+        { text: src.nameEn, width: COL_EN },
         { text: fmt(src.lastFetched), width: COL_FETCH, center: true },
       ])
     }
   }
 
-  // Notes paragraph
   ps.y -= 10
-  const dsNoteLines = wrapText(
-    '說明：本系統採用模糊匹配演算法對上述資料庫進行比對，相似度閾值設定為 0.75。匹配結果分為 CLEAR（無匹配）、WEAK_HIT（弱匹配）、POTENTIAL_HIT（潛在匹配）及 STRONG_HIT（強匹配）四個級別。如出現匹配結果，請由合規人員作進一步審查。',
+  for (const line of wrapText(
+    '說明：本報告第 2 節以系統存檔之篩查結果為準，生成時不重新自動篩查。董事與重要控制人不論持股一律納入；實益擁有人以穿透後有效權益>25% 為準。',
     ps.regular, 8, CW - 8,
-  )
-  for (const line of dsNoteLines) {
+  )) {
     await ensureSpace(ps, doc, 11)
     drawText(ps.page, line, { x: MARGIN + 4, y: ps.y, size: 8, font: ps.regular, color: GRAY })
     ps.y -= 11
   }
-  ps.y -= 6
+  ps.y -= 10
 
-  // ════════════════════════════════════════════════════════════════════════════
-  // SECTION 5: 調查結論 Conclusion
-  // ════════════════════════════════════════════════════════════════════════════
-  await ensureSpace(ps, doc, 100)
-  sectionHeader(ps, doc, '5. 調查結論  Conclusion')
-
-  if (ddr) {
-    // Risk level banner
-    ps.y -= 6
-    ps.page.drawRectangle({ x: MARGIN + 4, y: ps.y - 24, width: CW - 8, height: 24, color: riskCol === GREEN_TEXT ? GREEN_BG : riskCol === RED ? RED_BG : rgb(0.99, 0.96, 0.9) })
-    drawText(ps.page, '整體風險級別  Overall Risk Level:', { x: MARGIN + 10, y: ps.y - 16, size: 10, font: ps.bold, color: BLACK })
-    drawText(ps.page, riskText, { x: MARGIN + 220, y: ps.y - 16, size: 10, font: ps.bold, color: riskCol })
-    ps.y -= 30
-
-    if (ddr.recommendation) field(ps, '建議  Recommendation', ddr.recommendation)
-    if (ddr.recommendationNote) field(ps, '建議備註  Recommendation Note', ddr.recommendationNote)
-    if (ddr.approvalStatus !== null && ddr.approvalStatus !== undefined) {
-      field(ps, '審批狀態  Approval Status', ddr.approvalStatus ? 'APPROVED 已批准' : 'NOT APPROVED 未批准')
-    }
-    if (ddr.approvalNote) field(ps, '審批備註  Approval Note', ddr.approvalNote)
-  } else {
-    drawText(ps.page, '風險評估尚未完成。  Pending risk assessment completion.', {
-      x: MARGIN + 4, y: ps.y, size: 8.5, font: ps.regular, color: GRAY,
-    })
-    ps.y -= 14
-  }
-
-  // ════════════════════════════════════════════════════════════════════════════
-  // SECTION 6: 免責聲明 Disclaimer
-  // ════════════════════════════════════════════════════════════════════════════
   await ensureSpace(ps, doc, 80)
   sectionHeader(ps, doc, '6. 免責聲明  Disclaimer')
-
   const disclaimerZH =
-    '本報告由 6AM Advisory (Hong Kong) Limited 為內部合規目的而製備，所載資料屬機密性質，' +
-    '受香港《個人資料（私隱）條例》等適用數據保護法律規管。未經事先書面同意，不得向任何第三方披露本報告。'
+    '本報告由 6AM Advisory (Hong Kong) Limited 為內部合規目的而製備，所載資料屬機密性質，'
+    + '受香港《個人資料（私隱）條例》等適用數據保護法律規管。未經事先書面同意，不得向任何第三方披露本報告。'
   const disclaimerEN =
-    'This report is prepared by 6AM Advisory (Hong Kong) Limited for internal compliance purposes only. ' +
-    'The information contained herein is confidential and subject to applicable data protection laws including ' +
-    'the Hong Kong Personal Data (Privacy) Ordinance. This report shall not be disclosed to any third party ' +
-    'without prior written consent.'
-
+    'This report is prepared by 6AM Advisory (Hong Kong) Limited for internal compliance purposes only. '
+    + 'The information contained herein is confidential and subject to applicable data protection laws including '
+    + 'the Hong Kong Personal Data (Privacy) Ordinance. This report shall not be disclosed to any third party '
+    + 'without prior written consent.'
   ps.y -= 4
-  const zhLines = wrapText(disclaimerZH, ps.regular, 8, CW - 8)
-  for (const line of zhLines) {
+  for (const line of wrapText(disclaimerZH, ps.regular, 8, CW - 8)) {
     await ensureSpace(ps, doc, 12)
     drawText(ps.page, line, { x: MARGIN + 4, y: ps.y, size: 8, font: ps.regular, color: GRAY })
     ps.y -= 11
   }
   ps.y -= 4
-  const enLines = wrapText(disclaimerEN, ps.regular, 8, CW - 8)
-  for (const line of enLines) {
+  for (const line of wrapText(disclaimerEN, ps.regular, 8, CW - 8)) {
     await ensureSpace(ps, doc, 12)
     drawText(ps.page, line, { x: MARGIN + 4, y: ps.y, size: 8, font: ps.regular, color: GRAY })
     ps.y -= 11
   }
 
-  // ── Done ──────────────────────────────────────────────────────────────────
   return Buffer.from(await doc.save())
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Person-level Due Diligence Report
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Parse stored AML check matches JSON into display rows. */
+function parseMatchRows(matches: unknown): Array<{ primaryName: string; score: number; result: string }> {
+  if (!Array.isArray(matches)) return []
+  const rows: Array<{ primaryName: string; score: number; result: string }> = []
+  for (const m of matches) {
+    if (!m || typeof m !== 'object') continue
+    const row = m as { primaryName?: unknown; score?: unknown; result?: unknown }
+    if (typeof row.primaryName !== 'string') continue
+    rows.push({
+      primaryName: row.primaryName,
+      score: typeof row.score === 'number' ? row.score : 0,
+      result: typeof row.result === 'string' ? row.result : 'WEAK_HIT',
+    })
+  }
+  return rows
+}
+
+function screeningResultColor(result: string | null | undefined) {
+  if (result === 'CLEAR') return GREEN_TEXT
+  if (result === 'STRONG_HIT') return RED
+  if (!result) return GRAY
+  return ORANGE
+}
+
+function screeningResultLabel(result: string | null | undefined): string {
+  if (!result) return '未完成  Not completed'
+  if (result === 'CLEAR') return 'CLEAR  清白'
+  if (result === 'STRONG_HIT') return 'HIT  命中'
+  return result.replace(/_/g, ' ')
+}
+
+type PersonScopedCheck = {
+  result: string
+  checkedAt: Date
+  matches: unknown
+  triggeredBy: { nameEn: string | null; nameZh: string | null } | null
+}
+
+async function loadPersonScopedChecks(keyPersonId: string): Promise<Record<
+  'SANCTIONS' | 'FATF' | 'PEP' | 'ADVERSE_MEDIA',
+  PersonScopedCheck | null
+>> {
+  const scopes = ['SANCTIONS', 'FATF', 'PEP', 'ADVERSE_MEDIA'] as const
+  const entries = await Promise.all(
+    scopes.map(async scope => {
+      const check = await prisma.aMLCheck.findFirst({
+        where: { keyPersonId, subjectType: 'KEY_PERSON', scope },
+        orderBy: { checkedAt: 'desc' },
+        select: {
+          result: true,
+          checkedAt: true,
+          matches: true,
+          triggeredBy: { select: { nameEn: true, nameZh: true } },
+        },
+      })
+      return [scope, check] as const
+    }),
+  )
+  return Object.fromEntries(entries) as Record<
+    'SANCTIONS' | 'FATF' | 'PEP' | 'ADVERSE_MEDIA',
+    PersonScopedCheck | null
+  >
+}
+
+/** Draw one audit-ready screening proof block (result + timestamp + details). */
+async function drawScreeningProofBlock(
+  ps: PageState,
+  doc: PDFDocument,
+  opts: {
+    title: string
+    methodZh: string
+    methodEn: string
+    check: PersonScopedCheck | null
+    subjectLines?: string[]
+    emptyClearMessage?: { zh: string; en: string }
+  },
+) {
+  await ensureSpace(ps, doc, 80)
+  subHeader(ps, opts.title)
+
+  const check = opts.check
+  const isClear = check?.result === 'CLEAR'
+  const isGood = Boolean(check && isClear)
+
+  drawBanner(
+    ps,
+    check
+      ? `結果 Result: ${screeningResultLabel(check.result)}`
+      : '尚未完成此步驟篩查  This screening step has not been completed',
+    check
+      ? `完成時間 Completed: ${new Date(check.checkedAt).toLocaleString('en-HK')}`
+      : '請先於 KYC 完成對應步驟  Complete the KYC step first',
+    isGood,
+  )
+
+  const officer = check?.triggeredBy
+    ? [check.triggeredBy.nameEn, check.triggeredBy.nameZh].filter(Boolean).join(' / ')
+    : '—'
+  drawInfoBox(ps, [
+    { label: '方法  Method', value: `${opts.methodZh}\n${opts.methodEn}` },
+    {
+      label: '結果  Result',
+      value: screeningResultLabel(check?.result),
+      valueColor: screeningResultColor(check?.result),
+    },
+    {
+      label: '完成時間\nCompleted at',
+      value: check ? new Date(check.checkedAt).toLocaleString('en-HK') : '—',
+    },
+    { label: '操作人員\nPerformed by', value: officer },
+  ])
+  ps.y -= 4
+
+  if (opts.subjectLines && opts.subjectLines.length > 0) {
+    await ensureSpace(ps, doc, 40)
+    drawText(ps.page, '篩查對象 / 輸入欄位  Screening inputs:', {
+      x: MARGIN + 4, y: ps.y, size: 8.5, font: ps.bold, color: BLACK,
+    })
+    ps.y -= 12
+    for (const line of opts.subjectLines) {
+      await ensureSpace(ps, doc, 12)
+      for (const wrapped of wrapText(line, ps.regular, 8.5, CW - 16)) {
+        drawText(ps.page, wrapped, { x: MARGIN + 8, y: ps.y, size: 8.5, font: ps.regular, color: GRAY })
+        ps.y -= 11
+      }
+    }
+    ps.y -= 4
+  }
+
+  if (check?.matches && typeof check.matches === 'object' && !Array.isArray(check.matches)) {
+    const meta = check.matches as { manual?: boolean; notes?: string | null }
+    if (meta.manual) {
+      await ensureSpace(ps, doc, 28)
+      drawText(ps.page, '人工審查備註  Manual review notes:', {
+        x: MARGIN + 4, y: ps.y, size: 8.5, font: ps.bold, color: BLACK,
+      })
+      ps.y -= 12
+      for (const line of wrapText(meta.notes?.trim() || '（無備註  No notes）', ps.regular, 8.5, CW - 16)) {
+        await ensureSpace(ps, doc, 12)
+        drawText(ps.page, line, { x: MARGIN + 8, y: ps.y, size: 8.5, font: ps.regular, color: GRAY })
+        ps.y -= 11
+      }
+      ps.y -= 4
+    }
+  }
+
+  const matchRows = parseMatchRows(check?.matches)
+  const isHit = Boolean(check && check.result !== 'CLEAR')
+  if (matchRows.length > 0) {
+    await ensureSpace(ps, doc, 36)
+    drawText(ps.page, '命中明細  Match evidence:', {
+      x: MARGIN + 4, y: ps.y, size: 8.5, font: ps.bold, color: BLACK,
+    })
+    ps.y -= 12
+    for (const m of matchRows) {
+      await ensureSpace(ps, doc, 14)
+      const line = `• ${m.primaryName}  (${m.result.replace(/_/g, ' ')}${m.score ? `  ${(m.score * 100).toFixed(0)}%` : ''})`
+      drawText(ps.page, line, {
+        x: MARGIN + 8,
+        y: ps.y,
+        size: 8.5,
+        font: ps.regular,
+        color: screeningResultColor(m.result),
+      })
+      ps.y -= 13
+    }
+  } else if (check?.result === 'CLEAR' && opts.emptyClearMessage) {
+    await ensureSpace(ps, doc, 36)
+    drawBanner(ps, opts.emptyClearMessage.zh, opts.emptyClearMessage.en, true)
+  } else if (isHit && matchRows.length === 0) {
+    await ensureSpace(ps, doc, 24)
+    drawText(ps.page, '已標記為命中（無結構化命中明細）。  Marked as HIT (no structured match rows).', {
+      x: MARGIN + 4, y: ps.y, size: 8.5, font: ps.regular, color: RED,
+    })
+    ps.y -= 14
+  }
+
+  ps.y -= 8
+}
+
 export async function generatePersonDDR(keyPersonId: string): Promise<Buffer> {
-  // ── 1. Load person data ───────────────────────────────────────────────────
   const person = await prisma.keyPerson.findUniqueOrThrow({
     where: { id: keyPersonId },
     select: {
@@ -1424,9 +1524,6 @@ export async function generatePersonDDR(keyPersonId: string): Promise<Buffer> {
       titlePrefix: true,
       nameEn: true,
       nameZh: true,
-      firstName: true,
-      lastName: true,
-      otherName: true,
       idType: true,
       idNumber: true,
       placeOfIssue: true,
@@ -1438,32 +1535,17 @@ export async function generatePersonDDR(keyPersonId: string): Promise<Buffer> {
       isPep: true,
       homeAddress: true,
       contactAddress: true,
-      homePhone: true,
-      workPhone: true,
       mobile: true,
-      wechat: true,
       email: true,
-      emergencyContact: true,
       employmentStatus: true,
       employerName: true,
-      employerAddress: true,
-      businessNatures: true,
       position: true,
-      workingYears: true,
       sourceOfFunds: true,
       sourcesOfWealth: true,
       annualIncome: true,
       netAssetValue: true,
-      assetItems: true,
-      declarationSigned: true,
       declarationDate: true,
       kycStatus: true,
-      updatedAt: true,
-      amlChecks: {
-        orderBy: { checkedAt: 'desc' },
-        take: 1,
-        select: { result: true, matches: true, checkedAt: true },
-      },
       companyLinks: {
         take: 1,
         orderBy: { createdAt: 'desc' },
@@ -1476,11 +1558,13 @@ export async function generatePersonDDR(keyPersonId: string): Promise<Buffer> {
       kycDocuments: {
         where: { status: { not: 'REJECTED' } },
         select: { id: true, documentType: true, fileName: true, uploadedAt: true },
+        orderBy: { uploadedAt: 'desc' },
       },
     },
   })
 
-  // Risk assessment answers from linked company (if any)
+  const scoped = await loadPersonScopedChecks(keyPersonId)
+
   const linkedCompanyId = person.companyLinks[0]?.companyId ?? null
   const riskAnswers = linkedCompanyId
     ? await prisma.riskAssessmentAnswer.findMany({
@@ -1489,7 +1573,6 @@ export async function generatePersonDDR(keyPersonId: string): Promise<Buffer> {
       })
     : []
 
-  // Latest DDR from linked company (for risk level / approval fields)
   const companyDdr = linkedCompanyId
     ? await prisma.dueDiligenceReport.findFirst({
         where: { companyId: linkedCompanyId },
@@ -1498,7 +1581,7 @@ export async function generatePersonDDR(keyPersonId: string): Promise<Buffer> {
     : null
 
   const amlSources = await prisma.aMLSource.findMany({
-    where: { isActive: true },
+    where: { isActive: true, seqNo: { notIn: [16] } },
     orderBy: { seqNo: 'asc' },
     select: { seqNo: true, nameEn: true, nameZh: true, lastFetched: true },
   })
@@ -1510,16 +1593,15 @@ export async function generatePersonDDR(keyPersonId: string): Promise<Buffer> {
     ? await prisma.user.findUnique({ where: { id: companyDdr.recommendedById }, select: { nameEn: true, nameZh: true } })
     : null
 
-  // ── 2. Build PDF ──────────────────────────────────────────────────────────
   const doc = await PDFDocument.create()
   const fonts = await loadReportFonts(doc)
 
   if (!fonts.supportsUnicode) {
     throw new Error(
-      'DDR generation requires a CJK font because the report template contains Chinese text. ' +
-      'On Linux: apt-get install fonts-noto-cjk  OR  yum install google-noto-cjk-fonts. ' +
-      'Or place a font at assets/fonts/NotoSansCJK-Regular.otf. ' +
-      'Or set the DDR_PDF_FONT_PATH environment variable.'
+      'DDR generation requires a CJK font because the report template contains Chinese text. '
+      + 'On Linux: apt-get install fonts-noto-cjk  OR  yum install google-noto-cjk-fonts. '
+      + 'Or place a font at assets/fonts/NotoSansCJK-Regular.otf. '
+      + 'Or set the DDR_PDF_FONT_PATH environment variable.',
     )
   }
 
@@ -1536,12 +1618,22 @@ export async function generatePersonDDR(keyPersonId: string): Promise<Buffer> {
   const displayName = [person.titlePrefix, person.nameEn].filter(Boolean).join(' ')
   const roles = person.companyLinks[0]?.roles ?? []
 
-  // ── 3. Cover page ─────────────────────────────────────────────────────────
+  const allFourClear =
+    scoped.SANCTIONS?.result === 'CLEAR'
+    && scoped.FATF?.result === 'CLEAR'
+    && scoped.PEP?.result === 'CLEAR'
+    && scoped.ADVERSE_MEDIA?.result === 'CLEAR'
+
+  // Cover
   ps.page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: rgb(1, 1, 1) })
-  ps.page.drawRectangle({ x: 42.52, y: 328.03, width: 510.24, height: 457.17,
-    color: rgb(1, 1, 1), borderColor: ACCENT, borderWidth: 1.5 })
-  ps.page.drawRectangle({ x: 72.52, y: 566.8, width: 450.24, height: 70.5,
-    color: rgb(1, 1, 1), borderColor: ACCENT, borderWidth: 0.75 })
+  ps.page.drawRectangle({
+    x: 42.52, y: 328.03, width: 510.24, height: 457.17,
+    color: rgb(1, 1, 1), borderColor: ACCENT, borderWidth: 1.5,
+  })
+  ps.page.drawRectangle({
+    x: 72.52, y: 566.8, width: 450.24, height: 70.5,
+    color: rgb(1, 1, 1), borderColor: ACCENT, borderWidth: 0.75,
+  })
 
   drawText(ps.page, '個人盡職審查報告', { x: 180, y: 694, size: 24, font: ps.bold, color: PRIMARY })
   drawText(ps.page, 'Individual Due Diligence Report', { x: 140, y: 661, size: 19, font: ps.bold, color: PRIMARY })
@@ -1558,179 +1650,168 @@ export async function generatePersonDDR(keyPersonId: string): Promise<Buffer> {
     drawText(ps.page, `KYC 編號 Code: ${person.kycCode}`, { x: 72.52, y: 472, size: 9, font: ps.regular, color: GRAY })
   }
   drawText(ps.page, `報告日期 Report date: ${today}`, { x: 72.52, y: 452, size: 9, font: ps.regular, color: GRAY })
+  drawText(ps.page, '本報告記錄身份核驗及四步 AML/CFT 篩查證明（制裁／FATF／PEP／負面新聞）。', {
+    x: 72.52, y: 420, size: 8.5, font: ps.regular, color: GRAY,
+  })
+  drawText(ps.page, 'Identity verification and four-step screening evidence (Sanctions / FATF / PEP / Adverse media).', {
+    x: 72.52, y: 404, size: 8, font: ps.regular, color: GRAY,
+  })
 
-  // ── 4. Content pages ──────────────────────────────────────────────────────
   newPage(doc, ps)
   ps.y = H - MARGIN
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // SECTION 1: AML/CFT Search
-  // ══════════════════════════════════════════════════════════════════════════
+  // 1. Identity
   await ensureSpace(ps, doc, 60)
-  sectionHeader(ps, doc, '1. 反洗錢/打擊金融恐怖主義查詢  AML/CFT Search')
+  sectionHeader(ps, doc, '1. 客戶身份與核驗  Customer Identity & Verification')
 
-  subHeader(ps, '1.1  系統搜尋名稱  System Matching Names')
-  const COL_NO = 50
-  const COL_NAME = CW - COL_NO - 120
-  const COL_STATUS = 120
-  drawTableHeader(ps, [
-    { label: '序號\nNo.',          width: COL_NO,     center: true },
-    { label: '姓名\nName',         width: COL_NAME,   center: true },
-    { label: '搜尋狀態\nSearch Status', width: COL_STATUS, center: true },
-  ], 28)
-  let latestCheck: { result: string; matches: unknown; checkedAt?: Date } | null = person.amlChecks[0] ?? null
-  if (!latestCheck) {
-    const { result, matches } = await screenSubjectNames({
-      names: [person.nameEn, person.nameZh].filter(Boolean) as string[],
-      dateOfBirth: person.dateOfBirth,
-      entityType: 'INDIVIDUAL',
-    })
-    latestCheck = { result, matches, checkedAt: new Date() }
-  }
-
-  await ensureAdverseMediaForReport({
-    subjectType: 'KEY_PERSON',
-    keyPersonId: person.id,
-    names: [person.nameEn, person.nameZh].filter(Boolean) as string[],
-  })
-  const personAdverseFindings = await listAdverseMediaForSubjects({ keyPersonIds: [person.id] })
-  const personAdverseNames = new Map<string, string>([
-    [`kp:${person.id}`, [person.nameEn, person.nameZh].filter(Boolean).join(' / ')],
-  ])
-  drawTableRow(ps, [
-    { text: '1', width: COL_NO, center: true },
-    { text: [person.nameEn, person.nameZh].filter(Boolean).join(' / '), width: COL_NAME },
-    {
-      text: latestCheck ? '已啟用\nActive' : '未檢索\nNot screened',
-      width: COL_STATUS,
-      center: true,
-      color: latestCheck ? GREEN_TEXT : GRAY,
-    },
-  ])
-  ps.y -= 8
-
-  // 1.1.1 Individual AML detail box
-  await ensureSpace(ps, doc, 70)
-  leafHeader(ps, `1.1.1  ${[person.nameEn, person.nameZh].filter(Boolean).join('  ')}`)
-  const matches = latestCheck?.matches as Array<{ amlRecordId: string; primaryName: string; score: number; result: string }> | null ?? []
-  const hasMatch = matches.length > 0
-  const entityType = 'INDIVIDUAL / 個人'
-  let detailText = [
-    `身份 Role: ${roles.join(', ') || '—'}`,
-    `出生日期 Date of birth: ${fmt(person.dateOfBirth)}`,
-    `出生地 Place of birth: ${person.placeOfBirth || '—'}`,
-    `國籍 Nationality: ${person.nationality || '—'}`,
-    `身份證明 ID: ${[person.idType, person.idNumber].filter(Boolean).join(': ') || '—'}`,
-    `簽發地 Place of issue: ${person.placeOfIssue || '—'}`,
-    `地址 Address: ${person.contactAddress || person.homeAddress || '—'}`,
-    `電話 Mobile: ${person.mobile || '—'}`,
-    `電郵 Email: ${person.email || '—'}`,
-    `資金來源 Source of funds: ${person.sourceOfFunds || '—'}`,
-  ].join('\n')
-  if (hasMatch) {
-    detailText += `\nAML Match Details:\n${matches
-      .map(m => `${m.primaryName}  (${m.result.replace('_', ' ')}  score: ${(m.score * 100).toFixed(0)}%)`)
-      .join('\n')}`
-  }
-  drawInfoBox(
-    ps,
-    [{ label: '類型  Type', value: entityType, valueColor: hasMatch ? ORANGE : GRAY }],
-    detailText,
-  )
-  ps.y -= 10
-
-  // 1.2 Sanctions matching result
-  await ensureSpace(ps, doc, 60)
-  subHeader(ps, '1.2  制裁名單匹配結果  Sanctions List Matching Results')
-  if (hasMatch) {
-    drawBanner(ps, '發現制裁名單匹配項', 'Sanctions list matches found — please review alerts.', false)
-    for (const m of matches) {
-      await ensureSpace(ps, doc, 30)
-      const matchColor = m.result === 'STRONG_HIT' ? RED : m.result === 'POTENTIAL_HIT' ? ORANGE : GRAY
-      drawText(ps.page, `• ${m.primaryName}  (${m.result.replace('_', ' ')}  ${(m.score * 100).toFixed(0)}%)`, {
-        x: MARGIN + 8, y: ps.y, size: 9, font: ps.regular, color: matchColor,
-      })
-      ps.y -= 14
-    }
-  } else {
-    drawBanner(ps, '未發現制裁名單匹配項', 'No sanctions list matches found', true)
-  }
-
-  // 1.3 Adverse media / news screening
-  await drawAdverseMediaSection(ps, doc, personAdverseFindings, personAdverseNames)
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // SECTION 2: 個人資料 Personal Information
-  // ══════════════════════════════════════════════════════════════════════════
-  await ensureSpace(ps, doc, 60)
-  sectionHeader(ps, doc, '2. 個人資料  Personal Information')
-
-  const infoRows: Array<{ label: string; value: string }> = [
-    { label: '姓名（英文）\nName (EN)',          value: displayName },
-    { label: '姓名（中文）\nName (ZH)',           value: person.nameZh || '—' },
-    { label: 'KYC 編號\nKYC Code',              value: person.kycCode || '—' },
-    { label: '身份證類型\nID Type',              value: person.idType || '—' },
-    { label: '身份證號碼\nID Number',            value: person.idNumber || '—' },
-    { label: '簽發地\nPlace of Issue',          value: person.placeOfIssue || '—' },
-    { label: '身份證到期日\nID Expiry Date',     value: fmt(person.idExpiryDate) },
-    { label: '出生日期\nDate of Birth',         value: fmt(person.dateOfBirth) },
-    { label: '出生地\nPlace of Birth',          value: person.placeOfBirth || '—' },
-    { label: '國籍\nNationality',              value: person.nationality || '—' },
-    { label: '美國公民\nUS Citizen',            value: person.isUsCitizen == null ? '—' : person.isUsCitizen ? '是  Yes' : '否  No' },
-    { label: '政治公眾人物\nPEP',               value: person.isPep == null ? '—' : person.isPep ? '是  Yes' : '否  No' },
-    { label: '住宅地址\nHome Address',          value: person.homeAddress || '—' },
-    { label: '聯絡地址\nContact Address',       value: person.contactAddress || '—' },
-    { label: '手機\nMobile',                   value: person.mobile || '—' },
-    { label: '電郵\nEmail',                    value: person.email || '—' },
-    { label: '就業狀況\nEmployment Status',     value: person.employmentStatus || '—' },
-    { label: '僱主名稱\nEmployer',             value: person.employerName || '—' },
-    { label: '職位\nPosition',                value: person.position || '—' },
-    { label: '資金來源\nSource of Funds',       value: person.sourceOfFunds || '—' },
-    { label: '財富來源\nSources of Wealth',     value: person.sourcesOfWealth?.join(', ') || '—' },
-    { label: '年收入\nAnnual Income',          value: person.annualIncome || '—' },
-    { label: '淨資產值\nNet Asset Value',       value: person.netAssetValue || '—' },
+  const identityRows: Array<{ label: string; value: string }> = [
+    { label: '姓名（英文）\nName (EN)', value: displayName },
+    { label: '姓名（中文）\nName (ZH)', value: person.nameZh || '—' },
+    { label: 'KYC 編號\nKYC Code', value: person.kycCode || '—' },
+    { label: '身份角色\nRole(s)', value: roles.join(', ') || '—' },
+    { label: '證件類型\nID Type', value: person.idType || '—' },
+    { label: '證件號碼\nID Number', value: person.idNumber || '—' },
+    { label: '簽發地\nPlace of Issue', value: person.placeOfIssue || '—' },
+    { label: '證件到期日\nID Expiry', value: fmt(person.idExpiryDate) },
+    { label: '出生日期\nDate of Birth', value: fmt(person.dateOfBirth) },
+    { label: '出生地\nPlace of Birth', value: person.placeOfBirth || '—' },
+    { label: '國籍\nNationality', value: person.nationality || '—' },
+    { label: '美國公民\nUS Citizen', value: person.isUsCitizen == null ? '—' : person.isUsCitizen ? '是  Yes' : '否  No' },
+    { label: '自報 PEP\nSelf-declared PEP', value: person.isPep == null ? '—' : person.isPep ? '是  Yes' : '否  No' },
+    { label: '住宅地址\nHome Address', value: person.homeAddress || '—' },
+    { label: '聯絡地址\nContact Address', value: person.contactAddress || '—' },
+    { label: '手機\nMobile', value: person.mobile || '—' },
+    { label: '電郵\nEmail', value: person.email || '—' },
+    { label: '就業狀況\nEmployment', value: person.employmentStatus || '—' },
+    { label: '僱主\nEmployer', value: person.employerName || '—' },
+    { label: '職位\nPosition', value: person.position || '—' },
+    { label: '資金來源\nSource of Funds', value: person.sourceOfFunds || '—' },
+    { label: '財富來源\nSources of Wealth', value: person.sourcesOfWealth?.join(', ') || '—' },
+    { label: '年收入\nAnnual Income', value: person.annualIncome || '—' },
+    { label: '淨資產\nNet Asset Value', value: person.netAssetValue || '—' },
+    { label: 'KYC 狀態\nKYC Status', value: person.kycStatus || '—' },
+    { label: '聲明日期\nDeclaration Date', value: fmt(person.declarationDate) },
   ]
 
-  for (const row of infoRows) {
+  for (const row of identityRows) {
     await ensureSpace(ps, doc, ROW_H + 2)
     drawInfoBox(ps, [{ label: row.label, value: row.value }])
   }
   ps.y -= 8
 
-  // KYC Documents sub-section
-  if (person.kycDocuments.length > 0) {
+  const idDocs = person.kycDocuments.filter(d =>
+    ['KYC_ID', 'KYC_ADDRESS', 'KYC_DECLARATION', 'KYC_OTHER', 'KYC_ADVERSE_MEDIA'].includes(d.documentType)
+    || !d.documentType.startsWith('PERSON_'),
+  )
+  if (idDocs.length > 0) {
     await ensureSpace(ps, doc, 40)
-    subHeader(ps, '2.1  已提交文件  Submitted KYC Documents')
-    const COL_DT_NO   = 40
-    const COL_DT_TYPE = Math.floor((CW - COL_DT_NO) * 0.4)
+    subHeader(ps, '1.1  已核驗／提交文件  Verified / Submitted Documents')
+    const COL_DT_NO = 40
+    const COL_DT_TYPE = Math.floor((CW - COL_DT_NO) * 0.35)
     const COL_DT_NAME = Math.floor((CW - COL_DT_NO) * 0.4)
     const COL_DT_DATE = CW - COL_DT_NO - COL_DT_TYPE - COL_DT_NAME
     drawTableHeader(ps, [
-      { label: 'No.',             width: COL_DT_NO, center: true },
-      { label: '文件類型\nType',   width: COL_DT_TYPE },
-      { label: '文件名稱\nFile',   width: COL_DT_NAME },
-      { label: '上傳日期\nDate',   width: COL_DT_DATE, center: true },
+      { label: 'No.', width: COL_DT_NO, center: true },
+      { label: '文件類型\nType', width: COL_DT_TYPE },
+      { label: '文件名稱\nFile', width: COL_DT_NAME },
+      { label: '上傳日期\nDate', width: COL_DT_DATE, center: true },
     ])
-    for (let i = 0; i < person.kycDocuments.length; i++) {
-      const kd = person.kycDocuments[i]
+    for (let i = 0; i < idDocs.length; i++) {
+      const kd = idDocs[i]
       await ensureSpace(ps, doc, ROW_H + 2)
       drawTableRow(ps, [
-        { text: String(i + 1),          width: COL_DT_NO, center: true },
-        { text: kd.documentType,        width: COL_DT_TYPE },
-        { text: kd.fileName,            width: COL_DT_NAME },
-        { text: fmt(kd.uploadedAt),    width: COL_DT_DATE, center: true },
+        { text: String(i + 1), width: COL_DT_NO, center: true },
+        { text: kd.documentType, width: COL_DT_TYPE },
+        { text: kd.fileName, width: COL_DT_NAME },
+        { text: fmt(kd.uploadedAt), width: COL_DT_DATE, center: true },
       ])
     }
     ps.y -= 8
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // SECTION 3: 風險評估 Risk Assessment
-  // ══════════════════════════════════════════════════════════════════════════
+  // 2. Screening evidence
+  await ensureSpace(ps, doc, 60)
+  sectionHeader(ps, doc, '2. AML/CFT 篩查證明  Screening Evidence')
+
+  await ensureSpace(ps, doc, 28)
+  drawText(ps.page, '以下按 KYC 四步流程記錄每次篩查結果（含無命中證明）。', {
+    x: MARGIN + 4, y: ps.y, size: 8.5, font: ps.regular, color: GRAY,
+  })
+  ps.y -= 12
+  drawText(ps.page, 'Each step records outcome, timestamp, and evidence (including clear screens).', {
+    x: MARGIN + 4, y: ps.y, size: 8, font: ps.regular, color: GRAY,
+  })
+  ps.y -= 14
+
+  await drawScreeningProofBlock(ps, doc, {
+    title: '2.1  制裁名單篩查  Sanctions (AML)',
+    methodZh: '系統比對個人姓名與制裁名單（OFAC / UN / HK / EU 等，不含 FATF）',
+    methodEn: 'Name screening against sanctions lists (excl. FATF jurisdiction lists)',
+    check: scoped.SANCTIONS,
+    subjectLines: [
+      `姓名 Name: ${[person.nameEn, person.nameZh].filter(Boolean).join(' / ') || '—'}`,
+      `出生日期 DOB: ${fmt(person.dateOfBirth)}`,
+    ],
+    emptyClearMessage: {
+      zh: '未發現制裁名單匹配項',
+      en: 'No sanctions list matches found',
+    },
+  })
+
+  await drawScreeningProofBlock(ps, doc, {
+    title: '2.2  FATF 黑／灰名單（司法管轄區）  FATF Black / Grey Lists',
+    methodZh: '以國籍、證件簽發地、出生地對照 FATF 黑名單／灰名單（系統內建 JSON，與 AML&PEP 頁相同）',
+    methodEn: 'Jurisdiction screening of nationality, ID/passport place of issue, and place of birth vs FATF lists',
+    check: scoped.FATF,
+    subjectLines: [
+      `國籍 Nationality: ${person.nationality || '—'}`,
+      `證件簽發地 Place of issue: ${person.placeOfIssue || '—'}`,
+      `出生地 Place of birth: ${person.placeOfBirth || '—'}`,
+    ],
+    emptyClearMessage: {
+      zh: '國籍／簽發地／出生地均未命中 FATF 黑名單或灰名單',
+      en: 'Nationality / place of issue / place of birth — no FATF black or grey list hit',
+    },
+  })
+
+  await drawScreeningProofBlock(ps, doc, {
+    title: '2.3  政治公眾人物篩查  PEP (OpenSanctions)',
+    methodZh: 'OpenSanctions Match API（/match/peps）對姓名等資料進行 PEP／RCA 比對',
+    methodEn: 'OpenSanctions Match API (/match/peps) PEP / RCA screening',
+    check: scoped.PEP,
+    subjectLines: [
+      `姓名 Name: ${[person.nameEn, person.nameZh].filter(Boolean).join(' / ') || '—'}`,
+      `出生日期 DOB: ${fmt(person.dateOfBirth)}`,
+      `國籍 Nationality: ${person.nationality || '—'}`,
+    ],
+    emptyClearMessage: {
+      zh: '未發現 OpenSanctions PEP／RCA 命中',
+      en: 'No OpenSanctions PEP / RCA matches found',
+    },
+  })
+
+  const adverseEvidence = person.kycDocuments.filter(d => d.documentType === 'KYC_ADVERSE_MEDIA')
+  await drawScreeningProofBlock(ps, doc, {
+    title: '2.4  負面新聞／公開媒體（人工）  Adverse Media (Manual)',
+    methodZh: '合規人員離線查核公開新聞後於系統標記 CLEAR 或 HIT（不依賴 Google CSE）',
+    methodEn: 'Staff manual open-source news review; mark CLEAR or HIT in KYC (Google CSE not required)',
+    check: scoped.ADVERSE_MEDIA,
+    subjectLines: [
+      `姓名 Name: ${[person.nameEn, person.nameZh].filter(Boolean).join(' / ') || '—'}`,
+      adverseEvidence.length > 0
+        ? `佐證文件 Evidence files: ${adverseEvidence.map(d => d.fileName).join('; ')}`
+        : '佐證文件 Evidence files: （未上傳，非必須  optional — none uploaded）',
+    ],
+    emptyClearMessage: {
+      zh: '人工審查：未發現相關負面新聞／公開媒體風險',
+      en: 'Manual review: no relevant adverse media risk identified',
+    },
+  })
+
+  // 3. Risk
   await ensureSpace(ps, doc, 60)
   sectionHeader(ps, doc, '3. 風險評估  Risk Assessment')
 
-  // 3.1 Assessment Items
   if (riskAnswers.length > 0 || DEFAULT_RISK_ITEMS.length > 0) {
     await ensureSpace(ps, doc, 40)
     subHeader(ps, '3.1  評估項目  Assessment Items')
@@ -1744,38 +1825,41 @@ export async function generatePersonDDR(keyPersonId: string): Promise<Buffer> {
       ps.y -= 14
     }
 
-    const answerByQuestion = new Map(riskAnswers.map(item => [normalizeMatchValue(item.questionKey), item]))
-    const usedRiskAnswerIds = new Set<string>()
-    const defaultRiskRows = DEFAULT_RISK_ITEMS.map(item => {
+    const answerByQuestion = new Map(
+      riskAnswers.map(item => [normalizeMatchValue(item.questionKey), item]),
+    )
+    const used = new Set<string>()
+    const defaults = DEFAULT_RISK_ITEMS.map(item => {
       const answer = answerByQuestion.get(normalizeMatchValue(item.question))
-      if (answer) usedRiskAnswerIds.add(answer.id)
-      return { category: item.category, question: item.question, answer: answer?.answer || '否\nNo', notes: answer?.notes }
+      if (answer) used.add(answer.id)
+      return {
+        question: item.question,
+        answer: answer?.answer || '否\nNo',
+        notes: answer?.notes ?? null,
+      }
     })
-    const extraRiskRows = riskAnswers
-      .filter(item => !usedRiskAnswerIds.has(item.id))
-      .map(item => ({ category: item.category, question: item.questionKey, answer: item.answer, notes: item.notes }))
-    const riskRows = [...defaultRiskRows, ...extraRiskRows]
-    const riskCategories = [...new Set(riskRows.map(item => item.category))]
-    for (const category of riskCategories) {
-      const items = riskRows.filter(item => item.category === category)
-      await ensureSpace(ps, doc, 80)
-      ps.y -= 6
-      drawText(ps.page, category, { x: MARGIN + 4, y: ps.y, size: 9, font: ps.bold, color: PRIMARY })
-      ps.y -= 14
-      await drawAssessmentTable(ps, doc, items)
-      ps.y -= 8
-    }
+    const extras = riskAnswers
+      .filter(item => !used.has(item.id))
+      .map(item => ({
+        question: item.questionKey,
+        answer: item.answer,
+        notes: item.notes,
+      }))
+    await drawAssessmentTable(ps, doc, [...defaults, ...extras])
   }
 
-  // 3.2 Risk Assessment box
   const riskLevel = companyDdr?.overallRiskLevel ?? null
-  const riskText  = riskLabel(riskLevel)
-  const riskCol   = riskColor(riskLevel)
-  const recName   = recommendedByUser ? [recommendedByUser.nameEn, recommendedByUser.nameZh].filter(Boolean).join(' / ') : '—'
-  const appName   = approvedByUser    ? [approvedByUser.nameEn,    approvedByUser.nameZh   ].filter(Boolean).join(' / ') : '—'
-  const appStatus = companyDdr?.approvalStatus === true  ? '是  Yes'
-                  : companyDdr?.approvalStatus === false ? '否  No'
-                  : '—'
+  const riskText = riskLabel(riskLevel)
+  const riskCol = riskColor(riskLevel)
+  const recName = recommendedByUser
+    ? [recommendedByUser.nameEn, recommendedByUser.nameZh].filter(Boolean).join(' / ')
+    : '—'
+  const appName = approvedByUser
+    ? [approvedByUser.nameEn, approvedByUser.nameZh].filter(Boolean).join(' / ')
+    : '—'
+  const appStatus = companyDdr?.approvalStatus === true ? '已批准  Approved'
+    : companyDdr?.approvalStatus === false ? '未批准  Not approved'
+      : '待批  Pending'
 
   await drawApprovalBox(ps, doc, '3.2  評估風險  Risk Summary', [
     { label: '整體風險等級\nOverall Risk Level', value: riskText, valueColor: riskCol },
@@ -1792,25 +1876,97 @@ export async function generatePersonDDR(keyPersonId: string): Promise<Buffer> {
   ])
 
   await drawApprovalBox(ps, doc, '3.4  批准  Approval', [
-    { label: '批准狀態\nApproval Status', value: appStatus, valueColor: companyDdr?.approvalStatus === true ? GREEN_TEXT : companyDdr?.approvalStatus === false ? RED : GRAY },
+    {
+      label: '批准狀態\nApproval Status',
+      value: appStatus,
+      valueColor: companyDdr?.approvalStatus === true ? GREEN_TEXT : companyDdr?.approvalStatus === false ? RED : GRAY,
+    },
     { label: '批准備註\nApproval Remark', value: companyDdr?.approvalNote || '' },
     { label: '批准日期\nApproval Date', value: fmt(companyDdr?.approvedAt) },
     { label: '批准人員\nApproval Officer', value: appName },
     { label: '批准人員簽署\nApproval Officer Signature', value: '', tall: true },
   ])
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // SECTION 4: Data Sources
-  // ══════════════════════════════════════════════════════════════════════════
+  // 4. Conclusion
+  await ensureSpace(ps, doc, 120)
+  sectionHeader(ps, doc, '4. 調查結論  Conclusion')
+
+  await ensureSpace(ps, doc, 40)
+  subHeader(ps, '4.1  四步篩查清單  Four-step Screening Checklist')
+  const checklist: Array<{ label: string; check: PersonScopedCheck | null }> = [
+    { label: '1. AML / Sanctions', check: scoped.SANCTIONS },
+    { label: '2. FATF jurisdictions', check: scoped.FATF },
+    { label: '3. PEP (OpenSanctions)', check: scoped.PEP },
+    { label: '4. Adverse media (manual)', check: scoped.ADVERSE_MEDIA },
+  ]
+  for (const row of checklist) {
+    await ensureSpace(ps, doc, 16)
+    const ok = row.check?.result === 'CLEAR'
+    drawText(ps.page, `${ok ? '✓' : '○'}  ${row.label}`, {
+      x: MARGIN + 8,
+      y: ps.y,
+      size: 9,
+      font: ps.bold,
+      color: ok ? GREEN_TEXT : GRAY,
+    })
+    drawText(ps.page, screeningResultLabel(row.check?.result), {
+      x: MARGIN + 240,
+      y: ps.y,
+      size: 9,
+      font: ps.regular,
+      color: screeningResultColor(row.check?.result),
+    })
+    ps.y -= 16
+  }
+  ps.y -= 6
+
+  if (allFourClear) {
+    drawBanner(
+      ps,
+      '四步篩查均為 CLEAR — 可作為建立／維持業務關係之篩查證明',
+      'All four screening steps CLEAR — screening evidence supports onboarding / continuation',
+      true,
+    )
+  } else {
+    drawBanner(
+      ps,
+      '四步篩查尚未全部 CLEAR — 請完成 KYC 篩查後再出具結論',
+      'Not all four steps are CLEAR — complete KYC screening before final conclusion',
+      false,
+    )
+  }
+
+  if (companyDdr) {
+    ps.y -= 6
+    const rBg = riskCol === GREEN_TEXT ? GREEN_BG : riskCol === RED ? RED_BG : rgb(0.99, 0.96, 0.9)
+    ps.page.drawRectangle({ x: MARGIN + 4, y: ps.y - 24, width: CW - 8, height: 24, color: rBg })
+    drawText(ps.page, '整體風險級別  Overall Risk Level:', {
+      x: MARGIN + 10, y: ps.y - 16, size: 10, font: ps.bold, color: BLACK,
+    })
+    drawText(ps.page, riskText, { x: MARGIN + 220, y: ps.y - 16, size: 10, font: ps.bold, color: riskCol })
+    ps.y -= 30
+    if (companyDdr.recommendation) field(ps, '建議  Recommendation', companyDdr.recommendation)
+    if (companyDdr.recommendationNote) field(ps, '建議備註  Recommendation Note', companyDdr.recommendationNote)
+    if (companyDdr.approvalStatus !== null && companyDdr.approvalStatus !== undefined) {
+      field(ps, '審批狀態  Approval Status', companyDdr.approvalStatus ? 'APPROVED 已批准' : 'NOT APPROVED 未批准')
+    }
+    if (companyDdr.approvalNote) field(ps, '審批備註  Approval Note', companyDdr.approvalNote)
+  } else {
+    drawText(ps.page, '關聯公司風險評估尚未完成（如適用）。  Linked company risk assessment pending (if applicable).', {
+      x: MARGIN + 4, y: ps.y, size: 8.5, font: ps.regular, color: GRAY,
+    })
+    ps.y -= 14
+  }
+
+  // 5. Sources
   await ensureSpace(ps, doc, 60)
-  sectionHeader(ps, doc, '4. 資料來源與說明  Data Sources and Notes')
+  sectionHeader(ps, doc, '5. 資料來源與說明  Data Sources and Notes')
 
   ps.y -= 4
-  const dsIntroLines = wrapText(
-    '本報告所載制裁名單查詢結果，乃根據下列資料來源進行比對。各資料來源均定期更新，以確保資料的準確性及時效性。',
+  for (const line of wrapText(
+    '制裁名單來源如下（系統定期更新）。FATF 黑／灰名單採用與 AML&PEP 頁相同的內建 JSON。PEP 使用 OpenSanctions Match API。負面新聞為人工審查記錄。',
     ps.regular, 8.5, CW - 8,
-  )
-  for (const line of dsIntroLines) {
+  )) {
     await ensureSpace(ps, doc, 12)
     drawText(ps.page, line, { x: MARGIN + 4, y: ps.y, size: 8.5, font: ps.regular, color: BLACK })
     ps.y -= 12
@@ -1823,90 +1979,49 @@ export async function generatePersonDDR(keyPersonId: string): Promise<Buffer> {
     })
     ps.y -= 14
   } else {
-    const COL_SEQ   = 36
-    const COL_ZH    = Math.floor((CW - COL_SEQ) * 0.38)
-    const COL_EN    = Math.floor((CW - COL_SEQ) * 0.38)
+    const COL_SEQ = 36
+    const COL_ZH = Math.floor((CW - COL_SEQ) * 0.38)
+    const COL_EN = Math.floor((CW - COL_SEQ) * 0.38)
     const COL_FETCH = CW - COL_SEQ - COL_ZH - COL_EN
     drawTableHeader(ps, [
-      { label: '序號\nNo.',              width: COL_SEQ,   center: true },
+      { label: '序號\nNo.', width: COL_SEQ, center: true },
       { label: '名稱（中文）\nName (ZH)', width: COL_ZH },
       { label: '名稱（英文）\nName (EN)', width: COL_EN },
-      { label: '最後更新日期\nLast Updated', width: COL_FETCH, center: true },
+      { label: '最後更新\nLast Updated', width: COL_FETCH, center: true },
     ], 28)
     for (const src of amlSources) {
       await ensureSpace(ps, doc, ROW_H + 2)
       drawTableRow(ps, [
-        { text: String(src.seqNo),    width: COL_SEQ,   center: true },
-        { text: src.nameZh,           width: COL_ZH },
-        { text: src.nameEn,           width: COL_EN },
+        { text: String(src.seqNo), width: COL_SEQ, center: true },
+        { text: src.nameZh, width: COL_ZH },
+        { text: src.nameEn, width: COL_EN },
         { text: fmt(src.lastFetched), width: COL_FETCH, center: true },
       ])
     }
   }
 
   ps.y -= 10
-  const dsNoteLines = wrapText(
-    '說明：本系統採用模糊匹配演算法對上述資料庫進行比對，相似度閾值設定為 0.75。匹配結果分為 CLEAR（無匹配）、WEAK_HIT（弱匹配）、POTENTIAL_HIT（潛在匹配）及 STRONG_HIT（強匹配）四個級別。如出現匹配結果，請由合規人員作進一步審查。',
+  for (const line of wrapText(
+    '說明：制裁／FATF 匹配結果分為 CLEAR、WEAK_HIT、POTENTIAL_HIT、STRONG_HIT。本報告第 2 節所載結果以 KYC 四步篩查當時存檔為準，生成報告時不會重新自動篩查。如出現命中，須由合規人員進一步審查。',
     ps.regular, 8, CW - 8,
-  )
-  for (const line of dsNoteLines) {
+  )) {
     await ensureSpace(ps, doc, 11)
     drawText(ps.page, line, { x: MARGIN + 4, y: ps.y, size: 8, font: ps.regular, color: GRAY })
     ps.y -= 11
   }
-  ps.y -= 6
+  ps.y -= 10
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // SECTION 5: Conclusion
-  // ══════════════════════════════════════════════════════════════════════════
-  await ensureSpace(ps, doc, 100)
-  sectionHeader(ps, doc, '5. 調查結論  Conclusion')
-
-  if (companyDdr) {
-    ps.y -= 6
-    const rBg = riskCol === GREEN_TEXT ? GREEN_BG : riskCol === RED ? RED_BG : rgb(0.99, 0.96, 0.9)
-    ps.page.drawRectangle({ x: MARGIN + 4, y: ps.y - 24, width: CW - 8, height: 24, color: rBg })
-    drawText(ps.page, '整體風險級別  Overall Risk Level:', { x: MARGIN + 10, y: ps.y - 16, size: 10, font: ps.bold, color: BLACK })
-    drawText(ps.page, riskText, { x: MARGIN + 220, y: ps.y - 16, size: 10, font: ps.bold, color: riskCol })
-    ps.y -= 30
-
-    if (companyDdr.recommendation) field(ps, '建議  Recommendation', companyDdr.recommendation)
-    if (companyDdr.recommendationNote) field(ps, '建議備註  Recommendation Note', companyDdr.recommendationNote)
-    if (companyDdr.approvalStatus !== null && companyDdr.approvalStatus !== undefined) {
-      field(ps, '審批狀態  Approval Status', companyDdr.approvalStatus ? 'APPROVED 已批准' : 'NOT APPROVED 未批准')
-    }
-    if (companyDdr.approvalNote) field(ps, '審批備註  Approval Note', companyDdr.approvalNote)
-  } else {
-    drawText(ps.page, '風險評估尚未完成。  Pending risk assessment completion.', {
-      x: MARGIN + 4, y: ps.y, size: 8.5, font: ps.regular, color: GRAY,
-    })
-    ps.y -= 14
-  }
-
-  // AML summary
-  ps.y -= 8
-  const amlResult: string = latestCheck?.result ?? 'NOT_SCREENED'
-  const amlColor = amlResult === 'CLEAR' ? GREEN_TEXT : amlResult === 'STRONG_HIT' ? RED : ORANGE
-  const amlLabel = amlResult === 'CLEAR' ? '清洗記錄查核：清白  AML Check: CLEAR'
-    : amlResult === 'NOT_SCREENED' ? '清洗記錄查核：未檢索  AML Check: Not Screened'
-    : `清洗記錄查核：發現匹配  AML Check: ${amlResult.replace('_', ' ')}`
-  drawText(ps.page, amlLabel, { x: MARGIN + 4, y: ps.y, size: 9, font: ps.regular, color: amlColor })
-  ps.y -= 14
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // SECTION 6: Disclaimer
-  // ══════════════════════════════════════════════════════════════════════════
   await ensureSpace(ps, doc, 80)
   sectionHeader(ps, doc, '6. 免責聲明  Disclaimer')
 
   const disclaimerZH =
-    '本報告由 6AM Advisory (Hong Kong) Limited 為內部合規目的而製備，所載資料屬機密性質，' +
-    '受香港《個人資料（私隱）條例》等適用數據保護法律規管。未經事先書面同意，不得向任何第三方披露本報告。'
+    '本報告由 6AM Advisory (Hong Kong) Limited 為內部合規目的而製備，所載資料屬機密性質，'
+    + '受香港《個人資料（私隱）條例》等適用數據保護法律規管。未經事先書面同意，不得向任何第三方披露本報告。'
   const disclaimerEN =
-    'This report is prepared by 6AM Advisory (Hong Kong) Limited for internal compliance purposes only. ' +
-    'The information contained herein is confidential and subject to applicable data protection laws including ' +
-    'the Hong Kong Personal Data (Privacy) Ordinance. This report shall not be disclosed to any third party ' +
-    'without prior written consent.'
+    'This report is prepared by 6AM Advisory (Hong Kong) Limited for internal compliance purposes only. '
+    + 'The information contained herein is confidential and subject to applicable data protection laws including '
+    + 'the Hong Kong Personal Data (Privacy) Ordinance. This report shall not be disclosed to any third party '
+    + 'without prior written consent.'
 
   ps.y -= 4
   for (const line of wrapText(disclaimerZH, ps.regular, 8, CW - 8)) {

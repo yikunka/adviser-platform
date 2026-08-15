@@ -59,8 +59,10 @@ type ScreenGate = {
   sanctions: ScreenGateStep
   fatf: ScreenGateStep
   pep: ScreenGateStep
+  adverseMedia: ScreenGateStep
   canRunFatf: boolean
   canRunPep: boolean
+  canRunAdverseMedia: boolean
   canGenerateDdr: boolean
 }
 
@@ -161,10 +163,11 @@ const DOCUMENT_TYPE_LABEL: Record<string, string> = {
   KYC_ADDRESS: 'Address',
   KYC_DECLARATION: 'KYC',
   KYC_OTHER: 'Other document',
+  KYC_ADVERSE_MEDIA: 'Adverse media evidence',
 }
 
 const REQUIRED_KYC_DOCUMENT_TYPES = ['KYC_ID', 'KYC_ADDRESS', 'KYC_DECLARATION'] as const
-const VISIBLE_KYC_DOCUMENT_TYPES = ['KYC_ID', 'KYC_ADDRESS', 'KYC_DECLARATION', 'KYC_OTHER'] as const
+const VISIBLE_KYC_DOCUMENT_TYPES = ['KYC_ID', 'KYC_ADDRESS', 'KYC_DECLARATION', 'KYC_OTHER', 'KYC_ADVERSE_MEDIA'] as const
 
 function documentTypeLabel(type: string) {
   return DOCUMENT_TYPE_LABEL[type] ?? type.replace(/^KYC_/, '').replace(/_/g, ' ')
@@ -303,7 +306,8 @@ export default function KYCQueuePage() {
   const [loading, setLoading] = useState(false)
   const [amlData, setAmlData] = useState<AMLData | null>(null)
   const [amlLoading, setAmlLoading] = useState(false)
-  const [screenStepLoading, setScreenStepLoading] = useState<'SANCTIONS' | 'FATF' | 'PEP' | null>(null)
+  const [screenStepLoading, setScreenStepLoading] = useState<'SANCTIONS' | 'FATF' | 'PEP' | 'ADVERSE_MEDIA' | null>(null)
+  const [adverseMediaNotes, setAdverseMediaNotes] = useState('')
   const [clients, setClients] = useState<ClientAccount[]>([])
   const [createClientId, setCreateClientId] = useState('')
   const [createImage, setCreateImage] = useState<File | null>(null)
@@ -469,6 +473,34 @@ export default function KYCQueuePage() {
       const result = typeof json?.result === 'string' ? json.result : '—'
       if (result === 'CLEAR') toast.success(`${step} CLEAR`)
       else toast.message(`${step}: ${result.replace('_', ' ')}`)
+    } finally {
+      setScreenStepLoading(null)
+      setAmlLoading(false)
+    }
+  }
+
+  async function submitAdverseMedia(outcome: 'CLEAR' | 'HIT') {
+    if (!selected) return
+    setScreenStepLoading('ADVERSE_MEDIA')
+    setAmlLoading(true)
+    try {
+      const res = await fetch(`/api/admin/kyc/${selected.id}/aml`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          step: 'ADVERSE_MEDIA',
+          outcome,
+          notes: adverseMediaNotes.trim() || null,
+        }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(typeof json?.error === 'string' ? json.error : 'Adverse media review failed')
+        return
+      }
+      setAmlData(json)
+      if (outcome === 'CLEAR') toast.success('Adverse media CLEAR')
+      else toast.message('Adverse media marked as HIT')
     } finally {
       setScreenStepLoading(null)
       setAmlLoading(false)
@@ -1399,13 +1431,13 @@ export default function KYCQueuePage() {
                 })()}
               </DetailSection>
 
-              {/* Three-step screening: AML → FATF → PEP */}
+              {/* Four-step screening: AML → FATF → PEP → Adverse media */}
               <div className="border-t pt-4 space-y-3" style={{ borderColor: '#2A2418' }}>
                 <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#C9A96E' }}>
-                  Screening (AML → FATF → PEP)
+                  Screening (AML → FATF → PEP → Adverse media)
                 </p>
                 <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                  Run each step in order. All three must be CLEAR before generating DDR.
+                  Run steps 1–3 in order, then complete manual adverse media. All four must be CLEAR before generating DDR.
                 </p>
                 {(() => {
                   const gate = amlData?.gate
@@ -1426,7 +1458,7 @@ export default function KYCQueuePage() {
                     {
                       key: 'FATF',
                       title: '2. FATF · Black / Grey lists',
-                      hint: 'Screens nationality, passport/ID place of issue, and place of birth (after AML CLEAR)',
+                      hint: 'Uses AML page FATF JSON: nationality, passport/ID issue place, birth place',
                       enabled: Boolean(gate?.canRunFatf),
                       status: gate?.fatf,
                     },
@@ -1488,6 +1520,140 @@ export default function KYCQueuePage() {
                           </div>
                         )
                       })}
+
+                      {/* Step 4 — manual adverse media */}
+                      {(() => {
+                        const enabled = Boolean(gate?.canRunAdverseMedia)
+                        const status = gate?.adverseMedia
+                        const result = status?.result
+                        const resultColor =
+                          result === 'CLEAR' ? '#10b981'
+                            : result === 'STRONG_HIT' ? '#ef4444'
+                              : 'var(--muted-foreground)'
+                        const loading = screenStepLoading === 'ADVERSE_MEDIA'
+                        return (
+                          <div
+                            className="rounded-lg border px-3 py-2.5 space-y-2"
+                            style={{ borderColor: '#2A2418', background: 'rgba(201,169,110,0.04)' }}
+                          >
+                            <div>
+                              <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
+                                4. Adverse media · Manual review
+                              </p>
+                              <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+                                Search news yourself (no Google API). Mark CLEAR or HIT. Supporting upload is optional.
+                              </p>
+                              {status?.checkedAt ? (
+                                <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
+                                  Last: {new Date(status.checkedAt).toLocaleString()}
+                                  {' · '}
+                                  <span style={{ color: resultColor, fontWeight: 600 }}>
+                                    {result === 'STRONG_HIT' ? 'HIT' : (result ? result.replace('_', ' ') : '—')}
+                                  </span>
+                                </p>
+                              ) : (
+                                <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>Not completed yet</p>
+                              )}
+                            </div>
+                            <textarea
+                              className="w-full rounded-md px-3 py-2 text-xs"
+                              style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: 'var(--foreground)', outline: 'none' }}
+                              rows={2}
+                              placeholder="Optional notes (sources checked, findings…)"
+                              value={adverseMediaNotes}
+                              onChange={e => setAdverseMediaNotes(e.target.value)}
+                              disabled={!enabled || amlLoading}
+                            />
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Button
+                                variant="outline"
+                                disabled={!enabled || amlLoading}
+                                onClick={() => void submitAdverseMedia('CLEAR')}
+                                className="text-xs h-7 px-3"
+                                style={{
+                                  borderColor: '#2A2418',
+                                  color: !enabled || amlLoading ? 'var(--muted-foreground)' : '#10b981',
+                                }}
+                              >
+                                {loading ? 'Saving…' : 'Mark CLEAR'}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                disabled={!enabled || amlLoading}
+                                onClick={() => void submitAdverseMedia('HIT')}
+                                className="text-xs h-7 px-3"
+                                style={{
+                                  borderColor: '#2A2418',
+                                  color: !enabled || amlLoading ? 'var(--muted-foreground)' : '#ef4444',
+                                }}
+                              >
+                                Mark HIT
+                              </Button>
+                              <label
+                                className="inline-flex h-7 cursor-pointer items-center rounded-md border px-3 text-xs"
+                                style={{
+                                  borderColor: '#2A2418',
+                                  color: !enabled || uploadingDocType ? 'var(--muted-foreground)' : '#C9A96E',
+                                  opacity: !enabled ? 0.5 : 1,
+                                }}
+                              >
+                                {uploadingDocType === 'KYC_ADVERSE_MEDIA' ? 'Uploading…' : 'Upload evidence (optional)'}
+                                <input
+                                  type="file"
+                                  accept=".pdf,image/jpeg,image/png"
+                                  className="hidden"
+                                  disabled={!enabled || Boolean(uploadingDocType)}
+                                  onChange={e => {
+                                    const file = e.target.files?.[0] ?? null
+                                    e.target.value = ''
+                                    if (file) void uploadKycDocument('KYC_ADVERSE_MEDIA', file)
+                                  }}
+                                />
+                              </label>
+                            </div>
+                            {selected && (() => {
+                              const evidence = selected.kycDocuments.filter(d => d.documentType === 'KYC_ADVERSE_MEDIA')
+                              if (evidence.length === 0) return null
+                              return (
+                                <ul className="space-y-1 pt-1">
+                                  {evidence.map(doc => (
+                                    <li key={doc.id} className="flex items-center justify-between gap-2 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                                      <span className="truncate">{doc.fileName}</span>
+                                      <button
+                                        type="button"
+                                        className="shrink-0 hover:underline"
+                                        style={{ color: '#C9A96E' }}
+                                        onClick={() => downloadKycDoc(doc)}
+                                      >
+                                        Download
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )
+                            })()}
+                            {amlData?.adverseMedia && amlData.adverseMedia.length > 0 ? (
+                              <div className="pt-1 space-y-1">
+                                <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                                  Prior auto findings (reference only)
+                                </p>
+                                {amlData.adverseMedia.map(hit => (
+                                  <a
+                                    key={hit.id}
+                                    href={hit.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="block text-xs hover:underline truncate"
+                                    style={{ color: '#C9A96E' }}
+                                  >
+                                    {hit.title}
+                                  </a>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        )
+                      })()}
                     </div>
                   )
                 })()}
@@ -1560,14 +1726,14 @@ export default function KYCQueuePage() {
                       borderColor: '#2A2418',
                       color: generatingDdr || !amlData?.gate?.canGenerateDdr ? 'var(--muted-foreground)' : '#C9A96E',
                     }}
-                    title={!amlData?.gate?.canGenerateDdr ? 'Complete AML → FATF → PEP (all CLEAR) first' : undefined}
+                    title={!amlData?.gate?.canGenerateDdr ? 'Complete AML → FATF → PEP → Adverse media (all CLEAR) first' : undefined}
                   >
                     {generatingDdr ? 'Generating…' : 'Generate DDR'}
                   </Button>
                 </div>
                 {!amlData?.gate?.canGenerateDdr ? (
                   <p className="mb-2 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                    Unlock by running AML, FATF, and PEP — each must return CLEAR.
+                    Unlock by running AML, FATF, PEP, and Adverse media — each must return CLEAR.
                   </p>
                 ) : null}
                 {(() => {
@@ -1619,46 +1785,6 @@ export default function KYCQueuePage() {
                     </ul>
                   )
                 })()}
-              </div>
-
-              {/* Adverse media */}
-              <div className="border-t pt-4 space-y-2" style={{ borderColor: '#2A2418' }}>
-                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#C9A96E' }}>
-                  Adverse media / 負面新聞
-                </p>
-                {!amlData?.adverseMedia || amlData.adverseMedia.length === 0 ? (
-                  <p className="text-xs rounded-lg px-3 py-2" style={{ background: 'rgba(16,185,129,0.08)', color: '#10b981' }}>
-                    No crime / PEP / financial-fraud news hits
-                  </p>
-                ) : (
-                  <ul className="space-y-2">
-                    {amlData.adverseMedia.map(hit => (
-                      <li
-                        key={hit.id}
-                        className="rounded-lg px-3 py-2.5 text-sm space-y-1"
-                        style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}
-                      >
-                        <p className="font-semibold" style={{ color: 'var(--foreground)' }}>{hit.title}</p>
-                        <p className="text-xs" style={{ color: '#ef4444' }}>
-                          {hit.categories.join(' · ')}
-                          {hit.publisher ? ` · ${hit.publisher}` : ''}
-                        </p>
-                        {hit.snippet && (
-                          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{hit.snippet}</p>
-                        )}
-                        <a
-                          href={hit.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs hover:underline break-all"
-                          style={{ color: '#C9A96E' }}
-                        >
-                          {hit.url}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </div>
 
               {/* Actions */}

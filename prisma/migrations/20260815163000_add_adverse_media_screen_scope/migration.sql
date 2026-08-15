@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "AMLScreenScope" ADD VALUE 'ADVERSE_MEDIA';

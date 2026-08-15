@@ -31,7 +31,7 @@ function fingerprintFromHead(metadata: Record<string, string>): string | undefin
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await auth()
@@ -62,12 +62,17 @@ export async function GET(
   const key = reportObjectKey(order.id)
   const disposition = attachmentDisposition(reportFilename(order))
 
+  const redirectDownload = (url: string) => {
+    const absolute = url.startsWith('http') ? url : new URL(url, req.nextUrl.origin).toString()
+    return NextResponse.redirect(absolute)
+  }
+
   const existing = await headObjectMeta(key)
   if (existing && fingerprintFromHead(existing.metadata) === fp) {
     const url = await getSignedDownloadUrl(key, 900, {
       responseContentDisposition: disposition,
     })
-    return NextResponse.redirect(url)
+    return redirectDownload(url)
   }
 
   const { bytes } = await renderSfsOrderReportPdf(order)
@@ -81,5 +86,5 @@ export async function GET(
   const url = await getSignedDownloadUrl(key, 900, {
     responseContentDisposition: disposition,
   })
-  return NextResponse.redirect(url)
+  return redirectDownload(url)
 }

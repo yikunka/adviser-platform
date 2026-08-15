@@ -46,12 +46,28 @@ export default function DocumentsPage() {
     setDownloading(docId)
     try {
       const res = await fetch(`/api/documents/${docId}/download`)
-      const json = await res.json()
-      if (!res.ok) { toast.error(t('downloadFailed')); return }
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(
+          json?.code === 'STORAGE_MISSING' || json?.error === 'File not found'
+            ? t('fileMissing')
+            : t('downloadFailed'),
+        )
+        return
+      }
+      if (!json?.url || typeof json.url !== 'string') {
+        toast.error(t('downloadFailed'))
+        return
+      }
       const a = document.createElement('a')
       a.href = json.url
       a.download = name
+      a.rel = 'noopener'
+      document.body.appendChild(a)
       a.click()
+      a.remove()
+    } catch {
+      toast.error(t('downloadFailed'))
     } finally {
       setDownloading(null)
     }

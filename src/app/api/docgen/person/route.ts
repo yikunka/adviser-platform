@@ -32,10 +32,11 @@ export async function POST(req: NextRequest) {
       !gate.sanctions.passed ? 'AML (sanctions)' : null,
       !gate.fatf.passed ? 'FATF' : null,
       !gate.pep.passed ? 'PEP' : null,
+      !gate.adverseMedia.passed ? 'Adverse media' : null,
     ].filter(Boolean)
     return NextResponse.json(
       {
-        error: `Complete three-step screening first (all CLEAR): missing ${missing.join(', ')}`,
+        error: `Complete four-step screening first (all CLEAR): missing ${missing.join(', ')}`,
         gate,
       },
       { status: 400 },

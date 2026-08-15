@@ -557,6 +557,7 @@
     "download": "下載",
     "downloading": "下載中...",
     "downloadFailed": "下載失敗，請重試。",
+    "fileMissing": "資料庫仍有此文件記錄，但儲存空間中已找不到檔案。請重新上傳或聯絡職員。",
     "loading": "載入中...",
     "empty": "暫無文件。",
     "noDocuments": "暫無文件。",

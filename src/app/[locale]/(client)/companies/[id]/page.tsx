@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
 import { notFound, redirect } from 'next/navigation'
 import { Link } from '@/i18n/navigation'
+import { ClientDocumentDownloadLink } from '@/components/client/ClientDocumentDownloadLink'
 
 type Props = { params: Promise<{ locale: string; id: string }> }
 
@@ -28,19 +29,15 @@ function fmt(d: Date | null | undefined) {
   return new Date(d).toLocaleDateString('en-HK')
 }
 
-function docHref(id: string) {
-  return `/api/documents/${id}/download?redirect=1`
-}
-
 function DownloadLink({ id, children }: { id: string; children: React.ReactNode }) {
   return (
-    <a
-      href={docHref(id)}
-      className="inline-flex items-center rounded-md border px-2.5 py-1.5 text-xs font-medium hover:underline"
-      style={{ borderColor: '#2A2418', color: '#C9A96E' }}
+    <ClientDocumentDownloadLink
+      id={id}
+      className="inline-flex items-center rounded-md border px-2.5 py-1.5 text-xs font-medium hover:underline disabled:opacity-60"
+      style={{ borderColor: '#2A2418', color: '#C9A96E', background: 'transparent', cursor: 'pointer' }}
     >
       {children}
-    </a>
+    </ClientDocumentDownloadLink>
   )
 }
 

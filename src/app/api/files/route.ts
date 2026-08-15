@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import path from 'path'
 import { auth } from '@/lib/auth/auth'
 import {
-  getSignedDownloadUrl,
+  getOssPresignedDownloadUrl,
   headObjectMeta,
   isLocalStorageEnabled,
   isOssConfigured,
@@ -31,9 +31,15 @@ const MIME_MAP: Record<string, string> = {
 
 const STAFF_ROLES = ['STAFF', 'COMPLIANCE', 'SUPER_ADMIN']
 
-async function authorizeKey(key: string, userId: string, role: string): Promise<boolean> {
+async function authorizeKey(
+  key: string,
+  userId: string,
+  role: string,
+  email: string,
+): Promise<boolean> {
   if (STAFF_ROLES.includes(role)) return true
 
+  const emailNorm = email.toLowerCase()
   const [doc, kycDoc, sfsAttachment] = await Promise.all([
     prisma.document.findFirst({
       where: {
@@ -41,6 +47,7 @@ async function authorizeKey(key: string, userId: string, role: string): Promise<
         OR: [
           { uploadedById: userId },
           { company: { clientUserId: userId } },
+          { company: { pendingClientEmail: emailNorm } },
         ],
       },
     }),
@@ -89,7 +96,7 @@ async function redirectToOss(
   download: boolean,
   filename: string | undefined,
 ) {
-  const url = await getSignedDownloadUrl(
+  const url = await getOssPresignedDownloadUrl(
     key,
     900,
     download
@@ -106,7 +113,7 @@ export async function GET(req: NextRequest) {
   const key = req.nextUrl.searchParams.get('key')
   if (!key) return NextResponse.json({ error: 'Missing key' }, { status: 400 })
 
-  const allowed = await authorizeKey(key, session.user.id, session.user.role)
+  const allowed = await authorizeKey(key, session.user.id, session.user.role, session.user.email)
   if (!allowed) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
