@@ -132,18 +132,26 @@ export async function screenSubjectNames({
 }): Promise<{ result: AMLCheckResult; matches: MatchDetail[] }> {
   const subjectNames = names.filter(Boolean)
 
-  const sourceFilter =
+  const sanctionsSource = { seqNo: { notIn: [...FATF_SEQ, OPENSANCTIONS_PEP_SEQ] } }
+  const fatfSource = { seqNo: { in: FATF_SEQ } }
+
+  // FATF lists are jurisdictions stored as ENTITY — they must be screened regardless of the
+  // subject's entity type. Only sanctions records are filtered by entityType, to avoid
+  // person↔company false positives.
+  const where =
     scope === 'SANCTIONS'
-      ? { seqNo: { notIn: [...FATF_SEQ, OPENSANCTIONS_PEP_SEQ] } }
+      ? { ...(entityType ? { entityType } : {}), source: sanctionsSource }
       : scope === 'FATF'
-        ? { seqNo: { in: FATF_SEQ } }
-        : { seqNo: { notIn: [OPENSANCTIONS_PEP_SEQ] } }
+        ? { source: fatfSource }
+        : {
+            OR: [
+              { source: fatfSource },
+              { ...(entityType ? { entityType } : {}), source: sanctionsSource },
+            ],
+          }
 
   const records = await prisma.aMLRecord.findMany({
-    where: {
-      ...(entityType ? { entityType } : {}),
-      source: sourceFilter,
-    },
+    where,
     select: { id: true, primaryName: true, aliases: true, dateOfBirth: true },
   })
   if (records.length === 0) {
