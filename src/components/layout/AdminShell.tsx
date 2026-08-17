@@ -30,10 +30,7 @@ import {
   FileBarChart,
   MessageSquarePlus,
   SlidersHorizontal,
-  ReceiptText,
   HandCoins,
-  Landmark,
-  Contact,
   ShieldCheck,
 } from 'lucide-react'
 import type { AdminMenuKey } from '@/lib/auth/admin-access'
@@ -79,10 +76,6 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/financial/journal', key: 'financialJournal', labelKey: 'financialJournal', Icon: FileText },
       { href: '/admin/financial/ledger', key: 'financialLedger', labelKey: 'financialLedger', Icon: Layers },
       { href: '/admin/financial/reports', key: 'financialReports', labelKey: 'financialReports', Icon: FileBarChart },
-      { href: '/admin/financial/[companyId]/receivables', key: 'financialReceivables', labelKey: 'financialReceivables', Icon: ReceiptText },
-      { href: '/admin/financial/[companyId]/payables', key: 'financialPayables', labelKey: 'financialPayables', Icon: HandCoins },
-      { href: '/admin/financial/[companyId]/banking', key: 'financialBanking', labelKey: 'financialBanking', Icon: Landmark },
-      { href: '/admin/financial/[companyId]/parties', key: 'financialParties', labelKey: 'financialParties', Icon: Contact },
     ],
   },
   {

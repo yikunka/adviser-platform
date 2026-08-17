@@ -1828,21 +1828,47 @@ export default function KYCQueuePage() {
 
               {/* Due Diligence Reports */}
               <div className="border-t pt-4" style={{ borderColor: '#2A2418' }}>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#C9A96E' }}>Due Diligence Reports</p>
-                  <Button
-                    variant="outline"
-                    disabled={generatingDdr || !amlData?.gate?.canGenerateDdr}
-                    onClick={generatePersonDdr}
-                    className="text-xs h-7 px-3"
-                    style={{
-                      borderColor: '#2A2418',
-                      color: generatingDdr || !amlData?.gate?.canGenerateDdr ? 'var(--muted-foreground)' : '#C9A96E',
-                    }}
-                    title={!amlData?.gate?.canGenerateDdr ? 'Complete AML → FATF → PEP → Adverse media (all CLEAR) first' : undefined}
-                  >
-                    {generatingDdr ? 'Generating…' : 'Generate DDR'}
-                  </Button>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#C9A96E' }}>Due Diligence Reports</p>
+                    <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                      Generate Word (.docx) → print &amp; sign → upload signed scan (PDF/JPG/PNG).
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label style={{ cursor: uploadingDocType === 'PERSON_DDR' ? 'not-allowed' : 'pointer' }}>
+                      <input
+                        type="file"
+                        accept=".pdf,image/jpeg,image/png"
+                        className="hidden"
+                        disabled={uploadingDocType === 'PERSON_DDR'}
+                        onChange={e => {
+                          const file = e.target.files?.[0] ?? null
+                          void uploadKycDocument('PERSON_DDR', file)
+                          e.target.value = ''
+                        }}
+                      />
+                      <span
+                        className="inline-flex h-7 items-center rounded-md border border-[#2A2418] px-3 text-xs"
+                        style={{ color: uploadingDocType === 'PERSON_DDR' ? 'var(--muted-foreground)' : 'var(--foreground)' }}
+                      >
+                        {uploadingDocType === 'PERSON_DDR' ? 'Uploading…' : 'Upload signed'}
+                      </span>
+                    </label>
+                    <Button
+                      variant="outline"
+                      disabled={generatingDdr || !amlData?.gate?.canGenerateDdr}
+                      onClick={generatePersonDdr}
+                      className="text-xs h-7 px-3"
+                      style={{
+                        borderColor: '#2A2418',
+                        color: generatingDdr || !amlData?.gate?.canGenerateDdr ? 'var(--muted-foreground)' : '#C9A96E',
+                      }}
+                      title={!amlData?.gate?.canGenerateDdr ? 'Complete AML → FATF → PEP → Adverse media (all CLEAR) first' : undefined}
+                    >
+                      {generatingDdr ? 'Generating…' : 'Generate DOCX'}
+                    </Button>
+                  </div>
                 </div>
                 {!amlData?.gate?.canGenerateDdr ? (
                   <p className="mb-2 text-xs" style={{ color: 'var(--muted-foreground)' }}>

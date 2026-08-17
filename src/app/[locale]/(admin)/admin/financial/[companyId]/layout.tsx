@@ -15,6 +15,8 @@ const FINANCIAL_SUB_ROUTES = new Set([
   'journal',
   'ledger',
   'reports',
+  'history',
+  // Legacy routes removed from UI; keep so bare /admin/financial/<name> still redirects
   'receivables',
   'payables',
   'parties',
@@ -24,11 +26,7 @@ const FINANCIAL_SUB_ROUTES = new Set([
 // Any financial write action grants non-readonly mode
 const FINANCIAL_WRITE_PERMS = [
   'financialJournal.create', 'financialJournal.edit', 'financialJournal.approve',
-  'financialReceivables.create', 'financialReceivables.edit', 'financialReceivables.approve',
-  'financialPayables.create', 'financialPayables.edit', 'financialPayables.approve',
   'financialAccounts.create', 'financialAccounts.edit', 'financialAccounts.delete',
-  'financialBanking.create', 'financialBanking.edit',
-  'financialParties.create', 'financialParties.edit', 'financialParties.delete',
 ]
 
 export default async function FinancialCompanyLayout({

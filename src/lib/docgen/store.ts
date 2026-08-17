@@ -49,8 +49,8 @@ async function renderDocument(type: GeneratedDocType, companyId: string) {
       const { generateDDR } = await import('@/lib/docgen/ddr')
       return {
         buffer: await generateDDR(companyId),
-        mimeType: 'application/pdf',
-        extension: 'pdf',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        extension: 'docx',
       }
     }
   }

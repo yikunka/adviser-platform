@@ -48,10 +48,14 @@ export async function POST(req: NextRequest) {
     const buffer = await generatePersonDDR(keyPersonId)
 
     const datestamp = new Date().toISOString().split('T')[0].replace(/-/g, '')
-    const fileName = `DDR_${(person.kycCode ?? person.nameEn).replace(/\s+/g, '_')}_${datestamp}.pdf`
-    const storageKey = `docgen/persons/${keyPersonId}/DDR_${datestamp}_${Date.now()}.pdf`
+    const fileName = `DDR_${(person.kycCode ?? person.nameEn).replace(/\s+/g, '_')}_${datestamp}.docx`
+    const storageKey = `docgen/persons/${keyPersonId}/DDR_${datestamp}_${Date.now()}.docx`
 
-    await uploadToR2(storageKey, buffer, 'application/pdf')
+    await uploadToR2(
+      storageKey,
+      buffer,
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    )
 
     const doc = await prisma.kYCDocument.create({
       data: {
@@ -59,7 +63,7 @@ export async function POST(req: NextRequest) {
         documentType: 'PERSON_DDR',
         fileName,
         storageKey,
-        mimeType: 'application/pdf',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         fileSize: buffer.length,
         status: 'APPROVED',
       },

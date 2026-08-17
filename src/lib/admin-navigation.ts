@@ -1,9 +1,8 @@
 const FINANCIAL_NAV_SECTIONS = new Set([
-  'accounts', 'journal', 'ledger', 'reports',
-  'receivables', 'payables', 'banking', 'parties',
+  'accounts', 'journal', 'ledger', 'reports', 'history',
 ])
 
-type FinancialSection = 'selector' | 'accounts' | 'journal' | 'ledger' | 'reports' | 'receivables' | 'payables' | 'banking' | 'parties'
+type FinancialSection = 'selector' | 'accounts' | 'journal' | 'ledger' | 'reports' | 'history'
 
 export function normalizeAdminPathname(pathname: string): string {
   const [pathOnly = '/'] = pathname.split(/[?#]/)

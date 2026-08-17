@@ -1,7 +1,10 @@
-'use client'
+import { redirect } from 'next/navigation'
 
-import { SubledgerWorkspace } from '@/components/admin/financial/subledger/SubledgerWorkspace'
-
-export default function AdminFinancialReceivablesPage() {
-  return <SubledgerWorkspace side="ar" />
+export default async function AdminFinancialReceivablesPage({
+  params,
+}: {
+  params: Promise<{ locale: string; companyId: string }>
+}) {
+  const { locale, companyId } = await params
+  redirect(`/${locale}/admin/financial/${companyId}`)
 }

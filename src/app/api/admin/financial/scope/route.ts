@@ -9,11 +9,7 @@ import { computeEffectivePermissions, hasPermission } from '@/lib/auth/permissio
 
 const FINANCIAL_WRITE_PERMS = [
   'financialJournal.create', 'financialJournal.edit', 'financialJournal.approve',
-  'financialReceivables.create', 'financialReceivables.edit', 'financialReceivables.approve',
-  'financialPayables.create', 'financialPayables.edit', 'financialPayables.approve',
   'financialAccounts.create', 'financialAccounts.edit', 'financialAccounts.delete',
-  'financialBanking.create', 'financialBanking.edit',
-  'financialParties.create', 'financialParties.edit', 'financialParties.delete',
 ]
 
 export async function GET() {

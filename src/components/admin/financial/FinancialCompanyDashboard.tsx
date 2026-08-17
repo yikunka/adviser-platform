@@ -3,7 +3,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useState } from 'react'
-import { ArrowRight, BookOpen, Contact, FileBarChart, FileSpreadsheet, FileText, HandCoins, Landmark, Layers, ReceiptText, WalletCards } from 'lucide-react'
+import { ArrowRight, BookOpen, FileBarChart, FileSpreadsheet, FileText, Layers, WalletCards } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -81,30 +81,6 @@ export function FinancialCompanyDashboard() {
       desc: '上传、查看和下载不并入当前期间的历史账套 Excel。',
       href: `/admin/financial/${company.id}/history`,
       Icon: FileSpreadsheet,
-    },
-    {
-      title: '应收管理',
-      desc: '销售发票、收款核销、贷项通知单与应收账龄。',
-      href: `/admin/financial/${company.id}/receivables`,
-      Icon: ReceiptText,
-    },
-    {
-      title: '应付管理',
-      desc: '采购账单、付款核销、借项通知单与应付账龄。',
-      href: `/admin/financial/${company.id}/payables`,
-      Icon: HandCoins,
-    },
-    {
-      title: '银行与现金',
-      desc: '银行账户、流水导入与银行对账。',
-      href: `/admin/financial/${company.id}/banking`,
-      Icon: Landmark,
-    },
-    {
-      title: '往来单位',
-      desc: '客户、供应商与员工主数据。',
-      href: `/admin/financial/${company.id}/parties`,
-      Icon: Contact,
     },
   ]
 

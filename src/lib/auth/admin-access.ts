@@ -10,10 +10,6 @@ export const ADMIN_MENU_KEYS = [
   'financialJournal',
   'financialLedger',
   'financialReports',
-  'financialReceivables',
-  'financialPayables',
-  'financialBanking',
-  'financialParties',
   'financialHistory',
   'invoices',
   'contracts',
@@ -43,10 +39,6 @@ export const MENU_PLATFORM: Record<AdminMenuKey, Platform | 'GLOBAL'> = {
   financialJournal: 'ADVISER',
   financialLedger: 'ADVISER',
   financialReports: 'ADVISER',
-  financialReceivables: 'ADVISER',
-  financialPayables: 'ADVISER',
-  financialBanking: 'ADVISER',
-  financialParties: 'ADVISER',
   financialHistory: 'ADVISER',
   invoices: 'ADVISER',
   contracts: 'ADVISER',
@@ -145,10 +137,6 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
         case 'journal':      return 'financialJournal'
         case 'ledger':       return 'financialLedger'
         case 'reports':      return 'financialReports'
-        case 'receivables':  return 'financialReceivables'
-        case 'payables':     return 'financialPayables'
-        case 'banking':      return 'financialBanking'
-        case 'parties':      return 'financialParties'
         case 'history':      return 'financialHistory'
         default:             return 'financial'
       }
@@ -196,10 +184,6 @@ export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: stri
   { key: 'financialJournal',    label: 'Journal entries',            group: 'Finance Management' },
   { key: 'financialLedger',     label: 'General ledger',             group: 'Finance Management' },
   { key: 'financialReports',    label: 'Financial reports',          group: 'Finance Management' },
-  { key: 'financialReceivables',label: 'Receivables',                group: 'Finance Management' },
-  { key: 'financialPayables',   label: 'Payables',                   group: 'Finance Management' },
-  { key: 'financialBanking',    label: 'Banking',                    group: 'Finance Management' },
-  { key: 'financialParties',    label: 'Parties',                    group: 'Finance Management' },
   { key: 'financialHistory',    label: 'Historical ledger books',    group: 'Finance Management' },
   { key: 'invoices', label: 'Invoices', group: 'Adviser' },
   { key: 'contracts', label: 'Contracts', group: 'Adviser' },

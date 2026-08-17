@@ -2670,42 +2670,93 @@ export default function CompanyDetailPage() {
             <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
               <div>
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Due Diligence Report</h3>
-                <p className="text-xs mt-1" style={{ color: '#5A5040' }}>Monthly reports are generated automatically on the first day of each month.</p>
+                <p className="text-xs mt-1" style={{ color: '#5A5040' }}>
+                  Generate a Word (.docx) report, print &amp; sign Part 4, then upload the signed scan (PDF/JPG/PNG).
+                </p>
               </div>
-              <Button size="sm" variant="outline" disabled={generatingDdr} onClick={generateDdrNow}>
-                {generatingDdr ? 'Generating...' : 'Generate now'}
-              </Button>
+              <div className="flex items-center gap-2">
+                <label style={{ cursor: uploading === 'DDR' ? 'not-allowed' : 'pointer' }}>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    className="hidden"
+                    disabled={uploading === 'DDR'}
+                    onChange={e => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        void uploadDoc('DDR', file, { notes: `Signed scan · ${new Date().toISOString().slice(0, 10)}` })
+                      }
+                      e.target.value = ''
+                    }}
+                  />
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-medium"
+                    style={{ borderColor: '#2A2418', color: uploading === 'DDR' ? '#5A5040' : 'var(--foreground)' }}
+                  >
+                    {uploading === 'DDR' ? 'Uploading…' : 'Upload signed'}
+                  </span>
+                </label>
+                <Button size="sm" variant="outline" disabled={generatingDdr} onClick={generateDdrNow}>
+                  {generatingDdr ? 'Generating...' : 'Generate DOCX'}
+                </Button>
+              </div>
             </div>
-            {ddrDocs.length === 0 ? (
-              <p className="px-4 py-3 text-sm" style={{ color: '#5A5040' }}>No due diligence reports yet.</p>
-            ) : (
-              <ul className="divide-y divide-[#2A2418]">
-                {(showOlderDdr ? ddrDocs : ddrDocs.slice(0, 1)).map(doc => (
-                  <li key={doc.id} className="flex items-center justify-between px-4 py-2.5">
-                    <div className="min-w-0">
-                      <span className="block text-sm truncate max-w-xs" style={{ color: 'var(--foreground)' }}>{doc.notes ?? 'Monthly report'}</span>
-                      <span className="text-xs" style={{ color: '#5A5040' }}>{new Date(doc.createdAt).toLocaleDateString('en-HK')}</span>
+            {(() => {
+              const signedDdrDocs = company.documents.filter(d => d.documentType === 'DDR' && !isGeneratedDoc(d))
+              return (
+                <>
+                  {signedDdrDocs.length > 0 && (
+                    <div className="px-4 py-2" style={{ borderBottom: '1px solid #2A2418' }}>
+                      <p className="text-xs mb-2 font-medium" style={{ color: '#C9A96E' }}>Signed uploads</p>
+                      <ul className="divide-y divide-[#2A2418]">
+                        {signedDdrDocs.map(doc => (
+                          <li key={doc.id} className="flex items-center justify-between py-2">
+                            <div className="min-w-0">
+                              <span className="block text-sm truncate max-w-xs" style={{ color: 'var(--foreground)' }}>{doc.name}</span>
+                              <span className="text-xs" style={{ color: '#5A5040' }}>{doc.notes ?? ''} · {new Date(doc.createdAt).toLocaleDateString('en-HK')}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => downloadDoc(doc.id)}>Download</Button>
+                              <button onClick={() => deleteDoc(doc.id)} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Delete</button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => downloadDoc(doc.id)}>Download</Button>
-                      <button onClick={() => deleteDoc(doc.id)} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Delete</button>
-                    </div>
-                  </li>
-                ))}
-                {ddrDocs.length > 1 && (
-                  <li>
-                    <button
-                      type="button"
-                      className="w-full px-4 py-2 text-xs text-left transition-colors hover:bg-[#1A1A12]"
-                      style={{ color: '#5A5040' }}
-                      onClick={() => setShowOlderDdr(v => !v)}
-                    >
-                      {showOlderDdr ? '▲ Hide older reports' : `▼ Show ${ddrDocs.length - 1} older report${ddrDocs.length - 1 !== 1 ? 's' : ''}`}
-                    </button>
-                  </li>
-                )}
-              </ul>
-            )}
+                  )}
+                  {ddrDocs.length === 0 ? (
+                    <p className="px-4 py-3 text-sm" style={{ color: '#5A5040' }}>No generated due diligence reports yet.</p>
+                  ) : (
+                    <ul className="divide-y divide-[#2A2418]">
+                      {(showOlderDdr ? ddrDocs : ddrDocs.slice(0, 1)).map(doc => (
+                        <li key={doc.id} className="flex items-center justify-between px-4 py-2.5">
+                          <div className="min-w-0">
+                            <span className="block text-sm truncate max-w-xs" style={{ color: 'var(--foreground)' }}>{doc.notes ?? 'Generated DOCX'}</span>
+                            <span className="text-xs" style={{ color: '#5A5040' }}>{new Date(doc.createdAt).toLocaleDateString('en-HK')} · Word</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => downloadDoc(doc.id)}>Download</Button>
+                            <button onClick={() => deleteDoc(doc.id)} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Delete</button>
+                          </div>
+                        </li>
+                      ))}
+                      {ddrDocs.length > 1 && (
+                        <li>
+                          <button
+                            type="button"
+                            className="w-full px-4 py-2 text-xs text-left transition-colors hover:bg-[#1A1A12]"
+                            style={{ color: '#5A5040' }}
+                            onClick={() => setShowOlderDdr(v => !v)}
+                          >
+                            {showOlderDdr ? '▲ Hide older reports' : `▼ Show ${ddrDocs.length - 1} older report${ddrDocs.length - 1 !== 1 ? 's' : ''}`}
+                          </button>
+                        </li>
+                      )}
+                    </ul>
+                  )}
+                </>
+              )
+            })()}
           </div>
         </TabsContent>
 
