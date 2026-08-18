@@ -33,8 +33,10 @@
 #
 # 可选
 #   DEPLOY_SSH_KEY       SSH 私钥路径，例如 ~/.ssh/id_ed25519
-#   DEPLOY_DOMAIN        对外域名，用于 Nginx server_name（bootstrap 写站点配置时）
-#   CERTBOT_EMAIL        Let's Encrypt 邮箱；若与 DEPLOY_DOMAIN 同时设置，bootstrap 末尾尝试非交互式申请证书
+#   DEPLOY_DOMAIN        主平台域名（如 6amadvise.com），用于 Nginx server_name；留空时主站用 _（catch-all）
+#   CERTBOT_EMAIL        Let's Encrypt 邮箱（如 yibing2023@gmail.com）；设置后 bootstrap 自动为
+#                        sfsdiamond.com、cosmocoat.cn 和 DEPLOY_DOMAIN 各自申请证书并设置自动续期。
+#                        平台域名（sfsdiamond.com / cosmocoat.cn）无需设置 DEPLOY_DOMAIN 即可申请。
 #   DEPLOY_SKIP_SSL_RENEW=1 — deploy / deploy-local 结束时不跑 certbot renew（默认会续期并 reload nginx）
 #   BOOTSTRAP_WITH_POSTGRES=1   【需要本机 PG 时请必设】。未设为 1 时不会安装 PostgreSQL（仅 Node/Nginx/PM2）；设为 1 时先卸载系统旧 PG 再通过 PGDG 装 16（旧数据请先备份）
 #   身份与密码（与本地 DATABASE_URL 对齐，三选一组合）:
@@ -964,30 +966,103 @@ else
   exit 1
 fi
 
-write_nginx_site() {
+# 写多站点 nginx 配置（HTTP only；certbot --nginx 会在申请证书时自动添加 HTTPS 块）
+write_nginx_multisite() {
   local out="\$1"
-  local names="\$2"
-  cat > "\$out" <<NGX
+
+  cat > "\$out" <<'NGX_UPSTREAM'
 upstream adviser_nextjs {
     server 127.0.0.1:3000;
     keepalive 64;
 }
+NGX_UPSTREAM
+
+  # ── SFS Diamond (sfsdiamond.com → /sfsdiamond/) ──────────────────────────
+  cat >> "\$out" <<'NGX_SFS'
 
 server {
     listen 80;
-    server_name \$names;
+    server_name sfsdiamond.com www.sfsdiamond.com;
+    client_max_body_size 10M;
 
-    client_max_body_size 50M;
-
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+        try_files $uri =404;
+    }
     location /_next/static/ {
         proxy_pass http://adviser_nextjs;
         add_header Cache-Control "public, max-age=31536000, immutable";
     }
-
-    location /_next/image {
+    location /_next/image { proxy_pass http://adviser_nextjs; }
+    location / {
+        rewrite ^/(.*)$ /sfsdiamond/$1 break;
         proxy_pass http://adviser_nextjs;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+        proxy_connect_timeout 60s;
     }
+}
+NGX_SFS
 
+  # ── CosmoCoat (cosmocoat.cn → /cosmocoat/) ───────────────────────────────
+  cat >> "\$out" <<'NGX_CC'
+
+server {
+    listen 80;
+    server_name cosmocoat.cn www.cosmocoat.cn;
+    client_max_body_size 10M;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+        try_files $uri =404;
+    }
+    location /_next/static/ {
+        proxy_pass http://adviser_nextjs;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+    location /_next/image { proxy_pass http://adviser_nextjs; }
+    location / {
+        rewrite ^/(.*)$ /cosmocoat/$1 break;
+        proxy_pass http://adviser_nextjs;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+        proxy_connect_timeout 60s;
+    }
+}
+NGX_CC
+
+  # ── 主平台（DEPLOY_DOMAIN，如 6amadvise.com）─────────────────────────────
+  local main_names="\$2"
+  cat >> "\$out" <<NGX_MAIN
+
+server {
+    listen 80;
+    server_name \$main_names;
+    client_max_body_size 50M;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+        try_files \\\$uri =404;
+    }
+    location /_next/static/ {
+        proxy_pass http://adviser_nextjs;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+    location /_next/image { proxy_pass http://adviser_nextjs; }
     location / {
         proxy_pass http://adviser_nextjs;
         proxy_http_version 1.1;
@@ -1002,7 +1077,39 @@ server {
         proxy_connect_timeout 60s;
     }
 }
-NGX
+NGX_MAIN
+}
+
+# 申请/续期所有平台证书，并配置自动续期
+run_certbot_all() {
+  local email="\$1"
+  local main_domain="\$2"
+
+  echo "==> Certbot: sfsdiamond.com ..."
+  certbot --nginx -d "sfsdiamond.com" -d "www.sfsdiamond.com" \
+    --non-interactive --agree-tos -m "\$email" --redirect \
+    || echo "⚠ Certbot sfsdiamond.com 失败（DNS 是否已指向本机 80 端口？）"
+
+  echo "==> Certbot: cosmocoat.cn ..."
+  certbot --nginx -d "cosmocoat.cn" -d "www.cosmocoat.cn" \
+    --non-interactive --agree-tos -m "\$email" --redirect \
+    || echo "⚠ Certbot cosmocoat.cn 失败（DNS 是否已指向本机 80 端口？）"
+
+  if [[ -n "\$main_domain" ]]; then
+    echo "==> Certbot: \$main_domain ..."
+    certbot --nginx -d "\$main_domain" -d "www.\$main_domain" \
+      --non-interactive --agree-tos -m "\$email" --redirect \
+      || echo "⚠ Certbot \$main_domain 失败（DNS 是否已指向本机 80 端口？）"
+  fi
+
+  # 自动续期：优先 systemd timer，降级写 cron
+  if systemctl list-unit-files 2>/dev/null | grep -q '^certbot.timer'; then
+    systemctl enable --now certbot.timer && echo "✓ certbot.timer 已启用（自动续期）" || true
+  else
+    (crontab -l 2>/dev/null | grep -v 'certbot renew'; \
+     echo "0 3 * * * /usr/bin/certbot renew --quiet --post-hook 'systemctl reload nginx'") | crontab -
+    echo "✓ 已写入 cron 续期（每天 03:00）"
+  fi
 }
 
 # 在安装好 postgres 二进制后调用：\$1 = psql 绝对路径（Debian PG16 / RPM PG16）
@@ -1062,9 +1169,9 @@ provision_app_pg_after_server_ready() {
   echo "--> PostgreSQL 用户/库/授权就绪: \$usr / \$db（组角色 BOOTSTRAP_PG_GROUP=\${grp:-（未设置）}）"
 }
 
-SERVER_NAMES="_"
+MAIN_NAMES="_"
 if [[ -n "\$DEPLOY_DOMAIN" ]]; then
-  SERVER_NAMES="\$DEPLOY_DOMAIN www.\$DEPLOY_DOMAIN"
+  MAIN_NAMES="\$DEPLOY_DOMAIN www.\$DEPLOY_DOMAIN"
 fi
 
 if [[ "\$FAMILY" == deb ]]; then
@@ -1094,7 +1201,7 @@ if [[ "\$FAMILY" == deb ]]; then
   SITE_NAME="adviser"
   CONF_PATH="/etc/nginx/sites-available/\${SITE_NAME}"
   ENABLED="/etc/nginx/sites-enabled/\${SITE_NAME}"
-  write_nginx_site "\$CONF_PATH" "\$SERVER_NAMES"
+  write_nginx_multisite "\$CONF_PATH" "\$MAIN_NAMES"
   rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
   ln -sf "\$CONF_PATH" "\$ENABLED"
 
@@ -1129,11 +1236,10 @@ if [[ "\$FAMILY" == deb ]]; then
     echo "PostgreSQL 16 已通过 PGDG 安装；通常为 systemctl enable --now postgresql@16-main"
   fi
 
-  if [[ -n "\$DEPLOY_DOMAIN" && -n "\$CERTBOT_EMAIL" ]]; then
-    echo "==> Certbot (Let's Encrypt)..."
+  if [[ -n "\$CERTBOT_EMAIL" ]]; then
+    echo "==> Certbot (Let's Encrypt) — 安装插件..."
     apt-get install -y certbot python3-certbot-nginx
-    certbot --nginx -d "\$DEPLOY_DOMAIN" --non-interactive --agree-tos -m "\$CERTBOT_EMAIL" --redirect || \
-      echo "Certbot 失败（请检查域名 DNS 是否指向本机 80 端口）"
+    run_certbot_all "\$CERTBOT_EMAIL" "\$DEPLOY_DOMAIN"
   fi
 else
   echo "==> [RHEL 系] 安装基础包 (\"\${PM[*]}\")..."
@@ -1168,7 +1274,7 @@ else
   mkdir -p "\$REMOTE_DIR"
 
   echo "==> Nginx 站点配置 (conf.d)..."
-  write_nginx_site "/etc/nginx/conf.d/adviser.conf" "\$SERVER_NAMES"
+  write_nginx_multisite "/etc/nginx/conf.d/adviser.conf" "\$MAIN_NAMES"
   rm -f /etc/nginx/conf.d/default.conf 2>/dev/null || true
 
   if [[ "\$WITH_PG" == "1" ]]; then
@@ -1267,14 +1373,13 @@ else
     echo "已安装 PostgreSQL 16（postgresql-16）；.env DATABASE_URL 请使用上述用户 / 数据库名。"
   fi
 
-  if [[ -n "\$DEPLOY_DOMAIN" && -n "\$CERTBOT_EMAIL" ]]; then
-    echo "==> Certbot (Let's Encrypt)..."
+  if [[ -n "\$CERTBOT_EMAIL" ]]; then
+    echo "==> Certbot (Let's Encrypt) — 安装插件..."
     "\${PM[@]}" install certbot python3-certbot-nginx 2>/dev/null || \
       ("\${PM[@]}" install epel-release 2>/dev/null; "\${PM[@]}" install certbot python3-certbot-nginx) || \
-      echo "未能安装 certbot，请手动安装后运行 certbot --nginx"
-    command -v certbot >/dev/null 2>&1 && \
-      certbot --nginx -d "\$DEPLOY_DOMAIN" --non-interactive --agree-tos -m "\$CERTBOT_EMAIL" --redirect || \
-      echo "Certbot 失败（请检查域名 DNS 与仓库插件）"
+      echo "⚠ 未能安装 certbot，请手动安装后运行: certbot --nginx"
+    command -v certbot >/dev/null 2>&1 && run_certbot_all "\$CERTBOT_EMAIL" "\$DEPLOY_DOMAIN" || \
+      echo "⚠ certbot 不可用，跳过证书申请"
   fi
 fi
 
@@ -1344,7 +1449,57 @@ cmd_bootstrap() {
 }
 
 usage() {
-  sed -n '2,62p' "$0" | tail -n +2
+  sed -n '2,65p' "$0" | tail -n +2
+}
+
+# 在已有服务器上重新申请/续期所有平台证书
+# 用法: CERTBOT_EMAIL=yibing2023@gmail.com DEPLOY_DOMAIN=6amadvise.com ./deploy.sh cert
+# 或经 SSH: DEPLOY_HOST=... CERTBOT_EMAIL=... DEPLOY_DOMAIN=... ./deploy.sh cert
+cmd_cert() {
+  local email="${CERTBOT_EMAIL:-}"
+  local domain="${DEPLOY_DOMAIN:-}"
+  [[ -n "$email" ]] || die "请设置 CERTBOT_EMAIL（如 yibing2023@gmail.com）"
+
+  if [[ -n "${DEPLOY_HOST:-}" ]]; then
+    echo "▶ 经 SSH 在 ${REMOTE} 上申请/续期证书..."
+    ssh_remote "bash -s" <<END_CERT
+set -euo pipefail
+command -v certbot >/dev/null 2>&1 || { echo '✗ 远端未安装 certbot，请先 bootstrap'; exit 1; }
+for d in sfsdiamond.com cosmocoat.cn; do
+  certbot --nginx -d "\$d" -d "www.\$d" --non-interactive --agree-tos -m "${email}" --redirect \
+    || echo "⚠ Certbot \$d 失败"
+done
+$( [[ -n "$domain" ]] && echo "certbot --nginx -d '${domain}' -d 'www.${domain}' --non-interactive --agree-tos -m '${email}' --redirect || echo '⚠ Certbot ${domain} 失败'" )
+if systemctl list-unit-files 2>/dev/null | grep -q '^certbot.timer'; then
+  systemctl enable --now certbot.timer
+else
+  (crontab -l 2>/dev/null | grep -v 'certbot renew'; \
+   echo "0 3 * * * /usr/bin/certbot renew --quiet --post-hook 'systemctl reload nginx'") | crontab -
+fi
+systemctl reload nginx 2>/dev/null || systemctl restart nginx
+echo "✓ 证书申请完成"
+END_CERT
+  else
+    [[ "$(id -u)" -eq 0 ]] || die "本机 cert 命令需在服务器以 root/sudo 执行"
+    command -v certbot >/dev/null 2>&1 || die "未安装 certbot，请先 bootstrap"
+    for d in sfsdiamond.com cosmocoat.cn; do
+      certbot --nginx -d "$d" -d "www.$d" --non-interactive --agree-tos -m "$email" --redirect \
+        || echo "⚠ Certbot $d 失败（DNS 是否已指向本机？）"
+    done
+    if [[ -n "$domain" ]]; then
+      certbot --nginx -d "$domain" -d "www.$domain" --non-interactive --agree-tos -m "$email" --redirect \
+        || echo "⚠ Certbot $domain 失败（DNS 是否已指向本机？）"
+    fi
+    if systemctl list-unit-files 2>/dev/null | grep -q '^certbot.timer'; then
+      systemctl enable --now certbot.timer && echo "✓ certbot.timer 已启用"
+    else
+      (crontab -l 2>/dev/null | grep -v 'certbot renew'; \
+       echo "0 3 * * * /usr/bin/certbot renew --quiet --post-hook 'systemctl reload nginx'") | crontab -
+      echo "✓ 已写入 cron 续期（每天 03:00）"
+    fi
+    systemctl reload nginx 2>/dev/null || systemctl restart nginx
+    echo "✓ 证书申请完成"
+  fi
 }
 
 main() {
@@ -1356,8 +1511,9 @@ main() {
     deploy-local) cmd_deploy_local ;;
     bootstrap-local) cmd_bootstrap_local ;;
     bootstrap)       cmd_bootstrap ;;
+    cert)    cmd_cert ;;
     -h|--help|help) usage ;;
-    *) die "未知命令: $sub。使用: $0 check | build | deploy | deploy-local | bootstrap-local | bootstrap | help" ;;
+    *) die "未知命令: $sub。使用: $0 check | build | deploy | deploy-local | bootstrap-local | bootstrap | cert | help" ;;
   esac
 }
 
