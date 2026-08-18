@@ -35,6 +35,7 @@
 #   DEPLOY_SSH_KEY       SSH 私钥路径，例如 ~/.ssh/id_ed25519
 #   DEPLOY_DOMAIN        对外域名，用于 Nginx server_name（bootstrap 写站点配置时）
 #   CERTBOT_EMAIL        Let's Encrypt 邮箱；若与 DEPLOY_DOMAIN 同时设置，bootstrap 末尾尝试非交互式申请证书
+#   DEPLOY_SKIP_SSL_RENEW=1 — deploy / deploy-local 结束时不跑 certbot renew（默认会续期并 reload nginx）
 #   BOOTSTRAP_WITH_POSTGRES=1   【需要本机 PG 时请必设】。未设为 1 时不会安装 PostgreSQL（仅 Node/Nginx/PM2）；设为 1 时先卸载系统旧 PG 再通过 PGDG 装 16（旧数据请先备份）
 #   身份与密码（与本地 DATABASE_URL 对齐，三选一组合）:
 #     • 推荐：BOOTSTRAP_DATABASE_URL="postgresql://用户:密码@主机:5432/库名"（主机可忽略，仅用于解析用户/库/密码）
@@ -73,6 +74,57 @@ rsync_rsh() {
 }
 
 die() { echo "错误: $*" >&2; exit 1; }
+
+# 在目标机续期 Let's Encrypt 证书（未到期则几乎无操作；失败不阻断部署）
+_renew_ssl_certs_script() {
+  cat <<'END_SSL'
+set +e
+if ! command -v certbot >/dev/null 2>&1; then
+  echo "ℹ 未安装 certbot，跳过 HTTPS 证书续期"
+  exit 0
+fi
+echo "▶ 续期 HTTPS 证书（certbot renew）…"
+_run() {
+  if [[ "$(id -u)" -eq 0 ]]; then
+    "$@"
+  elif command -v sudo >/dev/null 2>&1; then
+    sudo "$@"
+  else
+    echo "⚠ 无 root/sudo，无法续期证书"
+    return 1
+  fi
+}
+_run certbot renew --nginx --non-interactive 2>/dev/null \
+  || _run certbot renew --non-interactive 2>/dev/null \
+  || echo "⚠ certbot renew 未成功（可稍后手动: sudo certbot renew）"
+if _run nginx -t >/dev/null 2>&1; then
+  _run systemctl reload nginx 2>/dev/null || _run systemctl restart nginx 2>/dev/null || true
+  echo "✓ Nginx 已 reload（证书如有更新会生效）"
+else
+  echo "ℹ 跳过 nginx reload（nginx -t 失败或未安装）"
+fi
+exit 0
+END_SSL
+}
+
+renew_ssl_certs_local() {
+  if [[ "${DEPLOY_SKIP_SSL_RENEW:-}" == "1" ]]; then
+    echo "▶ 跳过 SSL 证书续期（DEPLOY_SKIP_SSL_RENEW=1）"
+    return 0
+  fi
+  bash -c "$(_renew_ssl_certs_script)" || true
+}
+
+renew_ssl_certs_remote() {
+  if [[ "${DEPLOY_SKIP_SSL_RENEW:-}" == "1" ]]; then
+    echo "▶ 跳过远端 SSL 证书续期（DEPLOY_SKIP_SSL_RENEW=1）"
+    return 0
+  fi
+  echo "▶ 远端续期 HTTPS 证书…"
+  ssh_remote "bash -s" <<END_SSH || true
+$(_renew_ssl_certs_script)
+END_SSH
+}
 
 _prepare_build_marker() {
   local marker
@@ -334,6 +386,7 @@ cmd_deploy() {
           ssh_remote "printf '%s\n' '${HEAD_NOW}' > '${REMOTE_DIR}/.adviser-deploy-rev'"
           echo "▶ 已将远端 .adviser-deploy-rev 规范化为完整 SHA"
         fi
+        renew_ssl_certs_remote
         return 0
       else
         echo "▶ 增量比对：rev=${REV_FROM:0:12}（记录值 ${REV_FROM_RAW:0:12}）→ HEAD=${HEAD_NOW:0:12}"
@@ -341,11 +394,13 @@ cmd_deploy() {
 
         if [[ "$_DL_N_ALL" -gt 0 ]] && [[ "$_DL_N_REL" -eq 0 ]]; then
           echo "✓ 有新提交但仅文档等非运行路径，跳过构建。（.adviser-deploy-rev 保持不变，下次重新核对）"
+          renew_ssl_certs_remote
           return 0
         fi
 
         if [[ "$NEED_DEPS$NEED_BUILD$NEED_PRISMA_GEN$NEED_MIGRATE$NEED_RSYNC_PUBLIC" == "00000" ]]; then
           echo "✓ 无待发布变更。（.adviser-deploy-rev 保持不变，下次重新核对）"
+          renew_ssl_certs_remote
           return 0
         fi
 
@@ -493,6 +548,7 @@ END_SSH
     echo "▶ 已写入远端 .adviser-deploy-rev (${HEAD_NOW:0:12}…)"
   fi
 
+  renew_ssl_certs_remote
   echo "✓ 部署完成。请确认 Nginx / HTTPS 已指向本机 Node（默认 3000）。"
 }
 
@@ -807,6 +863,7 @@ cmd_deploy_local() {
         printf '%s\n' "$HEAD_NOW" >"$REV_FILE"
         echo "▶ 已将 .adviser-deploy-rev 规范化为完整 SHA"
       fi
+      renew_ssl_certs_local
       exit 0
     else
       echo "▶ 增量比对：rev=${DIFF_FROM:0:12}（记录值 ${DIFF_FROM_RAW:0:12}）→ HEAD=${HEAD_NOW:0:12}"
@@ -818,11 +875,13 @@ cmd_deploy_local() {
 
       if [[ "$_DL_N_ALL" -gt 0 ]] && [[ "$_DL_N_REL" -eq 0 ]]; then
         echo "✓ 有新提交但仅文档等非运行路径，跳过构建。（.adviser-deploy-rev 保持不变，下次重新核对）"
+        renew_ssl_certs_local
         exit 0
       fi
 
       if [[ "$NEED_DEPS$NEED_BUILD$NEED_PRISMA_GEN$NEED_MIGRATE$NEED_RSYNC_PUBLIC" == "00000" ]]; then
         echo "✓ 无待发布变更。（.adviser-deploy-rev 保持不变，下次重新核对）"
+        renew_ssl_certs_local
         exit 0
       fi
 
@@ -874,6 +933,7 @@ cmd_deploy_local() {
     echo "▶ 已写入 $REV_FILE ($(head -n1 "$REV_FILE" | cut -c1-12)…)"
   fi
 
+  renew_ssl_certs_local
   echo "✓ 本机部署完成 → $APP_DIR（Nginx 应反代到 127.0.0.1:3000）"
 }
 

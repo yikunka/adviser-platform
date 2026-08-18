@@ -760,6 +760,7 @@ sudo systemctl status certbot.timer
 
 憑證有效期 90 天，Certbot 自動在到期前 30 天續期。
 
+**部署時一併續期：** `./deploy.sh deploy` / `deploy-local` 結束時會執行 `certbot renew` 並 `nginx reload`（未到期則幾乎無操作；失敗不阻斷部署）。若不需要：`DEPLOY_SKIP_SSL_RENEW=1`。
 ---
 
 ## 10. 日常維護操作
