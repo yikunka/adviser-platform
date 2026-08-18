@@ -35,8 +35,8 @@
 #   DEPLOY_SSH_KEY       SSH 私钥路径，例如 ~/.ssh/id_ed25519
 #   DEPLOY_DOMAIN        主平台域名（如 6amadvise.com），用于 Nginx server_name；留空时主站用 _（catch-all）
 #   CERTBOT_EMAIL        Let's Encrypt 邮箱（如 yibing2023@gmail.com）；设置后 bootstrap 自动为
-#                        sfsdiamond.com、cosmocoat.cn 和 DEPLOY_DOMAIN 各自申请证书并设置自动续期。
-#                        平台域名（sfsdiamond.com / cosmocoat.cn）无需设置 DEPLOY_DOMAIN 即可申请。
+#                        sfsdiamonds.com、cosmocoat.cn 和 DEPLOY_DOMAIN 各自申请证书并设置自动续期。
+#                        平台域名（sfsdiamonds.com / cosmocoat.cn）无需设置 DEPLOY_DOMAIN 即可申请。
 #   DEPLOY_SKIP_SSL_RENEW=1 — deploy / deploy-local 结束时不跑 certbot renew（默认会续期并 reload nginx）
 #   BOOTSTRAP_WITH_POSTGRES=1   【需要本机 PG 时请必设】。未设为 1 时不会安装 PostgreSQL（仅 Node/Nginx/PM2）；设为 1 时先卸载系统旧 PG 再通过 PGDG 装 16（旧数据请先备份）
 #   身份与密码（与本地 DATABASE_URL 对齐，三选一组合）:
@@ -977,12 +977,12 @@ upstream adviser_nextjs {
 }
 NGX_UPSTREAM
 
-  # ── SFS Diamond (sfsdiamond.com → /sfsdiamond/) ──────────────────────────
+  # ── SFS Diamond (sfsdiamonds.com → /sfsdiamond/) ──────────────────────────
   cat >> "\$out" <<'NGX_SFS'
 
 server {
     listen 80;
-    server_name sfsdiamond.com www.sfsdiamond.com;
+    server_name sfsdiamonds.com www.sfsdiamonds.com;
     client_max_body_size 10M;
 
     location /.well-known/acme-challenge/ {
@@ -1085,10 +1085,10 @@ run_certbot_all() {
   local email="\$1"
   local main_domain="\$2"
 
-  echo "==> Certbot: sfsdiamond.com ..."
-  certbot --nginx -d "sfsdiamond.com" -d "www.sfsdiamond.com" \
+  echo "==> Certbot: sfsdiamonds.com ..."
+  certbot --nginx -d "sfsdiamonds.com" -d "www.sfsdiamonds.com" \
     --non-interactive --agree-tos -m "\$email" --redirect \
-    || echo "⚠ Certbot sfsdiamond.com 失败（DNS 是否已指向本机 80 端口？）"
+    || echo "⚠ Certbot sfsdiamonds.com 失败（DNS 是否已指向本机 80 端口？）"
 
   echo "==> Certbot: cosmocoat.cn ..."
   certbot --nginx -d "cosmocoat.cn" -d "www.cosmocoat.cn" \
@@ -1465,7 +1465,7 @@ cmd_cert() {
     ssh_remote "bash -s" <<END_CERT
 set -euo pipefail
 command -v certbot >/dev/null 2>&1 || { echo '✗ 远端未安装 certbot，请先 bootstrap'; exit 1; }
-for d in sfsdiamond.com cosmocoat.cn; do
+for d in sfsdiamonds.com cosmocoat.cn; do
   certbot --nginx -d "\$d" -d "www.\$d" --non-interactive --agree-tos -m "${email}" --redirect \
     || echo "⚠ Certbot \$d 失败"
 done
@@ -1482,7 +1482,7 @@ END_CERT
   else
     [[ "$(id -u)" -eq 0 ]] || die "本机 cert 命令需在服务器以 root/sudo 执行"
     command -v certbot >/dev/null 2>&1 || die "未安装 certbot，请先 bootstrap"
-    for d in sfsdiamond.com cosmocoat.cn; do
+    for d in sfsdiamonds.com cosmocoat.cn; do
       certbot --nginx -d "$d" -d "www.$d" --non-interactive --agree-tos -m "$email" --redirect \
         || echo "⚠ Certbot $d 失败（DNS 是否已指向本机？）"
     done
