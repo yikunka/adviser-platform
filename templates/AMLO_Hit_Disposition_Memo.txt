@@ -1,0 +1,29 @@
+AMLO Hit Disposition Memo
+=========================
+File: templates/AMLO_Hit_Disposition_Memo.docx
+Rebuild: node scripts/build-amlo-hit-memo.mjs
+
+Purpose
+-------
+Word memo for AMLO officers when a client/company screening produces a PEP / AML / FATF hit.
+Clarify the situation, attach supporting evidence, and record one final disposition.
+
+Final dispositions (align with AMLAlertResolution)
+--------------------------------------------------
+1. FALSE_POSITIVE — 誤報; continue CDD / relationship
+2. ESCALATED — start Enhanced Due Diligence (EDD); not a reject
+3. REJECTED — terminate / refuse; do NOT start EDD
+
+REJECTED follow-up actions (checklist in the Word file)
+-------------------------------------------------------
+- 停止开户 / 不提供服务
+- 终止现有业务关系（如已建立）
+- 书面通知客户（如适用）
+- 按政策评估是否另需联络 JFIU
+
+Usage
+-----
+1. Download / open AMLO_Hit_Disposition_Memo.docx
+2. Complete subject, hit summary, analysis, and supporting annex list
+3. Tick exactly one disposition and obtain AMLO sign-off
+4. Upload the signed PDF/JPG/PNG as supporting evidence when resolving the alert in /admin/aml

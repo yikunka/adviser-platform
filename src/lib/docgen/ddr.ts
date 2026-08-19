@@ -634,7 +634,9 @@ function resolutionLabel(resolution: string | null | undefined): string {
     case 'CONFIRMED':
       return '已確認  Confirmed'
     case 'ESCALATED':
-      return '已升級  Escalated'
+      return '已升級（EDD）  Escalated (EDD)'
+    case 'REJECTED':
+      return '拒絕／終止  Rejected'
     case 'PENDING':
       return '待審查  Pending'
     default:

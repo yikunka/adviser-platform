@@ -18,7 +18,6 @@ export const SFS_PREDEFINED_STEPS: Record<string, string[]> = {
     '1st Check Status (Day 0)',
     '2nd Check Status (Day 7)',
     '3rd Check Status (Day 14)',
-    '4th Check Status (Day 21)',
     'Labeling',
   ],
   CRAFTING: [
@@ -52,7 +51,21 @@ export function sfsChemTransformWeightStepIndex() {
   return 3
 }
 
-/** 0-based index of the single-photo CVD step */
+/** Default-key for CHEM_TRANSFORM weight step (1-based slot in predefined list). */
+export const SFS_CHEM_WEIGHT_DEFAULT_KEY = 'CHEM_TRANSFORM:4'
+
+/** Default-key for CVD Labeling (after removing Day-21 check). */
+export const SFS_CVD_LABELING_DEFAULT_KEY = 'CVD:5'
+
+/**
+ * 0-based index of the CVD single-photo step in the *default* list.
+ * Labeling uses per-diamond images instead; returns -1 so single-photo UI is unused for defaults.
+ */
 export function sfsCvdSinglePhotoStepIndex() {
-  return 4
+  return -1
+}
+
+/** Build stable defaultKey for a predefined slot (1-based). */
+export function sfsDefaultStepKey(phase: string, oneBasedIndex: number) {
+  return `${phase}:${oneBasedIndex}`
 }

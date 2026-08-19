@@ -90,7 +90,7 @@ export default function AMLAlertDetailPage() {
       .then(data => { setAlert(data); setNotes(data.reviewNotes ?? ''); setLoading(false) })
   }, [id])
 
-  async function resolve(resolution: 'FALSE_POSITIVE' | 'CONFIRMED' | 'ESCALATED') {
+  async function resolve(resolution: 'FALSE_POSITIVE' | 'ESCALATED' | 'REJECTED') {
     setSubmitting(true)
     try {
       const fd = new FormData()
@@ -145,7 +145,7 @@ export default function AMLAlertDetailPage() {
           {alert.subjectName ? (
             <Link
               href={alert.keyPersonId
-                ? `/admin/kyc?personId=${alert.keyPersonId}`
+                ? `/admin/kyc/${alert.keyPersonId}`
                 : `/admin/companies/${alert.companyId}`}
               className="hover:underline font-medium"
               style={{ color: '#C9A96E' }}
@@ -315,17 +315,20 @@ export default function AMLAlertDetailPage() {
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Button variant="outline" onClick={() => resolve('FALSE_POSITIVE')} disabled={submitting}>
               {t('resolution.falsePositive')}
-            </Button>
-            <Button variant="destructive" onClick={() => resolve('CONFIRMED')} disabled={submitting}>
-              {t('resolution.confirmed')}
             </Button>
             <Button onClick={() => resolve('ESCALATED')} disabled={submitting} className="bg-purple-600 hover:bg-purple-700">
               {t('resolution.escalated')}
             </Button>
+            <Button variant="destructive" onClick={() => resolve('REJECTED')} disabled={submitting}>
+              {t('resolution.rejected')}
+            </Button>
           </div>
+          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+            {t('resolution.choiceHint')}
+          </p>
         </div>
       ) : (
         <div className="rounded-lg p-4 space-y-2" style={{ background: '#1A1A12', border: '1px solid #2A2418' }}>

@@ -6,15 +6,22 @@ import { useSession } from 'next-auth/react'
 import { ArrowLeft, CheckCircle, RotateCcw, Upload, X, Download } from 'lucide-react'
 import Link from 'next/link'
 import DiamondCards from '@/app/sfsdiamond/components/DiamondCards'
+import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
-import { sfsDiamondLabel, sfsIsImageFile, sfsStepFileDiamondLabel, sfsStepRequiresDiamondImages } from '@/lib/sfs/order-step-display'
 import {
-  SFS_PREDEFINED_STEPS,
-  SFS_PHASE_LABELS,
-  SFS_PHASE_ORDER,
-  sfsChemTransformWeightStepIndex,
-  sfsCvdSinglePhotoStepIndex,
-} from '@/lib/sfs/order-predefined-steps'
+  sfsDiamondLabel,
+  sfsIsImageFile,
+  sfsStepFileDiamondLabel,
+  sfsStepRequiresDiamondImages,
+  sfsStepRequiresWeight,
+} from '@/lib/sfs/order-step-display'
+import { SFS_PHASE_LABELS, SFS_PHASE_ORDER } from '@/lib/sfs/order-predefined-steps'
+import {
+  matchCompletedStep,
+  resolveOrderStepPlan,
+  type SfsPlanStep,
+  type SfsStepPlan,
+} from '@/lib/sfs/order-step-plan'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -26,6 +33,7 @@ type Step = {
   particular: string
   notes?: string | null
   fileKeys: string[]
+  planStepId?: string | null
   attachments?: StepAttachment[]
 }
 
@@ -72,6 +80,8 @@ type Order = {
   deliveryDetails?: string | null
   createdAt: string
   steps: Step[]
+  stepPlan?: unknown
+  resolvedStepPlan?: SfsStepPlan
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -113,14 +123,6 @@ function fileDiamondLabel(key: string) {
   return sfsStepFileDiamondLabel(key)
 }
 
-function requiresDiamondImages(phase: string, stepIndex: number) {
-  return sfsStepRequiresDiamondImages(phase, stepIndex + 1)
-}
-
-function requiresSinglePhoto(phase: string, stepIndex: number) {
-  return phase === 'CVD' && stepIndex === sfsCvdSinglePhotoStepIndex()
-}
-
 function stepAttachmentsForDisplay(step: Step) {
   const attachments = step.attachments ?? []
   const attachmentKeys = new Set(attachments.map(attachment => attachment.fileKey))
@@ -150,19 +152,27 @@ function StepRow({
   phase,
   stepIndex,    // 0-based
   description,
+  planStepId,
+  defaultKey,
   doneStep,     // the saved Step record if completed, else undefined
   diamonds,
   onRefresh,
   canReviewAttachments,
+  canManageSteps,
+  onRemoveFromPlan,
 }: {
   orderId: string
   phase: string
   stepIndex: number
   description: string
+  planStepId: string
+  defaultKey?: string
   doneStep?: Step
   diamonds: DiamondItem[]
   onRefresh: () => void
   canReviewAttachments: boolean
+  canManageSteps: boolean
+  onRemoveFromPlan: () => void
 }) {
   const [uploading, setUploading] = useState(false)
   const [undoing, setUndoing] = useState(false)
@@ -177,9 +187,9 @@ function StepRow({
   const fileRef = useRef<HTMLInputElement>(null)
 
   const isDone = !!doneStep
-  const isWeightStep = phase === 'CHEM_TRANSFORM' && stepIndex === sfsChemTransformWeightStepIndex()
-  const isDiamondImageStep = requiresDiamondImages(phase, stepIndex)
-  const isSinglePhotoStep = requiresSinglePhoto(phase, stepIndex)
+  const isWeightStep = sfsStepRequiresWeight(defaultKey, phase, stepIndex)
+  const isDiamondImageStep = sfsStepRequiresDiamondImages(phase, stepIndex + 1, defaultKey)
+  const isSinglePhotoStep = false
 
   function chooseGeneralFiles(fileList: FileList | null) {
     const selectedFiles = Array.from(fileList ?? [])
@@ -201,6 +211,7 @@ function StepRow({
     const fd = new FormData()
     fd.append('phase', phase)
     fd.append('stepNumber', String(stepIndex + 1))
+    fd.append('planStepId', planStepId)
     fd.append('recordedAt', customTime ? new Date(customTime).toISOString() : new Date().toISOString())
     fd.append('particular', description)
     const noteParts = [
@@ -242,6 +253,11 @@ function StepRow({
     })
     setReviewingId(null)
     onRefresh()
+  }
+
+  const removeFromPlan = () => {
+    if (!confirm(`Remove step "${description}" from this order's plan? Any completion for this step will also be cleared.`)) return
+    onRemoveFromPlan()
   }
 
   return (
@@ -528,29 +544,111 @@ function StepRow({
         )}
       </div>
 
-      {/* Action button */}
-      {isDone ? (
+      {/* Action buttons */}
+      <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+        {isDone ? (
+          <button
+            onClick={undo}
+            disabled={undoing}
+            title="Undo"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition-all hover:opacity-70 disabled:opacity-40"
+            style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)' }}
+          >
+            <RotateCcw size={12} />
+            Undo
+          </button>
+        ) : (
+          <button
+            onClick={markDone}
+            disabled={uploading}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-90 disabled:opacity-50"
+            style={{ background: '#C9A96E', color: '#0A0805' }}
+          >
+            <CheckCircle size={12} />
+            {uploading ? 'Saving…' : 'Done'}
+          </button>
+        )}
+        {canManageSteps && (
+          <button
+            type="button"
+            onClick={removeFromPlan}
+            className="text-[10px] px-1.5 py-0.5 rounded transition-all hover:opacity-80"
+            style={{ color: 'var(--muted-foreground)', border: '1px solid var(--border)' }}
+          >
+            Remove step
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Insert gap between plan steps ────────────────────────────────────────────
+
+function InsertStepGap({
+  onInsert,
+  busy,
+}: {
+  onInsert: (label: string) => Promise<void>
+  busy: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const [label, setLabel] = useState('')
+
+  const submit = async () => {
+    const trimmed = label.trim()
+    if (!trimmed || busy) return
+    await onInsert(trimmed)
+    setLabel('')
+    setOpen(false)
+  }
+
+  if (!open) {
+    return (
+      <div className="flex justify-center py-0.5">
         <button
-          onClick={undo}
-          disabled={undoing}
-          title="Undo"
-          className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition-all hover:opacity-70 disabled:opacity-40"
-          style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)' }}
+          type="button"
+          onClick={() => setOpen(true)}
+          className="text-[10px] px-2 py-0.5 rounded transition-all hover:opacity-80"
+          style={{ color: '#C9A96E', border: '1px dashed rgba(201,169,110,0.35)' }}
         >
-          <RotateCcw size={12} />
-          Undo
+          + Insert step
         </button>
-      ) : (
-        <button
-          onClick={markDone}
-          disabled={uploading}
-          className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-90 disabled:opacity-50"
-          style={{ background: '#C9A96E', color: '#0A0805' }}
-        >
-          <CheckCircle size={12} />
-          {uploading ? 'Saving…' : 'Done'}
-        </button>
-      )}
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="flex items-center gap-2 px-3 py-2 rounded-lg"
+      style={{ background: 'rgba(201,169,110,0.04)', border: '1px dashed rgba(201,169,110,0.3)' }}
+    >
+      <input
+        value={label}
+        onChange={e => setLabel(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') void submit() }}
+        placeholder="New step label…"
+        className="flex-1 rounded-lg px-2 py-1 text-xs"
+        style={{ background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
+        autoFocus
+      />
+      <button
+        type="button"
+        onClick={() => void submit()}
+        disabled={busy || !label.trim()}
+        className="text-xs px-2.5 py-1 rounded-lg font-semibold disabled:opacity-40"
+        style={{ background: '#C9A96E', color: '#0A0805' }}
+      >
+        Insert
+      </button>
+      <button
+        type="button"
+        onClick={() => { setOpen(false); setLabel('') }}
+        className="text-xs"
+        style={{ color: 'var(--muted-foreground)' }}
+      >
+        Cancel
+      </button>
     </div>
   )
 }
@@ -560,38 +658,85 @@ function StepRow({
 function PhasePanel({
   orderId,
   phase,
+  planSteps,
   steps,
   diamonds,
   onRefresh,
+  onPlanChanged,
   canReviewAttachments,
+  canManageSteps,
 }: {
   orderId: string
   phase: string
+  planSteps: SfsPlanStep[]
   steps: Step[]
   diamonds: DiamondItem[]
   onRefresh: () => void
+  onPlanChanged: (order: Order) => void
   canReviewAttachments: boolean
+  canManageSteps: boolean
 }) {
-  const descriptions = SFS_PREDEFINED_STEPS[phase]
-  const doneMap = new Map(steps.map(s => [s.stepNumber, s]))
-  const doneCount = steps.length
-  const total = descriptions.length
+  const [planBusy, setPlanBusy] = useState(false)
+
+  const doneCount = planSteps.filter((item, i) => matchCompletedStep(item, i, steps)).length
+  const total = planSteps.length
+  const progressPct = total > 0 ? (doneCount / total) * 100 : 0
+
+  const patchPlan = async (body: Record<string, unknown>) => {
+    setPlanBusy(true)
+    try {
+      const res = await fetch(`/api/sfsdiamond/admin/orders/${orderId}/step-plan`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) return
+      const data: Order = await res.json()
+      onPlanChanged(data)
+    } finally {
+      setPlanBusy(false)
+    }
+  }
+
+  const insertAt = async (index: number, label: string) => {
+    await patchPlan({ action: 'insert', phase, index, label })
+  }
+
+  const removeStep = async (planStepId: string) => {
+    await patchPlan({ action: 'remove', phase, planStepId })
+  }
+
+  const resetPhase = async () => {
+    if (!confirm(`Reset ${SFS_PHASE_LABELS[phase]} to the default step plan? Custom steps in this phase will be removed.`)) return
+    await patchPlan({ action: 'resetPhase', phase })
+  }
 
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
       <div
-        className="px-4 py-3 flex items-center justify-between"
+        className="px-4 py-3 flex items-center justify-between gap-3"
         style={{ background: 'rgba(201,169,110,0.04)', borderBottom: '1px solid var(--border)' }}
       >
         <h3 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>
           {SFS_PHASE_LABELS[phase]}
         </h3>
         <div className="flex items-center gap-3">
+          {canManageSteps && (
+            <button
+              type="button"
+              onClick={() => void resetPhase()}
+              disabled={planBusy}
+              className="text-[10px] px-2 py-0.5 rounded transition-all hover:opacity-80 disabled:opacity-40"
+              style={{ color: 'var(--muted-foreground)', border: '1px solid var(--border)' }}
+            >
+              Reset phase
+            </button>
+          )}
           {/* Progress bar */}
           <div className="w-32 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(201,169,110,0.15)' }}>
             <div
               className="h-full rounded-full transition-all"
-              style={{ width: `${(doneCount / total) * 100}%`, background: doneCount === total ? '#10b981' : '#C9A96E' }}
+              style={{ width: `${progressPct}%`, background: total > 0 && doneCount === total ? '#10b981' : '#C9A96E' }}
             />
           </div>
           <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
@@ -600,18 +745,29 @@ function PhasePanel({
         </div>
       </div>
       <div className="p-4 space-y-2">
-        {descriptions.map((desc, i) => (
-          <StepRow
-            key={i}
-            orderId={orderId}
-            phase={phase}
-            stepIndex={i}
-            description={desc}
-            doneStep={doneMap.get(i + 1)}
-            diamonds={diamonds}
-            onRefresh={onRefresh}
-            canReviewAttachments={canReviewAttachments}
-          />
+        {canManageSteps && (
+          <InsertStepGap busy={planBusy} onInsert={label => insertAt(0, label)} />
+        )}
+        {planSteps.map((item, i) => (
+          <div key={item.id} className="space-y-2">
+            <StepRow
+              orderId={orderId}
+              phase={phase}
+              stepIndex={i}
+              description={item.label}
+              planStepId={item.id}
+              defaultKey={item.defaultKey}
+              doneStep={matchCompletedStep(item, i, steps) as Step | undefined}
+              diamonds={diamonds}
+              onRefresh={onRefresh}
+              canReviewAttachments={canReviewAttachments}
+              canManageSteps={canManageSteps}
+              onRemoveFromPlan={() => void removeStep(item.id)}
+            />
+            {canManageSteps && (
+              <InsertStepGap busy={planBusy} onInsert={label => insertAt(i + 1, label)} />
+            )}
+          </div>
         ))}
       </div>
     </div>
@@ -625,6 +781,7 @@ export default function AdminSfsOrderDetailPage() {
   const id = params.id as string
   const { data: session } = useSession()
   const canReviewAttachments = session?.user?.role === 'SUPER_ADMIN'
+  const canManageSteps = useAdminPermission('sfsOrders.manageSteps')
 
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
@@ -640,6 +797,9 @@ export default function AdminSfsOrderDetailPage() {
     const res = await fetch(`/api/sfsdiamond/admin/orders/${id}`)
     if (!res.ok) { setLoadError('Order not found'); setLoading(false); return }
     const data: Order = await res.json()
+    if (!data.resolvedStepPlan) {
+      data.resolvedStepPlan = resolveOrderStepPlan(data.stepPlan)
+    }
     setOrder(data)
     if (!keepForm) {
       setForm({
@@ -729,9 +889,23 @@ export default function AdminSfsOrderDetailPage() {
 
   const s = STATUS_STYLE[order.status] ?? STATUS_STYLE.PENDING
   const diamonds = order.diamonds as DiamondItem[]
+  const resolvedPlan = order.resolvedStepPlan ?? resolveOrderStepPlan(order.stepPlan)
   const LABEL = 'block text-xs mb-1'
   const INPUT = 'w-full rounded-lg px-3 py-2 text-sm'
   const IS = { background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--foreground)' }
+
+  const handlePlanChanged = (updated: Order) => {
+    if (!updated.resolvedStepPlan) {
+      updated.resolvedStepPlan = resolveOrderStepPlan(updated.stepPlan)
+    }
+    setOrder(prev => prev ? {
+      ...prev,
+      ...updated,
+      steps: updated.steps ?? prev.steps,
+      stepPlan: updated.stepPlan ?? prev.stepPlan,
+      resolvedStepPlan: updated.resolvedStepPlan,
+    } : updated)
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -861,10 +1035,13 @@ export default function AdminSfsOrderDetailPage() {
           key={phase}
           orderId={order.id}
           phase={phase}
+          planSteps={resolvedPlan[phase] ?? []}
           steps={order.steps.filter(s => s.phase === phase)}
           diamonds={diamonds}
           onRefresh={() => load(true)}
+          onPlanChanged={handlePlanChanged}
           canReviewAttachments={canReviewAttachments}
+          canManageSteps={canManageSteps}
         />
       ))}
     </div>

@@ -128,6 +128,8 @@ enum AMLAlertResolution {
   FALSE_POSITIVE
   CONFIRMED
   ESCALATED
+  /// Reject / terminate relationship — no EDD
+  REJECTED
 }
 
 enum AMLSubjectType {
@@ -1364,6 +1366,10 @@ model SfsOrder {
   // Customer-entered internal reference (editable by the client at any time)
   customerInternalOrderCode String?
 
+  /// Per-order production step plan. Null = use global SFS_PREDEFINED_STEPS defaults.
+  /// Shape: { [phase: string]: Array<{ id, label, kind: 'default'|'custom', defaultKey?: string }> }
+  stepPlan Json?
+
   steps    SfsOrderStep[]
   invoices SfsInvoice[]
 
@@ -1440,6 +1446,8 @@ model SfsOrderStep {
   orderId    String
   phase      String // CHEM_TRANSFORM | CVD | CRAFTING | JEWELRY_SETTING
   stepNumber Int
+  /// Stable id matching an item in SfsOrder.stepPlan (defaultKey or custom cuid)
+  planStepId String?
   recordedAt DateTime
   particular String
   notes      String?
@@ -1450,6 +1458,7 @@ model SfsOrderStep {
   attachments SfsOrderStepAttachment[]
 
   @@index([orderId, phase])
+  @@index([orderId, planStepId])
   @@map("sfs_order_steps")
 }
 

@@ -2,7 +2,7 @@ import type { Platform, UserRole } from '@prisma/client'
 import { MENU_PLATFORM } from './admin-access'
 
 // ── Permission action types ────────────────────────────────────────
-export type PermAction = 'view' | 'create' | 'edit' | 'delete' | 'import' | 'export' | 'approve' | 'complete'
+export type PermAction = 'view' | 'create' | 'edit' | 'delete' | 'import' | 'export' | 'approve' | 'complete' | 'manageSteps'
 
 export const ACTION_LABELS: Record<PermAction, string> = {
   view:     '详情',
@@ -13,6 +13,7 @@ export const ACTION_LABELS: Record<PermAction, string> = {
   export:   '导出',
   approve:  '审批',
   complete: '完成',
+  manageSteps: '管理步骤',
 }
 
 // ── Permission matrix: pages and their available actions ──────────
@@ -58,7 +59,7 @@ export const PERMISSION_GROUPS: PermGroup[] = [
     platform: 'SFS_DIAMOND',
     pages: [
       { menuKey: 'sfsCustomers',    label: '客户',   actions: ['create', 'edit', 'delete'] },
-      { menuKey: 'sfsOrders',       label: '订单',   actions: ['create', 'edit', 'complete'] },
+      { menuKey: 'sfsOrders',       label: '订单',   actions: ['create', 'edit', 'complete', 'manageSteps'] },
       { menuKey: 'sfsDiamondSpecs', label: '钻石规格', actions: ['create', 'edit', 'delete'] },
       { menuKey: 'sfsInvoices',     label: '发票',   actions: ['create', 'edit', 'delete'] },
     ],

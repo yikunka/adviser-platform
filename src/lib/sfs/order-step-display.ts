@@ -15,8 +15,22 @@ export function sfsStepFileDiamondLabel(key: string) {
   return name.match(/^([A-Z0-9_-]+D\d{2})-/i)?.[1] ?? null
 }
 
-export function sfsStepRequiresDiamondImages(phase: string, stepNumber: number) {
-  return (phase === 'CVD' && stepNumber === 6) || phase === 'CRAFTING'
+export function sfsStepRequiresDiamondImages(
+  phase: string,
+  stepNumber: number,
+  defaultKey?: string | null,
+) {
+  if (phase === 'CRAFTING') return true
+  if (defaultKey === 'CVD:5' || defaultKey === 'CVD:6') return true
+  // Legacy / plan-less: Labeling was step 6, now step 5 after removing Day-21 check
+  if (phase === 'CVD' && (stepNumber === 5 || stepNumber === 6)) return true
+  return false
+}
+
+export function sfsStepRequiresWeight(defaultKey?: string | null, phase?: string, stepIndex?: number) {
+  if (defaultKey === 'CHEM_TRANSFORM:4') return true
+  if (phase === 'CHEM_TRANSFORM' && stepIndex === 3) return true
+  return false
 }
 
 const SFS_IMAGE_REVIEW_PHASES = new Set(['CHEM_TRANSFORM', 'CVD', 'CRAFTING', 'JEWELRY_SETTING'])

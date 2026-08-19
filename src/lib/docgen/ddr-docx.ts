@@ -1,5 +1,5 @@
 /**
- * DDR report renderer — Word (.docx) with 6AM Advisory branding.
+ * DDR report renderer — Word (.docx) matching staff-edited CL0028 template (Aug 2026).
  * Print → sign → upload workflow (signed scan as PDF/JPG/PNG).
  */
 import fs from 'node:fs'
@@ -31,14 +31,21 @@ import {
 import { DEFAULT_RISK_ITEMS } from '@/lib/docgen/ddr-risk-items'
 
 const FIRM_NAME = '6AM Advisory Limited'
+/** Matched to staff-edited DDR_CL0028 template (Aug 2026). */
+const BODY_SIZE = 20
 const PAGE_W = convertInchesToTwip(8.27) // A4
 const MARGIN = convertInchesToTwip(0.7)
 const CONTENT_W = PAGE_W - MARGIN * 2
+/** Wide banner logo from templates/DDR (EMU 2233930×351790 ≈ 176×28 px @72dpi). */
+const LOGO_W = 176
+const LOGO_H = 28
 
-const thin = { style: BorderStyle.SINGLE, size: 4, color: '666666' }
+const thin = { style: BorderStyle.SINGLE, size: 4, color: 'auto' }
 const borders = { top: thin, bottom: thin, left: thin, right: thin }
 const headerFill = 'D9D9D9'
 const cellM = { top: 60, bottom: 60, left: 80, right: 80 }
+const coverCellM = { top: 160, bottom: 160, left: 160, right: 160 }
+const DDR_FONT = { name: 'Times New Roman', eastAsia: 'PMingLiU' } as const
 
 function fmt(d: Date | string | null | undefined) {
   return d ? new Date(d).toLocaleDateString('en-HK') : '—'
@@ -68,7 +75,8 @@ function resolutionLabel(resolution: string | null | undefined): string {
   switch (resolution) {
     case 'FALSE_POSITIVE': return '誤報  False Positive'
     case 'CONFIRMED': return '已確認  Confirmed'
-    case 'ESCALATED': return '已升級  Escalated'
+    case 'ESCALATED': return '已升級（EDD）  Escalated (EDD)'
+    case 'REJECTED': return '拒絕／終止  Rejected'
     case 'PENDING': return '待審查  Pending'
     default: return resolution ? resolution.replace(/_/g, ' ') : '待決議  Pending'
   }
@@ -184,9 +192,10 @@ async function loadKeyPersonAlertDispositions(keyPersonId: string): Promise<Aler
 }
 
 function runs(text: string, opts: Partial<IRunOptions> = {}) {
+  const withFont = { font: DDR_FONT, size: BODY_SIZE, ...opts }
   return text.split('\n').flatMap((line, i) => [
-    ...(i > 0 ? [new TextRun({ break: 1, ...opts })] : []),
-    new TextRun({ text: line, ...opts }),
+    ...(i > 0 ? [new TextRun({ break: 1, ...withFont })] : []),
+    new TextRun({ text: line, ...withFont }),
   ])
 }
 
@@ -194,7 +203,7 @@ function p(text: string, opts: Partial<IRunOptions> & { spacingAfter?: number; s
   const { spacingAfter = 80, spacingBefore = 0, ...runOpts } = opts
   return new Paragraph({
     spacing: { after: spacingAfter, before: spacingBefore },
-    children: runs(text, { size: 18, ...runOpts }),
+    children: runs(text, runOpts),
   })
 }
 
@@ -202,14 +211,14 @@ function sectionTitle(text: string) {
   return new Paragraph({
     spacing: { before: 280, after: 120 },
     border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: '000000', space: 4 } },
-    children: [new TextRun({ text, bold: true, size: 22 })],
+    children: runs(text, { bold: true, size: BODY_SIZE }),
   })
 }
 
 function subTitle(text: string) {
   return new Paragraph({
     spacing: { before: 200, after: 80 },
-    children: [new TextRun({ text, bold: true, size: 20 })],
+    children: runs(text, { bold: true, size: BODY_SIZE }),
   })
 }
 
@@ -227,14 +236,14 @@ function kvTable(rows: Array<{ label: string; value: string }>) {
           margins: cellM,
           shading: { fill: headerFill },
           verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ children: runs(row.label, { bold: true, size: 17 }) })],
+          children: [new Paragraph({ children: runs(row.label, { bold: true }) })],
         }),
         new TableCell({
           borders,
           width: { size: valueW, type: WidthType.DXA },
           margins: cellM,
           verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ children: runs(row.value || '—', { size: 17 }) })],
+          children: [new Paragraph({ children: runs(row.value || '—') })],
         }),
       ],
     })),
@@ -250,7 +259,7 @@ function dataTable(headers: string[], widths: number[], body: string[][]) {
       margins: cellM,
       shading: { fill: headerFill },
       verticalAlign: VerticalAlign.CENTER,
-      children: [new Paragraph({ children: runs(h, { bold: true, size: 16 }) })],
+      children: [new Paragraph({ children: runs(h, { bold: true }) })],
     })),
   })
   const rows = body.map(cells => new TableRow({
@@ -259,7 +268,7 @@ function dataTable(headers: string[], widths: number[], body: string[][]) {
       width: { size: widths[i], type: WidthType.DXA },
       margins: cellM,
       verticalAlign: VerticalAlign.TOP,
-      children: [new Paragraph({ children: runs(c || '—', { size: 16 }) })],
+      children: [new Paragraph({ children: runs(c || '—') })],
     })),
   }))
   return new Table({
@@ -270,30 +279,37 @@ function dataTable(headers: string[], widths: number[], body: string[][]) {
 }
 
 function loadLogo(): Buffer | null {
-  try {
-    return fs.readFileSync(path.join(process.cwd(), 'public', 'logo.png'))
-  } catch {
-    return null
+  const candidates = [
+    path.join(process.cwd(), 'public', 'ddr-logo.png'),
+    path.join(process.cwd(), 'public', 'logo.png'),
+  ]
+  for (const file of candidates) {
+    try {
+      return fs.readFileSync(file)
+    } catch {
+      // try next
+    }
   }
+  return null
 }
 
 function brandHeader(logo: Buffer | null, reportTitleZh: string, reportTitleEn: string) {
   const children: Paragraph[] = []
   if (logo) {
+    // Wide banner logo (firm name is in the artwork); no separate firm-name TextRun.
     children.push(new Paragraph({
-      spacing: { after: 60 },
+      spacing: { after: 40 },
       children: [
         new ImageRun({
           type: 'png',
           data: logo,
-          transformation: { width: 28, height: 28 },
+          transformation: { width: LOGO_W, height: LOGO_H },
           altText: { name: 'logo', title: FIRM_NAME, description: FIRM_NAME },
         }),
-        new TextRun({ text: `  ${FIRM_NAME}`, bold: true, size: 20 }),
       ],
     }))
   } else {
-    children.push(p(FIRM_NAME, { bold: true, size: 20, spacingAfter: 40 }))
+    children.push(p(FIRM_NAME, { bold: true, spacingAfter: 40 }))
   }
   children.push(p(reportTitleZh, { bold: true, size: 18, spacingAfter: 20 }))
   children.push(p(reportTitleEn, { size: 16, spacingAfter: 40 }))
@@ -305,17 +321,18 @@ function brandHeader(logo: Buffer | null, reportTitleZh: string, reportTitleEn: 
 }
 
 function brandFooter() {
+  const foot = { font: DDR_FONT, size: 14, color: '666666' } as const
   return new Footer({
     children: [
       new Paragraph({
         alignment: AlignmentType.CENTER,
         border: { top: { style: BorderStyle.SINGLE, size: 6, color: '999999', space: 8 } },
         children: [
-          new TextRun({ text: `${FIRM_NAME}  ·  機密 Confidential  ·  `, size: 14, color: '666666' }),
-          new TextRun({ text: '第 ', size: 14, color: '666666' }),
-          new TextRun({ children: [PageNumber.CURRENT], size: 14, color: '666666' }),
-          new TextRun({ text: ' 頁 / Page ', size: 14, color: '666666' }),
-          new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 14, color: '666666' }),
+          new TextRun({ text: `${FIRM_NAME}  ·  機密 Confidential  ·  `, ...foot }),
+          new TextRun({ text: '第 ', ...foot }),
+          new TextRun({ children: [PageNumber.CURRENT], ...foot }),
+          new TextRun({ text: ' 頁 / Page ', ...foot }),
+          new TextRun({ children: [PageNumber.TOTAL_PAGES], ...foot }),
         ],
       }),
     ],
@@ -349,8 +366,8 @@ function screeningBlock(opts: ScreeningBlockInput): Array<Paragraph | Table> {
   ]))
 
   if (opts.subjectLines?.length) {
-    out.push(p('篩查對象 / 輸入欄位  Screening inputs:', { bold: true, size: 17, spacingBefore: 120 }))
-    for (const line of opts.subjectLines) out.push(p(line, { size: 16, spacingAfter: 40 }))
+    out.push(p('篩查對象 / 輸入欄位  Screening inputs:', { bold: true, spacingBefore: 120 }))
+    for (const line of opts.subjectLines) out.push(p(line, { spacingAfter: 40 }))
   }
 
   const matches = parseMatchRows(opts.check?.matches)
@@ -358,23 +375,23 @@ function screeningBlock(opts: ScreeningBlockInput): Array<Paragraph | Table> {
   const isHit = Boolean(opts.check && opts.check.result !== 'CLEAR')
 
   if (matches.length > 0) {
-    out.push(p('命中明細  Match evidence:', { bold: true, size: 17, spacingBefore: 120 }))
+    out.push(p('命中明細  Match evidence:', { bold: true, spacingBefore: 120 }))
     for (const m of matches) {
       out.push(p(
         `• ${m.primaryName}  (${m.result.replace(/_/g, ' ')}${m.score ? `  ${(m.score * 100).toFixed(0)}%` : ''})`,
-        { size: 16, spacingAfter: 40 },
+        { spacingAfter: 40 },
       ))
     }
   } else if (isClear && opts.emptyClearMessage) {
-    out.push(p(`${opts.emptyClearMessage.zh}\n${opts.emptyClearMessage.en}`, { size: 16, spacingBefore: 100 }))
+    out.push(p(`${opts.emptyClearMessage.zh}\n${opts.emptyClearMessage.en}`, { spacingBefore: 100 }))
   } else if (isHit) {
-    out.push(p('已標記為命中（無結構化命中明細）。  Marked as HIT (no structured match rows).', { size: 16, spacingBefore: 100 }))
+    out.push(p('已標記為命中（無結構化命中明細）。  Marked as HIT (no structured match rows).', { spacingBefore: 100 }))
   }
 
   if (isHit) {
-    out.push(p('命中與處置  Hit & Disposition', { bold: true, size: 17, spacingBefore: 140 }))
+    out.push(p('命中與處置  Hit & Disposition', { bold: true, spacingBefore: 140 }))
     const notes = manualNotesFromCheck(opts.check)
-    if (notes) out.push(p(`人工備註 Manual notes: ${notes}`, { size: 16 }))
+    if (notes) out.push(p(`人工備註 Manual notes: ${notes}`))
     if (opts.dispositions?.length) {
       for (const d of opts.dispositions) {
         out.push(kvTable([
@@ -388,13 +405,13 @@ function screeningBlock(opts: ScreeningBlockInput): Array<Paragraph | Table> {
         ]))
       }
     } else {
-      out.push(p('尚無警報決議記錄。  No alert disposition on file.', { size: 16 }))
+      out.push(p('尚無警報決議記錄。  No alert disposition on file.'))
     }
   }
 
   // Supporting files always listed when present (CLEAR or HIT)
   if (opts.supportingFiles?.length) {
-    out.push(p('支持文件  Supporting files:', { bold: true, size: 17, spacingBefore: 80 }))
+    out.push(p('支持文件  Supporting files:', { bold: true, spacingBefore: 80 }))
     const wName = Math.floor(CONTENT_W * 0.7)
     const wDate = CONTENT_W - wName
     out.push(dataTable(
@@ -403,7 +420,7 @@ function screeningBlock(opts: ScreeningBlockInput): Array<Paragraph | Table> {
       opts.supportingFiles.map(f => [f.fileName, fmtDt(f.uploadedAt)]),
     ))
   } else if (opts.showSupportingEmpty) {
-    out.push(p('支持文件 Supporting files: 沒有搜索到相關信息\nNo related information found.', { size: 16, spacingBefore: 80 }))
+    out.push(p('支持文件 Supporting files: 沒有搜索到相關信息\nNo related information found.', { spacingBefore: 80 }))
   }
 
   return out
@@ -414,61 +431,6 @@ function adverseMediaPassFail(result: string | null | undefined): string {
   if (!result) return '未完成 — 尚未人工標記\nNot completed — manual review not recorded'
   if (result === 'CLEAR') return '通過 CLEAR（人工）\nPASS — manual CLEAR'
   return '不通過／命中 HIT（人工）\nFAIL — manual HIT'
-}
-
-type AdverseMedia13Row = {
-  subjectLabel: string
-  check: PersonScopedCheck | null
-  supportingFiles: Array<{ fileName: string; uploadedAt: Date | null }>
-}
-
-/** Part 1.3 — manual adverse media with result, time, and supporting files. */
-function part13AdverseMedia(rows: AdverseMedia13Row[]): Array<Paragraph | Table> {
-  const out: Array<Paragraph | Table> = [
-    subTitle('1.3  負面新聞／公開媒體篩查（人工）  Adverse Media / News Screening (Manual)'),
-    p(
-      '方法 Method：合規人員離線查核公開新聞後於系統人工標記通過／命中（不依賴 Google CSE）。\nStaff review open-source news offline, then mark PASS (CLEAR) or FAIL (HIT) in the system. Google CSE is not required.',
-      { size: 16 },
-    ),
-  ]
-
-  if (rows.length === 0) {
-    out.push(p('暫無篩查對象的負面新聞記錄。  No adverse-media records for screening subjects.', { size: 16 }))
-    return out
-  }
-
-  for (const row of rows) {
-    if (rows.length > 1) {
-      out.push(p(row.subjectLabel, { bold: true, size: 17, spacingBefore: 140 }))
-    }
-    const officer = row.check?.triggeredBy
-      ? [row.check.triggeredBy.nameEn, row.check.triggeredBy.nameZh].filter(Boolean).join(' / ')
-      : '—'
-    const notes = manualNotesFromCheck(row.check)
-    out.push(kvTable([
-      { label: '方法\nMethod', value: '手工審查  Manual review' },
-      { label: '通過與否\nPass / Fail', value: adverseMediaPassFail(row.check?.result) },
-      { label: '結果代碼\nResult code', value: screeningResultLabel(row.check?.result) },
-      { label: '完成時間\nCompleted at', value: row.check ? fmtDt(row.check.checkedAt) : '—' },
-      { label: '操作人員\nPerformed by', value: officer },
-      { label: '人工備註\nManual notes', value: notes || '—' },
-    ]))
-
-    out.push(p('支持文件  Supporting files (KYC_ADVERSE_MEDIA):', { bold: true, size: 17, spacingBefore: 100 }))
-    if (row.supportingFiles.length === 0) {
-      out.push(p('沒有搜索到相關信息\nNo related information found.', { size: 16, spacingAfter: 60 }))
-    } else {
-      const wName = Math.floor(CONTENT_W * 0.7)
-      const wDate = CONTENT_W - wName
-      out.push(dataTable(
-        ['文件名稱\nFile name', '上傳時間\nUploaded at'],
-        [wName, wDate],
-        row.supportingFiles.map(f => [f.fileName, fmtDt(f.uploadedAt)]),
-      ))
-    }
-  }
-
-  return out
 }
 
 function ownershipLines(structure: OwnershipNode | null): string[] {
@@ -549,23 +511,21 @@ function part4Conclusion(opts: {
   if (opts.checklist?.length) {
     out.push(subTitle('4.1  篩查摘要  Screening Summary'))
     const w1 = Math.floor(CONTENT_W * 0.55)
-    const w2 = Math.floor(CONTENT_W * 0.2)
-    const w3 = CONTENT_W - w1 - w2
+    const w2 = CONTENT_W - w1
     out.push(dataTable(
-      ['項目\nItem', '狀態\nStatus', '詳情\nDetail'],
-      [w1, w2, w3],
+      ['項目\nItem', '狀態\nStatus'],
+      [w1, w2],
       opts.checklist.map(row => [
         row.label,
-        row.ok ? '通過 CLEAR' : '待處理 Pending',
         row.detail,
       ]),
     ))
   }
 
   if (opts.allClear) {
-    out.push(p(`${opts.clearBannerZh}\n${opts.clearBannerEn}`, { bold: true, size: 17, spacingBefore: 160 }))
+    out.push(p(`${opts.clearBannerZh}\n${opts.clearBannerEn}`, { bold: true, spacingBefore: 160 }))
   } else {
-    out.push(p(`${opts.incompleteBannerZh}\n${opts.incompleteBannerEn}`, { bold: true, size: 17, spacingBefore: 160 }))
+    out.push(p(`${opts.incompleteBannerZh}\n${opts.incompleteBannerEn}`, { bold: true, spacingBefore: 160 }))
   }
 
   const riskText = riskLabel(opts.riskLevel)
@@ -576,16 +536,15 @@ function part4Conclusion(opts: {
     ? `After comprehensive due diligence, ${opts.subjectLabel} is assessed as ${riskText.split('  ')[1] ?? 'Low Risk'} with no unresolved material screening hits.`
     : `After due diligence, screening for ${opts.subjectLabel} is not fully CLEAR or has unresolved hits; overall risk is assessed as ${riskText.split('  ')[1] ?? '—'}.`
 
-  out.push(p(narrativeZh, { size: 17, spacingBefore: 120 }))
-  out.push(p(narrativeEn, { size: 16, spacingAfter: 120 }))
+  out.push(p(narrativeZh, { spacingBefore: 120 }))
+  out.push(p(narrativeEn, { spacingAfter: 120 }))
   out.push(subTitle('4.2  整體風險與批准  Overall Risk & Approver'))
   out.push(kvTable([
     { label: '整體風險等級\nOverall Risk Level', value: riskText },
     { label: '風險備註\nRisk Remark', value: opts.riskRemark?.trim() || '無備註  No Remark' },
-    { label: 'Approver\n批准人員', value: opts.approverName || '—' },
+    { label: '批准人員\nApprover', value: opts.approverName || '—' },
     { label: '批准日期\nApproval Date', value: opts.approvalDate ? fmt(opts.approvalDate) : '—' },
-    { label: '批准備註\nApproval Remark', value: opts.approvalNote?.trim() || '—' },
-    { label: '批准人員簽署\nApprover Signature', value: '\n\n______________________________\n（請列印後簽署  Print & sign）' },
+    { label: '批准人員簽署\nApprover Signature', value: '\n\n' },
   ]))
   return out
 }
@@ -596,10 +555,10 @@ function part5Sources(
   const out: Array<Paragraph | Table> = [
     sectionTitle('5. 資料來源與說明  Data Sources and Notes'),
     subTitle('5.1  制裁名單資料來源  Sanctions List Data Sources'),
-    p('本報告反洗錢／打擊恐怖融資查詢監控以下制裁名單來源（系統定期更新）。\nThe AML/CFT search monitors the following sanctions list sources.', { size: 16 }),
+    p('本報告反洗錢／打擊恐怖融資查詢監控以下制裁名單來源（系統定期更新）。\nThe AML/CFT search monitors the following sanctions list sources.'),
   ]
   if (amlSources.length === 0) {
-    out.push(p('暫無資料來源記錄。  No data source records available.', { size: 16 }))
+    out.push(p('暫無資料來源記錄。  No data source records available.'))
   } else {
     const w = [
       Math.floor(CONTENT_W * 0.08),
@@ -627,12 +586,11 @@ function part5Sources(
     '• 公司／個人基本資料：客戶提供及／或香港公司註冊處等公開記錄。',
     '• 實益擁有人（公司報告）：穿透後有效權益超過 25%（AMLO / CR TCSP Guideline）。',
   ]) {
-    out.push(p(n, { size: 16, spacingAfter: 40 }))
+    out.push(p(n, { spacingAfter: 40 }))
   }
   out.push(subTitle('5.3  報告有效性  Report Validity'))
   out.push(p(
     '本報告資料截至報告日期為準。資料如有變更，應重新進行盡職審查。建議定期更新以確保合規性。\nReport data is current as of the generation date; re-conduct CDD when information changes.',
-    { size: 16 },
   ))
   return out
 }
@@ -640,15 +598,15 @@ function part5Sources(
 function part6Disclaimer() {
   return [
     sectionTitle('6. 免責聲明  Disclaimer'),
-    p('本報告基於報告當日可獲得之系統存檔及公開資訊編製。資訊的準確性和完整性可能受資料來源限制。本報告僅供內部合規參考，不構成法律意見。', { size: 16 }),
-    p('This report is compiled from system records and publicly available information as of the report date. Accuracy and completeness may be limited by source data. For internal compliance reference only; not legal advice.', { size: 16 }),
+    p('本報告基於報告當日可獲得之系統存檔及公開資訊編製。資訊的準確性和完整性可能受資料來源限制。本報告僅供內部合規參考，不構成法律意見。'),
+    p('This report is compiled from system records and publicly available information as of the report date. Accuracy and completeness may be limited by source data. For internal compliance reference only; not legal advice.'),
   ]
 }
 
 function coverBlock(lines: string[]) {
   return [
-    p(lines[0], { bold: true, size: 28, spacingBefore: 200, spacingAfter: 60 }),
-    p(lines[1], { bold: true, size: 24, spacingAfter: 200 }),
+    p(lines[0], { bold: true, spacingBefore: 200, spacingAfter: 60 }),
+    p(lines[1], { bold: true, spacingAfter: 200 }),
     new Table({
       width: { size: CONTENT_W, type: WidthType.DXA },
       columnWidths: [CONTENT_W],
@@ -658,16 +616,19 @@ function coverBlock(lines: string[]) {
             new TableCell({
               borders,
               width: { size: CONTENT_W, type: WidthType.DXA },
-              margins: { top: 160, bottom: 160, left: 160, right: 160 },
-              children: lines.slice(2).map(t => p(t, { size: 18, spacingAfter: 60 })),
+              margins: coverCellM,
+              children: lines.slice(2).map(t => p(t, { spacingAfter: 60 })),
             }),
           ],
         }),
       ],
     }),
-    p('本報告依香港 TCSP／AML 合規要求記錄：關鍵身份信息、篩查結果與處置、風險評估、結論與資料來源。', { size: 16, spacingBefore: 200 }),
-    p('HK CDD structure: key identity, screening & disposition, risk items, conclusion, data sources.', { size: 15 }),
-    p('請列印本 Word 文件，於第 4 部分簽署後掃描上傳存檔。\nPrint this Word file, sign Part 4, then upload the signed scan for filing.', { size: 16, spacingBefore: 160 }),
+    p('本報告依香港 TCSP／AML 合規要求記錄：關鍵身份信息、篩查結果與處置、風險評估、結論與資料來源。', { spacingBefore: 200 }),
+    p('HK CDD structure: key identity, screening & disposition, risk items, conclusion, data sources.'),
+    p(
+      '請列印本 Word 文件，於第 4 部分簽署後掃描上傳存檔。Print this Word file, sign Part 4, then upload the signed scan for filing.',
+      { spacingBefore: 160 },
+    ),
   ]
 }
 
@@ -813,11 +774,11 @@ export async function generateCompanyDdrDocx(companyId: string, ddrId?: string):
     ]),
 
     subTitle('1.1  股權結構（穿透）  Ownership Structure (Look-through)'),
-    p('實益擁有人門檻：穿透後有效權益超過 25%（AMLO / CR TCSP Guideline）。\nUBO threshold: more than 25% effective ownership after look-through.', { size: 16 }),
-    ...ownershipLines(structure).map(line => p(line, { size: 15, spacingAfter: 30 })),
+    p('實益擁有人門檻：穿透後有效權益超過 25%（AMLO / CR TCSP Guideline）。\nUBO threshold: more than 25% effective ownership after look-through.'),
+    ...ownershipLines(structure).map(line => p(line, { spacingAfter: 30 })),
 
     subTitle('1.2  篩查對象  Screening Subjects'),
-    p('包括：有效權益>25% 之實益擁有人；全體自然人董事；全體自然人重要控制人。\nIncludes UBOs with effective ownership >25%, all natural-person directors, and all natural-person significant controllers.', { size: 16 }),
+    p('包括：有效權益>25% 之實益擁有人；全體自然人董事；全體自然人重要控制人。\nIncludes UBOs with effective ownership >25%, all natural-person directors, and all natural-person significant controllers.'),
   ]
 
   {
@@ -839,15 +800,10 @@ export async function generateCompanyDdrDocx(companyId: string, ddrId?: string):
     ))
   }
 
-  children.push(...part13AdverseMedia(
-    subjects.map(s => ({
-      subjectLabel: [s.nameEn, s.nameZh].filter(Boolean).join(' / ') || '—',
-      check: s.keyPersonId ? (scopedByKp.get(s.keyPersonId)?.ADVERSE_MEDIA ?? null) : null,
-      supportingFiles: s.keyPersonId ? (supportingByKp.get(s.keyPersonId) ?? []) : [],
-    })),
-  ))
-
   children.push(sectionTitle('2. 篩查結果與處置  Screening Results & Disposition'))
+  children.push(p(
+    '以下先記錄公司實體篩查，再按各自然人 KYC 四步流程記錄結果；若命中則記錄決議與支持文件。\nCompany entity screening first, then each natural person’s four-step KYC outcomes, dispositions, and evidence.',
+  ))
   children.push(...screeningBlock({
     title: '2.0  公司實體篩查  Company Entity Screening',
     methodZh: '系統比對公司名稱與制裁／AML 名單（公司主體最近一次存檔結果）',
@@ -867,10 +823,11 @@ export async function generateCompanyDdrDocx(companyId: string, ddrId?: string):
   let personIdx = 0
   for (const s of subjects) {
     personIdx += 1
-    children.push(subTitle(`2.${personIdx}  ${[s.nameEn, s.nameZh].filter(Boolean).join(' / ')}`))
-    children.push(p(`角色 Roles: ${s.roles.join('; ')}`, { size: 16, spacingAfter: 40 }))
+    const personLabel = [s.nameEn, s.nameZh].filter(Boolean).join(' / ') || '—'
+    children.push(subTitle(`2.${personIdx}  ${personLabel}`))
+    children.push(p(`角色 Roles: ${s.roles.join('; ')}`, { spacingAfter: 40 }))
     if (s.effectivePercent != null) {
-      children.push(p(`穿透後有效權益 Effective ownership: ${s.effectivePercent.toFixed(2)}%`, { size: 16, spacingAfter: 40 }))
+      children.push(p(`穿透後有效權益 Effective ownership: ${s.effectivePercent.toFixed(2)}%`, { spacingAfter: 40 }))
     }
 
     const scoped = s.keyPersonId ? scopedByKp.get(s.keyPersonId) : null
@@ -878,7 +835,6 @@ export async function generateCompanyDdrDocx(companyId: string, ddrId?: string):
     if (!scoped) {
       children.push(p(
         '尚無個人四步 KYC 篩查存檔 — 請完成個人 KYC 四步篩查\nNo four-step KYC screening on file — complete individual KYC screening',
-        { size: 16 },
       ))
       children.push(kvTable([
         { label: '證件\nID', value: [s.idType, s.idNumber].filter(Boolean).join(': ') || '—' },
@@ -890,51 +846,57 @@ export async function generateCompanyDdrDocx(companyId: string, ddrId?: string):
     }
 
     children.push(...screeningBlock({
-      title: `${personIdx}.1  制裁名單  Sanctions (AML)`,
-      methodZh: '系統比對個人姓名與制裁名單（不含 FATF）',
-      methodEn: 'Name screening against sanctions lists (excl. FATF)',
+      title: `2.${personIdx}.1  制裁名單篩查  Sanctions (AML)`,
+      methodZh: '系統比對個人姓名與制裁名單（OFAC / UN / HK / EU 等，不含 FATF）',
+      methodEn: 'Name screening against sanctions lists (excl. FATF jurisdiction lists)',
       check: scoped.SANCTIONS,
       subjectLines: [
-        `姓名 Name: ${[s.nameEn, s.nameZh].filter(Boolean).join(' / ')}`,
+        `姓名 Name: ${personLabel}`,
         `出生日期 DOB: ${fmt(s.dateOfBirth)}`,
       ],
       emptyClearMessage: { zh: '未發現制裁名單匹配項', en: 'No sanctions list matches found' },
       dispositions: alerts.filter(a => !a.isPepish),
     }))
     children.push(...screeningBlock({
-      title: `${personIdx}.2  FATF 黑／灰名單  FATF`,
-      methodZh: '國籍、證件簽發地、出生地對照 FATF 黑／灰名單',
-      methodEn: 'Nationality / place of issue / place of birth vs FATF lists',
+      title: `2.${personIdx}.2  FATF 黑／灰名單（司法管轄區）  FATF Black / Grey Lists`,
+      methodZh: '以國籍、證件簽發地、出生地對照 FATF 黑名單／灰名單（系統內建 JSON）',
+      methodEn: 'Jurisdiction screening of nationality, ID/passport place of issue, and place of birth vs FATF lists',
       check: scoped.FATF,
       subjectLines: [
         `國籍 Nationality: ${s.nationality || '—'}`,
-        `簽發地 Place of issue: ${s.placeOfIssue || '—'}`,
+        `證件簽發地 Place of issue: ${s.placeOfIssue || '—'}`,
         `出生地 Place of birth: ${s.placeOfBirth || '—'}`,
       ],
-      emptyClearMessage: { zh: '未命中 FATF 黑名單或灰名單', en: 'No FATF black or grey list hit' },
+      emptyClearMessage: {
+        zh: '國籍／簽發地／出生地均未命中 FATF 黑名單或灰名單',
+        en: 'Nationality / place of issue / place of birth — no FATF black or grey list hit',
+      },
     }))
     children.push(...screeningBlock({
-      title: `${personIdx}.3  PEP（OpenSanctions）`,
-      methodZh: 'OpenSanctions Match API PEP／RCA 比對',
-      methodEn: 'OpenSanctions Match API PEP / RCA screening',
+      title: `2.${personIdx}.3  政治公眾人物篩查  PEP (OpenSanctions)`,
+      methodZh: 'OpenSanctions Match API（/match/peps）對姓名等資料進行 PEP／RCA 比對',
+      methodEn: 'OpenSanctions Match API (/match/peps) PEP / RCA screening',
       check: scoped.PEP,
       subjectLines: [
-        `姓名 Name: ${[s.nameEn, s.nameZh].filter(Boolean).join(' / ')}`,
+        `姓名 Name: ${personLabel}`,
         `出生日期 DOB: ${fmt(s.dateOfBirth)}`,
         `國籍 Nationality: ${s.nationality || '—'}`,
       ],
-      emptyClearMessage: { zh: '未發現 PEP／RCA 命中', en: 'No PEP / RCA matches found' },
+      emptyClearMessage: { zh: '未發現 OpenSanctions PEP／RCA 命中', en: 'No OpenSanctions PEP / RCA matches found' },
       dispositions: alerts.filter(a => a.isPepish),
     }))
     children.push(...screeningBlock({
-      title: `${personIdx}.4  負面新聞（人工）  Adverse Media (Manual)`,
-      methodZh: '合規人員人工標記 CLEAR 或 HIT（不依賴 Google CSE）',
-      methodEn: 'Manual adverse-media review mark CLEAR or HIT (Google CSE not required)',
+      title: `2.${personIdx}.4  負面新聞／公開媒體（人工）  Adverse Media (Manual)`,
+      methodZh: '合規人員離線查核公開新聞後於系統標記 CLEAR 或 HIT（不依賴 Google CSE）',
+      methodEn: 'Staff manual open-source news review; mark CLEAR or HIT in KYC (Google CSE not required)',
       check: scoped.ADVERSE_MEDIA,
-      subjectLines: [`姓名 Name: ${[s.nameEn, s.nameZh].filter(Boolean).join(' / ')}`],
+      subjectLines: [
+        `姓名 Name: ${personLabel}`,
+        `通過與否 Pass/Fail: ${adverseMediaPassFail(scoped.ADVERSE_MEDIA?.result).split('\n')[0]}`,
+      ],
       emptyClearMessage: {
-        zh: '人工審查：未發現相關負面新聞風險',
-        en: 'Manual review: no relevant adverse media risk',
+        zh: '人工審查：未發現相關負面新聞／公開媒體風險',
+        en: 'Manual review: no relevant adverse media risk identified',
       },
       supportingFiles: s.keyPersonId ? (supportingByKp.get(s.keyPersonId) ?? []) : [],
       showSupportingEmpty: true,
@@ -945,8 +907,12 @@ export async function generateCompanyDdrDocx(companyId: string, ddrId?: string):
 
   const companyOk = companyCheck?.result === 'CLEAR'
   let allPersonsClear = subjects.length > 0
-  const personChecklist: Array<{ label: string; ok: boolean; detail: string }> = [
-    { label: 'Company entity screening', ok: companyOk, detail: screeningResultLabel(companyCheck?.result) },
+  const checklist: Array<{ label: string; ok: boolean; detail: string }> = [
+    {
+      label: '0. Company entity screening',
+      ok: companyOk,
+      detail: screeningResultLabel(companyCheck?.result),
+    },
   ]
   for (const s of subjects) {
     const scoped = s.keyPersonId ? scopedByKp.get(s.keyPersonId) : null
@@ -958,10 +924,12 @@ export async function generateCompanyDdrDocx(companyId: string, ddrId?: string):
       && scoped.ADVERSE_MEDIA?.result === 'CLEAR',
     )
     if (!ok) allPersonsClear = false
-    personChecklist.push({
+    checklist.push({
       label: [s.nameEn, s.nameZh].filter(Boolean).join(' / '),
       ok,
-      detail: ok ? '四步 CLEAR' : (scoped ? '未全部 CLEAR' : '無 KYC 存檔'),
+      detail: ok
+        ? '四步 CLEAR  All four CLEAR'
+        : (scoped ? '未全部 CLEAR  Not fully CLEAR' : '無 KYC 存檔  No KYC screening on file'),
     })
   }
   if (subjects.length === 0) allPersonsClear = false
@@ -982,7 +950,7 @@ export async function generateCompanyDdrDocx(companyId: string, ddrId?: string):
     approverName: appName,
     approvalDate: ddr?.approvedAt ?? null,
     approvalNote: ddr?.approvalNote ?? null,
-    checklist: personChecklist,
+    checklist,
   }))
 
   children.push(...part5Sources(amlSources))
@@ -1130,16 +1098,9 @@ export async function generatePersonDdrDocx(keyPersonId: string): Promise<Buffer
     ))
   }
 
-  children.push(...part13AdverseMedia([{
-    subjectLabel: [person.nameEn, person.nameZh].filter(Boolean).join(' / ') || displayName,
-    check: scoped.ADVERSE_MEDIA,
-    supportingFiles: adverseEvidence.map(d => ({ fileName: d.fileName, uploadedAt: d.uploadedAt })),
-  }]))
-
   children.push(sectionTitle('2. 篩查結果與處置  Screening Results & Disposition'))
   children.push(p(
     '以下按 KYC 四步流程記錄每次篩查結果；若命中則記錄決議與支持文件。\nEach step records outcome, timestamp, and evidence (including clear screens).',
-    { size: 16 },
   ))
   children.push(...screeningBlock({
     title: '2.1  制裁名單篩查  Sanctions (AML)',
@@ -1201,7 +1162,7 @@ export async function generatePersonDdrDocx(keyPersonId: string): Promise<Buffer
   if (linkedCompanyId && person.companyLinks[0]?.company) {
     const co = person.companyLinks[0].company
     const coName = [co.nameEn, co.nameZh].filter(Boolean).join(' / ')
-    children.push(p(`關聯公司 Linked Company: ${coName}`, { size: 16, spacingBefore: 80 }))
+    children.push(p(`關聯公司 Linked Company: ${coName}`, { spacingBefore: 80 }))
   }
   children.push(...part3Risk(buildRiskRows(riskAnswers)))
 

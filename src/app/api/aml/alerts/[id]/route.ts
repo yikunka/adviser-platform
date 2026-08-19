@@ -7,7 +7,7 @@ import { uploadToR2 } from '@/lib/storage/r2'
 import crypto from 'crypto'
 
 const resolveSchema = z.object({
-  resolution: z.enum(['FALSE_POSITIVE', 'CONFIRMED', 'ESCALATED']),
+  resolution: z.enum(['FALSE_POSITIVE', 'ESCALATED', 'REJECTED']),
   reviewNotes: z.string().optional(),
 })
 

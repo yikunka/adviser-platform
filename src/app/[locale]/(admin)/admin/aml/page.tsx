@@ -88,6 +88,7 @@ const RESOLUTION_COLOR: Record<string, string> = {
   FALSE_POSITIVE: 'bg-[rgba(120,113,108,0.15)] text-[#9A8060]',
   CONFIRMED:      'bg-[rgba(239,68,68,0.12)] text-[#ef4444]',
   ESCALATED:      'bg-[rgba(168,85,247,0.12)] text-[#c084fc]',
+  REJECTED:       'bg-[rgba(239,68,68,0.12)] text-[#ef4444]',
 }
 
 const thStyle: React.CSSProperties = {
@@ -693,8 +694,9 @@ export default function AMLPage() {
             <SelectItem value="all">All Resolutions</SelectItem>
             <SelectItem value="PENDING">{t('resolution.pending')}</SelectItem>
             <SelectItem value="FALSE_POSITIVE">{t('resolution.falsePositive')}</SelectItem>
-            <SelectItem value="CONFIRMED">{t('resolution.confirmed')}</SelectItem>
             <SelectItem value="ESCALATED">{t('resolution.escalated')}</SelectItem>
+            <SelectItem value="REJECTED">{t('resolution.rejected')}</SelectItem>
+            <SelectItem value="CONFIRMED">{t('resolution.confirmed')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -735,7 +737,7 @@ export default function AMLPage() {
                     {alert.subjectName ? (
                       <Link
                         href={alert.keyPersonId
-                          ? `/admin/kyc?personId=${alert.keyPersonId}`
+                          ? `/admin/kyc/${alert.keyPersonId}`
                           : `/admin/companies/${alert.companyId}`}
                         className="hover:underline font-medium"
                         style={{ color: '#C9A96E' }}

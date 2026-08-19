@@ -11,7 +11,8 @@ import {
   sfsStepRequiresDiamondImages,
   splitSfsStepNotes,
 } from '@/lib/sfs/order-step-display'
-import { SFS_PREDEFINED_STEPS, SFS_PHASE_LABELS, SFS_PHASE_ORDER } from '@/lib/sfs/order-predefined-steps'
+import { SFS_PHASE_LABELS, SFS_PHASE_ORDER } from '@/lib/sfs/order-predefined-steps'
+import { matchCompletedStep, resolveOrderStepPlan } from '@/lib/sfs/order-step-plan'
 
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   PENDING:   { bg: 'rgba(201,169,110,0.12)', color: '#C9A96E'  },
@@ -106,15 +107,25 @@ export default async function SFSOrderDetailPage({
   const badge = STATUS_STYLE[order.status] ?? STATUS_STYLE.PENDING
   const diamonds = order.diamonds as { code?: string; carat?: string; shape?: string; type?: string; design?: string; metal?: string; ringSize?: string }[]
 
-  // Use predefined step labels for consistent display across customer and admin
-  const getStepsForPhase = (phase: string) => SFS_PREDEFINED_STEPS[phase] || []
+  // Use per-order step plan (or defaults) for consistent display with admin
+  const stepPlan = resolveOrderStepPlan(order.stepPlan)
 
-  const phaseGroups = SFS_PHASE_ORDER.map(phase => ({
-    phase,
-    label: SFS_PHASE_LABELS[phase],
-    total: getStepsForPhase(phase).length,
-    steps: order.steps.filter(s => s.phase === phase),
-  }))
+  const phaseGroups = SFS_PHASE_ORDER.map(phase => {
+    const planSteps = stepPlan[phase] ?? []
+    const phaseDone = order.steps.filter(s => s.phase === phase)
+    return {
+      phase,
+      label: SFS_PHASE_LABELS[phase],
+      total: planSteps.length,
+      planSteps,
+      steps: planSteps
+        .map((item, i) => {
+          const done = matchCompletedStep(item, i, phaseDone)
+          return done ? { ...done, displayName: item.label, defaultKey: item.defaultKey } : null
+        })
+        .filter(Boolean) as Array<(typeof order.steps)[number] & { displayName: string; defaultKey?: string }>,
+    }
+  })
 
   return (
     <div className="min-h-screen" style={{ background: BG }}>
@@ -249,14 +260,15 @@ export default async function SFSOrderDetailPage({
                   <div className="divide-y" style={{ ['--tw-divide-opacity' as string]: 1 }}>
                     {group.steps.map(step => {
                       const notes = splitSfsStepNotes(step.notes)
-                      const usesDiamondFiles = sfsStepRequiresDiamondImages(step.phase, step.stepNumber)
+                      const usesDiamondFiles = sfsStepRequiresDiamondImages(
+                        step.phase,
+                        step.stepNumber,
+                        step.defaultKey,
+                      )
                       const visibleFileKeys = sfsCustomerVisibleStepFileKeys(step)
                       const grouped = usesDiamondFiles ? groupSfsStepFilesByDiamond(visibleFileKeys, diamonds) : null
-                      
-                      // Get standardized step name from predefined list for consistent display
-                      const predefinedSteps = getStepsForPhase(step.phase)
-                      const stepName = predefinedSteps[step.stepNumber - 1] || step.particular
-                      
+                      const stepName = step.displayName || step.particular
+
                       return (
                         <div key={step.id} className="px-5 py-4 flex items-start gap-3" style={{ borderColor: BORDER }}>
                             <div

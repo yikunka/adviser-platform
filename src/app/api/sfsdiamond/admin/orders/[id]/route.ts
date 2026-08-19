@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { z } from 'zod'
+import { resolveOrderStepPlan } from '@/lib/sfs/order-step-plan'
 
 const updateSchema = z.object({
   status:               z.enum(['PENDING', 'QUOTED', 'CONFIRMED', 'COMPLETED', 'CANCELLED']).optional(),
@@ -48,7 +49,10 @@ export async function GET(
   })
 
   if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  return NextResponse.json(order)
+  return NextResponse.json({
+    ...order,
+    resolvedStepPlan: resolveOrderStepPlan(order.stepPlan),
+  })
 }
 
 export async function PATCH(

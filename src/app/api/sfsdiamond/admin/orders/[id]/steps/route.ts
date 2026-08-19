@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db/prisma'
 import { uploadToR2 } from '@/lib/storage/r2'
 import { sfsStepImageRequiresApproval } from '@/lib/sfs/order-step-display'
 import { SFS_PHASE_ORDER } from '@/lib/sfs/order-predefined-steps'
+import { resolveOrderStepPlan } from '@/lib/sfs/order-step-plan'
 import crypto from 'crypto'
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
@@ -23,11 +24,12 @@ export async function POST(
   const { id: orderId } = await params
 
   const formData = await req.formData()
-  const phase      = formData.get('phase') as string
+  const phase = formData.get('phase') as string
   const stepNumber = parseInt(formData.get('stepNumber') as string, 10)
+  const planStepId = String(formData.get('planStepId') ?? '').trim() || null
   const recordedAt = formData.get('recordedAt') as string
   const particular = formData.get('particular') as string
-  const notes      = formData.get('notes') as string | null
+  const notes = formData.get('notes') as string | null
 
   if (!phase || !SFS_PHASE_ORDER.includes(phase as typeof SFS_PHASE_ORDER[number])) {
     return NextResponse.json({ error: 'Invalid phase' }, { status: 400 })
@@ -36,7 +38,6 @@ export async function POST(
     return NextResponse.json({ error: 'recordedAt and particular are required' }, { status: 400 })
   }
 
-  // Upload any attached files
   const attachments: {
     fileKey: string
     fileName: string
@@ -76,6 +77,7 @@ export async function POST(
       orderId,
       phase,
       stepNumber: isNaN(stepNumber) ? 0 : stepNumber,
+      planStepId: planStepId ?? undefined,
       recordedAt: new Date(recordedAt),
       particular,
       notes: notes ?? undefined,
@@ -84,6 +86,14 @@ export async function POST(
     },
     include: { attachments: { orderBy: { createdAt: 'asc' } } },
   })
+
+  const order = await prisma.sfsOrder.findUnique({ where: { id: orderId }, select: { stepPlan: true } })
+  if (order && order.stepPlan == null) {
+    await prisma.sfsOrder.update({
+      where: { id: orderId },
+      data: { stepPlan: resolveOrderStepPlan(null) },
+    })
+  }
 
   return NextResponse.json(step, { status: 201 })
 }
