@@ -15,7 +15,7 @@ const PROCESS = [
 
 const TEAM = [
   { name: 'Kenny Wong',  role: 'Tech Lead',        img: '/sfsdiamond/team-1.jpg' },
-  { name: 'Mia Chen',    role: 'Art Director',      img: '/sfsdiamond/team-2.jpg' },
+  { name: 'Patrick Lau', role: 'Sales Lead',       img: '/sfsdiamond/team-2.png' },
   { name: 'Ema Li',      role: 'Product Designer',  img: '/sfsdiamond/team-3.jpg' },
 ]
 
@@ -282,7 +282,7 @@ export default function SFSHomePage() {
               Call (852) 6560 0073
             </a>
             <a
-              href="mailto:kenny@sfsdiamonds.com"
+              href="mailto:patricklau@sfsdiamonds.com"
               className="px-8 py-3.5 rounded-full font-medium text-sm border transition-all hover:bg-black/5"
               style={{ border: '1px solid #C9A96E', color: '#1A1A1A' }}
             >

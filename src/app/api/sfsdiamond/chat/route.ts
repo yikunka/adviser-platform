@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 
 const SFS_KNOWLEDGE = `
 ## About SFS Technology Group
-SFS Technology Group is a global leader in memorial diamond creation, headquartered in Hong Kong. We specialise in transforming the carbon from human or pet remains into certified lab-grown diamonds using Chemical Vapor Deposition (CVD) technology. We are a heavy-asset company — we own and operate our own laboratory and CVD factory, ensuring complete quality control. Contact: (852) 6560 0073 | kenny@sfsdiamonds.com | Address: Yau Ma Tei, Hong Kong.
+SFS Technology Group is a global leader in memorial diamond creation, headquartered in Hong Kong. We specialise in transforming the carbon from human or pet remains into certified lab-grown diamonds using Chemical Vapor Deposition (CVD) technology. We are a heavy-asset company — we own and operate our own laboratory and CVD factory, ensuring complete quality control. Contact: (852) 6560 0073 | patricklau@sfsdiamonds.com | Address: Yau Ma Tei, Hong Kong.
 
 ## Memorial Diamond Services
 - Transform cremated ashes or hair into a real certified diamond
@@ -63,7 +63,7 @@ const SYSTEM_PROMPT = `You are SFS Diamond's friendly and compassionate AI assis
 Guidelines:
 - Be warm, respectful, and sensitive — visitors are often grieving or exploring options for a loved one
 - Answer questions accurately based on the knowledge below
-- For specific pricing, recommend contacting us directly: (852) 6560 0073 or kenny@sfsdiamonds.com
+- For specific pricing, recommend contacting us directly: (852) 6560 0073 or patricklau@sfsdiamonds.com
 - If asked something outside your knowledge, gracefully suggest they contact us
 - Keep responses concise (2–4 sentences) unless a detailed explanation is needed
 - You can respond in the language the user writes in (English or Chinese)
