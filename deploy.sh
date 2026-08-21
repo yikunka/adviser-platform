@@ -284,7 +284,41 @@ cmd_check() {
 
   [[ -f package-lock.json ]] || die "缺少 package-lock.json，请先 npm install 并提交锁文件"
   [[ -f prisma/schema.prisma ]] || die "未找到 prisma/schema.prisma"
+  check_migrations_no_bom
   echo "✓ 本地检查通过"
+}
+
+# 迁移 .sql 开头不许有 UTF-8 BOM（EF BB BF）。
+#
+# ★为什么值得单独一道闸（2026-08-21 生产踩到）：BOM 会让 Postgres 在**第 1 个字节**就
+#   `42601 syntax error at or near "\ufeff"`，而 Prisma 把它记成 P3018 —— 迁移在
+#   `_prisma_migrations` 里留下一行 failed，**后续所有迁移都被卡住**，必须人工
+#   `prisma migrate resolve --rolled-back <name>` 才能继续。
+#   也就是说：修文件只要一秒，恢复却要上生产手动处理。所以在 deploy 之前拦下来，
+#   比在 migrate 中途炸掉便宜得多。
+#
+#   BOM 从哪来：某些编辑器/PowerShell 重定向默认写 UTF-8-with-BOM。肉眼看不出来，
+#   `git diff` 也不显示，只有 xxd 看得见 —— 所以靠人自查是靠不住的。
+check_migrations_no_bom() {
+  local bad=()
+  local f
+  while IFS= read -r f; do
+    [[ -f "$f" ]] || continue
+    if [[ "$(head -c 3 "$f" | od -An -tx1 | tr -d ' \n')" == "efbbbf" ]]; then
+      bad+=("$f")
+    fi
+  done < <(find prisma/migrations -name '*.sql' -type f 2>/dev/null)
+
+  if (( ${#bad[@]} > 0 )); then
+    echo "✗ 以下迁移文件开头有 UTF-8 BOM，Postgres 会在第 1 个字节报 42601：" >&2
+    printf '    %s\n' "${bad[@]}" >&2
+    echo "  修法（去掉前 3 个字节）：" >&2
+    # ★命令整条放进**参数**，不要放格式串：bash 的 printf 会把格式串里的 \x 当转义吃掉并报警告。
+    for f in "${bad[@]}"; do
+      printf '    %s\n' "perl -i -pe 's/^\x{ef}\x{bb}\x{bf}//' $f" >&2
+    done
+    die "迁移文件含 BOM，已中止（若已在库里留下 failed 记录，还需 npx prisma migrate resolve --rolled-back <迁移名>）"
+  fi
 }
 
 cmd_build() {
