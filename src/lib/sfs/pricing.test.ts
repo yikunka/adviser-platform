@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeSfsOrderPricing, selectCountDiscountTier, type SfsPriceTier } from '@/lib/sfs/pricing'
+import { computeSfsOrderPricing } from '@/lib/sfs/pricing'
 import { type SfsOrderSpecOptions, type SfsSpecOption } from '@/lib/sfs/diamond-spec-options'
 
 function opt(category: SfsSpecOption['category'], value: string, price: number | null): SfsSpecOption {
@@ -21,33 +21,6 @@ function specOptions(overrides: Partial<SfsOrderSpecOptions> = {}): SfsOrderSpec
     ...overrides,
   }
 }
-
-describe('selectCountDiscountTier', () => {
-  const tiers: SfsPriceTier[] = [
-    { minCount: 1, maxCount: 2, discountRate: 0 },
-    { minCount: 3, maxCount: 5, discountRate: 0.05 },
-    { minCount: 6, maxCount: null, discountRate: 0.1 },
-  ]
-
-  it('returns 0 when no tier matches', () => {
-    expect(selectCountDiscountTier(1, [])).toBe(0)
-  })
-
-  it('picks the matching tier by count', () => {
-    expect(selectCountDiscountTier(2, tiers)).toBe(0)
-    expect(selectCountDiscountTier(4, tiers)).toBe(0.05)
-    expect(selectCountDiscountTier(9, tiers)).toBe(0.1)
-  })
-
-  it('prefers the most specific (highest minCount) tier when overlapping', () => {
-    const overlapping: SfsPriceTier[] = [
-      { minCount: 1, maxCount: null, discountRate: 0.02 },
-      { minCount: 5, maxCount: null, discountRate: 0.2 },
-    ]
-    expect(selectCountDiscountTier(6, overlapping)).toBe(0.2)
-    expect(selectCountDiscountTier(3, overlapping)).toBe(0.02)
-  })
-})
 
 describe('computeSfsOrderPricing', () => {
   it('additively combines carat + color + shape and adds the design price', () => {
@@ -85,35 +58,6 @@ describe('computeSfsOrderPricing', () => {
     expect(result.lines[0].unitPrice).toBe(1050)
   })
 
-  it('applies the count-tier discount to the diamond portion only', () => {
-    const tiers: SfsPriceTier[] = [{ minCount: 2, maxCount: null, discountRate: 0.1 }]
-    const result = computeSfsOrderPricing({
-      diamonds: [
-        { carat: '1.0', shape: 'Round', type: 'Ring', design: 'Solitaire', metal: 'Yellow Gold' },
-        { carat: '1.0', shape: 'Round', type: 'Ring', design: 'Solitaire', metal: 'Yellow Gold' },
-      ],
-      color: 'Natural Color',
-      specOptions: specOptions(),
-      tiers,
-    })
-    expect(result.countDiscountRate).toBe(0.1)
-    // diamond 1150 * 0.9 = 1035; jewellery 300 unchanged → 1335
-    expect(result.lines[0].diamondPart).toBe(1035)
-    expect(result.lines[0].jewelleryPart).toBe(300)
-    expect(result.lines[0].unitPrice).toBe(1335)
-  })
-
-  it('applies the customer discount rate to the final unit price', () => {
-    const result = computeSfsOrderPricing({
-      diamonds: [{ carat: '1.0', shape: 'Round', type: 'Ring', design: 'Solitaire', metal: 'Yellow Gold' }],
-      color: 'Natural Color',
-      specOptions: specOptions(),
-      customerDiscountRate: 0.2,
-    })
-    // (1150 + 300) * 0.8 = 1160
-    expect(result.lines[0].unitPrice).toBe(1160)
-  })
-
   it('prefers a customer price override over the global price', () => {
     const result = computeSfsOrderPricing({
       diamonds: [{ carat: '1.0', shape: 'Round', type: 'Ring', design: 'Solitaire' }],
@@ -128,25 +72,6 @@ describe('computeSfsOrderPricing', () => {
     expect(result.lines[0].diamondPart).toBe(650)
     expect(result.lines[0].jewelleryPart).toBe(1000)
     expect(result.lines[0].unitPrice).toBe(1650)
-  })
-
-  it('stacks count discount then customer discount with overrides', () => {
-    const result = computeSfsOrderPricing({
-      diamonds: [
-        { carat: '2.0', shape: 'Heart', type: 'Ring', design: 'Halo', metal: 'Platinum' },
-        { carat: '2.0', shape: 'Heart', type: 'Ring', design: 'Halo', metal: 'Platinum' },
-        { carat: '2.0', shape: 'Heart', type: 'Ring', design: 'Halo', metal: 'Platinum' },
-      ],
-      color: 'Natural Color',
-      specOptions: specOptions(),
-      tiers: [{ minCount: 3, maxCount: null, discountRate: 0.1 }],
-      customerDiscountRate: 0.5,
-    })
-    // diamond raw = 2500 + 100 + 200 = 2800; *0.9 = 2520
-    // jewellery = design 800 + metal 500 = 1300
-    // unit = (2520 + 1300) * 0.5 = 1910
-    expect(result.lines[0].unitPrice).toBe(1910)
-    expect(result.subtotal).toBe(5730)
   })
 
   it('returns an empty result for an order with no diamonds', () => {

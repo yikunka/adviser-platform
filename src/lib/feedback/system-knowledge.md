@@ -222,7 +222,7 @@ Customer registry for SFS Diamond.
 - Edit SFS customer profile fields (name, email, phone, mailing address, notes); order-only contacts are converted to bound customer profiles when edited
 - Delete customer profiles that have no order history; customers linked to any order cannot be deleted; deletion requires a confirmation dialog
 - Each bound customer profile includes a cooperation-contract attachments module on the edit dialog: upload, view, download, and delete partnership agreement files (PDF, Word, JPG, PNG, WEBP; max 10 MB)
-- **Customer-differentiated pricing** (edit dialog): each customer can set an overall **discount rate (%)** applied to their computed unit prices, plus per-customer **price overrides** that replace the global base price of specific spec options (source / carat / color / shape / metal / any design); both feed the SFS invoice pricing engine
+- **Customer-differentiated pricing** (edit dialog): each customer can set per-customer **price overrides** that replace the global base price of specific spec options (source / carat / color / shape / metal / any design); overrides feed the SFS invoice pricing engine
 
 ### SFS Diamond Specs Admin (`/admin/sfs-diamond-specs`)
 Customer-facing order option management for SFS Diamond.
@@ -231,8 +231,7 @@ Customer-facing order option management for SFS Diamond.
 - Source, Color, Carat, Shape, Ring Design, Necklace Design, Earring Design, and Bracelet Design options can store preview image URLs; admin can upload images to OSS/local storage or paste an existing URL
 - Active options are shown on `/sfsdiamond/order`; submitted orders keep saved text values
 - **Pricing**: each spec option has a price whose meaning depends on category — CARAT = diamond base price, SOURCE/COLOR/SHAPE/METAL = additive adjustment (may be negative), each design (Ring/Necklace/Earring/Bracelet) = its own jewellery price (finer than Setting Type); unset price counts as 0
-- **Quantity discount tiers**: an editable tier table (min count / max count / discount %) grants a discount on the diamond price portion (carat + color + shape) based on the order's total diamond count; the most specific matching tier applies
-- Diamond pricing model (per diamond): `(caratBase + sourceAdj + colorAdj + shapeAdj) × (1 − count-tier discount)` for the diamond portion, plus the design price + metal adjustment for the jewellery portion, then × `(1 − customer discount)`; per-customer overrides replace the matching global prices
+- Diamond pricing model (per diamond): `(caratBase + sourceAdj + colorAdj + shapeAdj)` for the diamond portion, plus the design price + metal adjustment for the jewellery portion; per-customer overrides replace the matching global prices
 
 ### SFS Orders Admin (`/admin/sfs-orders`)
 Order lifecycle management for memorial diamond commissions.
@@ -259,7 +258,7 @@ Order lifecycle management for memorial diamond commissions.
 - Statuses: `DRAFT` → `SENT` → `PAID` / `CANCELLED`
 - Auto-generated invoice numbers: 8-digit pure numeric format `YY######` (e.g. `26000001`, `26000002`), sequential within each calendar year; shown in the list table column and in the page header (top-right) on new and detail pages
 - Create from order; edit DRAFT; generate and download PDF
-- When creating an invoice from an order, each diamond line item's **unit price is auto-suggested by the pricing engine** (diamond carat/color/shape base + quantity-tier discount + per-design jewellery price + the order customer's discount rate and price overrides); suggested prices remain fully editable before saving
+- When creating an invoice from an order, each diamond line item's **unit price is auto-suggested by the pricing engine** (diamond carat/color/shape/source base + per-design jewellery price + the order customer's price overrides); suggested prices remain fully editable before saving
 - Admin invoice screens keep line-item display focused on description, quantity, weight, unit price, and amount; due date and tax-rate display are hidden from the SFS invoice UI
 - PDF issuer header: **SFS Technical Group Co., Limited / 瑞福生科技集團有限公司**, with fixed address **RM7 20F BOSS COMMERCIAL CENTRE 28 FERRY STREET YAU MA TEI KOWLOON** below the company name
 - PDF payment block (footer): DBS BANK (HONG KONG), SWIFT DHBKHKHH, Bank Code 016, Account Number 478002236556, A/C Name SFS TECHNOLOGY GROUP CO., LIMITED

@@ -1388,8 +1388,6 @@ model SfsCustomer {
   phone          String?
   mailingAddress String?
   notes          String?
-  // Customer-wide discount applied to the final computed unit price (e.g. 0.10 = 10% off). Null = none.
-  discountRate   Decimal? @db.Decimal(5, 4)
   createdById    String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -1504,21 +1502,6 @@ model SfsDiamondSpecOption {
   @@unique([category, value])
   @@index([category, sortOrder])
   @@map("sfs_diamond_spec_options")
-}
-
-/// Order-total diamond-count tiers that grant a discount on the diamond price portion.
-model SfsDiamondPriceTier {
-  id           String   @id @default(cuid())
-  minCount     Int
-  maxCount     Int? // null = no upper bound
-  discountRate Decimal  @db.Decimal(5, 4) // e.g. 0.05 = 5% off
-  sortOrder    Int      @default(0)
-  createdById  String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@index([sortOrder])
-  @@map("sfs_diamond_price_tiers")
 }
 
 // ─────────────────────────────────────────────

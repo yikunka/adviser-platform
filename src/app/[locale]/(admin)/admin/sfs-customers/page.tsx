@@ -18,7 +18,6 @@ type CustomerRow = {
   phone: string | null
   mailingAddress: string | null
   notes: string | null
-  discountRate: number | null
   isActive: boolean | null
   emailVerified: string | null
   createdAt: string
@@ -43,7 +42,6 @@ type CustomerFormValues = {
   phone: string
   mailingAddress: string
   notes: string
-  discountPct: string
 }
 
 const OVERRIDE_CATEGORIES = [
@@ -489,7 +487,6 @@ function CustomerModal({
     phone: customer?.phone ?? '',
     mailingAddress: customer?.mailingAddress ?? '',
     notes: customer?.notes ?? '',
-    discountPct: customer?.discountRate != null ? String(Number((customer.discountRate * 100).toFixed(4))) : '',
   })
   const [saving, setSaving] = useState(false)
   const [boundCustomerId, setBoundCustomerId] = useState<string | null>(customer?.customerId ?? null)
@@ -504,21 +501,9 @@ function CustomerModal({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    const discountPct = form.discountPct.trim()
-    if (discountPct !== '') {
-      const pct = Number(discountPct)
-      if (Number.isNaN(pct) || pct < 0 || pct > 100) {
-        toast.error('Discount rate must be between 0 and 100%.')
-        return
-      }
-    }
     setSaving(true)
     try {
-      const { discountPct: _omit, ...rest } = form
-      const payload = {
-        ...rest,
-        ...(isEdit ? { discountRate: discountPct === '' ? null : Number(discountPct) / 100 } : {}),
-      }
+      const payload = { ...form }
       const res = await fetch(
         isEdit ? `/api/admin/sfs-customers/${encodeURIComponent(customer!.id)}` : '/api/admin/sfs-customers',
         {
@@ -609,21 +594,6 @@ function CustomerModal({
               style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: 'var(--foreground)' }}
             />
           </label>
-
-          {isEdit && (
-            <label className="space-y-1.5 block">
-              <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Discount rate (%)</span>
-              <Input
-                type="number"
-                step="0.01"
-                min={0}
-                max={100}
-                value={form.discountPct}
-                onChange={e => updateField('discountPct', e.target.value)}
-                placeholder="e.g. 10 — applied to this customer's computed prices"
-              />
-            </label>
-          )}
 
           {isEdit && displayCustomer && (
             <CustomerContractsSection

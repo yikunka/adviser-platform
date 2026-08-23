@@ -11,7 +11,6 @@ const updateSchema = z.object({
   phone: z.string().optional().nullable(),
   mailingAddress: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
-  discountRate: z.coerce.number().min(0).max(1).optional().nullable(),
 })
 
 type CustomerUpdateData = {
@@ -20,7 +19,6 @@ type CustomerUpdateData = {
   phone?: string | null
   mailingAddress?: string | null
   notes?: string | null
-  discountRate?: number | null
 }
 
 function norm(v: string | null | undefined) {
@@ -39,7 +37,6 @@ function buildUpdateData(input: z.infer<typeof updateSchema>): CustomerUpdateDat
     ...(input.phone !== undefined ? { phone: nullableText(input.phone) } : {}),
     ...(input.mailingAddress !== undefined ? { mailingAddress: nullableText(input.mailingAddress) } : {}),
     ...(input.notes !== undefined ? { notes: nullableText(input.notes) } : {}),
-    ...(input.discountRate !== undefined ? { discountRate: input.discountRate ?? null } : {}),
   }
 }
 
@@ -50,7 +47,6 @@ function buildCreateData(input: z.infer<typeof updateSchema>, createdById: strin
     phone: nullableText(input.phone),
     mailingAddress: nullableText(input.mailingAddress),
     notes: nullableText(input.notes),
-    discountRate: input.discountRate ?? null,
     createdById,
   }
 }

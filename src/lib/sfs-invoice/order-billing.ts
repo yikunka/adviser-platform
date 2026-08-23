@@ -3,7 +3,6 @@ import { getSfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options-server'
 import {
   computeSfsOrderPricing,
   type SfsPriceOverride,
-  type SfsPriceTier,
   type SfsPricingDiamond,
 } from '@/lib/sfs/pricing'
 
@@ -53,7 +52,6 @@ export async function sfsOrderBillingSnapshot(orderId: string): Promise<SfsOrder
       diamonds: true,
       customer: {
         select: {
-          discountRate: true,
           priceOverrides: { select: { category: true, value: true, price: true } },
         },
       },
@@ -63,18 +61,9 @@ export async function sfsOrderBillingSnapshot(orderId: string): Promise<SfsOrder
 
   const diamonds = (Array.isArray(order.diamonds) ? order.diamonds : []) as DiamondRow[]
 
-  // Compute suggested unit prices from the pricing engine (carat/color/shape additive
-  // base + count-tier discount on the diamond portion + per-design jewellery price +
-  // customer discount/overrides). Unpriced spec options resolve to 0.
-  const [specOptions, tierRows] = await Promise.all([
-    getSfsOrderSpecOptions(),
-    prisma.sfsDiamondPriceTier.findMany({ orderBy: [{ sortOrder: 'asc' }, { minCount: 'asc' }] }),
-  ])
-  const tiers: SfsPriceTier[] = tierRows.map(t => ({
-    minCount: t.minCount,
-    maxCount: t.maxCount,
-    discountRate: Number(t.discountRate),
-  }))
+  // Suggested unit prices: carat/color/shape/source base + design/metal jewellery +
+  // per-customer price overrides. Unpriced spec options resolve to 0.
+  const specOptions = await getSfsOrderSpecOptions()
   const overrides: SfsPriceOverride[] = (order.customer?.priceOverrides ?? []).map(o => ({
     category: o.category,
     value: o.value,
@@ -85,8 +74,6 @@ export async function sfsOrderBillingSnapshot(orderId: string): Promise<SfsOrder
     sourceType: order.sourceType,
     color: order.color,
     specOptions,
-    tiers,
-    customerDiscountRate: order.customer?.discountRate != null ? Number(order.customer.discountRate) : 0,
     overrides,
   })
 
