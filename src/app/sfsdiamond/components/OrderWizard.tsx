@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { getDesignOptionGroupsForSettingType, type SfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options'
 import { getCaratPreviewDiameter } from '@/lib/sfs/carat-preview'
+import { formatSfsPriceLabel } from '@/lib/sfs/effective-pricing'
+import { computeSfsOrderPricing } from '@/lib/sfs/pricing'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -131,8 +133,8 @@ function CheckCard({ checked, onChange, children }: { checked: boolean; onChange
   )
 }
 
-function ImageCard({ label, src, selected, onClick, tall, hideLabel }: {
-  label: string; src: string | null; selected: boolean; onClick: () => void; tall?: boolean; hideLabel?: boolean
+function ImageCard({ label, src, selected, onClick, tall, hideLabel, priceLabel }: {
+  label: string; src: string | null; selected: boolean; onClick: () => void; tall?: boolean; hideLabel?: boolean; priceLabel?: string | null
 }) {
   return (
     <button
@@ -159,6 +161,9 @@ function ImageCard({ label, src, selected, onClick, tall, hideLabel }: {
           {label}
         </span>
       )}
+      {priceLabel && (
+        <span className="text-[11px] font-semibold tabular-nums" style={{ color: GOLD }}>{priceLabel}</span>
+      )}
     </button>
   )
 }
@@ -169,12 +174,14 @@ function CaratCard({
   src,
   selected,
   onClick,
+  priceLabel,
 }: {
   label: string
   value: string
   src: string | null
   selected: boolean
   onClick: () => void
+  priceLabel?: string | null
 }) {
   const diameter = getCaratPreviewDiameter(value)
 
@@ -208,6 +215,9 @@ function CaratCard({
       <span className="text-xs font-semibold text-center" style={{ color: selected ? GOLD : MUTED }}>
         {label} ct
       </span>
+      {priceLabel && (
+        <span className="text-[11px] font-semibold tabular-nums" style={{ color: GOLD }}>{priceLabel}</span>
+      )}
     </button>
   )
 }
@@ -332,6 +342,7 @@ function Step2({ data, update, specOptions }: {
               selected={data.sourceType === source.value}
               onClick={() => update({ sourceType: source.value, sourceOther: '' })}
               tall
+              priceLabel={formatSfsPriceLabel(source.price, { additive: true })}
             />
           ))}
           <CheckCard checked={data.sourceType === 'Other'} onChange={() => update({ sourceType: 'Other', sourceOther: '' })}>
@@ -383,6 +394,7 @@ function Step3({ data, update, specOptions }: {
               selected={data.color === c.value}
               onClick={() => update({ color: c.value })}
               tall
+              priceLabel={formatSfsPriceLabel(c.price, { additive: true })}
             />
           ))}
         </div>
@@ -479,6 +491,7 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
               src={c.imageUrl}
               selected={item.carat === c.value}
               onClick={() => onChange({ carat: c.value })}
+              priceLabel={formatSfsPriceLabel(c.price)}
             />
           ))}
         </div>
@@ -498,6 +511,7 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
               selected={item.shape === cut.value}
               onClick={() => onChange({ shape: cut.value })}
               hideLabel
+              priceLabel={formatSfsPriceLabel(cut.price, { additive: true })}
             />
           ))}
         </div>
@@ -536,7 +550,15 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
           </p>
           <div className={`grid gap-3 ${item.type === 'Ring' ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3 sm:grid-cols-5'}`}>
             {group.options.map(d => (
-              <ImageCard key={d.id} label={d.label} src={d.imageUrl} selected={item.design === d.value} onClick={() => onChange({ design: d.value })} tall />
+              <ImageCard
+                key={d.id}
+                label={d.label}
+                src={d.imageUrl}
+                selected={item.design === d.value}
+                onClick={() => onChange({ design: d.value })}
+                tall
+                priceLabel={formatSfsPriceLabel(d.price)}
+              />
             ))}
           </div>
         </div>
@@ -551,7 +573,14 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
           <div className="flex flex-wrap gap-2">
             {specOptions.metals.map(m => (
               <CheckCard key={m.id} checked={item.metal === m.value} onChange={() => onChange({ metal: m.value })}>
-                {m.label}
+                <span className="flex flex-col items-start gap-0.5">
+                  <span>{m.label}</span>
+                  {formatSfsPriceLabel(m.price, { additive: true }) && (
+                    <span className="text-[11px] font-semibold tabular-nums" style={{ color: GOLD }}>
+                      {formatSfsPriceLabel(m.price, { additive: true })}
+                    </span>
+                  )}
+                </span>
               </CheckCard>
             ))}
           </div>
@@ -620,11 +649,6 @@ function Step4({ data, update, specOptions }: {
           + Add Another Diamond
         </button>
       )}
-      {data.diamonds.length >= 2 && (
-        <p className="text-xs text-center" style={{ color: MUTED }}>
-          {data.diamonds.length === 2 ? '5% discount applied for 2 diamonds' : '8% discount applied for 3+ diamonds'}
-        </p>
-      )}
     </div>
   )
 }
@@ -641,10 +665,24 @@ function SummaryRow({ label, value }: { label: string; value?: string }) {
   )
 }
 
-function Step5({ data }: { data: WizardFormData }) {
+function Step5({
+  data,
+  pricing,
+  personalized,
+}: {
+  data: WizardFormData
+  pricing: ReturnType<typeof computeSfsOrderPricing> | null
+  personalized: boolean
+}) {
   return (
     <div className="space-y-8">
       <SectionTitle step={5} title="Order Summary" sub="Please review your order before submitting." />
+
+      {personalized && (
+        <p className="text-xs rounded-xl px-4 py-3" style={{ background: '#FDF8F0', color: GOLD }}>
+          Prices below use your personalised client price list.
+        </p>
+      )}
 
       <div className="rounded-2xl border p-6 space-y-1" style={{ borderColor: BORDER }}>
         <p className="font-semibold mb-3" style={{ color: DARK }}>Memorial</p>
@@ -672,7 +710,14 @@ function Step5({ data }: { data: WizardFormData }) {
         <p className="font-semibold" style={{ color: DARK }}>Diamonds ({data.diamonds.length})</p>
         {data.diamonds.map((d, i) => (
           <div key={i} className="rounded-xl p-4 space-y-1" style={{ background: '#F2EDE3' }}>
-            <p className="text-sm font-semibold mb-2" style={{ color: DARK }}>#{i + 1}</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-semibold" style={{ color: DARK }}>#{i + 1}</p>
+              {pricing?.lines[i] && (
+                <p className="text-sm font-semibold tabular-nums" style={{ color: GOLD }}>
+                  {formatSfsPriceLabel(pricing.lines[i].unitPrice)}
+                </p>
+              )}
+            </div>
             <SummaryRow label="Carat" value={d.carat ? `${d.carat} ct` : undefined} />
             <SummaryRow label="Shape" value={d.shape} />
             <SummaryRow label="Type" value={d.type} />
@@ -681,10 +726,13 @@ function Step5({ data }: { data: WizardFormData }) {
             {d.metal && <SummaryRow label="Metal" value={d.metal} />}
           </div>
         ))}
-        {data.diamonds.length >= 2 && (
-          <p className="text-sm font-medium" style={{ color: GOLD }}>
-            {data.diamonds.length === 2 ? '✦ 5% discount — 2 diamonds' : '✦ 8% discount — 3+ diamonds'}
-          </p>
+        {pricing && (
+          <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: BORDER }}>
+            <span className="text-sm font-semibold" style={{ color: DARK }}>Estimated total</span>
+            <span className="text-lg font-bold tabular-nums" style={{ color: GOLD }}>
+              {formatSfsPriceLabel(pricing.subtotal)}
+            </span>
+          </div>
         )}
       </div>
     </div>
@@ -705,11 +753,38 @@ export default function OrderWizard({
   specOptions: SfsOrderSpecOptions
 }) {
   const router = useRouter()
-  const { data: session } = useSession()
+  const { data: session, status: sessionStatus } = useSession()
   const [step, setStep] = useState(1)
   const [data, setData] = useState<WizardFormData>({ ...WIZARD_INITIAL, ...initialData })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [pricedSpecs, setPricedSpecs] = useState<SfsOrderSpecOptions>(specOptions)
+  const [personalized, setPersonalized] = useState(false)
+
+  // Load effective catalog prices (global, or personalised when logged in with overrides).
+  useEffect(() => {
+    if (sessionStatus === 'loading') return
+    let cancelled = false
+    fetch('/api/sfsdiamond/pricing')
+      .then(r => r.json())
+      .then(body => {
+        if (cancelled || !body?.specOptions) return
+        setPricedSpecs(body.specOptions as SfsOrderSpecOptions)
+        setPersonalized(Boolean(body.personalized))
+      })
+      .catch(() => {/* keep server-provided catalog */})
+    return () => { cancelled = true }
+  }, [sessionStatus, session?.user?.id])
+
+  const quote = useMemo(
+    () => computeSfsOrderPricing({
+      diamonds: data.diamonds,
+      sourceType: data.sourceType,
+      color: data.color,
+      specOptions: pricedSpecs,
+    }),
+    [data.diamonds, data.sourceType, data.color, pricedSpecs],
+  )
 
   // Pre-fill from session + saved profile (create mode only)
   useEffect(() => {
@@ -862,11 +937,28 @@ export default function OrderWizard({
       </div>
 
       <div className="max-w-3xl mx-auto px-6 py-12">
+        {personalized && step >= 2 && (
+          <p className="mb-6 text-xs rounded-xl px-4 py-3" style={{ background: '#FDF8F0', color: GOLD }}>
+            Showing your personalised client prices.
+          </p>
+        )}
         {step === 1 && <Step1 data={data} update={update} />}
-        {step === 2 && <Step2 data={data} update={update} specOptions={specOptions} />}
-        {step === 3 && <Step3 data={data} update={update} specOptions={specOptions} />}
-        {step === 4 && <Step4 data={data} update={update} specOptions={specOptions} />}
-        {step === 5 && <Step5 data={data} />}
+        {step === 2 && <Step2 data={data} update={update} specOptions={pricedSpecs} />}
+        {step === 3 && <Step3 data={data} update={update} specOptions={pricedSpecs} />}
+        {step === 4 && (
+          <>
+            <Step4 data={data} update={update} specOptions={pricedSpecs} />
+            {quote.subtotal > 0 && (
+              <div className="mt-6 flex items-center justify-between rounded-2xl border px-5 py-4" style={{ borderColor: BORDER, background: '#fff' }}>
+                <span className="text-sm font-medium" style={{ color: MUTED }}>Estimated total so far</span>
+                <span className="text-lg font-bold tabular-nums" style={{ color: GOLD }}>
+                  {formatSfsPriceLabel(quote.subtotal)}
+                </span>
+              </div>
+            )}
+          </>
+        )}
+        {step === 5 && <Step5 data={data} pricing={quote} personalized={personalized} />}
 
         {error && (
           <div className="mt-4 p-4 rounded-xl text-sm" style={{ background: '#FEF2F2', color: '#B91C1C' }}>

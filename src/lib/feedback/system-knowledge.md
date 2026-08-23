@@ -208,7 +208,7 @@ Memorial diamond jewellery service (lab-grown diamonds from cremation remains). 
 - **Technology**: diamond creation process (CVD growth explained)
 - **Memorial Diamonds**: product showcase
 - **Q&A**: FAQ
-- **Order** (`/order`): public order placement form; Diamond Specs options are database-driven from SFS Diamond Specs admin, including image-backed Source / Color / Carat / Shape / Ring Design / Necklace Design / Earring Design / Bracelet Design options (source, color, and carat steps show preview thumbnails; carat falls back to generated visual size previews when no image is uploaded); setting types include Ring, Necklace, Earring, Bracelet, and Diamond only; selecting Earring shows only the Earring Design customer option group; anonymous submissions create an order and SFS customer record, while logged-in SFS clients also get the order linked to their account
+- **Order** (`/order`): public order placement form; Diamond Specs options are database-driven from SFS Diamond Specs admin, including image-backed Source / Color / Carat / Shape / Ring Design / Necklace Design / Earring Design / Bracelet Design options (source, color, and carat steps show preview thumbnails; carat falls back to generated visual size previews when no image is uploaded); setting types include Ring, Necklace, Earring, Bracelet, and Diamond only; selecting Earring shows only the Earring Design customer option group; **option prices and estimated order totals are shown live** (global catalog, or personalised when the logged-in client has price overrides); anonymous submissions create an order and SFS customer record, while logged-in SFS clients also get the order linked to their account
 - **Order Success** (`/order/success`): confirmation page
 - **Dashboard** (authenticated): client's orders with milestone progress; each order includes an editable **Your Internal Order Code** field for the customer's own reference numbering (updatable at any time on My Orders and order detail)
 - **Dashboard Detail** (`/dashboard/[id]`): specific order status and phase timeline; internal order code field alongside order details
@@ -222,7 +222,8 @@ Customer registry for SFS Diamond.
 - Edit SFS customer profile fields (name, email, phone, mailing address, notes); order-only contacts are converted to bound customer profiles when edited
 - Delete customer profiles that have no order history; customers linked to any order cannot be deleted; deletion requires a confirmation dialog
 - Each bound customer profile includes a cooperation-contract attachments module on the edit dialog: upload, view, download, and delete partnership agreement files (PDF, Word, JPG, PNG, WEBP; max 10 MB)
-- **Customer-differentiated pricing** (edit dialog): each customer can set per-customer **price overrides** that replace the global base price of specific spec options (source / carat / color / shape / metal / any design); overrides feed the SFS invoice pricing engine
+- **Customer-differentiated pricing** (edit dialog **Client price list**): full table by category comparing **global** Diamond Specs prices vs this client’s prices; blank = use global; saved values replace the global price for quoting / invoicing / the client order form
+- Logged-in SFS clients see **live option prices and estimated totals** while placing an order (`/sfsdiamond/order`); guests see global catalog prices; personalised lists apply when the account has a bound SfsCustomer with overrides
 
 ### SFS Diamond Specs Admin (`/admin/sfs-diamond-specs`)
 Customer-facing order option management for SFS Diamond.
