@@ -3,11 +3,13 @@
 Generated reports are Word (.docx) styled to match the staff-edited reference
 (`DDR_CL0028_20260819.docx`, Aug 2026):
 
-- Header: wide banner logo (`public/ddr-logo.png`) + report title only (firm name in artwork)
-- Body: unified font size 20 (half-points), East Asian font PMingLiU
-- Table borders: single / sz=4 / color auto; cover box cell padding 160
+- Header: wide banner logo (`public/ddr-logo.png`, ~300×47 display px) + report title only (firm name in artwork)
+- Body: unified font size 20 (half-points), East Asian font PMingLiU; body Chinese left-aligned; cover titles centered
+- Spacing: cover / section / subtitle before-after matched to CL0028 (section 280/120, subtitle 200/80, cover lines after 60)
+- Table borders: single / sz=4 / color auto; cover box cell padding 160; cell text left-aligned
 - Person/company DDR: **no Part 1.3** — adverse media only under screening step 2.4 (company: per-person `2.n.4`)
 - Part 4.1 checklist: Item + Status only (two columns); company includes company-entity row + each natural person
+- Part 4.2 signature: tall wet-ink cell with underline + print/sign hint (`批准人員簽署` / Approver Signature)
 - Company Part 2 step titles/methods aligned with person DDR wording (sanctions / FATF / PEP / adverse media)
 
 ## Workflow

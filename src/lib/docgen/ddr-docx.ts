@@ -36,9 +36,12 @@ const BODY_SIZE = 20
 const PAGE_W = convertInchesToTwip(8.27) // A4
 const MARGIN = convertInchesToTwip(0.7)
 const CONTENT_W = PAGE_W - MARGIN * 2
-/** Wide banner logo from templates/DDR (EMU 2233930×351790 ≈ 176×28 px @72dpi). */
-const LOGO_W = 176
-const LOGO_H = 28
+/**
+ * Wide banner logo. CL0028 header EMU is ≈235×37 @96dpi; render slightly larger
+ * for print clarity (still fits A4 content width).
+ */
+const LOGO_W = 300
+const LOGO_H = 47
 
 const thin = { style: BorderStyle.SINGLE, size: 4, color: 'auto' }
 const borders = { top: thin, bottom: thin, left: thin, right: thin }
@@ -199,9 +202,17 @@ function runs(text: string, opts: Partial<IRunOptions> = {}) {
   ])
 }
 
-function p(text: string, opts: Partial<IRunOptions> & { spacingAfter?: number; spacingBefore?: number } = {}) {
-  const { spacingAfter = 80, spacingBefore = 0, ...runOpts } = opts
+function p(
+  text: string,
+  opts: Partial<IRunOptions> & {
+    spacingAfter?: number
+    spacingBefore?: number
+    alignment?: (typeof AlignmentType)[keyof typeof AlignmentType]
+  } = {},
+) {
+  const { spacingAfter = 80, spacingBefore = 0, alignment = AlignmentType.LEFT, ...runOpts } = opts
   return new Paragraph({
+    alignment,
     spacing: { after: spacingAfter, before: spacingBefore },
     children: runs(text, runOpts),
   })
@@ -209,6 +220,7 @@ function p(text: string, opts: Partial<IRunOptions> & { spacingAfter?: number; s
 
 function sectionTitle(text: string) {
   return new Paragraph({
+    alignment: AlignmentType.LEFT,
     spacing: { before: 280, after: 120 },
     border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: '000000', space: 4 } },
     children: runs(text, { bold: true, size: BODY_SIZE }),
@@ -217,36 +229,59 @@ function sectionTitle(text: string) {
 
 function subTitle(text: string) {
   return new Paragraph({
+    alignment: AlignmentType.LEFT,
     spacing: { before: 200, after: 80 },
     children: runs(text, { bold: true, size: BODY_SIZE }),
   })
 }
 
-function kvTable(rows: Array<{ label: string; value: string }>) {
+/** Left-aligned cell paragraph (Chinese + EN flush left). */
+function cellPara(text: string, opts: Partial<IRunOptions> = {}) {
+  return new Paragraph({
+    alignment: AlignmentType.LEFT,
+    children: runs(text, opts),
+  })
+}
+
+function kvTable(rows: Array<{ label: string; value: string; signature?: boolean }>) {
   const labelW = Math.floor(CONTENT_W * 0.32)
   const valueW = CONTENT_W - labelW
   return new Table({
     width: { size: CONTENT_W, type: WidthType.DXA },
     columnWidths: [labelW, valueW],
-    rows: rows.map(row => new TableRow({
-      children: [
-        new TableCell({
-          borders,
-          width: { size: labelW, type: WidthType.DXA },
-          margins: cellM,
-          shading: { fill: headerFill },
-          verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ children: runs(row.label, { bold: true }) })],
-        }),
-        new TableCell({
-          borders,
-          width: { size: valueW, type: WidthType.DXA },
-          margins: cellM,
-          verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ children: runs(row.value || '—') })],
-        }),
-      ],
-    })),
+    rows: rows.map(row => {
+      const valueChildren = row.signature
+        ? [
+            cellPara(''),
+            cellPara(''),
+            cellPara(''),
+            cellPara('______________________________'),
+            cellPara('（請列印後親筆簽署  Print & sign）'),
+            cellPara(''),
+          ]
+        : [cellPara(row.value || '—')]
+      return new TableRow({
+        children: [
+          new TableCell({
+            borders,
+            width: { size: labelW, type: WidthType.DXA },
+            margins: cellM,
+            shading: { fill: headerFill },
+            verticalAlign: row.signature ? VerticalAlign.TOP : VerticalAlign.CENTER,
+            children: [cellPara(row.label, { bold: true })],
+          }),
+          new TableCell({
+            borders,
+            width: { size: valueW, type: WidthType.DXA },
+            margins: row.signature
+              ? { top: 120, bottom: 120, left: 80, right: 80 }
+              : cellM,
+            verticalAlign: row.signature ? VerticalAlign.TOP : VerticalAlign.CENTER,
+            children: valueChildren,
+          }),
+        ],
+      })
+    }),
   })
 }
 
@@ -259,7 +294,7 @@ function dataTable(headers: string[], widths: number[], body: string[][]) {
       margins: cellM,
       shading: { fill: headerFill },
       verticalAlign: VerticalAlign.CENTER,
-      children: [new Paragraph({ children: runs(h, { bold: true }) })],
+      children: [cellPara(h, { bold: true })],
     })),
   })
   const rows = body.map(cells => new TableRow({
@@ -268,7 +303,7 @@ function dataTable(headers: string[], widths: number[], body: string[][]) {
       width: { size: widths[i], type: WidthType.DXA },
       margins: cellM,
       verticalAlign: VerticalAlign.TOP,
-      children: [new Paragraph({ children: runs(c || '—') })],
+      children: [cellPara(c || '—')],
     })),
   }))
   return new Table({
@@ -311,8 +346,8 @@ function brandHeader(logo: Buffer | null, reportTitleZh: string, reportTitleEn: 
   } else {
     children.push(p(FIRM_NAME, { bold: true, spacingAfter: 40 }))
   }
-  children.push(p(reportTitleZh, { bold: true, size: 18, spacingAfter: 20 }))
-  children.push(p(reportTitleEn, { size: 16, spacingAfter: 40 }))
+  children.push(p(reportTitleZh, { bold: true, size: BODY_SIZE, spacingAfter: 20 }))
+  children.push(p(reportTitleEn, { size: BODY_SIZE, spacingAfter: 40 }))
   children.push(new Paragraph({
     border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: '999999', space: 1 } },
     children: [],
@@ -544,7 +579,11 @@ function part4Conclusion(opts: {
     { label: '風險備註\nRisk Remark', value: opts.riskRemark?.trim() || '無備註  No Remark' },
     { label: '批准人員\nApprover', value: opts.approverName || '—' },
     { label: '批准日期\nApproval Date', value: opts.approvalDate ? fmt(opts.approvalDate) : '—' },
-    { label: '批准人員簽署\nApprover Signature', value: '\n\n' },
+    {
+      label: '批准人員簽署\nApprover Signature',
+      value: '',
+      signature: true,
+    },
   ]))
   return out
 }
@@ -605,8 +644,9 @@ function part6Disclaimer() {
 
 function coverBlock(lines: string[]) {
   return [
-    p(lines[0], { bold: true, spacingBefore: 200, spacingAfter: 60 }),
-    p(lines[1], { bold: true, spacingAfter: 200 }),
+    // Cover titles centered (match CL0028); all other Chinese body left-aligned.
+    p(lines[0], { bold: true, spacingBefore: 200, spacingAfter: 60, alignment: AlignmentType.CENTER }),
+    p(lines[1], { bold: true, spacingAfter: 200, alignment: AlignmentType.CENTER }),
     new Table({
       width: { size: CONTENT_W, type: WidthType.DXA },
       columnWidths: [CONTENT_W],
@@ -617,17 +657,24 @@ function coverBlock(lines: string[]) {
               borders,
               width: { size: CONTENT_W, type: WidthType.DXA },
               margins: coverCellM,
-              children: lines.slice(2).map(t => p(t, { spacingAfter: 60 })),
+              children: lines.slice(2).map(t => p(t, { spacingAfter: 60, alignment: AlignmentType.LEFT })),
             }),
           ],
         }),
       ],
     }),
-    p('本報告依香港 TCSP／AML 合規要求記錄：關鍵身份信息、篩查結果與處置、風險評估、結論與資料來源。', { spacingBefore: 200 }),
-    p('HK CDD structure: key identity, screening & disposition, risk items, conclusion, data sources.'),
+    p('本報告依香港 TCSP／AML 合規要求記錄：關鍵身份信息、篩查結果與處置、風險評估、結論與資料來源。', {
+      spacingBefore: 200,
+      spacingAfter: 80,
+      alignment: AlignmentType.LEFT,
+    }),
+    p('HK CDD structure: key identity, screening & disposition, risk items, conclusion, data sources.', {
+      spacingAfter: 80,
+      alignment: AlignmentType.LEFT,
+    }),
     p(
       '請列印本 Word 文件，於第 4 部分簽署後掃描上傳存檔。Print this Word file, sign Part 4, then upload the signed scan for filing.',
-      { spacingBefore: 160 },
+      { spacingBefore: 160, spacingAfter: 80, alignment: AlignmentType.LEFT },
     ),
   ]
 }
