@@ -237,6 +237,7 @@ Customer-facing order option management for SFS Diamond.
 ### SFS Orders Admin (`/admin/sfs-orders`)
 Order lifecycle management for memorial diamond commissions.
 - List with search (client name / email / sample code) and **status filter** chips (`All` / `PENDING` / `QUOTED` / `CONFIRMED` / `COMPLETED` / `CANCELLED`); columns: status, sample code, memorial name, client, source type, colour, diamond count, creation date
+- Staff with permission `sfsOrders.delete` (角色管理 → 订单 → 删除) can permanently delete orders from the list or order detail; deletion removes production steps/images and unlinks (does not delete) related invoices; Super Admin always has this permission
 - Order detail shows the customer's self-entered internal order reference (read-only) when set
 - Order statuses: `PENDING` → `QUOTED` → `CONFIRMED` → `COMPLETED` / `CANCELLED`
 - Production phase tracking with milestone dates:

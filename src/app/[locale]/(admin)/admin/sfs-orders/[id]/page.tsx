@@ -2,9 +2,11 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams } from 'next/navigation'
+import { useRouter } from '@/i18n/navigation'
 import { useSession } from 'next-auth/react'
-import { ArrowLeft, CheckCircle, RotateCcw, Upload, X, Download } from 'lucide-react'
+import { ArrowLeft, CheckCircle, RotateCcw, Trash2, Upload, X, Download } from 'lucide-react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import DiamondCards from '@/app/sfsdiamond/components/DiamondCards'
 import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 import { DatetimeLocalPicker } from '@/components/ui/date-picker-popover'
@@ -778,14 +780,17 @@ function PhasePanel({
 
 export default function AdminSfsOrderDetailPage() {
   const params = useParams()
+  const router = useRouter()
   const id = params.id as string
   const { data: session } = useSession()
   const canReviewAttachments = session?.user?.role === 'SUPER_ADMIN'
   const canManageSteps = useAdminPermission('sfsOrders.manageSteps')
+  const canDelete = useAdminPermission('sfsOrders.delete')
 
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [saveOk, setSaveOk] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [loadError, setLoadError] = useState('')
@@ -875,6 +880,28 @@ export default function AdminSfsOrderDetailPage() {
     }
   }
 
+  const deleteOrder = async () => {
+    const label = order?.sampleCode || order?.memorialName || id
+    if (!window.confirm(`Permanently delete order "${label}"? Steps and production images will be removed. Linked invoices stay but will be unlinked. This cannot be undone.`)) {
+      return
+    }
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/sfsdiamond/admin/orders/${id}`, { method: 'DELETE' })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(typeof body.error === 'string' ? body.error : 'Failed to delete order')
+        return
+      }
+      toast.success('Order deleted.')
+      router.push('/admin/sfs-orders')
+    } catch {
+      toast.error('Network error — please try again')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   if (loading) {
     return <div className="flex items-center justify-center py-24" style={{ color: 'var(--muted-foreground)' }}>Loading…</div>
   }
@@ -947,6 +974,18 @@ export default function AdminSfsOrderDetailPage() {
               <Download size={12} />
               Download Report
             </a>
+          )}
+          {canDelete && (
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={() => void deleteOrder()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-80 disabled:opacity-50"
+              style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.35)' }}
+            >
+              <Trash2 size={12} />
+              {deleting ? 'Deleting…' : 'Delete'}
+            </button>
           )}
         </div>
       </div>

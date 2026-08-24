@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireRole } from '@/lib/auth/rbac'
+import { requirePermission, requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
+import { logAudit } from '@/lib/audit/logger'
+import { deleteFromR2 } from '@/lib/storage/r2'
 import { z } from 'zod'
 import { resolveOrderStepPlan } from '@/lib/sfs/order-step-plan'
 
@@ -94,4 +96,49 @@ export async function PATCH(
   })
 
   return NextResponse.json(order)
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { session, error } = await requirePermission('sfsOrders.delete')
+  if (error) return error
+
+  const { id } = await params
+  const order = await prisma.sfsOrder.findUnique({
+    where: { id },
+    include: {
+      steps: {
+        select: {
+          fileKeys: true,
+          attachments: { select: { fileKey: true } },
+        },
+      },
+      invoices: { select: { id: true, invoiceNumber: true, status: true } },
+    },
+  })
+  if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  const storageKeys = new Set<string>()
+  for (const step of order.steps) {
+    for (const key of step.fileKeys) storageKeys.add(key)
+    for (const attachment of step.attachments) storageKeys.add(attachment.fileKey)
+  }
+
+  await prisma.sfsOrder.delete({ where: { id } })
+
+  await Promise.allSettled([...storageKeys].map(key => deleteFromR2(key)))
+
+  await logAudit(session!.user.id, 'DELETE', 'SfsOrder', id, {
+    id: order.id,
+    sampleCode: order.sampleCode,
+    memorialName: order.memorialName,
+    clientName: order.clientName,
+    email: order.email,
+    status: order.status,
+    invoiceIds: order.invoices.map(inv => inv.id),
+  }, null)
+
+  return NextResponse.json({ ok: true })
 }

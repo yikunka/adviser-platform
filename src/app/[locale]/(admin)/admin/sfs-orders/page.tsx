@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from '@/i18n/navigation'
-import { Diamond, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Diamond, Search, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 
 const STATUS_VALUES = ['PENDING', 'QUOTED', 'CONFIRMED', 'COMPLETED', 'CANCELLED'] as const
 
@@ -48,6 +50,7 @@ type Order = {
 
 export default function AdminSfsOrdersPage() {
   const router = useRouter()
+  const canDelete = useAdminPermission('sfsOrders.delete')
   const [orders, setOrders]     = useState<Order[]>([])
   const [total, setTotal]       = useState(0)
   const [page, setPage]         = useState(1)
@@ -56,6 +59,7 @@ export default function AdminSfsOrdersPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [status, setStatus]     = useState('')
   const [loading, setLoading]   = useState(true)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search.trim()), search ? 300 : 0)
@@ -87,6 +91,29 @@ export default function AdminSfsOrdersPage() {
   useEffect(() => {
     void fetchOrders()
   }, [fetchOrders])
+
+  async function deleteOrder(order: Order, e: React.MouseEvent) {
+    e.stopPropagation()
+    const label = order.sampleCode || order.memorialName
+    if (!window.confirm(`Permanently delete order "${label}"? Steps and production images will be removed. Linked invoices stay but will be unlinked. This cannot be undone.`)) {
+      return
+    }
+    setDeletingId(order.id)
+    try {
+      const res = await fetch(`/api/sfsdiamond/admin/orders/${order.id}`, { method: 'DELETE' })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(typeof body.error === 'string' ? body.error : 'Failed to delete order')
+        return
+      }
+      toast.success('Order deleted.')
+      await fetchOrders()
+    } catch {
+      toast.error('Network error — please try again')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
   const hasFilter = Boolean(debouncedSearch || status)
@@ -218,9 +245,24 @@ export default function AdminSfsOrdersPage() {
                         {new Date(order.createdAt).toLocaleDateString('en-HK', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </td>
                       <td style={{ ...td, paddingRight: '1rem' }}>
-                        <span className="text-xs font-medium px-3 py-1.5 rounded-lg" style={{ background: 'rgba(201,169,110,0.1)', color: '#C9A96E', border: '1px solid rgba(201,169,110,0.2)', whiteSpace: 'nowrap' }}>
-                          Manage →
-                        </span>
+                        <div className="flex items-center gap-2 justify-end">
+                          {canDelete && (
+                            <button
+                              type="button"
+                              disabled={deletingId === order.id}
+                              onClick={e => void deleteOrder(order, e)}
+                              className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50"
+                              style={{ color: '#ef4444', border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.08)' }}
+                              aria-label={`Delete order ${order.sampleCode ?? order.memorialName}`}
+                            >
+                              <Trash2 size={12} />
+                              {deletingId === order.id ? '…' : 'Delete'}
+                            </button>
+                          )}
+                          <span className="text-xs font-medium px-3 py-1.5 rounded-lg" style={{ background: 'rgba(201,169,110,0.1)', color: '#C9A96E', border: '1px solid rgba(201,169,110,0.2)', whiteSpace: 'nowrap' }}>
+                            Manage →
+                          </span>
+                        </div>
                       </td>
                     </tr>
                   )
