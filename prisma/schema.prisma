@@ -421,6 +421,7 @@ model Company {
   parties                Party[]
   fiscalPeriods          FiscalPeriod[]
   accountMappings        AccountMapping[]
+  reportSectionMappings  FinancialReportSectionMapping[]
   docSequences           DocSequence[]
   salesInvoices          SalesInvoice[]
   purchaseBills          PurchaseBill[]
@@ -1697,6 +1698,7 @@ model FinAccount {
   partyArOverrides  Party[]            @relation("PartyArAccount")
   partyApOverrides  Party[]            @relation("PartyApAccount")
   accountMappings   AccountMapping[]   @relation("AccountMappingAccount")
+  reportSectionMappings FinancialReportSectionMapping[] @relation("ReportSectionMappingAccount")
   salesInvoiceLines SalesInvoiceLine[] @relation("SalesLineRevenueAccount")
   purchaseBillLines PurchaseBillLine[] @relation("PurchaseLineExpenseAccount")
   creditNoteOffsets FinCreditNote[]    @relation("CreditNoteOffsetAccount")
@@ -1932,6 +1934,37 @@ model AccountMapping {
 
   @@unique([companyId, key])
   @@map("adv_account_mappings")
+}
+
+/// 财务报表结构映射：利润表 / 资产负债表各分类由哪些科目构成（按公司配置）
+enum FinancialReportSection {
+  PL_REVENUE
+  PL_COST_OF_SALES
+  PL_EXPENSE_SALES
+  PL_EXPENSE_ADMINISTRATIVE
+  PL_EXPENSE_FINANCE
+  BS_CURRENT_ASSETS
+  BS_NON_CURRENT_ASSETS
+  BS_CURRENT_LIABILITIES
+  BS_NON_CURRENT_LIABILITIES
+  BS_EQUITY
+}
+
+model FinancialReportSectionMapping {
+  id        String                 @id @default(cuid())
+  companyId String
+  section   FinancialReportSection
+  accountId String
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+
+  company Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  account FinAccount @relation("ReportSectionMappingAccount", fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, section, accountId])
+  @@index([companyId, section])
+  @@index([accountId])
+  @@map("adv_financial_report_section_mappings")
 }
 
 /// 单号序列：并发安全的单据编号（事务内 upsert + increment）

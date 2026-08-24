@@ -6,7 +6,7 @@ import { resolveStoredFinancialCompanyId } from '@/lib/financial/selected-compan
 
 const STORAGE_KEY = 'adviser.financial.selectedCompanyId'
 
-export function FinancialRouteRedirect({ section }: { section: 'accounts' | 'journal' | 'ledger' | 'reports' | 'history' }) {
+export function FinancialRouteRedirect({ section }: { section: 'accounts' | 'journal' | 'ledger' | 'reports' | 'history' | 'settings' }) {
   const router = useRouter()
 
   useEffect(() => {

@@ -52,6 +52,7 @@ export const PERMISSION_GROUPS: PermGroup[] = [
       { menuKey: 'financialLedger',      label: '总账',             actions: ['export'] },
       { menuKey: 'financialReports',     label: '财务报表',         actions: ['export'] },
       { menuKey: 'financialHistory',     label: '历史账本',         actions: ['import'] },
+      { menuKey: 'financialSettings',    label: '财务设置',         actions: ['edit'] },
     ],
   },
   {

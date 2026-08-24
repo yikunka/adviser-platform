@@ -252,6 +252,28 @@ export const accountMappingUpsertSchema = z.object({
   })),
 })
 
+export const financialReportSectionSchema = z.enum([
+  'PL_REVENUE',
+  'PL_COST_OF_SALES',
+  'PL_EXPENSE_SALES',
+  'PL_EXPENSE_ADMINISTRATIVE',
+  'PL_EXPENSE_FINANCE',
+  'BS_CURRENT_ASSETS',
+  'BS_NON_CURRENT_ASSETS',
+  'BS_CURRENT_LIABILITIES',
+  'BS_NON_CURRENT_LIABILITIES',
+  'BS_EQUITY',
+])
+
+export const financialReportStructureUpsertSchema = z.object({
+  companyId: z.string().cuid('Company is required'),
+  statement: z.enum(['INCOME_STATEMENT', 'BALANCE_SHEET']),
+  mappings: z.array(z.object({
+    section: financialReportSectionSchema,
+    accountId: z.string().trim().min(1),
+  })),
+})
+
 export type AccountFormValues = z.infer<typeof accountCreateSchema>
 export type JournalEntryFormValues = z.infer<typeof journalEntryCreateSchema>
 export type PartyFormValues = z.infer<typeof partySchema>

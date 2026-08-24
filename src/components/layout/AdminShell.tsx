@@ -76,6 +76,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/financial/journal', key: 'financialJournal', labelKey: 'financialJournal', Icon: FileText },
       { href: '/admin/financial/ledger', key: 'financialLedger', labelKey: 'financialLedger', Icon: Layers },
       { href: '/admin/financial/reports', key: 'financialReports', labelKey: 'financialReports', Icon: FileBarChart },
+      { href: '/admin/financial/settings', key: 'financialSettings', labelKey: 'financialSettings', Icon: SlidersHorizontal },
     ],
   },
   {

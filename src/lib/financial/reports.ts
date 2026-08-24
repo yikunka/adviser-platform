@@ -5,11 +5,17 @@ import { classifyCurrentAccountBalance } from '@/lib/financial/current-account-c
 import { isDebitNormalAccountType } from '@/lib/financial/account-types'
 import {
   buildBalanceSheetSections,
+  buildBalanceSheetSectionsFromBuckets,
   isCurrentAssetAccount,
   isCurrentLiabilityAccount,
   isNonCurrentAssetAccount,
   type BalanceSheetSection,
 } from '@/lib/financial/balance-sheet-sections'
+import {
+  loadReportStructureIndex,
+  resolveBsSectionForAccount,
+  resolvePlClassificationForAccount,
+} from '@/lib/financial/report-structure'
 import {
   buildLeafAccountIdsByAccount,
   buildYearToDateTotalsByAccount,
@@ -29,7 +35,6 @@ import { roundMoney } from '@/lib/financial/utils'
 import {
   buildIncomeStatementExpenseCategories,
   classifyIncomeStatementExpenseCategory,
-  inferProfitAndLossStatementType,
   shouldIncludeIncomeStatementLine,
   type IncomeStatementExpenseCategory,
   type IncomeStatementExpenseCategoryKey,
@@ -469,6 +474,7 @@ export async function buildFinancialReports(
     orderBy: [{ type: 'asc' }, { sortOrder: 'asc' }, { code: 'asc' }],
     select: {
       id: true,
+      companyId: true,
       code: true,
       name: true,
       type: true,
@@ -480,6 +486,18 @@ export async function buildFinancialReports(
       yearToDateCredit: true,
     },
   })
+  const structureIndex = await loadReportStructureIndex(
+    companyIds,
+    rawAccounts.map(account => ({
+      id: account.id,
+      companyId: account.companyId,
+      parentId: account.parentId,
+      code: account.code,
+      name: account.name,
+      type: account.type,
+      level: account.level,
+    })),
+  )
   const shouldConsolidateAccounts = (companyIds?.length ?? 0) > 1
   const rollupAccounts: ReportRollupAccount[] = rawAccounts.map(account => ({
     id: account.id,
@@ -542,7 +560,13 @@ export async function buildFinancialReports(
   const plClosingMovements = new Map(bsClosingMovements)
   if (!shouldConsolidateAccounts) {
     for (const rawAccount of rawAccounts) {
-      const statementType = inferProfitAndLossStatementType(rawAccount)
+      const statementType = resolvePlClassificationForAccount(structureIndex, {
+        accountId: rawAccount.id,
+        sourceAccountIds: [rawAccount.id],
+        code: rawAccount.code,
+        name: rawAccount.name,
+        type: rawAccount.type,
+      })?.statementType
       if (!statementType) continue
       const ytdDebit = Number(rawAccount.yearToDateDebit ?? 0)
       const ytdCredit = Number(rawAccount.yearToDateCredit ?? 0)
@@ -564,7 +588,13 @@ export async function buildFinancialReports(
     }
 
     for (const rawAccount of rawAccounts) {
-      if (!inferProfitAndLossStatementType(rawAccount)) continue
+      if (!resolvePlClassificationForAccount(structureIndex, {
+        accountId: rawAccount.id,
+        sourceAccountIds: [rawAccount.id],
+        code: rawAccount.code,
+        name: rawAccount.name,
+        type: rawAccount.type,
+      })) continue
       const existing = plPeriodMovements.get(rawAccount.id)
       if (existing && hasMovement(existing)) continue
       const balanceTotals = closingBalances.get(rawAccount.id)
@@ -596,6 +626,7 @@ export async function buildFinancialReports(
     account: InternalReportAccountRow
     statementType: ProfitAndLossStatementType
     level1GroupId: string
+    expenseCategory?: IncomeStatementExpenseCategoryKey
     line: StatementLineRow
     sourceAccountIds: string[]
   }> = []
@@ -609,6 +640,11 @@ export async function buildFinancialReports(
   const assetLines: StatementLineRow[] = []
   const liabilityLines: StatementLineRow[] = []
   const equityLines: StatementLineRow[] = []
+  const mappedCurrentAssets: StatementLineRow[] = []
+  const mappedNonCurrentAssets: StatementLineRow[] = []
+  const mappedCurrentLiabilities: StatementLineRow[] = []
+  const mappedNonCurrentLiabilities: StatementLineRow[] = []
+  const mappedEquity: StatementLineRow[] = []
 
   const openingByAccount = new Map<string, number>()
   const closingByAccount = new Map<string, number>()
@@ -656,7 +692,9 @@ export async function buildFinancialReports(
   function expenseCategoryForAccount(
     account: InternalReportAccountRow,
     level1GroupId: string,
+    mappedCategory?: IncomeStatementExpenseCategoryKey,
   ): IncomeStatementExpenseCategoryKey {
+    if (mappedCategory) return mappedCategory
     const topLevelAccount = rawAccountsById.get(level1GroupId)
     return classifyIncomeStatementExpenseCategory({
       account,
@@ -670,6 +708,7 @@ export async function buildFinancialReports(
     level1GroupId: string
     line: StatementLineRow
     sourceAccountIds: string[]
+    expenseCategory?: IncomeStatementExpenseCategoryKey
   }) {
     let added = false
     if (input.statementType === 'REVENUE') {
@@ -683,7 +722,7 @@ export async function buildFinancialReports(
     if (input.statementType === 'EXPENSE') {
       expenseEntries.push({
         line: input.line,
-        category: expenseCategoryForAccount(input.account, input.level1GroupId),
+        category: expenseCategoryForAccount(input.account, input.level1GroupId, input.expenseCategory),
       })
       added = true
     }
@@ -721,7 +760,14 @@ export async function buildFinancialReports(
     const ownPeriodTotals = sumMovements(plPeriodMovements, ownAccountIds)
     const cumulativeStatementTotals = sumMovements(plClosingMovements, statementAccountIds)
     const cumulativeOwnTotals = sumMovements(plClosingMovements, ownAccountIds)
-    const profitAndLossType = inferProfitAndLossStatementType(account)
+    const level1GroupIdForPl = level1AccountIdByReportAccountId.get(account.accountId) ?? account.accountId
+    const plClassification = resolvePlClassificationForAccount(
+      structureIndex,
+      account,
+      rawAccountsById.get(level1GroupIdForPl) ?? null,
+    )
+    const profitAndLossType = plClassification?.statementType ?? null
+    const mappedExpenseCategory = plClassification?.expenseCategory
 
     const openingBalance = movementSignedBalance(openingTotals, account.type, account.code)
     const statementPeriodNet = profitAndLossType
@@ -817,6 +863,7 @@ export async function buildFinancialReports(
         level1GroupId,
         line: statementRow,
         sourceAccountIds: statementAccountIds,
+        expenseCategory: mappedExpenseCategory,
       })
     } else if (profitAndLossType && account.level === 1 && hasChildren && ownPeriodNet !== 0) {
       addProfitAndLossLine({
@@ -831,6 +878,7 @@ export async function buildFinancialReports(
           periodCredit: ownPeriodTotals.credit,
         },
         sourceAccountIds: ownAccountIds,
+        expenseCategory: mappedExpenseCategory,
       })
     }
     if (profitAndLossType && ownPeriodNet !== 0) {
@@ -838,6 +886,7 @@ export async function buildFinancialReports(
         account,
         statementType: profitAndLossType,
         level1GroupId,
+        expenseCategory: mappedExpenseCategory,
         line: {
           ...reportRow,
           type: profitAndLossType,
@@ -874,22 +923,34 @@ export async function buildFinancialReports(
     }
 
     if (shouldIncludeAccountInBalanceSheet(account.level)) {
-      if ((account.type === 'ASSET' || account.type === 'NON_CURRENT_ASSET') && balanceSheetClosingBalance !== 0) {
-        assetLines.push({ ...reportRow, amount: balanceSheetClosingBalance })
-      }
-      if ((account.type === 'LIABILITY' || account.type === 'NON_CURRENT_LIABILITY') && balanceSheetClosingBalance !== 0) {
-        liabilityLines.push({ ...reportRow, amount: balanceSheetClosingBalance })
-      }
-      if (account.type === 'EQUITY' && balanceSheetClosingBalance !== 0) {
-        equityLines.push({ ...reportRow, amount: balanceSheetClosingBalance })
-      }
-      if (account.type === 'CURRENT_ACCOUNT') {
-        const currentAccountSide = classifyCurrentAccountBalance(balanceSheetClosingBalance)
-        if (currentAccountSide?.side === 'ASSET') {
-          assetLines.push({ ...reportRow, amount: currentAccountSide.amount })
+      if (structureIndex.bsConfigured) {
+        if (balanceSheetClosingBalance !== 0) {
+          const bsSection = resolveBsSectionForAccount(structureIndex, account)
+          const row = { ...reportRow, amount: balanceSheetClosingBalance }
+          if (bsSection === 'BS_CURRENT_ASSETS') mappedCurrentAssets.push(row)
+          if (bsSection === 'BS_NON_CURRENT_ASSETS') mappedNonCurrentAssets.push(row)
+          if (bsSection === 'BS_CURRENT_LIABILITIES') mappedCurrentLiabilities.push(row)
+          if (bsSection === 'BS_NON_CURRENT_LIABILITIES') mappedNonCurrentLiabilities.push(row)
+          if (bsSection === 'BS_EQUITY') mappedEquity.push(row)
         }
-        if (currentAccountSide?.side === 'LIABILITY') {
-          liabilityLines.push({ ...reportRow, amount: currentAccountSide.amount })
+      } else {
+        if ((account.type === 'ASSET' || account.type === 'NON_CURRENT_ASSET') && balanceSheetClosingBalance !== 0) {
+          assetLines.push({ ...reportRow, amount: balanceSheetClosingBalance })
+        }
+        if ((account.type === 'LIABILITY' || account.type === 'NON_CURRENT_LIABILITY') && balanceSheetClosingBalance !== 0) {
+          liabilityLines.push({ ...reportRow, amount: balanceSheetClosingBalance })
+        }
+        if (account.type === 'EQUITY' && balanceSheetClosingBalance !== 0) {
+          equityLines.push({ ...reportRow, amount: balanceSheetClosingBalance })
+        }
+        if (account.type === 'CURRENT_ACCOUNT') {
+          const currentAccountSide = classifyCurrentAccountBalance(balanceSheetClosingBalance)
+          if (currentAccountSide?.side === 'ASSET') {
+            assetLines.push({ ...reportRow, amount: currentAccountSide.amount })
+          }
+          if (currentAccountSide?.side === 'LIABILITY') {
+            liabilityLines.push({ ...reportRow, amount: currentAccountSide.amount })
+          }
         }
       }
     }
@@ -909,6 +970,7 @@ export async function buildFinancialReports(
       account: candidate.account,
       statementType: candidate.statementType,
       level1GroupId: candidate.level1GroupId,
+      expenseCategory: candidate.expenseCategory,
       line: {
         ...candidate.line,
         amount,
@@ -942,18 +1004,27 @@ export async function buildFinancialReports(
   const totalExpenses = roundMoney(expenseCategories.reduce((sum, category) => sum + category.total, 0))
   const netProfit = roundMoney(grossProfit - totalExpenses)
   addCurrentPeriodProfitToEquity({
-    equityLines,
+    equityLines: structureIndex.bsConfigured ? mappedEquity : equityLines,
     accounts,
     level1AccountIdByReportAccountId,
     profitAmount: cumulativeProfitAndLoss,
   })
 
-  const balanceSheetLayout = buildBalanceSheetSections({
-    assetLines,
-    liabilityLines,
-    equityLines,
-    level1AccountIdByReportAccountId,
-  })
+  const balanceSheetLayout = structureIndex.bsConfigured
+    ? buildBalanceSheetSectionsFromBuckets({
+        currentAssets: mappedCurrentAssets,
+        nonCurrentAssets: mappedNonCurrentAssets,
+        currentLiabilities: mappedCurrentLiabilities,
+        nonCurrentLiabilities: mappedNonCurrentLiabilities,
+        equity: mappedEquity,
+        level1AccountIdByReportAccountId,
+      })
+    : buildBalanceSheetSections({
+        assetLines,
+        liabilityLines,
+        equityLines,
+        level1AccountIdByReportAccountId,
+      })
   const totalAssets = balanceSheetLayout.totalAssets
   const totalLiabilities = balanceSheetLayout.totalLiabilities
   const totalEquity = balanceSheetLayout.totalEquity

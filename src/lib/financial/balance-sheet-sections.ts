@@ -70,31 +70,73 @@ export function buildBalanceSheetSections(input: {
   const nonCurrentLiabilities = buildSectionLines(input.liabilityLines, isNonCurrentLiabilityAccount, input.level1AccountIdByReportAccountId)
   const equity = buildSectionLines(input.equityLines, () => true, input.level1AccountIdByReportAccountId)
 
+  return assembleBalanceSheetSections({
+    currentAssets,
+    nonCurrentAssets,
+    currentLiabilities,
+    nonCurrentLiabilities,
+    equity,
+  })
+}
+
+/** Build BS sections from already-classified line buckets (custom report structure). */
+export function buildBalanceSheetSectionsFromBuckets(input: {
+  currentAssets: StatementLineRow[]
+  nonCurrentAssets: StatementLineRow[]
+  currentLiabilities: StatementLineRow[]
+  nonCurrentLiabilities: StatementLineRow[]
+  equity: StatementLineRow[]
+  level1AccountIdByReportAccountId?: Map<string, string>
+}) {
+  const toSection = (lines: StatementLineRow[]) => {
+    const topLevel = lines.filter(row => row.level === 1)
+    if (input.level1AccountIdByReportAccountId) {
+      return attachBalanceSheetChildren(topLevel, lines, input.level1AccountIdByReportAccountId)
+    }
+    return sortLines(topLevel.map(line => ({ ...line })))
+  }
+
+  return assembleBalanceSheetSections({
+    currentAssets: toSection(input.currentAssets),
+    nonCurrentAssets: toSection(input.nonCurrentAssets),
+    currentLiabilities: toSection(input.currentLiabilities),
+    nonCurrentLiabilities: toSection(input.nonCurrentLiabilities),
+    equity: toSection(input.equity),
+  })
+}
+
+function assembleBalanceSheetSections(input: {
+  currentAssets: BalanceSheetLineRow[]
+  nonCurrentAssets: BalanceSheetLineRow[]
+  currentLiabilities: BalanceSheetLineRow[]
+  nonCurrentLiabilities: BalanceSheetLineRow[]
+  equity: BalanceSheetLineRow[]
+}) {
   const assetSections: BalanceSheetSection[] = [
-    { label: '非流动资产', lines: nonCurrentAssets, total: sectionTotal(nonCurrentAssets) },
-    { label: '流动资产', lines: currentAssets, total: sectionTotal(currentAssets) },
+    { label: '非流动资产', lines: input.nonCurrentAssets, total: sectionTotal(input.nonCurrentAssets) },
+    { label: '流动资产', lines: input.currentAssets, total: sectionTotal(input.currentAssets) },
   ]
 
   const liabilitySections: BalanceSheetSection[] = [
-    { label: '非流动负债', lines: nonCurrentLiabilities, total: sectionTotal(nonCurrentLiabilities) },
-    { label: '流动负债', lines: currentLiabilities, total: sectionTotal(currentLiabilities) },
+    { label: '非流动负债', lines: input.nonCurrentLiabilities, total: sectionTotal(input.nonCurrentLiabilities) },
+    { label: '流动负债', lines: input.currentLiabilities, total: sectionTotal(input.currentLiabilities) },
   ]
 
   const equitySection: BalanceSheetSection = {
     label: '所有者权益',
-    lines: equity,
-    total: sectionTotal(equity),
+    lines: input.equity,
+    total: sectionTotal(input.equity),
   }
 
   return {
     assetSections,
     liabilitySections,
     equitySection,
-    assets: [...nonCurrentAssets, ...currentAssets],
-    liabilities: [...nonCurrentLiabilities, ...currentLiabilities],
-    equity,
-    totalAssets: roundMoney(sectionTotal(nonCurrentAssets) + sectionTotal(currentAssets)),
-    totalLiabilities: roundMoney(sectionTotal(nonCurrentLiabilities) + sectionTotal(currentLiabilities)),
+    assets: [...input.nonCurrentAssets, ...input.currentAssets],
+    liabilities: [...input.nonCurrentLiabilities, ...input.currentLiabilities],
+    equity: input.equity,
+    totalAssets: roundMoney(sectionTotal(input.nonCurrentAssets) + sectionTotal(input.currentAssets)),
+    totalLiabilities: roundMoney(sectionTotal(input.nonCurrentLiabilities) + sectionTotal(input.currentLiabilities)),
     totalEquity: equitySection.total,
   }
 }

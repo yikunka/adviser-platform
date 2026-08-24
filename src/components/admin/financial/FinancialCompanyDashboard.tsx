@@ -3,7 +3,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useState } from 'react'
-import { ArrowRight, BookOpen, FileBarChart, FileSpreadsheet, FileText, Layers, WalletCards } from 'lucide-react'
+import { ArrowRight, BookOpen, FileBarChart, FileSpreadsheet, FileText, Layers, SlidersHorizontal, WalletCards } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -75,6 +75,12 @@ export function FinancialCompanyDashboard() {
       desc: '试算平衡表、损益表、资产负债表和现金流量表。',
       href: `/admin/financial/${company.id}/reports`,
       Icon: FileBarChart,
+    },
+    {
+      title: '财务设置',
+      desc: '配置利润表与资产负债表各分类对应的科目。',
+      href: `/admin/financial/${company.id}/settings`,
+      Icon: SlidersHorizontal,
     },
     {
       title: '历史账套',
