@@ -470,7 +470,8 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                 <ReportHeader title="损益表" period={period} />
                 <Section title="收入">
                   <StatementTable
-                    headers={['编码', '科目', '本期金额', '本年度总金额']}
+                    headers={PL_STATEMENT_HEADERS}
+                    columnLayout="pl"
                     rows={reports.incomeStatement.revenue.map(row => [
                       row.code,
                       row.name,
@@ -478,16 +479,19 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                       money(lineYearToDate(row)),
                     ])}
                     emptyLabel="本期间暂无收入"
-                  />
-                  <TotalsFooter
-                    left="收入合计"
-                    right={money(reports.incomeStatement.totalRevenue)}
-                    rightYtd={money(reports.incomeStatement.totalRevenueYtd)}
+                    footerRows={[
+                      {
+                        label: '收入合计',
+                        period: money(reports.incomeStatement.totalRevenue),
+                        ytd: money(reports.incomeStatement.totalRevenueYtd),
+                      },
+                    ]}
                   />
                 </Section>
                 <Section title="主营业务成本">
                   <StatementTable
-                    headers={['编码', '科目', '本期金额', '本年度总金额']}
+                    headers={PL_STATEMENT_HEADERS}
+                    columnLayout="pl"
                     rows={reports.incomeStatement.costOfSales.map(row => [
                       row.code,
                       row.name,
@@ -495,17 +499,27 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                       money(lineYearToDate(row)),
                     ])}
                     emptyLabel="本期间暂无主营业务成本"
-                  />
-                  <TotalsFooter
-                    left="主营业务成本合计"
-                    right={money(reports.incomeStatement.totalCostOfSales)}
-                    rightYtd={money(reports.incomeStatement.totalCostOfSalesYtd)}
+                    footerRows={[
+                      {
+                        label: '主营业务成本合计',
+                        period: money(reports.incomeStatement.totalCostOfSales),
+                        ytd: money(reports.incomeStatement.totalCostOfSalesYtd),
+                      },
+                    ]}
                   />
                 </Section>
-                <TotalsFooter
-                  left="毛利"
-                  right={money(reports.incomeStatement.grossProfit)}
-                  rightYtd={money(reports.incomeStatement.grossProfitYtd)}
+                <StatementTable
+                  headers={PL_STATEMENT_HEADERS}
+                  columnLayout="pl"
+                  hideHeader
+                  rows={[]}
+                  footerRows={[
+                    {
+                      label: '毛利',
+                      period: money(reports.incomeStatement.grossProfit),
+                      ytd: money(reports.incomeStatement.grossProfitYtd),
+                    },
+                  ]}
                 />
                 <Section title="费用明细">
                   <div className="space-y-4">
@@ -515,7 +529,8 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                           {category.label}
                         </h4>
                         <StatementTable
-                          headers={['编码', '科目', '本期金额', '本年度总金额']}
+                          headers={PL_STATEMENT_HEADERS}
+                          columnLayout="pl"
                           rows={category.lines.map(row => [
                             row.code,
                             row.name,
@@ -523,26 +538,44 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                             money(lineYearToDate(row)),
                           ])}
                           emptyLabel={`本期间暂无${category.label}`}
-                        />
-                        <TotalsFooter
-                          left={`${category.label}合计`}
-                          right={money(category.total)}
-                          rightYtd={money(category.totalYtd)}
+                          footerRows={[
+                            {
+                              label: `${category.label}合计`,
+                              period: money(category.total),
+                              ytd: money(category.totalYtd),
+                            },
+                          ]}
                         />
                       </div>
                     ))}
                   </div>
-                  <TotalsFooter
-                    left="费用合计"
-                    right={money(reports.incomeStatement.totalExpenses)}
-                    rightYtd={money(reports.incomeStatement.totalExpensesYtd)}
+                  <StatementTable
+                    headers={PL_STATEMENT_HEADERS}
+                    columnLayout="pl"
+                    hideHeader
+                    rows={[]}
+                    footerRows={[
+                      {
+                        label: '费用合计',
+                        period: money(reports.incomeStatement.totalExpenses),
+                        ytd: money(reports.incomeStatement.totalExpensesYtd),
+                      },
+                    ]}
                   />
                 </Section>
-                <TotalsFooter
-                  left="本期利润"
-                  right={money(reports.incomeStatement.netProfit)}
-                  rightYtd={money(reports.incomeStatement.netProfitYtd)}
-                  highlight
+                <StatementTable
+                  headers={PL_STATEMENT_HEADERS}
+                  columnLayout="pl"
+                  hideHeader
+                  rows={[]}
+                  footerRows={[
+                    {
+                      label: '本期利润',
+                      period: money(reports.incomeStatement.netProfit),
+                      ytd: money(reports.incomeStatement.netProfitYtd),
+                      highlight: true,
+                    },
+                  ]}
                 />
               </TabsContent>
 
@@ -809,47 +842,98 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
+const PL_STATEMENT_HEADERS = ['编码', '科目', '本期金额', '本年度总金额'] as const
+
+type StatementFooterRow = {
+  label: string
+  period: string
+  ytd: string
+  highlight?: boolean
+}
+
 function StatementTable({
   headers,
   rows,
   emptyLabel = '暂无数据',
+  footerRows,
+  columnLayout,
+  hideHeader = false,
 }: {
-  headers: string[]
+  headers: readonly string[]
   rows: string[][]
   emptyLabel?: string
+  footerRows?: StatementFooterRow[]
+  /** Fixed P&L columns so detail amounts and totals share the same vertical alignment. */
+  columnLayout?: 'pl'
+  hideHeader?: boolean
 }) {
-  if (rows.length === 0) {
+  const hasBody = rows.length > 0
+  const hasFooter = (footerRows?.length ?? 0) > 0
+  if (!hasBody && !hasFooter) {
     return <p className="text-sm text-muted-foreground py-2">{emptyLabel}</p>
   }
 
+  const isAmountHeader = (header: string) =>
+    header.includes('金额') || header.includes('借方') || header.includes('贷方')
+
   return (
     <div className="overflow-x-auto rounded-lg border border-[#2A2418]">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {headers.map(header => (
-              <TableHead
-                key={header}
-                className={
-                  header.includes('金额') || header.includes('借方') || header.includes('贷方') ? 'text-right' : undefined
-                }
-              >
-                {header}
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row, index) => (
-            <TableRow key={index}>
-              {row.map((cell, cellIndex) => (
-                <TableCell
-                  key={cellIndex}
-                  className={cellIndex >= 2 ? 'text-right font-mono' : cellIndex === 0 ? 'font-mono' : undefined}
+      <Table className={columnLayout === 'pl' ? 'table-fixed w-full' : undefined}>
+        {columnLayout === 'pl' ? (
+          <colgroup>
+            <col className="w-[6.5rem]" />
+            <col />
+            <col className="w-[9rem]" />
+            <col className="w-[9rem]" />
+          </colgroup>
+        ) : null}
+        {!hideHeader ? (
+          <TableHeader>
+            <TableRow>
+              {headers.map(header => (
+                <TableHead
+                  key={header}
+                  className={isAmountHeader(header) ? 'text-right' : undefined}
                 >
-                  {cell}
-                </TableCell>
+                  {header}
+                </TableHead>
               ))}
+            </TableRow>
+          </TableHeader>
+        ) : null}
+        <TableBody>
+          {hasBody ? (
+            rows.map((row, index) => (
+              <TableRow key={index}>
+                {row.map((cell, cellIndex) => (
+                  <TableCell
+                    key={cellIndex}
+                    className={cellIndex >= 2 ? 'text-right font-mono' : cellIndex === 0 ? 'font-mono' : undefined}
+                  >
+                    {cell}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))
+          ) : emptyLabel && !hideHeader ? (
+            <TableRow>
+              <TableCell colSpan={headers.length} className="text-sm text-muted-foreground">
+                {emptyLabel}
+              </TableCell>
+            </TableRow>
+          ) : null}
+          {footerRows?.map(footer => (
+            <TableRow
+              key={footer.label}
+              className={
+                footer.highlight
+                  ? 'border-[#C9A96E66] bg-[#C9A96E14] font-semibold'
+                  : 'bg-[#0E0E0A] font-semibold'
+              }
+            >
+              <TableCell colSpan={2}>{footer.label}</TableCell>
+              <TableCell className="text-right font-mono">{footer.period}</TableCell>
+              <TableCell className="text-right font-mono">{footer.ytd}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -858,29 +942,13 @@ function StatementTable({
   )
 }
 
-function TotalsFooter({
-  left,
-  right,
-  rightYtd,
-  highlight,
-}: {
-  left: string
-  right: string
-  /** Optional calendar year-to-date total (损益表合计). */
-  rightYtd?: string
-  highlight?: boolean
-}) {
+function TotalsFooter({ left, right, highlight }: { left: string; right: string; highlight?: boolean }) {
   return (
     <div
-      className={`flex items-center justify-between gap-4 rounded-lg border px-4 py-3 text-sm ${highlight ? 'border-[#C9A96E66] bg-[#C9A96E14] font-semibold' : 'border-[#2A2418] bg-[#0E0E0A]'}`}
+      className={`flex justify-between rounded-lg border px-4 py-3 text-sm ${highlight ? 'border-[#C9A96E66] bg-[#C9A96E14] font-semibold' : 'border-[#2A2418] bg-[#0E0E0A]'}`}
     >
-      <span className="shrink-0">{left}</span>
-      <div className="flex min-w-0 flex-1 items-center justify-end gap-6 sm:gap-10">
-        <span className="w-28 shrink-0 text-right font-mono sm:w-32">{right}</span>
-        {rightYtd !== undefined ? (
-          <span className="w-28 shrink-0 text-right font-mono sm:w-32">{rightYtd}</span>
-        ) : null}
-      </div>
+      <span>{left}</span>
+      <span className="font-mono">{right}</span>
     </div>
   )
 }
