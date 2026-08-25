@@ -146,6 +146,7 @@ describe('buildFinancialReports journal-line source', () => {
       }),
     ])
     expect(reports.incomeStatement.totalRevenue).toBe(1000)
+    expect(reports.incomeStatement.totalRevenueYtd).toBe(1000)
     expect(reports.trialBalance.rows).not.toEqual(expect.arrayContaining([
       expect.objectContaining({
         accountId: 'current-year-earnings',
@@ -636,6 +637,8 @@ describe('buildFinancialReports journal-line source', () => {
 
     expect(reports.incomeStatement.totalRevenue).toBe(1200)
     expect(reports.incomeStatement.netProfit).toBe(1200)
+    expect(reports.incomeStatement.totalRevenueYtd).toBe(6200)
+    expect(reports.incomeStatement.netProfitYtd).toBe(6200)
     expect(reports.incomeStatement.revenue).toEqual([
       expect.objectContaining({
         accountId: 'rev-child',

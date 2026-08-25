@@ -65,6 +65,11 @@ export type IncomeStatementReport = {
   grossProfit: number
   totalExpenses: number
   netProfit: number
+  totalRevenueYtd: number
+  totalCostOfSalesYtd: number
+  grossProfitYtd: number
+  totalExpensesYtd: number
+  netProfitYtd: number
 }
 
 export type AccountingEquationCheck = {
@@ -1040,6 +1045,11 @@ export async function buildFinancialReports(
   const grossProfit = roundMoney(totalRevenue - totalCostOfSales)
   const totalExpenses = roundMoney(expenseCategories.reduce((sum, category) => sum + category.total, 0))
   const netProfit = roundMoney(grossProfit - totalExpenses)
+  const totalRevenueYtd = roundMoney(revenueLines.reduce((sum, row) => sum + (row.yearToDateAmount ?? 0), 0))
+  const totalCostOfSalesYtd = roundMoney(costOfSalesLines.reduce((sum, row) => sum + (row.yearToDateAmount ?? 0), 0))
+  const grossProfitYtd = roundMoney(totalRevenueYtd - totalCostOfSalesYtd)
+  const totalExpensesYtd = roundMoney(expenseCategories.reduce((sum, category) => sum + category.totalYtd, 0))
+  const netProfitYtd = roundMoney(grossProfitYtd - totalExpensesYtd)
   addCurrentPeriodProfitToEquity({
     equityLines: structureIndex.bsConfigured ? mappedEquity : equityLines,
     accounts,
@@ -1115,6 +1125,11 @@ export async function buildFinancialReports(
       grossProfit,
       totalExpenses,
       netProfit,
+      totalRevenueYtd,
+      totalCostOfSalesYtd,
+      grossProfitYtd,
+      totalExpensesYtd,
+      netProfitYtd,
     },
     balanceSheet: {
       period,

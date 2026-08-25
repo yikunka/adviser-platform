@@ -104,5 +104,39 @@ describe('income statement expense categories', () => {
 
     expect(categories.map(category => category.label)).toEqual(['销售费用', '管理费用', '财务费用'])
     expect(categories.map(category => category.total)).toEqual([125.12, 200, 20.34])
+    expect(categories.map(category => category.totalYtd)).toEqual([0, 0, 0])
+  })
+
+  it('sums year-to-date amounts into expense category totalYtd', () => {
+    const categories = buildIncomeStatementExpenseCategories([
+      {
+        category: 'sales',
+        line: {
+          accountId: 'sales',
+          code: '6101',
+          name: '销售费用',
+          type: 'EXPENSE',
+          level: 1,
+          amount: 10,
+          yearToDateAmount: 40.5,
+        },
+      },
+      {
+        category: 'administrative',
+        line: {
+          accountId: 'admin',
+          code: '6001',
+          name: '管理费用',
+          type: 'EXPENSE',
+          level: 1,
+          amount: 20,
+          yearToDateAmount: 80,
+        },
+      },
+    ])
+
+    expect(categories.find(c => c.key === 'sales')?.totalYtd).toBe(40.5)
+    expect(categories.find(c => c.key === 'administrative')?.totalYtd).toBe(80)
+    expect(categories.find(c => c.key === 'finance')?.totalYtd).toBe(0)
   })
 })

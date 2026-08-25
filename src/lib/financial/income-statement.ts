@@ -9,6 +9,8 @@ export type IncomeStatementExpenseCategory = {
   label: string
   lines: StatementLineRow[]
   total: number
+  /** Calendar year-to-date total of category lines. */
+  totalYtd: number
 }
 
 export const INCOME_STATEMENT_EXPENSE_CATEGORIES: ReadonlyArray<{
@@ -165,6 +167,7 @@ export function buildIncomeStatementExpenseCategories(
       ...definition,
       lines,
       total: roundMoney(lines.reduce((sum, line) => sum + line.amount, 0)),
+      totalYtd: roundMoney(lines.reduce((sum, line) => sum + (line.yearToDateAmount ?? 0), 0)),
     }
   })
 }

@@ -262,7 +262,7 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
             row.amount,
             lineYearToDate(row),
           ]),
-          ['收入合计', '', '', reports.incomeStatement.totalRevenue, ''],
+          ['收入合计', '', '', reports.incomeStatement.totalRevenue, reports.incomeStatement.totalRevenueYtd],
           [],
           ...reports.incomeStatement.costOfSales.map(row => [
             '主营业务成本',
@@ -271,8 +271,8 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
             row.amount,
             lineYearToDate(row),
           ]),
-          ['主营业务成本合计', '', '', reports.incomeStatement.totalCostOfSales, ''],
-          ['毛利', '', '', reports.incomeStatement.grossProfit, ''],
+          ['主营业务成本合计', '', '', reports.incomeStatement.totalCostOfSales, reports.incomeStatement.totalCostOfSalesYtd],
+          ['毛利', '', '', reports.incomeStatement.grossProfit, reports.incomeStatement.grossProfitYtd],
           [],
           ...reports.incomeStatement.expenseCategories.flatMap(category => [
             ...category.lines.map(row => [
@@ -282,11 +282,11 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
               row.amount,
               lineYearToDate(row),
             ]),
-            [`${category.label}合计`, '', '', category.total, ''],
+            [`${category.label}合计`, '', '', category.total, category.totalYtd],
             [],
           ]),
-          ['费用合计', '', '', reports.incomeStatement.totalExpenses, ''],
-          ['本期利润', '', '', reports.incomeStatement.netProfit, ''],
+          ['费用合计', '', '', reports.incomeStatement.totalExpenses, reports.incomeStatement.totalExpensesYtd],
+          ['本期利润', '', '', reports.incomeStatement.netProfit, reports.incomeStatement.netProfitYtd],
         ])),
         '损益表',
       )
@@ -479,7 +479,11 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                     ])}
                     emptyLabel="本期间暂无收入"
                   />
-                  <TotalsFooter left="收入合计" right={money(reports.incomeStatement.totalRevenue)} />
+                  <TotalsFooter
+                    left="收入合计"
+                    right={money(reports.incomeStatement.totalRevenue)}
+                    rightYtd={money(reports.incomeStatement.totalRevenueYtd)}
+                  />
                 </Section>
                 <Section title="主营业务成本">
                   <StatementTable
@@ -492,9 +496,17 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                     ])}
                     emptyLabel="本期间暂无主营业务成本"
                   />
-                  <TotalsFooter left="主营业务成本合计" right={money(reports.incomeStatement.totalCostOfSales)} />
+                  <TotalsFooter
+                    left="主营业务成本合计"
+                    right={money(reports.incomeStatement.totalCostOfSales)}
+                    rightYtd={money(reports.incomeStatement.totalCostOfSalesYtd)}
+                  />
                 </Section>
-                <TotalsFooter left="毛利" right={money(reports.incomeStatement.grossProfit)} />
+                <TotalsFooter
+                  left="毛利"
+                  right={money(reports.incomeStatement.grossProfit)}
+                  rightYtd={money(reports.incomeStatement.grossProfitYtd)}
+                />
                 <Section title="费用明细">
                   <div className="space-y-4">
                     {reports.incomeStatement.expenseCategories.map(category => (
@@ -512,15 +524,24 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                           ])}
                           emptyLabel={`本期间暂无${category.label}`}
                         />
-                        <TotalsFooter left={`${category.label}合计`} right={money(category.total)} />
+                        <TotalsFooter
+                          left={`${category.label}合计`}
+                          right={money(category.total)}
+                          rightYtd={money(category.totalYtd)}
+                        />
                       </div>
                     ))}
                   </div>
-                  <TotalsFooter left="费用合计" right={money(reports.incomeStatement.totalExpenses)} />
+                  <TotalsFooter
+                    left="费用合计"
+                    right={money(reports.incomeStatement.totalExpenses)}
+                    rightYtd={money(reports.incomeStatement.totalExpensesYtd)}
+                  />
                 </Section>
                 <TotalsFooter
                   left="本期利润"
                   right={money(reports.incomeStatement.netProfit)}
+                  rightYtd={money(reports.incomeStatement.netProfitYtd)}
                   highlight
                 />
               </TabsContent>
@@ -837,13 +858,29 @@ function StatementTable({
   )
 }
 
-function TotalsFooter({ left, right, highlight }: { left: string; right: string; highlight?: boolean }) {
+function TotalsFooter({
+  left,
+  right,
+  rightYtd,
+  highlight,
+}: {
+  left: string
+  right: string
+  /** Optional calendar year-to-date total (损益表合计). */
+  rightYtd?: string
+  highlight?: boolean
+}) {
   return (
     <div
-      className={`flex justify-between rounded-lg border px-4 py-3 text-sm ${highlight ? 'border-[#C9A96E66] bg-[#C9A96E14] font-semibold' : 'border-[#2A2418] bg-[#0E0E0A]'}`}
+      className={`flex items-center justify-between gap-4 rounded-lg border px-4 py-3 text-sm ${highlight ? 'border-[#C9A96E66] bg-[#C9A96E14] font-semibold' : 'border-[#2A2418] bg-[#0E0E0A]'}`}
     >
-      <span>{left}</span>
-      <span className="font-mono">{right}</span>
+      <span className="shrink-0">{left}</span>
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-6 sm:gap-10">
+        <span className="w-28 shrink-0 text-right font-mono sm:w-32">{right}</span>
+        {rightYtd !== undefined ? (
+          <span className="w-28 shrink-0 text-right font-mono sm:w-32">{rightYtd}</span>
+        ) : null}
+      </div>
     </div>
   )
 }
