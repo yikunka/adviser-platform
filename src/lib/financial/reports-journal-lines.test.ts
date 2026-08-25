@@ -8,6 +8,7 @@ vi.mock('@/lib/db/prisma', () => ({
     accountBalance: { findMany: vi.fn() },
     finAccount: { findMany: vi.fn() },
     journalLine: { findMany: vi.fn() },
+    financialReportSectionMapping: { findMany: vi.fn() },
   },
 }))
 
@@ -93,6 +94,7 @@ describe('buildFinancialReports journal-line source', () => {
     priorMovementLines = []
 
     vi.mocked(prisma.accountBalance.findMany).mockResolvedValue([])
+    vi.mocked(prisma.financialReportSectionMapping.findMany).mockResolvedValue([])
     vi.mocked(prisma.finAccount.findMany).mockImplementation((async (args?: unknown) => {
       const query = findManyArgs(args)
       if (query.select?.parentId && !query.select?.code) {
@@ -113,12 +115,15 @@ describe('buildFinancialReports journal-line source', () => {
       const period = query.where?.entry?.period
       const isPeriodMovement =
         period?.gte === '2026-05' && period?.lt === '2026-06'
+      const isYearToDateMovement =
+        period?.gte === '2026-01' && period?.lt === '2026-06'
       const isOpeningMovement =
         !period?.gte && period?.lt === '2026-05'
       const isClosingMovement =
         !period?.gte && period?.lt === '2026-06'
 
       if (isPeriodMovement) return periodMovementLines
+      if (isYearToDateMovement) return [...priorMovementLines, ...periodMovementLines]
       if (isOpeningMovement) return priorMovementLines
       if (isClosingMovement) return [...priorMovementLines, ...periodMovementLines]
 
@@ -137,6 +142,7 @@ describe('buildFinancialReports journal-line source', () => {
         periodDebit: 0,
         periodCredit: 1000,
         amount: 1000,
+        yearToDateAmount: 1000,
       }),
     ])
     expect(reports.incomeStatement.totalRevenue).toBe(1000)
@@ -636,6 +642,7 @@ describe('buildFinancialReports journal-line source', () => {
         periodDebit: 0,
         periodCredit: 1200,
         amount: 1200,
+        yearToDateAmount: 6200,
       }),
     ])
     expect(reports.balanceSheet.equitySection.lines).toEqual(expect.arrayContaining([
@@ -655,6 +662,15 @@ describe('buildFinancialReports journal-line source', () => {
         entry: expect.objectContaining({
           period: { gte: '2026-05', lt: '2026-06' },
           status: 'POSTED',
+        }),
+      },
+    }))
+    expect(prisma.journalLine.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        entry: expect.objectContaining({
+          period: { gte: '2026-01', lt: '2026-06' },
+          status: 'POSTED',
+          sourceType: { notIn: ['CLOSING'] },
         }),
       },
     }))

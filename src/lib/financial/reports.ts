@@ -164,6 +164,15 @@ function periodAfter(period: string) {
   return `${end.getUTCFullYear()}-${String(end.getUTCMonth() + 1).padStart(2, '0')}`
 }
 
+/** Calendar-year start period `YYYY-01` for the year of the selected accounting period. */
+function calendarYearStartPeriod(period: string) {
+  const year = period.split('-')[0]
+  if (!/^\d{4}$/.test(year ?? '')) {
+    throw new Error('Invalid period. Use YYYY-MM.')
+  }
+  return `${year}-01`
+}
+
 function signedBalance(amount: number, type: AccountType, code?: string) {
   if (isDebitNormalAccountType(type, code)) return roundMoney(amount)
   return roundMoney(-amount)
@@ -318,6 +327,9 @@ function addOrUpdateStatementLine(lines: StatementLineRow[], line: StatementLine
   const existing = lines.find(existingLine => existingLine.accountId === line.accountId)
   if (existing) {
     existing.amount = roundMoney(existing.amount + line.amount)
+    if (line.yearToDateAmount !== undefined) {
+      existing.yearToDateAmount = roundMoney((existing.yearToDateAmount ?? 0) + line.yearToDateAmount)
+    }
     if (line.note) existing.note = line.note
     if (line.noteAmount !== undefined) existing.noteAmount = line.noteAmount
     return existing
@@ -538,7 +550,7 @@ export async function buildFinancialReports(
         ...rest,
       }))
 
-  const [ledgerOpeningMovements, periodMovements, ledgerClosingMovements, openingBalances, closingBalances, plSourceMovements, bsLedgerClosingMovements] = await Promise.all([
+  const [ledgerOpeningMovements, periodMovements, ledgerClosingMovements, openingBalances, closingBalances, plSourceMovements, bsLedgerClosingMovements, plYearSourceMovements] = await Promise.all([
     aggregatePostedJournalMovements(period, undefined, scope),
     aggregatePostedJournalMovements(periodAfter(period), period, scope),
     aggregatePostedJournalMovements(periodAfter(period), undefined, scope),
@@ -546,6 +558,7 @@ export async function buildFinancialReports(
     aggregateOpeningBalanceMovements(end, scope, 'closing'),
     aggregatePostedJournalMovements(periodAfter(period), period, scope, { excludeSourceTypes: ['CLOSING'] }),
     aggregatePostedJournalMovements(periodAfter(period), undefined, scope, { excludeSourceTypes: ['CLOSING'] }),
+    aggregatePostedJournalMovements(periodAfter(period), calendarYearStartPeriod(period), scope, { excludeSourceTypes: ['CLOSING'] }),
   ])
   const openingMovements = mergeMovementMaps(ledgerOpeningMovements, openingBalances)
   const closingMovements = mergeMovementMaps(ledgerClosingMovements, closingBalances)
@@ -558,6 +571,7 @@ export async function buildFinancialReports(
   // Trial balance still uses the full periodMovements (including CLOSING) to show true movements.
   const plPeriodMovements = new Map(plSourceMovements)
   const plClosingMovements = new Map(bsClosingMovements)
+  const plYearToDateMovements = new Map(plYearSourceMovements)
   if (!shouldConsolidateAccounts) {
     for (const rawAccount of rawAccounts) {
       const statementType = resolvePlClassificationForAccount(structureIndex, {
@@ -585,6 +599,11 @@ export async function buildFinancialReports(
         debit: roundMoney(existingClosing.debit + legacyTotals.debit),
         credit: roundMoney(existingClosing.credit + legacyTotals.credit),
       })
+      const existingYear = plYearToDateMovements.get(rawAccount.id) ?? { debit: 0, credit: 0 }
+      plYearToDateMovements.set(rawAccount.id, {
+        debit: roundMoney(existingYear.debit + legacyTotals.debit),
+        credit: roundMoney(existingYear.credit + legacyTotals.credit),
+      })
     }
 
     for (const rawAccount of rawAccounts) {
@@ -606,6 +625,9 @@ export async function buildFinancialReports(
       plPeriodMovements.set(rawAccount.id, fallbackTotals)
       if (!hasMovement(plClosingMovements.get(rawAccount.id) ?? { debit: 0, credit: 0 })) {
         plClosingMovements.set(rawAccount.id, fallbackTotals)
+      }
+      if (!hasMovement(plYearToDateMovements.get(rawAccount.id) ?? { debit: 0, credit: 0 })) {
+        plYearToDateMovements.set(rawAccount.id, fallbackTotals)
       }
     }
   }
@@ -760,6 +782,8 @@ export async function buildFinancialReports(
     const ownPeriodTotals = sumMovements(plPeriodMovements, ownAccountIds)
     const cumulativeStatementTotals = sumMovements(plClosingMovements, statementAccountIds)
     const cumulativeOwnTotals = sumMovements(plClosingMovements, ownAccountIds)
+    const statementYearToDateTotals = sumMovements(plYearToDateMovements, statementAccountIds)
+    const ownYearToDateTotals = sumMovements(plYearToDateMovements, ownAccountIds)
     const level1GroupIdForPl = level1AccountIdByReportAccountId.get(account.accountId) ?? account.accountId
     const plClassification = resolvePlClassificationForAccount(
       structureIndex,
@@ -781,6 +805,12 @@ export async function buildFinancialReports(
       : 0
     const cumulativeOwnNet = profitAndLossType
       ? profitAndLossMovementAmount(cumulativeOwnTotals, profitAndLossType)
+      : 0
+    const statementYearToDateNet = profitAndLossType
+      ? profitAndLossMovementAmount(statementYearToDateTotals, profitAndLossType)
+      : 0
+    const ownYearToDateNet = profitAndLossType
+      ? profitAndLossMovementAmount(ownYearToDateTotals, profitAndLossType)
       : 0
     const ledgerClosingBalance = movementSignedBalance(closingTotals, account.type, account.code)
     const yearToDateTotals = shouldConsolidateAccounts
@@ -848,6 +878,7 @@ export async function buildFinancialReports(
       ...reportRow,
       ...(profitAndLossType ? { type: profitAndLossType } : {}),
       amount: statementPeriodNet,
+      yearToDateAmount: statementYearToDateNet,
       periodDebit: statementPeriodTotals.debit,
       periodCredit: statementPeriodTotals.credit,
     }
@@ -874,6 +905,7 @@ export async function buildFinancialReports(
           ...reportRow,
           type: profitAndLossType,
           amount: ownPeriodNet,
+          yearToDateAmount: ownYearToDateNet,
           periodDebit: ownPeriodTotals.debit,
           periodCredit: ownPeriodTotals.credit,
         },
@@ -891,6 +923,7 @@ export async function buildFinancialReports(
           ...reportRow,
           type: profitAndLossType,
           amount: ownPeriodNet,
+          yearToDateAmount: ownYearToDateNet,
           periodDebit: ownPeriodTotals.debit,
           periodCredit: ownPeriodTotals.credit,
         },
@@ -966,6 +999,9 @@ export async function buildFinancialReports(
     const amount = profitAndLossMovementAmount(uncoveredTotals, candidate.statementType)
     if (amount === 0) continue
 
+    const uncoveredYearToDateTotals = sumMovements(plYearToDateMovements, uncoveredSourceAccountIds)
+    const yearToDateAmount = profitAndLossMovementAmount(uncoveredYearToDateTotals, candidate.statementType)
+
     addProfitAndLossLine({
       account: candidate.account,
       statementType: candidate.statementType,
@@ -974,6 +1010,7 @@ export async function buildFinancialReports(
       line: {
         ...candidate.line,
         amount,
+        yearToDateAmount,
         periodDebit: uncoveredTotals.debit,
         periodCredit: uncoveredTotals.credit,
       },

@@ -41,12 +41,8 @@ function money(value: number) {
   return formatReportAmount(value)
 }
 
-function lineDebit(row: { periodDebit?: number }) {
-  return row.periodDebit ?? 0
-}
-
-function lineCredit(row: { periodCredit?: number }) {
-  return row.periodCredit ?? 0
+function lineYearToDate(row: { yearToDateAmount?: number }) {
+  return row.yearToDateAmount ?? 0
 }
 
 function exportCsv(filename: string, headers: string[], rows: (string | number)[][]) {
@@ -258,42 +254,39 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
       XLSX.utils.book_append_sheet(
         workbook,
         XLSX.utils.aoa_to_sheet(sheetRows('损益表', period, [
-          ['分类', '科目编码', '科目名称', '本期借方', '本期贷方', '金额'],
+          ['分类', '科目编码', '科目名称', '本期金额', '本年度总金额'],
           ...reports.incomeStatement.revenue.map(row => [
             '收入',
             row.code,
             row.name,
-            lineDebit(row),
-            lineCredit(row),
             row.amount,
+            lineYearToDate(row),
           ]),
-          ['收入合计', '', '', '', '', reports.incomeStatement.totalRevenue],
+          ['收入合计', '', '', reports.incomeStatement.totalRevenue, ''],
           [],
           ...reports.incomeStatement.costOfSales.map(row => [
             '主营业务成本',
             row.code,
             row.name,
-            lineDebit(row),
-            lineCredit(row),
             row.amount,
+            lineYearToDate(row),
           ]),
-          ['主营业务成本合计', '', '', '', '', reports.incomeStatement.totalCostOfSales],
-          ['毛利', '', '', '', '', reports.incomeStatement.grossProfit],
+          ['主营业务成本合计', '', '', reports.incomeStatement.totalCostOfSales, ''],
+          ['毛利', '', '', reports.incomeStatement.grossProfit, ''],
           [],
           ...reports.incomeStatement.expenseCategories.flatMap(category => [
             ...category.lines.map(row => [
               category.label,
               row.code,
               row.name,
-              lineDebit(row),
-              lineCredit(row),
               row.amount,
+              lineYearToDate(row),
             ]),
-            [`${category.label}合计`, '', '', '', '', category.total],
+            [`${category.label}合计`, '', '', category.total, ''],
             [],
           ]),
-          ['费用合计', '', '', '', '', reports.incomeStatement.totalExpenses],
-          ['本期利润', '', '', '', '', reports.incomeStatement.netProfit],
+          ['费用合计', '', '', reports.incomeStatement.totalExpenses, ''],
+          ['本期利润', '', '', reports.incomeStatement.netProfit, ''],
         ])),
         '损益表',
       )
@@ -477,13 +470,12 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                 <ReportHeader title="损益表" period={period} />
                 <Section title="收入">
                   <StatementTable
-                    headers={['编码', '科目', '本期借方', '本期贷方', '金额']}
+                    headers={['编码', '科目', '本期金额', '本年度总金额']}
                     rows={reports.incomeStatement.revenue.map(row => [
                       row.code,
                       row.name,
-                      money(lineDebit(row)),
-                      money(lineCredit(row)),
                       money(row.amount),
+                      money(lineYearToDate(row)),
                     ])}
                     emptyLabel="本期间暂无收入"
                   />
@@ -491,13 +483,12 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                 </Section>
                 <Section title="主营业务成本">
                   <StatementTable
-                    headers={['编码', '科目', '本期借方', '本期贷方', '金额']}
+                    headers={['编码', '科目', '本期金额', '本年度总金额']}
                     rows={reports.incomeStatement.costOfSales.map(row => [
                       row.code,
                       row.name,
-                      money(lineDebit(row)),
-                      money(lineCredit(row)),
                       money(row.amount),
+                      money(lineYearToDate(row)),
                     ])}
                     emptyLabel="本期间暂无主营业务成本"
                   />
@@ -512,13 +503,12 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                           {category.label}
                         </h4>
                         <StatementTable
-                          headers={['编码', '科目', '本期借方', '本期贷方', '金额']}
+                          headers={['编码', '科目', '本期金额', '本年度总金额']}
                           rows={category.lines.map(row => [
                             row.code,
                             row.name,
-                            money(lineDebit(row)),
-                            money(lineCredit(row)),
                             money(row.amount),
+                            money(lineYearToDate(row)),
                           ])}
                           emptyLabel={`本期间暂无${category.label}`}
                         />
