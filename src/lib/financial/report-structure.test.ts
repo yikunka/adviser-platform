@@ -3,8 +3,8 @@ import {
   PL_REPORT_SECTIONS,
   BS_REPORT_SECTIONS,
   REPORT_SECTION_LABELS,
-  suggestReportSectionMappings,
-} from './report-structure'
+} from './report-structure-shared'
+import { suggestReportSectionMappings } from './report-structure'
 
 describe('financial report structure', () => {
   it('exposes labelled P&L and balance-sheet sections', () => {

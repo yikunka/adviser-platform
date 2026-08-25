@@ -11,7 +11,7 @@ import {
   REPORT_SECTION_LABELS,
   type BsReportSection,
   type PlReportSection,
-} from '@/lib/financial/report-structure'
+} from '@/lib/financial/report-structure-shared'
 
 type AccountLite = {
   id: string
