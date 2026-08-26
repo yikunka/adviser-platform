@@ -221,6 +221,7 @@ Customer registry for SFS Diamond.
 - Shows customer name, email, phone, mailing address, source type, order count, and latest order link/status
 - Create manual SFS customer records without creating or binding an official platform login account/email
 - Edit SFS customer profile fields (name, email, phone, mailing address, notes); order-only contacts are converted to bound customer profiles when edited
+- Staff can multi-select customer rows and **Merge into primary**: orders, contracts, and client price overrides move to the kept profile; source registered logins are deactivated and emptied source profiles are removed
 - Delete customer profiles that have no order history; customers linked to any order cannot be deleted; deletion requires a confirmation dialog
 - Each bound customer profile includes a cooperation-contract attachments module on the edit dialog: upload, view, download, and delete partnership agreement files (PDF, Word, JPG, PNG, WEBP; max 10 MB)
 - **Customer-differentiated pricing** (edit dialog **Client price list**): full table by category comparing **global** Diamond Specs prices vs this client’s prices; blank = use global; saved values replace the global price for quoting / invoicing / the client order form

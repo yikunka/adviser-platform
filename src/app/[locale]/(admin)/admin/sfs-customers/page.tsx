@@ -6,6 +6,7 @@ import { Link } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatSfsPriceLabel } from '@/lib/sfs/effective-pricing'
 import { ContactRound, Download, FileText, Mail, MapPin, Pencil, Phone, Search, Trash2, Upload, UserPlus, X } from 'lucide-react'
 
@@ -680,6 +681,9 @@ export default function SfsCustomersPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<CustomerRow | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [mergeTargetId, setMergeTargetId] = useState<string>('')
+  const [merging, setMerging] = useState(false)
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true)
@@ -704,7 +708,63 @@ export default function SfsCustomersPage() {
     return () => clearTimeout(t)
   }, [fetchCustomers, search])
 
+  useEffect(() => {
+    setSelectedIds(prev => prev.filter(id => customers.some(c => c.id === id)))
+  }, [customers])
+
   const pages = Math.max(1, Math.ceil(total / pageSize))
+  const selectedCustomers = customers.filter(c => selectedIds.includes(c.id))
+
+  function toggleSelected(id: string) {
+    setSelectedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]))
+  }
+
+  async function handleMerge() {
+    if (selectedIds.length < 2) {
+      toast.error('Select at least two customer rows to merge.')
+      return
+    }
+    const targetId = mergeTargetId && selectedIds.includes(mergeTargetId)
+      ? mergeTargetId
+      : selectedIds[0]
+    const sources = selectedIds.filter(id => id !== targetId)
+    const target = customers.find(c => c.id === targetId)
+    if (!target) {
+      toast.error('Choose which customer to keep as the primary profile.')
+      return
+    }
+    const sourceNames = sources
+      .map(id => customers.find(c => c.id === id)?.name ?? id)
+      .join(', ')
+    if (!window.confirm(
+      `Merge ${sources.length} profile(s) (${sourceNames}) into "${target.name}"?\n\n`
+      + 'Orders, contracts, and price lists move to the primary profile. '
+      + 'Source registered logins are deactivated. This cannot be undone.',
+    )) return
+
+    setMerging(true)
+    try {
+      const res = await fetch('/api/admin/sfs-customers/merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetRowId: targetId,
+          sourceRowIds: sources,
+        }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error ?? 'Merge failed')
+      const moved = json.result?.movedOrderIds?.length ?? 0
+      toast.success(`Merged into ${target.name}. Moved ${moved} order(s).`)
+      setSelectedIds([])
+      setMergeTargetId('')
+      fetchCustomers()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Merge failed.')
+    } finally {
+      setMerging(false)
+    }
+  }
 
   async function handleDelete(customer: CustomerRow) {
     if (customer.orderCount > 0) {
@@ -746,7 +806,7 @@ export default function SfsCustomersPage() {
         </Button>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <div className="relative w-full max-w-sm">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
           <Input
@@ -756,6 +816,38 @@ export default function SfsCustomersPage() {
             className="pl-8"
           />
         </div>
+        {selectedIds.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+              {selectedIds.length} selected
+            </span>
+            {selectedIds.length >= 2 && (
+              <>
+                <Select
+                  value={mergeTargetId || selectedIds[0]}
+                  onValueChange={value => setMergeTargetId(value ?? '')}
+                >
+                  <SelectTrigger className="w-[220px]">
+                    <SelectValue placeholder="Keep as primary" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectedCustomers.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        Keep: {c.name} ({c.phone ?? c.email ?? c.source})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button disabled={merging} onClick={() => void handleMerge()}>
+                  {merging ? 'Merging...' : 'Merge into primary'}
+                </Button>
+              </>
+            )}
+            <Button variant="outline" size="sm" onClick={() => { setSelectedIds([]); setMergeTargetId('') }}>
+              Clear selection
+            </Button>
+          </div>
+        )}
       </div>
 
       <Card>
@@ -764,6 +856,7 @@ export default function SfsCustomersPage() {
             <table className="w-full text-sm">
               <thead style={{ background: '#111108', borderBottom: '1px solid #2A2418' }}>
                 <tr>
+                  <th className="px-3 py-3 w-10" />
                   {['Customer', 'Contact', 'Address', 'Orders', 'Latest order', 'Source', 'Created'].map(h => (
                     <th key={h} className="px-4 py-3 text-left font-medium whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
                   ))}
@@ -773,11 +866,11 @@ export default function SfsCustomersPage() {
               <tbody className="divide-y divide-[#2A2418]">
                 {loading ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>Loading...</td>
+                    <td colSpan={9} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>Loading...</td>
                   </tr>
                 ) : customers.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center">
+                    <td colSpan={9} className="px-4 py-12 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <ContactRound size={28} style={{ color: '#C9A96E', opacity: 0.45 }} />
                         <span style={{ color: 'var(--muted-foreground)' }}>{search ? 'No customers match your search.' : 'No SFS customers yet.'}</span>
@@ -788,8 +881,17 @@ export default function SfsCustomersPage() {
                   const source = SOURCE_STYLE[customer.source]
                   const latest = customer.latestOrder
                   const status = latest ? (STATUS_STYLE[latest.status] ?? STATUS_STYLE.PENDING) : null
+                  const checked = selectedIds.includes(customer.id)
                   return (
                     <tr key={customer.id} className="hover:bg-[#1A1A12]/50 align-top">
+                      <td className="px-3 py-3">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleSelected(customer.id)}
+                          aria-label={`Select ${customer.name}`}
+                        />
+                      </td>
                       <td className="px-4 py-3 min-w-[220px]">
                         <div className="font-medium" style={{ color: 'var(--foreground)' }}>{customer.name}</div>
                         <div className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
