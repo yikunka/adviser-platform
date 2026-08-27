@@ -2,12 +2,17 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from '@/i18n/navigation'
+import { useSearchParams } from 'next/navigation'
 import { Diamond, Search, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 
 const STATUS_VALUES = ['PENDING', 'QUOTED', 'CONFIRMED', 'COMPLETED', 'CANCELLED'] as const
 
+function initialStatusFromSearch(raw: string | null): string {
+  if (!raw) return ''
+  return (STATUS_VALUES as readonly string[]).includes(raw) ? raw : ''
+}
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   PENDING:   { bg: 'rgba(201,169,110,0.12)', color: '#C9A96E' },
   QUOTED:    { bg: 'rgba(59,130,246,0.12)',  color: '#3b82f6' },
@@ -50,6 +55,7 @@ type Order = {
 
 export default function AdminSfsOrdersPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const canDelete = useAdminPermission('sfsOrders.delete')
   const [orders, setOrders]     = useState<Order[]>([])
   const [total, setTotal]       = useState(0)
@@ -57,9 +63,14 @@ export default function AdminSfsOrdersPage() {
   const [pageSize, setPageSize] = useState(10)
   const [search, setSearch]     = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [status, setStatus]     = useState('')
+  const [status, setStatus]     = useState(() => initialStatusFromSearch(searchParams.get('status')))
   const [loading, setLoading]   = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    setStatus(initialStatusFromSearch(searchParams.get('status')))
+    setPage(1)
+  }, [searchParams])
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search.trim()), search ? 300 : 0)

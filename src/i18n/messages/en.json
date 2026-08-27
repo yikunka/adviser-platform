@@ -689,20 +689,32 @@
         "viewCompanies": "View companies"
       },
       "sfs": {
-        "title": "SFS Diamond Orders",
-        "subtitle": "Operational snapshot across memorial diamond commissions.",
+        "title": "SFS Diamond Operations",
+        "subtitle": "Actionable work queue for memorial diamond orders, reviews, and billing.",
         "viewOrders": "View SFS orders",
-        "totalOrders": "Total orders",
-        "activeOrders": "Active orders",
-        "last30Days": "New in 30 days",
-        "statusDistribution": "Status distribution",
-        "orderCount": "Orders",
-        "statuses": {
-          "PENDING": "Pending",
-          "QUOTED": "Quoted",
-          "CONFIRMED": "Confirmed",
-          "COMPLETED": "Completed",
-          "CANCELLED": "Cancelled"
+        "pendingQuote": "Pending quote",
+        "inProduction": "In production",
+        "pendingImages": "Images to review",
+        "cvdDueSoon": "CVD due in 7 days",
+        "awaitingInvoice": "Awaiting invoice",
+        "newThisMonth": "New this month",
+        "todoTitle": "SFS to-do",
+        "todoEmpty": "No urgent SFS items right now.",
+        "todo": {
+          "pendingQuote": "Needs quote",
+          "pendingImage": "Image pending approval",
+          "cvdDueSoon": "CVD expected end soon",
+          "cvdOverdue": "CVD expected end overdue",
+          "badgeQuote": "Quote",
+          "badgeImage": "Image",
+          "badgeCvd": "CVD"
+        },
+        "links": {
+          "customers": "Customers",
+          "orders": "Orders",
+          "pricing": "Price management",
+          "specs": "Diamond specs",
+          "invoices": "Invoices"
         }
       },
       "recentActivity": "Recent Activity",

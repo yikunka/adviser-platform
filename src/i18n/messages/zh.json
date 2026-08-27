@@ -689,20 +689,32 @@
         "viewCompanies": "查看公司"
       },
       "sfs": {
-        "title": "SFS Diamond 訂單",
-        "subtitle": "快速查看紀念鑽石訂單營運狀況。",
+        "title": "SFS Diamond 營運",
+        "subtitle": "紀念鑽石訂單待辦：報價、審圖、CVD 進度與開票。",
         "viewOrders": "查看 SFS 訂單",
-        "totalOrders": "總訂單數",
-        "activeOrders": "進行中訂單",
-        "last30Days": "近30日新增",
-        "statusDistribution": "狀態分布",
-        "orderCount": "訂單數",
-        "statuses": {
-          "PENDING": "待處理",
-          "QUOTED": "已報價",
-          "CONFIRMED": "已確認",
-          "COMPLETED": "已完成",
-          "CANCELLED": "已取消"
+        "pendingQuote": "待報價",
+        "inProduction": "生產中",
+        "pendingImages": "待審圖片",
+        "cvdDueSoon": "7日內 CVD 到期",
+        "awaitingInvoice": "待開發票",
+        "newThisMonth": "本月新單",
+        "todoTitle": "SFS 待辦",
+        "todoEmpty": "目前沒有緊急 SFS 待辦。",
+        "todo": {
+          "pendingQuote": "待報價",
+          "pendingImage": "圖片待審核",
+          "cvdDueSoon": "CVD 預計結束將至",
+          "cvdOverdue": "CVD 預計結束已過期",
+          "badgeQuote": "報價",
+          "badgeImage": "審圖",
+          "badgeCvd": "CVD"
+        },
+        "links": {
+          "customers": "客戶",
+          "orders": "訂單",
+          "pricing": "價格管理",
+          "specs": "鑽石規格",
+          "invoices": "發票"
         }
       },
       "recentActivity": "最近活動",

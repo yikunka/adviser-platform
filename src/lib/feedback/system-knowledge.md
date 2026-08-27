@@ -17,8 +17,10 @@ Admin left navigation is grouped by module. Menu groups can be collapsed/expande
 
 ## Adviser Admin Console
 
-### 1. Dashboard (`/admin`)
-Key metrics at a glance are grouped into a distinct Adviser corporate-services module: active companies count, pending KYC submissions, open AML alerts, annual filings due within 30 days. Each metric links to the relevant module.
+### 1. Dashboard (`/admin/dashboard`)
+Key metrics at a glance, grouped by platform module:
+- **Adviser**: active companies, pending KYC submissions, open AML alerts, annual filings due within 30 days; each metric links to the relevant module
+- **SFS Diamond** (shown when the staff user has any SFS admin menu): actionable KPIs for pending quote, confirmed in-production, step images awaiting review, CVD expected-end within 7 days, orders awaiting invoice, and new orders this month; a merged to-do list (oldest/urgent first) for quote / image review / CVD due; quick links to Customers, Orders, Price management, Diamond specs, and Invoices (permission-filtered)
 
 ### 2. Companies (`/admin/companies`)
 Manages the full portfolio of client companies.
