@@ -22,7 +22,7 @@ export function sfsStepRequiresDiamondImages(
 ) {
   if (phase === 'CRAFTING') return true
   if (defaultKey === 'CVD:5' || defaultKey === 'CVD:6') return true
-  // Legacy / plan-less: Labeling was step 6, now step 5 after removing Day-21 check
+  // Legacy / plan-less: final CVD labeling was step 6, now step 5 after removing Day-21 check
   if (phase === 'CVD' && (stepNumber === 5 || stepNumber === 6)) return true
   return false
 }
