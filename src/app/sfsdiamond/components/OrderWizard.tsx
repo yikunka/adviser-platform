@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { getDesignOptionGroupsForSettingType, type SfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options'
 import { getCaratPreviewDiameter } from '@/lib/sfs/carat-preview'
-import { formatSfsPriceLabel } from '@/lib/sfs/effective-pricing'
+import { formatSfsMetalPercentLabel, formatSfsPriceLabel } from '@/lib/sfs/effective-pricing'
 import { computeSfsOrderPricing } from '@/lib/sfs/pricing'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -575,9 +575,9 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
               <CheckCard key={m.id} checked={item.metal === m.value} onChange={() => onChange({ metal: m.value })}>
                 <span className="flex flex-col items-start gap-0.5">
                   <span>{m.label}</span>
-                  {formatSfsPriceLabel(m.price, { additive: true }) && (
+                  {formatSfsMetalPercentLabel(m.price) && (
                     <span className="text-[11px] font-semibold tabular-nums" style={{ color: GOLD }}>
-                      {formatSfsPriceLabel(m.price, { additive: true })}
+                      {formatSfsMetalPercentLabel(m.price)}
                     </span>
                   )}
                 </span>

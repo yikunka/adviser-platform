@@ -14,8 +14,10 @@ import {
  *   3. colorAdj  = override(COLOR,color) ?? global(COLOR,color)
  *   4. shapeAdj  = override(SHAPE,shape) ?? global(SHAPE,shape)
  *   5. diamondPart = caratBase + sourceAdj + colorAdj + shapeAdj
- *   6. jewelleryPart = designPrice(by setting type) + metalAdj
- *   7. unitPrice = diamondPart + jewelleryPart
+ *   6. designPrice = design catalog/override (0 when no design / Diamond only)
+ *   7. metalPct   = override(METAL,metal) ?? global(METAL,metal)  // 10 ⇒ +10%
+ *   8. jewelleryPart = designPrice × (1 + metalPct/100)          // metal applies only when designPrice > 0
+ *   9. unitPrice = diamondPart + jewelleryPart
  *
  * Any spec option without a configured price is treated as 0, preserving the legacy
  * "unpriced ⇒ 0" behaviour. Per-customer price overrides still replace matching globals.
@@ -83,23 +85,26 @@ export function computeSfsOrderPricing(input: ComputeSfsOrderPricingInput): SfsP
     return option?.price ?? 0
   }
 
-  const jewelleryPart = (diamond: SfsPricingDiamond): number => {
-    let total = 0
+  const designPrice = (diamond: SfsPricingDiamond): number => {
+    if (!diamond.design) return 0
     const settingType = diamond.type ?? ''
-    if (diamond.design) {
-      const groups = getDesignOptionGroupsForSettingType(settingType, specOptions)
-      let matched: SfsSpecOption | undefined
-      for (const group of groups) {
-        matched = group.options.find(option => option.value === diamond.design)
-        if (matched) break
-      }
+    const groups = getDesignOptionGroupsForSettingType(settingType, specOptions)
+    for (const group of groups) {
+      const matched = group.options.find(option => option.value === diamond.design)
       if (matched) {
         const override = overrideMap.get(overrideKey(matched.category, matched.value))
-        total += override != null ? override : (matched.price ?? 0)
+        return override != null ? override : (matched.price ?? 0)
       }
     }
-    total += priced('METAL', diamond.metal, specOptions.metals)
-    return total
+    return 0
+  }
+
+  const jewelleryPart = (diamond: SfsPricingDiamond): number => {
+    const design = designPrice(diamond)
+    // No design / Diamond only → metal contributes 0
+    if (design <= 0) return 0
+    const metalPct = priced('METAL', diamond.metal, specOptions.metals)
+    return round2(design * (1 + metalPct / 100))
   }
 
   const count = diamonds.length
@@ -110,7 +115,7 @@ export function computeSfsOrderPricing(input: ComputeSfsOrderPricingInput): SfsP
     const caratBase = priced('CARAT', diamond.carat, specOptions.carats)
     const shapeAdj = priced('SHAPE', diamond.shape, specOptions.shapes)
     const diamondPart = round2(caratBase + sourceAdj + colorAdj + shapeAdj)
-    const jewellery = round2(jewelleryPart(diamond))
+    const jewellery = jewelleryPart(diamond)
     const unitPrice = round2(diamondPart + jewellery)
     return { diamondPart, jewelleryPart: jewellery, unitPrice }
   })

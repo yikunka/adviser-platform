@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { formatSfsPriceLabel, isAdditiveSfsPriceCategory } from '@/lib/sfs/effective-pricing'
+import { formatSfsMetalPercentLabel, formatSfsPriceLabel, isAdditiveSfsPriceCategory, isMetalPercentSfsPriceCategory } from '@/lib/sfs/effective-pricing'
 import { CircleDollarSign, Loader2, Search } from 'lucide-react'
 import type { SfsDiamondSpecCategory } from '@prisma/client'
 
@@ -69,18 +69,18 @@ const PRICE_SECTIONS: PriceSection[] = [
       { value: 'SOURCE', label: 'Source' },
       { value: 'COLOR', label: 'Color' },
       { value: 'SHAPE', label: 'Shape' },
-      { value: 'METAL', label: 'Metal' },
     ],
   },
   {
     id: 'jewellery',
     title: '首饰价格',
-    subtitle: 'Jewellery design prices added after the diamond portion (HK$).',
+    subtitle: 'Design prices (HK$) plus Metal percent add-on on the selected design (10 = +10%).',
     categories: [
       { value: 'RING_DESIGN', label: 'Ring Design' },
       { value: 'NECKLACE_DESIGN', label: 'Necklace Design' },
       { value: 'EARRING_DESIGN', label: 'Earring Design' },
       { value: 'BRACELET_DESIGN', label: 'Bracelet Design' },
+      { value: 'METAL', label: 'Metal' },
     ],
   },
 ]
@@ -93,10 +93,21 @@ function isAdditiveCategory(category: Category) {
   return isAdditiveSfsPriceCategory(category as SfsDiamondSpecCategory)
 }
 
+function isMetalPercentCategory(category: Category) {
+  return isMetalPercentSfsPriceCategory(category as SfsDiamondSpecCategory)
+}
+
+function priceKindLabel(category: Category) {
+  if (isMetalPercentCategory(category)) return 'Add-on (%)'
+  if (isAdditiveCategory(category)) return 'Add-on (+/−)'
+  return 'Amount (HK$)'
+}
+
 function displayPrice(price: string | number | null, category: Category): string {
   if (price == null || price === '') return '—'
   const num = Number(price)
   if (Number.isNaN(num)) return '—'
+  if (isMetalPercentCategory(category)) return formatSfsMetalPercentLabel(num) ?? '—'
   return formatSfsPriceLabel(num, { additive: isAdditiveCategory(category) }) ?? '—'
 }
 
@@ -144,7 +155,7 @@ function SectionFilterChips({
 function FormulaHint() {
   return (
     <p className="text-xs rounded-md px-3 py-2" style={{ background: 'rgba(201,169,110,0.08)', color: '#C9A96E' }}>
-      计价：钻石部分 = 克拉基础 + Source + Color + Shape；首饰部分 = Design + Metal；客户下单页会即时加总。
+      计价：钻石部分 = 克拉基础 + Source + Color + Shape；首饰部分 = Design × (1 + Metal%)；无 Design 时 Metal = 0。客户下单页会即时加总。
     </p>
   )
 }
@@ -192,6 +203,7 @@ function StandardPricesPanel() {
             category: cat.value,
             label: cat.label,
             additive: isAdditiveCategory(cat.value),
+            metalPercent: isMetalPercentCategory(cat.value),
             options: sortOptions(options.filter(o => o.category === cat.value)),
           }))
           .filter(group => group.options.length > 0),
@@ -264,7 +276,7 @@ function StandardPricesPanel() {
                         {group.label}
                       </span>
                       <span className="text-[10px] font-medium" style={{ color: 'var(--muted-foreground)' }}>
-                        {group.additive ? 'Add-on (+/−)' : 'Amount (HK$)'}
+                        {priceKindLabel(group.category)}
                       </span>
                     </div>
                     <div className="overflow-x-auto">
@@ -274,7 +286,7 @@ function StandardPricesPanel() {
                             <th className="px-4 py-2.5 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>Option</th>
                             <th className="px-4 py-2.5 text-right font-medium" style={{ color: 'var(--muted-foreground)' }}>Current</th>
                             <th className="px-4 py-2.5 text-right font-medium" style={{ color: 'var(--muted-foreground)' }}>
-                              {group.additive ? 'New add-on' : 'New price'}
+                              {group.metalPercent ? 'New %' : group.additive ? 'New add-on' : 'New price'}
                             </th>
                             <th className="px-4 py-2.5 w-24" />
                           </tr>
@@ -296,7 +308,7 @@ function StandardPricesPanel() {
                                 </td>
                                 <td className="px-4 py-2.5 text-right">
                                   <div className="inline-flex items-center gap-1.5 justify-end">
-                                    {group.additive && (
+                                    {(group.additive || group.metalPercent) && (
                                       <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>+</span>
                                     )}
                                     <Input
@@ -307,6 +319,9 @@ function StandardPricesPanel() {
                                       placeholder="0"
                                       onChange={e => setDrafts(prev => ({ ...prev, [option.id]: e.target.value }))}
                                     />
+                                    {group.metalPercent && (
+                                      <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>%</span>
+                                    )}
                                   </div>
                                 </td>
                                 <td className="px-4 py-2.5 text-right">
@@ -426,6 +441,7 @@ function CustomerPricesPanel() {
             category: cat.value,
             label: cat.label,
             additive: isAdditiveCategory(cat.value),
+            metalPercent: isMetalPercentCategory(cat.value),
             options: sortOptions(specOptions.filter(o => o.category === cat.value)),
           }))
           .filter(group => group.options.length > 0),
@@ -568,7 +584,7 @@ function CustomerPricesPanel() {
                           {group.label}
                         </p>
                         <span className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>
-                          {group.additive ? 'Add-on (+/−)' : 'Amount (HK$)'}
+                          {priceKindLabel(group.category)}
                         </span>
                       </div>
                       <div className="overflow-x-auto rounded-md" style={{ border: '1px solid #2A2418' }}>
@@ -600,7 +616,7 @@ function CustomerPricesPanel() {
                                   </td>
                                   <td className="px-3 py-2 text-right">
                                     <div className="inline-flex items-center gap-1.5 justify-end ml-auto">
-                                      {group.additive && (
+                                      {(group.additive || group.metalPercent) && (
                                         <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>+</span>
                                       )}
                                       <Input
@@ -612,6 +628,9 @@ function CustomerPricesPanel() {
                                         disabled={!resolvedCustomerId}
                                         onChange={e => setDraftPrices(prev => ({ ...prev, [key]: e.target.value }))}
                                       />
+                                      {group.metalPercent && (
+                                        <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>%</span>
+                                      )}
                                     </div>
                                   </td>
                                   <td className="px-3 py-2 text-right">
@@ -654,7 +673,7 @@ export default function SfsFactoryPage() {
           价格管理
         </h1>
         <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-          基础价格 + Add-on + 首饰价格；客户下单页会即时加总。
+          基础价格 + Add-on + 首饰（Design + Metal%）；客户下单页会即时加总。
         </p>
       </div>
 

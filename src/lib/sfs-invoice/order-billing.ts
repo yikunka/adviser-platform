@@ -61,7 +61,7 @@ export async function sfsOrderBillingSnapshot(orderId: string): Promise<SfsOrder
 
   const diamonds = (Array.isArray(order.diamonds) ? order.diamonds : []) as DiamondRow[]
 
-  // Suggested unit prices: carat/color/shape/source base + design/metal jewellery +
+  // Suggested unit prices: carat/color/shape/source + design×(1+metal%) jewellery +
   // per-customer price overrides. Unpriced spec options resolve to 0.
   const specOptions = await getSfsOrderSpecOptions()
   const overrides: SfsPriceOverride[] = (order.customer?.priceOverrides ?? []).map(o => ({

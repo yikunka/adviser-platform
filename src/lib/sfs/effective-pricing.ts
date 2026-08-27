@@ -52,11 +52,28 @@ const ADDITIVE_CATEGORIES = new Set<SfsDiamondSpecCategory>([
   'SOURCE',
   'COLOR',
   'SHAPE',
-  'METAL',
 ])
 
 export function isAdditiveSfsPriceCategory(category: SfsDiamondSpecCategory): boolean {
   return ADDITIVE_CATEGORIES.has(category)
+}
+
+/** Metal catalog `price` stores a percent add-on on the jewellery design (10 ⇒ +10%). */
+export function isMetalPercentSfsPriceCategory(category: SfsDiamondSpecCategory): boolean {
+  return category === 'METAL'
+}
+
+/** Display helper for metal percent values stored on METAL options. */
+export function formatSfsMetalPercentLabel(percent: number | null | undefined): string | null {
+  if (percent == null || Number.isNaN(Number(percent))) return null
+  const value = Number(percent)
+  const abs = Math.abs(value)
+  const formatted = abs.toLocaleString('en-HK', {
+    minimumFractionDigits: Number.isInteger(abs) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })
+  if (value === 0) return '+0%'
+  return value > 0 ? `+${formatted}%` : `−${formatted}%`
 }
 
 /** Display helper for option cards and price lists. */
