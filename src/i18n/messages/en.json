@@ -716,9 +716,7 @@
           "specs": "Diamond specs",
           "invoices": "Invoices"
         }
-      },
-      "recentActivity": "Recent Activity",
-      "noActivity": "No recent activity."
+      }
     },
     "companies": {
       "title": "Companies",

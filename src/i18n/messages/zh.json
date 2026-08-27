@@ -716,9 +716,7 @@
           "specs": "鑽石規格",
           "invoices": "發票"
         }
-      },
-      "recentActivity": "最近活動",
-      "noActivity": "暫無活動記錄。"
+      }
     },
     "companies": {
       "title": "公司管理",

@@ -106,12 +106,6 @@ export default async function AdminDashboardPage() {
     }),
   ])
 
-  const recentActivity = await prisma.auditLog.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 10,
-    include: { user: { select: { nameEn: true } } },
-  })
-
   const adviserStats = [
     { label: t('totalCompanies'), value: totalCompanies, href: '/admin/companies', accent: '#38bdf8' },
     { label: t('pendingKyc'), value: pendingKyc, href: '/admin/kyc', accent: '#f59e0b' },
@@ -459,29 +453,6 @@ export default async function AdminDashboardPage() {
           </CardContent>
         </Card>
       )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t('recentActivity')}</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {recentActivity.length === 0 ? (
-            <p className="px-6 py-4 text-sm" style={{ color: 'var(--muted-foreground)' }}>{t('noActivity')}</p>
-          ) : (
-            <ul className="divide-y divide-[#2A2418]">
-              {recentActivity.map(log => (
-                <li key={log.id} className="px-6 py-3 flex gap-3 text-sm">
-                  <span className="whitespace-nowrap" style={{ color: '#5A5040' }}>
-                    {new Date(log.createdAt).toLocaleString()}
-                  </span>
-                  <span className="font-medium" style={{ color: 'var(--foreground)' }}>{log.user?.nameEn ?? '—'}</span>
-                  <span style={{ color: 'var(--muted-foreground)' }}>{log.action} {log.entityType}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
     </div>
   )
 }
