@@ -7,8 +7,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { formatSfsPriceLabel } from '@/lib/sfs/effective-pricing'
-import { Factory, Loader2, Search } from 'lucide-react'
+import { formatSfsPriceLabel, isAdditiveSfsPriceCategory } from '@/lib/sfs/effective-pricing'
+import { CircleDollarSign, Loader2, Search } from 'lucide-react'
+import type { SfsDiamondSpecCategory } from '@prisma/client'
 
 type Category =
   | 'SOURCE'
@@ -44,32 +45,114 @@ type CustomerRow = {
 
 type PriceOverride = { category: Category; value: string; price: string | number }
 
-const PRICE_CATEGORIES: { value: Category; label: string }[] = [
-  { value: 'SOURCE', label: 'Source' },
-  { value: 'COLOR', label: 'Color' },
-  { value: 'CARAT', label: 'Carat' },
-  { value: 'SHAPE', label: 'Shape' },
-  { value: 'METAL', label: 'Metal' },
-  { value: 'RING_DESIGN', label: 'Ring Design' },
-  { value: 'NECKLACE_DESIGN', label: 'Necklace Design' },
-  { value: 'EARRING_DESIGN', label: 'Earring Design' },
-  { value: 'BRACELET_DESIGN', label: 'Bracelet Design' },
+type PriceSectionId = 'base' | 'addon' | 'jewellery'
+
+type PriceSection = {
+  id: PriceSectionId
+  title: string
+  subtitle: string
+  categories: { value: Category; label: string }[]
+}
+
+const PRICE_SECTIONS: PriceSection[] = [
+  {
+    id: 'base',
+    title: '基础价格',
+    subtitle: 'Carat base price for each diamond (HK$).',
+    categories: [{ value: 'CARAT', label: 'Carat' }],
+  },
+  {
+    id: 'addon',
+    title: 'Add-on',
+    subtitle: 'Adjustments added on top of the carat base (+/− HKD).',
+    categories: [
+      { value: 'SOURCE', label: 'Source' },
+      { value: 'COLOR', label: 'Color' },
+      { value: 'SHAPE', label: 'Shape' },
+      { value: 'METAL', label: 'Metal' },
+    ],
+  },
+  {
+    id: 'jewellery',
+    title: '首饰价格',
+    subtitle: 'Jewellery design prices added after the diamond portion (HK$).',
+    categories: [
+      { value: 'RING_DESIGN', label: 'Ring Design' },
+      { value: 'NECKLACE_DESIGN', label: 'Necklace Design' },
+      { value: 'EARRING_DESIGN', label: 'Earring Design' },
+      { value: 'BRACELET_DESIGN', label: 'Bracelet Design' },
+    ],
+  },
 ]
 
-const CATEGORY_LABEL = Object.fromEntries(PRICE_CATEGORIES.map(c => [c.value, c.label])) as Record<string, string>
+const PRICE_CATEGORIES = PRICE_SECTIONS.flatMap(section => section.categories)
 const PRICE_CATEGORY_SET = new Set(PRICE_CATEGORIES.map(c => c.value))
+const CATEGORY_ORDER = PRICE_CATEGORIES.map(c => c.value)
 
-function formatPrice(price: string | number | null): string {
+function isAdditiveCategory(category: Category) {
+  return isAdditiveSfsPriceCategory(category as SfsDiamondSpecCategory)
+}
+
+function displayPrice(price: string | number | null, category: Category): string {
   if (price == null || price === '') return '—'
   const num = Number(price)
   if (Number.isNaN(num)) return '—'
-  return num.toFixed(2)
+  return formatSfsPriceLabel(num, { additive: isAdditiveCategory(category) }) ?? '—'
+}
+
+function sortOptions(rows: SpecOption[]) {
+  return [...rows].sort((a, b) => {
+    if (a.category !== b.category) {
+      return CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category)
+    }
+    return a.sortOrder - b.sortOrder || a.label.localeCompare(b.label)
+  })
+}
+
+function SectionFilterChips({
+  value,
+  onChange,
+}: {
+  value: PriceSectionId | 'ALL'
+  onChange: (next: PriceSectionId | 'ALL') => void
+}) {
+  const chips: { id: PriceSectionId | 'ALL'; label: string }[] = [
+    { id: 'ALL', label: '全部' },
+    ...PRICE_SECTIONS.map(section => ({ id: section.id, label: section.title })),
+  ]
+  return (
+    <div className="flex flex-wrap gap-2">
+      {chips.map(chip => (
+        <button
+          key={chip.id}
+          type="button"
+          onClick={() => onChange(chip.id)}
+          className="rounded-full px-3 py-1.5 text-xs font-medium border transition-colors"
+          style={{
+            borderColor: value === chip.id ? '#C9A96E' : '#2A2418',
+            color: value === chip.id ? '#C9A96E' : 'var(--muted-foreground)',
+            background: value === chip.id ? 'rgba(201,169,110,0.12)' : '#0A0A0A',
+          }}
+        >
+          {chip.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function FormulaHint() {
+  return (
+    <p className="text-xs rounded-md px-3 py-2" style={{ background: 'rgba(201,169,110,0.08)', color: '#C9A96E' }}>
+      计价：钻石部分 = 克拉基础 + Source + Color + Shape；首饰部分 = Design + Metal；客户下单页会即时加总。
+    </p>
+  )
 }
 
 function StandardPricesPanel() {
   const [options, setOptions] = useState<SpecOption[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<Category | 'ALL'>('ALL')
+  const [sectionFilter, setSectionFilter] = useState<PriceSectionId | 'ALL'>('ALL')
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [savingId, setSavingId] = useState<string | null>(null)
 
@@ -97,15 +180,24 @@ function StandardPricesPanel() {
     void load()
   }, [load])
 
-  const filtered = useMemo(() => {
-    const rows = filter === 'ALL' ? options : options.filter(o => o.category === filter)
-    return [...rows].sort((a, b) => {
-      if (a.category !== b.category) {
-        return PRICE_CATEGORIES.findIndex(c => c.value === a.category) - PRICE_CATEGORIES.findIndex(c => c.value === b.category)
-      }
-      return a.sortOrder - b.sortOrder || a.label.localeCompare(b.label)
-    })
-  }, [filter, options])
+  const sections = useMemo(() => {
+    const visible = sectionFilter === 'ALL'
+      ? PRICE_SECTIONS
+      : PRICE_SECTIONS.filter(section => section.id === sectionFilter)
+    return visible
+      .map(section => ({
+        ...section,
+        groups: section.categories
+          .map(cat => ({
+            category: cat.value,
+            label: cat.label,
+            additive: isAdditiveCategory(cat.value),
+            options: sortOptions(options.filter(o => o.category === cat.value)),
+          }))
+          .filter(group => group.options.length > 0),
+      }))
+      .filter(section => section.groups.length > 0)
+  }, [options, sectionFilter])
 
   async function savePrice(option: SpecOption) {
     const raw = (drafts[option.id] ?? '').trim()
@@ -139,106 +231,107 @@ function StandardPricesPanel() {
   return (
     <div className="space-y-4">
       <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-        Edit standard prices for each product option. Spec labels and images stay under Diamond Specs.
+        按「基础价格 → Add-on → 首饰价格」维护标准价。规格名称与图片仍在 Diamond Specs。
       </p>
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setFilter('ALL')}
-          className="rounded-full px-3 py-1.5 text-xs font-medium border transition-colors"
-          style={{
-            borderColor: filter === 'ALL' ? '#C9A96E' : '#2A2418',
-            color: filter === 'ALL' ? '#C9A96E' : 'var(--muted-foreground)',
-            background: filter === 'ALL' ? 'rgba(201,169,110,0.12)' : '#0A0A0A',
-          }}
-        >
-          All
-        </button>
-        {PRICE_CATEGORIES.map(category => (
-          <button
-            key={category.value}
-            type="button"
-            onClick={() => setFilter(category.value)}
-            className="rounded-full px-3 py-1.5 text-xs font-medium border transition-colors"
-            style={{
-              borderColor: filter === category.value ? '#C9A96E' : '#2A2418',
-              color: filter === category.value ? '#C9A96E' : 'var(--muted-foreground)',
-              background: filter === category.value ? 'rgba(201,169,110,0.12)' : '#0A0A0A',
-            }}
-          >
-            {category.label}
-          </button>
-        ))}
-      </div>
+      <FormulaHint />
+      <SectionFilterChips value={sectionFilter} onChange={setSectionFilter} />
 
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead style={{ background: '#111108', borderBottom: '1px solid #2A2418' }}>
-                <tr>
-                  {['Category', 'Option', 'Current', 'New price (HKD)', ''].map(h => (
-                    <th key={h || 'actions'} className="px-4 py-3 text-left font-medium whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#2A2418]">
-                {loading ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>
-                      <Loader2 size={16} className="inline animate-spin mr-2" /> Loading...
-                    </td>
-                  </tr>
-                ) : filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>
-                      No priced options yet. Add options under Diamond Specs first.
-                    </td>
-                  </tr>
-                ) : filtered.map(option => {
-                  const draft = drafts[option.id] ?? ''
-                  const current = formatPrice(option.price)
-                  const dirty = (option.price == null || option.price === '' ? '' : String(Number(option.price))) !== draft.trim()
-                  return (
-                    <tr key={option.id} className="hover:bg-[#1A1A12]/50">
-                      <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>
-                        {CATEGORY_LABEL[option.category] ?? option.category}
-                      </td>
-                      <td className="px-4 py-3 min-w-[200px]" style={{ color: 'var(--foreground)' }}>
-                        {option.label}
-                        {!option.isActive && (
-                          <span className="ml-2 text-[10px]" style={{ color: 'var(--muted-foreground)' }}>(hidden)</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 tabular-nums" style={{ color: 'var(--muted-foreground)' }}>{current}</td>
-                      <td className="px-4 py-3">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          className="max-w-[10rem]"
-                          value={draft}
-                          placeholder="0"
-                          onChange={e => setDrafts(prev => ({ ...prev, [option.id]: e.target.value }))}
-                        />
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Button
-                          size="sm"
-                          disabled={!dirty || savingId === option.id}
-                          onClick={() => void savePrice(option)}
-                        >
-                          {savingId === option.id ? <Loader2 size={13} className="animate-spin" /> : null}
-                          Save
-                        </Button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      {loading ? (
+        <Card>
+          <CardContent className="py-12 text-center text-sm" style={{ color: 'var(--muted-foreground)' }}>
+            <Loader2 size={16} className="inline animate-spin mr-2" /> Loading...
+          </CardContent>
+        </Card>
+      ) : sections.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-sm" style={{ color: 'var(--muted-foreground)' }}>
+            No priced options yet. Add options under Diamond Specs first.
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-5">
+          {sections.map(section => (
+            <div key={section.id} className="space-y-3">
+              <div>
+                <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>{section.title}</h3>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{section.subtitle}</p>
+              </div>
+              {section.groups.map(group => (
+                <Card key={group.category}>
+                  <CardContent className="p-0">
+                    <div className="px-4 py-2.5 flex items-center justify-between border-b border-[#2A2418]">
+                      <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>
+                        {group.label}
+                      </span>
+                      <span className="text-[10px] font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                        {group.additive ? 'Add-on (+/−)' : 'Amount (HK$)'}
+                      </span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead style={{ background: '#111108', borderBottom: '1px solid #2A2418' }}>
+                          <tr>
+                            <th className="px-4 py-2.5 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>Option</th>
+                            <th className="px-4 py-2.5 text-right font-medium" style={{ color: 'var(--muted-foreground)' }}>Current</th>
+                            <th className="px-4 py-2.5 text-right font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                              {group.additive ? 'New add-on' : 'New price'}
+                            </th>
+                            <th className="px-4 py-2.5 w-24" />
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#2A2418]">
+                          {group.options.map(option => {
+                            const draft = drafts[option.id] ?? ''
+                            const dirty = (option.price == null || option.price === '' ? '' : String(Number(option.price))) !== draft.trim()
+                            return (
+                              <tr key={option.id} className="hover:bg-[#1A1A12]/50">
+                                <td className="px-4 py-2.5 min-w-[200px]" style={{ color: 'var(--foreground)' }}>
+                                  {option.label}
+                                  {!option.isActive && (
+                                    <span className="ml-2 text-[10px]" style={{ color: 'var(--muted-foreground)' }}>(hidden)</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: 'var(--muted-foreground)' }}>
+                                  {displayPrice(option.price, option.category)}
+                                </td>
+                                <td className="px-4 py-2.5 text-right">
+                                  <div className="inline-flex items-center gap-1.5 justify-end">
+                                    {group.additive && (
+                                      <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>+</span>
+                                    )}
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      className="max-w-[9rem] text-right"
+                                      value={draft}
+                                      placeholder="0"
+                                      onChange={e => setDrafts(prev => ({ ...prev, [option.id]: e.target.value }))}
+                                    />
+                                  </div>
+                                </td>
+                                <td className="px-4 py-2.5 text-right">
+                                  <Button
+                                    size="sm"
+                                    disabled={!dirty || savingId === option.id}
+                                    onClick={() => void savePrice(option)}
+                                  >
+                                    {savingId === option.id ? <Loader2 size={13} className="animate-spin" /> : null}
+                                    Save
+                                  </Button>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -252,7 +345,7 @@ function CustomerPricesPanel() {
   const [draftPrices, setDraftPrices] = useState<Record<string, string>>({})
   const [loadingPrices, setLoadingPrices] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [filterCategory, setFilterCategory] = useState<Category | 'ALL'>('ALL')
+  const [sectionFilter, setSectionFilter] = useState<PriceSectionId | 'ALL'>('ALL')
   const [boundCustomerId, setBoundCustomerId] = useState<string | null>(null)
 
   const selected = customers.find(c => c.id === selectedId) ?? null
@@ -321,18 +414,24 @@ function CustomerPricesPanel() {
     void loadPrices(selected)
   }, [selected, loadPrices])
 
-  const rows = useMemo(() => {
-    const cats = filterCategory === 'ALL' ? PRICE_CATEGORIES : PRICE_CATEGORIES.filter(c => c.value === filterCategory)
-    return cats
-      .map(cat => ({
-        category: cat.value,
-        label: cat.label,
-        options: specOptions
-          .filter(o => o.category === cat.value)
-          .sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label)),
+  const sections = useMemo(() => {
+    const visible = sectionFilter === 'ALL'
+      ? PRICE_SECTIONS
+      : PRICE_SECTIONS.filter(section => section.id === sectionFilter)
+    return visible
+      .map(section => ({
+        ...section,
+        groups: section.categories
+          .map(cat => ({
+            category: cat.value,
+            label: cat.label,
+            additive: isAdditiveCategory(cat.value),
+            options: sortOptions(specOptions.filter(o => o.category === cat.value)),
+          }))
+          .filter(group => group.options.length > 0),
       }))
-      .filter(group => group.options.length > 0)
-  }, [filterCategory, specOptions])
+      .filter(section => section.groups.length > 0)
+  }, [sectionFilter, specOptions])
 
   async function savePriceList() {
     if (!selected) return
@@ -377,8 +476,9 @@ function CustomerPricesPanel() {
   return (
     <div className="space-y-4">
       <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-        Choose a customer, then set their prices by product category. Blank cells use the standard price.
+        选择客户后，按「基础价格 → Add-on → 首饰价格」设置客户价。空白 = 用标准价。
       </p>
+      <FormulaHint />
 
       <div className="flex flex-wrap items-end gap-3">
         <label className="space-y-1.5 block min-w-[240px] flex-1 max-w-md">
@@ -432,22 +532,9 @@ function CustomerPricesPanel() {
                 {[selected.phone, selected.email].filter(Boolean).join(' · ') || 'No contact details'}
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <select
-                value={filterCategory}
-                onChange={e => setFilterCategory(e.target.value as Category | 'ALL')}
-                className="rounded-md px-2.5 py-2 text-sm outline-none"
-                style={{ background: '#111111', border: '1px solid #2A2418', color: 'var(--foreground)' }}
-              >
-                <option value="ALL">All categories</option>
-                {PRICE_CATEGORIES.map(c => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
-                ))}
-              </select>
-              <Button type="button" size="sm" disabled={saving || loadingPrices || !resolvedCustomerId} onClick={() => void savePriceList()}>
-                {saving ? 'Saving…' : `Save list (${overrideCount})`}
-              </Button>
-            </div>
+            <Button type="button" size="sm" disabled={saving || loadingPrices || !resolvedCustomerId} onClick={() => void savePriceList()}>
+              {saving ? 'Saving…' : `Save list (${overrideCount})`}
+            </Button>
           </div>
 
           {!resolvedCustomerId && (
@@ -456,76 +543,98 @@ function CustomerPricesPanel() {
             </p>
           )}
 
+          <SectionFilterChips value={sectionFilter} onChange={setSectionFilter} />
+
           {loadingPrices ? (
             <p className="text-xs py-6 text-center" style={{ color: 'var(--muted-foreground)' }}>
               <Loader2 size={14} className="inline animate-spin mr-2" /> Loading price list...
             </p>
-          ) : rows.length === 0 ? (
+          ) : sections.length === 0 ? (
             <p className="text-xs py-6 text-center" style={{ color: 'var(--muted-foreground)' }}>
               No diamond specs found. Add options under Diamond Specs first.
             </p>
           ) : (
-            <div className="space-y-4">
-              {rows.map(group => (
-                <div key={group.category} className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#C9A96E' }}>{group.label}</p>
-                  <div className="overflow-x-auto rounded-md" style={{ border: '1px solid #2A2418' }}>
-                    <table className="w-full text-sm">
-                      <thead style={{ background: '#111108' }}>
-                        <tr>
-                          <th className="px-3 py-2 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>Option</th>
-                          <th className="px-3 py-2 text-right font-medium" style={{ color: 'var(--muted-foreground)' }}>Standard</th>
-                          <th className="px-3 py-2 text-right font-medium" style={{ color: 'var(--muted-foreground)' }}>This client</th>
-                          <th className="px-3 py-2 w-20" />
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#2A2418]">
-                        {group.options.map(option => {
-                          const key = `${option.category}|${option.value}`
-                          const globalPrice = option.price == null ? null : Number(option.price)
-                          const draft = draftPrices[key] ?? ''
-                          const isOverride = draft.trim() !== ''
-                          return (
-                            <tr key={key} style={{ background: isOverride ? 'rgba(201,169,110,0.06)' : undefined }}>
-                              <td className="px-3 py-2" style={{ color: 'var(--foreground)' }}>
-                                {option.label}
-                                {!option.isActive && (
-                                  <span className="ml-2 text-[10px]" style={{ color: 'var(--muted-foreground)' }}>(hidden)</span>
-                                )}
-                              </td>
-                              <td className="px-3 py-2 text-right tabular-nums" style={{ color: 'var(--muted-foreground)' }}>
-                                {globalPrice == null ? '—' : formatSfsPriceLabel(globalPrice) ?? '—'}
-                              </td>
-                              <td className="px-3 py-2 text-right">
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  className="ml-auto max-w-[8rem] text-right"
-                                  value={draft}
-                                  placeholder={globalPrice == null ? '0' : String(globalPrice)}
-                                  disabled={!resolvedCustomerId}
-                                  onChange={e => setDraftPrices(prev => ({ ...prev, [key]: e.target.value }))}
-                                />
-                              </td>
-                              <td className="px-3 py-2 text-right">
-                                {isOverride && (
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={!resolvedCustomerId}
-                                    onClick={() => setDraftPrices(prev => ({ ...prev, [key]: '' }))}
-                                  >
-                                    Reset
-                                  </Button>
-                                )}
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
+            <div className="space-y-5">
+              {sections.map(section => (
+                <div key={section.id} className="space-y-3">
+                  <div>
+                    <h4 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>{section.title}</h4>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{section.subtitle}</p>
                   </div>
+                  {section.groups.map(group => (
+                    <div key={group.category} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>
+                          {group.label}
+                        </p>
+                        <span className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>
+                          {group.additive ? 'Add-on (+/−)' : 'Amount (HK$)'}
+                        </span>
+                      </div>
+                      <div className="overflow-x-auto rounded-md" style={{ border: '1px solid #2A2418' }}>
+                        <table className="w-full text-sm">
+                          <thead style={{ background: '#111108' }}>
+                            <tr>
+                              <th className="px-3 py-2 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>Option</th>
+                              <th className="px-3 py-2 text-right font-medium" style={{ color: 'var(--muted-foreground)' }}>Standard</th>
+                              <th className="px-3 py-2 text-right font-medium" style={{ color: 'var(--muted-foreground)' }}>This client</th>
+                              <th className="px-3 py-2 w-20" />
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[#2A2418]">
+                            {group.options.map(option => {
+                              const key = `${option.category}|${option.value}`
+                              const globalPrice = option.price == null ? null : Number(option.price)
+                              const draft = draftPrices[key] ?? ''
+                              const isOverride = draft.trim() !== ''
+                              return (
+                                <tr key={key} style={{ background: isOverride ? 'rgba(201,169,110,0.06)' : undefined }}>
+                                  <td className="px-3 py-2" style={{ color: 'var(--foreground)' }}>
+                                    {option.label}
+                                    {!option.isActive && (
+                                      <span className="ml-2 text-[10px]" style={{ color: 'var(--muted-foreground)' }}>(hidden)</span>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2 text-right tabular-nums" style={{ color: 'var(--muted-foreground)' }}>
+                                    {displayPrice(option.price, option.category)}
+                                  </td>
+                                  <td className="px-3 py-2 text-right">
+                                    <div className="inline-flex items-center gap-1.5 justify-end ml-auto">
+                                      {group.additive && (
+                                        <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>+</span>
+                                      )}
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        className="max-w-[8rem] text-right"
+                                        value={draft}
+                                        placeholder={globalPrice == null ? '0' : String(globalPrice)}
+                                        disabled={!resolvedCustomerId}
+                                        onChange={e => setDraftPrices(prev => ({ ...prev, [key]: e.target.value }))}
+                                      />
+                                    </div>
+                                  </td>
+                                  <td className="px-3 py-2 text-right">
+                                    {isOverride && (
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={!resolvedCustomerId}
+                                        onClick={() => setDraftPrices(prev => ({ ...prev, [key]: '' }))}
+                                      >
+                                        Reset
+                                      </Button>
+                                    )}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>
@@ -541,11 +650,11 @@ export default function SfsFactoryPage() {
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--foreground)' }}>
-          <Factory size={22} style={{ color: '#C9A96E' }} />
+          <CircleDollarSign size={22} style={{ color: '#C9A96E' }} />
           价格管理
         </h1>
         <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-          Standard prices and per-customer price lists for SFS Diamond products.
+          基础价格 + Add-on + 首饰价格；客户下单页会即时加总。
         </p>
       </div>
 

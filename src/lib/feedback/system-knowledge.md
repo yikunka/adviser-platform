@@ -237,10 +237,12 @@ Customer-facing order option management for SFS Diamond.
 
 ### SFS Price Management (`/admin/sfs-factory`)
 Pricing for SFS Diamond products (menu: 价格管理).
-- Two tabs: **标准价格** (edit global catalog prices per spec option) and **客户价格** (pick a customer, then set client overrides vs global)
+- Two tabs: **标准价格** and **客户价格**, both grouped as **基础价格 (Carat)** → **Add-on (Source / Color / Shape / Metal)** → **首饰价格 (Designs)**
+- Add-on amounts display as `+HK$…` / `−HK$…`; base and design amounts as `HK$…`
 - Price meaning by category: CARAT = diamond base price; SOURCE/COLOR/SHAPE/METAL = additive adjustment (may be negative); each design (Ring/Necklace/Earring/Bracelet) = jewellery price; unset price counts as 0
 - Diamond pricing model (per diamond): `(caratBase + sourceAdj + colorAdj + shapeAdj)` for the diamond portion, plus the design price + metal adjustment for the jewellery portion; per-customer overrides replace the matching global prices
 - Blank client override = use global standard price; saved overrides apply to quoting, invoicing, and the client order form
+- Live estimated totals remain on the customer order wizard (`/sfsdiamond/order`), not on this admin page
 
 ### SFS Orders Admin (`/admin/sfs-orders`)
 Order lifecycle management for memorial diamond commissions.
