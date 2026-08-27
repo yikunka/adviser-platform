@@ -28,7 +28,7 @@ function toUniqueConstraintMessage(error: unknown) {
 }
 
 export async function GET() {
-  const { error } = await requireRole('STAFF', { adminMenu: 'sfsDiamondSpecs' })
+  const { error } = await requireRole('STAFF', { adminMenus: ['sfsDiamondSpecs', 'sfsFactory'] })
   if (error) return error
 
   const options = await prisma.sfsDiamondSpecOption.findMany({

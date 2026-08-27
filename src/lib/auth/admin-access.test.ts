@@ -21,14 +21,18 @@ describe('Adviser contract and TCSP pricing access', () => {
 describe('SFS Diamond access', () => {
   it('registers SFS Diamond modules in Role Management permissions', () => {
     expect(ADMIN_MENU_KEYS).toContain('sfsOrders')
+    expect(ADMIN_MENU_KEYS).toContain('sfsFactory')
     expect(MENU_PLATFORM.sfsOrders).toBe('SFS_DIAMOND')
+    expect(MENU_PLATFORM.sfsFactory).toBe('SFS_DIAMOND')
     expect(isValidPermission('sfsOrders.create')).toBe(true)
     expect(isValidPermission('sfsOrders.delete')).toBe(true)
     expect(isValidPermission('sfsOrders.manageSteps')).toBe(true)
+    expect(isValidPermission('sfsFactory.edit')).toBe(true)
   })
 
   it('maps SFS Diamond routes to permission keys', () => {
     expect(pathnameToAdminMenuKey('/zh/admin/sfs-orders')).toBe('sfsOrders')
     expect(pathnameToAdminMenuKey('/zh/admin/sfs-customers')).toBe('sfsCustomers')
+    expect(pathnameToAdminMenuKey('/zh/admin/sfs-factory')).toBe('sfsFactory')
   })
 })

@@ -89,7 +89,7 @@ function rowMatches(row: SfsCustomerRow, q: string) {
 }
 
 export async function GET(req: NextRequest) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'sfsCustomers' })
+  const { error } = await requireRole('STAFF', { adminMenus: ['sfsCustomers', 'sfsFactory'] })
   if (error) return error
 
   const { searchParams } = req.nextUrl

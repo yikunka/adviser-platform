@@ -20,6 +20,8 @@ type RBACResult =
 export type RequireRoleOptions = {
   /** When set, staff (non–super-admin) must have this Admin Console menu permission. */
   adminMenu?: AdminMenuKey
+  /** When set, staff must have at least one of these menu permissions. */
+  adminMenus?: AdminMenuKey[]
 }
 
 const userPermSelect = {
@@ -38,7 +40,7 @@ export async function requireRole(minRole: UserRole, opts?: RequireRoleOptions):
     return { session: null, error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
   }
 
-  if (opts?.adminMenu && ROLE_RANK[session.user.role] >= ROLE_RANK.STAFF) {
+  if ((opts?.adminMenu || opts?.adminMenus?.length) && ROLE_RANK[session.user.role] >= ROLE_RANK.STAFF) {
     if (session.user.role !== 'SUPER_ADMIN') {
       const row = await prisma.user.findUnique({
         where: { id: session.user.id },
@@ -51,7 +53,12 @@ export async function requireRole(minRole: UserRole, opts?: RequireRoleOptions):
         ...row,
         adminRolesPermissions: row.adminRoles.map(r => r.role.permissions),
       })
-      if (!adminMenusAllow(menus, opts.adminMenu)) {
+      const required = [
+        ...(opts.adminMenu ? [opts.adminMenu] : []),
+        ...(opts.adminMenus ?? []),
+      ]
+      const allowed = required.some(key => adminMenusAllow(menus, key))
+      if (!allowed) {
         return { session: null, error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
       }
     }

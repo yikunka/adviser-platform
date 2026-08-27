@@ -20,6 +20,7 @@ export const ADMIN_MENU_KEYS = [
   'sfsOrders',
   'sfsInvoices',
   'sfsDiamondSpecs',
+  'sfsFactory',
   'settings',
   'adminTeam',
   'adminRoles',
@@ -50,6 +51,7 @@ export const MENU_PLATFORM: Record<AdminMenuKey, Platform | 'GLOBAL'> = {
   sfsOrders: 'SFS_DIAMOND',
   sfsInvoices: 'SFS_DIAMOND',
   sfsDiamondSpecs: 'SFS_DIAMOND',
+  sfsFactory: 'SFS_DIAMOND',
 }
 
 export type AdminAccessUser = {
@@ -160,6 +162,8 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
       return 'sfsInvoices'
     case 'sfs-diamond-specs':
       return 'sfsDiamondSpecs'
+    case 'sfs-factory':
+      return 'sfsFactory'
     case 'settings':
       return 'settings'
     case 'team':
@@ -197,6 +201,7 @@ export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: stri
   { key: 'sfsOrders', label: 'SFS orders', group: 'SFS Diamond' },
   { key: 'sfsInvoices', label: 'SFS invoices', group: 'SFS Invoices' },
   { key: 'sfsDiamondSpecs', label: 'Diamond specs', group: 'SFS Diamond' },
+  { key: 'sfsFactory', label: 'Factory management', group: 'SFS Diamond' },
   { key: 'settings', label: 'Settings', group: 'System' },
   { key: 'adminTeam', label: 'Admin users & access', group: 'System' },
   { key: 'adminRoles', label: 'Role management', group: 'System' },

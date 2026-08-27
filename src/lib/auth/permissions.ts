@@ -62,6 +62,7 @@ export const PERMISSION_GROUPS: PermGroup[] = [
       { menuKey: 'sfsCustomers',    label: '客户',   actions: ['create', 'edit', 'delete'] },
       { menuKey: 'sfsOrders',       label: '订单',   actions: ['create', 'edit', 'delete', 'complete', 'manageSteps'] },
       { menuKey: 'sfsDiamondSpecs', label: '钻石规格', actions: ['create', 'edit', 'delete'] },
+      { menuKey: 'sfsFactory',      label: '工厂管理', actions: ['edit'] },
       { menuKey: 'sfsInvoices',     label: '发票',   actions: ['create', 'edit', 'delete'] },
     ],
   },

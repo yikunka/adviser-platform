@@ -1,13 +1,12 @@
 'use client'
 
-import { type CSSProperties, type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Link } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { formatSfsPriceLabel } from '@/lib/sfs/effective-pricing'
 import { ContactRound, Download, FileText, Mail, MapPin, Pencil, Phone, Search, Trash2, Upload, UserPlus, X } from 'lucide-react'
 
 type CustomerRow = {
@@ -45,20 +44,6 @@ type CustomerFormValues = {
   mailingAddress: string
   notes: string
 }
-
-const OVERRIDE_CATEGORIES = [
-  { value: 'SOURCE', label: 'Source (adjustment)' },
-  { value: 'CARAT', label: 'Carat (base price)' },
-  { value: 'COLOR', label: 'Color (adjustment)' },
-  { value: 'SHAPE', label: 'Shape (adjustment)' },
-  { value: 'METAL', label: 'Metal (adjustment)' },
-  { value: 'RING_DESIGN', label: 'Ring Design (price)' },
-  { value: 'NECKLACE_DESIGN', label: 'Necklace Design (price)' },
-  { value: 'EARRING_DESIGN', label: 'Earring Design (price)' },
-  { value: 'BRACELET_DESIGN', label: 'Bracelet Design (price)' },
-] as const
-
-type OverrideCategory = (typeof OVERRIDE_CATEGORIES)[number]['value']
 
 const SOURCE_STYLE: Record<CustomerRow['source'], { label: string; bg: string; color: string }> = {
   ACCOUNT: { label: 'Account', bg: 'rgba(56,189,248,0.13)', color: '#38bdf8' },
@@ -286,240 +271,6 @@ function CustomerContractsSection({
   )
 }
 
-type PriceOverride = { category: OverrideCategory; value: string; price: string | number }
-type SpecOptionLite = {
-  category: string
-  value: string
-  label: string
-  isActive: boolean
-  price: string | number | null
-}
-
-const SELECT_STYLE: CSSProperties = {
-  background: '#0A0A0A',
-  border: '1px solid #2A2418',
-  color: 'var(--foreground)',
-}
-
-function CustomerPriceOverridesSection({
-  customer,
-  onCustomerBound,
-}: {
-  customer: CustomerRow
-  onCustomerBound: (customerId: string) => void
-}) {
-  const [overrides, setOverrides] = useState<PriceOverride[]>([])
-  const [specOptions, setSpecOptions] = useState<SpecOptionLite[]>([])
-  const [draftPrices, setDraftPrices] = useState<Record<string, string>>({})
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [filterCategory, setFilterCategory] = useState<OverrideCategory | 'ALL'>('ALL')
-  const resolvedCustomerId = customer.customerId
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [overridesRes, specsRes] = await Promise.all([
-        fetch(`/api/admin/sfs-customers/${encodeURIComponent(customer.id)}/price-overrides`),
-        fetch('/api/admin/sfs-diamond-specs'),
-      ])
-      const overridesJson = await overridesRes.json().catch(() => ({}))
-      const specsJson = await specsRes.json().catch(() => ({}))
-      if (!overridesRes.ok) throw new Error(overridesJson.error ?? 'Failed to load overrides')
-      if (overridesJson.customerId && !resolvedCustomerId) onCustomerBound(overridesJson.customerId)
-      const nextOverrides: PriceOverride[] = overridesJson.overrides ?? []
-      setOverrides(nextOverrides)
-      const options: SpecOptionLite[] = (specsJson.options ?? []).filter((o: SpecOptionLite) =>
-        OVERRIDE_CATEGORIES.some(c => c.value === o.category),
-      )
-      setSpecOptions(options)
-      const overrideMap = new Map(nextOverrides.map(o => [`${o.category}|${o.value}`, String(Number(o.price))]))
-      const drafts: Record<string, string> = {}
-      for (const option of options) {
-        const key = `${option.category}|${option.value}`
-        drafts[key] = overrideMap.get(key) ?? ''
-      }
-      setDraftPrices(drafts)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to load price list.')
-    } finally {
-      setLoading(false)
-    }
-  }, [customer.id, onCustomerBound, resolvedCustomerId])
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- load() updates state asynchronously after fetching pricing options.
-  useEffect(() => { void load() }, [load])
-
-  const rows = useMemo(() => {
-    const activeCats = filterCategory === 'ALL'
-      ? OVERRIDE_CATEGORIES.map(c => c.value)
-      : [filterCategory]
-    return OVERRIDE_CATEGORIES
-      .filter(c => activeCats.includes(c.value))
-      .map(cat => ({
-        category: cat.value,
-        label: cat.label,
-        options: specOptions
-          .filter(o => o.category === cat.value)
-          .sort((a, b) => a.label.localeCompare(b.label)),
-      }))
-      .filter(group => group.options.length > 0)
-  }, [filterCategory, specOptions])
-
-  async function savePriceList() {
-    if (!resolvedCustomerId) {
-      toast.error('Save the customer profile first.')
-      return
-    }
-    const next: PriceOverride[] = []
-    for (const option of specOptions) {
-      const key = `${option.category}|${option.value}`
-      const raw = (draftPrices[key] ?? '').trim()
-      if (raw === '') continue
-      const price = Number(raw)
-      if (Number.isNaN(price)) {
-        toast.error(`Invalid price for ${option.label}.`)
-        return
-      }
-      next.push({
-        category: option.category as OverrideCategory,
-        value: option.value,
-        price,
-      })
-    }
-    setSaving(true)
-    try {
-      const res = await fetch(`/api/admin/sfs-customers/${encodeURIComponent(customer.id)}/price-overrides`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          overrides: next.map(o => ({ category: o.category, value: o.value, price: Number(o.price) })),
-        }),
-      })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error ?? 'Save failed')
-      if (json.customerId && !resolvedCustomerId) onCustomerBound(json.customerId)
-      setOverrides(json.overrides ?? next)
-      toast.success('Client price list saved.')
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Save failed.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  function clearRow(category: string, value: string) {
-    setDraftPrices(prev => ({ ...prev, [`${category}|${value}`]: '' }))
-  }
-
-  const overrideCount = Object.values(draftPrices).filter(v => v.trim() !== '').length
-
-  return (
-    <div className="space-y-3 rounded-md p-4" style={{ background: '#0A0A0A', border: '1px solid #2A2418' }}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Client price list</h3>
-          <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
-            Set this client&apos;s price for each option. Leave blank to use the global Diamond Specs price.
-            Saved values replace the global price when quoting and invoicing.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <select
-            value={filterCategory}
-            onChange={e => setFilterCategory(e.target.value as OverrideCategory | 'ALL')}
-            className="rounded-md px-2.5 py-2 text-sm outline-none"
-            style={SELECT_STYLE}
-          >
-            <option value="ALL">All categories</option>
-            {OVERRIDE_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-          </select>
-          <Button type="button" size="sm" disabled={saving || !resolvedCustomerId || loading} onClick={() => void savePriceList()}>
-            {saving ? 'Saving…' : `Save list (${overrideCount})`}
-          </Button>
-        </div>
-      </div>
-
-      {!resolvedCustomerId && (
-        <p className="text-xs rounded-md px-3 py-2" style={{ background: 'rgba(201,169,110,0.08)', color: '#C9A96E' }}>
-          Save the customer profile first to enable the client price list.
-        </p>
-      )}
-
-      {loading ? (
-        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Loading price list...</p>
-      ) : rows.length === 0 ? (
-        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>No diamond specs found. Add options under SFS Diamond Specs first.</p>
-      ) : (
-        <div className="space-y-4 max-h-[28rem] overflow-y-auto pr-1">
-          {rows.map(group => (
-            <div key={group.category} className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#C9A96E' }}>{group.label}</p>
-              <div className="overflow-x-auto rounded-md" style={{ border: '1px solid #2A2418' }}>
-                <table className="w-full text-sm">
-                  <thead style={{ background: '#111108' }}>
-                    <tr>
-                      <th className="px-3 py-2 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>Option</th>
-                      <th className="px-3 py-2 text-right font-medium" style={{ color: 'var(--muted-foreground)' }}>Global</th>
-                      <th className="px-3 py-2 text-right font-medium" style={{ color: 'var(--muted-foreground)' }}>This client</th>
-                      <th className="px-3 py-2 w-20" />
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#2A2418]">
-                    {group.options.map(option => {
-                      const key = `${option.category}|${option.value}`
-                      const globalPrice = option.price == null ? null : Number(option.price)
-                      const draft = draftPrices[key] ?? ''
-                      const isOverride = draft.trim() !== ''
-                      return (
-                        <tr key={key} style={{ background: isOverride ? 'rgba(201,169,110,0.06)' : undefined }}>
-                          <td className="px-3 py-2" style={{ color: 'var(--foreground)' }}>
-                            {option.label}
-                            {!option.isActive && (
-                              <span className="ml-2 text-[10px]" style={{ color: 'var(--muted-foreground)' }}>(hidden)</span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2 text-right tabular-nums" style={{ color: 'var(--muted-foreground)' }}>
-                            {globalPrice == null ? '—' : formatSfsPriceLabel(globalPrice) ?? '—'}
-                          </td>
-                          <td className="px-3 py-2 text-right">
-                            <Input
-                              type="number"
-                              step="0.01"
-                              className="ml-auto max-w-[8rem] text-right"
-                              value={draft}
-                              placeholder={globalPrice == null ? '0' : String(globalPrice)}
-                              disabled={!resolvedCustomerId}
-                              onChange={e => setDraftPrices(prev => ({ ...prev, [key]: e.target.value }))}
-                            />
-                          </td>
-                          <td className="px-3 py-2 text-right">
-                            {isOverride && (
-                              <Button type="button" variant="outline" size="sm" disabled={!resolvedCustomerId} onClick={() => clearRow(option.category, option.value)}>
-                                Reset
-                              </Button>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {!loading && overrides.length > 0 && (
-        <p className="text-[11px]" style={{ color: 'var(--muted-foreground)' }}>
-          {overrides.length} saved client-specific price{overrides.length === 1 ? '' : 's'} on file.
-        </p>
-      )}
-    </div>
-  )
-}
-
 function CustomerModal({
   customer,
   onClose,
@@ -646,13 +397,6 @@ function CustomerModal({
 
           {isEdit && displayCustomer && (
             <CustomerContractsSection
-              customer={displayCustomer}
-              onCustomerBound={setBoundCustomerId}
-            />
-          )}
-
-          {isEdit && displayCustomer && (
-            <CustomerPriceOverridesSection
               customer={displayCustomer}
               onCustomerBound={setBoundCustomerId}
             />

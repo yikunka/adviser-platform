@@ -22,7 +22,7 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { error } = await requireRole('STAFF', { adminMenu: 'sfsCustomers' })
+  const { error } = await requireRole('STAFF', { adminMenus: ['sfsCustomers', 'sfsFactory'] })
   if (error) return error
 
   const { id } = await params
@@ -41,7 +41,7 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { session, error } = await requireRole('STAFF', { adminMenu: 'sfsCustomers' })
+  const { session, error } = await requireRole('STAFF', { adminMenu: 'sfsFactory' })
   if (error) return error
 
   const { id } = await params

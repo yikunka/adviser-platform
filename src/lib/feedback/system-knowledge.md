@@ -224,7 +224,7 @@ Customer registry for SFS Diamond.
 - Staff can multi-select customer rows and **Merge into primary**: orders, contracts, and client price overrides move to the kept profile; source registered logins are deactivated and emptied source profiles are removed
 - Delete customer profiles that have no order history; customers linked to any order cannot be deleted; deletion requires a confirmation dialog
 - Each bound customer profile includes a cooperation-contract attachments module on the edit dialog: upload, view, download, and delete partnership agreement files (PDF, Word, JPG, PNG, WEBP; max 10 MB)
-- **Customer-differentiated pricing** (edit dialog **Client price list**): full table by category comparing **global** Diamond Specs prices vs this client’s prices; blank = use global; saved values replace the global price for quoting / invoicing / the client order form
+- Customer-specific prices are managed under **工厂管理** (`/admin/sfs-factory`), not on the customer edit dialog
 - Logged-in SFS clients see **live option prices and estimated totals** while placing an order (`/sfsdiamond/order`); guests see global catalog prices; personalised lists apply when the account has a bound SfsCustomer with overrides
 
 ### SFS Diamond Specs Admin (`/admin/sfs-diamond-specs`)
@@ -233,8 +233,14 @@ Customer-facing order option management for SFS Diamond.
 - Maintains active/inactive options for Source, Color, Carat, Shape, Setting Type, Ring Design, Necklace Design, Earring Design, Bracelet Design, and Metal
 - Source, Color, Carat, Shape, Ring Design, Necklace Design, Earring Design, and Bracelet Design options can store preview image URLs; admin can upload images to OSS/local storage or paste an existing URL
 - Active options are shown on `/sfsdiamond/order`; submitted orders keep saved text values
-- **Pricing**: each spec option has a price whose meaning depends on category — CARAT = diamond base price, SOURCE/COLOR/SHAPE/METAL = additive adjustment (may be negative), each design (Ring/Necklace/Earring/Bracelet) = its own jewellery price (finer than Setting Type); unset price counts as 0
+- Spec options no longer edit prices here — global and per-customer prices are managed under **工厂管理**
+
+### SFS Factory Management (`/admin/sfs-factory`)
+Factory pricing for SFS Diamond products (menu: 工厂管理).
+- Two tabs: **标准价格** (edit global catalog prices per spec option) and **客户价格** (pick a customer, then set client overrides vs global)
+- Price meaning by category: CARAT = diamond base price; SOURCE/COLOR/SHAPE/METAL = additive adjustment (may be negative); each design (Ring/Necklace/Earring/Bracelet) = jewellery price; unset price counts as 0
 - Diamond pricing model (per diamond): `(caratBase + sourceAdj + colorAdj + shapeAdj)` for the diamond portion, plus the design price + metal adjustment for the jewellery portion; per-customer overrides replace the matching global prices
+- Blank client override = use global standard price; saved overrides apply to quoting, invoicing, and the client order form
 
 ### SFS Orders Admin (`/admin/sfs-orders`)
 Order lifecycle management for memorial diamond commissions.

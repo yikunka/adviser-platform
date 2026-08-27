@@ -26,7 +26,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { session, error } = await requireRole('STAFF', { adminMenu: 'sfsDiamondSpecs' })
+  const { session, error } = await requireRole('STAFF', { adminMenus: ['sfsDiamondSpecs', 'sfsFactory'] })
   if (error) return error
 
   const { id } = await params
@@ -40,6 +40,12 @@ export async function PATCH(
   }
 
   const data = parsed.data
+  const keys = Object.keys(data)
+  const priceOnly = keys.length > 0 && keys.every(key => key === 'price')
+  if (!priceOnly) {
+    const fullEdit = await requireRole('STAFF', { adminMenu: 'sfsDiamondSpecs' })
+    if (fullEdit.error) return fullEdit.error
+  }
   try {
     const option = await prisma.sfsDiamondSpecOption.update({
       where: { id },
@@ -53,7 +59,7 @@ export async function PATCH(
         ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
       },
     })
-    await logAudit(session.user.id, 'UPDATE', 'SfsDiamondSpecOption', option.id, before, option)
+    await logAudit(session!.user.id, 'UPDATE', 'SfsDiamondSpecOption', option.id, before, option)
     return NextResponse.json({ option })
   } catch (err) {
     const message = uniqueMessage(err)

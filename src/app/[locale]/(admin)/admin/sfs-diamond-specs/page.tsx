@@ -38,56 +38,8 @@ type FormValues = {
   label: string
   value: string
   imageUrl: string
-  price: string
   sortOrder: number
   isActive: boolean
-}
-
-/** Per-category helper text for the price field. */
-function priceFieldHint(category: Category): string {
-  switch (category) {
-    case 'CARAT':
-      return 'Diamond base price for this carat'
-    case 'SOURCE':
-    case 'COLOR':
-    case 'SHAPE':
-      return 'Additive adjustment (may be negative)'
-    case 'METAL':
-      return 'Metal price adjustment (added to jewellery)'
-    case 'RING_DESIGN':
-    case 'NECKLACE_DESIGN':
-    case 'EARRING_DESIGN':
-    case 'BRACELET_DESIGN':
-      return 'Jewellery design price'
-    default:
-      return 'Not used in pricing for this category'
-  }
-}
-
-function priceFieldLabel(category: Category): string {
-  switch (category) {
-    case 'CARAT':
-      return 'Base price'
-    case 'SOURCE':
-    case 'COLOR':
-    case 'SHAPE':
-    case 'METAL':
-      return 'Price adjustment'
-    case 'RING_DESIGN':
-    case 'NECKLACE_DESIGN':
-    case 'EARRING_DESIGN':
-    case 'BRACELET_DESIGN':
-      return 'Design price'
-    default:
-      return 'Price'
-  }
-}
-
-function formatPrice(price: string | number | null): string {
-  if (price == null || price === '') return '—'
-  const num = Number(price)
-  if (Number.isNaN(num)) return '—'
-  return num.toFixed(2)
 }
 
 const CATEGORIES: { value: Category; label: string; needsImage?: boolean }[] = [
@@ -108,7 +60,6 @@ const EMPTY_FORM: FormValues = {
   label: '',
   value: '',
   imageUrl: '',
-  price: '',
   sortOrder: 0,
   isActive: true,
 }
@@ -123,7 +74,6 @@ function toForm(option?: SpecOption | null, category: Category = 'SOURCE'): Form
     label: option.label,
     value: option.value,
     imageUrl: option.imageUrl ?? '',
-    price: option.price == null || option.price === '' ? '' : String(option.price),
     sortOrder: option.sortOrder,
     isActive: option.isActive,
   }
@@ -184,7 +134,6 @@ function SpecModal({
             ...form,
             value: form.value.trim() || form.label.trim(),
             imageUrl: form.imageUrl.trim() || null,
-            price: form.price.trim() === '' ? null : Number(form.price),
           }),
         },
       )
@@ -215,7 +164,7 @@ function SpecModal({
               {option ? 'Edit diamond spec' : 'Create diamond spec'}
             </h2>
             <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
-              Active options are shown on the SFS Diamond customer order wizard.
+              Active options are shown on the SFS Diamond customer order wizard. Prices are managed under 工厂管理.
             </p>
           </div>
           <button
@@ -264,24 +213,6 @@ function SpecModal({
             <label className="space-y-1.5">
               <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Submitted value</span>
               <Input value={form.value} onChange={e => update('value', e.target.value)} maxLength={120} placeholder="Defaults to label" />
-            </label>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="space-y-1.5">
-              <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
-                {priceFieldLabel(form.category)} (HKD)
-              </span>
-              <Input
-                type="number"
-                step="0.01"
-                value={form.price}
-                onChange={e => update('price', e.target.value)}
-                placeholder="Leave blank for 0"
-              />
-              <span className="text-[11px]" style={{ color: 'var(--muted-foreground)' }}>
-                {priceFieldHint(form.category)}
-              </span>
             </label>
           </div>
 
@@ -434,7 +365,7 @@ export default function SfsDiamondSpecsPage() {
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>SFS Diamond Specs</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-            Manage customer-facing order options for source material, diamond color, carat, shape, setting, design, and metal.
+            Manage customer-facing order options for source, color, carat, shape, setting, design, and metal. Factory prices are edited under 工厂管理.
           </p>
         </div>
         <Button onClick={() => setCreating(true)}>
@@ -479,7 +410,7 @@ export default function SfsDiamondSpecsPage() {
             <table className="w-full text-sm">
               <thead style={{ background: '#111108', borderBottom: '1px solid #2A2418' }}>
                 <tr>
-                  {['Preview', 'Category', 'Label', 'Value', 'Price', 'Sort', 'Status', 'Actions'].map(h => (
+                  {['Preview', 'Category', 'Label', 'Value', 'Sort', 'Status', 'Actions'].map(h => (
                     <th key={h} className="px-4 py-3 text-left font-medium whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
                   ))}
                 </tr>
@@ -487,13 +418,13 @@ export default function SfsDiamondSpecsPage() {
               <tbody className="divide-y divide-[#2A2418]">
                 {loading ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>
+                    <td colSpan={7} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>
                       <Loader2 size={16} className="inline animate-spin mr-2" /> Loading...
                     </td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center">
+                    <td colSpan={7} className="px-4 py-12 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <SlidersHorizontal size={28} style={{ color: '#C9A96E', opacity: 0.45 }} />
                         <span style={{ color: 'var(--muted-foreground)' }}>No spec options yet.</span>
@@ -514,7 +445,6 @@ export default function SfsDiamondSpecsPage() {
                     <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>{CATEGORY_LABEL[option.category]}</td>
                     <td className="px-4 py-3 min-w-[180px] font-medium" style={{ color: 'var(--foreground)' }}>{option.label}</td>
                     <td className="px-4 py-3 min-w-[180px]" style={{ color: 'var(--muted-foreground)' }}>{option.value}</td>
-                    <td className="px-4 py-3 whitespace-nowrap tabular-nums" style={{ color: option.price == null || option.price === '' ? '#5A5040' : 'var(--foreground)' }}>{formatPrice(option.price)}</td>
                     <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>{option.sortOrder}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span
