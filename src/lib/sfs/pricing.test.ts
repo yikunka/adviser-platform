@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeSfsOrderPricing } from '@/lib/sfs/pricing'
+import { computeSfsOrderPricing, resolveMultiDiamondDiscountPct } from '@/lib/sfs/pricing'
 import { type SfsOrderSpecOptions, type SfsSpecOption } from '@/lib/sfs/diamond-spec-options'
 
 function opt(category: SfsSpecOption['category'], value: string, price: number | null): SfsSpecOption {
@@ -17,11 +17,26 @@ function specOptions(overrides: Partial<SfsOrderSpecOptions> = {}): SfsOrderSpec
     necklaceDesigns: [],
     earringDesigns: [],
     braceletDesigns: [],
-    // Metal `price` is a percent add-on on design (10 ⇒ +10%)
     metals: [opt('METAL', 'Platinum', 10), opt('METAL', 'Yellow Gold', 0)],
     ...overrides,
   }
 }
+
+const TIERS = [
+  { minDiamondCount: 2, discountPercent: 5 },
+  { minDiamondCount: 3, discountPercent: 10 },
+]
+
+describe('resolveMultiDiamondDiscountPct', () => {
+  it('returns 0 when count is below all tiers', () => {
+    expect(resolveMultiDiamondDiscountPct(1, TIERS)).toBe(0)
+  })
+
+  it('picks the highest matching tier', () => {
+    expect(resolveMultiDiamondDiscountPct(2, TIERS)).toBe(5)
+    expect(resolveMultiDiamondDiscountPct(4, TIERS)).toBe(10)
+  })
+})
 
 describe('computeSfsOrderPricing', () => {
   it('additively combines carat + color + shape and applies metal percent on design', () => {
@@ -30,11 +45,11 @@ describe('computeSfsOrderPricing', () => {
       color: 'Natural Color',
       specOptions: specOptions(),
     })
-    // diamond = 1000 + 100 + 50 = 1150; jewellery = 300 × (1 + 0%) = 300
     expect(result.lines[0].diamondPart).toBe(1150)
     expect(result.lines[0].jewelleryPart).toBe(300)
     expect(result.lines[0].unitPrice).toBe(1450)
     expect(result.subtotal).toBe(1450)
+    expect(result.discountPct).toBe(0)
   })
 
   it('applies metal as a percent add-on of the jewellery design price', () => {
@@ -43,9 +58,42 @@ describe('computeSfsOrderPricing', () => {
       color: 'Natural Color',
       specOptions: specOptions(),
     })
-    // diamond = 1150; jewellery = 300 × 1.10 = 330
     expect(result.lines[0].jewelleryPart).toBe(330)
     expect(result.lines[0].unitPrice).toBe(1480)
+  })
+
+  it('discounts only the diamond portion across multiple diamonds', () => {
+    const result = computeSfsOrderPricing({
+      diamonds: [
+        { carat: '1.0', shape: 'Round', type: 'Ring', design: 'Solitaire', metal: 'Yellow Gold' },
+        { carat: '1.0', shape: 'Round', type: 'Ring', design: 'Solitaire', metal: 'Yellow Gold' },
+      ],
+      color: 'Natural Color',
+      specOptions: specOptions(),
+      multiDiamondDiscountTiers: TIERS,
+    })
+    // each diamondPart 1150 → gross 2300; 5% off → 2185; jewellery 300+300=600
+    expect(result.diamondCount).toBe(2)
+    expect(result.discountPct).toBe(5)
+    expect(result.diamondGross).toBe(2300)
+    expect(result.diamondNet).toBe(2185)
+    expect(result.discountAmount).toBe(115)
+    expect(result.jewelleryTotal).toBe(600)
+    expect(result.subtotalGross).toBe(2900)
+    expect(result.subtotal).toBe(2785)
+    expect(result.lines[0].unitPrice).toBe(1392.5)
+    expect(result.lines[1].unitPrice).toBe(1392.5)
+  })
+
+  it('does not discount jewellery when only one diamond', () => {
+    const result = computeSfsOrderPricing({
+      diamonds: [{ carat: '1.0', shape: 'Round', type: 'Ring', design: 'Solitaire', metal: 'Yellow Gold' }],
+      color: 'Natural Color',
+      specOptions: specOptions(),
+      multiDiamondDiscountTiers: TIERS,
+    })
+    expect(result.discountPct).toBe(0)
+    expect(result.subtotal).toBe(1450)
   })
 
   it('treats metal as 0 when there is no design / Diamond only', () => {
@@ -73,10 +121,9 @@ describe('computeSfsOrderPricing', () => {
   it('treats unpriced spec options as 0', () => {
     const result = computeSfsOrderPricing({
       diamonds: [{ carat: '1.0', shape: 'Round', type: 'Diamond only' }],
-      color: 'Transparent', // null price
+      color: 'Transparent',
       specOptions: specOptions(),
     })
-    // 1000 + 0 (color) + 50 + no design/metal
     expect(result.lines[0].unitPrice).toBe(1050)
   })
 
@@ -91,7 +138,6 @@ describe('computeSfsOrderPricing', () => {
         { category: 'METAL', value: 'Platinum', price: 20 },
       ],
     })
-    // diamond = 500 + 100 + 50 = 650; jewellery = 1000 × 1.20 = 1200
     expect(result.lines[0].diamondPart).toBe(650)
     expect(result.lines[0].jewelleryPart).toBe(1200)
     expect(result.lines[0].unitPrice).toBe(1850)

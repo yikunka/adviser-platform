@@ -155,8 +155,129 @@ function SectionFilterChips({
 function FormulaHint() {
   return (
     <p className="text-xs rounded-md px-3 py-2" style={{ background: 'rgba(201,169,110,0.08)', color: '#C9A96E' }}>
-      计价：钻石部分 = 克拉基础 + Source + Color + Shape；首饰部分 = Design × (1 + Metal%)；无 Design 时 Metal = 0。客户下单页会即时加总。
+      计价：钻石部分 = 克拉基础 + Source + Color + Shape；首饰部分 = Design × (1 + Metal%)；无 Design 时 Metal = 0。
+      一单多颗钻时，仅对钻石部分按颗数折扣表打折；首饰不打折。
     </p>
+  )
+}
+
+type DiscountTierDraft = { minDiamondCount: string; discountPercent: string }
+
+function MultiDiamondDiscountEditor({
+  title,
+  description,
+  tiers,
+  onChange,
+  onSave,
+  onClear,
+  saving,
+  disabled,
+  showClear,
+}: {
+  title: string
+  description: string
+  tiers: DiscountTierDraft[]
+  onChange: (tiers: DiscountTierDraft[]) => void
+  onSave: () => void
+  onClear?: () => void
+  saving: boolean
+  disabled?: boolean
+  showClear?: boolean
+}) {
+  function updateRow(index: number, patch: Partial<DiscountTierDraft>) {
+    onChange(tiers.map((row, i) => (i === index ? { ...row, ...patch } : row)))
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>{title}</h3>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{description}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {showClear && onClear && (
+              <Button type="button" size="sm" variant="outline" disabled={saving || disabled} onClick={onClear}>
+                Use standard
+              </Button>
+            )}
+            <Button type="button" size="sm" disabled={saving || disabled} onClick={onSave}>
+              {saving ? 'Saving…' : 'Save tiers'}
+            </Button>
+          </div>
+        </div>
+        <div className="overflow-x-auto rounded-md" style={{ border: '1px solid #2A2418' }}>
+          <table className="w-full text-sm">
+            <thead style={{ background: '#111108' }}>
+              <tr>
+                <th className="px-3 py-2 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>Min diamonds</th>
+                <th className="px-3 py-2 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>Diamond-part discount %</th>
+                <th className="px-3 py-2 w-20" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#2A2418]">
+              {tiers.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="px-3 py-4 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                    No tiers yet — add rows (e.g. 2 diamonds → 5%, 3+ → 10%). Empty means 0% discount.
+                  </td>
+                </tr>
+              ) : tiers.map((row, index) => (
+                <tr key={index}>
+                  <td className="px-3 py-2">
+                    <Input
+                      type="number"
+                      min={2}
+                      step={1}
+                      className="max-w-[8rem]"
+                      value={row.minDiamondCount}
+                      disabled={disabled}
+                      onChange={e => updateRow(index, { minDiamondCount: e.target.value })}
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="inline-flex items-center gap-1.5">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step="0.01"
+                        className="max-w-[8rem]"
+                        value={row.discountPercent}
+                        disabled={disabled}
+                        onChange={e => updateRow(index, { discountPercent: e.target.value })}
+                      />
+                      <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>%</span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={disabled}
+                      onClick={() => onChange(tiers.filter((_, i) => i !== index))}
+                    >
+                      Remove
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={disabled}
+          onClick={() => onChange([...tiers, { minDiamondCount: String(Math.max(2, tiers.length + 2)), discountPercent: '5' }])}
+        >
+          Add tier
+        </Button>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -166,13 +287,20 @@ function StandardPricesPanel() {
   const [sectionFilter, setSectionFilter] = useState<PriceSectionId | 'ALL'>('ALL')
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [discountTiers, setDiscountTiers] = useState<DiscountTierDraft[]>([])
+  const [savingTiers, setSavingTiers] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/sfs-diamond-specs')
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error ?? 'Failed to load specs')
+      const [specsRes, tiersRes] = await Promise.all([
+        fetch('/api/admin/sfs-diamond-specs'),
+        fetch('/api/admin/sfs-pricing/multi-diamond-discounts'),
+      ])
+      const data = await specsRes.json().catch(() => ({}))
+      const tiersJson = await tiersRes.json().catch(() => ({}))
+      if (!specsRes.ok) throw new Error(data.error ?? 'Failed to load specs')
+      if (!tiersRes.ok) throw new Error(tiersJson.error ?? 'Failed to load discount tiers')
       const rows: SpecOption[] = (data.options ?? []).filter((o: SpecOption) => PRICE_CATEGORY_SET.has(o.category))
       setOptions(rows)
       const next: Record<string, string> = {}
@@ -180,6 +308,12 @@ function StandardPricesPanel() {
         next[row.id] = row.price == null || row.price === '' ? '' : String(Number(row.price))
       }
       setDrafts(next)
+      setDiscountTiers(
+        ((tiersJson.tiers ?? []) as { minDiamondCount: number; discountPercent: number }[]).map(t => ({
+          minDiamondCount: String(t.minDiamondCount),
+          discountPercent: String(Number(t.discountPercent)),
+        })),
+      )
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to load standard prices.')
     } finally {
@@ -240,12 +374,58 @@ function StandardPricesPanel() {
     }
   }
 
+  async function saveDiscountTiers() {
+    const next: { minDiamondCount: number; discountPercent: number }[] = []
+    for (const row of discountTiers) {
+      const minDiamondCount = Number(row.minDiamondCount)
+      const discountPercent = Number(row.discountPercent)
+      if (!Number.isInteger(minDiamondCount) || minDiamondCount < 2) {
+        toast.error('Min diamonds must be an integer ≥ 2.')
+        return
+      }
+      if (Number.isNaN(discountPercent) || discountPercent < 0 || discountPercent > 100) {
+        toast.error('Discount % must be between 0 and 100.')
+        return
+      }
+      next.push({ minDiamondCount, discountPercent })
+    }
+    setSavingTiers(true)
+    try {
+      const res = await fetch('/api/admin/sfs-pricing/multi-diamond-discounts', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tiers: next }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error ?? 'Save failed')
+      setDiscountTiers(
+        ((json.tiers ?? []) as { minDiamondCount: number; discountPercent: number }[]).map(t => ({
+          minDiamondCount: String(t.minDiamondCount),
+          discountPercent: String(Number(t.discountPercent)),
+        })),
+      )
+      toast.success('Multi-diamond discount tiers saved.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Save failed.')
+    } finally {
+      setSavingTiers(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
         按「基础价格 → Add-on → 首饰价格」维护标准价。规格名称与图片仍在 Diamond Specs。
       </p>
       <FormulaHint />
+      <MultiDiamondDiscountEditor
+        title="多钻折扣（标准）"
+        description="按订单钻石颗数，仅对钻石部分打折。例：2 颗 ≥5%、3 颗 ≥10%。"
+        tiers={discountTiers}
+        onChange={setDiscountTiers}
+        onSave={() => void saveDiscountTiers()}
+        saving={savingTiers}
+      />
       <SectionFilterChips value={sectionFilter} onChange={setSectionFilter} />
 
       {loading ? (
@@ -362,6 +542,10 @@ function CustomerPricesPanel() {
   const [saving, setSaving] = useState(false)
   const [sectionFilter, setSectionFilter] = useState<PriceSectionId | 'ALL'>('ALL')
   const [boundCustomerId, setBoundCustomerId] = useState<string | null>(null)
+  const [discountTiers, setDiscountTiers] = useState<DiscountTierDraft[]>([])
+  const [usingCustomerTiers, setUsingCustomerTiers] = useState(false)
+  const [globalDiscountTiers, setGlobalDiscountTiers] = useState<DiscountTierDraft[]>([])
+  const [savingTiers, setSavingTiers] = useState(false)
 
   const selected = customers.find(c => c.id === selectedId) ?? null
   const resolvedCustomerId = boundCustomerId ?? selected?.customerId ?? null
@@ -392,14 +576,18 @@ function CustomerPricesPanel() {
     setLoadingPrices(true)
     setBoundCustomerId(customer.customerId)
     try {
-      const [overridesRes, specsRes] = await Promise.all([
+      const [overridesRes, specsRes, tiersRes] = await Promise.all([
         fetch(`/api/admin/sfs-customers/${encodeURIComponent(customer.id)}/price-overrides`),
         fetch('/api/admin/sfs-diamond-specs'),
+        fetch(`/api/admin/sfs-customers/${encodeURIComponent(customer.id)}/multi-diamond-discounts`),
       ])
       const overridesJson = await overridesRes.json().catch(() => ({}))
       const specsJson = await specsRes.json().catch(() => ({}))
+      const tiersJson = await tiersRes.json().catch(() => ({}))
       if (!overridesRes.ok) throw new Error(overridesJson.error ?? 'Failed to load overrides')
+      if (!tiersRes.ok) throw new Error(tiersJson.error ?? 'Failed to load discount tiers')
       if (overridesJson.customerId) setBoundCustomerId(overridesJson.customerId)
+      if (tiersJson.customerId) setBoundCustomerId(tiersJson.customerId)
       const options: SpecOption[] = (specsJson.options ?? []).filter((o: SpecOption) => PRICE_CATEGORY_SET.has(o.category))
       setSpecOptions(options)
       const overrideMap = new Map(
@@ -410,10 +598,24 @@ function CustomerPricesPanel() {
         drafts[`${option.category}|${option.value}`] = overrideMap.get(`${option.category}|${option.value}`) ?? ''
       }
       setDraftPrices(drafts)
+      const mapTier = (rows: { minDiamondCount: number; discountPercent: number }[]) =>
+        rows.map(t => ({
+          minDiamondCount: String(t.minDiamondCount),
+          discountPercent: String(Number(t.discountPercent)),
+        }))
+      setUsingCustomerTiers(Boolean(tiersJson.usingCustomerTiers))
+      setGlobalDiscountTiers(mapTier(tiersJson.globalTiers ?? []))
+      setDiscountTiers(
+        tiersJson.usingCustomerTiers
+          ? mapTier(tiersJson.tiers ?? [])
+          : mapTier(tiersJson.globalTiers ?? []),
+      )
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to load client prices.')
       setSpecOptions([])
       setDraftPrices({})
+      setDiscountTiers([])
+      setUsingCustomerTiers(false)
     } finally {
       setLoadingPrices(false)
     }
@@ -424,6 +626,8 @@ function CustomerPricesPanel() {
       setSpecOptions([])
       setDraftPrices({})
       setBoundCustomerId(null)
+      setDiscountTiers([])
+      setUsingCustomerTiers(false)
       return
     }
     void loadPrices(selected)
@@ -488,6 +692,50 @@ function CustomerPricesPanel() {
   }
 
   const overrideCount = Object.values(draftPrices).filter(v => v.trim() !== '').length
+
+  async function saveCustomerDiscountTiers(nextTiers: DiscountTierDraft[]) {
+    if (!selected) return
+    if (!resolvedCustomerId) {
+      toast.error('This customer has no profile yet. Save the customer under SFS Customers first.')
+      return
+    }
+    const next: { minDiamondCount: number; discountPercent: number }[] = []
+    for (const row of nextTiers) {
+      const minDiamondCount = Number(row.minDiamondCount)
+      const discountPercent = Number(row.discountPercent)
+      if (!Number.isInteger(minDiamondCount) || minDiamondCount < 2) {
+        toast.error('Min diamonds must be an integer ≥ 2.')
+        return
+      }
+      if (Number.isNaN(discountPercent) || discountPercent < 0 || discountPercent > 100) {
+        toast.error('Discount % must be between 0 and 100.')
+        return
+      }
+      next.push({ minDiamondCount, discountPercent })
+    }
+    setSavingTiers(true)
+    try {
+      const res = await fetch(`/api/admin/sfs-customers/${encodeURIComponent(selected.id)}/multi-diamond-discounts`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tiers: next }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error ?? 'Save failed')
+      setUsingCustomerTiers(Boolean(json.usingCustomerTiers))
+      setDiscountTiers(
+        ((json.tiers ?? []) as { minDiamondCount: number; discountPercent: number }[]).map(t => ({
+          minDiamondCount: String(t.minDiamondCount),
+          discountPercent: String(Number(t.discountPercent)),
+        })),
+      )
+      toast.success(json.usingCustomerTiers ? 'Customer multi-diamond tiers saved.' : 'Using standard multi-diamond tiers.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Save failed.')
+    } finally {
+      setSavingTiers(false)
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -560,6 +808,27 @@ function CustomerPricesPanel() {
           )}
 
           <SectionFilterChips value={sectionFilter} onChange={setSectionFilter} />
+
+          {!loadingPrices && (
+            <MultiDiamondDiscountEditor
+              title={usingCustomerTiers ? '多钻折扣（本客户覆盖）' : '多钻折扣（当前用标准）'}
+              description={
+                usingCustomerTiers
+                  ? '此客户使用专属颗数折扣表。点 Use standard 可清除覆盖。'
+                  : '当前跟标准表。保存后即变成客户专属覆盖。'
+              }
+              tiers={discountTiers.length > 0 || usingCustomerTiers ? discountTiers : globalDiscountTiers}
+              onChange={setDiscountTiers}
+              onSave={() => void saveCustomerDiscountTiers(discountTiers)}
+              onClear={() => {
+                setDiscountTiers([])
+                void saveCustomerDiscountTiers([])
+              }}
+              saving={savingTiers}
+              disabled={!resolvedCustomerId}
+              showClear={usingCustomerTiers}
+            />
+          )}
 
           {loadingPrices ? (
             <p className="text-xs py-6 text-center" style={{ color: 'var(--muted-foreground)' }}>
@@ -673,7 +942,7 @@ export default function SfsFactoryPage() {
           价格管理
         </h1>
         <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-          基础价格 + Add-on + 首饰（Design + Metal%）；客户下单页会即时加总。
+          基础价格 + Add-on + 首饰（Design + Metal%）+ 多钻钻石折扣；客户下单页会即时加总。
         </p>
       </div>
 

@@ -17,10 +17,13 @@ import {
  *   6. designPrice = design catalog/override (0 when no design / Diamond only)
  *   7. metalPct   = override(METAL,metal) ?? global(METAL,metal)  // 10 ⇒ +10%
  *   8. jewelleryPart = designPrice × (1 + metalPct/100)          // metal applies only when designPrice > 0
- *   9. unitPrice = diamondPart + jewelleryPart
+ *   9. unitPriceGross = diamondPart + jewelleryPart
  *
- * Any spec option without a configured price is treated as 0, preserving the legacy
- * "unpriced ⇒ 0" behaviour. Per-customer price overrides still replace matching globals.
+ * Order-level multi-diamond discount (optional tiers):
+ *  10. discountPct from tiers by diamondCount (customer tiers override global when present)
+ *  11. discount applies ONLY to diamondPart: diamondNet = diamondGross × (1 − discountPct/100)
+ *  12. jewellery stays full price; subtotal = diamondNet + jewelleryTotal
+ *  13. per-line unitPrice allocates the diamond discount evenly by that line's diamondPart share
  */
 
 export type SfsPricingDiamond = {
@@ -37,15 +40,29 @@ export type SfsPriceOverride = {
   price: number
 }
 
+export type SfsMultiDiamondDiscountTier = {
+  minDiamondCount: number
+  discountPercent: number
+}
+
 export type SfsPricedLine = {
   diamondPart: number
   jewelleryPart: number
+  /** Before multi-diamond diamond-portion discount. */
+  unitPriceGross: number
+  /** After allocating diamond-portion discount. */
   unitPrice: number
 }
 
 export type SfsPricingResult = {
   lines: SfsPricedLine[]
   diamondCount: number
+  diamondGross: number
+  diamondNet: number
+  jewelleryTotal: number
+  discountPct: number
+  discountAmount: number
+  subtotalGross: number
   subtotal: number
 }
 
@@ -55,6 +72,8 @@ export type ComputeSfsOrderPricingInput = {
   color?: string | null
   specOptions: SfsOrderSpecOptions
   overrides?: SfsPriceOverride[]
+  /** Effective tiers (already resolved: customer overrides or global). Empty ⇒ 0% discount. */
+  multiDiamondDiscountTiers?: SfsMultiDiamondDiscountTier[]
 }
 
 function round2(value: number): number {
@@ -65,8 +84,31 @@ function overrideKey(category: SfsDiamondSpecCategory, value: string): string {
   return `${category}|${value}`
 }
 
+/** Pick the highest minDiamondCount tier that applies to `count`. */
+export function resolveMultiDiamondDiscountPct(
+  count: number,
+  tiers: SfsMultiDiamondDiscountTier[] | null | undefined,
+): number {
+  if (!tiers?.length || count <= 0) return 0
+  const sorted = [...tiers]
+    .filter(t => Number.isFinite(t.minDiamondCount) && t.minDiamondCount >= 1)
+    .sort((a, b) => b.minDiamondCount - a.minDiamondCount)
+  const match = sorted.find(t => count >= t.minDiamondCount)
+  if (!match) return 0
+  const pct = Number(match.discountPercent)
+  if (!Number.isFinite(pct) || pct <= 0) return 0
+  return Math.min(100, pct)
+}
+
 export function computeSfsOrderPricing(input: ComputeSfsOrderPricingInput): SfsPricingResult {
-  const { diamonds, sourceType, color, specOptions, overrides = [] } = input
+  const {
+    diamonds,
+    sourceType,
+    color,
+    specOptions,
+    overrides = [],
+    multiDiamondDiscountTiers = [],
+  } = input
 
   const overrideMap = new Map<string, number>()
   for (const override of overrides) {
@@ -111,16 +153,45 @@ export function computeSfsOrderPricing(input: ComputeSfsOrderPricingInput): SfsP
   const sourceAdj = priced('SOURCE', sourceType, specOptions.sources)
   const colorAdj = priced('COLOR', color, specOptions.colors)
 
-  const lines: SfsPricedLine[] = diamonds.map(diamond => {
+  const grossLines = diamonds.map(diamond => {
     const caratBase = priced('CARAT', diamond.carat, specOptions.carats)
     const shapeAdj = priced('SHAPE', diamond.shape, specOptions.shapes)
     const diamondPart = round2(caratBase + sourceAdj + colorAdj + shapeAdj)
     const jewellery = jewelleryPart(diamond)
-    const unitPrice = round2(diamondPart + jewellery)
-    return { diamondPart, jewelleryPart: jewellery, unitPrice }
+    const unitPriceGross = round2(diamondPart + jewellery)
+    return { diamondPart, jewelleryPart: jewellery, unitPriceGross }
   })
 
-  const subtotal = round2(lines.reduce((sum, line) => sum + line.unitPrice, 0))
+  const diamondGross = round2(grossLines.reduce((sum, line) => sum + line.diamondPart, 0))
+  const jewelleryTotal = round2(grossLines.reduce((sum, line) => sum + line.jewelleryPart, 0))
+  const discountPct = resolveMultiDiamondDiscountPct(count, multiDiamondDiscountTiers)
+  const diamondNet = round2(diamondGross * (1 - discountPct / 100))
+  const discountAmount = round2(diamondGross - diamondNet)
+  const subtotalGross = round2(diamondGross + jewelleryTotal)
+  const subtotal = round2(diamondNet + jewelleryTotal)
 
-  return { lines, diamondCount: count, subtotal }
+  const lines: SfsPricedLine[] = grossLines.map(line => {
+    const discountedDiamond =
+      diamondGross > 0
+        ? round2(line.diamondPart * (diamondNet / diamondGross))
+        : 0
+    return {
+      diamondPart: line.diamondPart,
+      jewelleryPart: line.jewelleryPart,
+      unitPriceGross: line.unitPriceGross,
+      unitPrice: round2(discountedDiamond + line.jewelleryPart),
+    }
+  })
+
+  return {
+    lines,
+    diamondCount: count,
+    diamondGross,
+    diamondNet,
+    jewelleryTotal,
+    discountPct,
+    discountAmount,
+    subtotalGross,
+    subtotal,
+  }
 }

@@ -61,6 +61,7 @@ export async function mergeSfsCustomers(
       name: true,
       contracts: { select: { id: true, storageKey: true } },
       priceOverrides: { select: { id: true, category: true, value: true } },
+      multiDiamondDiscountTiers: { select: { id: true, minDiamondCount: true } },
     },
   })
   if (sources.length !== sourceCustomerIds.length) {
@@ -126,6 +127,21 @@ export async function mergeSfsCustomers(
       }
     }
 
+    const targetDiscountCount = await tx.sfsCustomerMultiDiamondDiscountTier.count({
+      where: { customerId: target.id },
+    })
+    for (const source of sources) {
+      if (source.multiDiamondDiscountTiers.length === 0) continue
+      if (targetDiscountCount > 0) {
+        await tx.sfsCustomerMultiDiamondDiscountTier.deleteMany({ where: { customerId: source.id } })
+      } else {
+        await tx.sfsCustomerMultiDiamondDiscountTier.updateMany({
+          where: { customerId: source.id },
+          data: { customerId: target.id },
+        })
+      }
+    }
+
     const deletedSourceCustomerIds: string[] = []
     const deactivatedUserIds: string[] = []
 
@@ -154,6 +170,7 @@ export async function mergeSfsCustomers(
         contractStorageKeysToDelete.push(...leftoverContracts.map(c => c.storageKey))
         await tx.sfsCustomerContract.deleteMany({ where: { customerId: source.id } })
         await tx.sfsCustomerPriceOverride.deleteMany({ where: { customerId: source.id } })
+        await tx.sfsCustomerMultiDiamondDiscountTier.deleteMany({ where: { customerId: source.id } })
         await tx.sfsCustomer.delete({ where: { id: source.id } })
         deletedSourceCustomerIds.push(source.id)
       }

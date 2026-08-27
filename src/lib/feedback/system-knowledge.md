@@ -241,10 +241,11 @@ Customer-facing order option management for SFS Diamond.
 Pricing for SFS Diamond products (menu: 价格管理).
 - Two tabs: **标准价格** and **客户价格**, both grouped as **基础价格 (Carat)** → **Add-on (Source / Color / Shape)** → **首饰价格 (Designs, then Metal)**
 - Add-on amounts display as `+HK$…` / `−HK$…`; base and design amounts as `HK$…`; Metal as percent (`10` ⇒ `+10%`) on the selected jewellery design
+- **Multi-diamond discount tiers** (standard + optional per-customer override): by order diamond count, discount applies only to the diamond portion (`carat + source + color + shape`); jewellery is never discounted; empty customer tiers = use standard
 - Price meaning by category: CARAT = diamond base price; SOURCE/COLOR/SHAPE = additive HKD adjustment (may be negative); each design = jewellery price; METAL = percent add-on on that design; unset price counts as 0
-- Diamond pricing model (per diamond): `(caratBase + sourceAdj + colorAdj + shapeAdj)` for the diamond portion; jewellery = `designPrice × (1 + metalPct/100)` (metal contributes 0 when there is no design / Diamond only); per-customer overrides replace the matching globals
+- Diamond pricing model (per diamond): `(caratBase + sourceAdj + colorAdj + shapeAdj)` for the diamond portion; jewellery = `designPrice × (1 + metalPct/100)` (metal contributes 0 when there is no design / Diamond only); order `subtotal = diamondNet + jewelleryTotal` after multi-diamond discount on diamondGross; per-customer overrides replace matching globals
 - Blank client override = use global standard price; saved overrides apply to quoting, invoicing, and the client order form
-- Live estimated totals remain on the customer order wizard (`/sfsdiamond/order`), not on this admin page
+- Live estimated totals (including multi-diamond discount breakdown when applicable) remain on the customer order wizard (`/sfsdiamond/order`), not on this admin page
 
 ### SFS Orders Admin (`/admin/sfs-orders`)
 Order lifecycle management for memorial diamond commissions.
@@ -273,7 +274,7 @@ Order lifecycle management for memorial diamond commissions.
 - Statuses: `DRAFT` → `SENT` → `PAID` / `CANCELLED`
 - Auto-generated invoice numbers: 8-digit pure numeric format `YY######` (e.g. `26000001`, `26000002`), sequential within each calendar year; shown in the list table column and in the page header (top-right) on new and detail pages
 - Create from order; edit DRAFT; generate and download PDF
-- When creating an invoice from an order, each diamond line item's **unit price is auto-suggested by the pricing engine** (diamond carat/color/shape/source base + design × (1 + metal%) + the order customer's price overrides); suggested prices remain fully editable before saving
+- When creating an invoice from an order, each diamond line item's **unit price is auto-suggested by the pricing engine** (diamond carat/color/shape/source base with multi-diamond diamond-portion discount allocated per line + design × (1 + metal%) + the order customer's overrides); suggested prices remain fully editable before saving
 - Admin invoice screens keep line-item display focused on description, quantity, weight, unit price, and amount; due date and tax-rate display are hidden from the SFS invoice UI
 - PDF issuer header: **SFS Technical Group Co., Limited / 瑞福生科技集團有限公司**, with fixed address **RM7 20F BOSS COMMERCIAL CENTRE 28 FERRY STREET YAU MA TEI KOWLOON** below the company name
 - PDF payment block (footer): DBS BANK (HONG KONG), SWIFT DHBKHKHH, Bank Code 016, Account Number 478002236556, A/C Name SFS TECHNOLOGY GROUP CO., LIMITED

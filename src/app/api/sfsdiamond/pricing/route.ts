@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
 import { getSfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options-server'
 import { applyCustomerOverridesToSpecOptions } from '@/lib/sfs/effective-pricing'
+import { getEffectiveMultiDiamondDiscountTiers } from '@/lib/sfs/multi-diamond-discount'
 
 /**
  * GET /api/sfsdiamond/pricing
@@ -14,6 +15,7 @@ export async function GET() {
   const base = await getSfsOrderSpecOptions()
 
   let personalized = false
+  let customerId: string | null = null
   let overrides: Array<{ category: typeof base.sources[number]['category']; value: string; price: number }> = []
 
   if (session?.user?.platform === 'SFS_DIAMOND') {
@@ -24,13 +26,16 @@ export async function GET() {
         priceOverrides: { select: { category: true, value: true, price: true } },
       },
     })
-    if (customer && customer.priceOverrides.length > 0) {
-      personalized = true
-      overrides = customer.priceOverrides.map(row => ({
-        category: row.category,
-        value: row.value,
-        price: Number(row.price),
-      }))
+    if (customer) {
+      customerId = customer.id
+      if (customer.priceOverrides.length > 0) {
+        personalized = true
+        overrides = customer.priceOverrides.map(row => ({
+          category: row.category,
+          value: row.value,
+          price: Number(row.price),
+        }))
+      }
     }
   }
 
@@ -38,9 +43,13 @@ export async function GET() {
     ? applyCustomerOverridesToSpecOptions(base, overrides)
     : base
 
+  const { tiers: multiDiamondDiscountTiers, usingCustomerTiers } =
+    await getEffectiveMultiDiamondDiscountTiers(customerId)
+
   return NextResponse.json({
     currency: 'HKD',
-    personalized,
+    personalized: personalized || usingCustomerTiers,
     specOptions,
+    multiDiamondDiscountTiers,
   })
 }

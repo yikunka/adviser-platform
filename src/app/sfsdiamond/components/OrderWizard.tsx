@@ -7,7 +7,7 @@ import { useSession } from 'next-auth/react'
 import { getDesignOptionGroupsForSettingType, type SfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options'
 import { getCaratPreviewDiameter } from '@/lib/sfs/carat-preview'
 import { formatSfsMetalPercentLabel, formatSfsPriceLabel } from '@/lib/sfs/effective-pricing'
-import { computeSfsOrderPricing } from '@/lib/sfs/pricing'
+import { computeSfsOrderPricing, type SfsMultiDiamondDiscountTier } from '@/lib/sfs/pricing'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -727,11 +727,33 @@ function Step5({
           </div>
         ))}
         {pricing && (
-          <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: BORDER }}>
-            <span className="text-sm font-semibold" style={{ color: DARK }}>Estimated total</span>
-            <span className="text-lg font-bold tabular-nums" style={{ color: GOLD }}>
-              {formatSfsPriceLabel(pricing.subtotal)}
-            </span>
+          <div className="pt-2 border-t space-y-1.5" style={{ borderColor: BORDER }}>
+            {pricing.discountAmount > 0 && (
+              <>
+                <div className="flex items-center justify-between text-sm">
+                  <span style={{ color: MUTED }}>Diamond subtotal</span>
+                  <span className="tabular-nums" style={{ color: DARK }}>{formatSfsPriceLabel(pricing.diamondGross)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span style={{ color: MUTED }}>Multi-diamond discount (−{pricing.discountPct}%)</span>
+                  <span className="tabular-nums" style={{ color: '#B91C1C' }}>
+                    −HK${pricing.discountAmount.toLocaleString('en-HK', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                {pricing.jewelleryTotal > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span style={{ color: MUTED }}>Jewellery</span>
+                    <span className="tabular-nums" style={{ color: DARK }}>{formatSfsPriceLabel(pricing.jewelleryTotal)}</span>
+                  </div>
+                )}
+              </>
+            )}
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold" style={{ color: DARK }}>Estimated total</span>
+              <span className="text-lg font-bold tabular-nums" style={{ color: GOLD }}>
+                {formatSfsPriceLabel(pricing.subtotal)}
+              </span>
+            </div>
           </div>
         )}
       </div>
@@ -760,6 +782,7 @@ export default function OrderWizard({
   const [error, setError] = useState('')
   const [pricedSpecs, setPricedSpecs] = useState<SfsOrderSpecOptions>(specOptions)
   const [personalized, setPersonalized] = useState(false)
+  const [discountTiers, setDiscountTiers] = useState<SfsMultiDiamondDiscountTier[]>([])
 
   // Load effective catalog prices (global, or personalised when logged in with overrides).
   useEffect(() => {
@@ -771,6 +794,7 @@ export default function OrderWizard({
         if (cancelled || !body?.specOptions) return
         setPricedSpecs(body.specOptions as SfsOrderSpecOptions)
         setPersonalized(Boolean(body.personalized))
+        setDiscountTiers(Array.isArray(body.multiDiamondDiscountTiers) ? body.multiDiamondDiscountTiers : [])
       })
       .catch(() => {/* keep server-provided catalog */})
     return () => { cancelled = true }
@@ -782,8 +806,9 @@ export default function OrderWizard({
       sourceType: data.sourceType,
       color: data.color,
       specOptions: pricedSpecs,
+      multiDiamondDiscountTiers: discountTiers,
     }),
-    [data.diamonds, data.sourceType, data.color, pricedSpecs],
+    [data.diamonds, data.sourceType, data.color, pricedSpecs, discountTiers],
   )
 
   // Pre-fill from session + saved profile (create mode only)
@@ -949,11 +974,21 @@ export default function OrderWizard({
           <>
             <Step4 data={data} update={update} specOptions={pricedSpecs} />
             {quote.subtotal > 0 && (
-              <div className="mt-6 flex items-center justify-between rounded-2xl border px-5 py-4" style={{ borderColor: BORDER, background: '#fff' }}>
-                <span className="text-sm font-medium" style={{ color: MUTED }}>Estimated total so far</span>
-                <span className="text-lg font-bold tabular-nums" style={{ color: GOLD }}>
-                  {formatSfsPriceLabel(quote.subtotal)}
-                </span>
+              <div className="mt-6 rounded-2xl border px-5 py-4 space-y-1.5" style={{ borderColor: BORDER, background: '#fff' }}>
+                {quote.discountAmount > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span style={{ color: MUTED }}>Multi-diamond discount (−{quote.discountPct}%)</span>
+                    <span className="tabular-nums" style={{ color: '#B91C1C' }}>
+                      −HK${quote.discountAmount.toLocaleString('en-HK', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium" style={{ color: MUTED }}>Estimated total so far</span>
+                  <span className="text-lg font-bold tabular-nums" style={{ color: GOLD }}>
+                    {formatSfsPriceLabel(quote.subtotal)}
+                  </span>
+                </div>
               </div>
             )}
           </>

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db/prisma'
 import { getSfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options-server'
+import { getEffectiveMultiDiamondDiscountTiers } from '@/lib/sfs/multi-diamond-discount'
 import {
   computeSfsOrderPricing,
   type SfsPriceOverride,
@@ -50,6 +51,7 @@ export async function sfsOrderBillingSnapshot(orderId: string): Promise<SfsOrder
       sourceType: true,
       color: true,
       diamonds: true,
+      customerId: true,
       customer: {
         select: {
           priceOverrides: { select: { category: true, value: true, price: true } },
@@ -61,20 +63,20 @@ export async function sfsOrderBillingSnapshot(orderId: string): Promise<SfsOrder
 
   const diamonds = (Array.isArray(order.diamonds) ? order.diamonds : []) as DiamondRow[]
 
-  // Suggested unit prices: carat/color/shape/source + design×(1+metal%) jewellery +
-  // per-customer price overrides. Unpriced spec options resolve to 0.
   const specOptions = await getSfsOrderSpecOptions()
   const overrides: SfsPriceOverride[] = (order.customer?.priceOverrides ?? []).map(o => ({
     category: o.category,
     value: o.value,
     price: Number(o.price),
   }))
+  const { tiers } = await getEffectiveMultiDiamondDiscountTiers(order.customerId)
   const pricing = computeSfsOrderPricing({
     diamonds: diamonds as SfsPricingDiamond[],
     sourceType: order.sourceType,
     color: order.color,
     specOptions,
     overrides,
+    multiDiamondDiscountTiers: tiers,
   })
 
   const suggestedLines =

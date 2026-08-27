@@ -1398,10 +1398,41 @@ model SfsCustomer {
   orders         SfsOrder[]
   contracts      SfsCustomerContract[]
   priceOverrides SfsCustomerPriceOverride[]
+  multiDiamondDiscountTiers SfsCustomerMultiDiamondDiscountTier[]
 
   @@index([email])
   @@index([createdAt])
   @@map("sfs_customers")
+}
+
+/// Global multi-diamond discount tiers. Discount applies only to the diamond portion
+/// (carat + source + color + shape). 10 ⇒ 10% off that portion when diamondCount ≥ minDiamondCount.
+model SfsMultiDiamondDiscountTier {
+  id              String   @id @default(cuid())
+  minDiamondCount Int
+  discountPercent Decimal  @db.Decimal(8, 2)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([minDiamondCount])
+  @@map("sfs_multi_diamond_discount_tiers")
+}
+
+/// Per-customer multi-diamond discount tiers. When any row exists for a customer,
+/// those tiers replace the global table for that customer (blank/empty ⇒ use global).
+model SfsCustomerMultiDiamondDiscountTier {
+  id              String   @id @default(cuid())
+  customerId      String
+  minDiamondCount Int
+  discountPercent Decimal  @db.Decimal(8, 2)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  customer SfsCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, minDiamondCount])
+  @@index([customerId])
+  @@map("sfs_customer_multi_diamond_discount_tiers")
 }
 
 /// Per-customer base-price override for a specific spec option (category + value).
