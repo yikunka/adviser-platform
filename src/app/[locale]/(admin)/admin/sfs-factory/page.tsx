@@ -139,7 +139,7 @@ function StandardPricesPanel() {
   return (
     <div className="space-y-4">
       <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-        Edit factory standard prices for each product option. Spec labels and images stay under Diamond Specs.
+        Edit standard prices for each product option. Spec labels and images stay under Diamond Specs.
       </p>
       <div className="flex flex-wrap gap-2">
         <button
@@ -377,7 +377,7 @@ function CustomerPricesPanel() {
   return (
     <div className="space-y-4">
       <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-        Choose a customer, then set their factory prices by product category. Blank cells use the standard price.
+        Choose a customer, then set their prices by product category. Blank cells use the standard price.
       </p>
 
       <div className="flex flex-wrap items-end gap-3">
@@ -542,10 +542,10 @@ export default function SfsFactoryPage() {
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--foreground)' }}>
           <Factory size={22} style={{ color: '#C9A96E' }} />
-          工厂管理
+          价格管理
         </h1>
         <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-          Factory standard prices and per-customer price lists for SFS Diamond products.
+          Standard prices and per-customer price lists for SFS Diamond products.
         </p>
       </div>
 

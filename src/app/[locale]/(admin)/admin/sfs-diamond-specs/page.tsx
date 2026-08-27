@@ -164,7 +164,7 @@ function SpecModal({
               {option ? 'Edit diamond spec' : 'Create diamond spec'}
             </h2>
             <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
-              Active options are shown on the SFS Diamond customer order wizard. Prices are managed under 工厂管理.
+              Active options are shown on the SFS Diamond customer order wizard. Prices are managed under 价格管理.
             </p>
           </div>
           <button
@@ -365,7 +365,7 @@ export default function SfsDiamondSpecsPage() {
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>SFS Diamond Specs</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-            Manage customer-facing order options for source, color, carat, shape, setting, design, and metal. Factory prices are edited under 工厂管理.
+            Manage customer-facing order options for source, color, carat, shape, setting, design, and metal. Prices are edited under 价格管理.
           </p>
         </div>
         <Button onClick={() => setCreating(true)}>

@@ -201,7 +201,7 @@ export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: stri
   { key: 'sfsOrders', label: 'SFS orders', group: 'SFS Diamond' },
   { key: 'sfsInvoices', label: 'SFS invoices', group: 'SFS Invoices' },
   { key: 'sfsDiamondSpecs', label: 'Diamond specs', group: 'SFS Diamond' },
-  { key: 'sfsFactory', label: 'Factory management', group: 'SFS Diamond' },
+  { key: 'sfsFactory', label: 'Price management', group: 'SFS Diamond' },
   { key: 'settings', label: 'Settings', group: 'System' },
   { key: 'adminTeam', label: 'Admin users & access', group: 'System' },
   { key: 'adminRoles', label: 'Role management', group: 'System' },
