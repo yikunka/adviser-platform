@@ -531,10 +531,15 @@ function StandardPricesPanel() {
   )
 }
 
+function customerOptionLabel(customer: CustomerRow) {
+  const contact = customer.phone || customer.email
+  return `${customer.name}${contact ? ` · ${contact}` : ''} (${customer.orderCount} orders)`
+}
+
 function CustomerPricesPanel() {
   const [customers, setCustomers] = useState<CustomerRow[]>([])
   const [search, setSearch] = useState('')
-  const [selectedId, setSelectedId] = useState<string>('')
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerRow | null>(null)
   const [loadingCustomers, setLoadingCustomers] = useState(true)
   const [specOptions, setSpecOptions] = useState<SpecOption[]>([])
   const [draftPrices, setDraftPrices] = useState<Record<string, string>>({})
@@ -547,8 +552,14 @@ function CustomerPricesPanel() {
   const [globalDiscountTiers, setGlobalDiscountTiers] = useState<DiscountTierDraft[]>([])
   const [savingTiers, setSavingTiers] = useState(false)
 
-  const selected = customers.find(c => c.id === selectedId) ?? null
+  const selected = selectedCustomer
   const resolvedCustomerId = boundCustomerId ?? selected?.customerId ?? null
+
+  const customerOptions = useMemo(() => {
+    if (!selectedCustomer) return customers
+    if (customers.some(c => c.id === selectedCustomer.id)) return customers
+    return [selectedCustomer, ...customers]
+  }, [customers, selectedCustomer])
 
   const loadCustomers = useCallback(async () => {
     setLoadingCustomers(true)
@@ -560,6 +571,11 @@ function CustomerPricesPanel() {
       if (!res.ok) throw new Error(json.error ?? 'Failed to load customers')
       const rows: CustomerRow[] = (json.customers ?? []).filter((c: CustomerRow) => c.source !== 'ORDER_ONLY' || c.customerId)
       setCustomers(rows)
+      setSelectedCustomer(prev => {
+        if (!prev) return prev
+        const refreshed = rows.find(c => c.id === prev.id)
+        return refreshed ?? prev
+      })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to load customers.')
     } finally {
@@ -760,18 +776,21 @@ function CustomerPricesPanel() {
         <label className="space-y-1.5 block min-w-[280px] flex-1 max-w-lg">
           <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Customer</span>
           <Select
-            value={selectedId || undefined}
-            onValueChange={value => setSelectedId(value ?? '')}
+            value={selectedCustomer?.id}
+            onValueChange={value => {
+              const next = customerOptions.find(c => c.id === value) ?? null
+              setSelectedCustomer(next)
+            }}
           >
             <SelectTrigger className="w-full" style={{ background: '#0A0A0A', border: '1px solid #2A2418' }}>
-              <SelectValue placeholder={loadingCustomers ? 'Loading...' : 'Select a customer'} />
+              <SelectValue placeholder={loadingCustomers ? 'Loading...' : 'Select a customer'}>
+                {selectedCustomer ? customerOptionLabel(selectedCustomer) : null}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {customers.map(customer => (
+              {customerOptions.map(customer => (
                 <SelectItem key={customer.id} value={customer.id}>
-                  {customer.name}
-                  {customer.phone ? ` · ${customer.phone}` : customer.email ? ` · ${customer.email}` : ''}
-                  {` (${customer.orderCount} orders)`}
+                  {customerOptionLabel(customer)}
                 </SelectItem>
               ))}
             </SelectContent>
