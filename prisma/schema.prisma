@@ -294,6 +294,7 @@ model User {
   orders                              ServiceOrder[]
   sfsOrders                           SfsOrder[]
   sfsCustomers                        SfsCustomer[]                 @relation("SfsCustomerUser")
+  sfsPendingDesignUploads             SfsPendingDesignUpload[]
   sfsCustomersCreated                 SfsCustomer[]                 @relation("SfsCustomerCreator")
   financialJournalEntries             JournalEntry[]                @relation("FinancialJournalCreatedBy")
   invoicesCreated                     Invoice[]                     @relation("InvoiceCreatedBy")
@@ -1401,6 +1402,28 @@ model SfsOrderDesignAttachment {
 
   @@index([orderId, diamondIndex])
   @@map("sfs_order_design_attachments")
+}
+
+/// A private custom-design file uploaded before its SFS order is submitted.
+/// The browser receives only this row's id; the OSS key never leaves the server.
+model SfsPendingDesignUpload {
+  id             String   @id @default(cuid())
+  draftTokenHash String
+  userId         String?
+  storageKey     String   @unique
+  fileName       String
+  mimeType       String
+  sizeBytes      Int
+  expiresAt      DateTime
+  claimedAt      DateTime?
+  createdAt      DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([draftTokenHash, expiresAt])
+  @@index([userId, expiresAt])
+  @@index([claimedAt, expiresAt])
+  @@map("sfs_pending_design_uploads")
 }
 
 model SfsCustomer {

@@ -1,6 +1,7 @@
 import cron from 'node-cron'
 import { prisma } from '@/lib/db/prisma'
 import { createNotification } from '@/lib/notifications'
+import { cleanupExpiredSfsDesignUploads } from '@/lib/sfs/pending-design-uploads'
 
 let started = false
 
@@ -93,6 +94,16 @@ export function startAMLScheduler() {
       console.error('[Scheduler] Monthly DDR job failed:', err)
     }
   }, { timezone: 'Asia/Hong_Kong' })
+
+  // Run separately so an AML failure never skips private design-file cleanup.
+  cron.schedule('5 18 * * *', async () => {
+    try {
+      const result = await cleanupExpiredSfsDesignUploads()
+      console.log(`[Scheduler] SFS expired design cleanup complete. Deleted: ${result.deleted}. Failed: ${result.failed}`)
+    } catch (err) {
+      console.error('[Scheduler] SFS expired design cleanup failed:', err)
+    }
+  }, { timezone: 'UTC' })
 
   console.log('[Scheduler] Scheduled daily job at 02:00 HKT and monthly DDR at 00:00 HKT on day 1')
 }

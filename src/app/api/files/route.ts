@@ -35,11 +35,11 @@ async function authorizeKey(
   key: string,
   userId: string,
   role: string,
-  email: string,
+  _email: string,
 ): Promise<boolean> {
   if (STAFF_ROLES.includes(role)) return true
 
-  const emailNorm = email.toLowerCase()
+  const emailNorm = _email.toLowerCase()
   const [doc, kycDoc, sfsAttachment, sfsDesign] = await Promise.all([
     prisma.document.findFirst({
       where: {
@@ -61,10 +61,7 @@ async function authorizeKey(
     prisma.sfsOrderDesignAttachment.findFirst({
       where: {
         storageKey: key,
-        OR: [
-          { order: { userId } },
-          { order: { email: { equals: emailNorm, mode: 'insensitive' } } },
-        ],
+        order: { userId },
       },
       select: { id: true },
     }),
@@ -119,14 +116,43 @@ async function redirectToOss(
 
 export async function GET(req: NextRequest) {
   const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const key = req.nextUrl.searchParams.get('key')
-  if (!key) return NextResponse.json({ error: 'Missing key' }, { status: 400 })
-
-  const allowed = await authorizeKey(key, session.user.id, session.user.role, session.user.email)
+  const designAttachmentId = req.nextUrl.searchParams.get('designAttachmentId')
+  let key = req.nextUrl.searchParams.get('key')
+  let allowed = false
+  if (designAttachmentId) {
+    const design = await prisma.sfsOrderDesignAttachment.findUnique({
+      where: { id: designAttachmentId },
+      select: { storageKey: true },
+    })
+    if (design) {
+      key = design.storageKey
+      // SFS custom designs intentionally retain the established anonymous-read
+      // rule. The attachment ID is opaque and the storage key stays server-side.
+      allowed = true
+    }
+  } else if (key) {
+    const anonymousDesign = await prisma.sfsOrderDesignAttachment.findFirst({
+      where: { storageKey: key },
+      select: { id: true },
+    })
+    if (anonymousDesign) {
+      allowed = true
+    } else if (session?.user?.id) {
+      allowed = await authorizeKey(key, session.user.id, session.user.role, session.user.email)
+    }
+  }
+  if (!key) {
+    return NextResponse.json(
+      { error: designAttachmentId ? 'File not found' : 'Missing file reference' },
+      { status: designAttachmentId ? 404 : 400 },
+    )
+  }
   if (!allowed) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json(
+      { error: session?.user?.id ? 'Forbidden' : 'Unauthorized' },
+      { status: session?.user?.id ? 403 : 401 },
+    )
   }
 
   const download = req.nextUrl.searchParams.get('download') === '1'

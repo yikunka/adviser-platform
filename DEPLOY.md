@@ -706,6 +706,10 @@ cd /opt/adviser && npx prisma studio --port 5555
 
 ## 8. Cloudflare R2 設定
 
+### SFS 自訂設計稿（阿里雲 OSS）
+
+SFS 自訂設計稿沿用既有 `OSS_BUCKET`、RAM 憑據及讀取規則，無須額外 Bucket 或環境變數。未提交檔案保留 7 天後自動清理；訂單附件經 `/api/files` 產生短時 OSS 連結，支援匿名讀取。
+
 ### 8.1 建立 Bucket
 
 1. [Cloudflare Dashboard](https://dash.cloudflare.com) → **R2 Object Storage** → **Create bucket**

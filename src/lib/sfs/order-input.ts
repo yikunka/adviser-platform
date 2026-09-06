@@ -1,14 +1,10 @@
 import { z } from 'zod'
 import { getSfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options-server'
 import { getDesignOptionsForSettingType, type SfsSpecOption } from '@/lib/sfs/diamond-spec-options'
-import { isSfsCustomDesign, isSfsDesignUploadKey, type PendingDesignUpload } from '@/lib/sfs/design-uploads'
+import { isSfsCustomDesign } from '@/lib/sfs/design-upload-shared'
 
-export const sfsDesignUploadInputSchema = z.object({
-  storageKey: z.string().min(1),
-  fileName: z.string().min(1).max(255),
-  mimeType: z.string().min(1).max(120),
-  sizeBytes: z.number().int().positive().max(10 * 1024 * 1024),
-})
+export const sfsDesignUploadInputSchema = z.object({ uploadId: z.string().cuid().optional(), attachmentId: z.string().cuid().optional() })
+  .refine(upload => Boolean(upload.uploadId) !== Boolean(upload.attachmentId), 'Provide exactly one upload reference')
 
 export const sfsDiamondItemInputSchema = z.object({
   carat: z.string().min(1),
@@ -65,11 +61,6 @@ export async function validateSfsOrderSpecOptions(input: SfsOrderInput): Promise
       if (diamond.type === 'Diamond only') return `${label}: custom design is not available for Diamond only`
       const uploads = diamond.designUploads ?? []
       if (uploads.length === 0) return `${label}: please upload at least one design file`
-      for (const upload of uploads) {
-        if (!isSfsDesignUploadKey(upload.storageKey)) {
-          return `${label}: invalid design upload`
-        }
-      }
     } else {
       const designOptions = getDesignOptionsForSettingType(diamond.type, options)
       if (designOptions.length > 0 && !optionValues(designOptions).has(diamond.design ?? '')) {
@@ -88,16 +79,20 @@ export async function validateSfsOrderSpecOptions(input: SfsOrderInput): Promise
 
 /** Strip upload blobs from diamonds JSON persisted on the order (attachments live in their own table). */
 export function diamondsJsonForPersistence(diamonds: SfsOrderInput['diamonds']) {
-  return diamonds.map(({ designUploads: _uploads, ...rest }) => ({
-    ...rest,
-    designNotes: rest.designNotes?.trim() || undefined,
-  }))
+  return diamonds.map(diamond => {
+    const { designUploads, ...rest } = diamond
+    void designUploads
+    return {
+      ...rest,
+      designNotes: rest.designNotes?.trim() || undefined,
+    }
+  })
 }
 
-export function designAttachmentsFromInput(
+export function designUploadRefsFromInput(
   diamonds: SfsOrderInput['diamonds'],
-): Array<PendingDesignUpload & { diamondIndex: number }> {
-  const rows: Array<PendingDesignUpload & { diamondIndex: number }> = []
+): Array<{ diamondIndex: number; uploadId?: string; attachmentId?: string }> {
+  const rows: Array<{ diamondIndex: number; uploadId?: string; attachmentId?: string }> = []
   diamonds.forEach((diamond, diamondIndex) => {
     if (!isSfsCustomDesign(diamond.design)) return
     for (const upload of diamond.designUploads ?? []) {

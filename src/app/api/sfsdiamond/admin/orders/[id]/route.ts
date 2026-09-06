@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requirePermission, requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
-import { deleteFromR2 } from '@/lib/storage/r2'
+import { deleteFromR2, deleteSfsDesignFile } from '@/lib/storage/r2'
 import { z } from 'zod'
 import { resolveOrderStepPlan } from '@/lib/sfs/order-step-plan'
 
@@ -56,6 +56,15 @@ export async function GET(
   if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json({
     ...order,
+    designAttachments: order.designAttachments.map(attachment => ({
+      id: attachment.id,
+      orderId: attachment.orderId,
+      diamondIndex: attachment.diamondIndex,
+      fileName: attachment.fileName,
+      mimeType: attachment.mimeType,
+      sizeBytes: attachment.sizeBytes,
+      uploadedAt: attachment.uploadedAt,
+    })),
     quotedAmount: order.quotedAmount == null ? null : Number(order.quotedAmount),
     resolvedStepPlan: resolveOrderStepPlan(order.stepPlan),
   })
@@ -161,7 +170,11 @@ export async function DELETE(
 
   await prisma.sfsOrder.delete({ where: { id } })
 
-  await Promise.allSettled([...storageKeys].map(key => deleteFromR2(key)))
+  const designKeys = new Set(order.designAttachments.map(attachment => attachment.storageKey))
+  await Promise.allSettled([
+    ...[...storageKeys].filter(key => !designKeys.has(key)).map(key => deleteFromR2(key)),
+    ...[...designKeys].map(key => deleteSfsDesignFile(key)),
+  ])
 
   await logAudit(session!.user.id, 'DELETE', 'SfsOrder', id, {
     id: order.id,

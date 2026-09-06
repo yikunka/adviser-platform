@@ -66,7 +66,7 @@ export default async function EditOrderPage({
       designUploads: order.designAttachments
         .filter(a => a.diamondIndex === index)
         .map(a => ({
-          storageKey: a.storageKey,
+          attachmentId: a.id,
           fileName: a.fileName,
           mimeType: a.mimeType,
           sizeBytes: a.sizeBytes,
