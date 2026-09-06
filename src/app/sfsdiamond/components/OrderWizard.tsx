@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -442,6 +442,8 @@ function CustomDesignUpload({
 }) {
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const atLimit = uploads.length >= 8
 
   const handleFiles = async (fileList: FileList | null) => {
     if (!fileList?.length) return
@@ -481,18 +483,35 @@ function CustomDesignUpload({
         JPG, PNG, WEBP, or PDF · max 10 MB each · up to 8 files.
       </p>
       <input
+        ref={fileInputRef}
         type="file"
         accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
         multiple
-        disabled={uploading || uploads.length >= 8}
+        disabled={uploading || atLimit}
         onChange={e => {
           void handleFiles(e.target.files)
           e.target.value = ''
         }}
-        className="block w-full text-sm"
-        style={{ color: MUTED }}
+        className="sr-only"
+        aria-hidden
+        tabIndex={-1}
       />
-      {uploading && <p className="text-xs" style={{ color: GOLD }}>Uploading…</p>}
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          disabled={uploading || atLimit}
+          onClick={() => fileInputRef.current?.click()}
+          className="px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:opacity-90 disabled:opacity-50"
+          style={{ background: GOLD, color: '#0A0805' }}
+        >
+          {uploading ? 'Uploading…' : 'Choose files'}
+        </button>
+        <span className="text-xs" style={{ color: MUTED }}>
+          {uploads.length === 0
+            ? 'No file selected'
+            : `${uploads.length} file${uploads.length === 1 ? '' : 's'} selected`}
+        </span>
+      </div>
       {uploadError && <p className="text-xs" style={{ color: '#B91C1C' }}>{uploadError}</p>}
       {uploads.length > 0 && (
         <ul className="space-y-1.5">
