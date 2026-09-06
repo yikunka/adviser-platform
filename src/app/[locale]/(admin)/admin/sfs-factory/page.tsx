@@ -561,6 +561,13 @@ function CustomerPricesPanel() {
     return [selectedCustomer, ...customers]
   }, [customers, selectedCustomer])
 
+  // Base UI Select falls back to the raw item value (e.g. "user:cuid") when the
+  // popup unmounts unless an items map (or Value children) provides labels.
+  const customerSelectItems = useMemo(
+    () => Object.fromEntries(customerOptions.map(c => [c.id, customerOptionLabel(c)])),
+    [customerOptions],
+  )
+
   const loadCustomers = useCallback(async () => {
     setLoadingCustomers(true)
     try {
@@ -776,20 +783,23 @@ function CustomerPricesPanel() {
         <label className="space-y-1.5 block min-w-[280px] flex-1 max-w-lg">
           <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Customer</span>
           <Select
-            value={selectedCustomer?.id}
+            value={selectedCustomer?.id ?? null}
             onValueChange={value => {
+              if (value == null) {
+                setSelectedCustomer(null)
+                return
+              }
               const next = customerOptions.find(c => c.id === value) ?? null
               setSelectedCustomer(next)
             }}
+            items={customerSelectItems}
           >
             <SelectTrigger className="w-full" style={{ background: '#0A0A0A', border: '1px solid #2A2418' }}>
-              <SelectValue placeholder={loadingCustomers ? 'Loading...' : 'Select a customer'}>
-                {selectedCustomer ? customerOptionLabel(selectedCustomer) : null}
-              </SelectValue>
+              <SelectValue placeholder={loadingCustomers ? 'Loading...' : 'Select a customer'} />
             </SelectTrigger>
             <SelectContent>
               {customerOptions.map(customer => (
-                <SelectItem key={customer.id} value={customer.id}>
+                <SelectItem key={customer.id} value={customer.id} label={customerOptionLabel(customer)}>
                   {customerOptionLabel(customer)}
                 </SelectItem>
               ))}

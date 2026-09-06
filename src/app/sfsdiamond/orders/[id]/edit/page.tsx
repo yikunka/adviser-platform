@@ -17,7 +17,10 @@ export default async function EditOrderPage({
 
   const { id } = await params
   const [order, specOptions] = await Promise.all([
-    prisma.sfsOrder.findUnique({ where: { id } }),
+    prisma.sfsOrder.findUnique({
+      where: { id },
+      include: { designAttachments: { orderBy: [{ diamondIndex: 'asc' }, { uploadedAt: 'asc' }] } },
+    }),
     getSfsOrderSpecOptions(),
   ])
 
@@ -30,7 +33,15 @@ export default async function EditOrderPage({
   const relationship    = isPet ? 'Pet' : rawRel
   const relationshipPet = isPet ? rawRel.slice(6) : ''
 
-  const diamonds = order.diamonds as { carat?: string; shape?: string; type?: string; ringSize?: string; design?: string; metal?: string }[]
+  const diamonds = order.diamonds as {
+    carat?: string
+    shape?: string
+    type?: string
+    ringSize?: string
+    design?: string
+    designNotes?: string
+    metal?: string
+  }[]
 
   const initialData: Partial<WizardFormData> = {
     memorialName:   order.memorialName,
@@ -45,12 +56,21 @@ export default async function EditOrderPage({
     remarks:        order.remarks ?? '',
     mailingPackage: order.mailingPackage,
     color:          order.color,
-    diamonds: diamonds.map(d => ({
+    diamonds: diamonds.map((d, index) => ({
       carat:    d.carat    ?? '',
       shape:    d.shape    ?? '',
       type:     d.type     ?? '',
       ringSize: d.ringSize ?? '',
       design:   d.design   ?? '',
+      designNotes: d.designNotes ?? '',
+      designUploads: order.designAttachments
+        .filter(a => a.diamondIndex === index)
+        .map(a => ({
+          storageKey: a.storageKey,
+          fileName: a.fileName,
+          mimeType: a.mimeType,
+          sizeBytes: a.sizeBytes,
+        })),
       metal:    d.metal    ?? '',
     })),
   }

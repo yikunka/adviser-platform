@@ -106,6 +106,18 @@ describe('computeSfsOrderPricing', () => {
     expect(result.lines[0].unitPrice).toBe(1150)
   })
 
+  it('excludes jewellery from the live estimate for Custom designs (staff-quoted)', () => {
+    const result = computeSfsOrderPricing({
+      diamonds: [{ carat: '1.0', shape: 'Round', type: 'Ring', design: 'Custom', metal: 'Platinum' }],
+      color: 'Natural Color',
+      specOptions: specOptions(),
+    })
+    expect(result.lines[0].jewelleryPart).toBe(0)
+    expect(result.jewelleryTotal).toBe(0)
+    expect(result.lines[0].unitPrice).toBe(1150)
+    expect(result.subtotal).toBe(1150)
+  })
+
   it('includes the source material adjustment in the diamond price portion', () => {
     const result = computeSfsOrderPricing({
       diamonds: [{ carat: '1.0', shape: 'Round', type: 'Diamond only' }],

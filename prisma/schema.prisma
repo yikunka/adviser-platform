@@ -1364,6 +1364,11 @@ model SfsOrder {
   adminNotes     String?
   customerRemark String?
 
+  // Staff-entered quotation (manual review of custom jewellery designs)
+  quotedAmount Decimal?  @db.Decimal(18, 2)
+  quotedAt     DateTime?
+  quoteNotes   String?
+
   // Customer-entered internal reference (editable by the client at any time)
   customerInternalOrderCode String?
 
@@ -1371,14 +1376,31 @@ model SfsOrder {
   /// Shape: { [phase: string]: Array<{ id, label, kind: 'default'|'custom', defaultKey?: string }> }
   stepPlan Json?
 
-  steps    SfsOrderStep[]
-  invoices SfsInvoice[]
+  steps              SfsOrderStep[]
+  invoices           SfsInvoice[]
+  designAttachments  SfsOrderDesignAttachment[]
 
   @@index([userId])
   @@index([customerId])
   @@index([email])
   @@index([status, createdAt])
   @@map("sfs_orders")
+}
+
+model SfsOrderDesignAttachment {
+  id           String   @id @default(cuid())
+  orderId      String
+  diamondIndex Int
+  storageKey   String
+  fileName     String
+  mimeType     String
+  sizeBytes    Int
+  uploadedAt   DateTime @default(now())
+
+  order SfsOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, diamondIndex])
+  @@map("sfs_order_design_attachments")
 }
 
 model SfsCustomer {

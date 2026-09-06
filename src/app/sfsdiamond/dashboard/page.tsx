@@ -154,6 +154,11 @@ export default async function SFSDashboardPage() {
                       <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold" style={{ background: badge.bg, color: badge.color }}>
                         {order.status}
                       </span>
+                      {order.quotedAmount != null && (
+                        <p className="text-xs font-semibold tabular-nums" style={{ color: '#3b82f6' }}>
+                          Quoted HK${Number(order.quotedAmount).toLocaleString('en-HK', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                        </p>
+                      )}
                       <p className="text-xs" style={{ color: MUTED }}>
                         {new Date(order.createdAt).toLocaleDateString('en-HK', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </p>

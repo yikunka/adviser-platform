@@ -204,6 +204,30 @@ export default async function SFSOrderDetailPage({
           </div>
         )}
 
+        {order.quotedAmount != null && (
+          <div
+            className="rounded-2xl p-5 space-y-2"
+            style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.25)' }}
+          >
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#3b82f6' }}>
+              Quotation
+            </p>
+            <p className="text-2xl font-bold tabular-nums" style={{ color: DARK }}>
+              HK${Number(order.quotedAmount).toLocaleString('en-HK', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+            </p>
+            {order.quotedAt && (
+              <p className="text-xs" style={{ color: MUTED }}>
+                Issued {new Date(order.quotedAt).toLocaleDateString('en-HK', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+            )}
+            {order.quoteNotes && (
+              <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: DARK }}>
+                {order.quoteNotes}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Diamond summary */}
         <div className="rounded-2xl p-5 space-y-3" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
           <div className="flex items-center justify-between">

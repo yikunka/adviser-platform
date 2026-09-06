@@ -8,8 +8,16 @@ import { getDesignOptionGroupsForSettingType, type SfsOrderSpecOptions } from '@
 import { getCaratPreviewDiameter } from '@/lib/sfs/carat-preview'
 import { formatSfsMetalPercentLabel, formatSfsPriceLabel } from '@/lib/sfs/effective-pricing'
 import { computeSfsOrderPricing, type SfsMultiDiamondDiscountTier } from '@/lib/sfs/pricing'
+import { isSfsCustomDesign, SFS_CUSTOM_DESIGN_VALUE } from '@/lib/sfs/design-uploads'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+export type DesignUploadRef = {
+  storageKey: string
+  fileName: string
+  mimeType: string
+  sizeBytes: number
+}
 
 export type DiamondItem = {
   carat: string
@@ -17,6 +25,8 @@ export type DiamondItem = {
   type: string
   ringSize: string
   design: string
+  designNotes: string
+  designUploads: DesignUploadRef[]
   metal: string
 }
 
@@ -36,7 +46,16 @@ export type WizardFormData = {
   diamonds: DiamondItem[]
 }
 
-const EMPTY_DIAMOND: DiamondItem = { carat: '', shape: '', type: '', ringSize: '', design: '', metal: '' }
+const EMPTY_DIAMOND: DiamondItem = {
+  carat: '',
+  shape: '',
+  type: '',
+  ringSize: '',
+  design: '',
+  designNotes: '',
+  designUploads: [],
+  metal: '',
+}
 
 export const WIZARD_INITIAL: WizardFormData = {
   memorialName: '',
@@ -408,6 +427,106 @@ function Step3({ data, update, specOptions }: {
   )
 }
 
+// ─── Custom design upload (Step 4) ────────────────────────────────────────────
+
+function CustomDesignUpload({
+  notes,
+  uploads,
+  onNotesChange,
+  onUploadsChange,
+}: {
+  notes: string
+  uploads: DesignUploadRef[]
+  onNotesChange: (notes: string) => void
+  onUploadsChange: (uploads: DesignUploadRef[]) => void
+}) {
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+
+  const handleFiles = async (fileList: FileList | null) => {
+    if (!fileList?.length) return
+    setUploading(true)
+    setUploadError('')
+    const next = [...uploads]
+    try {
+      for (const file of Array.from(fileList)) {
+        if (next.length >= 8) break
+        const formData = new FormData()
+        formData.append('file', file)
+        const res = await fetch('/api/sfsdiamond/orders/design-upload', { method: 'POST', body: formData })
+        const body = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(body.error ?? `Failed to upload ${file.name}`)
+        next.push({
+          storageKey: body.storageKey,
+          fileName: body.fileName,
+          mimeType: body.mimeType,
+          sizeBytes: body.sizeBytes,
+        })
+      }
+      onUploadsChange(next)
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border p-4 space-y-3" style={{ borderColor: GOLD, background: '#FDF8F0' }}>
+      <p className="text-sm font-medium" style={{ color: DARK }}>
+        Upload your design<span style={{ color: GOLD }}> *</span>
+      </p>
+      <p className="text-xs" style={{ color: MUTED }}>
+        Share a sketch, photo, or PDF of your custom jewellery. Our team will review and send a quotation.
+        JPG, PNG, WEBP, or PDF · max 10 MB each · up to 8 files.
+      </p>
+      <input
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+        multiple
+        disabled={uploading || uploads.length >= 8}
+        onChange={e => {
+          void handleFiles(e.target.files)
+          e.target.value = ''
+        }}
+        className="block w-full text-sm"
+        style={{ color: MUTED }}
+      />
+      {uploading && <p className="text-xs" style={{ color: GOLD }}>Uploading…</p>}
+      {uploadError && <p className="text-xs" style={{ color: '#B91C1C' }}>{uploadError}</p>}
+      {uploads.length > 0 && (
+        <ul className="space-y-1.5">
+          {uploads.map(file => (
+            <li
+              key={file.storageKey}
+              className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs"
+              style={{ background: '#fff', border: `1px solid ${BORDER}`, color: DARK }}
+            >
+              <span className="truncate">{file.fileName}</span>
+              <button
+                type="button"
+                className="flex-shrink-0 text-[11px] font-medium"
+                style={{ color: '#999' }}
+                onClick={() => onUploadsChange(uploads.filter(u => u.storageKey !== file.storageKey))}
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <Field label="Design notes (optional)">
+        <Textarea
+          value={notes}
+          onChange={e => onNotesChange(e.target.value)}
+          placeholder="Describe materials, dimensions, or other preferences…"
+          maxLength={1000}
+        />
+      </Field>
+    </div>
+  )
+}
+
 // ─── Diamond row (Step 4) ─────────────────────────────────────────────────────
 
 function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, onToggleCollapse, specOptions }: {
@@ -524,7 +643,7 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
         </p>
         <div className="flex flex-wrap gap-2">
           {specOptions.settingTypes.map(t => (
-            <CheckCard key={t.id} checked={item.type === t.value} onChange={() => onChange({ type: t.value, design: '', ringSize: '' })}>
+            <CheckCard key={t.id} checked={item.type === t.value} onChange={() => onChange({ type: t.value, design: '', designNotes: '', designUploads: [], ringSize: '' })}>
               {t.label}
             </CheckCard>
           ))}
@@ -543,26 +662,44 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
         </Field>
       )}
 
-      {designOptionGroups.map(group => (
-        <div key={group.label}>
+      {(designOptionGroups.length > 0 || (item.type && item.type !== 'Diamond only')) && (
+        <div>
           <p className="text-sm font-medium mb-3" style={{ color: DARK }}>
-            {group.label}<span style={{ color: GOLD }}> *</span>
+            {(designOptionGroups[0]?.label ?? `${item.type} Design`)}
+            <span style={{ color: GOLD }}> *</span>
           </p>
           <div className={`grid gap-3 ${item.type === 'Ring' ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3 sm:grid-cols-5'}`}>
-            {group.options.map(d => (
+            {designOptionGroups.flatMap(group => group.options).map(d => (
               <ImageCard
                 key={d.id}
                 label={d.label}
                 src={d.imageUrl}
                 selected={item.design === d.value}
-                onClick={() => onChange({ design: d.value })}
+                onClick={() => onChange({ design: d.value, designNotes: '', designUploads: [] })}
                 tall
                 priceLabel={formatSfsPriceLabel(d.price)}
               />
             ))}
+            <ImageCard
+              label="Custom"
+              src={null}
+              selected={isSfsCustomDesign(item.design)}
+              onClick={() => onChange({ design: SFS_CUSTOM_DESIGN_VALUE })}
+              tall
+              priceLabel="Quote"
+            />
           </div>
         </div>
-      ))}
+      )}
+
+      {isSfsCustomDesign(item.design) && (
+        <CustomDesignUpload
+          notes={item.designNotes}
+          uploads={item.designUploads}
+          onNotesChange={designNotes => onChange({ designNotes })}
+          onUploadsChange={designUploads => onChange({ designUploads })}
+        />
+      )}
 
       {item.type !== 'Diamond only' && (
         <div>
@@ -674,6 +811,8 @@ function Step5({
   pricing: ReturnType<typeof computeSfsOrderPricing> | null
   personalized: boolean
 }) {
+  const hasCustomDesign = data.diamonds.some(d => isSfsCustomDesign(d.design))
+
   return (
     <div className="space-y-8">
       <SectionTitle step={5} title="Order Summary" sub="Please review your order before submitting." />
@@ -681,6 +820,13 @@ function Step5({
       {personalized && (
         <p className="text-xs rounded-xl px-4 py-3" style={{ background: '#FDF8F0', color: GOLD }}>
           Prices below use your personalised client price list.
+        </p>
+      )}
+
+      {hasCustomDesign && (
+        <p className="text-xs rounded-xl px-4 py-3" style={{ background: '#EFF6FF', color: '#1D4ED8' }}>
+          Custom jewellery designs require a staff quotation. The estimate below covers diamond options only;
+          jewellery pricing will follow after our team reviews your upload.
         </p>
       )}
 
@@ -714,7 +860,9 @@ function Step5({
               <p className="text-sm font-semibold" style={{ color: DARK }}>#{i + 1}</p>
               {pricing?.lines[i] && (
                 <p className="text-sm font-semibold tabular-nums" style={{ color: GOLD }}>
-                  {formatSfsPriceLabel(pricing.lines[i].unitPrice)}
+                  {isSfsCustomDesign(d.design)
+                    ? `${formatSfsPriceLabel(pricing.lines[i].unitPrice)} + jewellery quote`
+                    : formatSfsPriceLabel(pricing.lines[i].unitPrice)}
                 </p>
               )}
             </div>
@@ -723,7 +871,14 @@ function Step5({
             <SummaryRow label="Type" value={d.type} />
             {d.ringSize && <SummaryRow label="Ring Size (EU)" value={d.ringSize} />}
             {d.design && <SummaryRow label="Design" value={d.design} />}
+            {isSfsCustomDesign(d.design) && d.designUploads.length > 0 && (
+              <SummaryRow label="Design files" value={d.designUploads.map(f => f.fileName).join(', ')} />
+            )}
+            {d.designNotes && <SummaryRow label="Design notes" value={d.designNotes} />}
             {d.metal && <SummaryRow label="Metal" value={d.metal} />}
+            {isSfsCustomDesign(d.design) && (
+              <SummaryRow label="Jewellery" value="Pending quotation" />
+            )}
           </div>
         ))}
         {pricing && (
@@ -749,11 +904,16 @@ function Step5({
               </>
             )}
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold" style={{ color: DARK }}>Estimated total</span>
+              <span className="text-sm font-semibold" style={{ color: DARK }}>
+                {hasCustomDesign ? 'Estimated diamond total' : 'Estimated total'}
+              </span>
               <span className="text-lg font-bold tabular-nums" style={{ color: GOLD }}>
                 {formatSfsPriceLabel(pricing.subtotal)}
               </span>
             </div>
+            {hasCustomDesign && (
+              <p className="text-xs" style={{ color: MUTED }}>Jewellery quotation will be provided separately by our team.</p>
+            )}
           </div>
         )}
       </div>
@@ -777,7 +937,18 @@ export default function OrderWizard({
   const router = useRouter()
   const { data: session, status: sessionStatus } = useSession()
   const [step, setStep] = useState(1)
-  const [data, setData] = useState<WizardFormData>({ ...WIZARD_INITIAL, ...initialData })
+  const [data, setData] = useState<WizardFormData>(() => {
+    const base = { ...WIZARD_INITIAL, ...initialData }
+    return {
+      ...base,
+      diamonds: (initialData?.diamonds ?? WIZARD_INITIAL.diamonds).map(d => ({
+        ...EMPTY_DIAMOND,
+        ...d,
+        designNotes: d.designNotes ?? '',
+        designUploads: d.designUploads ?? [],
+      })),
+    }
+  })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [pricedSpecs, setPricedSpecs] = useState<SfsOrderSpecOptions>(specOptions)
@@ -862,6 +1033,9 @@ export default function OrderWizard({
         if (!d.type) return `Diamond #${i + 1}: please select a setting type.`
         if (d.type === 'Ring' && !d.ringSize) return `Diamond #${i + 1}: please enter a ring size.`
         if (d.type !== 'Diamond only' && !d.design) return `Diamond #${i + 1}: please select a design.`
+        if (isSfsCustomDesign(d.design) && d.designUploads.length === 0) {
+          return `Diamond #${i + 1}: please upload at least one custom design file.`
+        }
         if (d.type !== 'Diamond only' && !d.metal) return `Diamond #${i + 1}: please select a metal.`
       }
     }
@@ -903,7 +1077,11 @@ export default function OrderWizard({
         type:     d.type,
         ringSize: d.ringSize  || undefined,
         design:   d.design    || undefined,
+        designNotes: d.designNotes.trim() || undefined,
         metal:    d.metal     || undefined,
+        designUploads: isSfsCustomDesign(d.design) && d.designUploads.length > 0
+          ? d.designUploads
+          : undefined,
       })),
     }
 
@@ -984,11 +1162,20 @@ export default function OrderWizard({
                   </div>
                 )}
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium" style={{ color: MUTED }}>Estimated total so far</span>
+                  <span className="text-sm font-medium" style={{ color: MUTED }}>
+                    {data.diamonds.some(d => isSfsCustomDesign(d.design))
+                      ? 'Estimated diamond total so far'
+                      : 'Estimated total so far'}
+                  </span>
                   <span className="text-lg font-bold tabular-nums" style={{ color: GOLD }}>
                     {formatSfsPriceLabel(quote.subtotal)}
                   </span>
                 </div>
+                {data.diamonds.some(d => isSfsCustomDesign(d.design)) && (
+                  <p className="text-xs" style={{ color: MUTED }}>
+                    Custom jewellery will be quoted by our team after review.
+                  </p>
+                )}
               </div>
             )}
           </>

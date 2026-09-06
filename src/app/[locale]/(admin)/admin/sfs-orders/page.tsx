@@ -49,7 +49,7 @@ type Order = {
   color: string | null
   status: string
   createdAt: string
-  diamonds: { carat?: string }[]
+  diamonds: { carat?: string; design?: string }[]
   _count: { steps: number }
 }
 
@@ -218,6 +218,7 @@ export default function AdminSfsOrdersPage() {
               <tbody>
                 {orders.map((order, i) => {
                   const s = STATUS_STYLE[order.status] ?? STATUS_STYLE.PENDING
+                  const hasCustom = order.diamonds.some(d => d.design === 'Custom')
                   return (
                     <tr
                       key={order.id}
@@ -234,6 +235,11 @@ export default function AdminSfsOrdersPage() {
                       </td>
                       <td style={{ ...td, color: 'var(--foreground)', fontWeight: 500 }}>
                         {order.memorialName}
+                        {hasCustom && (
+                          <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold" style={{ background: 'rgba(59,130,246,0.15)', color: '#3b82f6' }}>
+                            Custom
+                          </span>
+                        )}
                       </td>
                       <td style={td}>
                         <div>{order.clientName}</div>

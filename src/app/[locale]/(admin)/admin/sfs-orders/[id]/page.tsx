@@ -48,7 +48,26 @@ type StepAttachment = {
 }
 
 type DiamondItem = {
-  code?: string; carat?: string; shape?: string; type?: string; size?: string; cut?: string
+  code?: string
+  carat?: string
+  shape?: string
+  type?: string
+  design?: string
+  designNotes?: string
+  metal?: string
+  ringSize?: string
+  size?: string
+  cut?: string
+}
+
+type DesignAttachment = {
+  id: string
+  diamondIndex: number
+  storageKey: string
+  fileName: string
+  mimeType: string
+  sizeBytes: number
+  uploadedAt: string
 }
 
 type Order = {
@@ -59,10 +78,15 @@ type Order = {
   clientName: string
   email: string
   phone: string
+  contactNumber?: string
   sourceType: string
   color: string
   mailingAddress: string
   diamonds: DiamondItem[]
+  designAttachments?: DesignAttachment[]
+  quotedAmount?: number | null
+  quotedAt?: string | null
+  quoteNotes?: string | null
   adminNotes?: string | null
   customerRemark?: string | null
   customerInternalOrderCode?: string | null
@@ -811,6 +835,8 @@ export default function AdminSfsOrderDetailPage() {
         status:               data.status,
         adminNotes:           data.adminNotes ?? '',
         customerRemark:       data.customerRemark ?? '',
+        quotedAmount:         data.quotedAmount == null ? '' : String(data.quotedAmount),
+        quoteNotes:           data.quoteNotes ?? '',
         sampleReceivedAt:     toDatetimeLocal(data.sampleReceivedAt),
         chemTransformStartAt: toDatetimeLocal(data.chemTransformStartAt),
         chemTransformEndAt:   toDatetimeLocal(data.chemTransformEndAt),
@@ -841,6 +867,17 @@ export default function AdminSfsOrderDetailPage() {
     setSaveOk(false)
     setSaveError('')
     try {
+      const quotedRaw = form.quotedAmount.trim()
+      let quotedAmount: number | null = null
+      if (quotedRaw !== '') {
+        quotedAmount = Number(quotedRaw)
+        if (!Number.isFinite(quotedAmount) || quotedAmount < 0) {
+          setSaveError('Quoted amount must be a valid non-negative number')
+          setSaving(false)
+          return
+        }
+      }
+
       const res = await fetch(`/api/sfsdiamond/admin/orders/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -848,6 +885,8 @@ export default function AdminSfsOrderDetailPage() {
           status:               form.status,
           adminNotes:           form.adminNotes || null,
           customerRemark:       form.customerRemark || null,
+          quotedAmount,
+          quoteNotes:           form.quoteNotes || null,
           sampleReceivedAt:     toIsoOrNull(form.sampleReceivedAt),
           chemTransformStartAt: toIsoOrNull(form.chemTransformStartAt),
           chemTransformEndAt:   toIsoOrNull(form.chemTransformEndAt),
@@ -916,6 +955,8 @@ export default function AdminSfsOrderDetailPage() {
 
   const s = STATUS_STYLE[order.status] ?? STATUS_STYLE.PENDING
   const diamonds = order.diamonds as DiamondItem[]
+  const designAttachments = order.designAttachments ?? []
+  const hasCustomDesign = diamonds.some(d => d.design === 'Custom') || designAttachments.length > 0
   const resolvedPlan = order.resolvedStepPlan ?? resolveOrderStepPlan(order.stepPlan)
   const LABEL = 'block text-xs mb-1'
   const INPUT = 'w-full rounded-lg px-3 py-2 text-sm'
@@ -997,7 +1038,7 @@ export default function AdminSfsOrderDetailPage() {
           {[
             ['Name', order.clientName],
             ['Email', order.email],
-            ['Phone', order.phone || '—'],
+            ['Phone', order.contactNumber || order.phone || '—'],
             ['Source', order.sourceType],
             ['Address', order.mailingAddress || '—'],
             ['Customer ref.', order.customerInternalOrderCode || '—'],
@@ -1027,6 +1068,65 @@ export default function AdminSfsOrderDetailPage() {
         </div>
       </div>
 
+      {hasCustomDesign && (
+        <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+          <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#C9A96E' }}>
+            Custom design uploads
+          </h2>
+          {designAttachments.length === 0 ? (
+            <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>No design files attached.</p>
+          ) : (
+            <div className="space-y-4">
+              {diamonds.map((diamond, index) => {
+                const files = designAttachments.filter(a => a.diamondIndex === index)
+                if (files.length === 0 && diamond.design !== 'Custom') return null
+                return (
+                  <div key={index} className="space-y-2">
+                    <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
+                      Diamond #{index + 1}
+                      {diamond.design ? ` · ${diamond.design}` : ''}
+                      {diamond.metal ? ` · ${diamond.metal}` : ''}
+                    </p>
+                    {diamond.designNotes && (
+                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                        Notes: {diamond.designNotes}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {files.map(file => {
+                        const isImage = file.mimeType.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(file.fileName)
+                        return isImage ? (
+                          <a key={file.id} href={fileUrl(file.storageKey)} target="_blank" rel="noreferrer" className="block">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={fileUrl(file.storageKey)}
+                              alt={file.fileName}
+                              className="w-24 h-24 object-cover rounded-lg"
+                              style={{ border: '1px solid var(--border)' }}
+                            />
+                          </a>
+                        ) : (
+                          <a
+                            key={file.id}
+                            href={fileUrl(file.storageKey)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg"
+                            style={{ background: 'rgba(201,169,110,0.1)', color: '#C9A96E' }}
+                          >
+                            📄 {file.fileName}
+                          </a>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Order Management (status + milestone dates) ── */}
       <div className="rounded-xl p-5 space-y-5" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
         <div className="flex items-center justify-between gap-3">
@@ -1053,6 +1153,42 @@ export default function AdminSfsOrderDetailPage() {
               <option key={v} value={v}>{v}</option>
             ))}
           </select>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={LABEL} style={{ color: 'var(--muted-foreground)' }}>
+              Quoted amount (HKD) <span style={{ color: '#C9A96E' }}>· visible to client when set</span>
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.quotedAmount}
+              onChange={e => set('quotedAmount', e.target.value)}
+              className={INPUT}
+              style={IS}
+              placeholder="e.g. 12800"
+            />
+            {order.quotedAt && (
+              <p className="text-[11px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
+                Last set {new Date(order.quotedAt).toLocaleString('en-HK')}
+              </p>
+            )}
+          </div>
+          <div>
+            <label className={LABEL} style={{ color: 'var(--muted-foreground)' }}>
+              Quote notes <span style={{ color: '#C9A96E' }}>· visible to client</span>
+            </label>
+            <textarea
+              value={form.quoteNotes}
+              onChange={e => set('quoteNotes', e.target.value)}
+              rows={2}
+              className={`${INPUT} resize-none`}
+              style={{ ...IS, borderColor: '#C9A96E' }}
+              placeholder="Optional note with the quotation…"
+            />
+          </div>
         </div>
 
         <div>

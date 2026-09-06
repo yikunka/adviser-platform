@@ -4,6 +4,7 @@ import {
   type SfsOrderSpecOptions,
   type SfsSpecOption,
 } from '@/lib/sfs/diamond-spec-options'
+import { isSfsCustomDesign } from '@/lib/sfs/design-uploads'
 
 /**
  * SFS Diamond pricing engine.
@@ -14,9 +15,10 @@ import {
  *   3. colorAdj  = override(COLOR,color) ?? global(COLOR,color)
  *   4. shapeAdj  = override(SHAPE,shape) ?? global(SHAPE,shape)
  *   5. diamondPart = caratBase + sourceAdj + colorAdj + shapeAdj
- *   6. designPrice = design catalog/override (0 when no design / Diamond only)
+ *   6. designPrice = design catalog/override (0 when no design / Diamond only / Custom)
  *   7. metalPct   = override(METAL,metal) ?? global(METAL,metal)  // 10 ⇒ +10%
  *   8. jewelleryPart = designPrice × (1 + metalPct/100)          // metal applies only when designPrice > 0
+ *      Custom designs are staff-quoted; jewelleryPart stays 0 in the live estimate
  *   9. unitPriceGross = diamondPart + jewelleryPart
  *
  * Order-level multi-diamond discount (optional tiers):
@@ -128,7 +130,7 @@ export function computeSfsOrderPricing(input: ComputeSfsOrderPricingInput): SfsP
   }
 
   const designPrice = (diamond: SfsPricingDiamond): number => {
-    if (!diamond.design) return 0
+    if (!diamond.design || isSfsCustomDesign(diamond.design)) return 0
     const settingType = diamond.type ?? ''
     const groups = getDesignOptionGroupsForSettingType(settingType, specOptions)
     for (const group of groups) {

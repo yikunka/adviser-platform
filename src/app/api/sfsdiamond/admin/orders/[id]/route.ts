@@ -10,6 +10,8 @@ const updateSchema = z.object({
   status:               z.enum(['PENDING', 'QUOTED', 'CONFIRMED', 'COMPLETED', 'CANCELLED']).optional(),
   adminNotes:           z.string().nullable().optional(),
   customerRemark:       z.string().nullable().optional(),
+  quotedAmount:         z.union([z.number().nonnegative(), z.null()]).optional(),
+  quoteNotes:           z.string().nullable().optional(),
   sampleReceivedAt:     z.string().datetime().nullable().optional(),
   chemTransformStartAt: z.string().datetime().nullable().optional(),
   chemTransformEndAt:   z.string().datetime().nullable().optional(),
@@ -46,6 +48,7 @@ export async function GET(
         orderBy: [{ phase: 'asc' }, { stepNumber: 'asc' }],
         include: { attachments: { orderBy: { createdAt: 'asc' } } },
       },
+      designAttachments: { orderBy: [{ diamondIndex: 'asc' }, { uploadedAt: 'asc' }] },
       user: { select: { nameEn: true, email: true } },
     },
   })
@@ -53,6 +56,7 @@ export async function GET(
   if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json({
     ...order,
+    quotedAmount: order.quotedAmount == null ? null : Number(order.quotedAmount),
     resolvedStepPlan: resolveOrderStepPlan(order.stepPlan),
   })
 }
@@ -71,13 +75,37 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
   }
 
-  const { status, adminNotes, customerRemark, ...dates } = parsed.data
+  const { status, adminNotes, customerRemark, quotedAmount, quoteNotes, ...dates } = parsed.data
+
+  const existing = await prisma.sfsOrder.findUnique({
+    where: { id },
+    select: { quotedAmount: true },
+  })
+  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  const quoteChanged =
+    quotedAmount !== undefined
+    && (
+      quotedAmount === null
+        ? existing.quotedAmount != null
+        : existing.quotedAmount == null || Number(existing.quotedAmount) !== quotedAmount
+    )
+
   const order = await prisma.sfsOrder.update({
     where: { id },
     data: {
       ...(status !== undefined && { status }),
       ...(adminNotes !== undefined && { adminNotes }),
       ...(customerRemark !== undefined && { customerRemark }),
+      ...(quotedAmount !== undefined && {
+        quotedAmount,
+        ...(quotedAmount == null
+          ? { quotedAt: null }
+          : quoteChanged
+            ? { quotedAt: new Date() }
+            : {}),
+      }),
+      ...(quoteNotes !== undefined && { quoteNotes }),
       sampleReceivedAt:      toDate(dates.sampleReceivedAt),
       chemTransformStartAt:  toDate(dates.chemTransformStartAt),
       chemTransformEndAt:    toDate(dates.chemTransformEndAt),
@@ -95,7 +123,10 @@ export async function PATCH(
     },
   })
 
-  return NextResponse.json(order)
+  return NextResponse.json({
+    ...order,
+    quotedAmount: order.quotedAmount == null ? null : Number(order.quotedAmount),
+  })
 }
 
 export async function DELETE(
@@ -115,6 +146,7 @@ export async function DELETE(
           attachments: { select: { fileKey: true } },
         },
       },
+      designAttachments: { select: { storageKey: true } },
       invoices: { select: { id: true, invoiceNumber: true, status: true } },
     },
   })
@@ -125,6 +157,7 @@ export async function DELETE(
     for (const key of step.fileKeys) storageKeys.add(key)
     for (const attachment of step.attachments) storageKeys.add(attachment.fileKey)
   }
+  for (const attachment of order.designAttachments) storageKeys.add(attachment.storageKey)
 
   await prisma.sfsOrder.delete({ where: { id } })
 

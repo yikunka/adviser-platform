@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
-import { sfsOrderInputSchema, validateSfsOrderSpecOptions } from '@/lib/sfs/order-input'
+import {
+  designAttachmentsFromInput,
+  diamondsJsonForPersistence,
+  sfsOrderInputSchema,
+  validateSfsOrderSpecOptions,
+} from '@/lib/sfs/order-input'
 
 // Generate next sequential sample code: SFSB000001, SFSB000002, …
 async function generateSampleCode(): Promise<string> {
@@ -30,14 +35,26 @@ export async function POST(req: NextRequest) {
   }
 
   const sampleCode = await generateSampleCode()
+  const attachmentRows = designAttachmentsFromInput(parsed.data.diamonds)
 
-  // Attach a unique code to each diamond: SFSB000001D01, SFSB000001D02, …
-  const diamonds = parsed.data.diamonds.map((d, i) => ({
+  const diamonds = diamondsJsonForPersistence(parsed.data.diamonds).map((d, i) => ({
     ...d,
     code: `${sampleCode}D${String(i + 1).padStart(2, '0')}`,
   }))
 
-  const { clientName, contactNumber, email, mailingAddress } = parsed.data
+  const {
+    memorialName,
+    relationship,
+    clientName,
+    contactNumber,
+    email,
+    mailingAddress,
+    sourceType,
+    sourceOther,
+    remarks,
+    mailingPackage,
+    color,
+  } = parsed.data
 
   const order = await prisma.$transaction(async tx => {
     const linkedUser = linkedUserId
@@ -75,16 +92,36 @@ export async function POST(req: NextRequest) {
 
     const created = await tx.sfsOrder.create({
       data: {
-        ...parsed.data,
+        memorialName,
+        relationship,
+        clientName,
+        contactNumber,
+        email,
+        mailingAddress,
+        sourceType,
+        sourceOther,
+        remarks,
+        mailingPackage,
+        color,
         date: new Date().toISOString().slice(0, 10),
         sampleCode,
         diamonds,
         userId: linkedUser?.id ?? null,
         customerId: customer.id,
+        designAttachments: attachmentRows.length
+          ? {
+              create: attachmentRows.map(row => ({
+                diamondIndex: row.diamondIndex,
+                storageKey: row.storageKey,
+                fileName: row.fileName,
+                mimeType: row.mimeType,
+                sizeBytes: row.sizeBytes,
+              })),
+            }
+          : undefined,
       },
     })
 
-    // Save phone + address back to the user for future pre-fill
     if (linkedUser) {
       await tx.user.update({
         where: { id: linkedUser.id },

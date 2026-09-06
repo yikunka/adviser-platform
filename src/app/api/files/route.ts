@@ -40,7 +40,7 @@ async function authorizeKey(
   if (STAFF_ROLES.includes(role)) return true
 
   const emailNorm = email.toLowerCase()
-  const [doc, kycDoc, sfsAttachment] = await Promise.all([
+  const [doc, kycDoc, sfsAttachment, sfsDesign] = await Promise.all([
     prisma.document.findFirst({
       where: {
         storageKey: key,
@@ -58,9 +58,20 @@ async function authorizeKey(
       where: { fileKey: key, step: { order: { userId } } },
       select: { reviewStatus: true },
     }),
+    prisma.sfsOrderDesignAttachment.findFirst({
+      where: {
+        storageKey: key,
+        OR: [
+          { order: { userId } },
+          { order: { email: { equals: emailNorm, mode: 'insensitive' } } },
+        ],
+      },
+      select: { id: true },
+    }),
   ])
 
   if (sfsAttachment) return sfsAttachment.reviewStatus === 'APPROVED'
+  if (sfsDesign) return true
 
   const sfsStep = await prisma.sfsOrderStep.findFirst({
     where: { fileKeys: { has: key }, order: { userId } },
