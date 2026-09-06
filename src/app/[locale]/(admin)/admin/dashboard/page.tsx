@@ -113,9 +113,9 @@ export default async function AdminDashboardPage() {
     { label: t('upcomingAR'), value: upcomingAR, href: '/admin/companies', accent: '#10b981' },
   ]
 
-  let sfsStats: { label: string; value: number; href: string; accent: string }[] = []
   let sfsTodos: SfsTodoItem[] = []
-  let sfsQuickLinks: { href: string; label: string }[] = []
+  const sfsStats: { label: string; value: number; href: string; accent: string }[] = []
+  const sfsQuickLinks: { href: string; label: string }[] = []
 
   if (showSfs) {
     const [
