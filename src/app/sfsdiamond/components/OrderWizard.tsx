@@ -188,6 +188,59 @@ function ImageCard({ label, src, selected, onClick, tall, hideLabel, priceLabel 
   )
 }
 
+/** Visual swatch for metal options when no admin image is set (matches Color card layout). */
+function metalSwatchBackground(value: string): string {
+  const v = value.toLowerCase()
+  if (v.includes('rose')) return 'linear-gradient(145deg, #F0C4B0 0%, #C47A5A 100%)'
+  if (v.includes('yellow')) return 'linear-gradient(145deg, #F7E7A8 0%, #D4AF37 100%)'
+  if (v.includes('white')) return 'linear-gradient(145deg, #F7F7F7 0%, #C5C5C8 100%)'
+  if (v.includes('platinum')) return 'linear-gradient(145deg, #EEF0F3 0%, #A8ADB8 100%)'
+  return 'linear-gradient(145deg, #EDE8DF 0%, #C9A96E 100%)'
+}
+
+function MetalCard({
+  label,
+  value,
+  src,
+  selected,
+  onClick,
+  priceLabel,
+}: {
+  label: string
+  value: string
+  src: string | null
+  selected: boolean
+  onClick: () => void
+  priceLabel?: string | null
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex flex-col items-center gap-2 rounded-2xl border-2 p-3 transition-all"
+      style={{
+        borderColor: selected ? GOLD : BORDER,
+        background: selected ? '#FDF8F0' : '#fff',
+        boxShadow: selected ? `0 0 0 1px ${GOLD}` : '0 1px 6px rgba(0,0,0,0.04)',
+      }}
+    >
+      <div className="relative w-full h-24 rounded-xl overflow-hidden">
+        {src ? (
+          <img src={src} alt={label} className="h-full w-full object-contain" />
+        ) : (
+          <div className="h-full w-full" style={{ background: metalSwatchBackground(value) }} aria-hidden />
+        )}
+      </div>
+      <span className="text-xs font-semibold text-center" style={{ color: selected ? GOLD : MUTED }}>
+        {label}
+      </span>
+      {priceLabel && (
+        <span className="text-[11px] font-semibold tabular-nums" style={{ color: GOLD }}>{priceLabel}</span>
+      )}
+    </button>
+  )
+}
+
 function CaratCard({
   label,
   value,
@@ -734,24 +787,22 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
         />
       )}
 
-      {item.type !== 'Diamond only' && (
+      {item.type !== 'Diamond only' && specOptions.metals.length > 0 && (
         <div>
           <p className="text-sm font-medium mb-3" style={{ color: DARK }}>
             Metal<span style={{ color: GOLD }}> *</span>
           </p>
-          <Image src="/sfsdiamond/order/metal-swatches.png" alt="Metal options" width={400} height={80} className="mb-4 rounded-xl" />
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {specOptions.metals.map(m => (
-              <CheckCard key={m.id} checked={item.metal === m.value} onChange={() => onChange({ metal: m.value })}>
-                <span className="flex flex-col items-start gap-0.5">
-                  <span>{m.label}</span>
-                  {formatSfsMetalPercentLabel(m.price) && (
-                    <span className="text-[11px] font-semibold tabular-nums" style={{ color: GOLD }}>
-                      {formatSfsMetalPercentLabel(m.price)}
-                    </span>
-                  )}
-                </span>
-              </CheckCard>
+              <MetalCard
+                key={m.id}
+                label={m.label}
+                value={m.value}
+                src={m.imageUrl}
+                selected={item.metal === m.value}
+                onClick={() => onChange({ metal: m.value })}
+                priceLabel={formatSfsMetalPercentLabel(m.price)}
+              />
             ))}
           </div>
         </div>
