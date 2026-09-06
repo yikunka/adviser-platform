@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { getSfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options-server'
 import { getDesignOptionsForSettingType, type SfsSpecOption } from '@/lib/sfs/diamond-spec-options'
-import { isSfsCustomDesign, isSfsDesignUploadKey, type PendingDesignUpload } from '@/lib/sfs/design-uploads'
+import { isSfsCustomDesign, isSfsDesignUploadKey, type PendingDesignUpload } from '@/lib/sfs/design-upload-shared'
 
 export const sfsDesignUploadInputSchema = z.object({
   storageKey: z.string().min(1),

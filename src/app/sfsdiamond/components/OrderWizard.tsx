@@ -8,7 +8,7 @@ import { getDesignOptionGroupsForSettingType, type SfsOrderSpecOptions } from '@
 import { getCaratPreviewDiameter } from '@/lib/sfs/carat-preview'
 import { formatSfsMetalPercentLabel, formatSfsPriceLabel } from '@/lib/sfs/effective-pricing'
 import { computeSfsOrderPricing, type SfsMultiDiamondDiscountTier } from '@/lib/sfs/pricing'
-import { isSfsCustomDesign, SFS_CUSTOM_DESIGN_VALUE } from '@/lib/sfs/design-uploads'
+import { isSfsCustomDesign, SFS_CUSTOM_DESIGN_VALUE } from '@/lib/sfs/design-upload-shared'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

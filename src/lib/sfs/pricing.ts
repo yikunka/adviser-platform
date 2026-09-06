@@ -4,7 +4,7 @@ import {
   type SfsOrderSpecOptions,
   type SfsSpecOption,
 } from '@/lib/sfs/diamond-spec-options'
-import { isSfsCustomDesign } from '@/lib/sfs/design-uploads'
+import { isSfsCustomDesign } from '@/lib/sfs/design-upload-shared'
 
 /**
  * SFS Diamond pricing engine.
