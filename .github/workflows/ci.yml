@@ -10,6 +10,9 @@ jobs:
   lint-typecheck:
     name: Lint & Type Check
     runs-on: ubuntu-latest
+    env:
+      # prisma.config.mjs requires DATABASE_URL during `prisma generate` (postinstall + explicit step)
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
 
     steps:
       - uses: actions/checkout@v4
