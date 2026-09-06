@@ -16,10 +16,11 @@ const EXT_MIME: Record<string, string> = {
 }
 
 export const SFS_DESIGN_UPLOAD_MAX_SIZE = 10 * 1024 * 1024
-const DESIGN_KEY_PREFIX = 'sfs/orders/designs/'
+/** Existing SFS custom-design namespace in the application OSS bucket. */
+export const SFS_DESIGN_KEY_PREFIX = 'sfs/orders/designs/'
 
 export type PendingDesignUpload = {
-  storageKey: string
+  uploadId: string
   fileName: string
   mimeType: string
   sizeBytes: number
@@ -43,6 +44,6 @@ export function validateSfsDesignFile(file: Pick<File, 'name' | 'size' | 'type'>
   return null
 }
 
-export function isSfsDesignUploadKey(key: string): boolean {
-  return key.startsWith(DESIGN_KEY_PREFIX) && !key.includes('..')
+export function isSfsDesignStorageKey(key: string): boolean {
+  return key.startsWith(SFS_DESIGN_KEY_PREFIX) && !key.includes('..')
 }

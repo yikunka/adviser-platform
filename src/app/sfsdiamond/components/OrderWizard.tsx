@@ -13,7 +13,8 @@ import { isSfsCustomDesign, SFS_CUSTOM_DESIGN_VALUE } from '@/lib/sfs/design-upl
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type DesignUploadRef = {
-  storageKey: string
+  uploadId?: string
+  attachmentId?: string
   fileName: string
   mimeType: string
   sizeBytes: number
@@ -457,7 +458,7 @@ function CustomDesignUpload({
         const body = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(body.error ?? `Failed to upload ${file.name}`)
         next.push({
-          storageKey: body.storageKey,
+          uploadId: body.uploadId,
           fileName: body.fileName,
           mimeType: body.mimeType,
           sizeBytes: body.sizeBytes,
@@ -469,6 +470,19 @@ function CustomDesignUpload({
     } finally {
       setUploading(false)
     }
+  }
+
+  const removeUpload = async (file: DesignUploadRef) => {
+    if (file.uploadId) {
+      setUploadError('')
+      const response = await fetch(`/api/sfsdiamond/orders/design-upload/${file.uploadId}`, { method: 'DELETE' })
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        setUploadError(body.error ?? 'Failed to remove uploaded design')
+        return
+      }
+    }
+    onUploadsChange(uploads.filter(upload => (upload.uploadId ?? upload.attachmentId) !== (file.uploadId ?? file.attachmentId)))
   }
 
   return (
@@ -498,7 +512,7 @@ function CustomDesignUpload({
         <ul className="space-y-1.5">
           {uploads.map(file => (
             <li
-              key={file.storageKey}
+              key={file.uploadId ?? file.attachmentId}
               className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs"
               style={{ background: '#fff', border: `1px solid ${BORDER}`, color: DARK }}
             >
@@ -507,7 +521,7 @@ function CustomDesignUpload({
                 type="button"
                 className="flex-shrink-0 text-[11px] font-medium"
                 style={{ color: '#999' }}
-                onClick={() => onUploadsChange(uploads.filter(u => u.storageKey !== file.storageKey))}
+                onClick={() => { void removeUpload(file) }}
               >
                 Remove
               </button>

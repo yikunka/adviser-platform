@@ -136,6 +136,17 @@ function bucket(): string {
   return requireBucket()
 }
 
+const SFS_DESIGN_KEY_PREFIX = 'sfs/orders/designs/'
+
+function isSfsDesignStorageKey(key: string): boolean {
+  return key.startsWith(SFS_DESIGN_KEY_PREFIX) && !key.includes('..')
+}
+
+/** SFS custom designs reuse the configured application OSS bucket. */
+export function getSfsDesignOssConfigError(): string | null {
+  return getOssConfigError()
+}
+
 export type UploadToR2Options = {
   metadata?: Record<string, string>
   contentDisposition?: string
@@ -231,6 +242,25 @@ export async function deleteFromR2(key: string): Promise<void> {
   }
 
   await makeClient().send(new DeleteObjectCommand({ Bucket: bucket(), Key: key }))
+}
+
+/** Store a new custom-design object in the configured application bucket. */
+export async function uploadSfsDesignObject(
+  key: string,
+  body: Buffer,
+  contentType: string,
+  opts?: UploadToR2Options,
+): Promise<void> {
+  if (!isSfsDesignStorageKey(key)) throw new Error('Invalid SFS design storage key')
+  const configError = getSfsDesignOssConfigError()
+  if (configError) throw new Error(configError)
+
+  await uploadToR2(key, body, contentType, opts)
+}
+
+/** Delete a custom-design object from the configured application bucket. */
+export async function deleteSfsDesignFile(key: string): Promise<void> {
+  await deleteFromR2(key)
 }
 
 export async function getSignedDownloadUrl(

@@ -63,7 +63,6 @@ type DiamondItem = {
 type DesignAttachment = {
   id: string
   diamondIndex: number
-  storageKey: string
   fileName: string
   mimeType: string
   sizeBytes: number
@@ -1096,10 +1095,10 @@ export default function AdminSfsOrderDetailPage() {
                       {files.map(file => {
                         const isImage = file.mimeType.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(file.fileName)
                         return isImage ? (
-                          <a key={file.id} href={fileUrl(file.storageKey)} target="_blank" rel="noreferrer" className="block">
+                          <a key={file.id} href={`/api/files?designAttachmentId=${encodeURIComponent(file.id)}`} target="_blank" rel="noreferrer" className="block">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
-                              src={fileUrl(file.storageKey)}
+                              src={`/api/files?designAttachmentId=${encodeURIComponent(file.id)}`}
                               alt={file.fileName}
                               className="w-24 h-24 object-cover rounded-lg"
                               style={{ border: '1px solid var(--border)' }}
@@ -1108,7 +1107,7 @@ export default function AdminSfsOrderDetailPage() {
                         ) : (
                           <a
                             key={file.id}
-                            href={fileUrl(file.storageKey)}
+                            href={`/api/files?designAttachmentId=${encodeURIComponent(file.id)}`}
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg"

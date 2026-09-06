@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { defineConfig } from "prisma/config";
 
 /** 无 dotenv 依赖：开发时从 .env / .env.local 注入；生产 migrate 依赖 shell 已 source 的变量。 */
 function loadEnvFromFiles() {
@@ -38,20 +39,15 @@ function loadEnvFromFiles() {
 
 loadEnvFromFiles();
 
-/** 延迟读取，避免 CLI 子进程过早固定空 URL 导致退回「库名=用户名」的 adviser 库。 */
-export default {
+const databaseUrl = process.env.DATABASE_URL;
+
+export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
     seed: "tsx prisma/seed.ts",
   },
-  get datasource() {
-    const url = process.env.DATABASE_URL;
-    if (!url) {
-      throw new Error(
-        "DATABASE_URL 未设置：请在环境中配置，或在项目根目录提供可读写的 .env。",
-      );
-    }
-    return { url };
-  },
-};
+  // `prisma generate` only needs the schema. Migration commands still require
+  // DATABASE_URL and Prisma will reject them before connecting when it is absent.
+  ...(databaseUrl ? { datasource: { url: databaseUrl } } : {}),
+});

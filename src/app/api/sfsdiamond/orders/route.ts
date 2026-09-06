@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
 import {
-  designAttachmentsFromInput,
+  designUploadRefsFromInput,
   diamondsJsonForPersistence,
   sfsOrderInputSchema,
   validateSfsOrderSpecOptions,
 } from '@/lib/sfs/order-input'
+import { claimPendingDesignUploads, hashSfsDesignDraftToken, SFS_DESIGN_DRAFT_COOKIE } from '@/lib/sfs/pending-design-uploads'
 
 // Generate next sequential sample code: SFSB000001, SFSB000002, …
 async function generateSampleCode(): Promise<string> {
@@ -22,7 +23,7 @@ async function generateSampleCode(): Promise<string> {
 
 export async function POST(req: NextRequest) {
   const session = await auth()
-  const linkedUserId = session?.user.platform === 'SFS_DIAMOND' ? session.user.id : null
+  const linkedUserId = session?.user?.platform === 'SFS_DIAMOND' ? session.user.id : null
 
   const body = await req.json().catch(() => null)
   const parsed = sfsOrderInputSchema.safeParse(body)
@@ -35,7 +36,10 @@ export async function POST(req: NextRequest) {
   }
 
   const sampleCode = await generateSampleCode()
-  const attachmentRows = designAttachmentsFromInput(parsed.data.diamonds)
+  const attachmentRefs = designUploadRefsFromInput(parsed.data.diamonds)
+  if (attachmentRefs.some(ref => ref.attachmentId)) {
+    return NextResponse.json({ error: 'Existing design attachments cannot be used for a new order' }, { status: 400 })
+  }
 
   const diamonds = diamondsJsonForPersistence(parsed.data.diamonds).map((d, i) => ({
     ...d,
@@ -56,13 +60,20 @@ export async function POST(req: NextRequest) {
     color,
   } = parsed.data
 
-  const order = await prisma.$transaction(async tx => {
+  let order: { id: string; sampleCode: string | null }
+  try {
+    order = await prisma.$transaction(async tx => {
     const linkedUser = linkedUserId
       ? await tx.user.findUnique({
           where: { id: linkedUserId },
           select: { id: true },
         })
       : null
+
+    const attachmentRows = await claimPendingDesignUploads(tx, attachmentRefs, {
+      userId: linkedUser?.id ?? null,
+      draftTokenHash: hashSfsDesignDraftToken(req.cookies.get(SFS_DESIGN_DRAFT_COOKIE)?.value),
+    })
 
     const customer = linkedUser
       ? await tx.sfsCustomer.upsert({
@@ -130,7 +141,15 @@ export async function POST(req: NextRequest) {
     }
 
     return created
-  })
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to create order'
+    if (message.includes('design upload')) {
+      return NextResponse.json({ error: message }, { status: 400 })
+    }
+    console.error('[sfs-order] create failed', error)
+    return NextResponse.json({ error: 'Failed to create order' }, { status: 500 })
+  }
 
   return NextResponse.json({ orderId: order.id, sampleCode }, { status: 201 })
 }

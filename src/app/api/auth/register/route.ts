@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db/prisma'
 import { sendOTPEmail } from '@/lib/email/resend'
 import { rateLimitAuth } from '@/lib/auth/rate-limit'
 import { claimPendingCompaniesForUser, normalizeSignupEmail } from '@/lib/company/claim-pending-client'
+import { claimAnonymousSfsOrdersForUser } from '@/lib/sfs/account-binding'
 import crypto from 'crypto'
 
 const schema = z.object({
@@ -61,6 +62,7 @@ export async function POST(req: NextRequest) {
         where: { id: user.id },
         data: { emailVerified: new Date() },
       })
+      if (platform === 'SFS_DIAMOND') await claimAnonymousSfsOrdersForUser(user.id, user.email)
       console.log(`[DEV] Auto-verified ${email} (RESEND_API_KEY not set)`)
       return NextResponse.json({ message: 'auto-verified', userId: user.id, devAutoVerified: true }, { status: 201 })
     }

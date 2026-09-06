@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/db/prisma'
 import { claimPendingCompaniesForUser } from '@/lib/company/claim-pending-client'
+import { claimAnonymousSfsOrdersForUser } from '@/lib/sfs/account-binding'
 
 const schema = z.object({
   userId: z.string().cuid(),
@@ -36,6 +37,9 @@ export async function POST(req: NextRequest) {
 
   if (user.role === 'CLIENT') {
     await claimPendingCompaniesForUser(user.id, user.email)
+  }
+  if (user.platform === 'SFS_DIAMOND') {
+    await claimAnonymousSfsOrdersForUser(user.id, user.email)
   }
 
   return NextResponse.json({ message: 'Email verified' })

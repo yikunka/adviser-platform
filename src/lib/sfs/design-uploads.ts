@@ -1,13 +1,20 @@
 import crypto from 'node:crypto'
-import { uploadToR2, getOssConfigError } from '@/lib/storage/r2'
+import { uploadSfsDesignObject, getSfsDesignOssConfigError } from '@/lib/storage/r2'
 import {
-  type PendingDesignUpload,
+  SFS_DESIGN_KEY_PREFIX,
   resolveSfsDesignContentType,
   validateSfsDesignFile,
 } from '@/lib/sfs/design-upload-shared'
 
-export async function uploadSfsDesignFile(file: File): Promise<PendingDesignUpload> {
-  const ossError = getOssConfigError()
+export type StoredSfsDesignUpload = {
+  storageKey: string
+  fileName: string
+  mimeType: string
+  sizeBytes: number
+}
+
+export async function uploadSfsDesignFile(file: File): Promise<StoredSfsDesignUpload> {
+  const ossError = getSfsDesignOssConfigError()
   if (ossError) throw new Error(ossError)
 
   const validationError = validateSfsDesignFile(file)
@@ -19,10 +26,10 @@ export async function uploadSfsDesignFile(file: File): Promise<PendingDesignUplo
   else if (contentType === 'image/png') ext = 'png'
   else if (contentType === 'image/webp') ext = 'webp'
 
-  const key = `sfs/orders/designs/${crypto.randomUUID()}.${ext}`
+  const key = `${SFS_DESIGN_KEY_PREFIX}${crypto.randomUUID()}.${ext}`
   const buffer = Buffer.from(await file.arrayBuffer())
 
-  await uploadToR2(key, buffer, contentType, {
+  await uploadSfsDesignObject(key, buffer, contentType, {
     contentDisposition: `inline; filename="${file.name.replace(/"/g, '')}"`,
   })
 

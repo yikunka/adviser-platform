@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
 import {
-  designAttachmentsFromInput,
+  designUploadRefsFromInput,
   diamondsJsonForPersistence,
   sfsOrderInputSchema,
   validateSfsOrderSpecOptions,
 } from '@/lib/sfs/order-input'
-import { deleteFromR2 } from '@/lib/storage/r2'
+import { deleteSfsDesignFile } from '@/lib/storage/r2'
+import { claimPendingDesignUploads, hashSfsDesignDraftToken, SFS_DESIGN_DRAFT_COOKIE } from '@/lib/sfs/pending-design-uploads'
 
 const EDITABLE_STATUSES = ['PENDING', 'QUOTED', 'CANCELLED'] as const
 
@@ -23,7 +24,7 @@ export async function PATCH(
   const { id } = await params
   const order = await prisma.sfsOrder.findUnique({
     where: { id },
-    include: { designAttachments: { select: { id: true, storageKey: true } } },
+    include: { designAttachments: { select: { id: true, storageKey: true, fileName: true, mimeType: true, sizeBytes: true } } },
   })
 
   if (!order || order.userId !== session.user.id) {
@@ -43,7 +44,7 @@ export async function PATCH(
     return NextResponse.json({ error: specError }, { status: 400 })
   }
 
-  const attachmentRows = designAttachmentsFromInput(parsed.data.diamonds)
+  const attachmentRefs = designUploadRefsFromInput(parsed.data.diamonds)
   const diamonds = diamondsJsonForPersistence(parsed.data.diamonds).map((d, i) => ({
     ...d,
     code: `${order.sampleCode}D${String(i + 1).padStart(2, '0')}`,
@@ -64,10 +65,36 @@ export async function PATCH(
   } = parsed.data
 
   const previousKeys = order.designAttachments.map(a => a.storageKey)
-  const nextKeys = new Set(attachmentRows.map(a => a.storageKey))
-  const orphanedKeys = previousKeys.filter(key => !nextKeys.has(key))
 
-  const updated = await prisma.$transaction(async tx => {
+  let updated: { next: { id: string; sampleCode: string | null }; orphanedKeys: string[] }
+  try {
+    updated = await prisma.$transaction(async tx => {
+    const existingAttachmentIds = attachmentRefs.flatMap(ref => ref.attachmentId ? [ref.attachmentId] : [])
+    if (new Set(existingAttachmentIds).size !== existingAttachmentIds.length) {
+      throw new Error('A design attachment can only be used once')
+    }
+    const existingById = new Map(order.designAttachments.map(attachment => [attachment.id, attachment]))
+    if (existingAttachmentIds.some(attachmentId => !existingById.has(attachmentId))) {
+      throw new Error('One or more design attachments are unavailable')
+    }
+    const pendingAttachments = await claimPendingDesignUploads(tx, attachmentRefs, {
+      userId: session.user.id,
+      draftTokenHash: hashSfsDesignDraftToken(req.cookies.get(SFS_DESIGN_DRAFT_COOKIE)?.value),
+    })
+    const existingAttachments = attachmentRefs.flatMap(ref => {
+      if (!ref.attachmentId) return []
+      const attachment = existingById.get(ref.attachmentId)!
+      return [{
+        diamondIndex: ref.diamondIndex,
+        storageKey: attachment.storageKey,
+        fileName: attachment.fileName,
+        mimeType: attachment.mimeType,
+        sizeBytes: attachment.sizeBytes,
+      }]
+    })
+    const attachmentRows = [...existingAttachments, ...pendingAttachments]
+    const nextKeys = new Set(attachmentRows.map(attachment => attachment.storageKey))
+    const orphanedKeys = previousKeys.filter(key => !nextKeys.has(key))
     await tx.sfsOrderDesignAttachment.deleteMany({ where: { orderId: id } })
 
     const next = await tx.sfsOrder.update({
@@ -109,12 +136,20 @@ export async function PATCH(
       data: { phone: contactNumber, mailingAddress },
     })
 
-    return next
-  })
+    return { next, orphanedKeys }
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to update order'
+    if (message.includes('design upload') || message.includes('design attachment')) {
+      return NextResponse.json({ error: message }, { status: 400 })
+    }
+    console.error('[sfs-order] update failed', error)
+    return NextResponse.json({ error: 'Failed to update order' }, { status: 500 })
+  }
 
-  await Promise.allSettled(orphanedKeys.map(key => deleteFromR2(key)))
+  await Promise.allSettled(updated.orphanedKeys.map(key => deleteSfsDesignFile(key)))
 
-  return NextResponse.json({ orderId: updated.id, sampleCode: updated.sampleCode })
+  return NextResponse.json({ orderId: updated.next.id, sampleCode: updated.next.sampleCode })
 }
 
 export async function GET(
@@ -136,5 +171,16 @@ export async function GET(
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  return NextResponse.json(order)
+  return NextResponse.json({
+    ...order,
+    designAttachments: order.designAttachments.map(attachment => ({
+      id: attachment.id,
+      orderId: attachment.orderId,
+      diamondIndex: attachment.diamondIndex,
+      fileName: attachment.fileName,
+      mimeType: attachment.mimeType,
+      sizeBytes: attachment.sizeBytes,
+      uploadedAt: attachment.uploadedAt,
+    })),
+  })
 }
