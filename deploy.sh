@@ -742,7 +742,19 @@ _deploy_local_sync_to_app_dir() {
   mkdir -p "$APP_DIR/.next/static" "$APP_DIR/public" "$APP_DIR/prisma"
 
   if [[ "$need_build" == 1 ]]; then
-    rsync -a --delete .next/standalone/ "$APP_DIR/"
+    # standalone is synced into the application root. Keep deployment state,
+    # runtime configuration, and the local Prisma CLI that migrations use.
+    rsync -a --delete \
+      --exclude '.env' \
+      --exclude '.adviser-deploy-rev' \
+      --exclude 'start-prod.sh' \
+      --exclude 'deploy.sh' \
+      --exclude 'package.json' \
+      --exclude 'package-lock.json' \
+      --exclude 'node_modules/prisma/***' \
+      --exclude 'node_modules/@prisma/***' \
+      --exclude 'node_modules/.bin/prisma' \
+      .next/standalone/ "$APP_DIR/"
     rsync -a --delete .next/static/ "$APP_DIR/.next/static/"
     rsync -a --delete public/ "$APP_DIR/public/"
     rsync -a scripts/ "$APP_DIR/scripts/"
