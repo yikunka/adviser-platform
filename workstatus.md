@@ -7,6 +7,8 @@
 - 已實作：基於既有 OSS 儲存適配的暫存上傳資料模型和 migration、草稿 Cookie 歸屬、上傳限流、附件 ID 下載入口、驗證後自動認領同郵箱匿名訂單，以及到期清理排程。
 - 部署邊界：沿用既有 OSS 區域、Bucket 與 RAM 憑證；不需建立或配置額外 Bucket。
 - 實際驗證：本地 Docker PostgreSQL 已套用 migration；Vitest 7 項通過、`npx tsc --noEmit` 與 `npx prisma validate` 通過、受影響模組 ESLint 無錯誤。以 `USE_LOCAL_STORAGE=true` 啟動隔離開發服務，完成匿名 PDF 上傳、草稿 Cookie 認領後建立訂單、前端移除暫存文件，以及桌面和 390px 手機視口截圖；未登入下載 `designAttachmentId` 與既有 `?key=` 連結均回傳 200 並取得原始檔案。測試訂單、附件與臨時文件已清理。
+- 發布：功能提交 `d63fe1d` 已發布至 `cosmo-prod:/opt/adviser-app`；生產既有 OSS 變數存在，資料庫 138 項 migration 全部一致，PM2 `adviser`、Nginx 與 `https://sfsdiamonds.com/sfsdiamond/order` 均正常。
+- 發布修復：standalone 產物同步曾刪除 `.env` 與 `start-prod.sh`；已從仍在線的原 PM2 行程恢復環境、補齊 Prisma CLI、完成遷移並重建 PM2 行程。部署腳本保護修復已提交為 `6e6ab70` 並同步到生產目錄，後續同步會保留設定、啟動腳本、版本標記與 Prisma CLI。
 
 ## 2026-09-06 GitHub 最新版本生产发布
 
