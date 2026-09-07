@@ -3,7 +3,9 @@ import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import {
   getKeyPersonScreenGate,
+  OPENSANCTIONS_PEP_SEQ,
   recordManualAdverseMedia,
+  recordManualPepPass,
   screenKeyPerson,
   type ScreenScope,
 } from '@/lib/aml/screener'
@@ -30,19 +32,35 @@ const amlRecordSelect = {
 
 const postSchema = z.object({
   step: z.enum(['SANCTIONS', 'FATF', 'PEP', 'ADVERSE_MEDIA']).optional(),
+  /** Staff override after explaining PEP hits (step must be PEP). */
+  action: z.enum(['manual_pass']).optional(),
   /** Manual adverse-media outcome (required when step is ADVERSE_MEDIA) */
   outcome: z.enum(['CLEAR', 'HIT']).optional(),
   notes: z.string().max(2000).optional().nullable(),
 })
 
 async function getAMLData(keyPersonId: string) {
-  const [lastCheck, alerts, adverseMedia, gate] = await Promise.all([
+  const [lastCheck, pepAlerts, otherAlerts, adverseMedia, gate] = await Promise.all([
     prisma.aMLCheck.findFirst({
       where: { keyPersonId, subjectType: 'KEY_PERSON' },
       orderBy: { checkedAt: 'desc' },
     }),
     prisma.aMLAlert.findMany({
-      where: { keyPersonId, subjectType: 'KEY_PERSON', isActive: true },
+      where: {
+        keyPersonId,
+        subjectType: 'KEY_PERSON',
+        amlRecord: { source: { seqNo: OPENSANCTIONS_PEP_SEQ } },
+      },
+      orderBy: [{ createdAt: 'desc' }, { result: 'desc' }],
+      include: { amlRecord: amlRecordSelect },
+    }),
+    prisma.aMLAlert.findMany({
+      where: {
+        keyPersonId,
+        subjectType: 'KEY_PERSON',
+        isActive: true,
+        NOT: { amlRecord: { source: { seqNo: OPENSANCTIONS_PEP_SEQ } } },
+      },
       orderBy: { result: 'desc' },
       include: { amlRecord: amlRecordSelect },
     }),
@@ -64,7 +82,15 @@ async function getAMLData(keyPersonId: string) {
     }),
     getKeyPersonScreenGate(keyPersonId),
   ])
-  return { lastCheck, alerts, adverseMedia, gate }
+  return {
+    lastCheck,
+    /** @deprecated use pepAlerts + otherAlerts — kept for older clients */
+    alerts: [...pepAlerts.filter(a => a.isActive), ...otherAlerts],
+    pepAlerts,
+    otherAlerts,
+    adverseMedia,
+    gate,
+  }
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -104,6 +130,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       { status: 400 },
     )
   }
+
+  if (step === 'PEP' && parsed.data.action === 'manual_pass') {
+    try {
+      const result = await recordManualPepPass(
+        id,
+        parsed.data.notes ?? '',
+        session!.user.id,
+      )
+      const data = await getAMLData(id)
+      return NextResponse.json({ result, step, action: 'manual_pass', ...data })
+    } catch (err) {
+      console.error('[admin/kyc/aml] manual PEP pass', err)
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : 'Manual PEP pass failed' },
+        { status: 400 },
+      )
+    }
+  }
+
   if (step === 'ADVERSE_MEDIA') {
     if (!gate.canRunAdverseMedia) {
       return NextResponse.json(

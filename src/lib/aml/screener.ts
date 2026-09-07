@@ -11,7 +11,8 @@ const POTENTIAL_HIT_THRESHOLD = 0.92
 const WEAK_HIT_THRESHOLD = 0.85
 
 const FATF_SEQ = [14, 15]
-const OPENSANCTIONS_PEP_SEQ = 16
+/** OpenSanctions PEP source — also used to classify KYC step-3 alerts. */
+export const OPENSANCTIONS_PEP_SEQ = 16
 
 function normalize(name: string): string {
   return name
@@ -564,12 +565,13 @@ export async function getKeyPersonScreenGate(keyPersonId: string) {
     latest.map(({ scope, check }) => [
       scope,
       (() => {
-        const skipped = Boolean(
+        const matchesObj =
           check?.matches
           && typeof check.matches === 'object'
           && !Array.isArray(check.matches)
-          && (check.matches as { skipped?: boolean }).skipped,
-        )
+            ? (check.matches as { skipped?: boolean; manualPass?: boolean; manual?: boolean })
+            : null
+        const skipped = Boolean(matchesObj?.skipped)
         return check
           ? {
               result: check.result,
@@ -577,13 +579,20 @@ export async function getKeyPersonScreenGate(keyPersonId: string) {
               // Skipped (e.g. missing API key) must never unlock the next step / DDR
               passed: check.result === 'CLEAR' && !skipped,
               skipped,
+              manualPass: Boolean(matchesObj?.manualPass || matchesObj?.manual),
             }
-          : { result: null, checkedAt: null, passed: false, skipped: false }
+          : { result: null, checkedAt: null, passed: false, skipped: false, manualPass: false }
       })(),
     ]),
   ) as Record<
     'SANCTIONS' | 'FATF' | 'PEP' | 'ADVERSE_MEDIA',
-    { result: AMLCheckResult | null; checkedAt: Date | null; passed: boolean; skipped: boolean }
+    {
+      result: AMLCheckResult | null
+      checkedAt: Date | null
+      passed: boolean
+      skipped: boolean
+      manualPass: boolean
+    }
   >
 
   const pepReady = byScope.SANCTIONS.passed && byScope.FATF.passed
@@ -601,6 +610,70 @@ export async function getKeyPersonScreenGate(keyPersonId: string) {
       && byScope.PEP.passed
       && byScope.ADVERSE_MEDIA.passed,
   }
+}
+
+/**
+ * Staff override after explaining PEP hits: write a CLEAR PEP check and mark
+ * open OpenSanctions PEP alerts as FALSE_POSITIVE so Adverse Media unlocks.
+ */
+export async function recordManualPepPass(
+  keyPersonId: string,
+  notes: string,
+  triggeredById?: string,
+): Promise<AMLCheckResult> {
+  const trimmed = notes.trim()
+  if (!trimmed) throw new Error('Explain why this PEP hit can be passed before continuing')
+
+  const person = await prisma.keyPerson.findUnique({ where: { id: keyPersonId }, select: { id: true } })
+  if (!person) throw new Error(`KeyPerson ${keyPersonId} not found`)
+
+  const gate = await getKeyPersonScreenGate(keyPersonId)
+  if (!gate.canRunPep) {
+    throw new Error('Run AML and FATF first and get CLEAR before manually passing PEP')
+  }
+  if (gate.pep.passed) {
+    throw new Error('PEP is already CLEAR')
+  }
+  if (!gate.pep.result) {
+    throw new Error('Run PEP screening first before manually passing')
+  }
+
+  const now = new Date()
+  await prisma.$transaction(async tx => {
+    await tx.aMLCheck.create({
+      data: {
+        subjectType: 'KEY_PERSON',
+        keyPersonId,
+        trigger: 'MANUAL',
+        triggeredById,
+        result: 'CLEAR',
+        scope: 'PEP',
+        matches: {
+          manualPass: true,
+          notes: trimmed,
+          priorResult: gate.pep.result,
+        } as never,
+      },
+    })
+
+    await tx.aMLAlert.updateMany({
+      where: {
+        keyPersonId,
+        subjectType: 'KEY_PERSON',
+        resolution: 'PENDING',
+        amlRecord: { source: { seqNo: OPENSANCTIONS_PEP_SEQ } },
+      },
+      data: {
+        resolution: 'FALSE_POSITIVE',
+        reviewNotes: trimmed,
+        reviewedById: triggeredById,
+        reviewedAt: now,
+        isActive: false,
+      },
+    })
+  })
+
+  return 'CLEAR'
 }
 
 /** Manual adverse-media step (staff reviewed news offline; supporting docs optional). */

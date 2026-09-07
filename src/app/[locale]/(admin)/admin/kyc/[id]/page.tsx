@@ -29,6 +29,8 @@ type AMLAlert = {
   matchScore: number | null
   resolution: string
   reviewNotes: string | null
+  isActive?: boolean
+  reviewedAt?: string | null
   amlRecord: {
     primaryName: string
     aliases: string[]
@@ -43,7 +45,7 @@ type AMLAlert = {
     listingDate: string | null
     listVersionDate: string
     rawData: unknown
-    source: { nameEn: string; sourceUrl: string }
+    source: { nameEn: string; sourceUrl: string; seqNo?: number }
   }
 }
 
@@ -52,6 +54,7 @@ type ScreenGateStep = {
   checkedAt: string | null
   passed: boolean
   skipped: boolean
+  manualPass?: boolean
 }
 
 type ScreenGate = {
@@ -68,6 +71,8 @@ type ScreenGate = {
 type AMLData = {
   lastCheck: { checkedAt: string; result: string; scope?: string } | null
   alerts: AMLAlert[]
+  pepAlerts?: AMLAlert[]
+  otherAlerts?: AMLAlert[]
   gate?: ScreenGate
   adverseMedia?: Array<{
     id: string
@@ -162,6 +167,65 @@ const AML_HIT_COLOR: Record<AMLHitResult, { bg: string; text: string; label: str
   STRONG_HIT:    { bg: 'rgba(239,68,68,0.12)',   text: '#ef4444', label: 'Strong Hit' },
   POTENTIAL_HIT: { bg: 'rgba(245,158,11,0.12)',  text: '#f59e0b', label: 'Potential Hit' },
   WEAK_HIT:      { bg: 'rgba(234,179,8,0.12)',   text: '#eab308', label: 'Weak Hit' },
+}
+
+const ALERT_RESOLUTION_COLOR: Record<string, string> = {
+  PENDING: 'text-[#f59e0b]',
+  FALSE_POSITIVE: 'text-[#10b981]',
+  ESCALATED: 'text-[#ef4444]',
+  REJECTED: 'text-[#ef4444]',
+  CONFIRMED: 'text-[#ef4444]',
+}
+
+function ScreeningAlertCard({ alert }: { alert: AMLAlert }) {
+  const color = AML_HIT_COLOR[alert.result]
+  return (
+    <li
+      className="rounded-lg px-3 py-2.5 text-sm space-y-1.5"
+      style={{ background: color?.bg ?? 'rgba(120,113,108,0.1)', border: `1px solid ${(color?.text ?? '#9A8060')}33` }}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="font-medium truncate" style={{ color: 'var(--foreground)' }}>
+            {alert.amlRecord.primaryName}
+          </p>
+          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+            {alert.amlRecord.entityType.replace('_', ' ')} · {alert.amlRecord.source.nameEn}
+          </p>
+        </div>
+        <div className="shrink-0 text-right space-y-0.5">
+          <span className="block text-xs font-semibold" style={{ color: color?.text ?? '#9A8060' }}>
+            {alert.result.replace('_', ' ')}
+            {alert.matchScore != null ? ` · ${(alert.matchScore * 100).toFixed(0)}%` : ''}
+          </span>
+          <span className={`block text-[11px] font-medium ${ALERT_RESOLUTION_COLOR[alert.resolution] ?? 'text-[var(--muted-foreground)]'}`}>
+            {alert.resolution.replace('_', ' ')}
+          </span>
+        </div>
+      </div>
+      {alert.amlRecord.aliases.length > 0 && (
+        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+          <span className="font-medium">Aliases:</span> {alert.amlRecord.aliases.join(', ')}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+        {alert.amlRecord.nationality && <span>Nationality: {alert.amlRecord.nationality}</span>}
+        {alert.amlRecord.listingReason && <span>Reason: {alert.amlRecord.listingReason}</span>}
+      </div>
+      {alert.reviewNotes && (
+        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+          <span className="font-medium">Notes:</span> {alert.reviewNotes}
+        </p>
+      )}
+      <Link
+        href={`/admin/aml/${alert.id}`}
+        className="inline-flex text-xs font-medium hover:underline"
+        style={{ color: '#C9A96E' }}
+      >
+        Review alert →
+      </Link>
+    </li>
+  )
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -270,6 +334,7 @@ export default function KYCDetailPage() {
   const [amlLoading, setAmlLoading] = useState(false)
   const [screenStepLoading, setScreenStepLoading] = useState<'SANCTIONS' | 'FATF' | 'PEP' | 'ADVERSE_MEDIA' | null>(null)
   const [adverseMediaNotes, setAdverseMediaNotes] = useState('')
+  const [pepPassNotes, setPepPassNotes] = useState('')
   const [clients, setClients] = useState<ClientAccount[]>([])
   const [generatingDdr, setGeneratingDdr] = useState(false)
   const [uploadingDocType, setUploadingDocType] = useState<string | null>(null)
@@ -383,6 +448,39 @@ export default function KYCDetailPage() {
       setAmlData(json)
       if (outcome === 'CLEAR') toast.success('Adverse media CLEAR')
       else toast.message('Adverse media marked as HIT')
+    } finally {
+      setScreenStepLoading(null)
+      setAmlLoading(false)
+    }
+  }
+
+  async function submitManualPepPass() {
+    if (!selected) return
+    const notes = pepPassNotes.trim()
+    if (!notes) {
+      toast.error('Explain why this PEP hit can be passed before continuing')
+      return
+    }
+    setScreenStepLoading('PEP')
+    setAmlLoading(true)
+    try {
+      const res = await fetch(`/api/admin/kyc/${selected.id}/aml`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          step: 'PEP',
+          action: 'manual_pass',
+          notes,
+        }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(typeof json?.error === 'string' ? json.error : 'Manual PEP pass failed')
+        return
+      }
+      setAmlData(json)
+      setPepPassNotes('')
+      toast.success('PEP manually passed — Adverse media unlocked')
     } finally {
       setScreenStepLoading(null)
       setAmlLoading(false)
@@ -1032,7 +1130,7 @@ export default function KYCDetailPage() {
                 return (
                   <div
                     key={step.key}
-                    className="rounded-lg border px-3 py-2.5"
+                    className="rounded-lg border px-3 py-2.5 space-y-3"
                     style={{ borderColor: '#2A2418', background: 'rgba(201,169,110,0.04)' }}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -1046,6 +1144,7 @@ export default function KYCDetailPage() {
                             <span style={{ color: resultColor, fontWeight: 600 }}>
                               {result ? result.replace('_', ' ') : '—'}
                               {step.status.skipped ? ' (API key skipped)' : ''}
+                              {step.key === 'PEP' && step.status.manualPass ? ' · Manual pass' : ''}
                             </span>
                           </p>
                         ) : (
@@ -1065,6 +1164,76 @@ export default function KYCDetailPage() {
                         {loading ? 'Screening…' : `Run ${step.key === 'SANCTIONS' ? 'AML' : step.key}`}
                       </Button>
                     </div>
+
+                    {step.key === 'PEP' && (() => {
+                      const pepAlerts = amlData?.pepAlerts ?? []
+                      const canManualPass = Boolean(
+                        step.enabled
+                        && step.status?.result
+                        && !step.status.passed
+                        && !step.status.skipped,
+                      )
+                      return (
+                        <div className="space-y-3 border-t pt-3" style={{ borderColor: '#2A2418' }}>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                              PEP alerts (AML&PEP screening)
+                            </p>
+                            <Link
+                              href="/admin/aml"
+                              className="text-xs font-medium hover:underline"
+                              style={{ color: '#C9A96E' }}
+                            >
+                              Open AML&PEP screening →
+                            </Link>
+                          </div>
+                          {pepAlerts.length === 0 ? (
+                            <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                              No OpenSanctions PEP alerts for this person yet. Run PEP to create matches.
+                            </p>
+                          ) : (
+                            <ul className="space-y-2">
+                              {pepAlerts.map(alert => (
+                                <ScreeningAlertCard key={alert.id} alert={alert} />
+                              ))}
+                            </ul>
+                          )}
+
+                          {canManualPass && (
+                            <div className="space-y-2 rounded-md border px-3 py-2.5" style={{ borderColor: 'rgba(245,158,11,0.35)', background: 'rgba(245,158,11,0.06)' }}>
+                              <p className="text-xs font-medium" style={{ color: '#f59e0b' }}>
+                                手动通过 PEP · Manual pass PEP
+                              </p>
+                              <p className="text-xs leading-relaxed" style={{ color: 'var(--muted-foreground)' }}>
+                                After reviewing alerts and explaining why the hit is acceptable, mark PEP CLEAR to unlock Adverse media.
+                                Pending PEP alerts are recorded as false positive with your notes.
+                              </p>
+                              <textarea
+                                className="w-full rounded-md px-3 py-2 text-xs"
+                                style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: 'var(--foreground)', outline: 'none' }}
+                                rows={2}
+                                placeholder="Explain the PEP match disposition (required)…"
+                                value={pepPassNotes}
+                                onChange={e => setPepPassNotes(e.target.value)}
+                                disabled={amlLoading}
+                              />
+                              <Button
+                                variant="outline"
+                                disabled={amlLoading || !pepPassNotes.trim()}
+                                onClick={() => void submitManualPepPass()}
+                                className="text-xs h-8 px-3"
+                                style={{
+                                  borderColor: '#2A2418',
+                                  color: amlLoading || !pepPassNotes.trim() ? 'var(--muted-foreground)' : '#C9A96E',
+                                }}
+                              >
+                                {loading ? 'Saving…' : '手动通过 PEP'}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </div>
                 )
               })}
@@ -1210,55 +1379,29 @@ export default function KYCDetailPage() {
 
         {amlData && (
           <div className="space-y-2 pt-1">
-            {amlData.alerts.length === 0 ? (
-              <p className="text-xs rounded-lg px-3 py-2" style={{ background: 'rgba(16,185,129,0.08)', color: '#10b981' }}>
-                No active screening hits
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {amlData.alerts.map(alert => {
-                  const color = AML_HIT_COLOR[alert.result]
-                  return (
-                    <li
-                      key={alert.id}
-                      className="rounded-lg px-3 py-2.5 text-sm space-y-1.5"
-                      style={{ background: color?.bg ?? 'rgba(120,113,108,0.1)', border: `1px solid ${(color?.text ?? '#9A8060')}33` }}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-medium truncate" style={{ color: 'var(--foreground)' }}>
-                            {alert.amlRecord.primaryName}
-                          </p>
-                          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                            {alert.amlRecord.entityType.replace('_', ' ')} · {alert.amlRecord.source.nameEn}
-                          </p>
-                        </div>
-                        <span className="text-xs font-semibold shrink-0" style={{ color: color?.text ?? '#9A8060' }}>
-                          {alert.result.replace('_', ' ')}
-                          {alert.matchScore != null ? ` · ${(alert.matchScore * 100).toFixed(0)}%` : ''}
-                        </span>
-                      </div>
-                      {alert.amlRecord.aliases.length > 0 && (
-                        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                          <span className="font-medium">Aliases:</span> {alert.amlRecord.aliases.join(', ')}
-                        </p>
-                      )}
-                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        {alert.amlRecord.nationality && <span>Nationality: {alert.amlRecord.nationality}</span>}
-                        {alert.amlRecord.listingReason && <span>Reason: {alert.amlRecord.listingReason}</span>}
-                      </div>
-                      <Link
-                        href={`/admin/aml/${alert.id}`}
-                        className="inline-flex text-xs font-medium hover:underline"
-                        style={{ color: '#C9A96E' }}
-                      >
-                        Review alert →
-                      </Link>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
+            {(() => {
+              const otherAlerts = amlData.otherAlerts
+                ?? amlData.alerts.filter(a => (a.amlRecord.source.seqNo ?? -1) !== 16)
+              if (otherAlerts.length === 0) {
+                return (
+                  <p className="text-xs rounded-lg px-3 py-2" style={{ background: 'rgba(16,185,129,0.08)', color: '#10b981' }}>
+                    No active sanctions / FATF screening hits
+                  </p>
+                )
+              }
+              return (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                    Other active screening hits (sanctions / FATF)
+                  </p>
+                  <ul className="space-y-2">
+                    {otherAlerts.map(alert => (
+                      <ScreeningAlertCard key={alert.id} alert={alert} />
+                    ))}
+                  </ul>
+                </div>
+              )
+            })()}
           </div>
         )}
       </div>
