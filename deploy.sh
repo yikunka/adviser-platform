@@ -337,8 +337,13 @@ cmd_build() {
   _cleanup_build_marker "$build_marker"
   if [[ -n "${OSS_BUCKET:-}" ]]; then
     echo "▶ 同步静态资源到 OSS..."
-    node scripts/sync-oss-static.mjs
-    echo "✓ OSS 静态资源同步完成"
+    # OSS sync must not abort the rest of deploy (rsync + PM2). A hard crash here
+    # previously left nginx returning 502 with no process restart.
+    if node scripts/sync-oss-static.mjs; then
+      echo "✓ OSS 静态资源同步完成"
+    else
+      echo "⚠ OSS 静态资源同步失败（exit $?）— 继续发布本地产物并重启服务"
+    fi
   else
     echo "ℹ OSS_BUCKET 未设置，跳过 OSS 静态资源同步"
   fi
@@ -728,8 +733,11 @@ _deploy_local_maybe_npm_prisma_next() {
     _cleanup_build_marker "$build_marker"
     if [[ -n "${OSS_BUCKET:-}" ]]; then
       echo "▶ 同步静态资源到 OSS..."
-      node scripts/sync-oss-static.mjs
-      echo "✓ OSS 静态资源同步完成"
+      if node scripts/sync-oss-static.mjs; then
+        echo "✓ OSS 静态资源同步完成"
+      else
+        echo "⚠ OSS 静态资源同步失败（exit $?）— 继续发布本地产物并重启服务"
+      fi
     fi
     echo "✓ 构建完成"
   fi
