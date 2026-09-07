@@ -119,13 +119,22 @@ Service invoicing for TCSP professional fees.
 - Upload historical invoice PDFs from the invoice list via **添加历史发票**; admins can add/edit a text note for each uploaded historical PDF and the note is shown directly in the historical-file list; uploaded historical files are stored as downloadable archives and do not create or modify formal invoice records, numbering, totals, or statuses
 - Link invoices to client companies or approved individual KYC records
 
-### 6b. Contracts (`/admin/contracts`)
+### 6b. Projects (`/admin/projects`)
+Annual (or custom-period) service engagements per client company.
+- Project types: company incorporation, corporate secretarial, accounting, other
+- Statuses: `ACTIVE` → `COMPLETED` / `EXPIRED` / `CANCELLED` / `RENEWED`; overdue `ACTIVE` projects auto-mark as `EXPIRED` when listed or opened
+- Register work items (tasks) when needed and mark them done when finished
+- Link company invoices; payment state uses invoice statuses `SENT` (未收款) and `PAID` (已收款); staff can mark linked `SENT` invoices as paid from the project page
+- When a cycle ends, create the next-period project (start = prior end, end = +1 year by default); prior project becomes `RENEWED` and links to the next period
+- Access and actions: `projects`, `projects.create`, `projects.edit`, `projects.delete`
+
+### 6c. Contracts (`/admin/contracts`)
 Independent Adviser contract management, not linked to client companies.
 - Upload and download contract files (PDF, Word, JPG, PNG, WEBP; max 10 MB; Chinese file names are preserved for download)
 - Contract metadata includes contract name, start date, end date, and notes; metadata can be edited after upload
 - Access and actions are controlled by Role Management permissions `contracts`, `contracts.create`, `contracts.edit`, and `contracts.delete`
 
-### 6c. TCSP Service Pricing (`/admin/tcsp-pricing`)
+### 6d. TCSP Service Pricing (`/admin/tcsp-pricing`)
 Central price-list management for TCSP service quotes.
 - Maintains service pricing by jurisdiction (`HK`, `BVI`, `CAYMAN`, `MARSHALL`), customer level (`经销客户` / `普通客户`), free-text service content, currency, amount, and notes
 - Service content is a single admin-entered description field, so admins can cover any current or future TCSP service without selecting a preset category or item
@@ -136,7 +145,7 @@ Central price-list management for TCSP service quotes.
 Staff access control.
 - System roles: `SUPER_ADMIN`, `COMPLIANCE`, `STAFF`
 - Per-staff platform access flags (Adviser / SFS Diamond)
-- Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, contracts, tcspPricing, team, feedback, sfs-customers, sfs-orders, sfs-invoices)
+- Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, projects, contracts, tcspPricing, team, feedback, sfs-customers, sfs-orders, sfs-invoices)
 - Dynamic role assignment: each staff member can be assigned multiple dynamic `AdminRole` records (from Role Management); effective access is the union of all selected roles' page + button-level permissions
 - Legacy mode: no restrictions; new mode: explicit per-menu grants
 - Create / edit / deactivate staff accounts

@@ -244,6 +244,27 @@ enum InvoiceCustomerType {
   INDIVIDUAL
 }
 
+enum AdvProjectType {
+  COMPANY_INCORPORATION
+  CORPORATE_SECRETARIAL
+  ACCOUNTING
+  OTHER
+}
+
+enum AdvProjectStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  CANCELLED
+  RENEWED
+}
+
+enum AdvProjectTaskStatus {
+  OPEN
+  DONE
+  CANCELLED
+}
+
 // ─────────────────────────────────────────────
 // USERS & AUTH
 // ─────────────────────────────────────────────
@@ -280,6 +301,9 @@ model User {
   uploadedAdviserContracts            AdviserContract[]             @relation("AdviserContractUploader")
   createdTcspServicePrices            TcspServicePrice[]            @relation("TcspServicePriceCreator")
   updatedTcspServicePrices            TcspServicePrice[]            @relation("TcspServicePriceUpdater")
+  createdAdvProjects                  AdvProject[]                  @relation("AdvProjectCreator")
+  createdAdvProjectTasks              AdvProjectTask[]              @relation("AdvProjectTaskCreator")
+  completedAdvProjectTasks            AdvProjectTask[]              @relation("AdvProjectTaskCompleter")
   uploadedDocuments                   Document[]
   kycReviews                          KeyPerson[]                   @relation("KYCReviewer")
   kycSubmissions                      KeyPerson[]                   @relation("ClientKycSubmissions")
@@ -412,6 +436,7 @@ model Company {
   addressChanges         AddressChange[]
   keyPersonLinks         CompanyKeyPerson[]
   serviceOrders          ServiceOrder[]
+  advProjects            AdvProject[]
   auditLogs              AuditLog[]                    @relation("CompanyAuditLog")
   finAccounts            FinAccount[]
   journalEntries         JournalEntry[]
@@ -1154,6 +1179,73 @@ model TcspServicePrice {
 }
 
 // ─────────────────────────────────────────────
+// SERVICE PROJECTS (Adviser — annual engagements)
+// ─────────────────────────────────────────────
+
+model AdvProject {
+  id            String           @id @default(cuid())
+  companyId     String
+  title         String
+  projectType   AdvProjectType
+  status        AdvProjectStatus @default(ACTIVE)
+  startDate     DateTime
+  endDate       DateTime
+  autoRenew     Boolean          @default(true)
+  notes         String?
+  renewedFromId String?          @unique
+  createdById   String
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  company     Company            @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  createdBy   User               @relation("AdvProjectCreator", fields: [createdById], references: [id])
+  renewedFrom AdvProject?        @relation("AdvProjectRenewal", fields: [renewedFromId], references: [id], onDelete: SetNull)
+  renewedTo   AdvProject?        @relation("AdvProjectRenewal")
+  tasks       AdvProjectTask[]
+  invoices    AdvProjectInvoice[]
+
+  @@index([companyId, status])
+  @@index([endDate, status])
+  @@index([projectType])
+  @@map("adv_projects")
+}
+
+model AdvProjectTask {
+  id            String               @id @default(cuid())
+  projectId     String
+  title         String
+  status        AdvProjectTaskStatus @default(OPEN)
+  notes         String?
+  registeredAt  DateTime             @default(now())
+  completedAt   DateTime?
+  createdById   String
+  completedById String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  project     AdvProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy   User       @relation("AdvProjectTaskCreator", fields: [createdById], references: [id])
+  completedBy User?      @relation("AdvProjectTaskCompleter", fields: [completedById], references: [id], onDelete: SetNull)
+
+  @@index([projectId, status])
+  @@map("adv_project_tasks")
+}
+
+model AdvProjectInvoice {
+  id        String   @id @default(cuid())
+  projectId String
+  invoiceId String
+  createdAt DateTime @default(now())
+
+  project AdvProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  invoice Invoice    @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, invoiceId])
+  @@index([invoiceId])
+  @@map("adv_project_invoices")
+}
+
+// ─────────────────────────────────────────────
 // INVOICES (Adviser — customer billing)
 // ─────────────────────────────────────────────
 
@@ -1183,6 +1275,7 @@ model Invoice {
   keyPerson KeyPerson?        @relation(fields: [keyPersonId], references: [id], onDelete: Restrict)
   createdBy User              @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
   lineItems InvoiceLineItem[]
+  projectLinks AdvProjectInvoice[]
 
   @@index([companyId])
   @@index([keyPersonId])

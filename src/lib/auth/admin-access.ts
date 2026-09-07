@@ -13,6 +13,7 @@ export const ADMIN_MENU_KEYS = [
   'financialHistory',
   'financialSettings',
   'invoices',
+  'projects',
   'contracts',
   'tcspPricing',
   'users',
@@ -44,6 +45,7 @@ export const MENU_PLATFORM: Record<AdminMenuKey, Platform | 'GLOBAL'> = {
   financialHistory: 'ADVISER',
   financialSettings: 'ADVISER',
   invoices: 'ADVISER',
+  projects: 'ADVISER',
   contracts: 'ADVISER',
   tcspPricing: 'ADVISER',
   users: 'GLOBAL',
@@ -148,6 +150,8 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
     }
     case 'invoices':
       return 'invoices'
+    case 'projects':
+      return 'projects'
     case 'contracts':
       return 'contracts'
     case 'tcsp-pricing':
@@ -194,6 +198,7 @@ export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: stri
   { key: 'financialHistory',    label: 'Historical ledger books',    group: 'Finance Management' },
   { key: 'financialSettings',   label: 'Financial settings',         group: 'Finance Management' },
   { key: 'invoices', label: 'Invoices', group: 'Adviser' },
+  { key: 'projects', label: 'Projects', group: 'Adviser' },
   { key: 'contracts', label: 'Contracts', group: 'Adviser' },
   { key: 'tcspPricing', label: 'TCSP service pricing', group: 'Adviser' },
   { key: 'users', label: 'Customer account management', group: 'System' },

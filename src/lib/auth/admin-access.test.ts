@@ -2,18 +2,23 @@ import { describe, expect, it } from 'vitest'
 import { ADMIN_MENU_KEYS, MENU_PLATFORM, pathnameToAdminMenuKey } from '@/lib/auth/admin-access'
 import { isValidPermission } from '@/lib/auth/permissions'
 
-describe('Adviser contract and TCSP pricing access', () => {
+describe('Adviser contract, projects and TCSP pricing access', () => {
   it('registers new Adviser modules in Role Management permissions', () => {
     expect(ADMIN_MENU_KEYS).toContain('contracts')
+    expect(ADMIN_MENU_KEYS).toContain('projects')
     expect(ADMIN_MENU_KEYS).toContain('tcspPricing')
     expect(MENU_PLATFORM.contracts).toBe('ADVISER')
+    expect(MENU_PLATFORM.projects).toBe('ADVISER')
     expect(MENU_PLATFORM.tcspPricing).toBe('ADVISER')
     expect(isValidPermission('contracts.create')).toBe(true)
+    expect(isValidPermission('projects.create')).toBe(true)
+    expect(isValidPermission('projects.edit')).toBe(true)
     expect(isValidPermission('tcspPricing.edit')).toBe(true)
   })
 
   it('maps new Adviser module routes to independent permission keys', () => {
     expect(pathnameToAdminMenuKey('/zh/admin/contracts')).toBe('contracts')
+    expect(pathnameToAdminMenuKey('/zh/admin/projects')).toBe('projects')
     expect(pathnameToAdminMenuKey('/zh/admin/tcsp-pricing')).toBe('tcspPricing')
   })
 })

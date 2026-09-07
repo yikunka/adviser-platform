@@ -33,6 +33,7 @@ import {
   HandCoins,
   ShieldCheck,
   Factory,
+  FolderKanban,
 } from 'lucide-react'
 import type { AdminMenuKey } from '@/lib/auth/admin-access'
 import { pathnameToAdminMenuKey, adminMenusAllow } from '@/lib/auth/admin-access'
@@ -65,6 +66,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/kyc', key: 'kyc', Icon: ClipboardCheck },
       { href: '/admin/aml', key: 'aml', Icon: ShieldAlert },
       { href: '/admin/invoices', key: 'invoices', Icon: FileText },
+      { href: '/admin/projects', key: 'projects', Icon: FolderKanban },
       { href: '/admin/contracts', key: 'contracts', Icon: FileText },
       { href: '/admin/tcsp-pricing', key: 'tcspPricing', Icon: HandCoins },
     ],
