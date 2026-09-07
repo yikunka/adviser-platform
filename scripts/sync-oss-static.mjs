@@ -274,9 +274,24 @@ console.log(`    CDN    : ${process.env.OSS_CDN_URL ?? `https://${BUCKET}.oss-${
 console.log(`    Concurrency / folder : ${SYNC_CONCURRENCY}`)
 
 const t0 = Date.now()
-const [f1, f2] = await Promise.all([syncNextStatic(), syncPublic()])
-const total = f1 + f2
-const elapsed = ((Date.now() - t0) / 1000).toFixed(1)
+let exitCode = 0
+try {
+  const [f1, f2] = await Promise.all([syncNextStatic(), syncPublic()])
+  const total = f1 + f2
+  const elapsed = ((Date.now() - t0) / 1000).toFixed(1)
 
-console.log(`\n${total === 0 ? '✅' : '⚠️ '}  Done in ${elapsed}s${total > 0 ? ` — ${total} file(s) failed` : ''}`)
-if (total > 0) process.exit(1)
+  console.log(`\n${total === 0 ? '✅' : '⚠️ '}  Done in ${elapsed}s${total > 0 ? ` — ${total} file(s) failed` : ''}`)
+  exitCode = total > 0 ? 1 : 0
+} catch (err) {
+  console.error('❌  OSS sync failed:', err instanceof Error ? err.message : err)
+  exitCode = 1
+} finally {
+  // Avoid SIGABRT (exit 134) on process teardown from AWS SDK HTTP keep-alive /
+  // OpenSSL cleanup on some Linux Node builds (seen after a successful sync).
+  try {
+    client.destroy()
+  } catch {
+    /* ignore */
+  }
+  process.exit(exitCode)
+}
