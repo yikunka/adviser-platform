@@ -121,11 +121,12 @@ Service invoicing for TCSP professional fees.
 
 ### 6b. Projects (`/admin/projects`)
 Annual (or custom-period) service engagements per client company.
+- Each project gets an auto-generated project number `PRJ-YYYY-NNNNN` (shown in list and detail; searchable)
 - Project types: company incorporation, corporate secretarial, accounting, other
 - Statuses: `ACTIVE` → `COMPLETED` / `EXPIRED` / `CANCELLED` / `RENEWED`; overdue `ACTIVE` projects auto-mark as `EXPIRED` when listed or opened
 - Register work items (tasks) when needed and mark them done when finished
-- Link company invoices; payment state uses invoice statuses `SENT` (未收款) and `PAID` (已收款); staff can mark linked `SENT` invoices as paid from the project page
-- When a cycle ends, create the next-period project (start = prior end, end = +1 year by default); prior project becomes `RENEWED` and links to the next period
+- Link company invoices; each linked row has an **Open invoice** button and a **paid checkbox** (勾选 = `PAID` 已收款, 取消 = `SENT` 未收款; draft/cancelled invoices cannot be toggled here)
+- When a cycle ends, create the next-period project (start = prior end, end = +1 year by default) with a new project number; prior project becomes `RENEWED` and links to the next period
 - Access and actions: `projects`, `projects.create`, `projects.edit`, `projects.delete`
 
 ### 6c. Contracts (`/admin/contracts`)

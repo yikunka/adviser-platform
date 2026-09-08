@@ -1184,6 +1184,7 @@ model TcspServicePrice {
 
 model AdvProject {
   id            String           @id @default(cuid())
+  projectNumber String           @unique
   companyId     String
   title         String
   projectType   AdvProjectType

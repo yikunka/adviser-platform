@@ -15,6 +15,7 @@ import {
 
 type ProjectRow = {
   id: string
+  projectNumber: string
   title: string
   projectType: keyof typeof PROJECT_TYPE_LABELS
   status: keyof typeof PROJECT_STATUS_LABELS
@@ -181,7 +182,7 @@ export default function ProjectsPage() {
           <input
             className="w-full bg-transparent text-sm outline-none"
             style={{ color: 'var(--foreground)' }}
-            placeholder="搜索项目或公司…"
+            placeholder="搜索项目号、项目或公司…"
             value={search}
             onChange={e => { setPage(1); setSearch(e.target.value) }}
           />
@@ -223,6 +224,7 @@ export default function ProjectsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--muted-foreground)' }}>
+                  <th className="px-4 py-3 text-left font-medium">项目号</th>
                   <th className="px-4 py-3 text-left font-medium">项目</th>
                   <th className="px-4 py-3 text-left font-medium">公司</th>
                   <th className="px-4 py-3 text-left font-medium">类型</th>
@@ -235,6 +237,11 @@ export default function ProjectsPage() {
               <tbody>
                 {projects.map(project => (
                   <tr key={project.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                      <Link href={`/admin/projects/${project.id}`} className="hover:underline">
+                        {project.projectNumber}
+                      </Link>
+                    </td>
                     <td className="px-4 py-3">
                       <Link href={`/admin/projects/${project.id}`} className="font-medium hover:underline" style={{ color: 'var(--foreground)' }}>
                         {project.title}

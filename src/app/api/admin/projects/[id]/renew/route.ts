@@ -12,6 +12,7 @@ import {
   projectInclude,
   serializeProject,
 } from '@/lib/adviser/projects'
+import { nextProjectNumber } from '@/lib/adviser/project-number'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -43,8 +44,10 @@ export async function POST(_req: NextRequest, context: RouteContext) {
   const { startDate, endDate } = defaultRenewalWindow(source.endDate)
 
   const result = await prisma.$transaction(async tx => {
+    const projectNumber = await nextProjectNumber(startDate, tx, { lockSequence: true })
     const next = await tx.advProject.create({
       data: {
+        projectNumber,
         companyId: source.companyId,
         title: source.title,
         projectType: source.projectType,

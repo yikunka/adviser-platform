@@ -7,6 +7,7 @@ import { useParams } from 'next/navigation'
 import {
   ArrowLeft,
   CheckCircle2,
+  ExternalLink,
   Link2,
   Plus,
   RefreshCw,
@@ -52,6 +53,7 @@ type LinkedInvoice = {
 
 type ProjectDetail = {
   id: string
+  projectNumber: string
   title: string
   projectType: keyof typeof PROJECT_TYPE_LABELS
   status: keyof typeof PROJECT_STATUS_LABELS
@@ -60,8 +62,8 @@ type ProjectDetail = {
   autoRenew: boolean
   notes: string | null
   company: { id: string; nameEn: string; companyCode: string | null }
-  renewedFrom?: { id: string; title: string } | null
-  renewedTo?: { id: string; title: string } | null
+  renewedFrom?: { id: string; title: string; projectNumber?: string } | null
+  renewedTo?: { id: string; title: string; projectNumber?: string } | null
   tasks: Task[]
   invoices: LinkedInvoice[]
   summary: {
@@ -126,6 +128,7 @@ export default function ProjectDetailPage() {
   const [candidates, setCandidates] = useState<CandidateInvoice[]>([])
   const [linkingId, setLinkingId] = useState<string | null>(null)
   const [renewing, setRenewing] = useState(false)
+  const [paymentBusyId, setPaymentBusyId] = useState<string | null>(null)
 
   const fetchProject = useCallback(async () => {
     setLoading(true)
@@ -273,19 +276,22 @@ export default function ProjectDetailPage() {
     }
   }
 
-  async function markInvoicePaid(invoiceId: string) {
+  async function setInvoicePaid(linkId: string, paid: boolean) {
+    setPaymentBusyId(linkId)
     try {
-      const res = await fetch(`/api/admin/invoices/${invoiceId}`, {
+      const res = await fetch(`/api/admin/projects/${projectId}/invoices/${linkId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'PAID' }),
+        body: JSON.stringify({ paid }),
       })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error || '标记收款失败。')
-      toast.success('已标记为已收款。')
+      if (!res.ok) throw new Error(json.error || '更新收款状态失败。')
+      toast.success(json.toast || (paid ? '已确认收款。' : '已取消收款确认。'))
       await fetchProject()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '标记收款失败。')
+      toast.error(error instanceof Error ? error.message : '更新收款状态失败。')
+    } finally {
+      setPaymentBusyId(null)
     }
   }
 
@@ -342,6 +348,9 @@ export default function ProjectDetailPage() {
           </Link>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>{project.title}</h1>
+            <span className="rounded-md px-2 py-0.5 font-mono text-xs" style={{ border: '1px solid var(--border)', color: 'var(--muted-foreground)' }}>
+              {project.projectNumber}
+            </span>
             <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_COLOR[project.status] ?? ''}`}>
               {PROJECT_STATUS_LABELS[project.status]}
             </span>
@@ -382,8 +391,12 @@ export default function ProjectDetailPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="space-y-3 p-4 lg:col-span-1" style={card}>
+          <div className="space-y-3 p-4 lg:col-span-1" style={card}>
           <h2 className="font-semibold" style={{ color: 'var(--foreground)' }}>项目信息</h2>
+          <div>
+            <label className="mb-1 block text-xs" style={{ color: 'var(--muted-foreground)' }}>项目号</label>
+            <div className="font-mono text-sm" style={{ color: 'var(--foreground)' }}>{project.projectNumber}</div>
+          </div>
           <div>
             <label className="mb-1 block text-xs" style={{ color: 'var(--muted-foreground)' }}>名称</label>
             <input
@@ -568,42 +581,66 @@ export default function ProjectDetailPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--muted-foreground)' }}>
-                      <th className="px-2 py-2 text-left font-medium">发票号</th>
+                      <th className="px-2 py-2 text-left font-medium">发票</th>
                       <th className="px-2 py-2 text-left font-medium">金额</th>
-                      <th className="px-2 py-2 text-left font-medium">收款状态</th>
+                      <th className="px-2 py-2 text-center font-medium">已收款</th>
+                      <th className="px-2 py-2 text-left font-medium">状态</th>
                       <th className="px-2 py-2 text-left font-medium">操作</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {project.invoices.map(link => (
-                      <tr key={link.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td className="px-2 py-2">
-                          <Link href={`/admin/invoices/${link.invoice.id}`} className="underline">
-                            {link.invoice.invoiceNumber}
-                          </Link>
-                        </td>
-                        <td className="px-2 py-2">{link.invoice.currency} {link.invoice.total}</td>
-                        <td className="px-2 py-2">
-                          <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_COLOR[link.invoice.status] ?? ''}`}>
-                            {INVOICE_PAYMENT_LABELS[link.invoice.status] ?? link.invoice.status}
-                          </span>
-                        </td>
-                        <td className="px-2 py-2">
-                          <div className="flex flex-wrap gap-2">
-                            {canEdit && link.invoice.status === 'SENT' && (
-                              <Button size="sm" variant="outline" onClick={() => markInvoicePaid(link.invoice.id)}>
-                                标记已收款
-                              </Button>
-                            )}
-                            {canEdit && (
-                              <Button size="sm" variant="outline" onClick={() => unlinkInvoice(link.id)}>
-                                <Unlink size={14} />
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {project.invoices.map(link => {
+                      const canTogglePaid = link.invoice.status === 'SENT' || link.invoice.status === 'PAID'
+                      const isPaid = link.invoice.status === 'PAID'
+                      return (
+                        <tr key={link.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td className="px-2 py-2">
+                            <div className="font-medium" style={{ color: 'var(--foreground)' }}>
+                              {link.invoice.invoiceNumber}
+                            </div>
+                            <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                              {link.invoice.billToName}
+                            </div>
+                          </td>
+                          <td className="px-2 py-2 whitespace-nowrap">{link.invoice.currency} {link.invoice.total}</td>
+                          <td className="px-2 py-2 text-center">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 accent-[var(--primary)]"
+                              checked={isPaid}
+                              disabled={!canEdit || !canTogglePaid || paymentBusyId === link.id}
+                              title={
+                                canTogglePaid
+                                  ? (isPaid ? '取消收款确认' : '确认已收款')
+                                  : '草稿或已取消发票不可在此勾选'
+                              }
+                              onChange={e => void setInvoicePaid(link.id, e.target.checked)}
+                            />
+                          </td>
+                          <td className="px-2 py-2">
+                            <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_COLOR[link.invoice.status] ?? ''}`}>
+                              {INVOICE_PAYMENT_LABELS[link.invoice.status] ?? link.invoice.status}
+                            </span>
+                          </td>
+                          <td className="px-2 py-2">
+                            <div className="flex flex-wrap gap-2">
+                              <Link
+                                href={`/admin/invoices/${link.invoice.id}`}
+                                className="inline-flex h-7 items-center gap-1 rounded-[min(var(--radius-md),12px)] border border-border bg-background px-2.5 text-[0.8rem] hover:bg-muted"
+                              >
+                                <ExternalLink size={14} />
+                                打开发票
+                              </Link>
+                              {canEdit && (
+                                <Button size="sm" variant="outline" onClick={() => unlinkInvoice(link.id)}>
+                                  <Unlink size={14} />
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

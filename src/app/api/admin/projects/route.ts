@@ -14,6 +14,7 @@ import {
   projectInclude,
   serializeProject,
 } from '@/lib/adviser/projects'
+import { nextProjectNumber } from '@/lib/adviser/project-number'
 
 const createSchema = z.object({
   companyId: z.string().cuid(),
@@ -60,6 +61,7 @@ export async function GET(req: NextRequest) {
       ...(search
         ? [{
             OR: [
+              { projectNumber: { contains: search, mode: 'insensitive' as const } },
               { title: { contains: search, mode: 'insensitive' as const } },
               { notes: { contains: search, mode: 'insensitive' as const } },
               { company: { nameEn: { contains: search, mode: 'insensitive' as const } } },
@@ -119,18 +121,22 @@ export async function POST(req: NextRequest) {
   })
   if (!company) return NextResponse.json({ error: '公司不存在。' }, { status: 404 })
 
-  const project = await prisma.advProject.create({
-    data: {
-      companyId: parsed.data.companyId,
-      title: parsed.data.title.trim(),
-      projectType: parsed.data.projectType,
-      startDate,
-      endDate,
-      autoRenew: parsed.data.autoRenew ?? true,
-      notes: parsed.data.notes?.trim() || null,
-      createdById: session!.user.id,
-    },
-    include: projectInclude,
+  const project = await prisma.$transaction(async tx => {
+    const projectNumber = await nextProjectNumber(startDate, tx, { lockSequence: true })
+    return tx.advProject.create({
+      data: {
+        projectNumber,
+        companyId: parsed.data.companyId,
+        title: parsed.data.title.trim(),
+        projectType: parsed.data.projectType,
+        startDate,
+        endDate,
+        autoRenew: parsed.data.autoRenew ?? true,
+        notes: parsed.data.notes?.trim() || null,
+        createdById: session!.user.id,
+      },
+      include: projectInclude,
+    })
   })
 
   await logAudit(session!.user.id, 'CREATE', 'AdvProject', project.id, null, project)

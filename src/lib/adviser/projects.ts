@@ -6,8 +6,8 @@ export { PROJECT_TYPES, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS } from '@/lib
 export const projectInclude = {
   company: { select: { id: true, nameEn: true, companyCode: true } },
   createdBy: { select: { id: true, nameEn: true, email: true } },
-  renewedFrom: { select: { id: true, title: true, startDate: true, endDate: true } },
-  renewedTo: { select: { id: true, title: true, startDate: true, endDate: true } },
+  renewedFrom: { select: { id: true, title: true, projectNumber: true, startDate: true, endDate: true } },
+  renewedTo: { select: { id: true, title: true, projectNumber: true, startDate: true, endDate: true } },
   tasks: {
     orderBy: [{ status: 'asc' as const }, { registeredAt: 'desc' as const }],
     include: {
