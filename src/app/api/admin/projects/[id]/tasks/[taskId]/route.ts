@@ -4,10 +4,7 @@ import { z } from 'zod'
 import { requirePermission } from '@/lib/auth/rbac'
 import { logAudit } from '@/lib/audit/logger'
 import { prisma } from '@/lib/db/prisma'
-import {
-  assertCompanyAccessible,
-  resolveCompanyAccess,
-} from '@/lib/company-access'
+import { assertAdvProjectAccessible } from '@/lib/adviser/projects'
 
 const updateSchema = z.object({
   title: z.string().min(1).max(300).optional(),
@@ -20,12 +17,13 @@ type RouteContext = { params: Promise<{ id: string; taskId: string }> }
 async function loadTask(projectId: string, taskId: string, userId: string, role: UserRole) {
   const task = await prisma.advProjectTask.findFirst({
     where: { id: taskId, projectId },
-    include: { project: { select: { companyId: true } } },
+    include: {
+      project: { select: { companyId: true, keyPersonId: true, customerType: true } },
+    },
   })
   if (!task) return { task: null as null, forbidden: false }
 
-  const access = await resolveCompanyAccess(userId, role)
-  if (!(await assertCompanyAccessible(access, task.project.companyId))) {
+  if (!(await assertAdvProjectAccessible(task.project, userId, role))) {
     return { task: null, forbidden: true }
   }
   return { task, forbidden: false }

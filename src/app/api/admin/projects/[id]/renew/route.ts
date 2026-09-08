@@ -3,10 +3,7 @@ import { requirePermission } from '@/lib/auth/rbac'
 import { logAudit } from '@/lib/audit/logger'
 import { prisma } from '@/lib/db/prisma'
 import {
-  assertCompanyAccessible,
-  resolveCompanyAccess,
-} from '@/lib/company-access'
-import {
+  assertAdvProjectAccessible,
   defaultRenewalWindow,
   expireOverdueProjects,
   projectInclude,
@@ -29,8 +26,7 @@ export async function POST(_req: NextRequest, context: RouteContext) {
   })
   if (!source) return NextResponse.json({ error: '项目不存在。' }, { status: 404 })
 
-  const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
-  if (!(await assertCompanyAccessible(access, source.companyId))) {
+  if (!(await assertAdvProjectAccessible(source, session!.user.id, session!.user.role))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -40,6 +36,9 @@ export async function POST(_req: NextRequest, context: RouteContext) {
   if (source.status === 'CANCELLED') {
     return NextResponse.json({ error: '已取消的项目不能续期。' }, { status: 400 })
   }
+  if (!source.endDate) {
+    return NextResponse.json({ error: '无服务周期的一次性项目不能续期。' }, { status: 400 })
+  }
 
   const { startDate, endDate } = defaultRenewalWindow(source.endDate)
 
@@ -48,7 +47,9 @@ export async function POST(_req: NextRequest, context: RouteContext) {
     const next = await tx.advProject.create({
       data: {
         projectNumber,
+        customerType: source.customerType,
         companyId: source.companyId,
+        keyPersonId: source.keyPersonId,
         title: source.title,
         projectType: source.projectType,
         status: 'ACTIVE',

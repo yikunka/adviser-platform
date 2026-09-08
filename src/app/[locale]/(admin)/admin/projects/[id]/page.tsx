@@ -55,13 +55,15 @@ type ProjectDetail = {
   id: string
   projectNumber: string
   title: string
+  customerType: 'COMPANY' | 'INDIVIDUAL'
   projectType: keyof typeof PROJECT_TYPE_LABELS
   status: keyof typeof PROJECT_STATUS_LABELS
-  startDate: string
-  endDate: string
+  startDate: string | null
+  endDate: string | null
   autoRenew: boolean
   notes: string | null
-  company: { id: string; nameEn: string; companyCode: string | null }
+  company: { id: string; nameEn: string; companyCode: string | null } | null
+  keyPerson: { id: string; nameEn: string; kycCode: string | null } | null
   renewedFrom?: { id: string; title: string; projectNumber?: string } | null
   renewedTo?: { id: string; title: string; projectNumber?: string } | null
   tasks: Task[]
@@ -72,6 +74,7 @@ type ProjectDetail = {
     invoiceCount: number
     paidCount: number
     unpaidCount: number
+    hasPeriod: boolean
   }
 }
 
@@ -106,8 +109,18 @@ function inputStyle(): React.CSSProperties {
   }
 }
 
-function dateOnly(value: string) {
+function dateOnly(value: string | null | undefined) {
   return value ? value.slice(0, 10) : ''
+}
+
+function clientLabel(project: ProjectDetail) {
+  if (project.customerType === 'INDIVIDUAL' && project.keyPerson) {
+    return `${project.keyPerson.kycCode ? `${project.keyPerson.kycCode} · ` : ''}${project.keyPerson.nameEn}`
+  }
+  if (project.company) {
+    return `${project.company.companyCode ? `${project.company.companyCode} · ` : ''}${project.company.nameEn}`
+  }
+  return '—'
 }
 
 export default function ProjectDetailPage() {
@@ -152,8 +165,9 @@ export default function ProjectDetailPage() {
   async function saveMeta(patch: Partial<{
     title: string
     status: string
-    startDate: string
-    endDate: string
+    hasPeriod: boolean
+    startDate: string | null
+    endDate: string | null
     autoRenew: boolean
     notes: string | null
     projectType: string
@@ -337,7 +351,7 @@ export default function ProjectDetailPage() {
     )
   }
 
-  const canRenew = canCreate && !project.renewedTo && project.status !== 'CANCELLED'
+  const canRenew = canCreate && !project.renewedTo && project.status !== 'CANCELLED' && project.summary.hasPeriod
 
   return (
     <div className="space-y-5">
@@ -356,12 +370,15 @@ export default function ProjectDetailPage() {
             </span>
           </div>
           <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-            {project.company.companyCode ? `${project.company.companyCode} · ` : ''}
-            {project.company.nameEn}
+            {project.customerType === 'INDIVIDUAL' ? '自然人' : '公司'}
+            {' · '}
+            {clientLabel(project)}
             {' · '}
             {PROJECT_TYPE_LABELS[project.projectType]}
             {' · '}
-            {dateOnly(project.startDate)} → {dateOnly(project.endDate)}
+            {project.summary.hasPeriod
+              ? `${dateOnly(project.startDate)} → ${dateOnly(project.endDate)}`
+              : '一次性（无时限）'}
           </p>
           {(project.renewedFrom || project.renewedTo) && (
             <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
@@ -396,6 +413,12 @@ export default function ProjectDetailPage() {
           <div>
             <label className="mb-1 block text-xs" style={{ color: 'var(--muted-foreground)' }}>项目号</label>
             <div className="font-mono text-sm" style={{ color: 'var(--foreground)' }}>{project.projectNumber}</div>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs" style={{ color: 'var(--muted-foreground)' }}>客户</label>
+            <div className="text-sm" style={{ color: 'var(--foreground)' }}>
+              {project.customerType === 'INDIVIDUAL' ? '自然人' : '公司'} · {clientLabel(project)}
+            </div>
           </div>
           <div>
             <label className="mb-1 block text-xs" style={{ color: 'var(--muted-foreground)' }}>名称</label>
@@ -438,39 +461,66 @@ export default function ProjectDetailPage() {
               ))}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="mb-1 block text-xs" style={{ color: 'var(--muted-foreground)' }}>开始</label>
-              <input
-                type="date"
-                className={inputClass}
-                style={inputStyle()}
-                value={dateOnly(project.startDate)}
-                disabled={!canEdit || saving}
-                onChange={e => void saveMeta({ startDate: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs" style={{ color: 'var(--muted-foreground)' }}>结束</label>
-              <input
-                type="date"
-                className={inputClass}
-                style={inputStyle()}
-                value={dateOnly(project.endDate)}
-                disabled={!canEdit || saving}
-                onChange={e => void saveMeta({ endDate: e.target.value })}
-              />
-            </div>
-          </div>
           <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--foreground)' }}>
             <input
               type="checkbox"
-              checked={project.autoRenew}
+              checked={project.summary.hasPeriod}
               disabled={!canEdit || saving}
-              onChange={e => void saveMeta({ autoRenew: e.target.checked })}
+              onChange={e => {
+                if (e.target.checked) {
+                  const start = dateOnly(project.startDate) || new Date().toISOString().slice(0, 10)
+                  const endBase = new Date(`${start}T00:00:00`)
+                  endBase.setFullYear(endBase.getFullYear() + 1)
+                  void saveMeta({
+                    hasPeriod: true,
+                    startDate: start,
+                    endDate: endBase.toISOString().slice(0, 10),
+                    autoRenew: true,
+                  })
+                } else {
+                  void saveMeta({ hasPeriod: false, startDate: null, endDate: null, autoRenew: false })
+                }
+              }}
             />
-            到期提醒续期
+            有服务周期（取消 = 一次性、无时限）
           </label>
+          {project.summary.hasPeriod && (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="mb-1 block text-xs" style={{ color: 'var(--muted-foreground)' }}>开始</label>
+                  <input
+                    type="date"
+                    className={inputClass}
+                    style={inputStyle()}
+                    value={dateOnly(project.startDate)}
+                    disabled={!canEdit || saving}
+                    onChange={e => void saveMeta({ hasPeriod: true, startDate: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs" style={{ color: 'var(--muted-foreground)' }}>结束</label>
+                  <input
+                    type="date"
+                    className={inputClass}
+                    style={inputStyle()}
+                    value={dateOnly(project.endDate)}
+                    disabled={!canEdit || saving}
+                    onChange={e => void saveMeta({ hasPeriod: true, endDate: e.target.value })}
+                  />
+                </div>
+              </div>
+              <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--foreground)' }}>
+                <input
+                  type="checkbox"
+                  checked={project.autoRenew}
+                  disabled={!canEdit || saving}
+                  onChange={e => void saveMeta({ autoRenew: e.target.checked })}
+                />
+                到期提醒续期
+              </label>
+            </>
+          )}
           <div>
             <label className="mb-1 block text-xs" style={{ color: 'var(--muted-foreground)' }}>备注</label>
             <textarea
@@ -653,11 +703,11 @@ export default function ProjectDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-lg space-y-4 p-5" style={card}>
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>关联本公司发票</h2>
+              <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>关联本客户发票</h2>
               <button type="button" onClick={() => setLinkOpen(false)} style={{ color: 'var(--muted-foreground)' }}>关闭</button>
             </div>
             {candidates.length === 0 ? (
-              <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>没有可关联的发票（需属于同一公司且尚未关联）。</p>
+              <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>没有可关联的发票（需属于同一客户且尚未关联）。</p>
             ) : (
               <ul className="max-h-80 space-y-2 overflow-y-auto">
                 {candidates.map(inv => (

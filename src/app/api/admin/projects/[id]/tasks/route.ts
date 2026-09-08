@@ -5,10 +5,9 @@ import { requirePermission, requireRole } from '@/lib/auth/rbac'
 import { logAudit } from '@/lib/audit/logger'
 import { prisma } from '@/lib/db/prisma'
 import {
-  assertCompanyAccessible,
-  resolveCompanyAccess,
-} from '@/lib/company-access'
-import { expireOverdueProjects } from '@/lib/adviser/projects'
+  assertAdvProjectAccessible,
+  expireOverdueProjects,
+} from '@/lib/adviser/projects'
 
 const createSchema = z.object({
   title: z.string().min(1).max(300),
@@ -21,11 +20,10 @@ async function assertProjectAccess(projectId: string, userId: string, role: User
   await expireOverdueProjects([projectId])
   const project = await prisma.advProject.findUnique({
     where: { id: projectId },
-    select: { id: true, companyId: true },
+    select: { id: true, companyId: true, keyPersonId: true, customerType: true },
   })
   if (!project) return { project: null as null, forbidden: false }
-  const access = await resolveCompanyAccess(userId, role)
-  if (!(await assertCompanyAccessible(access, project.companyId))) {
+  if (!(await assertAdvProjectAccessible(project, userId, role))) {
     return { project: null, forbidden: true }
   }
   return { project, forbidden: false }

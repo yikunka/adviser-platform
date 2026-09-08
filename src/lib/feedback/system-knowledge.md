@@ -120,13 +120,15 @@ Service invoicing for TCSP professional fees.
 - Link invoices to client companies or approved individual KYC records
 
 ### 6b. Projects (`/admin/projects`)
-Annual (or custom-period) service engagements per client company.
+Service engagements for client companies or approved individual KYC persons.
 - Each project gets an auto-generated project number `PRJ-YYYY-NNNNN` (shown in list and detail; searchable)
+- Customer type: company or natural person (`INDIVIDUAL`, approved KYC only)
+- Period is optional: annual/custom date range, or one-time work with no start/end (no auto-expire / renew)
 - Project types: company incorporation, corporate secretarial, accounting, other
-- Statuses: `ACTIVE` → `COMPLETED` / `EXPIRED` / `CANCELLED` / `RENEWED`; overdue `ACTIVE` projects auto-mark as `EXPIRED` when listed or opened
+- Statuses: `ACTIVE` → `COMPLETED` / `EXPIRED` / `CANCELLED` / `RENEWED`; overdue period projects auto-mark as `EXPIRED` when listed or opened
 - Register work items (tasks) when needed and mark them done when finished
-- Link company invoices; each linked row has an **Open invoice** button and a **paid checkbox** (勾选 = `PAID` 已收款, 取消 = `SENT` 未收款; draft/cancelled invoices cannot be toggled here)
-- When a cycle ends, create the next-period project (start = prior end, end = +1 year by default) with a new project number; prior project becomes `RENEWED` and links to the next period
+- Link invoices for the same customer; each linked row has an **Open invoice** button and a **paid checkbox** (勾选 = `PAID` 已收款, 取消 = `SENT` 未收款; draft/cancelled invoices cannot be toggled here)
+- When a period ends, create the next-period project (start = prior end, end = +1 year by default) with a new project number; prior project becomes `RENEWED`; one-time projects cannot be renewed
 - Access and actions: `projects`, `projects.create`, `projects.edit`, `projects.delete`
 
 ### 6c. Contracts (`/admin/contracts`)

@@ -3,10 +3,7 @@ import { z } from 'zod'
 import { requirePermission } from '@/lib/auth/rbac'
 import { logAudit } from '@/lib/audit/logger'
 import { prisma } from '@/lib/db/prisma'
-import {
-  assertCompanyAccessible,
-  resolveCompanyAccess,
-} from '@/lib/company-access'
+import { assertAdvProjectAccessible } from '@/lib/adviser/projects'
 
 type RouteContext = { params: Promise<{ id: string; linkId: string }> }
 
@@ -18,7 +15,7 @@ async function loadLink(projectId: string, linkId: string) {
   return prisma.advProjectInvoice.findFirst({
     where: { id: linkId, projectId },
     include: {
-      project: { select: { companyId: true } },
+      project: { select: { companyId: true, keyPersonId: true, customerType: true } },
       invoice: {
         select: {
           id: true,
@@ -43,8 +40,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
   const link = await loadLink(id, linkId)
   if (!link) return NextResponse.json({ error: '关联不存在。' }, { status: 404 })
 
-  const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
-  if (!(await assertCompanyAccessible(access, link.project.companyId))) {
+  if (!(await assertAdvProjectAccessible(link.project, session!.user.id, session!.user.role))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -117,8 +113,7 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
   const link = await loadLink(id, linkId)
   if (!link) return NextResponse.json({ error: '关联不存在。' }, { status: 404 })
 
-  const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
-  if (!(await assertCompanyAccessible(access, link.project.companyId))) {
+  if (!(await assertAdvProjectAccessible(link.project, session!.user.id, session!.user.role))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

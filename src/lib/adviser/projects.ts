@@ -1,10 +1,17 @@
-import type { Prisma } from '@prisma/client'
+import type { AdvProject, Prisma, UserRole } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
+import {
+  assertCompanyAccessible,
+  buildCompanyAccessWhere,
+  resolveCompanyAccess,
+  type CompanyAccess,
+} from '@/lib/company-access'
 
 export { PROJECT_TYPES, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS } from '@/lib/adviser/project-labels'
 
 export const projectInclude = {
   company: { select: { id: true, nameEn: true, companyCode: true } },
+  keyPerson: { select: { id: true, nameEn: true, kycCode: true } },
   createdBy: { select: { id: true, nameEn: true, email: true } },
   renewedFrom: { select: { id: true, title: true, projectNumber: true, startDate: true, endDate: true } },
   renewedTo: { select: { id: true, title: true, projectNumber: true, startDate: true, endDate: true } },
@@ -37,19 +44,21 @@ export const projectInclude = {
 
 export type ProjectWithRelations = Prisma.AdvProjectGetPayload<{ include: typeof projectInclude }>
 
+type ProjectAccessFields = Pick<AdvProject, 'companyId' | 'customerType' | 'keyPersonId'>
+
 function addOneYear(date: Date): Date {
   const next = new Date(date)
   next.setFullYear(next.getFullYear() + 1)
   return next
 }
 
-/** Mark ACTIVE projects past endDate as EXPIRED (best-effort write-through). */
+/** Mark ACTIVE projects past endDate as EXPIRED (null endDate = no expiry). */
 export async function expireOverdueProjects(ids?: string[]) {
   const now = new Date()
   await prisma.advProject.updateMany({
     where: {
       status: 'ACTIVE',
-      endDate: { lt: now },
+      endDate: { not: null, lt: now },
       ...(ids?.length ? { id: { in: ids } } : {}),
     },
     data: { status: 'EXPIRED' },
@@ -63,6 +72,29 @@ export function defaultRenewalWindow(fromEndDate: Date): { startDate: Date; endD
   }
 }
 
+/** Company-scoped projects respect company access; individual KYC projects are open to all project staff. */
+export async function assertAdvProjectAccessible(
+  project: ProjectAccessFields,
+  userId: string,
+  role: UserRole,
+  access?: CompanyAccess,
+): Promise<boolean> {
+  if (project.customerType === 'INDIVIDUAL' || !project.companyId) return true
+  const resolved = access ?? await resolveCompanyAccess(userId, role)
+  return assertCompanyAccessible(resolved, project.companyId)
+}
+
+export function buildAdvProjectListAccessFilter(access: CompanyAccess): Prisma.AdvProjectWhereInput | undefined {
+  const companyFilter = buildCompanyAccessWhere(access)
+  if (!companyFilter) return undefined
+  return {
+    OR: [
+      { customerType: 'INDIVIDUAL' },
+      { company: companyFilter },
+    ],
+  }
+}
+
 export function serializeProject(project: ProjectWithRelations) {
   const openTasks = project.tasks.filter(t => t.status === 'OPEN').length
   const linked = project.invoices.map(link => link.invoice)
@@ -71,8 +103,8 @@ export function serializeProject(project: ProjectWithRelations) {
 
   return {
     ...project,
-    startDate: project.startDate.toISOString(),
-    endDate: project.endDate.toISOString(),
+    startDate: project.startDate?.toISOString() ?? null,
+    endDate: project.endDate?.toISOString() ?? null,
     createdAt: project.createdAt.toISOString(),
     updatedAt: project.updatedAt.toISOString(),
     tasks: project.tasks.map(task => ({
@@ -98,6 +130,7 @@ export function serializeProject(project: ProjectWithRelations) {
       invoiceCount: project._count.invoices,
       paidCount,
       unpaidCount,
+      hasPeriod: Boolean(project.startDate && project.endDate),
     },
   }
 }

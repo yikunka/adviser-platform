@@ -17,22 +17,26 @@ type ProjectRow = {
   id: string
   projectNumber: string
   title: string
+  customerType: 'COMPANY' | 'INDIVIDUAL'
   projectType: keyof typeof PROJECT_TYPE_LABELS
   status: keyof typeof PROJECT_STATUS_LABELS
-  startDate: string
-  endDate: string
+  startDate: string | null
+  endDate: string | null
   autoRenew: boolean
-  company: { id: string; nameEn: string; companyCode: string | null }
+  company: { id: string; nameEn: string; companyCode: string | null } | null
+  keyPerson: { id: string; nameEn: string; kycCode: string | null } | null
   summary: {
     openTasks: number
     taskCount: number
     invoiceCount: number
     paidCount: number
     unpaidCount: number
+    hasPeriod: boolean
   }
 }
 
 type CompanyOption = { id: string; nameEn: string; companyCode: string | null }
+type PersonOption = { id: string; nameEn: string; kycCode: string | null }
 
 const STATUS_COLOR: Record<string, string> = {
   ACTIVE: 'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
@@ -58,7 +62,7 @@ function inputStyle(): React.CSSProperties {
   }
 }
 
-function dateOnly(value: string) {
+function dateOnly(value: string | null | undefined) {
   return value ? value.slice(0, 10) : ''
 }
 
@@ -67,6 +71,16 @@ function addOneYearIso(start: string) {
   const d = new Date(`${start}T00:00:00`)
   d.setFullYear(d.getFullYear() + 1)
   return d.toISOString().slice(0, 10)
+}
+
+function clientLabel(project: ProjectRow) {
+  if (project.customerType === 'INDIVIDUAL' && project.keyPerson) {
+    return `${project.keyPerson.kycCode ? `${project.keyPerson.kycCode} · ` : ''}${project.keyPerson.nameEn}`
+  }
+  if (project.company) {
+    return `${project.company.companyCode ? `${project.company.companyCode} · ` : ''}${project.company.nameEn}`
+  }
+  return '—'
 }
 
 export default function ProjectsPage() {
@@ -81,10 +95,14 @@ export default function ProjectsPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [companies, setCompanies] = useState<CompanyOption[]>([])
+  const [keyPersons, setKeyPersons] = useState<PersonOption[]>([])
   const [draft, setDraft] = useState({
+    customerType: 'COMPANY' as 'COMPANY' | 'INDIVIDUAL',
     companyId: '',
+    keyPersonId: '',
     title: '',
     projectType: 'CORPORATE_SECRETARIAL' as keyof typeof PROJECT_TYPE_LABELS,
+    hasPeriod: true,
     startDate: new Date().toISOString().slice(0, 10),
     endDate: addOneYearIso(new Date().toISOString().slice(0, 10)),
     autoRenew: true,
@@ -116,19 +134,30 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     if (!createOpen) return
-    fetch('/api/admin/projects/companies')
+    fetch('/api/admin/projects/customers')
       .then(res => res.json())
-      .then(json => setCompanies(Array.isArray(json.companies) ? json.companies : []))
-      .catch(() => toast.error('载入公司列表失败。'))
+      .then(json => {
+        setCompanies(Array.isArray(json.companies) ? json.companies : [])
+        setKeyPersons(Array.isArray(json.keyPersons) ? json.keyPersons : [])
+      })
+      .catch(() => toast.error('载入客户列表失败。'))
   }, [createOpen])
 
   async function createProject() {
-    if (!draft.companyId) {
+    if (draft.customerType === 'COMPANY' && !draft.companyId) {
       toast.error('请选择客户公司。')
+      return
+    }
+    if (draft.customerType === 'INDIVIDUAL' && !draft.keyPersonId) {
+      toast.error('请选择自然人客户。')
       return
     }
     if (!draft.title.trim()) {
       toast.error('请填写项目名称。')
+      return
+    }
+    if (draft.hasPeriod && (!draft.startDate || !draft.endDate)) {
+      toast.error('有服务周期时请填写开始与结束日期。')
       return
     }
     setCreating(true)
@@ -136,7 +165,18 @@ export default function ProjectsPage() {
       const res = await fetch('/api/admin/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(draft),
+        body: JSON.stringify({
+          customerType: draft.customerType,
+          companyId: draft.customerType === 'COMPANY' ? draft.companyId : null,
+          keyPersonId: draft.customerType === 'INDIVIDUAL' ? draft.keyPersonId : null,
+          title: draft.title,
+          projectType: draft.projectType,
+          hasPeriod: draft.hasPeriod,
+          startDate: draft.hasPeriod ? draft.startDate : null,
+          endDate: draft.hasPeriod ? draft.endDate : null,
+          autoRenew: draft.hasPeriod ? draft.autoRenew : false,
+          notes: draft.notes,
+        }),
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json.error || '创建项目失败。')
@@ -145,10 +185,13 @@ export default function ProjectsPage() {
       setDraft(current => ({
         ...current,
         companyId: '',
+        keyPersonId: '',
         title: '',
         notes: '',
+        hasPeriod: true,
         startDate: new Date().toISOString().slice(0, 10),
         endDate: addOneYearIso(new Date().toISOString().slice(0, 10)),
+        autoRenew: true,
       }))
       await fetchProjects()
     } catch (error) {
@@ -166,7 +209,7 @@ export default function ProjectsPage() {
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>项目管理</h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-            按客户公司管理服务项目（通常一年一期），登记工作事项，关联发票并跟踪收款。
+            按公司或自然人客户管理服务项目；可设一年周期，也可登记无时限的一次性工作。
           </p>
         </div>
         {canCreate && (
@@ -182,7 +225,7 @@ export default function ProjectsPage() {
           <input
             className="w-full bg-transparent text-sm outline-none"
             style={{ color: 'var(--foreground)' }}
-            placeholder="搜索项目号、项目或公司…"
+            placeholder="搜索项目号、项目、公司或自然人…"
             value={search}
             onChange={e => { setPage(1); setSearch(e.target.value) }}
           />
@@ -226,7 +269,7 @@ export default function ProjectsPage() {
                 <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--muted-foreground)' }}>
                   <th className="px-4 py-3 text-left font-medium">项目号</th>
                   <th className="px-4 py-3 text-left font-medium">项目</th>
-                  <th className="px-4 py-3 text-left font-medium">公司</th>
+                  <th className="px-4 py-3 text-left font-medium">客户</th>
                   <th className="px-4 py-3 text-left font-medium">类型</th>
                   <th className="px-4 py-3 text-left font-medium">周期</th>
                   <th className="px-4 py-3 text-left font-medium">状态</th>
@@ -248,12 +291,16 @@ export default function ProjectsPage() {
                       </Link>
                     </td>
                     <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
-                      {project.company.companyCode ? `${project.company.companyCode} · ` : ''}
-                      {project.company.nameEn}
+                      <span className="mr-1 text-[10px] uppercase tracking-wide opacity-70">
+                        {project.customerType === 'INDIVIDUAL' ? '自然人' : '公司'}
+                      </span>
+                      {clientLabel(project)}
                     </td>
                     <td className="px-4 py-3">{PROJECT_TYPE_LABELS[project.projectType]}</td>
                     <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>
-                      {dateOnly(project.startDate)} → {dateOnly(project.endDate)}
+                      {project.summary.hasPeriod
+                        ? `${dateOnly(project.startDate)} → ${dateOnly(project.endDate)}`
+                        : '一次性（无时限）'}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_COLOR[project.status] ?? ''}`}>
@@ -294,21 +341,57 @@ export default function ProjectsPage() {
             </div>
             <div className="space-y-3">
               <div>
-                <label className="mb-1 block text-xs" style={{ color: 'var(--muted-foreground)' }}>客户公司</label>
+                <label className="mb-1 block text-xs" style={{ color: 'var(--muted-foreground)' }}>客户类型</label>
                 <select
                   className={inputClass}
                   style={inputStyle()}
-                  value={draft.companyId}
-                  onChange={e => setDraft(d => ({ ...d, companyId: e.target.value }))}
+                  value={draft.customerType}
+                  onChange={e => setDraft(d => ({
+                    ...d,
+                    customerType: e.target.value as 'COMPANY' | 'INDIVIDUAL',
+                    companyId: '',
+                    keyPersonId: '',
+                  }))}
                 >
-                  <option value="">选择公司</option>
-                  {companies.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.companyCode ? `${c.companyCode} — ` : ''}{c.nameEn}
-                    </option>
-                  ))}
+                  <option value="COMPANY">公司</option>
+                  <option value="INDIVIDUAL">自然人</option>
                 </select>
               </div>
+              {draft.customerType === 'COMPANY' ? (
+                <div>
+                  <label className="mb-1 block text-xs" style={{ color: 'var(--muted-foreground)' }}>客户公司</label>
+                  <select
+                    className={inputClass}
+                    style={inputStyle()}
+                    value={draft.companyId}
+                    onChange={e => setDraft(d => ({ ...d, companyId: e.target.value }))}
+                  >
+                    <option value="">选择公司</option>
+                    {companies.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.companyCode ? `${c.companyCode} — ` : ''}{c.nameEn}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div>
+                  <label className="mb-1 block text-xs" style={{ color: 'var(--muted-foreground)' }}>自然人客户</label>
+                  <select
+                    className={inputClass}
+                    style={inputStyle()}
+                    value={draft.keyPersonId}
+                    onChange={e => setDraft(d => ({ ...d, keyPersonId: e.target.value }))}
+                  >
+                    <option value="">选择已通过 KYC 的自然人</option>
+                    {keyPersons.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.kycCode ? `${p.kycCode} — ` : ''}{p.nameEn}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="mb-1 block text-xs" style={{ color: 'var(--muted-foreground)' }}>项目名称</label>
                 <input
@@ -332,40 +415,62 @@ export default function ProjectsPage() {
                   ))}
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-xs" style={{ color: 'var(--muted-foreground)' }}>开始日期</label>
-                  <input
-                    type="date"
-                    className={inputClass}
-                    style={inputStyle()}
-                    value={draft.startDate}
-                    onChange={e => setDraft(d => ({
-                      ...d,
-                      startDate: e.target.value,
-                      endDate: d.endDate || addOneYearIso(e.target.value),
-                    }))}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs" style={{ color: 'var(--muted-foreground)' }}>结束日期</label>
-                  <input
-                    type="date"
-                    className={inputClass}
-                    style={inputStyle()}
-                    value={draft.endDate}
-                    onChange={e => setDraft(d => ({ ...d, endDate: e.target.value }))}
-                  />
-                </div>
-              </div>
               <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--foreground)' }}>
                 <input
                   type="checkbox"
-                  checked={draft.autoRenew}
-                  onChange={e => setDraft(d => ({ ...d, autoRenew: e.target.checked }))}
+                  checked={draft.hasPeriod}
+                  onChange={e => setDraft(d => ({
+                    ...d,
+                    hasPeriod: e.target.checked,
+                    autoRenew: e.target.checked ? d.autoRenew : false,
+                    startDate: e.target.checked
+                      ? (d.startDate || new Date().toISOString().slice(0, 10))
+                      : d.startDate,
+                    endDate: e.target.checked
+                      ? (d.endDate || addOneYearIso(d.startDate || new Date().toISOString().slice(0, 10)))
+                      : d.endDate,
+                  }))}
                 />
-                到期提醒续期（默认一年一期）
+                有服务周期（取消勾选 = 一次性、无时限）
               </label>
+              {draft.hasPeriod && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="mb-1 block text-xs" style={{ color: 'var(--muted-foreground)' }}>开始日期</label>
+                      <input
+                        type="date"
+                        className={inputClass}
+                        style={inputStyle()}
+                        value={draft.startDate}
+                        onChange={e => setDraft(d => ({
+                          ...d,
+                          startDate: e.target.value,
+                          endDate: d.endDate || addOneYearIso(e.target.value),
+                        }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs" style={{ color: 'var(--muted-foreground)' }}>结束日期</label>
+                      <input
+                        type="date"
+                        className={inputClass}
+                        style={inputStyle()}
+                        value={draft.endDate}
+                        onChange={e => setDraft(d => ({ ...d, endDate: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--foreground)' }}>
+                    <input
+                      type="checkbox"
+                      checked={draft.autoRenew}
+                      onChange={e => setDraft(d => ({ ...d, autoRenew: e.target.checked }))}
+                    />
+                    到期提醒续期（默认一年一期）
+                  </label>
+                </>
+              )}
               <div>
                 <label className="mb-1 block text-xs" style={{ color: 'var(--muted-foreground)' }}>备注</label>
                 <textarea

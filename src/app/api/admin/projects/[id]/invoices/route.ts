@@ -5,10 +5,9 @@ import { requirePermission, requireRole } from '@/lib/auth/rbac'
 import { logAudit } from '@/lib/audit/logger'
 import { prisma } from '@/lib/db/prisma'
 import {
-  assertCompanyAccessible,
-  resolveCompanyAccess,
-} from '@/lib/company-access'
-import { expireOverdueProjects } from '@/lib/adviser/projects'
+  assertAdvProjectAccessible,
+  expireOverdueProjects,
+} from '@/lib/adviser/projects'
 
 const linkSchema = z.object({
   invoiceId: z.string().cuid(),
@@ -20,11 +19,15 @@ async function assertProjectAccess(projectId: string, userId: string, role: User
   await expireOverdueProjects([projectId])
   const project = await prisma.advProject.findUnique({
     where: { id: projectId },
-    select: { id: true, companyId: true },
+    select: {
+      id: true,
+      companyId: true,
+      keyPersonId: true,
+      customerType: true,
+    },
   })
   if (!project) return { project: null as null, forbidden: false }
-  const access = await resolveCompanyAccess(userId, role)
-  if (!(await assertCompanyAccessible(access, project.companyId))) {
+  if (!(await assertAdvProjectAccessible(project, userId, role))) {
     return { project: null, forbidden: true }
   }
   return { project, forbidden: false }
@@ -40,9 +43,14 @@ export async function GET(req: NextRequest, context: RouteContext) {
   if (!project) return NextResponse.json({ error: '项目不存在。' }, { status: 404 })
 
   const q = (req.nextUrl.searchParams.get('q') ?? '').trim()
+  const customerFilter =
+    project.customerType === 'INDIVIDUAL'
+      ? { keyPersonId: project.keyPersonId }
+      : { companyId: project.companyId }
+
   const invoices = await prisma.invoice.findMany({
     where: {
-      companyId: project.companyId,
+      ...customerFilter,
       ...(q
         ? {
             OR: [
@@ -94,11 +102,16 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
   const invoice = await prisma.invoice.findUnique({
     where: { id: parsed.data.invoiceId },
-    select: { id: true, companyId: true, invoiceNumber: true },
+    select: { id: true, companyId: true, keyPersonId: true, invoiceNumber: true },
   })
   if (!invoice) return NextResponse.json({ error: '发票不存在。' }, { status: 404 })
-  if (invoice.companyId !== project.companyId) {
-    return NextResponse.json({ error: '只能关联同一公司的发票。' }, { status: 400 })
+
+  const sameCustomer =
+    project.customerType === 'INDIVIDUAL'
+      ? invoice.keyPersonId === project.keyPersonId
+      : invoice.companyId === project.companyId
+  if (!sameCustomer) {
+    return NextResponse.json({ error: '只能关联同一客户的发票。' }, { status: 400 })
   }
 
   try {

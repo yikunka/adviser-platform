@@ -730,6 +730,7 @@ model KeyPerson {
   kycDocuments           KYCDocument[]
   companyLinks           CompanyKeyPerson[]
   invoices               Invoice[]
+  advProjects            AdvProject[]
   amlChecks              AMLCheck[]              @relation("KeyPersonAMLCheck")
   adverseMediaFindings   AdverseMediaFinding[]   @relation("KeyPersonAdverseMedia")
   directors              Director[]
@@ -1183,22 +1184,25 @@ model TcspServicePrice {
 // ─────────────────────────────────────────────
 
 model AdvProject {
-  id            String           @id @default(cuid())
-  projectNumber String           @unique
-  companyId     String
+  id            String               @id @default(cuid())
+  projectNumber String               @unique
+  customerType  InvoiceCustomerType  @default(COMPANY)
+  companyId     String?
+  keyPersonId   String?
   title         String
   projectType   AdvProjectType
-  status        AdvProjectStatus @default(ACTIVE)
-  startDate     DateTime
-  endDate       DateTime
-  autoRenew     Boolean          @default(true)
+  status        AdvProjectStatus     @default(ACTIVE)
+  startDate     DateTime?
+  endDate       DateTime?
+  autoRenew     Boolean              @default(true)
   notes         String?
-  renewedFromId String?          @unique
+  renewedFromId String?              @unique
   createdById   String
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
 
-  company     Company            @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  company     Company?           @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  keyPerson   KeyPerson?         @relation(fields: [keyPersonId], references: [id], onDelete: Restrict)
   createdBy   User               @relation("AdvProjectCreator", fields: [createdById], references: [id])
   renewedFrom AdvProject?        @relation("AdvProjectRenewal", fields: [renewedFromId], references: [id], onDelete: SetNull)
   renewedTo   AdvProject?        @relation("AdvProjectRenewal")
@@ -1206,6 +1210,8 @@ model AdvProject {
   invoices    AdvProjectInvoice[]
 
   @@index([companyId, status])
+  @@index([keyPersonId, status])
+  @@index([customerType])
   @@index([endDate, status])
   @@index([projectType])
   @@map("adv_projects")
