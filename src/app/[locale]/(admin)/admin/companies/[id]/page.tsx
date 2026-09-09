@@ -2325,7 +2325,7 @@ export default function CompanyDetailPage() {
               ['Company Type', company.companyLegalType ?? '—'],
               ['Financial Year End', company.financialYearEndMonth === 3 ? 'March 31st' : company.financialYearEndMonth === 12 ? 'December 31st' : '—'],
               ['Business Nature', company.businessNature ?? '—'],
-              ['Annual Return Deadline', annualReturnDeadline(company.dateOfIncorporation)],
+              ['周年申报截止日', annualReturnDeadline(company.dateOfIncorporation)],
             ].map(([label, value]) => (
               <div key={label} className="flex px-4 py-3">
                 <span className="w-52 shrink-0 text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>{label}</span>

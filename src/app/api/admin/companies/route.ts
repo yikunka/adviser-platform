@@ -7,6 +7,12 @@ import {
   buildCompanyAccessWhere,
   resolveCompanyAccess,
 } from '@/lib/company-access'
+import {
+  buildCompanyOwnershipNode,
+  computeEffectiveNaturalOwners,
+  indexCompaniesByName,
+  loadAllCompaniesWithMembers,
+} from '@/lib/aml/ownershipLookThrough'
 import { z } from 'zod'
 
 const COMPANY_TYPE_PREFIX: Record<string, string> = {
@@ -76,6 +82,24 @@ export async function GET(req: NextRequest) {
 
   const useLegacySort = !search && access.kind === 'all'
 
+  async function withUbos<T extends { id: string }>(companies: T[]) {
+    if (companies.length === 0) return companies.map(c => ({ ...c, ubos: [] as Array<{ nameEn: string; nameZh: string | null; effectivePercent: number }> }))
+    const allWithMembers = await loadAllCompaniesWithMembers()
+    const byName = indexCompaniesByName(allWithMembers)
+    const byId = new Map(allWithMembers.map(c => [c.id, c]))
+    return companies.map(company => {
+      const root = byId.get(company.id)
+      if (!root) return { ...company, ubos: [] }
+      const structure = buildCompanyOwnershipNode(root, byName, new Set())
+      const ubos = computeEffectiveNaturalOwners(structure).map(u => ({
+        nameEn: u.nameEn,
+        nameZh: u.nameZh,
+        effectivePercent: u.effectivePercent,
+      }))
+      return { ...company, ubos }
+    })
+  }
+
   if (useLegacySort) {
     const orderedIds = await prisma.$queryRaw<Array<{ id: string }>>`
       SELECT id FROM companies
@@ -98,11 +122,12 @@ export async function GET(req: NextRequest) {
       prisma.company.count({ where }),
     ])
     const idIndex = new Map(ids.map((id, i) => [id, i]))
-    const companies = companiesRaw.sort((a, b) => (idIndex.get(a.id) ?? 0) - (idIndex.get(b.id) ?? 0))
+    const companiesSorted = companiesRaw.sort((a, b) => (idIndex.get(a.id) ?? 0) - (idIndex.get(b.id) ?? 0))
+    const companies = await withUbos(companiesSorted)
     return NextResponse.json({ companies, total, page, limit })
   }
 
-  const [companies, total] = await Promise.all([
+  const [companiesRaw, total] = await Promise.all([
     prisma.company.findMany({
       where,
       skip,
@@ -117,6 +142,7 @@ export async function GET(req: NextRequest) {
     prisma.company.count({ where }),
   ])
 
+  const companies = await withUbos(companiesRaw)
   return NextResponse.json({ companies, total, page, limit })
 }
 

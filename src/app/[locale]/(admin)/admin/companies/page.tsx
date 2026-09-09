@@ -21,6 +21,7 @@ type Company = {
   assignedStaff?: { nameEn: string }
   financialManager?: { nameEn: string; email: string } | null
   clientUser?: { nameEn: string; email: string }
+  ubos?: Array<{ nameEn: string; nameZh: string | null; effectivePercent: number }>
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -114,7 +115,8 @@ export default function CompaniesPage() {
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('companyName')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('companyNumber')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('incorporationDate')}</th>
-                <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>Annual Return Deadline</th>
+                <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>周年申报截止日</th>
+                <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('ubo')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('status')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('client')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('financialModule')}</th>
@@ -123,9 +125,9 @@ export default function CompaniesPage() {
             </thead>
             <tbody className="divide-y divide-[#2A2418]">
               {loading ? (
-                <tr><td colSpan={9} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>Loading...</td></tr>
+                <tr><td colSpan={10} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>Loading...</td></tr>
               ) : companies.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>{t('empty')}</td></tr>
+                <tr><td colSpan={10} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>{t('empty')}</td></tr>
               ) : companies.map(c => (
                 <tr
                   key={c.id}
@@ -147,6 +149,24 @@ export default function CompaniesPage() {
                   </td>
                   <td className="px-4 py-3 font-semibold" style={{ color: '#C9A96E' }}>
                     {annualReturnDeadline(c.dateOfIncorporation)}
+                  </td>
+                  <td className="px-4 py-3 max-w-[14rem]">
+                    {(c.ubos?.length ?? 0) === 0 ? (
+                      <span style={{ color: 'var(--muted-foreground)' }}>—</span>
+                    ) : (
+                      <div className="space-y-1">
+                        {c.ubos!.map((u, i) => (
+                          <p key={`${u.nameEn}-${i}`} className="leading-snug">
+                            <span className="font-medium" style={{ color: 'var(--foreground)' }}>
+                              {u.nameZh || u.nameEn}
+                            </span>
+                            <span className="text-xs ml-1.5" style={{ color: '#C9A96E' }}>
+                              {u.effectivePercent.toFixed(u.effectivePercent % 1 === 0 ? 0 : 2)}%
+                            </span>
+                          </p>
+                        ))}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[c.status] ?? ''}`}>

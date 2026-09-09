@@ -24,13 +24,13 @@ Key metrics at a glance, grouped by platform module:
 
 ### 2. Companies (`/admin/companies`)
 Manages the full portfolio of client companies.
-- List with search (name / code / registration number), status badge, assigned client, company incorporation date, **Annual Return Deadline** (incorporation month/day + 42 days, shown as `MM-DD`), financial-module toggle
+- List with search (name / code / registration number), status badge, assigned client, company incorporation date, **周年申报截止日** (incorporation month/day + 42 days, shown as `MM-DD`), **UBO** (look-through natural persons with effective ownership > 25%, name + %), financial-module toggle
 - Company statuses: `ACTIVE`, `DORMANT`, `STRUCK_OFF`, `DEREGISTERED`
 - Company create form uses **Company Jurisdiction** (`HONG_KONG`, `BVI`, `CAYMAN`, `MARSHALL`) for code-prefix jurisdiction
 - Auto-generates company codes by company jurisdiction: `AA#####` (HK), `BV#####` (BVI), `CA#####` (Cayman), `MS#####` (Marshall)
 - Company detail editing includes a separate **Company Type** field for legal/entity category values such as `private company limited by shares`, `public company limited by shares`, `company limited by guarantee`, `branch office`, `BVI`, `CAYMAN`, `BERMUDA`, and `MARSHALL`; this field is independent from the company jurisdiction and does not affect code generation
 - Company create/edit includes **Financial Year End** (before Business Nature): March 31st or December 31st checkboxes (mutually exclusive); stored as month `3` or `12`
-- Company detail overview shows Financial Year End above Business Nature, then **Annual Return Deadline** below Business Nature (incorporation month/day + 42 days, shown as `MM-DD`)
+- Company detail overview shows Financial Year End above Business Nature, then **周年申报截止日** below Business Nature (incorporation month/day + 42 days, shown as `MM-DD`)
 - Company detail overview includes a **文件管理** group with three toggles for `公司盒`, `公司方印`, and `公司圆印`; a single expand/collapse control beside the section title shows or hides all enabled items' IN/OUT forms and full movement history (collapsed by default); each enabled item can store dated `IN` / `OUT` movement records with handler and notes
 - Create new company; assign client user, pending-client email, or **以後提供 / Provide later** (no client linked yet; can assign later on edit); assign staff; Registered Address has a **使用本公司地址** checkbox that fills `RM7 20F Boss Commercial Center 28 Ferry Street Yau Ma Tei Kowloon Hong Kong`
 - Companies with the financial module enabled can optionally be assigned a **Financial Manager** from existing active back-office staff accounts; assignment can be left blank and filled later from the company edit form

@@ -793,6 +793,7 @@
       "financialToggleFailed": "Failed to update financial module.",
       "arDate": "AR Date",
       "arDeadline": "AR Deadline",
+      "ubo": "UBO",
       "view": "View",
       "empty": "No companies found.",
       "newTitle": "New Company",
