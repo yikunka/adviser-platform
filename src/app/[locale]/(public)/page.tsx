@@ -53,53 +53,67 @@ export default function HomePage() {
       >
         <PublicHeroBackground />
 
-        <div className="relative flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pt-16 md:pt-24 pb-10 flex flex-col justify-center">
-          <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-12 lg:gap-16 items-center">
+        <div className="relative flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pt-14 md:pt-20 pb-10 flex flex-col justify-center">
+          <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-10 lg:gap-14 items-center">
             {/* Left: brand-dominant copy */}
-            <div className="space-y-7 text-left">
+            <div className="space-y-6 text-left">
               <div className="public-fade-up flex items-center gap-3">
-                <Image
-                  src="/logo.png"
-                  width={44}
-                  height={44}
-                  alt=""
-                  priority
-                  className="drop-shadow-[0_0_28px_rgba(201,169,110,0.4)]"
-                />
-                <span className="font-mono-public text-[11px] uppercase tracking-[0.35em]" style={{ color: '#C9A96E' }}>
-                  Hong Kong · TCSP
+                <div className="relative w-12 h-12 flex items-center justify-center">
+                  <span className="public-brand-ring" aria-hidden />
+                  <Image
+                    src="/logo.png"
+                    width={40}
+                    height={40}
+                    alt=""
+                    priority
+                    className="relative drop-shadow-[0_0_28px_rgba(201,169,110,0.55)]"
+                  />
+                </div>
+                <span
+                  className="font-mono-public text-[11px] uppercase tracking-[0.35em] px-2.5 py-1 rounded-sm"
+                  style={{
+                    color: '#F0D090',
+                    border: '1px solid rgba(201,169,110,0.4)',
+                    background: 'rgba(201,169,110,0.1)',
+                    boxShadow: '0 0 20px rgba(201,169,110,0.15)',
+                  }}
+                >
+                  Hong Kong · Licensed TCSP
                 </span>
               </div>
 
-              <div className="public-fade-up public-fade-up-delay-1 space-y-1">
+              <div className="public-fade-up public-fade-up-delay-1 space-y-0">
                 <p
-                  className="font-display font-semibold leading-none tracking-tight"
+                  className="font-display font-semibold leading-[0.88] tracking-tight public-stat-blast"
                   style={{
-                    color: '#F7F1E4',
-                    fontSize: 'clamp(3.4rem, 9vw, 6.5rem)',
-                    textShadow: '0 0 60px rgba(201,169,110,0.18)',
+                    fontSize: 'clamp(4.2rem, 12vw, 8rem)',
+                    filter: 'drop-shadow(0 0 40px rgba(201,169,110,0.35))',
                   }}
                 >
                   6AM
                 </p>
                 <p
-                  className="font-display font-light tracking-[0.18em] uppercase"
-                  style={{ color: '#C9A96E', fontSize: 'clamp(1.1rem, 2.4vw, 1.75rem)' }}
+                  className="font-display font-light tracking-[0.28em] uppercase mt-1"
+                  style={{
+                    color: '#F0D090',
+                    fontSize: 'clamp(1.15rem, 2.6vw, 1.9rem)',
+                    textShadow: '0 0 24px rgba(201,169,110,0.35)',
+                  }}
                 >
                   Advisory
                 </p>
               </div>
 
               <h1
-                className="public-fade-up public-fade-up-delay-2 font-display font-light leading-[1.2] gold-shimmer max-w-xl"
-                style={{ fontStyle: 'italic', fontSize: 'clamp(1.45rem, 3.2vw, 2.35rem)' }}
+                className="public-fade-up public-fade-up-delay-2 font-display font-light leading-[1.15] gold-shimmer max-w-xl"
+                style={{ fontStyle: 'italic', fontSize: 'clamp(1.55rem, 3.4vw, 2.55rem)' }}
               >
                 {t('heroTitleSub')}
               </h1>
 
               <p
                 className="public-fade-up public-fade-up-delay-3 text-base md:text-lg max-w-lg leading-relaxed"
-                style={{ color: '#B8A890' }}
+                style={{ color: '#D0C0A8' }}
               >
                 {t('heroSubtitle')}
               </p>
@@ -107,23 +121,23 @@ export default function HomePage() {
               <div className="public-fade-up public-fade-up-delay-4 flex flex-wrap items-center gap-3 pt-1">
                 <Link
                   href="/register"
-                  className="group flex items-center gap-2 px-8 py-3.5 rounded-sm text-sm font-semibold transition-all"
+                  className="public-cta-glow group flex items-center gap-2 px-9 py-4 rounded-sm text-sm font-bold transition-all"
                   style={{
-                    background: 'linear-gradient(135deg, #D4B47A 0%, #C9A96E 45%, #B8924E 100%)',
+                    background: 'linear-gradient(135deg, #F0D090 0%, #C9A96E 42%, #B8924E 100%)',
                     color: '#0C0C0C',
-                    boxShadow: '0 0 32px rgba(201,169,110,0.28)',
                   }}
                 >
                   {t('heroCtaStart')}
-                  <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" />
+                  <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
                 </Link>
                 <Link
                   href="/services"
-                  className="px-7 py-3.5 rounded-sm text-sm font-medium transition-colors"
+                  className="px-7 py-4 rounded-sm text-sm font-semibold transition-all hover:bg-[rgba(201,169,110,0.1)]"
                   style={{
-                    border: '1px solid rgba(201,169,110,0.35)',
-                    color: '#E8D5B0',
-                    background: 'rgba(201,169,110,0.04)',
+                    border: '1px solid rgba(240,208,144,0.5)',
+                    color: '#F0D090',
+                    background: 'rgba(201,169,110,0.06)',
+                    backdropFilter: 'blur(8px)',
                   }}
                 >
                   {t('heroCtaLearn')}
@@ -131,7 +145,13 @@ export default function HomePage() {
               </div>
 
               {/* Mobile cyber visual */}
-              <div className="public-fade-up public-fade-up-delay-4 md:hidden relative mt-4 rounded-sm overflow-hidden aspect-[16/10] border" style={{ borderColor: 'rgba(201,169,110,0.28)' }}>
+              <div
+                className="public-fade-up public-fade-up-delay-4 md:hidden relative mt-4 rounded-sm overflow-hidden aspect-[16/10]"
+                style={{
+                  border: '1px solid rgba(201,169,110,0.4)',
+                  boxShadow: '0 0 40px rgba(201,169,110,0.2)',
+                }}
+              >
                 <Image
                   src="/marketing/hero-tcsp-cyber.png"
                   alt=""
@@ -142,11 +162,11 @@ export default function HomePage() {
                 <div
                   className="absolute inset-0"
                   style={{
-                    background: 'linear-gradient(180deg, transparent 30%, rgba(6,6,6,0.75) 100%)',
+                    background: 'linear-gradient(180deg, transparent 25%, rgba(6,6,6,0.8) 100%)',
                   }}
                 />
                 <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-                  <span className="font-mono-public text-[10px] uppercase tracking-[0.22em]" style={{ color: '#C9A96E' }}>
+                  <span className="font-mono-public text-[10px] uppercase tracking-[0.22em]" style={{ color: '#F0D090' }}>
                     TCSP · AML · DDR
                   </span>
                   <span className="flex items-center gap-2 font-mono-public text-[10px]" style={{ color: '#C9A96E' }}>
@@ -160,34 +180,34 @@ export default function HomePage() {
             {/* Right: TCSP cyber visual + compliance console */}
             <div className="public-fade-up public-fade-up-delay-2 hidden md:block">
               <div className="public-console relative rounded-sm overflow-hidden">
-                <div className="relative aspect-[4/5] w-full">
+                <div className="relative aspect-[4/5] w-full max-h-[34rem]">
                   <Image
                     src="/marketing/hero-tcsp-cyber.png"
                     alt="Professional TCSP compliance and cyber security visual"
                     fill
                     priority
-                    sizes="(max-width: 1024px) 50vw, 420px"
+                    sizes="(max-width: 1024px) 50vw, 440px"
                     className="object-cover object-center"
                   />
                   <div
                     className="absolute inset-0"
                     style={{
                       background:
-                        'linear-gradient(180deg, rgba(6,6,6,0.15) 0%, rgba(6,6,6,0.25) 40%, rgba(6,6,6,0.92) 78%, #080808 100%)',
+                        'linear-gradient(180deg, rgba(6,6,6,0.05) 0%, rgba(6,6,6,0.15) 45%, rgba(6,6,6,0.88) 82%, #080808 100%)',
                     }}
                   />
                   <div
-                    className="absolute -top-16 -right-12 w-48 h-48 rounded-full blur-3xl public-console-live"
-                    style={{ background: 'rgba(201,169,110,0.16)' }}
+                    className="absolute -top-16 -right-12 w-56 h-56 rounded-full blur-3xl public-console-live"
+                    style={{ background: 'rgba(240,208,144,0.22)' }}
                     aria-hidden
                   />
 
-                  <div className="absolute inset-x-0 bottom-0 p-5 md:p-6 space-y-4">
+                  <div className="absolute inset-x-0 bottom-0 p-5 md:p-6 space-y-3.5">
                     <div className="flex items-center justify-between">
-                      <p className="font-mono-public text-[10px] uppercase tracking-[0.28em]" style={{ color: '#A89880' }}>
+                      <p className="font-mono-public text-[10px] uppercase tracking-[0.28em]" style={{ color: '#C9B896' }}>
                         Compliance Console
                       </p>
-                      <span className="flex items-center gap-2 font-mono-public text-[10px]" style={{ color: '#C9A96E' }}>
+                      <span className="flex items-center gap-2 font-mono-public text-[10px]" style={{ color: '#F0D090' }}>
                         <span className="public-pulse-dot" />
                         LIVE
                       </span>
@@ -197,26 +217,6 @@ export default function HomePage() {
                     <ConsoleRow label="AMLO Cap. 615" value="COMPLIANT" ok />
                     <ConsoleRow label="KYC / AML Gate" value="SCREENING" />
                     <ConsoleRow label="Quarterly DDR" value="ON TRACK" ok />
-
-                    <div
-                      className="pt-3 grid grid-cols-3 gap-3 border-t"
-                      style={{ borderColor: 'rgba(42,36,24,0.9)' }}
-                    >
-                      {[
-                        { v: '500+', l: t('stat.companies') },
-                        { v: '15+', l: t('stat.years') },
-                        { v: 'TCSP', l: t('stat.license') },
-                      ].map((s) => (
-                        <div key={s.v}>
-                          <p className="font-display text-xl font-semibold" style={{ color: '#C9A96E' }}>
-                            {s.v}
-                          </p>
-                          <p className="text-[10px] uppercase tracking-wider mt-0.5 leading-snug" style={{ color: '#7A6E5E' }}>
-                            {s.l}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
                   </div>
                 </div>
               </div>
@@ -227,16 +227,19 @@ export default function HomePage() {
         {/* Marquee trust strip */}
         <div
           className="relative border-t overflow-hidden"
-          style={{ borderColor: '#1E1A12', background: 'rgba(8,8,8,0.85)' }}
+          style={{
+            borderColor: 'rgba(201,169,110,0.25)',
+            background: 'linear-gradient(90deg, rgba(8,8,8,0.92), rgba(20,16,10,0.9), rgba(8,8,8,0.92))',
+          }}
         >
-          <div className="public-marquee-track py-3.5 gap-10">
+          <div className="public-marquee-track py-4 gap-12">
             {[...marqueeItems, ...marqueeItems].map((item, i) => (
               <span
                 key={`${item}-${i}`}
-                className="flex items-center gap-10 shrink-0 font-mono-public text-[11px] uppercase tracking-[0.22em]"
-                style={{ color: '#A89880' }}
+                className="flex items-center gap-12 shrink-0 font-mono-public text-xs uppercase tracking-[0.24em]"
+                style={{ color: '#D0C0A8' }}
               >
-                <span style={{ color: '#C9A96E' }}>◆</span>
+                <span style={{ color: '#F0D090' }}>◆</span>
                 {item}
               </span>
             ))}
@@ -244,7 +247,36 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Trust detail (no cards clutter) ── */}
+      {/* ── Impact stats band ── */}
+      <section className="public-impact-band relative">
+        <Image
+          src="/marketing/hero-city-night.png"
+          alt=""
+          fill
+          sizes="100vw"
+          className="object-cover object-[center_55%] opacity-70"
+        />
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 md:py-20">
+          <div className="grid grid-cols-3 gap-4 md:gap-10 text-center">
+            {[
+              { v: '500+', l: t('stat.companies') },
+              { v: '15+', l: t('stat.years') },
+              { v: 'TCSP', l: t('stat.license') },
+            ].map((s) => (
+              <div key={s.v} className="space-y-2">
+                <p className="public-stat-blast font-display font-semibold leading-none" style={{ fontSize: 'clamp(2.5rem, 8vw, 5.5rem)' }}>
+                  {s.v}
+                </p>
+                <p className="font-mono-public text-[10px] md:text-xs uppercase tracking-[0.28em]" style={{ color: '#D0C0A8' }}>
+                  {s.l}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Trust detail ── */}
       <section style={{ background: '#0A0A0A' }}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 md:py-20">
           <div className="grid md:grid-cols-3 gap-8 md:gap-10">
@@ -255,17 +287,30 @@ export default function HomePage() {
                 { key: 'hk' as const, Icon: MapPin },
               ]
             ).map(({ key, Icon }, idx) => (
-              <div key={key} className="space-y-3 md:border-l md:pl-8 first:md:border-l-0 first:md:pl-0" style={{ borderColor: '#2A2418' }}>
+              <div
+                key={key}
+                className="space-y-3 md:border-l md:pl-8 first:md:border-l-0 first:md:pl-0"
+                style={{ borderColor: '#2A2418' }}
+              >
                 <div className="flex items-center gap-3">
-                  <Icon size={18} style={{ color: '#C9A96E' }} />
+                  <div
+                    className="w-10 h-10 rounded-sm flex items-center justify-center"
+                    style={{
+                      background: 'rgba(201,169,110,0.12)',
+                      border: '1px solid rgba(201,169,110,0.35)',
+                      boxShadow: '0 0 24px rgba(201,169,110,0.12)',
+                    }}
+                  >
+                    <Icon size={18} style={{ color: '#F0D090' }} />
+                  </div>
                   <span className="font-mono-public text-[10px]" style={{ color: '#6A5E4E' }}>
                     0{idx + 1}
                   </span>
                 </div>
-                <p className="font-display text-xl font-medium" style={{ color: '#F5F0E6' }}>
+                <p className="font-display text-xl md:text-2xl font-medium" style={{ color: '#F5F0E6' }}>
                   {t(`trustStrip.${key}.title`)}
                 </p>
-                <p className="text-sm leading-relaxed" style={{ color: '#A89880' }}>
+                <p className="text-sm leading-relaxed" style={{ color: '#B8A890' }}>
                   {t(`trustStrip.${key}.desc`)}
                 </p>
               </div>
@@ -310,8 +355,7 @@ export default function HomePage() {
                   className="public-service-row group grid md:grid-cols-[5rem_1fr_auto] gap-4 md:gap-8 items-start md:items-center py-8 md:py-10"
                 >
                   <span
-                    className="font-display text-3xl md:text-4xl font-light"
-                    style={{ color: 'rgba(201,169,110,0.35)' }}
+                    className="font-display text-4xl md:text-5xl font-light public-stat-blast opacity-80"
                   >
                     {PILLAR_NUMS[key]}
                   </span>
@@ -561,11 +605,10 @@ export default function HomePage() {
           </h2>
           <Link
             href="/contact"
-            className="relative inline-flex items-center gap-2 px-10 py-3.5 rounded-sm text-sm font-semibold"
+            className="public-cta-glow relative inline-flex items-center gap-2 px-10 py-4 rounded-sm text-sm font-bold"
             style={{
-              background: 'linear-gradient(135deg, #D4B47A, #C9A96E)',
+              background: 'linear-gradient(135deg, #F0D090, #C9A96E)',
               color: '#0C0C0C',
-              boxShadow: '0 0 40px rgba(201,169,110,0.3)',
             }}
           >
             {tNav('contact')} <ArrowRight size={14} />
@@ -580,14 +623,18 @@ function ConsoleRow({ label, value, ok }: { label: string; value: string; ok?: b
   return (
     <div
       className="flex items-center justify-between gap-4 py-2.5 px-3 rounded-sm"
-      style={{ background: 'rgba(201,169,110,0.04)', border: '1px solid rgba(42,36,24,0.8)' }}
+      style={{
+        background: 'rgba(0,0,0,0.45)',
+        border: '1px solid rgba(201,169,110,0.28)',
+        backdropFilter: 'blur(6px)',
+      }}
     >
-      <span className="font-mono-public text-[11px]" style={{ color: '#8A7A68' }}>
+      <span className="font-mono-public text-[11px]" style={{ color: '#A89880' }}>
         {label}
       </span>
       <span
-        className="font-mono-public text-[11px] tracking-wider"
-        style={{ color: ok ? '#C9A96E' : '#E8C87A' }}
+        className="font-mono-public text-[11px] tracking-wider font-semibold"
+        style={{ color: ok ? '#F0D090' : '#E8C87A' }}
       >
         {value}
       </span>
