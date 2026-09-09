@@ -9,57 +9,47 @@ type Props = {
 }
 
 /**
- * Consistent top-of-page hero for Services, About, Contact, FAQ.
+ * Dramatic inner-page hero — left-weighted brand + title.
  */
 export default function PublicPageHero({ title, subtitle, eyebrow, showBrand = true }: Props) {
   return (
-    <section className="relative overflow-hidden" style={{ background: '#0A0A0A' }}>
-      <PublicHeroBackground />
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            'radial-gradient(ellipse 55% 45% at 50% 0%, rgba(201, 169, 110, 0.07) 0%, transparent 60%)',
-        }}
-      />
-      <div className="relative mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-16 md:py-24 text-center">
-        {showBrand ? (
-          <div className="public-fade-up flex items-center justify-center gap-2.5 mb-6">
-            <Image src="/logo.png" width={28} height={28} alt="" className="opacity-90" />
-            <span
-              className="font-display text-sm tracking-[0.2em] uppercase"
+    <section className="relative overflow-hidden min-h-[18rem] md:min-h-[22rem]" style={{ background: '#060606' }}>
+      <PublicHeroBackground intensity="soft" />
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 md:py-24">
+        <div className="max-w-3xl">
+          {showBrand ? (
+            <div className="public-fade-up flex items-center gap-2.5 mb-6">
+              <Image src="/logo.png" width={28} height={28} alt="" className="opacity-95" />
+              <span className="font-mono-public text-[11px] tracking-[0.3em] uppercase" style={{ color: '#C9A96E' }}>
+                6AM Advisory
+              </span>
+            </div>
+          ) : null}
+          {eyebrow ? (
+            <p
+              className="public-fade-up public-fade-up-delay-1 font-mono-public text-[11px] uppercase tracking-[0.3em] mb-4"
               style={{ color: '#C9A96E' }}
             >
-              6AM Advisory
-            </span>
-          </div>
-        ) : null}
-        {eyebrow ? (
-          <p
-            className="public-fade-up public-fade-up-delay-1 text-xs uppercase tracking-[0.28em] mb-4"
-            style={{ color: '#C9A96E' }}
+              {eyebrow}
+            </p>
+          ) : null}
+          <h1
+            className="public-fade-up public-fade-up-delay-2 font-display font-light leading-[1.08] tracking-tight"
+            style={{ color: '#F7F1E4', fontSize: 'clamp(2.4rem, 5.5vw, 4rem)' }}
           >
-            {eyebrow}
+            {title}
+          </h1>
+          <div
+            className="public-fade-up public-fade-up-delay-3 mt-5 h-px w-20"
+            style={{ background: 'linear-gradient(90deg, #C9A96E, transparent)' }}
+          />
+          <p
+            className="public-fade-up public-fade-up-delay-4 mt-5 text-base md:text-lg max-w-2xl leading-relaxed"
+            style={{ color: '#B8A890' }}
+          >
+            {subtitle}
           </p>
-        ) : null}
-        <h1
-          className="public-fade-up public-fade-up-delay-2 font-display text-4xl md:text-5xl lg:text-[3.25rem] font-light leading-[1.12] tracking-tight"
-          style={{ color: '#F5F0E6' }}
-        >
-          {title}
-        </h1>
-        <div
-          className="public-fade-up public-fade-up-delay-3 mx-auto mt-5 h-px w-16"
-          style={{
-            background: 'linear-gradient(90deg, transparent, #C9A96E, transparent)',
-          }}
-        />
-        <p
-          className="public-fade-up public-fade-up-delay-4 mt-5 text-base md:text-lg max-w-2xl mx-auto leading-relaxed"
-          style={{ color: '#A89880' }}
-        >
-          {subtitle}
-        </p>
+        </div>
       </div>
     </section>
   )

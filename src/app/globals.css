@@ -431,7 +431,7 @@ html {
   animation: gold-shimmer 4s linear infinite;
 }
 
-/* ── Public hero: ambient motion (restrained fintech) ─────────────── */
+/* ── Public hero: ambient motion (cinematic fintech) ──────────────── */
 @keyframes hero-orb-drift-a {
   0%,
   100% {
@@ -439,7 +439,7 @@ html {
     opacity: 0.85;
   }
   50% {
-    transform: translateX(-50%) translate(1.5%, 3%) scale(1.04);
+    transform: translateX(-50%) translate(1.5%, 3%) scale(1.06);
     opacity: 1;
   }
 }
@@ -449,7 +449,7 @@ html {
     transform: translate(0, 0) scale(1);
   }
   50% {
-    transform: translate(-3%, 2%) scale(1.08);
+    transform: translate(-4%, 3%) scale(1.1);
   }
 }
 @keyframes hero-orb-drift-c {
@@ -474,7 +474,7 @@ html {
 @keyframes public-fade-up {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(18px);
   }
   to {
     opacity: 1;
@@ -486,121 +486,279 @@ html {
     transform: translateY(-100%);
     opacity: 0;
   }
-  10% {
-    opacity: 0.35;
+  12% {
+    opacity: 0.45;
   }
-  90% {
-    opacity: 0.2;
+  88% {
+    opacity: 0.18;
   }
   100% {
     transform: translateY(100vh);
     opacity: 0;
   }
 }
+@keyframes public-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes public-pulse-dot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(201, 169, 110, 0.45);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(201, 169, 110, 0);
+    opacity: 0.85;
+  }
+}
+@keyframes public-console-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes hero-beam-drift {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateX(-2%) rotate(18deg);
+  }
+  50% {
+    opacity: 0.45;
+    transform: translateX(2%) rotate(18deg);
+  }
+}
 .hero-orb-a {
-  animation: hero-orb-drift-a 18s ease-in-out infinite;
+  animation: hero-orb-drift-a 16s ease-in-out infinite;
 }
 .hero-orb-b {
-  animation: hero-orb-drift-b 22s ease-in-out infinite;
+  animation: hero-orb-drift-b 20s ease-in-out infinite;
 }
 .hero-orb-c {
   animation: hero-orb-drift-c 16s ease-in-out infinite 2s;
 }
 .hero-perspective-grid {
   background-image:
-    linear-gradient(rgba(201, 169, 110, 0.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(201, 169, 110, 0.055) 1px, transparent 1px);
-  background-size: 48px 48px;
-  transform: perspective(900px) rotateX(14deg) scale(1.2);
+    linear-gradient(rgba(201, 169, 110, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201, 169, 110, 0.07) 1px, transparent 1px);
+  background-size: 64px 64px;
+  transform: perspective(1000px) rotateX(18deg) scale(1.35);
   transform-origin: 50% 0%;
-  mask-image: radial-gradient(ellipse 95% 75% at 50% 0%, #000 15%, transparent 78%);
-  opacity: 0.75;
-  animation: hero-grid-breathe 24s ease-in-out infinite;
+  mask-image: radial-gradient(ellipse 100% 80% at 50% 0%, #000 10%, transparent 72%);
+  opacity: 0.85;
+  animation: hero-grid-breathe 18s ease-in-out infinite;
 }
 .hero-fine-grid {
   background-image:
-    linear-gradient(rgba(240, 234, 216, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(240, 234, 216, 0.03) 1px, transparent 1px);
-  background-size: 16px 16px;
-  mask-image: radial-gradient(ellipse 70% 55% at 50% 35%, #000 10%, transparent 70%);
-  opacity: 0.55;
+    linear-gradient(rgba(240, 234, 216, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(240, 234, 216, 0.035) 1px, transparent 1px);
+  background-size: 12px 12px;
+  mask-image: radial-gradient(ellipse 65% 50% at 50% 30%, #000 5%, transparent 70%);
+  opacity: 0.65;
 }
 .hero-noise {
-  opacity: 0.035;
+  opacity: 0.045;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 180px 180px;
+  background-size: 160px 160px;
   mix-blend-mode: overlay;
 }
 .hero-scanline {
   position: absolute;
   left: 0;
   right: 0;
-  height: 28%;
+  height: 22%;
   background: linear-gradient(
     180deg,
     transparent 0%,
-    rgba(201, 169, 110, 0.04) 45%,
+    rgba(201, 169, 110, 0.06) 50%,
     transparent 100%
   );
-  animation: public-scan 14s ease-in-out infinite;
+  animation: public-scan 11s ease-in-out infinite;
   pointer-events: none;
+}
+.hero-beam {
+  background: linear-gradient(
+    105deg,
+    transparent 38%,
+    rgba(201, 169, 110, 0.07) 48%,
+    rgba(240, 208, 144, 0.1) 50%,
+    rgba(201, 169, 110, 0.05) 52%,
+    transparent 62%
+  );
+  mix-blend-mode: screen;
+}
+.hero-beam-a {
+  animation: hero-beam-drift 14s ease-in-out infinite;
+}
+.hero-beam-b {
+  animation: hero-beam-drift 18s ease-in-out infinite reverse;
+  opacity: 0.6;
+  transform: rotate(-12deg);
+}
+.hero-frame {
+  border: 1px solid rgba(201, 169, 110, 0.18);
+  border-radius: 2px;
+  background:
+    linear-gradient(#C9A96E, #C9A96E) left top / 28px 1px no-repeat,
+    linear-gradient(#C9A96E, #C9A96E) left top / 1px 28px no-repeat,
+    linear-gradient(#C9A96E, #C9A96E) right top / 28px 1px no-repeat,
+    linear-gradient(#C9A96E, #C9A96E) right top / 1px 28px no-repeat,
+    linear-gradient(#C9A96E, #C9A96E) left bottom / 28px 1px no-repeat,
+    linear-gradient(#C9A96E, #C9A96E) left bottom / 1px 28px no-repeat,
+    linear-gradient(#C9A96E, #C9A96E) right bottom / 28px 1px no-repeat,
+    linear-gradient(#C9A96E, #C9A96E) right bottom / 1px 28px no-repeat;
 }
 @keyframes hero-grid-breathe {
   0%,
   100% {
-    opacity: 0.5;
+    opacity: 0.45;
   }
   50% {
-    opacity: 0.85;
+    opacity: 0.9;
   }
 }
 .hero-line-shimmer {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    transparent 40%,
-    rgba(201, 169, 110, 0.45) 50%,
-    transparent 60%,
+    transparent 35%,
+    rgba(240, 208, 144, 0.7) 50%,
+    transparent 65%,
     transparent 100%
   );
   background-size: 200% 100%;
-  animation: hero-shimmer-line 6s ease-in-out infinite;
-  opacity: 0.7;
+  animation: hero-shimmer-line 5s ease-in-out infinite;
+  opacity: 0.85;
 }
 
 .public-fade-up {
-  animation: public-fade-up 0.7s ease-out both;
+  animation: public-fade-up 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.public-fade-up-delay-1 { animation-delay: 0.08s; }
-.public-fade-up-delay-2 { animation-delay: 0.16s; }
-.public-fade-up-delay-3 { animation-delay: 0.24s; }
-.public-fade-up-delay-4 { animation-delay: 0.32s; }
+.public-fade-up-delay-1 { animation-delay: 0.1s; }
+.public-fade-up-delay-2 { animation-delay: 0.2s; }
+.public-fade-up-delay-3 { animation-delay: 0.3s; }
+.public-fade-up-delay-4 { animation-delay: 0.42s; }
+
+.public-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: public-marquee 32s linear infinite;
+}
+.public-marquee-track:hover {
+  animation-play-state: paused;
+}
+
+.public-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #C9A96E;
+  animation: public-pulse-dot 2.4s ease-out infinite;
+}
+
+.public-console {
+  background:
+    linear-gradient(160deg, rgba(28, 24, 16, 0.92) 0%, rgba(12, 11, 9, 0.96) 100%);
+  border: 1px solid rgba(201, 169, 110, 0.28);
+  box-shadow:
+    0 0 0 1px rgba(201, 169, 110, 0.06) inset,
+    0 24px 80px rgba(0, 0, 0, 0.55),
+    0 0 60px rgba(201, 169, 110, 0.08);
+  backdrop-filter: blur(12px);
+}
+.public-console-live {
+  animation: public-console-glow 3.2s ease-in-out infinite;
+}
+
+.public-service-row {
+  position: relative;
+  transition: background-color 220ms ease, border-color 220ms ease, padding-left 220ms ease;
+  border-bottom: 1px solid #1E1A12;
+}
+.public-service-row::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #C9A96E;
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+.public-service-row:hover {
+  background: rgba(201, 169, 110, 0.04);
+  padding-left: 0.5rem;
+}
+.public-service-row:hover::before {
+  opacity: 1;
+}
+
+.public-cta-band {
+  background:
+    radial-gradient(ellipse 70% 120% at 50% 120%, rgba(201, 169, 110, 0.18) 0%, transparent 55%),
+    linear-gradient(180deg, #0C0C0C 0%, #120F0A 100%);
+}
 
 /* Public site typography */
 .font-display { font-family: var(--font-display), 'Georgia', serif; }
+.font-mono-public {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.02em;
+}
 
 /* Public site hover utilities (CSS-only, safe in Server Components) */
 .public-card-hover {
   transition: border-color 220ms ease, box-shadow 220ms ease, transform 220ms ease, background-color 220ms ease;
 }
 .public-card-hover:hover {
-  border-color: rgba(201, 169, 110, 0.55) !important;
-  box-shadow: 0 0 0 1px rgba(201,169,110,0.12), 0 8px 32px rgba(0,0,0,0.35), 0 0 40px rgba(201,169,110,0.06);
-  transform: translateY(-2px);
+  border-color: rgba(201, 169, 110, 0.65) !important;
+  box-shadow: 0 0 0 1px rgba(201,169,110,0.14), 0 12px 40px rgba(0,0,0,0.4), 0 0 50px rgba(201,169,110,0.1);
+  transform: translateY(-3px);
 }
 .public-panel {
-  background: linear-gradient(165deg, #161410 0%, #12100C 55%, #0E0C0A 100%);
+  background: linear-gradient(165deg, #17140F 0%, #110F0B 55%, #0C0B09 100%);
   border: 1px solid #2A2418;
 }
 .public-section-rule {
   height: 1px;
-  background: linear-gradient(90deg, transparent, #2A2418 15%, rgba(201,169,110,0.25) 50%, #2A2418 85%, transparent);
+  background: linear-gradient(90deg, transparent, #2A2418 12%, rgba(201,169,110,0.35) 50%, #2A2418 88%, transparent);
 }
 .public-link-hover {
   transition: color 150ms;
 }
 .public-link-hover:hover {
   color: #C9A96E !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-orb-a,
+  .hero-orb-b,
+  .hero-orb-c,
+  .hero-perspective-grid,
+  .hero-scanline,
+  .hero-line-shimmer,
+  .hero-beam-a,
+  .hero-beam-b,
+  .public-fade-up,
+  .public-marquee-track,
+  .public-pulse-dot,
+  .public-console-live,
+  .gold-shimmer {
+    animation: none !important;
+  }
+  .public-fade-up {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* ── Hide browser date-format hint (dd/mm/yyyy) on empty date inputs ── */
