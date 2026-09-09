@@ -34,11 +34,9 @@ export default async function ContactPage() {
   return (
     <div>
       <PublicPageHero title={t('title')} subtitle={t('subtitle')} />
-      <section
-        className="py-16 md:py-20 border-t"
-        style={{ background: '#0A0A0A', borderColor: '#1E1A12' }}
-      >
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <section style={{ background: '#0A0A0A' }}>
+        <div className="public-section-rule" />
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 md:py-20">
           <ContactForm />
         </div>
       </section>

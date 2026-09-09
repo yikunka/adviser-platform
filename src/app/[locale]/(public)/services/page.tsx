@@ -35,7 +35,7 @@ function TickList({ items }: { items: string[] }) {
   return (
     <ul className="space-y-3">
       {items.map((item, i) => (
-        <li key={i} className="flex gap-3 text-sm leading-relaxed" style={{ color: '#9A8060' }}>
+        <li key={i} className="flex gap-3 text-sm leading-relaxed" style={{ color: '#C9B896' }}>
           <Check className="shrink-0 mt-0.5" size={16} strokeWidth={2.5} style={{ color: '#C9A96E' }} aria-hidden />
           <span>{item}</span>
         </li>
@@ -45,12 +45,7 @@ function TickList({ items }: { items: string[] }) {
 }
 
 function SectionDivider() {
-  return (
-    <div
-      className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
-      style={{ height: '1px', background: 'linear-gradient(90deg, transparent, #2A2418 20%, #2A2418 80%, transparent)' }}
-    />
-  )
+  return <div className="public-section-rule" />
 }
 
 export default async function ServicesPage() {
@@ -92,8 +87,8 @@ export default async function ServicesPage() {
               <a
                 key={key}
                 href={`#${key}`}
-                className="public-card-hover flex items-center gap-4 rounded-xl px-5 py-4"
-                style={{ background: '#141414', border: '1px solid #2A2418', textDecoration: 'none' }}
+                className="public-panel public-card-hover flex items-center gap-4 rounded-xl px-5 py-4"
+                style={{ textDecoration: 'none' }}
               >
                 <div
                   className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
@@ -103,7 +98,7 @@ export default async function ServicesPage() {
                 </div>
                 <div>
                   <p className="text-xs" style={{ color: 'rgba(201,169,110,0.5)' }}>{num}</p>
-                  <p className="text-sm font-medium" style={{ color: '#F0EAD8' }}>{t(`${key}.title`)}</p>
+                  <p className="text-sm font-medium" style={{ color: '#F5F0E6' }}>{t(`${key}.title`)}</p>
                 </div>
               </a>
             ))}
@@ -121,10 +116,10 @@ export default async function ServicesPage() {
             {/* Left: heading + intro + virtual office */}
             <div className="space-y-6">
               <p className="text-xs uppercase tracking-widest" style={{ color: '#C9A96E' }}>01</p>
-              <h2 className="font-display text-3xl md:text-4xl font-light" style={{ color: '#F0EAD8' }}>
+              <h2 className="font-display text-3xl md:text-4xl font-light" style={{ color: '#F5F0E6' }}>
                 {t('secretarial.title')}
               </h2>
-              <p className="text-sm leading-relaxed" style={{ color: '#7A7060' }}>
+              <p className="text-sm leading-relaxed" style={{ color: '#A89880' }}>
                 {t('secretarial.intro')}
               </p>
               {/* Virtual office callout */}
@@ -134,10 +129,10 @@ export default async function ServicesPage() {
               >
                 <Building2 size={18} style={{ color: '#C9A96E', flexShrink: 0, marginTop: 2 }} />
                 <div>
-                  <p className="text-sm font-semibold" style={{ color: '#F0EAD8' }}>
+                  <p className="text-sm font-semibold" style={{ color: '#F5F0E6' }}>
                     {t('secretarial.virtualOfficeTitle')}
                   </p>
-                  <p className="text-xs mt-1 leading-relaxed" style={{ color: '#7A7060' }}>
+                  <p className="text-xs mt-1 leading-relaxed" style={{ color: '#A89880' }}>
                     {t('secretarial.virtualOfficeDesc')}
                   </p>
                 </div>
@@ -158,11 +153,10 @@ export default async function ServicesPage() {
               {(['startup', 'sme', 'large'] as const).map((tier) => (
                 <div
                   key={tier}
-                  className="public-card-hover rounded-xl p-6 flex flex-col gap-4"
-                  style={{ background: '#141414', border: '1px solid #2A2418' }}
+                  className="public-panel public-card-hover rounded-xl p-6 flex flex-col gap-4"
                 >
                   <div className="flex items-baseline justify-between">
-                    <span className="text-sm font-semibold" style={{ color: '#F0EAD8' }}>
+                    <span className="text-sm font-semibold" style={{ color: '#F5F0E6' }}>
                       {t(`secretarial.${tier}.label`)}
                     </span>
                     <span
@@ -174,7 +168,7 @@ export default async function ServicesPage() {
                   </div>
                   <ul className="space-y-2 flex-1">
                     {(t.raw(`secretarial.${tier}.items`) as string[]).map((item, i) => (
-                      <li key={i} className="flex gap-2 text-xs leading-relaxed" style={{ color: '#7A7060' }}>
+                      <li key={i} className="flex gap-2 text-xs leading-relaxed" style={{ color: '#A89880' }}>
                         <span style={{ color: '#C9A96E', flexShrink: 0 }}>·</span>
                         {item}
                       </li>
@@ -191,7 +185,7 @@ export default async function ServicesPage() {
               <p className="text-xs uppercase tracking-widest" style={{ color: '#C9A96E' }}>
                 {tHome('processEyebrow')}
               </p>
-              <h3 className="font-display text-2xl md:text-3xl font-light" style={{ color: '#F0EAD8' }}>
+              <h3 className="font-display text-2xl md:text-3xl font-light" style={{ color: '#F5F0E6' }}>
                 {tHome('processTitle')}
               </h3>
             </div>
@@ -199,8 +193,7 @@ export default async function ServicesPage() {
               {processItems.map((item) => (
                 <div
                   key={item.number}
-                  className="public-card-hover rounded-xl p-6 flex gap-4 items-start"
-                  style={{ background: '#0C0C0C', border: '1px solid #2A2418' }}
+                  className="public-panel public-card-hover rounded-xl p-6 flex gap-4 items-start"
                 >
                   <span
                     className="text-2xl font-display font-light shrink-0"
@@ -209,10 +202,10 @@ export default async function ServicesPage() {
                     {item.number}
                   </span>
                   <div>
-                    <p className="text-sm font-semibold mb-1" style={{ color: '#F0EAD8' }}>
+                    <p className="text-sm font-semibold mb-1" style={{ color: '#F5F0E6' }}>
                       {item.title}
                     </p>
-                    <p className="text-xs leading-relaxed" style={{ color: '#7A7060' }}>
+                    <p className="text-xs leading-relaxed" style={{ color: '#A89880' }}>
                       {item.desc}
                     </p>
                   </div>
@@ -234,10 +227,10 @@ export default async function ServicesPage() {
             {/* Left: heading + intro + tools note */}
             <div className="space-y-6">
               <p className="text-xs uppercase tracking-widest" style={{ color: '#C9A96E' }}>02</p>
-              <h2 className="font-display text-3xl md:text-4xl font-light" style={{ color: '#F0EAD8' }}>
+              <h2 className="font-display text-3xl md:text-4xl font-light" style={{ color: '#F5F0E6' }}>
                 {t('accounting.title')}
               </h2>
-              <p className="text-sm leading-relaxed" style={{ color: '#7A7060' }}>
+              <p className="text-sm leading-relaxed" style={{ color: '#A89880' }}>
                 {t('accounting.intro')}
               </p>
               <p
@@ -267,10 +260,10 @@ export default async function ServicesPage() {
             {/* Left: heading + intro + CTA */}
             <div className="space-y-6">
               <p className="text-xs uppercase tracking-widest" style={{ color: '#C9A96E' }}>03</p>
-              <h2 className="font-display text-3xl md:text-4xl font-light" style={{ color: '#F0EAD8' }}>
+              <h2 className="font-display text-3xl md:text-4xl font-light" style={{ color: '#F5F0E6' }}>
                 {t('advisory.title')}
               </h2>
-              <p className="text-sm leading-relaxed" style={{ color: '#7A7060' }}>
+              <p className="text-sm leading-relaxed" style={{ color: '#A89880' }}>
                 {t('advisory.intro')}
               </p>
               <Link
@@ -300,10 +293,10 @@ export default async function ServicesPage() {
             <p className="text-xs uppercase tracking-widest" style={{ color: '#C9A96E' }}>
               {t('otherEyebrow')}
             </p>
-            <h2 className="font-display text-3xl md:text-4xl font-light" style={{ color: '#F0EAD8' }}>
+            <h2 className="font-display text-3xl md:text-4xl font-light" style={{ color: '#F5F0E6' }}>
               {t('otherTitle')}
             </h2>
-            <p className="text-sm leading-relaxed max-w-xl mx-auto" style={{ color: '#7A7060' }}>
+            <p className="text-sm leading-relaxed max-w-xl mx-auto" style={{ color: '#A89880' }}>
               {t('otherSubtitle')}
             </p>
           </div>
@@ -311,8 +304,7 @@ export default async function ServicesPage() {
             {OTHER_SERVICES.map(({ key, Icon }) => (
               <div
                 key={key}
-                className="public-card-hover rounded-2xl p-6 flex flex-col gap-4"
-                style={{ background: '#141414', border: '1px solid #2A2418' }}
+                className="public-panel public-card-hover rounded-xl p-6 flex flex-col gap-4"
               >
                 <div style={{ height: '2px', width: '2rem', background: '#C9A96E', borderRadius: 1 }} />
                 <div
@@ -322,14 +314,14 @@ export default async function ServicesPage() {
                   <Icon size={18} style={{ color: '#C9A96E' }} />
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: '#7A7060' }}>
+                  <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: '#A89880' }}>
                     {t(`other.${key}.subtitle`)}
                   </p>
-                  <h3 className="font-display text-base font-semibold" style={{ color: '#F0EAD8' }}>
+                  <h3 className="font-display text-base font-semibold" style={{ color: '#F5F0E6' }}>
                     {t(`other.${key}.title`)}
                   </h3>
                 </div>
-                <p className="text-xs leading-relaxed flex-1" style={{ color: '#7A7060' }}>
+                <p className="text-xs leading-relaxed flex-1" style={{ color: '#A89880' }}>
                   {t(`other.${key}.desc`)}
                 </p>
               </div>
@@ -349,7 +341,7 @@ export default async function ServicesPage() {
             <p className="text-xs uppercase tracking-widest" style={{ color: '#C9A96E' }}>
               {t('tiers.eyebrow')}
             </p>
-            <h2 className="font-display text-3xl md:text-4xl font-light" style={{ color: '#F0EAD8' }}>
+            <h2 className="font-display text-3xl md:text-4xl font-light" style={{ color: '#F5F0E6' }}>
               {t('tiers.title')}
             </h2>
           </div>
@@ -357,11 +349,15 @@ export default async function ServicesPage() {
             {(['basic', 'professional', 'premium'] as const).map((tier, idx) => (
               <div
                 key={tier}
-                className="public-card-hover rounded-2xl p-7 flex flex-col gap-5"
-                style={{
-                  background: idx === 1 ? '#1A1510' : '#141414',
-                  border: idx === 1 ? '1px solid #C9A96E' : '1px solid #2A2418',
-                }}
+                className={`public-card-hover rounded-xl p-7 flex flex-col gap-5 ${idx === 1 ? '' : 'public-panel'}`}
+                style={
+                  idx === 1
+                    ? {
+                        background: 'linear-gradient(165deg, #1C1710 0%, #14110C 100%)',
+                        border: '1px solid #C9A96E',
+                      }
+                    : undefined
+                }
               >
                 {idx === 1 && (
                   <p className="text-xs uppercase tracking-widest" style={{ color: '#C9A96E' }}>
@@ -369,16 +365,16 @@ export default async function ServicesPage() {
                   </p>
                 )}
                 <div>
-                  <h3 className="font-display text-2xl font-semibold" style={{ color: '#F0EAD8' }}>
+                  <h3 className="font-display text-2xl font-semibold" style={{ color: '#F5F0E6' }}>
                     {t(`tiers.${tier}`)}
                   </h3>
-                  <p className="text-xs mt-1 leading-relaxed" style={{ color: '#7A7060' }}>
+                  <p className="text-xs mt-1 leading-relaxed" style={{ color: '#A89880' }}>
                     {t(`tiers.${tier}Desc`)}
                   </p>
                 </div>
                 <ul className="space-y-2.5 flex-1">
                   {(t.raw(`tiers.${tier}Items`) as string[]).map((item, i) => (
-                    <li key={i} className="flex gap-2.5 text-sm" style={{ color: '#9A8060' }}>
+                    <li key={i} className="flex gap-2.5 text-sm" style={{ color: '#C9B896' }}>
                       <Check size={14} className="shrink-0 mt-0.5" style={{ color: '#C9A96E' }} />
                       {item}
                     </li>
@@ -386,7 +382,7 @@ export default async function ServicesPage() {
                 </ul>
                 <Link
                   href="/register"
-                  className="flex items-center justify-center py-2.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90"
+                  className="flex items-center justify-center py-2.5 rounded-md text-sm font-semibold transition-opacity hover:opacity-90"
                   style={
                     idx === 1
                       ? { background: '#C9A96E', color: '#0C0C0C' }
@@ -401,12 +397,12 @@ export default async function ServicesPage() {
 
           {/* Bottom CTA */}
           <div className="text-center">
-            <p className="text-sm mb-5" style={{ color: '#7A7060' }}>
+            <p className="text-sm mb-5" style={{ color: '#A89880' }}>
               {t('tiers.customNote')}
             </p>
             <Link
               href="/contact"
-              className="inline-flex items-center gap-2 px-8 py-3 rounded-lg text-sm font-semibold transition-all"
+              className="inline-flex items-center gap-2 px-8 py-3 rounded-md text-sm font-semibold transition-all"
               style={{ background: '#C9A96E', color: '#0C0C0C' }}
             >
               {t('getStarted')} <ArrowRight size={14} />

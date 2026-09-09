@@ -44,7 +44,7 @@ export async function generateMetadata({ params }: Omit<Props, 'children'>): Pro
 export default function PublicLayout({ children }: Props) {
   return (
     <div
-      style={{ background: '#0C0C0C', color: '#F0EAD8' }}
+      style={{ background: '#0A0A0A', color: '#F5F0E6' }}
       className="theme-dark flex min-h-screen flex-col"
     >
       <PublicHeader />

@@ -24,42 +24,46 @@ export default function PublicHeader() {
   const [menuOpen, setMenuOpen] = useState(false)
   const locale = (params.locale as string) ?? 'zh'
   const otherLocale = locale === 'zh' ? 'en' : 'zh'
-  const { data: session, status } = useSession()
+  const { status } = useSession()
 
   function switchLocale() {
     const pathWithoutLocale = pathname.replace(/^\/(zh|en)/, '') || '/'
     router.push(pathWithoutLocale, { locale: otherLocale })
   }
 
-  // Determine active path for gold highlight
   const strippedPath = pathname.replace(/^\/(zh|en)/, '') || '/'
 
   return (
     <header
       style={{
-        background: 'rgba(10,10,10,0.92)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        borderBottom: '1px solid #2A2418',
+        background: 'rgba(8,8,8,0.88)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: '1px solid rgba(42,36,24,0.9)',
       }}
       className="sticky top-0 z-50 w-full"
     >
+      <div
+        className="absolute bottom-0 left-0 right-0 h-px pointer-events-none opacity-60"
+        style={{
+          background: 'linear-gradient(90deg, transparent, rgba(201,169,110,0.35), transparent)',
+        }}
+        aria-hidden
+      />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.png" width={26} height={26} alt="6AM Advisory logo mark" />
+        <div className="flex h-[4.25rem] items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5">
+            <Image src="/logo.png" width={28} height={28} alt="6AM Advisory logo mark" />
             <Image
               src="/logo_text.avif"
-              width={110}
+              width={118}
               height={28}
               alt="6AM Advisory"
               style={{ objectFit: 'contain' }}
             />
           </Link>
 
-          {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-1">
             {NAV_LINKS.map(({ href, key }) => {
               const isActive =
                 href === '/' ? strippedPath === '/' : strippedPath.startsWith(href)
@@ -71,7 +75,6 @@ export default function PublicHeader() {
             })}
           </nav>
 
-          {/* Desktop actions */}
           <div className="hidden md:flex items-center gap-3">
             <LocaleToggle label={otherLocale === 'zh' ? '中文' : 'EN'} onClick={switchLocale} />
             {status === 'authenticated' ? (
@@ -90,7 +93,6 @@ export default function PublicHeader() {
             )}
           </div>
 
-          {/* Mobile menu button */}
           <button
             className="md:hidden p-2"
             style={{ color: '#9A8060' }}
@@ -101,7 +103,6 @@ export default function PublicHeader() {
           </button>
         </div>
 
-        {/* Mobile menu */}
         {menuOpen && (
           <div
             style={{ borderTop: '1px solid #2A2418' }}
@@ -114,8 +115,8 @@ export default function PublicHeader() {
                 <Link
                   key={key}
                   href={href}
-                  className="block px-2 py-2 text-sm rounded"
-                  style={{ color: isActive ? '#C9A96E' : '#9A8060' }}
+                  className="block px-2 py-2.5 text-sm rounded"
+                  style={{ color: isActive ? '#C9A96E' : '#A89880' }}
                   onClick={() => setMenuOpen(false)}
                 >
                   {t(key)}
@@ -158,8 +159,6 @@ export default function PublicHeader() {
   )
 }
 
-/* ── Small sub-components ─────────────────────────────────────────────── */
-
 function NavLink({
   href,
   active,
@@ -173,8 +172,11 @@ function NavLink({
   return (
     <Link
       href={href}
-      className="text-sm transition-colors"
-      style={{ color: active || hovered ? '#C9A96E' : '#9A8060' }}
+      className="text-sm px-3 py-1.5 rounded-md transition-colors relative"
+      style={{
+        color: active || hovered ? '#C9A96E' : '#A89880',
+        background: active ? 'rgba(201,169,110,0.08)' : hovered ? 'rgba(201,169,110,0.04)' : 'transparent',
+      }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -188,10 +190,10 @@ function LocaleToggle({ label, onClick }: { label: string; onClick: () => void }
   return (
     <button
       onClick={onClick}
-      className="text-xs px-2 py-1 rounded transition-colors"
+      className="text-xs px-2.5 py-1 rounded-md transition-colors"
       style={{
         border: hovered ? '1px solid #C9A96E' : '1px solid #2A2418',
-        color: hovered ? '#C9A96E' : '#7A7060',
+        color: hovered ? '#C9A96E' : '#8A7A68',
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -215,7 +217,7 @@ function GetStartedButton({
     <Link
       href={href}
       onClick={onClick}
-      className="text-sm font-medium px-4 py-1.5 rounded transition-colors"
+      className="text-sm font-medium px-4 py-2 rounded-md transition-colors"
       style={{
         background: hovered ? '#D4B47A' : '#C9A96E',
         color: '#0C0C0C',

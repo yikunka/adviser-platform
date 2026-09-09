@@ -41,9 +41,25 @@
     "heroTitleHighlight": "6AM Advisory",
     "heroTitleSub": "筑香港之基，成世界之业",
     "heroTitle": "筑香港之基，成世界之业",
-    "heroSubtitle": "您信賴的香港持牌信託及公司服務提供商",
+    "heroSubtitle": "您信賴的香港持牌信託及公司服務提供商——公司成立、秘書、會計及商業顧問一站式支援。",
+    "heroTrustBadge": "持牌 TCSP · 《打擊洗錢條例》第 615 章",
     "heroCtaStart": "立即開始",
-    "heroCtaLearn": "了解更多",
+    "heroCtaLearn": "了解服務",
+    "trustStrip": {
+      "eyebrow": "信任與合規",
+      "licensed": {
+        "title": "持牌 TCSP",
+        "desc": "根據香港《打擊洗錢條例》第 615 章獲授權"
+      },
+      "aml": {
+        "title": "AML / KYC 就緒",
+        "desc": "篩查、風險評估與可審計紀錄"
+      },
+      "hk": {
+        "title": "立足香港",
+        "desc": "本地執行，服務本地與跨境客戶"
+      }
+    },
     "stat": {
       "companies": "企業服務",
       "years": "年行業經驗",
@@ -53,15 +69,47 @@
     "pillars": {
       "secretarial": {
         "title": "公司秘書",
-        "desc": "公司成立、法定申報、周年申報及法定冊維護。"
+        "desc": "公司成立、法定申報、周年申報及法定冊維護。",
+        "bullets": [
+          "可選同日成立",
+          "周年申報與法定冊",
+          "註冊辦事處支援"
+        ]
       },
       "accounting": {
         "title": "會計及稅務",
-        "desc": "簿記、財務報告、報稅及策略性稅務規劃。"
+        "desc": "簿記、財務報告、報稅及策略性稅務規劃。",
+        "bullets": [
+          "簿記與財務報告",
+          "利得稅及申報",
+          "審計協調"
+        ]
       },
       "advisory": {
         "title": "商業顧問",
-        "desc": "跨境市場進入、併購支援及企業重組。"
+        "desc": "跨境市場進入、併購支援及企業重組。",
+        "bullets": [
+          "市場進入規劃",
+          "重組支援",
+          "跨境協調"
+        ]
+      }
+    },
+    "journeyEyebrow": "合規旅程",
+    "journeyTitle": "從開戶到持續監察",
+    "journeyDesc": "對齊持牌 TCSP 實際工作方式——不只是一次性開設公司。",
+    "journey": {
+      "onboard": {
+        "title": "開戶入駐",
+        "desc": "開通客戶門戶，提交公司與自然人資料，啟動服務委託。"
+      },
+      "kyc": {
+        "title": "KYC 與 AML",
+        "desc": "身份核實、制裁篩查與風險評估，合規後方可推進業務。"
+      },
+      "ongoing": {
+        "title": "持續 DDR",
+        "desc": "季度盡職審查，保持活躍公司與已批核自然人檔案最新。"
       }
     },
     "whyEyebrow": "為何選擇我們",
@@ -106,7 +154,7 @@
     "newsTitle": "最新消息",
     "pillarsTitle": "我們的服務",
     "ctaTitle": "準備好開始了嗎？",
-    "ctaDesc": "立即聯絡我們的團隊"
+    "ctaDesc": "立即聯絡我們的團隊，最快一個工作日完成香港公司設立。"
   },
   "services": {
     "title": "我們的服務",

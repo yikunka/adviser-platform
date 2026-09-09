@@ -34,7 +34,7 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
         onClick={() => setOpen(!open)}
         aria-expanded={open}
       >
-        <span className="font-medium text-sm md:text-base pr-2" style={{ color: '#F0EAD8' }}>
+        <span className="font-medium text-sm md:text-base pr-2" style={{ color: '#F5F0E6' }}>
           {question}
         </span>
         <ChevronDown
@@ -44,7 +44,7 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
         />
       </button>
       {open && (
-        <div className="pb-5 text-sm leading-relaxed" style={{ color: '#7A7060' }}>
+        <div className="pb-5 text-sm leading-relaxed" style={{ color: '#A89880' }}>
           {answer}
         </div>
       )}
@@ -80,8 +80,7 @@ export default function FAQList() {
 
       {/* FAQ cards */}
       <div
-        className="rounded-2xl overflow-hidden"
-        style={{ background: '#141414', border: '1px solid #2A2418' }}
+        className="public-panel rounded-xl overflow-hidden"
       >
         <div className="px-5 md:px-8">
           {activeGroupData.keys.map((key) => (

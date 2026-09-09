@@ -431,7 +431,7 @@ html {
   animation: gold-shimmer 4s linear infinite;
 }
 
-/* ── Public hero: ambient motion (no logo) ───────────────────────── */
+/* ── Public hero: ambient motion (restrained fintech) ─────────────── */
 @keyframes hero-orb-drift-a {
   0%,
   100% {
@@ -471,6 +471,32 @@ html {
     background-position: 200% 0;
   }
 }
+@keyframes public-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes public-scan {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.35;
+  }
+  90% {
+    opacity: 0.2;
+  }
+  100% {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+}
 .hero-orb-a {
   animation: hero-orb-drift-a 18s ease-in-out infinite;
 }
@@ -482,14 +508,42 @@ html {
 }
 .hero-perspective-grid {
   background-image:
-    linear-gradient(rgba(201, 169, 110, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(201, 169, 110, 0.04) 1px, transparent 1px);
-  background-size: 56px 56px;
-  transform: perspective(800px) rotateX(12deg) scale(1.15);
+    linear-gradient(rgba(201, 169, 110, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201, 169, 110, 0.055) 1px, transparent 1px);
+  background-size: 48px 48px;
+  transform: perspective(900px) rotateX(14deg) scale(1.2);
   transform-origin: 50% 0%;
-  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 20%, transparent 75%);
-  opacity: 0.7;
+  mask-image: radial-gradient(ellipse 95% 75% at 50% 0%, #000 15%, transparent 78%);
+  opacity: 0.75;
   animation: hero-grid-breathe 24s ease-in-out infinite;
+}
+.hero-fine-grid {
+  background-image:
+    linear-gradient(rgba(240, 234, 216, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(240, 234, 216, 0.03) 1px, transparent 1px);
+  background-size: 16px 16px;
+  mask-image: radial-gradient(ellipse 70% 55% at 50% 35%, #000 10%, transparent 70%);
+  opacity: 0.55;
+}
+.hero-noise {
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  mix-blend-mode: overlay;
+}
+.hero-scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 28%;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(201, 169, 110, 0.04) 45%,
+    transparent 100%
+  );
+  animation: public-scan 14s ease-in-out infinite;
+  pointer-events: none;
 }
 @keyframes hero-grid-breathe {
   0%,
@@ -514,16 +568,33 @@ html {
   opacity: 0.7;
 }
 
+.public-fade-up {
+  animation: public-fade-up 0.7s ease-out both;
+}
+.public-fade-up-delay-1 { animation-delay: 0.08s; }
+.public-fade-up-delay-2 { animation-delay: 0.16s; }
+.public-fade-up-delay-3 { animation-delay: 0.24s; }
+.public-fade-up-delay-4 { animation-delay: 0.32s; }
+
 /* Public site typography */
 .font-display { font-family: var(--font-display), 'Georgia', serif; }
 
 /* Public site hover utilities (CSS-only, safe in Server Components) */
 .public-card-hover {
-  transition: border-color 200ms, box-shadow 200ms;
+  transition: border-color 220ms ease, box-shadow 220ms ease, transform 220ms ease, background-color 220ms ease;
 }
 .public-card-hover:hover {
-  border-color: #C9A96E !important;
-  box-shadow: 0 0 0 1px rgba(201,169,110,0.2), 0 4px 24px rgba(201,169,110,0.08);
+  border-color: rgba(201, 169, 110, 0.55) !important;
+  box-shadow: 0 0 0 1px rgba(201,169,110,0.12), 0 8px 32px rgba(0,0,0,0.35), 0 0 40px rgba(201,169,110,0.06);
+  transform: translateY(-2px);
+}
+.public-panel {
+  background: linear-gradient(165deg, #161410 0%, #12100C 55%, #0E0C0A 100%);
+  border: 1px solid #2A2418;
+}
+.public-section-rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #2A2418 15%, rgba(201,169,110,0.25) 50%, #2A2418 85%, transparent);
 }
 .public-link-hover {
   transition: color 150ms;

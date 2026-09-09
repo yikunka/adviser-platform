@@ -56,7 +56,7 @@ export default function ContactForm() {
       <div>
         <h2
           className="text-xl font-semibold font-display tracking-tight mb-6"
-          style={{ color: '#F0EAD8' }}
+          style={{ color: '#F5F0E6' }}
         >
           {t('formTitle')}
         </h2>
@@ -71,7 +71,7 @@ export default function ContactForm() {
             <p className="font-medium" style={{ color: '#C9A96E' }}>
               {t('sentSuccess')}
             </p>
-            <p className="text-sm mt-1" style={{ color: '#7A7060' }}>
+            <p className="text-sm mt-1" style={{ color: '#A89880' }}>
               {t('sentDesc')}
             </p>
           </div>
@@ -141,7 +141,7 @@ export default function ContactForm() {
       <div className="space-y-6">
         <h2
           className="text-xl font-semibold font-display tracking-tight"
-          style={{ color: '#F0EAD8' }}
+          style={{ color: '#F5F0E6' }}
         >
           {t('officeTitle')}
         </h2>
@@ -151,13 +151,13 @@ export default function ContactForm() {
         />
         <dl className="space-y-5 text-sm">
           <div>
-            <dt className="text-xs uppercase tracking-wider mb-1" style={{ color: '#7A7060' }}>
+            <dt className="text-xs uppercase tracking-wider mb-1" style={{ color: '#8A7A68' }}>
               {t('address')}
             </dt>
-            <dd style={{ color: '#9A8060' }}>{t('addressValue')}</dd>
+            <dd style={{ color: '#C9B896' }}>{t('addressValue')}</dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wider mb-1" style={{ color: '#7A7060' }}>
+            <dt className="text-xs uppercase tracking-wider mb-1" style={{ color: '#8A7A68' }}>
               {t('phone')}
             </dt>
             <dd>
@@ -171,7 +171,7 @@ export default function ContactForm() {
             </dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wider mb-1" style={{ color: '#7A7060' }}>
+            <dt className="text-xs uppercase tracking-wider mb-1" style={{ color: '#8A7A68' }}>
               {t('emailLabel')}
             </dt>
             <dd>
@@ -185,10 +185,10 @@ export default function ContactForm() {
             </dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wider mb-1" style={{ color: '#7A7060' }}>
+            <dt className="text-xs uppercase tracking-wider mb-1" style={{ color: '#8A7A68' }}>
               {t('hours')}
             </dt>
-            <dd style={{ color: '#9A8060' }}>{t('hoursValue')}</dd>
+            <dd style={{ color: '#C9B896' }}>{t('hoursValue')}</dd>
           </div>
         </dl>
       </div>

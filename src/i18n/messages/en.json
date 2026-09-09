@@ -42,8 +42,24 @@
     "heroTitleSub": "Build on HK, Grow to the World",
     "heroTitle": "Build on HK, Grow to the World",
     "heroSubtitle": "Your trusted Hong Kong TCSP partner for company formation, secretarial, accounting and business advisory services.",
+    "heroTrustBadge": "Licensed TCSP · AMLO Cap. 615",
     "heroCtaStart": "Get Started",
-    "heroCtaLearn": "Learn More",
+    "heroCtaLearn": "Our Services",
+    "trustStrip": {
+      "eyebrow": "Trust & Compliance",
+      "licensed": {
+        "title": "Licensed TCSP",
+        "desc": "Authorised under Hong Kong AMLO Cap. 615"
+      },
+      "aml": {
+        "title": "AML & KYC Ready",
+        "desc": "Screening, risk assessment and audit trail"
+      },
+      "hk": {
+        "title": "Hong Kong Based",
+        "desc": "Local execution for local and cross-border clients"
+      }
+    },
     "stat": {
       "companies": "Client Companies",
       "years": "Years of Experience",
@@ -53,15 +69,47 @@
     "pillars": {
       "secretarial": {
         "title": "Company Secretarial",
-        "desc": "Company incorporation, statutory filings, annual returns and register maintenance."
+        "desc": "Company incorporation, statutory filings, annual returns and register maintenance.",
+        "bullets": [
+          "Same-day incorporation options",
+          "Annual returns & registers",
+          "Registered office support"
+        ]
       },
       "accounting": {
         "title": "Accounting & Tax",
-        "desc": "Bookkeeping, financial reporting, tax filing and strategic tax planning."
+        "desc": "Bookkeeping, financial reporting, tax filing and strategic tax planning.",
+        "bullets": [
+          "Bookkeeping & reporting",
+          "Profits tax & filings",
+          "Audit coordination"
+        ]
       },
       "advisory": {
         "title": "Business Advisory",
-        "desc": "Cross-border market entry, M&A support and corporate restructuring."
+        "desc": "Cross-border market entry, M&A support and corporate restructuring.",
+        "bullets": [
+          "Market entry planning",
+          "Restructuring support",
+          "Cross-border coordination"
+        ]
+      }
+    },
+    "journeyEyebrow": "Compliance Journey",
+    "journeyTitle": "From onboarding to ongoing oversight",
+    "journeyDesc": "A clear path that mirrors how regulated TCSP work actually runs — not just a one-off setup.",
+    "journey": {
+      "onboard": {
+        "title": "Onboard",
+        "desc": "Open your client portal, submit company and person details, and start the service engagement."
+      },
+      "kyc": {
+        "title": "KYC & AML",
+        "desc": "Identity verification, sanctions screening and risk assessment before engagement proceeds."
+      },
+      "ongoing": {
+        "title": "Ongoing DDR",
+        "desc": "Quarterly due diligence reviews keep files current for active companies and approved persons."
       }
     },
     "whyEyebrow": "Why 6AM Advisory",
