@@ -268,8 +268,8 @@ export default function ProjectsPage() {
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--muted-foreground)' }}>
                   <th className="px-4 py-3 text-left font-medium">项目号</th>
-                  <th className="px-4 py-3 text-left font-medium">项目</th>
                   <th className="px-4 py-3 text-left font-medium">客户</th>
+                  <th className="px-4 py-3 text-left font-medium">项目</th>
                   <th className="px-4 py-3 text-left font-medium">类型</th>
                   <th className="px-4 py-3 text-left font-medium">周期</th>
                   <th className="px-4 py-3 text-left font-medium">状态</th>
@@ -285,16 +285,16 @@ export default function ProjectsPage() {
                         {project.projectNumber}
                       </Link>
                     </td>
-                    <td className="px-4 py-3">
-                      <Link href={`/admin/projects/${project.id}`} className="font-medium hover:underline" style={{ color: 'var(--foreground)' }}>
-                        {project.title}
-                      </Link>
-                    </td>
                     <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
                       <span className="mr-1 text-[10px] uppercase tracking-wide opacity-70">
                         {project.customerType === 'INDIVIDUAL' ? '自然人' : '公司'}
                       </span>
                       {clientLabel(project)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Link href={`/admin/projects/${project.id}`} className="font-medium hover:underline" style={{ color: 'var(--foreground)' }}>
+                        {project.title}
+                      </Link>
                     </td>
                     <td className="px-4 py-3">{PROJECT_TYPE_LABELS[project.projectType]}</td>
                     <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>
