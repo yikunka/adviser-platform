@@ -129,50 +129,94 @@ export default function HomePage() {
                   {t('heroCtaLearn')}
                 </Link>
               </div>
+
+              {/* Mobile cyber visual */}
+              <div className="public-fade-up public-fade-up-delay-4 md:hidden relative mt-4 rounded-sm overflow-hidden aspect-[16/10] border" style={{ borderColor: 'rgba(201,169,110,0.28)' }}>
+                <Image
+                  src="/marketing/hero-tcsp-cyber.png"
+                  alt=""
+                  fill
+                  sizes="100vw"
+                  className="object-cover object-center"
+                />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: 'linear-gradient(180deg, transparent 30%, rgba(6,6,6,0.75) 100%)',
+                  }}
+                />
+                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+                  <span className="font-mono-public text-[10px] uppercase tracking-[0.22em]" style={{ color: '#C9A96E' }}>
+                    TCSP · AML · DDR
+                  </span>
+                  <span className="flex items-center gap-2 font-mono-public text-[10px]" style={{ color: '#C9A96E' }}>
+                    <span className="public-pulse-dot" />
+                    LIVE
+                  </span>
+                </div>
+              </div>
             </div>
 
-            {/* Right: live compliance console (visual anchor) */}
+            {/* Right: TCSP cyber visual + compliance console */}
             <div className="public-fade-up public-fade-up-delay-2 hidden md:block">
-              <div className="public-console relative rounded-sm p-5 md:p-6 overflow-hidden">
-                <div
-                  className="absolute -top-20 -right-16 w-56 h-56 rounded-full blur-3xl public-console-live"
-                  style={{ background: 'rgba(201,169,110,0.14)' }}
-                  aria-hidden
-                />
-                <div className="relative space-y-5">
-                  <div className="flex items-center justify-between">
-                    <p className="font-mono-public text-[10px] uppercase tracking-[0.28em]" style={{ color: '#8A7A68' }}>
-                      Compliance Console
-                    </p>
-                    <span className="flex items-center gap-2 font-mono-public text-[10px]" style={{ color: '#C9A96E' }}>
-                      <span className="public-pulse-dot" />
-                      LIVE
-                    </span>
-                  </div>
-
-                  <ConsoleRow label="TCSP Licence" value="ACTIVE" ok />
-                  <ConsoleRow label="AMLO Cap. 615" value="COMPLIANT" ok />
-                  <ConsoleRow label="KYC / AML Gate" value="SCREENING" />
-                  <ConsoleRow label="Quarterly DDR" value="ON TRACK" ok />
-
+              <div className="public-console relative rounded-sm overflow-hidden">
+                <div className="relative aspect-[4/5] w-full">
+                  <Image
+                    src="/marketing/hero-tcsp-cyber.png"
+                    alt="Professional TCSP compliance and cyber security visual"
+                    fill
+                    priority
+                    sizes="(max-width: 1024px) 50vw, 420px"
+                    className="object-cover object-center"
+                  />
                   <div
-                    className="pt-4 mt-1 grid grid-cols-3 gap-3 border-t"
-                    style={{ borderColor: 'rgba(42,36,24,0.9)' }}
-                  >
-                    {[
-                      { v: '500+', l: t('stat.companies') },
-                      { v: '15+', l: t('stat.years') },
-                      { v: 'TCSP', l: t('stat.license') },
-                    ].map((s) => (
-                      <div key={s.v}>
-                        <p className="font-display text-xl font-semibold" style={{ color: '#C9A96E' }}>
-                          {s.v}
-                        </p>
-                        <p className="text-[10px] uppercase tracking-wider mt-0.5 leading-snug" style={{ color: '#7A6E5E' }}>
-                          {s.l}
-                        </p>
-                      </div>
-                    ))}
+                    className="absolute inset-0"
+                    style={{
+                      background:
+                        'linear-gradient(180deg, rgba(6,6,6,0.15) 0%, rgba(6,6,6,0.25) 40%, rgba(6,6,6,0.92) 78%, #080808 100%)',
+                    }}
+                  />
+                  <div
+                    className="absolute -top-16 -right-12 w-48 h-48 rounded-full blur-3xl public-console-live"
+                    style={{ background: 'rgba(201,169,110,0.16)' }}
+                    aria-hidden
+                  />
+
+                  <div className="absolute inset-x-0 bottom-0 p-5 md:p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="font-mono-public text-[10px] uppercase tracking-[0.28em]" style={{ color: '#A89880' }}>
+                        Compliance Console
+                      </p>
+                      <span className="flex items-center gap-2 font-mono-public text-[10px]" style={{ color: '#C9A96E' }}>
+                        <span className="public-pulse-dot" />
+                        LIVE
+                      </span>
+                    </div>
+
+                    <ConsoleRow label="TCSP Licence" value="ACTIVE" ok />
+                    <ConsoleRow label="AMLO Cap. 615" value="COMPLIANT" ok />
+                    <ConsoleRow label="KYC / AML Gate" value="SCREENING" />
+                    <ConsoleRow label="Quarterly DDR" value="ON TRACK" ok />
+
+                    <div
+                      className="pt-3 grid grid-cols-3 gap-3 border-t"
+                      style={{ borderColor: 'rgba(42,36,24,0.9)' }}
+                    >
+                      {[
+                        { v: '500+', l: t('stat.companies') },
+                        { v: '15+', l: t('stat.years') },
+                        { v: 'TCSP', l: t('stat.license') },
+                      ].map((s) => (
+                        <div key={s.v}>
+                          <p className="font-display text-xl font-semibold" style={{ color: '#C9A96E' }}>
+                            {s.v}
+                          </p>
+                          <p className="text-[10px] uppercase tracking-wider mt-0.5 leading-snug" style={{ color: '#7A6E5E' }}>
+                            {s.l}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
