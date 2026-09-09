@@ -36,31 +36,6 @@ async function checkAnnualReturnDeadlines() {
   }
 }
 
-function appBaseUrl() {
-  const url = (
-    process.env['NEXT_PUBLIC_APP_URL']
-    ?? process.env['AUTH_URL']
-    ?? process.env['NEXTAUTH_URL']
-    ?? `http://localhost:${process.env['PORT'] ?? '3000'}`
-  ).trim()
-  return url.replace(/\/$/, '')
-}
-
-async function runMonthlyDdrCronRoute(): Promise<{ generated: number; skipped: number; errors: string[] }> {
-  const headers: Record<string, string> = {}
-  if (process.env['CRON_SECRET']) headers['x-cron-secret'] = process.env['CRON_SECRET']
-
-  const res = await fetch(`${appBaseUrl()}/api/cron/ddr-monthly`, {
-    method: 'POST',
-    headers,
-  })
-  const data = await res.json().catch(() => null)
-  if (!res.ok) {
-    throw new Error(data?.error || `Monthly DDR route failed with HTTP ${res.status}`)
-  }
-  return data
-}
-
 export function startAMLScheduler() {
   if (started) return
   started = true
@@ -84,16 +59,8 @@ export function startAMLScheduler() {
     }
   }, { timezone: 'UTC' })
 
-  cron.schedule('0 0 1 * *', async () => {
-    console.log('[Scheduler] Starting monthly DDR generation')
-    try {
-      const result = await runMonthlyDdrCronRoute()
-      console.log(`[Scheduler] Monthly DDR complete. Generated: ${result.generated}. Skipped: ${result.skipped}. Errors: ${result.errors.length}`)
-      for (const error of result.errors) console.error('[Scheduler] Monthly DDR error:', error)
-    } catch (err) {
-      console.error('[Scheduler] Monthly DDR job failed:', err)
-    }
-  }, { timezone: 'Asia/Hong_Kong' })
+  // Monthly auto DDR generation removed: staff generate DDR manually each calendar quarter
+  // (dashboard reminders + KYC approve requires current-quarter PERSON_DDR).
 
   // Run separately so an AML failure never skips private design-file cleanup.
   cron.schedule('5 18 * * *', async () => {
@@ -105,5 +72,5 @@ export function startAMLScheduler() {
     }
   }, { timezone: 'UTC' })
 
-  console.log('[Scheduler] Scheduled daily job at 02:00 HKT and monthly DDR at 00:00 HKT on day 1')
+  console.log('[Scheduler] Scheduled daily job at 02:00 HKT; quarterly DDR is manual (dashboard reminders)')
 }

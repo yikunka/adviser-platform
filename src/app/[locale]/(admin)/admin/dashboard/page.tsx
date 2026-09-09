@@ -8,6 +8,11 @@ import {
   computeEffectiveAdminMenus,
   type AdminMenuKey,
 } from '@/lib/auth/admin-access'
+import {
+  calendarQuarterRange,
+  listDdrComplianceTodos,
+  type DdrTodoItem,
+} from '@/lib/docgen/ddr-quarter'
 
 const moduleStyles = {
   adviser: {
@@ -89,8 +94,10 @@ export default async function AdminDashboardPage() {
   const showSfs = SFS_MENU_KEYS.some(key => canSee(key))
   const canOrders = canSee('sfsOrders')
   const canInvoices = canSee('sfsInvoices')
+  const showDdrTodos = canSee('companies') || canSee('kyc')
+  const quarter = calendarQuarterRange(today)
 
-  const [totalCompanies, pendingKyc, amlAlerts, upcomingAR] = await Promise.all([
+  const [totalCompanies, pendingKyc, amlAlerts, upcomingAR, ddrTodosRaw] = await Promise.all([
     prisma.company.count({ where: { status: 'ACTIVE' } }),
     prisma.keyPerson.count({ where: { kycStatus: 'SUBMITTED' } }),
     prisma.aMLAlert.count({ where: { resolution: 'PENDING' } }),
@@ -104,13 +111,27 @@ export default async function AdminDashboardPage() {
         company: { status: 'ACTIVE' },
       },
     }),
+    showDdrTodos ? listDdrComplianceTodos(today, 30) : Promise.resolve([] as DdrTodoItem[]),
   ])
+
+  const ddrTodos = ddrTodosRaw.filter(item => {
+    if (item.subjectType === 'COMPANY') return canSee('companies')
+    return canSee('kyc')
+  })
+  const ddrDueCount = ddrTodos.filter(i => i.kind === 'ddr_due').length
+  const ddrOverdueCount = ddrTodos.filter(i => i.kind === 'ddr_overdue').length
 
   const adviserStats = [
     { label: t('totalCompanies'), value: totalCompanies, href: '/admin/companies', accent: '#38bdf8' },
     { label: t('pendingKyc'), value: pendingKyc, href: '/admin/kyc', accent: '#f59e0b' },
     { label: t('amlAlerts'), value: amlAlerts, href: '/admin/aml', accent: '#ef4444' },
     { label: t('upcomingAR'), value: upcomingAR, href: '/admin/companies', accent: '#10b981' },
+    ...(showDdrTodos
+      ? [
+          { label: t('ddrDueQuarter', { quarter: quarter.label }), value: ddrDueCount, href: '/admin/dashboard', accent: '#f59e0b' },
+          { label: t('ddrOverdue'), value: ddrOverdueCount, href: '/admin/dashboard', accent: '#ef4444' },
+        ]
+      : []),
   ]
 
   let sfsTodos: SfsTodoItem[] = []
@@ -327,8 +348,8 @@ export default async function AdminDashboardPage() {
             {t('adviser.viewCompanies')}
           </Link>
         </CardHeader>
-        <CardContent>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <CardContent className="space-y-5">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             {adviserStats.map(({ label, value, href, accent }) => (
               <Link
                 key={label}
@@ -342,6 +363,52 @@ export default async function AdminDashboardPage() {
               </Link>
             ))}
           </div>
+
+          {showDdrTodos && (
+            <div>
+              <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--foreground)' }}>
+                {t('ddrTodoTitle', { quarter: quarter.label })}
+              </h3>
+              <p className="text-xs mb-3" style={{ color: 'var(--muted-foreground)' }}>
+                {t('ddrTodoHint')}
+              </p>
+              {ddrTodos.length === 0 ? (
+                <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>{t('ddrTodoEmpty')}</p>
+              ) : (
+                <ul className="divide-y divide-[#1E3A4C] rounded-lg overflow-hidden" style={{ border: '1px solid #1E3A4C' }}>
+                  {ddrTodos.map(item => (
+                    <li key={item.id}>
+                      <Link
+                        href={item.href}
+                        className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 px-4 py-3 text-sm transition-colors hover:bg-[#0B1D22]"
+                      >
+                        <span
+                          className="inline-flex w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                          style={{
+                            background: item.kind === 'ddr_overdue' ? 'rgba(239,68,68,0.14)' : 'rgba(245,158,11,0.14)',
+                            color: item.kind === 'ddr_overdue' ? '#ef4444' : '#f59e0b',
+                          }}
+                        >
+                          {item.kind === 'ddr_overdue' ? t('ddrBadgeOverdue') : t('ddrBadgeDue')}
+                        </span>
+                        <span
+                          className="inline-flex w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                          style={{ background: 'rgba(56,189,248,0.12)', color: '#38bdf8' }}
+                        >
+                          {item.subjectType === 'COMPANY' ? t('ddrSubjectCompany') : t('ddrSubjectPerson')}
+                        </span>
+                        <span className="font-medium" style={{ color: 'var(--foreground)' }}>{item.title}</span>
+                        <span className="sm:flex-1" style={{ color: 'var(--muted-foreground)' }}>{item.detail}</span>
+                        <span className="whitespace-nowrap text-xs" style={{ color: '#5A7A8A' }}>
+                          {item.at.toLocaleDateString()}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

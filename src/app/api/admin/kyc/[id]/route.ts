@@ -6,6 +6,7 @@ import { createNotification } from '@/lib/notifications'
 import { nextKycCode } from '@/lib/kyc/kyc-code'
 import { kycPersonDraftZod, inputToKeyPersonAdminUpdate } from '@/lib/kyc/personZod'
 import { getRelatedCompaniesForKeyPerson } from '@/lib/kyc/relatedCompanies'
+import { assertPersonDdrForApproval } from '@/lib/docgen/ddr-quarter'
 import { z } from 'zod'
 
 const statusSchema = z.enum(['DRAFT', 'SUBMITTED', 'PENDING_INFO', 'APPROVED', 'REJECTED'])
@@ -96,6 +97,17 @@ export async function PATCH(
 
     const { action, reason } = parsed.data
 
+    if (action === 'APPROVE') {
+      try {
+        await assertPersonDdrForApproval(id)
+      } catch (err) {
+        return NextResponse.json(
+          { error: err instanceof Error ? err.message : 'PERSON_DDR required before approve' },
+          { status: 400 },
+        )
+      }
+    }
+
     const statusMap = {
       APPROVE: 'APPROVED',
       REJECT: 'REJECTED',
@@ -168,6 +180,16 @@ export async function PATCH(
       updateData.kycCode = await nextKycCode()
     }
     if (parsed.data.kycStatus === 'APPROVED') {
+      if (before.kycStatus !== 'APPROVED') {
+        try {
+          await assertPersonDdrForApproval(id)
+        } catch (err) {
+          return NextResponse.json(
+            { error: err instanceof Error ? err.message : 'PERSON_DDR required before approve' },
+            { status: 400 },
+          )
+        }
+      }
       updateData.kycApprovedById = before.kycApprovedById ?? session!.user.id
       updateData.kycApprovedAt = before.kycApprovedAt ?? new Date()
       updateData.kycRejectionReason = null
