@@ -336,7 +336,7 @@
     },
     "officeTitle": "Our Office",
     "address": "Address",
-    "addressValue": "Unit 7, 20/F, Boss Commercial Centre, 28 Ferry Street, Jordan, Kowloon, Hong Kong",
+    "addressValue": "Unit 7, 20/F, Boss Commercial Centre, 28 Ferry Street, Yau Ma Tei, Kowloon, Hong Kong",
     "phone": "Phone",
     "phoneValue": "+852 6560 0073",
     "email": "Email",
@@ -361,7 +361,7 @@
     "sentError": "Failed to send. Please try again or email us directly.",
     "officeTitle": "Office Details",
     "address": "Address",
-    "addressValue": "Unit 7, 20/F, Boss Commercial Centre, 28 Ferry Street, Jordan, Kowloon, Hong Kong",
+    "addressValue": "Unit 7, 20/F, Boss Commercial Centre, 28 Ferry Street, Yau Ma Tei, Kowloon, Hong Kong",
     "phoneValue": "+852 6560 0073",
     "emailLabel": "Email",
     "emailValue": "kennywong@6amadvise.com",
@@ -397,7 +397,7 @@
       },
       "address": {
         "q": "Can I use a virtual office address?",
-        "a": "Yes. Our Premium tier includes a registered address service at our Jordan office for statutory purposes."
+        "a": "Yes. Our Premium tier includes a registered address service at our Yau Ma Tei office for statutory purposes."
       },
       "aml": {
         "q": "What is AML screening and why is it required?",
@@ -1331,7 +1331,7 @@
     "about": "About",
     "contact": "Contact",
     "faq": "FAQ",
-    "address": "Unit 7, 20/F, Boss Commercial Centre, 28 Ferry Street, Jordan, Kowloon, HK",
+    "address": "Unit 7, 20/F, Boss Commercial Centre, 28 Ferry Street, Yau Ma Tei, Kowloon, HK",
     "phone": "+852 6560 0073",
     "email": "kennywong@6amadvise.com",
     "hours": "Mon–Fri 09:00–18:00",

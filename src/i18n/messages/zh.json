@@ -336,7 +336,7 @@
     },
     "officeTitle": "辦公室",
     "address": "地址",
-    "addressValue": "香港九龍佐敦渡船街28號Boss Commercial Centre 20樓7室",
+    "addressValue": "香港九龍油麻地渡船街28號寶時商業中心20樓7室",
     "phone": "電話",
     "phoneValue": "+852 6560 0073",
     "email": "電郵",
@@ -361,7 +361,7 @@
     "sentError": "發送失敗，請重試或直接發送電郵。",
     "officeTitle": "辦公室詳情",
     "address": "地址",
-    "addressValue": "香港九龍佐敦渡船街28號Boss Commercial Centre 20樓7室",
+    "addressValue": "香港九龍油麻地渡船街28號寶時商業中心20樓7室",
     "phoneValue": "+852 6560 0073",
     "emailLabel": "電郵",
     "emailValue": "kennywong@6amadvise.com",
@@ -397,7 +397,7 @@
       },
       "address": {
         "q": "我可以使用虛擬辦公室地址嗎？",
-        "a": "可以。我們的高級方案包含在佐敦辦公室的註冊地址服務，用於法定用途。"
+        "a": "可以。我們的高級方案包含在油麻地辦公室的註冊地址服務，用於法定用途。"
       },
       "aml": {
         "q": "什麼是AML篩查，為什麼需要？",
@@ -1331,7 +1331,7 @@
     "about": "關於我們",
     "contact": "聯絡我們",
     "faq": "常見問題",
-    "address": "香港九龍佐敦渡船街28號Boss Commercial Centre 20樓7室",
+    "address": "香港九龍油麻地渡船街28號寶時商業中心20樓7室",
     "phone": "+852 6560 0073",
     "email": "kennywong@6amadvise.com",
     "hours": "星期一至五 09:00–18:00",
