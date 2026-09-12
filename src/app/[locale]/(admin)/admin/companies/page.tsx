@@ -4,6 +4,11 @@ import { useEffect, useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { COMPANY_STATUS_LABELS } from '@/lib/company/company-status'
+import {
+  COMPANY_JURISDICTIONS,
+  COMPANY_JURISDICTION_LABELS_ZH,
+  companyJurisdictionLabelZh,
+} from '@/lib/company/jurisdiction'
 import { Link, useRouter } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +20,7 @@ type Company = {
   nameEn: string
   nameZh?: string
   companyNumber: string
+  companyType?: string | null
   status: string
   serviceTier?: string
   financialEnabled: boolean
@@ -45,6 +51,7 @@ export default function CompaniesPage() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
+  const [jurisdiction, setJurisdiction] = useState('')
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
   const [updatingFinancialId, setUpdatingFinancialId] = useState<string | null>(null)
@@ -53,6 +60,7 @@ export default function CompaniesPage() {
     setLoading(true)
     try {
       const params = new URLSearchParams({ q: search, page: String(page) })
+      if (jurisdiction) params.set('jurisdiction', jurisdiction)
       const res = await fetch(`/api/admin/companies?${params}`)
       const json = await res.json()
       setCompanies(json.companies ?? [])
@@ -62,7 +70,7 @@ export default function CompaniesPage() {
     } finally {
       setLoading(false)
     }
-  }, [search, page])
+  }, [search, jurisdiction, page])
 
   async function toggleFinancialModule(company: Company, enabled: boolean) {
     const previous = company.financialEnabled
@@ -97,13 +105,33 @@ export default function CompaniesPage() {
         </Link>
       </div>
 
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap items-center">
         <Input
           placeholder={t('search')}
           value={search}
           onChange={e => { setSearch(e.target.value); setPage(1) }}
           className="max-w-xs"
         />
+        <select
+          value={jurisdiction}
+          onChange={e => { setJurisdiction(e.target.value); setPage(1) }}
+          aria-label={t('jurisdictionFilter')}
+          className="h-9 rounded-md px-3 text-sm"
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border-subtle)',
+            color: 'var(--foreground)',
+            outline: 'none',
+            minWidth: '9rem',
+          }}
+        >
+          <option value="" style={{ background: 'var(--surface-raised)' }}>{t('jurisdictionAll')}</option>
+          {COMPANY_JURISDICTIONS.map(j => (
+            <option key={j} value={j} style={{ background: 'var(--surface-raised)' }}>
+              {COMPANY_JURISDICTION_LABELS_ZH[j]}
+            </option>
+          ))}
+        </select>
       </div>
 
       <Card>
@@ -140,8 +168,24 @@ export default function CompaniesPage() {
                 >
                   <td className="px-4 py-3 font-semibold" style={{ color: '#C9A96E' }}>{c.companyCode ?? '—'}</td>
                   <td className="px-4 py-3">
-                    <p className="font-medium" style={{ color: 'var(--foreground)' }}>{c.nameEn}</p>
-                    {c.nameZh && <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{c.nameZh}</p>}
+                    <div className="flex items-start gap-2">
+                      {companyJurisdictionLabelZh(c.companyType) ? (
+                        <span
+                          className="mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none"
+                          style={{
+                            background: 'rgba(56,189,248,0.12)',
+                            color: '#38bdf8',
+                            border: '1px solid rgba(56,189,248,0.28)',
+                          }}
+                        >
+                          {companyJurisdictionLabelZh(c.companyType)}
+                        </span>
+                      ) : null}
+                      <div className="min-w-0">
+                        <p className="font-medium" style={{ color: 'var(--foreground)' }}>{c.nameEn}</p>
+                        {c.nameZh && <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{c.nameZh}</p>}
+                      </div>
+                    </div>
                   </td>
                   <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>{c.companyNumber}</td>
                   <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>

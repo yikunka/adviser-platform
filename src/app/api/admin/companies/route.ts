@@ -61,6 +61,7 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get('q') ?? ''
   const page = parseInt(searchParams.get('page') ?? '1')
   const requestedLimit = parseInt(searchParams.get('limit') ?? '20')
+  const jurisdiction = searchParams.get('jurisdiction') ?? ''
   const limit = Number.isFinite(requestedLimit)
     ? Math.min(Math.max(requestedLimit, 1), searchParams.get('picker') === '1' ? 500 : 100)
     : 20
@@ -69,9 +70,14 @@ export async function GET(req: NextRequest) {
   const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
 
   const accessFilter = buildCompanyAccessWhere(access)
+  const jurisdictionFilter =
+    jurisdiction && (COMPANY_JURISDICTIONS as readonly string[]).includes(jurisdiction)
+      ? { companyType: jurisdiction }
+      : {}
   const where = {
     deletedAt: null as null,
     ...(accessFilter ?? {}),
+    ...jurisdictionFilter,
     ...(search
       ? {
           OR: [
@@ -98,6 +104,7 @@ export async function GET(req: NextRequest) {
           nameZh: true,
           companyCode: true,
           companyNumber: true,
+          companyType: true,
           registeredAddress: true,
           status: true,
         },
@@ -107,7 +114,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ companies, total, page, limit })
   }
 
-  const useLegacySort = !search && access.kind === 'all'
+  const useLegacySort = !search && !jurisdictionFilter.companyType && access.kind === 'all'
 
   async function withUbos<T extends { id: string }>(companies: T[]) {
     if (companies.length === 0) return companies.map(c => ({ ...c, ubos: [] as Array<{ nameEn: string; nameZh: string | null; effectivePercent: number }> }))
