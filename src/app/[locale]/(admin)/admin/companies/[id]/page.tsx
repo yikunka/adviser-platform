@@ -864,36 +864,108 @@ function KycLinkPicker({
   value,
   onSelect,
   prefillOnSelect = true,
+  disabled = false,
 }: {
   persons: KycPerson[]
   value: string
   onSelect: (person: KycPerson | null) => void
   prefillOnSelect?: boolean
+  disabled?: boolean
 }) {
-  if (persons.length === 0) return null
+  const [search, setSearch] = useState('')
+  const linked = persons.find(p => p.id === value) ?? null
+  const q = search.trim().toLowerCase()
+  const filtered = q
+    ? persons.filter(p => {
+        const hay = `${p.nameEn} ${p.nameZh ?? ''} ${p.idNumber ?? ''} ${p.kycStatus}`.toLowerCase()
+        return hay.includes(q)
+      })
+    : persons
 
   function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const id = e.target.value
     const person = persons.find(p => p.id === id) ?? null
     onSelect(person)
+    if (person) setSearch('')
   }
 
   return (
-    <div className="rounded-lg p-3 mb-1" style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-subtle)' }}>
-      <label style={{ ...labelStyle, color: 'var(--gold)' }}>
-        {prefillOnSelect ? '关联 KYC 人员' : 'Linked KYC person'}
-      </label>
-      <select value={value} onChange={handleChange} style={fieldStyle}>
-        <option value="" style={{ background: 'var(--surface-raised)' }}>— 暂不关联 KYC —</option>
-        {persons.map(p => (
+    <div
+      className="rounded-lg p-3 mb-1"
+      style={{
+        background: 'var(--surface-panel)',
+        border: linked
+          ? '1px solid color-mix(in srgb, var(--gold) 55%, var(--border-subtle))'
+          : '1px solid var(--border-subtle)',
+        opacity: disabled ? 0.55 : 1,
+        pointerEvents: disabled ? 'none' : undefined,
+      }}
+    >
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <label style={{ ...labelStyle, color: 'var(--gold)', marginBottom: 0 }}>
+          {prefillOnSelect ? '关联 KYC 人员' : 'Linked KYC person'}
+        </label>
+        {linked && (
+          <span
+            className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
+            style={{ background: 'rgba(201,169,110,0.16)', color: 'var(--gold)', border: '1px solid rgba(201,169,110,0.35)' }}
+          >
+            Linked
+          </span>
+        )}
+      </div>
+
+      {linked && (
+        <div
+          className="mb-2 rounded-md px-2.5 py-2 flex items-start justify-between gap-2"
+          style={{ background: 'color-mix(in srgb, var(--gold) 10%, var(--surface))', border: '1px solid rgba(201,169,110,0.28)' }}
+        >
+          <div className="min-w-0">
+            <p className="text-sm font-medium truncate" style={{ color: 'var(--foreground)' }}>
+              {linked.nameEn}{linked.nameZh ? ` (${linked.nameZh})` : ''}
+            </p>
+            <p className="text-[11px]" style={{ color: 'var(--muted-foreground)' }}>
+              KYC · {linked.kycStatus}{linked.idNumber ? ` · ${linked.idNumber}` : ''}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="text-xs shrink-0 hover:underline"
+            style={{ color: '#ef4444' }}
+            onClick={() => onSelect(null)}
+          >
+            Unlink
+          </button>
+        </div>
+      )}
+
+      <Input
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        placeholder="Search name / ID / status…"
+        style={{ ...fieldStyle, marginBottom: 8 }}
+        disabled={disabled}
+      />
+      <select value={value} onChange={handleChange} style={fieldStyle} disabled={disabled}>
+        <option value="" style={{ background: 'var(--surface-raised)' }}>
+          {linked ? '— Change linked KYC —' : '— 暂不关联 KYC —'}
+        </option>
+        {filtered.map(p => (
           <option key={p.id} value={p.id} style={{ background: 'var(--surface-raised)' }}>
             {p.nameEn}{p.nameZh ? ` (${p.nameZh})` : ''} · {p.kycStatus}
           </option>
         ))}
       </select>
-      <p className="text-[11px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
-        保存后可随时更改关联；若 KYC 尚未建立，可先保存登记册资料。
-      </p>
+      {filtered.length === 0 && (
+        <p className="text-[11px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
+          {persons.length === 0 ? 'No KYC persons available.' : 'No matches for this search.'}
+        </p>
+      )}
+      {filtered.length > 0 && (
+        <p className="text-[11px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
+          保存后可随时更改关联；若 KYC 尚未建立，可先保存登记册资料。
+        </p>
+      )}
     </div>
   )
 }
@@ -905,12 +977,14 @@ function KycLinkWithConfirm({
   confirmWhenLinking,
   onLinkOnly,
   onPrefill,
+  disabled = false,
 }: {
   persons: KycPerson[]
   value: string
   confirmWhenLinking: boolean
   onLinkOnly: (person: KycPerson | null) => void
   onPrefill: (person: KycPerson) => void
+  disabled?: boolean
 }) {
   const [pending, setPending] = useState<KycPerson | null>(null)
 
@@ -934,11 +1008,12 @@ function KycLinkWithConfirm({
         value={value}
         onSelect={handleSelect}
         prefillOnSelect={false}
+        disabled={disabled}
       />
       {pending && (
         <div
           className="rounded-lg p-3 space-y-3 -mt-1"
-          style={{ background: 'var(--surface-panel)', border: '1px solid #C9A96E' }}
+          style={{ background: 'var(--surface-panel)', border: '1px solid var(--gold)' }}
         >
           <p className="text-sm" style={{ color: 'var(--foreground)' }}>
             已选择关联 <span className="font-medium">{pending.nameEn}</span>
@@ -1374,21 +1449,101 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
     <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--gold)', margin: '4px 0 8px' }}>{t}</p>
   )
   const isCorporate = !!form.linkedCompanyId
+  const linkedCompany =
+    companyOptions.find(c => c.id === form.linkedCompanyId)
+    ?? (initial?.linkedCompany && initial.linkedCompany.id === form.linkedCompanyId
+      ? {
+          id: initial.linkedCompany.id,
+          nameEn: initial.linkedCompany.nameEn,
+          nameZh: initial.linkedCompany.nameZh,
+          companyCode: initial.linkedCompany.companyCode,
+          companyNumber: null as string | null,
+          registeredAddress: initial.linkedCompany.registeredAddress,
+        }
+      : null)
+
+  const kycPersonsForPicker = (() => {
+    if (!initial?.keyPerson) return kycPersons
+    if (kycPersons.some(p => p.id === initial.keyPerson!.id)) return kycPersons
+    return [
+      {
+        id: initial.keyPerson.id,
+        nameEn: initial.keyPerson.nameEn,
+        nameZh: initial.keyPerson.nameZh,
+        idType: null,
+        idNumber: null,
+        nationality: null,
+        dateOfBirth: null,
+        placeOfBirth: null,
+        placeOfIssue: null,
+        homeAddress: null,
+        contactAddress: null,
+        kycStatus: initial.keyPerson.kycStatus,
+      },
+      ...kycPersons,
+    ]
+  })()
 
   return (
     <form onSubmit={submit} className="space-y-4">
       <div className="grid sm:grid-cols-2 gap-3">
-        <div className={isCorporate ? 'opacity-50 pointer-events-none' : undefined}>
-          <KycLinkWithConfirm
-            persons={kycPersons}
-            value={form.keyPersonId}
-            confirmWhenLinking={isEdit && !initial?.keyPersonId}
-            onLinkOnly={linkKycOnly}
-            onPrefill={prefillFromKyc}
-          />
-        </div>
-        <div className="rounded-lg p-3 mb-1" style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-subtle)' }}>
-          <label style={{ ...labelStyle, color: 'var(--gold)' }}>Linked company</label>
+        <KycLinkWithConfirm
+          persons={kycPersonsForPicker}
+          value={form.keyPersonId}
+          confirmWhenLinking={isEdit && !initial?.keyPersonId}
+          onLinkOnly={linkKycOnly}
+          onPrefill={prefillFromKyc}
+          disabled={isCorporate}
+        />
+        <div
+          className="rounded-lg p-3 mb-1"
+          style={{
+            background: 'var(--surface-panel)',
+            border: linkedCompany
+              ? '1px solid rgba(56,189,248,0.45)'
+              : '1px solid var(--border-subtle)',
+            opacity: form.keyPersonId ? 0.55 : 1,
+            pointerEvents: form.keyPersonId ? 'none' : undefined,
+          }}
+        >
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <label style={{ ...labelStyle, color: 'var(--gold)', marginBottom: 0 }}>Linked company</label>
+            {linkedCompany && (
+              <span
+                className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                style={{ background: 'rgba(56,189,248,0.14)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.35)' }}
+              >
+                Linked
+              </span>
+            )}
+          </div>
+
+          {linkedCompany && (
+            <div
+              className="mb-2 rounded-md px-2.5 py-2 flex items-start justify-between gap-2"
+              style={{ background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.28)' }}
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate" style={{ color: 'var(--foreground)' }}>
+                  {linkedCompany.companyCode ? `${linkedCompany.companyCode} · ` : ''}
+                  {linkedCompany.nameEn}
+                  {linkedCompany.nameZh ? ` (${linkedCompany.nameZh})` : ''}
+                </p>
+                <p className="text-[11px]" style={{ color: 'var(--muted-foreground)' }}>
+                  Corporate shareholder
+                </p>
+              </div>
+              <button
+                type="button"
+                className="text-xs shrink-0 hover:underline"
+                style={{ color: '#ef4444' }}
+                onClick={() => linkCompany(null)}
+              >
+                Unlink
+              </button>
+            </div>
+          )}
+
           <Input
             value={companySearch}
             onChange={e => setCompanySearch(e.target.value)}
@@ -1408,7 +1563,9 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
             }}
             style={fieldStyle}
           >
-            <option value="" style={{ background: 'var(--surface-raised)' }}>— Not a corporate member —</option>
+            <option value="" style={{ background: 'var(--surface-raised)' }}>
+              {linkedCompany ? '— Change linked company —' : '— Not a corporate member —'}
+            </option>
             {companyOptions.map(c => (
               <option key={c.id} value={c.id} style={{ background: 'var(--surface-raised)' }}>
                 {c.companyCode ? `${c.companyCode} · ` : ''}{c.nameEn}{c.nameZh ? ` (${c.nameZh})` : ''}
