@@ -26,9 +26,9 @@ Key metrics at a glance, grouped by platform module:
 Manages the full portfolio of client companies.
 - List with search (name / code / registration number), status badge, assigned client, company incorporation date, **周年申报截止日** (incorporation month/day + 42 days, shown as `MM-DD`), **UBO** (look-through natural persons with effective ownership > 25%, name + %), financial-module toggle
 - Company statuses: `Active`, `Inactive`, `Deregistered`
-- Company create/edit uses **Jurisdiction** (`Hong Kong`, `BVI`, `Cayman`, `Bermuda`, `Marshall`) for code-prefix jurisdiction (`AA` / `BV` / `CA` / `BM` / `MS`)
-- Company list shows a **註冊地** column with English jurisdiction labels (Hong Kong / BVI / Cayman / Bermuda / Marshall) and has jurisdiction + status filters next to search
-- Auto-generates company codes by jurisdiction: `AA#####` (HK), `BV#####` (BVI), `CA#####` (Cayman), `BM#####` (Bermuda), `MS#####` (Marshall)
+- Company create/edit uses **Jurisdiction** (`Hong Kong`, `BVI`, `Cayman`, `Bermuda`, `Marshall`, `PRC`) for code-prefix jurisdiction (`AA` / `BV` / `CA` / `BM` / `MS` / `PR`)
+- Company list shows a **註冊地** column with English jurisdiction labels (Hong Kong / BVI / Cayman / Bermuda / Marshall / PRC) and has jurisdiction + status filters next to search
+- Auto-generates company codes by jurisdiction: `AA#####` (HK), `BV#####` (BVI), `CA#####` (Cayman), `BM#####` (Bermuda), `MS#####` (Marshall), `PR#####` (PRC)
 - Company detail editing includes a separate **Company Type** field for legal/entity category values: `Private Company Limited by Shares`, `Public Company Limited by Shares`, `Company Limited by Guarantee`, `Private Unlimited Company`, `Public Unlimited Company`, and `Branch Office`; this field is independent from **Jurisdiction** and does not affect code generation
 - Company create/edit includes **Financial Year End** (before Business Nature): March 31st or December 31st checkboxes (mutually exclusive); stored as month `3` or `12`
 - Company detail overview shows Financial Year End above Business Nature, then **周年申报截止日** below Business Nature (incorporation month/day + 42 days, shown as `MM-DD`)
@@ -39,7 +39,7 @@ Manages the full portfolio of client companies.
 
 **Company detail sub-pages** (`/admin/companies/[id]/...`):
 - **Directors** — Register of Directors (ROD): add / edit / remove; date of appointment / cessation; can link a **KYC person**; list shows Link column (KYC / Corporate / —)
-- **Ownership Structure** — company detail People page shows an inverted tree chart above Directors: shareholders on top, the company at the bottom; corporate shareholders expand upward when linked via `linkedCompanyId` or when their member name matches another company record; natural persons and companies are visually distinguished; company nodes show jurisdiction (Hong Kong / BVI / Cayman / Bermuda / Marshall) when set
+- **Ownership Structure** — company detail People page shows an inverted tree chart above Directors: shareholders on top, the company at the bottom; corporate shareholders expand upward when linked via `linkedCompanyId` or when their member name matches another company record; natural persons and companies are visually distinguished; company nodes show jurisdiction (Hong Kong / BVI / Cayman / Bermuda / Marshall / PRC) when set
 - **Members** — Register of Members (ROM): shareholders with share class, share count, transfer history; Add/Edit Member can link a **KYC person** (natural person) or a **portfolio company** (corporate shareholder); links are mutually exclusive; ownership look-through prefers explicit company links over name matching
 - **Significant Controllers** — ROSC entries; Add/Edit Controller can link a **KYC person** or a **portfolio company** (legal-entity controller); company link sets legal-entity mode and clears KYC link; ACTIVE members with direct shareholding **>25%** are auto-synced into ROSC on member create/update/delete (and via **Sync from Members >25%**); nature of control set to shareholding %; does not delete existing controllers
 - **Designated Representatives** — company representatives; Add/Edit can link a **KYC person**; list shows Link column (KYC / —)
