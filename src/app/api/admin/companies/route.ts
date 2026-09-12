@@ -7,7 +7,10 @@ import {
   buildCompanyAccessWhere,
   resolveCompanyAccess,
 } from '@/lib/company-access'
-import { COMPANY_SERVICE_TIERS } from '@/lib/company/service-tiers'
+import {
+  COMPANY_SERVICE_OPTIONS,
+  normalizeCompanyServiceTiers,
+} from '@/lib/company/service-tiers'
 import {
   COMPANY_JURISDICTION_CODE_PREFIX,
   COMPANY_JURISDICTIONS,
@@ -45,7 +48,7 @@ const createSchema = z
     businessNature: z.string().max(500).optional(),
     /** Calendar month of financial year end: 3 = 31 Mar, 12 = 31 Dec */
     financialYearEndMonth: z.union([z.literal(3), z.literal(12)]).optional().nullable(),
-    serviceTier: z.enum(COMPANY_SERVICE_TIERS).optional(),
+    serviceTiers: z.array(z.enum(COMPANY_SERVICE_OPTIONS)).optional(),
     /** Pick from verified CLIENT users (admin UI). */
     clientUserId: z.string().cuid().optional(),
     /** CLIENT signup email when not choosing from list (e.g. not yet verified). */
@@ -225,7 +228,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const { companyNumber, registeredAddress, companyType, ...companyFields } = rest
+  const { companyNumber, registeredAddress, companyType, serviceTiers, ...companyFields } = rest
 
   const companyCode = companyType ? await nextCompanyCode(companyType) : null
 
@@ -236,6 +239,7 @@ export async function POST(req: NextRequest) {
       companyType: companyType ?? null,
       companyCode,
       registeredAddress: registeredAddress ?? null,
+      serviceTiers: normalizeCompanyServiceTiers(serviceTiers),
       clientUserId: resolvedClientId ?? null,
       pendingClientEmail,
       dateOfIncorporation: doi,

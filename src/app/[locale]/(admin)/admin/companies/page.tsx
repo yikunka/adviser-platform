@@ -22,7 +22,7 @@ type Company = {
   companyNumber: string
   companyType?: string | null
   status: string
-  serviceTier?: string
+  serviceTiers?: string[]
   financialEnabled: boolean
   dateOfIncorporation?: string | null
   assignedStaff?: { nameEn: string }

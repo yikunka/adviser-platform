@@ -43,14 +43,6 @@ enum CompanyStatus {
   DEREGISTERED
 }
 
-enum ServiceTier {
-  COMP_SET_UP
-  CS
-  CS_VO
-  CS_BK
-  CS_VO_BK
-}
-
 enum CompanyFileAssetType {
   COMPANY_BOX
   COMPANY_SQUARE_SEAL
@@ -401,7 +393,8 @@ model Company {
   businessRegNumber     String?
   brExpiryDate          DateTime?
   status                CompanyStatus @default(ACTIVE)
-  serviceTier           ServiceTier   @default(COMP_SET_UP)
+  /// Multi-select services: COMP_SET_UP, COMP_SECRETARY, VIRTUAL_OFFICE, ACCT_SERVICE, OTHER_SERVICE
+  serviceTiers          String[]      @default([])
   financialEnabled      Boolean       @default(true)
   internalNotes         String?
   deletedAt             DateTime?

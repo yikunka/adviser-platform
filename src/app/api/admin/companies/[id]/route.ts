@@ -4,7 +4,10 @@ import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
 import { z } from 'zod'
 import { normalizeCompanyLegalType } from '@/lib/company/company-legal-type'
-import { COMPANY_SERVICE_TIERS } from '@/lib/company/service-tiers'
+import {
+  COMPANY_SERVICE_OPTIONS,
+  normalizeCompanyServiceTiers,
+} from '@/lib/company/service-tiers'
 import { COMPANY_STATUSES } from '@/lib/company/company-status'
 import { COMPANY_JURISDICTIONS } from '@/lib/company/jurisdiction'
 
@@ -20,7 +23,7 @@ const updateSchema = z.object({
   businessNature: z.string().max(500).optional(),
   financialYearEndMonth: z.union([z.literal(3), z.literal(12)]).optional().nullable(),
   status: z.enum(COMPANY_STATUSES).optional(),
-  serviceTier: z.enum(COMPANY_SERVICE_TIERS).optional(),
+  serviceTiers: z.array(z.enum(COMPANY_SERVICE_OPTIONS)).optional(),
   financialEnabled: z.boolean().optional(),
   assignedStaffId: z.string().cuid().optional().nullable(),
   financialManagerId: z.string().cuid().optional().nullable(),
@@ -114,11 +117,14 @@ export async function PATCH(
   const before = await prisma.company.findUnique({ where: { id } })
   if (!before) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const { dateOfIncorporation, staffUserIds, companyLegalType, ...rest } = parsed.data
+  const { dateOfIncorporation, staffUserIds, companyLegalType, serviceTiers, ...rest } = parsed.data
   const data = {
     ...rest,
     ...(companyLegalType !== undefined
       ? { companyLegalType: normalizeCompanyLegalType(companyLegalType) }
+      : {}),
+    ...(serviceTiers !== undefined
+      ? { serviceTiers: normalizeCompanyServiceTiers(serviceTiers) }
       : {}),
     ...(dateOfIncorporation !== undefined ? { dateOfIncorporation: new Date(dateOfIncorporation) } : {}),
     ...(rest.clientUserId !== undefined ? { pendingClientEmail: null as null } : {}),

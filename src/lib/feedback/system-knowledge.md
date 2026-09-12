@@ -33,7 +33,7 @@ Manages the full portfolio of client companies.
 - Company create/edit includes **Financial Year End** (before Business Nature): March 31st or December 31st checkboxes (mutually exclusive); stored as month `3` or `12`
 - Company detail overview shows Financial Year End above Business Nature, then **周年申报截止日** below Business Nature (incorporation month/day + 42 days, shown as `MM-DD`)
 - Company detail overview includes a **文件管理** group with three toggles for `公司盒`, `公司方印`, and `公司圆印`; a single expand/collapse control beside the section title shows or hides all enabled items' IN/OUT forms and full movement history (collapsed by default); each enabled item can store dated `IN` / `OUT` movement records with handler and notes
-- Company create/edit **Service Tier**: `Comp Set Up`, `CS`, `CS+VO`, `CS+BK`, `CS+VO+BK` (default `Comp Set Up`)
+- Company create/edit **Service Tier** is multi-select checkboxes: `Comp Set Up`, `Comp Secretary Service`, `Virtue Office`, `Acct Service`, `Other Service` (stored as `serviceTiers` string array; legacy single tiers CS / CS+VO / CS+BK / CS+VO+BK migrated on deploy)
 - Create new company; assign client user, pending-client email, or **以後提供 / Provide later** (no client linked yet; can assign later on edit); assign staff; Registered Address has a **使用本公司地址** checkbox that fills `RM7 20F Boss Commercial Center 28 Ferry Street Yau Ma Tei Kowloon Hong Kong`
 - Companies with the financial module enabled can optionally be assigned a **Financial Manager** from existing active back-office staff accounts; assignment can be left blank and filled later from the company edit form
 

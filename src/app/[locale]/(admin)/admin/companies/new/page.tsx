@@ -15,6 +15,11 @@ import {
   COMPANY_JURISDICTION_LABELS,
   type CompanyJurisdiction,
 } from '@/lib/company/jurisdiction'
+import {
+  COMPANY_SERVICE_OPTIONS,
+  COMPANY_SERVICE_OPTION_LABELS,
+  type CompanyServiceOption,
+} from '@/lib/company/service-tiers'
 
 const fieldStyle: React.CSSProperties = {
   width: '100%',
@@ -72,7 +77,7 @@ export default function NewCompanyPage() {
     registeredAddress: '',
     businessNature: '',
     financialYearEndMonth: '' as '' | '3' | '12',
-    serviceTier: '' as '' | 'COMP_SET_UP' | 'CS' | 'CS_VO' | 'CS_BK' | 'CS_VO_BK',
+    serviceTiers: [] as CompanyServiceOption[],
     clientUserId: '',
     clientUserEmail: '',
   })
@@ -190,7 +195,7 @@ export default function NewCompanyPage() {
 
     setLoading(true)
     try {
-      const body: Record<string, string | number> = { nameEn: form.nameEn }
+      const body: Record<string, string | number | string[]> = { nameEn: form.nameEn }
       if (form.nameZh) body.nameZh = form.nameZh
       if (form.companyNumber) body.companyNumber = form.companyNumber
       if (form.companyType) body.companyType = form.companyType
@@ -198,7 +203,7 @@ export default function NewCompanyPage() {
       if (form.registeredAddress) body.registeredAddress = form.registeredAddress
       if (form.businessNature) body.businessNature = form.businessNature
       if (form.financialYearEndMonth) body.financialYearEndMonth = Number(form.financialYearEndMonth)
-      if (form.serviceTier) body.serviceTier = form.serviceTier
+      body.serviceTiers = form.serviceTiers
 
       if (clientMode === 'verified') {
         body.clientUserId = form.clientUserId.trim()
@@ -518,14 +523,29 @@ export default function NewCompanyPage() {
 
         <div>
           <label style={labelStyle}>Service Tier</label>
-          <select value={form.serviceTier} onChange={e => set('serviceTier', e.target.value)} style={fieldStyle}>
-            <option value="" style={{ background: 'var(--surface-raised)' }}>— None —</option>
-            <option value="COMP_SET_UP" style={{ background: 'var(--surface-raised)' }}>Comp Set Up</option>
-            <option value="CS" style={{ background: 'var(--surface-raised)' }}>CS</option>
-            <option value="CS_VO" style={{ background: 'var(--surface-raised)' }}>CS+VO</option>
-            <option value="CS_BK" style={{ background: 'var(--surface-raised)' }}>CS+BK</option>
-            <option value="CS_VO_BK" style={{ background: 'var(--surface-raised)' }}>CS+VO+BK</option>
-          </select>
+          <div className="space-y-2 rounded-md px-3 py-2" style={{ border: '1px solid var(--border-subtle)', background: 'var(--surface)' }}>
+            {COMPANY_SERVICE_OPTIONS.map(option => {
+              const checked = form.serviceTiers.includes(option)
+              return (
+                <label key={option} className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'var(--foreground)' }}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => {
+                      setForm(f => ({
+                        ...f,
+                        serviceTiers: checked
+                          ? f.serviceTiers.filter(t => t !== option)
+                          : [...f.serviceTiers, option],
+                      }))
+                    }}
+                    style={{ accentColor: '#C9A96E', width: 14, height: 14 }}
+                  />
+                  {COMPANY_SERVICE_OPTION_LABELS[option]}
+                </label>
+              )
+            })}
+          </div>
         </div>
 
         <div className="flex justify-end gap-3 pt-2">

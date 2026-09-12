@@ -17,6 +17,11 @@ import {
   COMPANY_JURISDICTION_LABELS,
   type CompanyJurisdiction,
 } from '@/lib/company/jurisdiction'
+import {
+  COMPANY_SERVICE_OPTIONS,
+  COMPANY_SERVICE_OPTION_LABELS,
+  type CompanyServiceOption,
+} from '@/lib/company/service-tiers'
 import { TCSP_REGISTERED_OFFICE_ADDRESS } from '@/lib/company/office-address'
 import {
   buildCompanyFileManagementSections,
@@ -235,7 +240,7 @@ type Company = {
   financialYearEndMonth: number | null
   businessNature: string | null
   status: string
-  serviceTier: string
+  serviceTiers: string[]
   financialEnabled: boolean
   hasCompanyBox: boolean
   hasCompanySquareSeal: boolean
@@ -556,7 +561,9 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
       : '') as '' | '3' | '12',
     businessNature: company.businessNature ?? '',
     status: company.status,
-    serviceTier: company.serviceTier ?? '',
+    serviceTiers: (company.serviceTiers ?? []).filter((t): t is CompanyServiceOption =>
+      (COMPANY_SERVICE_OPTIONS as readonly string[]).includes(t),
+    ),
     financialEnabled: company.financialEnabled,
     financialManagerId: company.financialManagerId ?? '',
     staffUserIds: company.staffAssignments?.map(assignment => assignment.user.id) ?? [],
@@ -634,7 +641,7 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
         ? Number(form.financialYearEndMonth)
         : null
       if (form.businessNature) body.businessNature = form.businessNature
-      if (form.serviceTier) body.serviceTier = form.serviceTier
+      body.serviceTiers = form.serviceTiers
 
       const res = await fetch(`/api/admin/companies/${company.id}`, {
         method: 'PATCH',
@@ -797,14 +804,29 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
         </div>
         <div>
           <label style={labelStyle}>Service Tier</label>
-          <select value={form.serviceTier} onChange={e => set('serviceTier', e.target.value)} style={fieldStyle}>
-            <option value="" style={{ background: 'var(--surface-raised)' }}>— Select —</option>
-            <option value="COMP_SET_UP" style={{ background: 'var(--surface-raised)' }}>Comp Set Up</option>
-            <option value="CS" style={{ background: 'var(--surface-raised)' }}>CS</option>
-            <option value="CS_VO" style={{ background: 'var(--surface-raised)' }}>CS+VO</option>
-            <option value="CS_BK" style={{ background: 'var(--surface-raised)' }}>CS+BK</option>
-            <option value="CS_VO_BK" style={{ background: 'var(--surface-raised)' }}>CS+VO+BK</option>
-          </select>
+          <div className="space-y-2 rounded-md px-3 py-2" style={{ border: '1px solid var(--border-subtle)', background: 'var(--surface)' }}>
+            {COMPANY_SERVICE_OPTIONS.map(option => {
+              const checked = form.serviceTiers.includes(option)
+              return (
+                <label key={option} className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'var(--foreground)' }}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => {
+                      set(
+                        'serviceTiers',
+                        checked
+                          ? form.serviceTiers.filter(t => t !== option)
+                          : [...form.serviceTiers, option],
+                      )
+                    }}
+                    style={{ accentColor: '#C9A96E', width: 14, height: 14 }}
+                  />
+                  {COMPANY_SERVICE_OPTION_LABELS[option]}
+                </label>
+              )
+            })}
+          </div>
         </div>
       </div>
       <div className="flex items-center gap-3">
