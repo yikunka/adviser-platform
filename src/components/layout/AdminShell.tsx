@@ -214,7 +214,11 @@ function AdminShellInner({
           ${ADMIN_SHELL_CLASSNAMES.sidebar}
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
-        style={{ background: 'var(--chrome)', borderRight: '1px solid var(--sidebar-border)' }}
+        style={{
+          background: 'var(--chrome)',
+          borderRight: '1px solid var(--sidebar-border)',
+          boxShadow: 'var(--sidebar-shadow)',
+        }}
       >
         <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--sidebar-border)' }}>
           <Link href="/" className="flex items-center gap-3" onClick={() => setSidebarOpen(false)}>
@@ -229,8 +233,8 @@ function AdminShellInner({
             />
           </Link>
           <div className="mt-3 flex items-center gap-2">
-            <Lock size={10} style={{ color: '#A99A80' }} />
-            <span className="text-xs font-medium" style={{ color: '#A99A80' }}>
+            <Lock size={10} style={{ color: 'var(--muted-foreground)' }} />
+            <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
               Admin Console
             </span>
           </div>
@@ -262,8 +266,8 @@ function AdminShellInner({
                   })}
                   className="mb-1.5 flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold uppercase tracking-widest transition-colors"
                   style={{
-                    color: hasActiveItem || isExpanded ? '#C9A96E' : '#A99A80',
-                    background: isExpanded ? 'rgba(201,169,110,0.08)' : 'transparent',
+                    color: hasActiveItem || isExpanded ? 'var(--gold)' : 'var(--muted-foreground)',
+                    background: isExpanded ? 'color-mix(in srgb, var(--gold) 10%, transparent)' : 'transparent',
                   }}
                   aria-expanded={isExpanded}
                 >
@@ -291,23 +295,23 @@ function AdminShellInner({
                       className="group flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-semibold transition-all duration-150 relative mb-0.5"
                       style={{
                         background: active ? 'var(--sidebar-accent)' : 'transparent',
-                        color: active ? '#C9A96E' : 'var(--sidebar-foreground)',
+                        color: active ? 'var(--gold)' : 'var(--sidebar-foreground)',
                         opacity: active ? 1 : 0.92,
                       }}
                     >
                       {active && (
                         <span
                           className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full"
-                          style={{ background: '#C9A96E' }}
+                          style={{ background: 'var(--gold)' }}
                         />
                       )}
                       <Icon
                         size={15}
                         strokeWidth={active ? 2 : 1.5}
-                        style={{ color: active ? '#C9A96E' : 'inherit', flexShrink: 0 }}
+                        style={{ color: active ? 'var(--gold)' : 'inherit', flexShrink: 0 }}
                       />
                       <span className="flex-1">{t(navLabelKey)}</span>
-                      {active && <ChevronRight size={12} style={{ color: '#C9A96E', opacity: 0.6 }} />}
+                      {active && <ChevronRight size={12} style={{ color: 'var(--gold)', opacity: 0.6 }} />}
                     </Link>
                   )
                 })}
@@ -325,7 +329,7 @@ function AdminShellInner({
               className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-semibold transition-all"
               style={{
                 background: pathname.includes('/admin/feedback') ? 'var(--sidebar-accent)' : 'transparent',
-                color: pathname.includes('/admin/feedback') ? '#C9A96E' : 'var(--sidebar-foreground)',
+                color: pathname.includes('/admin/feedback') ? 'var(--gold)' : 'var(--sidebar-foreground)',
                 opacity: 0.9,
               }}
             >
@@ -392,7 +396,11 @@ function AdminShellInner({
       <div className={ADMIN_SHELL_CLASSNAMES.frame}>
         <header
           className="h-14 flex items-center justify-between px-4 flex-shrink-0"
-          style={{ background: 'var(--chrome)', borderBottom: '1px solid var(--sidebar-border)' }}
+          style={{
+            background: 'var(--chrome)',
+            borderBottom: '1px solid var(--sidebar-border)',
+            boxShadow: 'var(--shell-shadow)',
+          }}
         >
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}

@@ -11,16 +11,19 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
     <button
       type="button"
       onClick={toggleTheme}
-      className={`p-2 rounded-md transition-colors ${className}`}
+      className={`inline-flex items-center justify-center rounded-md transition-colors ${className}`}
       style={{
-        color: 'var(--muted-foreground)',
-        background: ready && isDay ? 'var(--accent)' : 'transparent',
-        opacity: ready ? 1 : 0.6,
+        width: 34,
+        height: 34,
+        color: isDay ? 'var(--gold-muted)' : 'var(--muted-foreground)',
+        background: isDay ? 'var(--accent)' : 'transparent',
+        border: `1px solid ${isDay ? 'var(--border-subtle)' : 'transparent'}`,
+        opacity: ready ? 1 : 0.55,
       }}
       aria-label={isDay ? 'Switch to night view' : 'Switch to day view'}
       title={isDay ? 'Night view' : 'Day view'}
     >
-      {isDay ? <Moon size={16} strokeWidth={1.75} /> : <Sun size={16} strokeWidth={1.75} />}
+      {isDay ? <Moon size={15} strokeWidth={1.75} /> : <Sun size={15} strokeWidth={1.75} />}
     </button>
   )
 }

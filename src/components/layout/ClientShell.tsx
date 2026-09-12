@@ -59,6 +59,7 @@ function ClientShellInner({
         style={{
           background: 'var(--sidebar)',
           borderRight: '1px solid var(--sidebar-border)',
+          boxShadow: 'var(--sidebar-shadow)',
         }}
       >
         {/* Logo */}
@@ -165,6 +166,7 @@ function ClientShellInner({
           style={{
             background: 'var(--sidebar)',
             borderBottom: '1px solid var(--sidebar-border)',
+            boxShadow: 'var(--shell-shadow)',
           }}
         >
           {/* Mobile: hamburger */}
