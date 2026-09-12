@@ -13,17 +13,17 @@ const MEANINGS = [
   {
     title: 'Eternal Love',
     desc: 'An everlasting connection — the ∞ form represents a love that has no end and no beginning.',
-    img: '/sfsdiamond/necklace-life.jpg',
+    img: '/sfsdiamond/meaning-eternal-love.png',
   },
   {
     title: 'Unbreakable Bond',
     desc: 'The enduring spirit of your loved one, bound into the hardest substance on earth.',
-    img: '/sfsdiamond/meaning-unbreakable-bond.png',
+    img: '/sfsdiamond/meaning-unbreakable-bond-dna.png',
   },
   {
     title: 'Timeless Tribute',
     desc: 'A gem that shines forever — just like the cherished memories held within it.',
-    img: '/sfsdiamond/meaning-timeless-tribute.png',
+    img: '/sfsdiamond/meaning-timeless-tribute-universe.png',
   },
   {
     title: 'Symbol of Continuity',
