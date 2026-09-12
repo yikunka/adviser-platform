@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import type { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
@@ -14,6 +13,7 @@ const updateSchema = z.object({
   telFax: z.string().max(50).optional(),
   cessationDate: z.string().datetime().nullable().optional(),
   remarks: z.string().max(1000).optional(),
+  keyPersonId: z.string().cuid().nullable().optional(),
 })
 
 type Params = { params: Promise<{ id: string; repId: string }> }
@@ -31,7 +31,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!parsed.success) return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
 
   const { entryDate, becomingDate, cessationDate, ...rest } = parsed.data
-  const data: Prisma.DesignatedRepresentativeUpdateInput = { ...rest }
+  const data: Record<string, unknown> = { ...rest }
   if (entryDate !== undefined) data.entryDate = new Date(entryDate)
   if (becomingDate !== undefined) data.becomingDate = new Date(becomingDate)
   if (cessationDate !== undefined) data.cessationDate = cessationDate ? new Date(cessationDate) : null

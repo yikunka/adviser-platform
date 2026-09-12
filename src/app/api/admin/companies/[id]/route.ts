@@ -42,7 +42,12 @@ export async function GET(
   const company = await prisma.company.findUnique({
     where: { id },
     include: {
-      directors: { orderBy: { dateOfAppointment: 'desc' } },
+      directors: {
+        orderBy: { dateOfAppointment: 'desc' },
+        include: {
+          keyPerson: { select: { id: true, nameEn: true, nameZh: true, kycStatus: true } },
+        },
+      },
       members: {
         orderBy: { createdAt: 'desc' },
         include: {
@@ -57,7 +62,12 @@ export async function GET(
           keyPerson: { select: { id: true, nameEn: true, nameZh: true, kycStatus: true } },
         },
       },
-      designatedReps: { orderBy: { entryDate: 'asc' } },
+      designatedReps: {
+        orderBy: { entryDate: 'asc' },
+        include: {
+          keyPerson: { select: { id: true, nameEn: true, nameZh: true, kycStatus: true } },
+        },
+      },
       documents: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' } },
       fileCases: {
         // Undated first, then newest caseDate; then newest createdAt

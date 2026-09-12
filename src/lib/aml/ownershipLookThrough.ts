@@ -13,6 +13,7 @@ export type CompanyWithMembers = {
   nameEn: string
   nameZh: string | null
   companyNumber: string | null
+  companyType: string | null
   members: {
     id: string
     keyPersonId: string | null
@@ -32,6 +33,8 @@ export type OwnershipNode = {
   nameZh: string | null
   companyId: string | null
   companyNumber: string | null
+  /** Stored as Company.companyType (HK / BVI / Cayman / …) */
+  companyType: string | null
   keyPersonId: string | null
   shareClass: string | null
   sharesHeld: number | null
@@ -92,6 +95,7 @@ export function buildCompanyOwnershipNode(
       nameZh: company.nameZh,
       companyId: company.id,
       companyNumber: company.companyNumber,
+      companyType: company.companyType,
       keyPersonId: null,
       shareClass: meta?.shareClass ?? null,
       sharesHeld: meta?.sharesHeld ?? null,
@@ -114,6 +118,7 @@ export function buildCompanyOwnershipNode(
     nameZh: company.nameZh,
     companyId: company.id,
     companyNumber: company.companyNumber,
+    companyType: company.companyType,
     keyPersonId: null,
     shareClass: meta?.shareClass ?? null,
     sharesHeld: meta?.sharesHeld ?? null,
@@ -145,6 +150,7 @@ export function buildCompanyOwnershipNode(
         nameZh: member.nameZh,
         companyId: null,
         companyNumber: null,
+        companyType: null,
         keyPersonId: member.keyPersonId,
         shareClass: member.shareClass,
         sharesHeld,
@@ -226,6 +232,7 @@ export async function loadAllCompaniesWithMembers(): Promise<CompanyWithMembers[
       nameEn: true,
       nameZh: true,
       companyNumber: true,
+      companyType: true,
       members: {
         where: { status: 'ACTIVE' },
         orderBy: { createdAt: 'asc' },

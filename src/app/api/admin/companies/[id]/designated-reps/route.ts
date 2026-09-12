@@ -13,6 +13,7 @@ const createSchema = z.object({
   telFax: z.string().max(50).optional(),
   cessationDate: z.string().datetime().optional(),
   remarks: z.string().max(1000).optional(),
+  keyPersonId: z.string().cuid().nullable().optional(),
 })
 
 export async function POST(

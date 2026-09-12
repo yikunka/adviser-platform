@@ -6,6 +6,7 @@ export type RelatedCompanyRole =
   | 'DIRECTOR'
   | 'MEMBER'
   | 'SIGNIFICANT_CONTROLLER'
+  | 'DESIGNATED_REPRESENTATIVE'
 
 export type RelatedCompany = {
   id: string
@@ -81,7 +82,7 @@ function toList(byPerson: Map<string, Map<string, RelatedCompany>>): Record<stri
  * Resolve companies related to KYC persons via:
  * - portal client account (`Company.clientUserId` / `pendingClientEmail`)
  * - explicit `CompanyKeyPerson` links
- * - director / member / significant controller `keyPersonId`
+ * - director / member / significant controller / designated representative `keyPersonId`
  */
 export async function getRelatedCompaniesForKeyPersons(
   persons: PersonRef[],
@@ -100,7 +101,7 @@ export async function getRelatedCompaniesForKeyPersons(
     ),
   ]
 
-  const [directors, members, controllers, links, clientCompanies, pendingCompanies] = await Promise.all([
+  const [directors, members, controllers, designatedReps, links, clientCompanies, pendingCompanies] = await Promise.all([
     prisma.director.findMany({
       where: { keyPersonId: { in: personIds }, company: { deletedAt: null } },
       select: { keyPersonId: true, company: { select: companySelect } },
@@ -110,6 +111,10 @@ export async function getRelatedCompaniesForKeyPersons(
       select: { keyPersonId: true, company: { select: companySelect } },
     }),
     prisma.significantController.findMany({
+      where: { keyPersonId: { in: personIds }, company: { deletedAt: null } },
+      select: { keyPersonId: true, company: { select: companySelect } },
+    }),
+    prisma.designatedRepresentative.findMany({
       where: { keyPersonId: { in: personIds }, company: { deletedAt: null } },
       select: { keyPersonId: true, company: { select: companySelect } },
     }),
@@ -139,6 +144,9 @@ export async function getRelatedCompaniesForKeyPersons(
   }
   for (const row of controllers) {
     if (row.keyPersonId) upsert(byPerson, row.keyPersonId, row.company, 'SIGNIFICANT_CONTROLLER')
+  }
+  for (const row of designatedReps) {
+    if (row.keyPersonId) upsert(byPerson, row.keyPersonId, row.company, 'DESIGNATED_REPRESENTATIVE')
   }
   for (const row of links) {
     upsert(byPerson, row.keyPersonId, row.company, 'LINKED')
@@ -193,6 +201,8 @@ export function relatedCompanyRoleLabel(role: RelatedCompanyRole): string {
       return 'Member'
     case 'SIGNIFICANT_CONTROLLER':
       return 'Significant controller'
+    case 'DESIGNATED_REPRESENTATIVE':
+      return 'Designated representative'
     default:
       return role
   }

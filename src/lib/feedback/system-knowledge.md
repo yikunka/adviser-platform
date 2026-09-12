@@ -37,11 +37,11 @@ Manages the full portfolio of client companies.
 - Companies with the financial module enabled can optionally be assigned a **Financial Manager** from existing active back-office staff accounts; assignment can be left blank and filled later from the company edit form
 
 **Company detail sub-pages** (`/admin/companies/[id]/...`):
-- **Directors** — Register of Directors (ROD): add / edit / remove; date of appointment / cessation
-- **Ownership Structure** — company detail People page shows an inverted tree chart above Directors: shareholders on top, the company at the bottom; corporate shareholders expand upward when linked via `linkedCompanyId` or when their member name matches another company record; natural persons and companies are visually distinguished
+- **Directors** — Register of Directors (ROD): add / edit / remove; date of appointment / cessation; can link a **KYC person**; list shows Link column (KYC / Corporate / —)
+- **Ownership Structure** — company detail People page shows an inverted tree chart above Directors: shareholders on top, the company at the bottom; corporate shareholders expand upward when linked via `linkedCompanyId` or when their member name matches another company record; natural persons and companies are visually distinguished; company nodes show jurisdiction (Hong Kong / BVI / Cayman / Bermuda / Marshall) when set
 - **Members** — Register of Members (ROM): shareholders with share class, share count, transfer history; Add/Edit Member can link a **KYC person** (natural person) or a **portfolio company** (corporate shareholder); links are mutually exclusive; ownership look-through prefers explicit company links over name matching
 - **Significant Controllers** — ROSC entries; Add/Edit Controller can link a **KYC person** or a **portfolio company** (legal-entity controller); company link sets legal-entity mode and clears KYC link; ACTIVE members with direct shareholding **>25%** are auto-synced into ROSC on member create/update/delete (and via **Sync from Members >25%**); nature of control set to shareholding %; does not delete existing controllers
-- **Designated Representatives** — company representatives
+- **Designated Representatives** — company representatives; Add/Edit can link a **KYC person**; list shows Link column (KYC / —)
 - Generated ROD / ROM / ROSC documents automatically use linked KYC records as the source for natural persons' date of birth and place of birth
 - **File Cases** — document groupings for long-term / other case files on the company Files tab; listed undated first, then newest `caseDate`, then newest created date; supporting files within a case follow submission/created date descending; upload / download documents (CI, BR, AA, NNC1, ROD, ROM, ROSC, AR, NAR1, AUDIT_TAX, DDR, RESOLUTION, MINUTES, KYC, OTHER)
 - **Address Changes** — registered address change tracking; NND1 filing status
@@ -55,7 +55,7 @@ Company-level staff access: multiple staff users can be assigned to a company vi
 ### 3. KYC Queue (`/admin/kyc`; Chinese admin nav label: 自然人管理)
 Know Your Customer compliance workflow.
 - List with search; columns: KYC code, name, client email, related companies (aggregated), documents, date, status; row click opens full-page detail at `/admin/kyc/[id]`
-- Related companies on each KYC: companies under the same portal client account (`clientUserId` / `pendingClientEmail`), explicit `CompanyKeyPerson` links, and companies where this person is linked as director / member / significant controller; list shows first company +N; detail page lists all with role badges and links to company pages
+- Related companies on each KYC: companies under the same portal client account (`clientUserId` / `pendingClientEmail`), explicit `CompanyKeyPerson` links, and companies where this person is linked as director / member / significant controller / designated representative; list shows first company +N; detail page lists all with role badges and links to company pages
 - In the queue list status column, records with missing required KYC files show a red missing marker for ID proof, address proof, and/or declaration when the latest file for that type is absent or rejected
 - KYC statuses: `DRAFT` → `SUBMITTED` → `PENDING_INFO` → `APPROVED` / `REJECTED`
 - Full-page person detail (`/admin/kyc/[id]`): **备注 / Admin Notes** (free-text, staff-only, for info not on uploaded documents; saved independently above Client Identity); edit layout follows **KYC_Client.docx** sections A Client Identity, B Identity Document, C Occupation, D Financial Profile, F PEP, G Declaration (section E purpose-of-relationship not yet stored as dedicated fields); approve / reject / request info / cancel approval; delete returns to the queue

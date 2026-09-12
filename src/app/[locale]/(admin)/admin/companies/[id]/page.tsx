@@ -68,7 +68,14 @@ type Director = {
   nationality: string | null
   idType: string | null
   idNumber: string | null
+  isCorporation?: boolean
   status: string
+  keyPerson?: {
+    id: string
+    nameEn: string
+    nameZh: string | null
+    kycStatus: string
+  } | null
 }
 
 type ShareTransaction = {
@@ -128,6 +135,7 @@ type CompanyPickerOption = {
 
 type DesignatedRep = {
   id: string
+  keyPersonId: string | null
   name: string
   entryDate: string
   becomingDate: string
@@ -136,6 +144,12 @@ type DesignatedRep = {
   capacity: string | null
   telFax: string | null
   remarks: string | null
+  keyPerson?: {
+    id: string
+    nameEn: string
+    nameZh: string | null
+    kycStatus: string
+  } | null
 }
 
 type Controller = {
@@ -242,6 +256,7 @@ type OwnershipNode = {
   nameZh: string | null
   companyId: string | null
   companyNumber: string | null
+  companyType: string | null
   keyPersonId: string | null
   shareClass: string | null
   sharesHeld: number | null
@@ -409,6 +424,9 @@ function YearGroupedDocs({
 function OwnershipLeafCard({ node }: { node: OwnershipNode }) {
   const isCompany = node.type === 'COMPANY'
   const hasMeta = node.sharesHeld != null || node.ownershipPercent != null || node.shareClass
+  const jurisdictionLabel = node.companyType
+    ? (COMPANY_JURISDICTION_LABELS[node.companyType as CompanyJurisdiction] ?? node.companyType)
+    : null
 
   return (
     <div
@@ -438,6 +456,7 @@ function OwnershipLeafCard({ node }: { node: OwnershipNode }) {
         {node.nameEn}
       </p>
       {node.nameZh ? <p className="mt-0.5 text-[11px] leading-snug" style={{ color: '#7A7060' }}>{node.nameZh}</p> : null}
+      {jurisdictionLabel ? <p className="mt-0.5 text-[11px]" style={{ color: '#7A7060' }}>{jurisdictionLabel}</p> : null}
       {node.companyNumber ? <p className="mt-0.5 text-[11px]" style={{ color: '#7A7060' }}>Co. No. {node.companyNumber}</p> : null}
       {hasMeta ? (
         <div className="mt-1.5 space-y-0.5 text-[11px]" style={{ color: 'var(--text-dim)' }}>
@@ -2153,6 +2172,7 @@ function DesignatedRepForm({ companyId, initial, kycPersons, onDone }: {
   const [saving, setSaving] = useState(false)
   const today = new Date().toISOString().slice(0, 10)
   const [form, setForm] = useState({
+    keyPersonId: initial?.keyPersonId ?? '',
     name: initial?.name ?? '',
     entryDate: initial?.entryDate ? initial.entryDate.slice(0, 10) : today,
     becomingDate: initial?.becomingDate ? initial.becomingDate.slice(0, 10) : today,
@@ -2165,10 +2185,19 @@ function DesignatedRepForm({ companyId, initial, kycPersons, onDone }: {
 
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })) }
 
+  function linkKycOnly(p: KycPerson | null) {
+    if (!p) {
+      setForm(f => ({ ...f, keyPersonId: '' }))
+      return
+    }
+    setForm(f => ({ ...f, keyPersonId: p.id }))
+  }
+
   function prefillFromKyc(p: KycPerson) {
     const fullName = p.nameEn + (p.nameZh ? ' ' + p.nameZh : '')
     setForm(f => ({
       ...f,
+      keyPersonId: p.id,
       name: fullName,
       address: p.contactAddress ?? p.homeAddress ?? f.address,
     }))
@@ -2182,6 +2211,7 @@ function DesignatedRepForm({ companyId, initial, kycPersons, onDone }: {
         name: form.name,
         entryDate: new Date(form.entryDate).toISOString(),
         becomingDate: new Date(form.becomingDate).toISOString(),
+        keyPersonId: form.keyPersonId || null,
       }
       if (form.cessationDate) body.cessationDate = new Date(form.cessationDate).toISOString()
       else if (isEdit) body.cessationDate = null
@@ -2203,13 +2233,13 @@ function DesignatedRepForm({ companyId, initial, kycPersons, onDone }: {
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      {!isEdit && (
-        <KycLinkPicker
-          persons={kycPersons}
-          value=""
-          onSelect={p => { if (p) prefillFromKyc(p) }}
-        />
-      )}
+      <KycLinkWithConfirm
+        persons={kycPersons}
+        value={form.keyPersonId}
+        confirmWhenLinking={isEdit && !initial?.keyPersonId}
+        onLinkOnly={linkKycOnly}
+        onPrefill={prefillFromKyc}
+      />
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label style={labelStyle}>Name *</label>
@@ -3691,6 +3721,7 @@ export default function CompanyDetailPage() {
                 <thead>
                   <tr>
                     <th style={thStyle}>Name</th>
+                    <th style={thStyle}>Link</th>
                     <th style={thStyle}>Appointed</th>
                     <th style={thStyle}>Ceased</th>
                     <th style={thStyle}>Status</th>
@@ -3701,6 +3732,19 @@ export default function CompanyDetailPage() {
                   {company.directors.map(d => (
                     <tr key={d.id} className="hover:bg-[var(--surface-panel)] transition-colors">
                       <td style={tdPrimaryStyle}>{d.nameEn}{d.nameZh ? ` (${d.nameZh})` : ''}</td>
+                      <td style={tdStyle}>
+                        {d.keyPersonId || d.keyPerson ? (
+                          <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(201,169,110,0.12)', color: 'var(--gold)', border: '1px solid rgba(201,169,110,0.28)' }}>
+                            KYC
+                          </span>
+                        ) : d.isCorporation ? (
+                          <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(56,189,248,0.10)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.22)' }}>
+                            Corporate
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--muted-foreground)' }}>—</span>
+                        )}
+                      </td>
                       <td style={tdStyle}>{fmt(d.dateOfAppointment)}</td>
                       <td style={tdStyle}>{fmt(d.dateOfCessation)}</td>
                       <td style={tdStyle}><Badge variant={d.status === 'ACTIVE' ? 'default' : 'secondary'}>{d.status}</Badge></td>
@@ -3713,7 +3757,7 @@ export default function CompanyDetailPage() {
                     </tr>
                   ))}
                   {company.directors.length === 0 && (
-                    <tr><td colSpan={5} className="px-4 py-6 text-center" style={{ color: '#5A5040' }}>No directors — click Add Director to get started</td></tr>
+                    <tr><td colSpan={6} className="px-4 py-6 text-center" style={{ color: '#5A5040' }}>No directors — click Add Director to get started</td></tr>
                   )}
                 </tbody>
               </table>
@@ -3894,6 +3938,7 @@ export default function CompanyDetailPage() {
                   <thead>
                     <tr>
                       <th style={thStyle}>Name</th>
+                      <th style={thStyle}>Link</th>
                       <th style={thStyle}>Capacity</th>
                       <th style={thStyle}>Tel / Fax</th>
                       <th style={thStyle}>Becoming</th>
@@ -3905,6 +3950,15 @@ export default function CompanyDetailPage() {
                     {company.designatedReps.map(dr => (
                       <tr key={dr.id} className="hover:bg-[var(--surface-panel)] transition-colors">
                         <td style={tdPrimaryStyle}>{dr.name}</td>
+                        <td style={tdStyle}>
+                          {dr.keyPersonId || dr.keyPerson ? (
+                            <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(201,169,110,0.12)', color: 'var(--gold)', border: '1px solid rgba(201,169,110,0.28)' }}>
+                              KYC
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--muted-foreground)' }}>—</span>
+                          )}
+                        </td>
                         <td style={tdStyle}>{dr.capacity ?? '—'}</td>
                         <td style={tdStyle}>{dr.telFax ?? '—'}</td>
                         <td style={tdStyle}>{fmt(dr.becomingDate)}</td>
@@ -3918,7 +3972,7 @@ export default function CompanyDetailPage() {
                       </tr>
                     ))}
                     {company.designatedReps.length === 0 && (
-                      <tr><td colSpan={6} className="px-4 py-6 text-center" style={{ color: '#5A5040' }}>No designated representatives — click Add Rep to get started</td></tr>
+                      <tr><td colSpan={7} className="px-4 py-6 text-center" style={{ color: '#5A5040' }}>No designated representatives — click Add Rep to get started</td></tr>
                     )}
                   </tbody>
                 </table>

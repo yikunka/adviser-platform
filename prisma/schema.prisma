@@ -663,6 +663,7 @@ model SignificantController {
 model DesignatedRepresentative {
   id            String    @id @default(cuid())
   companyId     String
+  keyPersonId   String?
   entryDate     DateTime
   name          String
   address       String?
@@ -674,8 +675,10 @@ model DesignatedRepresentative {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  keyPerson KeyPerson? @relation(fields: [keyPersonId], references: [id], onDelete: SetNull)
 
+  @@index([keyPersonId])
   @@map("designated_representatives")
 }
 
@@ -749,6 +752,7 @@ model KeyPerson {
   directors              Director[]
   members                Member[]
   significantControllers SignificantController[]
+  designatedReps         DesignatedRepresentative[]
 
   @@index([submittedByUserId])
   @@map("key_persons")
