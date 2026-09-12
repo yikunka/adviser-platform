@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
+import { syncControllersFromMembers } from '@/lib/company/sync-controllers-from-members'
 import { z } from 'zod'
 
 const txSchema = z.object({
@@ -170,7 +171,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   })
 
   await logAudit(session!.user.id, 'UPDATE', 'Member', memberId, before, member)
-  return NextResponse.json(member)
+
+  const controllerSync = await syncControllersFromMembers(companyId)
+  return NextResponse.json({ ...member, controllerSync })
 }
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
@@ -183,5 +186,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
   await prisma.member.delete({ where: { id: memberId } })
   await logAudit(session!.user.id, 'DELETE', 'Member', memberId, member, null)
-  return NextResponse.json({ message: 'Deleted' })
+
+  const controllerSync = await syncControllersFromMembers(companyId)
+  return NextResponse.json({ message: 'Deleted', controllerSync })
 }

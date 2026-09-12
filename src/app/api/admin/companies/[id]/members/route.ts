@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
+import { syncControllersFromMembers } from '@/lib/company/sync-controllers-from-members'
 import { z } from 'zod'
 
 const txSchema = z.object({
@@ -93,5 +94,8 @@ export async function POST(
   })
 
   await logAudit(session!.user.id, 'CREATE', 'Member', member.id, null, member)
-  return NextResponse.json(member, { status: 201 })
+
+  const controllerSync = await syncControllersFromMembers(companyId)
+
+  return NextResponse.json({ ...member, controllerSync }, { status: 201 })
 }

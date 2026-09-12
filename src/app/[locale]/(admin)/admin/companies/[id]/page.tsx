@@ -1451,12 +1451,18 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
         : `/api/admin/companies/${companyId}/members`
       const method = isEdit ? 'PATCH' : 'POST'
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const json = await res.json().catch(() => null)
       if (!res.ok) {
-        const err = await res.json().catch(() => null)
-        toast.error(err?.error ?? 'Failed to save member')
+        toast.error(json?.error ?? 'Failed to save member')
         return
       }
       toast.success(isEdit ? 'Member updated' : 'Member added')
+      const sync = json?.controllerSync as { created?: number; updated?: number } | undefined
+      if (sync && ((sync.created ?? 0) > 0 || (sync.updated ?? 0) > 0)) {
+        toast.message(
+          `Significant Controllers: ${sync.created ?? 0} added, ${sync.updated ?? 0} updated from members >25%`,
+        )
+      }
       onDone()
     } finally { setSaving(false) }
   }
@@ -2446,6 +2452,7 @@ export default function CompanyDetailPage() {
   const [auditTaxYear, setAuditTaxYear] = useState(String(new Date().getFullYear()))
   const [generatingDdr, setGeneratingDdr] = useState(false)
   const [generatingRegister, setGeneratingRegister] = useState<'ROD' | 'ROM' | 'ROSC' | null>(null)
+  const [syncingControllers, setSyncingControllers] = useState(false)
   const [showOlderDdr, setShowOlderDdr] = useState(false)
   const [savingFileManagementFlag, setSavingFileManagementFlag] = useState<string | null>(null)
   const [savingFileManagementRecordFor, setSavingFileManagementRecordFor] = useState<string | null>(null)
@@ -2616,6 +2623,28 @@ export default function CompanyDetailPage() {
       reload()
     }
     else toast.error('Failed to delete')
+  }
+
+  async function syncControllersFromMembersOver25() {
+    setSyncingControllers(true)
+    try {
+      const res = await fetch(`/api/admin/companies/${id}/sync-controllers-from-members`, { method: 'POST' })
+      const json = await res.json().catch(() => null)
+      if (!res.ok) {
+        toast.error(json?.error ?? 'Failed to sync controllers')
+        return
+      }
+      const created = json?.created ?? 0
+      const updated = json?.updated ?? 0
+      if (created === 0 && updated === 0) {
+        toast.message('No active members with shareholding >25% need syncing')
+      } else {
+        toast.success(`Synced Significant Controllers: ${created} added, ${updated} updated`)
+      }
+      reload()
+    } finally {
+      setSyncingControllers(false)
+    }
   }
 
   async function deleteCompany() {
@@ -3783,9 +3812,24 @@ export default function CompanyDetailPage() {
 
             {/* Significant Controllers */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>Significant Controllers</h4>
-                <Button size="sm" onClick={() => setModal({ type: 'controller', mode: 'add' })}>+ Add Controller</Button>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h4 className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>Significant Controllers</h4>
+                  <p className="text-[11px] mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+                    Members with shareholding &gt;25% are auto-filled into ROSC when members are saved.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={syncingControllers}
+                    onClick={() => void syncControllersFromMembersOver25()}
+                  >
+                    {syncingControllers ? 'Syncing…' : 'Sync from Members >25%'}
+                  </Button>
+                  <Button size="sm" onClick={() => setModal({ type: 'controller', mode: 'add' })}>+ Add Controller</Button>
+                </div>
               </div>
               <div style={cardStyle}>
                 <table className="w-full text-sm">
