@@ -20,6 +20,7 @@ const createSchema = z.object({
   legalEntityGovLaw: z.string().max(200).optional(),
   remarks: z.string().max(1000).optional(),
   keyPersonId: z.string().cuid().nullable().optional(),
+  linkedCompanyId: z.string().cuid().nullable().optional(),
 })
 
 export async function POST(
@@ -37,12 +38,35 @@ export async function POST(
   const parsed = createSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
 
-  const { entryDate, becomingDate, cessationDate, ...rest } = parsed.data
+  const { entryDate, becomingDate, cessationDate, keyPersonId, linkedCompanyId, ...rest } = parsed.data
+
+  if (linkedCompanyId) {
+    if (linkedCompanyId === companyId) {
+      return NextResponse.json({ error: 'Cannot link controller to the same company' }, { status: 400 })
+    }
+    const linked = await prisma.company.findFirst({
+      where: { id: linkedCompanyId, deletedAt: null },
+      select: { id: true },
+    })
+    if (!linked) return NextResponse.json({ error: 'Linked company not found' }, { status: 400 })
+  }
+
+  if (keyPersonId) {
+    const person = await prisma.keyPerson.findUnique({ where: { id: keyPersonId }, select: { id: true } })
+    if (!person) return NextResponse.json({ error: 'Linked KYC person not found' }, { status: 400 })
+  }
+
+  const finalLinkedCompanyId = linkedCompanyId ?? null
+  const finalKeyPersonId = finalLinkedCompanyId ? null : (keyPersonId ?? null)
+  const isLegalEntity = finalLinkedCompanyId ? true : (rest.isLegalEntity ?? false)
 
   const controller = await prisma.significantController.create({
     data: {
       ...rest,
       companyId,
+      keyPersonId: finalKeyPersonId,
+      linkedCompanyId: finalLinkedCompanyId,
+      isLegalEntity,
       entryDate: new Date(entryDate),
       becomingDate: new Date(becomingDate),
       ...(cessationDate && { cessationDate: new Date(cessationDate) }),

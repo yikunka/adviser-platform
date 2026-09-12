@@ -40,7 +40,7 @@ Manages the full portfolio of client companies.
 - **Directors** — Register of Directors (ROD): add / edit / remove; date of appointment / cessation
 - **Ownership Structure** — company detail People page shows an inverted tree chart above Directors: shareholders on top, the company at the bottom; corporate shareholders expand upward when linked via `linkedCompanyId` or when their member name matches another company record; natural persons and companies are visually distinguished
 - **Members** — Register of Members (ROM): shareholders with share class, share count, transfer history; Add/Edit Member can link a **KYC person** (natural person) or a **portfolio company** (corporate shareholder); links are mutually exclusive; ownership look-through prefers explicit company links over name matching
-- **Significant Controllers** — ROSC entries
+- **Significant Controllers** — ROSC entries; Add/Edit Controller can link a **KYC person** or a **portfolio company** (legal-entity controller); company link sets legal-entity mode and clears KYC link
 - **Designated Representatives** — company representatives
 - Generated ROD / ROM / ROSC documents automatically use linked KYC records as the source for natural persons' date of birth and place of birth
 - **File Cases** — document groupings for long-term / other case files on the company Files tab; listed undated first, then newest `caseDate`, then newest created date; supporting files within a case follow submission/created date descending; upload / download documents (CI, BR, AA, NNC1, ROD, ROM, ROSC, AR, NAR1, AUDIT_TAX, DDR, RESOLUTION, MINUTES, KYC, OTHER)

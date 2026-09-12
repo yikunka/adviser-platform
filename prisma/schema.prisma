@@ -425,6 +425,7 @@ model Company {
   members                Member[]
   linkedAsMembers        Member[]                      @relation("MemberLinkedCompany")
   significantControllers SignificantController[]
+  linkedAsControllers    SignificantController[]       @relation("ControllerLinkedCompany")
   designatedReps         DesignatedRepresentative[]
   documents              Document[]
   fileCases              CompanyFileCase[]
@@ -631,6 +632,8 @@ model SignificantController {
   id                    String          @id @default(cuid())
   companyId             String
   keyPersonId           String?
+  /// Legal-entity controller: link to another company in the portfolio
+  linkedCompanyId       String?
   entryDate             DateTime
   nameEn                String
   nameZh                String?
@@ -648,10 +651,12 @@ model SignificantController {
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
 
-  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  keyPerson KeyPerson? @relation(fields: [keyPersonId], references: [id], onDelete: SetNull)
+  company       Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  keyPerson     KeyPerson? @relation(fields: [keyPersonId], references: [id], onDelete: SetNull)
+  linkedCompany Company?   @relation("ControllerLinkedCompany", fields: [linkedCompanyId], references: [id], onDelete: SetNull)
 
   @@index([keyPersonId])
+  @@index([linkedCompanyId])
   @@map("significant_controllers")
 }
 

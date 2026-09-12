@@ -51,7 +51,12 @@ export async function GET(
           keyPerson: { select: { id: true, nameEn: true, nameZh: true, kycStatus: true } },
         },
       },
-      significantControllers: true,
+      significantControllers: {
+        include: {
+          linkedCompany: { select: { id: true, nameEn: true, nameZh: true, companyCode: true, companyNumber: true, registeredAddress: true } },
+          keyPerson: { select: { id: true, nameEn: true, nameZh: true, kycStatus: true } },
+        },
+      },
       designatedReps: { orderBy: { entryDate: 'asc' } },
       documents: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' } },
       fileCases: {

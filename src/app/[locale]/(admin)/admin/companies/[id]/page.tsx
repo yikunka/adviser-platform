@@ -141,6 +141,7 @@ type DesignatedRep = {
 type Controller = {
   id: string
   keyPersonId: string | null
+  linkedCompanyId?: string | null
   nameEn: string
   nameZh: string | null
   entryDate: string
@@ -152,7 +153,23 @@ type Controller = {
   idPassportNo: string | null
   issuingCountry: string | null
   isLegalEntity: boolean
+  legalEntityRegNo?: string | null
+  legalEntityGovLaw?: string | null
   remarks: string | null
+  linkedCompany?: {
+    id: string
+    nameEn: string
+    nameZh: string | null
+    companyCode: string | null
+    companyNumber: string | null
+    registeredAddress: string | null
+  } | null
+  keyPerson?: {
+    id: string
+    nameEn: string
+    nameZh: string | null
+    kycStatus: string
+  } | null
 }
 
 type CaseDocument = {
@@ -1740,8 +1757,11 @@ function ControllerForm({ companyId, initial, kycPersons, onDone }: {
 }) {
   const isEdit = !!initial
   const [saving, setSaving] = useState(false)
+  const [companyOptions, setCompanyOptions] = useState<CompanyPickerOption[]>([])
+  const [companySearch, setCompanySearch] = useState('')
   const [form, setForm] = useState({
     keyPersonId: initial?.keyPersonId ?? '',
+    linkedCompanyId: initial?.linkedCompanyId ?? initial?.linkedCompany?.id ?? '',
     nameEn: initial?.nameEn ?? '',
     nameZh: initial?.nameZh ?? '',
     entryDate: initial?.entryDate ? initial.entryDate.slice(0, 10) : new Date().toISOString().slice(0, 10),
@@ -1749,29 +1769,62 @@ function ControllerForm({ companyId, initial, kycPersons, onDone }: {
     cessationDate: initial?.cessationDate ? initial.cessationDate.slice(0, 10) : '',
     natureOfControl: initial?.natureOfControl ?? '',
     correspondenceAddress: initial?.correspondenceAddress ?? '',
-    isLegalEntity: initial?.isLegalEntity ? 'true' : 'false',
+    isLegalEntity: initial?.isLegalEntity || initial?.linkedCompanyId || initial?.linkedCompany ? 'true' : 'false',
     idType: initial?.idType ?? 'PASSPORT',
     idPassportNo: initial?.idPassportNo ?? '',
     issuingCountry: initial?.issuingCountry ?? '',
-    legalEntityRegNo: '',
-    legalEntityGovLaw: '',
+    legalEntityRegNo: initial?.legalEntityRegNo ?? '',
+    legalEntityGovLaw: initial?.legalEntityGovLaw ?? '',
     remarks: initial?.remarks ?? '',
   })
 
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })) }
+
+  useEffect(() => {
+    const q = companySearch.trim()
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams({ picker: '1', limit: '200', page: '1' })
+      if (q) params.set('q', q)
+      fetch(`/api/admin/companies?${params}`)
+        .then(r => r.ok ? r.json() : { companies: [] })
+        .then(data => {
+          const rows = Array.isArray(data.companies) ? data.companies as CompanyPickerOption[] : []
+          if (initial?.linkedCompany && !rows.some(c => c.id === initial.linkedCompany!.id)) {
+            rows.unshift({
+              id: initial.linkedCompany.id,
+              nameEn: initial.linkedCompany.nameEn,
+              nameZh: initial.linkedCompany.nameZh,
+              companyCode: initial.linkedCompany.companyCode,
+              companyNumber: initial.linkedCompany.companyNumber,
+              registeredAddress: initial.linkedCompany.registeredAddress,
+            })
+          }
+          setCompanyOptions(rows.filter(c => c.id !== companyId))
+        })
+        .catch(() => setCompanyOptions([]))
+    }, q ? 250 : 0)
+    return () => clearTimeout(timer)
+  }, [companySearch, companyId, initial?.linkedCompany])
 
   function linkKycOnly(p: KycPerson | null) {
     if (!p) {
       setForm(f => ({ ...f, keyPersonId: '' }))
       return
     }
-    setForm(f => ({ ...f, keyPersonId: p.id }))
+    setForm(f => ({
+      ...f,
+      keyPersonId: p.id,
+      linkedCompanyId: '',
+      isLegalEntity: 'false',
+    }))
   }
 
   function prefillFromKyc(p: KycPerson) {
     setForm(f => ({
       ...f,
       keyPersonId: p.id,
+      linkedCompanyId: '',
+      isLegalEntity: 'false',
       nameEn: p.nameEn,
       nameZh: p.nameZh ?? f.nameZh,
       idType: p.idType ? (p.idType === 'HKID' ? 'HKID' : p.idType === 'PASSPORT' ? 'PASSPORT' : 'OTHER') : f.idType,
@@ -1781,11 +1834,28 @@ function ControllerForm({ companyId, initial, kycPersons, onDone }: {
     }))
   }
 
+  function linkCompany(c: CompanyPickerOption | null) {
+    if (!c) {
+      setForm(f => ({ ...f, linkedCompanyId: '' }))
+      return
+    }
+    setForm(f => ({
+      ...f,
+      linkedCompanyId: c.id,
+      keyPersonId: '',
+      isLegalEntity: 'true',
+      nameEn: c.nameEn,
+      nameZh: c.nameZh ?? '',
+      correspondenceAddress: c.registeredAddress ?? f.correspondenceAddress,
+      legalEntityRegNo: c.companyNumber ?? f.legalEntityRegNo,
+    }))
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
     try {
-      const isLegal = form.isLegalEntity === 'true'
+      const isLegal = form.isLegalEntity === 'true' || !!form.linkedCompanyId
       const body: Record<string, unknown> = {
         nameEn: form.nameEn,
         entryDate: new Date(form.entryDate).toISOString(),
@@ -1806,30 +1876,160 @@ function ControllerForm({ companyId, initial, kycPersons, onDone }: {
         if (form.idPassportNo) body.idPassportNo = form.idPassportNo
         if (form.idType !== 'HKID' && form.issuingCountry) body.issuingCountry = form.issuingCountry
       }
-      body.keyPersonId = form.keyPersonId || null
+
+      if (form.linkedCompanyId) {
+        body.linkedCompanyId = form.linkedCompanyId
+        body.keyPersonId = null
+      } else {
+        body.linkedCompanyId = null
+        body.keyPersonId = form.keyPersonId || null
+      }
 
       const url = isEdit
         ? `/api/admin/companies/${companyId}/controllers/${initial!.id}`
         : `/api/admin/companies/${companyId}/controllers`
       const method = isEdit ? 'PATCH' : 'POST'
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-      if (!res.ok) { toast.error('Failed to save controller'); return }
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        toast.error(err?.error ?? 'Failed to save controller')
+        return
+      }
       toast.success(isEdit ? 'Controller updated' : 'Controller added')
       onDone()
     } finally { setSaving(false) }
   }
 
-  const isLegal = form.isLegalEntity === 'true'
+  const isLegal = form.isLegalEntity === 'true' || !!form.linkedCompanyId
+  const isCorporate = !!form.linkedCompanyId
+  const linkedCompany =
+    companyOptions.find(c => c.id === form.linkedCompanyId)
+    ?? (initial?.linkedCompany && initial.linkedCompany.id === form.linkedCompanyId
+      ? {
+          id: initial.linkedCompany.id,
+          nameEn: initial.linkedCompany.nameEn,
+          nameZh: initial.linkedCompany.nameZh,
+          companyCode: initial.linkedCompany.companyCode,
+          companyNumber: initial.linkedCompany.companyNumber,
+          registeredAddress: initial.linkedCompany.registeredAddress,
+        }
+      : null)
+
+  const kycPersonsForPicker = (() => {
+    if (!initial?.keyPerson) return kycPersons
+    if (kycPersons.some(p => p.id === initial.keyPerson!.id)) return kycPersons
+    return [
+      {
+        id: initial.keyPerson.id,
+        nameEn: initial.keyPerson.nameEn,
+        nameZh: initial.keyPerson.nameZh,
+        idType: null,
+        idNumber: null,
+        nationality: null,
+        dateOfBirth: null,
+        placeOfBirth: null,
+        placeOfIssue: null,
+        homeAddress: null,
+        contactAddress: null,
+        kycStatus: initial.keyPerson.kycStatus,
+      },
+      ...kycPersons,
+    ]
+  })()
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <KycLinkWithConfirm
-        persons={kycPersons}
-        value={form.keyPersonId}
-        confirmWhenLinking={isEdit && !initial?.keyPersonId}
-        onLinkOnly={linkKycOnly}
-        onPrefill={prefillFromKyc}
-      />
+      <div className="grid sm:grid-cols-2 gap-3">
+        <KycLinkWithConfirm
+          persons={kycPersonsForPicker}
+          value={form.keyPersonId}
+          confirmWhenLinking={isEdit && !initial?.keyPersonId}
+          onLinkOnly={linkKycOnly}
+          onPrefill={prefillFromKyc}
+          disabled={isCorporate}
+        />
+        <div
+          className="rounded-lg p-3 mb-1"
+          style={{
+            background: 'var(--surface-panel)',
+            border: linkedCompany
+              ? '1px solid rgba(56,189,248,0.45)'
+              : '1px solid var(--border-subtle)',
+            opacity: form.keyPersonId ? 0.55 : 1,
+            pointerEvents: form.keyPersonId ? 'none' : undefined,
+          }}
+        >
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <label style={{ ...labelStyle, color: 'var(--gold)', marginBottom: 0 }}>Linked company</label>
+            {linkedCompany && (
+              <span
+                className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                style={{ background: 'rgba(56,189,248,0.14)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.35)' }}
+              >
+                Linked
+              </span>
+            )}
+          </div>
+
+          {linkedCompany && (
+            <div
+              className="mb-2 rounded-md px-2.5 py-2 flex items-start justify-between gap-2"
+              style={{ background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.28)' }}
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate" style={{ color: 'var(--foreground)' }}>
+                  {linkedCompany.companyCode ? `${linkedCompany.companyCode} · ` : ''}
+                  {linkedCompany.nameEn}
+                  {linkedCompany.nameZh ? ` (${linkedCompany.nameZh})` : ''}
+                </p>
+                <p className="text-[11px]" style={{ color: 'var(--muted-foreground)' }}>
+                  Legal entity controller
+                </p>
+              </div>
+              <button
+                type="button"
+                className="text-xs shrink-0 hover:underline"
+                style={{ color: '#ef4444' }}
+                onClick={() => linkCompany(null)}
+              >
+                Unlink
+              </button>
+            </div>
+          )}
+
+          <Input
+            value={companySearch}
+            onChange={e => setCompanySearch(e.target.value)}
+            placeholder="Search company code / name…"
+            style={{ ...fieldStyle, marginBottom: 8 }}
+          />
+          <select
+            value={form.linkedCompanyId}
+            onChange={e => {
+              const id = e.target.value
+              if (!id) {
+                linkCompany(null)
+                return
+              }
+              const c = companyOptions.find(row => row.id === id) ?? null
+              linkCompany(c)
+            }}
+            style={fieldStyle}
+          >
+            <option value="" style={{ background: 'var(--surface-raised)' }}>
+              {linkedCompany ? '— Change linked company —' : '— Not a corporate controller —'}
+            </option>
+            {companyOptions.map(c => (
+              <option key={c.id} value={c.id} style={{ background: 'var(--surface-raised)' }}>
+                {c.companyCode ? `${c.companyCode} · ` : ''}{c.nameEn}{c.nameZh ? ` (${c.nameZh})` : ''}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
+            Legal-entity controller: link to another portfolio company. Clears KYC person link.
+          </p>
+        </div>
+      </div>
 
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
@@ -1872,7 +2072,12 @@ function ControllerForm({ companyId, initial, kycPersons, onDone }: {
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label style={labelStyle}>Entity Type</label>
-          <select value={form.isLegalEntity} onChange={e => set('isLegalEntity', e.target.value)} style={fieldStyle}>
+          <select
+            value={isCorporate ? 'true' : form.isLegalEntity}
+            onChange={e => set('isLegalEntity', e.target.value)}
+            style={fieldStyle}
+            disabled={isCorporate}
+          >
             <option value="false" style={{ background: 'var(--surface-raised)' }}>Individual (Natural Person)</option>
             <option value="true" style={{ background: 'var(--surface-raised)' }}>Legal Entity</option>
           </select>
@@ -3587,6 +3792,7 @@ export default function CompanyDetailPage() {
                   <thead>
                     <tr>
                       <th style={thStyle}>Name</th>
+                      <th style={thStyle}>Link</th>
                       <th style={thStyle}>Nature of Control</th>
                       <th style={thStyle}>Becoming</th>
                       <th style={thStyle}>Ceased</th>
@@ -3597,19 +3803,36 @@ export default function CompanyDetailPage() {
                     {company.significantControllers.map(sc => (
                       <tr key={sc.id} className="hover:bg-[var(--surface-panel)] transition-colors">
                         <td style={tdPrimaryStyle}>{sc.nameEn}{sc.nameZh ? ` (${sc.nameZh})` : ''}</td>
+                        <td style={tdStyle}>
+                          {sc.linkedCompany || sc.linkedCompanyId ? (
+                            <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(56,189,248,0.10)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.22)' }}>
+                              Company{sc.linkedCompany?.companyCode ? ` · ${sc.linkedCompany.companyCode}` : ''}
+                            </span>
+                          ) : sc.keyPersonId || sc.keyPerson ? (
+                            <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(201,169,110,0.12)', color: 'var(--gold)', border: '1px solid rgba(201,169,110,0.28)' }}>
+                              KYC
+                            </span>
+                          ) : sc.isLegalEntity ? (
+                            <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(120,113,108,0.12)', color: 'var(--muted-foreground)', border: '1px solid rgba(120,113,108,0.22)' }}>
+                              Legal entity
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--muted-foreground)' }}>—</span>
+                          )}
+                        </td>
                         <td style={tdStyle}>{sc.natureOfControl ?? '—'}</td>
                         <td style={tdStyle}>{fmt(sc.becomingDate)}</td>
                         <td style={tdStyle}>{fmt(sc.cessationDate)}</td>
                         <td style={tdStyle}>
                           <div className="flex gap-2">
-                            <button onClick={() => setModal({ type: 'controller', mode: 'edit', data: sc })} className="text-xs hover:underline" style={{ color: '#C9A96E' }}>Edit</button>
+                            <button onClick={() => setModal({ type: 'controller', mode: 'edit', data: sc })} className="text-xs hover:underline" style={{ color: 'var(--gold)' }}>Edit</button>
                             <button onClick={() => deleteItem('controllers', sc.id)} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Delete</button>
                           </div>
                         </td>
                       </tr>
                     ))}
                     {company.significantControllers.length === 0 && (
-                      <tr><td colSpan={5} className="px-4 py-6 text-center" style={{ color: '#5A5040' }}>No significant controllers — click Add Controller to get started</td></tr>
+                      <tr><td colSpan={6} className="px-4 py-6 text-center" style={{ color: 'var(--muted-foreground)' }}>No significant controllers — click Add Controller to get started</td></tr>
                     )}
                   </tbody>
                 </table>
