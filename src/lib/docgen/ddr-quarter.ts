@@ -131,12 +131,7 @@ export async function listDdrComplianceTodos(now = new Date(), limit = 40): Prom
       orderBy: { nameEn: 'asc' },
     }),
     prisma.keyPerson.findMany({
-      where: {
-        OR: [
-          { kycStatus: 'APPROVED' },
-          { kycStatus: { in: ['SUBMITTED', 'PENDING_INFO'] } },
-        ],
-      },
+      where: { kycStatus: 'APPROVED' },
       select: {
         id: true,
         nameEn: true,
@@ -214,21 +209,6 @@ export async function listDdrComplianceTodos(now = new Date(), limit = 40): Prom
     const lastDdrAt = latestOf(dates)
     const hasCurrent = inCurrentQuarter(dates)
     const subjectSince = person.kycApprovedAt ?? person.createdAt
-
-    if (person.kycStatus !== 'APPROVED') {
-      if (hasCurrent) continue
-      items.push({
-        id: `person-${person.id}`,
-        kind: 'ddr_due',
-        subjectType: 'PERSON',
-        href: `/admin/kyc/${person.id}`,
-        title: person.kycCode ? `${person.kycCode} · ${person.nameEn}` : person.nameEn,
-        detail: `自然人 DDR 待生成（批准前强制）· ${current.label}`,
-        quarterLabel: current.label,
-        at: lastDdrAt ?? person.createdAt,
-      })
-      continue
-    }
 
     const status = classifyDdrCompliance({
       now,

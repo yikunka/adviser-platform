@@ -16,7 +16,7 @@ const createSchema = z.object({
 })
 
 const ID_EXPIRY_CATEGORY = 'ID_EXPIRY'
-const KYC_STATUS_VALUES = new Set(['DRAFT', 'SUBMITTED', 'PENDING_INFO', 'APPROVED', 'REJECTED'])
+const KYC_STATUS_VALUES = new Set(['DRAFT', 'APPROVED', 'REJECTED', 'INACTIVE'])
 
 function oneMonthFrom(date: Date) {
   const next = new Date(date)
@@ -173,7 +173,7 @@ export async function POST(req: NextRequest) {
   }
 
   const data = inputToKeyPersonAdminUpdate(person) as Record<string, unknown>
-  data.kycStatus = action === 'SUBMIT' ? 'SUBMITTED' : 'DRAFT'
+  data.kycStatus = 'DRAFT'
   if (action === 'SUBMIT' && !data.kycCode) {
     data.kycCode = await nextKycCode()
   }

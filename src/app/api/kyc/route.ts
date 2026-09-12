@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     const userId = session.user.id
     const results: { id: string; kycStatus: string; kycCode: string | null }[] = []
 
-    const terminal: KYCStatus[] = ['SUBMITTED', 'APPROVED', 'PENDING_INFO', 'REJECTED']
+    const terminal: KYCStatus[] = ['APPROVED', 'REJECTED', 'INACTIVE']
 
     for (const p of persons) {
       let data = inputToKeyPersonData(p, action) as Record<string, unknown>
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
         if (!own) {
           return NextResponse.json({ error: 'Invalid person id' }, { status: 403 })
         }
-        if (own.kycStatus === 'APPROVED' || (action === 'SAVE_DRAFT' && terminal.includes(own.kycStatus))) {
+        if (own.kycStatus === 'APPROVED' || own.kycStatus === 'INACTIVE' || (action === 'SAVE_DRAFT' && terminal.includes(own.kycStatus))) {
           const rest = { ...data }
           delete rest.kycStatus
           data = rest

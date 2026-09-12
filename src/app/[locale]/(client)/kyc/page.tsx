@@ -78,11 +78,10 @@ function emptyPerson(): KycPersonInput & { kycStatus?: string } {
 }
 
 const KYC_STATUS: Record<string, { bg: string; text: string; icon: React.ElementType; label: string }> = {
-  DRAFT:        { bg: 'rgba(120,113,108,0.15)', text: '#9A8060', icon: Clock,        label: 'Draft' },
-  SUBMITTED:    { bg: 'rgba(201,169,110,0.15)', text: '#C9A96E', icon: Clock,        label: 'Submitted' },
-  PENDING_INFO: { bg: 'rgba(245,158,11,0.12)',  text: '#f59e0b', icon: Clock,        label: 'Pending Info' },
-  APPROVED:     { bg: 'rgba(16,185,129,0.12)',  text: '#10b981', icon: CheckCircle2, label: 'Approved' },
-  REJECTED:     { bg: 'rgba(239,68,68,0.12)',   text: '#ef4444', icon: XCircle,      label: 'Rejected' },
+  DRAFT:    { bg: 'rgba(120,113,108,0.15)', text: '#9A8060', icon: Clock,        label: 'Draft' },
+  APPROVED: { bg: 'rgba(16,185,129,0.12)',  text: '#10b981', icon: CheckCircle2, label: 'Approved' },
+  REJECTED: { bg: 'rgba(239,68,68,0.12)',   text: '#ef4444', icon: XCircle,      label: 'Rejected' },
+  INACTIVE: { bg: 'rgba(120,113,108,0.12)', text: '#78716c', icon: Clock,        label: 'Inactive' },
 }
 
 const STEPS = [
@@ -434,7 +433,7 @@ export default function KYCPage() {
     load()
   }, [load])
 
-  const isLocked = kycStatus === 'APPROVED'
+  const isLocked = kycStatus === 'APPROVED' || kycStatus === 'INACTIVE'
 
   function stripForApi(persons: FormValues['persons'], action: 'SAVE_DRAFT' | 'SUBMIT'): KycPersonInput[] {
     return persons.map((p) => {

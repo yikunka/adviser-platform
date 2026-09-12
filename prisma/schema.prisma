@@ -64,10 +64,9 @@ enum CompanyFileMovementType {
 
 enum KYCStatus {
   DRAFT
-  SUBMITTED
-  PENDING_INFO
   APPROVED
   REJECTED
+  INACTIVE
 }
 
 enum DocumentType {

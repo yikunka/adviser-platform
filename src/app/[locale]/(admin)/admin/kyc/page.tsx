@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { KycPersonEditForm } from '@/components/admin/KycPersonEditForm'
 import { type KycPersonInput } from '@/lib/kyc/personZod'
+import { KYC_STATUS_LABELS, KYC_STATUS_VALUES, kycStatusLabel } from '@/lib/kyc/kyc-status'
 import { useRouter } from '@/i18n/navigation'
 
 type KYCDocument = {
@@ -95,16 +96,15 @@ type RelatedCompany = {
   roles: RelatedCompanyRole[]
 }
 
-const KYC_STATUS_OPTIONS = ['DRAFT', 'SUBMITTED', 'PENDING_INFO', 'APPROVED', 'REJECTED'] as const
+const KYC_STATUS_OPTIONS = KYC_STATUS_VALUES
 const ID_EXPIRY_FILTER = 'ID_EXPIRY'
 const STATUS_OPTIONS = ['', ...KYC_STATUS_OPTIONS, ID_EXPIRY_FILTER] as const
 
 const STATUS_COLOR: Record<string, string> = {
-  DRAFT:        'bg-[rgba(120,113,108,0.15)] text-[#9A8060]',
-  SUBMITTED:    'bg-[rgba(201,169,110,0.15)] text-[#C9A96E]',
-  PENDING_INFO: 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]',
-  APPROVED:     'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
-  REJECTED:     'bg-[rgba(239,68,68,0.12)] text-[#ef4444]',
+  DRAFT:    'bg-[rgba(120,113,108,0.15)] text-[#9A8060]',
+  APPROVED: 'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
+  REJECTED: 'bg-[rgba(239,68,68,0.12)] text-[#ef4444]',
+  INACTIVE: 'bg-[rgba(120,113,108,0.12)] text-[#78716c]',
 }
 
 const DOCUMENT_TYPE_LABEL: Record<string, string> = {
@@ -131,7 +131,7 @@ function missingDocumentTypes(record: KYCRecord) {
 function filterLabel(filter: string, allLabel: string) {
   if (!filter) return allLabel
   if (filter === ID_EXPIRY_FILTER) return 'ID expiry'
-  return filter
+  return KYC_STATUS_LABELS[filter as keyof typeof KYC_STATUS_LABELS] ?? filter
 }
 
 /** Portal client (submitter) or company-linked account holder. */
@@ -576,7 +576,7 @@ export default function KYCQueuePage() {
                   <td className="px-4 py-3">
                     <div className="flex flex-col gap-1.5">
                       <span className={`w-fit px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[r.kycStatus] ?? ''}`}>
-                        {r.kycStatus}
+                        {kycStatusLabel(r.kycStatus)}
                       </span>
                       {missingDocs.length > 0 ? (
                         <span

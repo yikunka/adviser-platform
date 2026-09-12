@@ -8,13 +8,13 @@ import {
   ArrowRight, FilePlus,
   ShoppingCart,
 } from 'lucide-react'
+import { kycStatusLabel } from '@/lib/kyc/kyc-status'
 
 const KYC_COLOR: Record<string, { bg: string; text: string }> = {
-  APPROVED:     { bg: 'rgba(16,185,129,0.12)',  text: '#10b981' },
-  SUBMITTED:    { bg: 'rgba(201,169,110,0.15)', text: '#C9A96E' },
-  PENDING_INFO: { bg: 'rgba(245,158,11,0.12)',  text: '#f59e0b' },
-  REJECTED:     { bg: 'rgba(239,68,68,0.12)',   text: '#ef4444' },
-  DRAFT:        { bg: 'rgba(120,113,108,0.15)', text: '#7A7060' },
+  APPROVED: { bg: 'rgba(16,185,129,0.12)',  text: '#10b981' },
+  REJECTED: { bg: 'rgba(239,68,68,0.12)',   text: '#ef4444' },
+  DRAFT:    { bg: 'rgba(120,113,108,0.15)', text: '#7A7060' },
+  INACTIVE: { bg: 'rgba(120,113,108,0.12)', text: '#78716c' },
 }
 
 export default async function DashboardPage({
@@ -116,7 +116,7 @@ export default async function DashboardPage({
               className="self-start px-2.5 py-1 rounded-full text-xs font-semibold"
               style={{ background: kycColors.bg, color: kycColors.text }}
             >
-              {kycStatus}
+              {kycStatusLabel(kycStatus)}
             </span>
           ) : (
             <p className="text-3xl font-bold" style={{ color: '#7A7060' }}>—</p>

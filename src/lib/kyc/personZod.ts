@@ -234,7 +234,7 @@ export function inputToKeyPersonData(
     declarationSigned: data.declarationSigned ?? false,
     signatureName: data.signatureName ?? undefined,
     declarationDate: data.declarationDate ? new Date(data.declarationDate) : undefined,
-    kycStatus: action === 'SUBMIT' ? ('SUBMITTED' as const) : ('DRAFT' as const),
+    kycStatus: 'DRAFT' as const,
   }
 }
 

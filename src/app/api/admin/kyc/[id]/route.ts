@@ -9,18 +9,18 @@ import { getRelatedCompaniesForKeyPerson } from '@/lib/kyc/relatedCompanies'
 import { assertPersonDdrForApproval } from '@/lib/docgen/ddr-quarter'
 import { z } from 'zod'
 
-const statusSchema = z.enum(['DRAFT', 'SUBMITTED', 'PENDING_INFO', 'APPROVED', 'REJECTED'])
+const statusSchema = z.enum(['DRAFT', 'APPROVED', 'REJECTED', 'INACTIVE'])
 const adminUpdateSchema = kycPersonDraftZod.extend({
   kycStatus: statusSchema.optional(),
   clientUserId: z.string().optional().nullable(),
 })
 
 const reviewSchema = z.object({
-  action: z.enum(['APPROVE', 'REJECT', 'REQUEST_INFO', 'CANCEL_APPROVAL']),
+  action: z.enum(['APPROVE', 'REJECT', 'CANCEL_APPROVAL', 'SET_INACTIVE']),
   reason: z.string().max(500).optional(),
 })
 
-const REVIEW_ACTIONS = new Set(['APPROVE', 'REJECT', 'REQUEST_INFO', 'CANCEL_APPROVAL'])
+const REVIEW_ACTIONS = new Set(['APPROVE', 'REJECT', 'CANCEL_APPROVAL', 'SET_INACTIVE'])
 
 const adminNotesSchema = z.object({
   adminNotes: z.string().max(5000),
@@ -138,8 +138,8 @@ export async function PATCH(
     const statusMap = {
       APPROVE: 'APPROVED',
       REJECT: 'REJECTED',
-      REQUEST_INFO: 'PENDING_INFO',
-      CANCEL_APPROVAL: 'SUBMITTED',
+      CANCEL_APPROVAL: 'DRAFT',
+      SET_INACTIVE: 'INACTIVE',
     } as const
 
     const keyPerson = await prisma.keyPerson.update({
@@ -150,11 +150,11 @@ export async function PATCH(
         kycApprovedById: action === 'APPROVE' ? session!.user.id : undefined,
         kycApprovedAt: action === 'APPROVE' ? new Date() : undefined,
         kycRejectionReason: action === 'REJECT' ? reason : undefined,
-        ...(action === 'CANCEL_APPROVAL' && {
+        ...((action === 'CANCEL_APPROVAL' || action === 'SET_INACTIVE') && {
           kycApprovedById: null,
           kycApprovedAt: null,
           kycExpiryDate: null,
-          kycRejectionReason: null,
+          ...(action === 'CANCEL_APPROVAL' ? { kycRejectionReason: null } : {}),
         }),
       },
     })
@@ -171,8 +171,8 @@ export async function PATCH(
     const msgMap = {
       APPROVE: 'Your KYC has been approved.',
       REJECT: `Your KYC was rejected: ${reason ?? ''}`,
-      REQUEST_INFO: 'Additional information is required for your KYC.',
       CANCEL_APPROVAL: 'Your KYC approval has been cancelled. Please wait for review or submit a new KYC if needed.',
+      SET_INACTIVE: 'Your KYC record has been marked inactive.',
     }
     for (const userId of notifyUserIds) {
       await createNotification(userId, 'KYC_STATUS_CHANGE', msgMap[action], id)
@@ -203,7 +203,7 @@ export async function PATCH(
   }
   if (parsed.data.kycStatus) {
     updateData.kycStatus = parsed.data.kycStatus
-    if ((parsed.data.kycStatus === 'SUBMITTED' || parsed.data.kycStatus === 'APPROVED') && !before.kycCode && !updateData.kycCode) {
+    if ((parsed.data.kycStatus === 'DRAFT' || parsed.data.kycStatus === 'APPROVED') && !before.kycCode && !updateData.kycCode) {
       updateData.kycCode = await nextKycCode()
     }
     if (parsed.data.kycStatus === 'APPROVED') {

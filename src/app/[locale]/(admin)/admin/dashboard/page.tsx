@@ -99,7 +99,7 @@ export default async function AdminDashboardPage() {
 
   const [totalCompanies, pendingKyc, amlAlerts, upcomingAR, ddrTodosRaw] = await Promise.all([
     prisma.company.count({ where: { status: 'ACTIVE' } }),
-    prisma.keyPerson.count({ where: { kycStatus: 'SUBMITTED' } }),
+    prisma.keyPerson.count({ where: { kycStatus: 'DRAFT' } }),
     prisma.aMLAlert.count({ where: { resolution: 'PENDING' } }),
     prisma.annualFiling.count({
       where: {

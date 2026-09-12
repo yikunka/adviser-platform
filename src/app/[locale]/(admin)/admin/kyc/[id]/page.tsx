@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { KycPersonEditForm } from '@/components/admin/KycPersonEditForm'
 import { keyPersonToFormValues, type KycPersonInput } from '@/lib/kyc/personZod'
+import { KYC_STATUS_LABELS, KYC_STATUS_VALUES, kycStatusLabel } from '@/lib/kyc/kyc-status'
 import { Link, useRouter } from '@/i18n/navigation'
 
 type KYCDocument = {
@@ -163,7 +164,7 @@ type RelatedCompany = {
   roles: RelatedCompanyRole[]
 }
 
-const KYC_STATUS_OPTIONS = ['DRAFT', 'SUBMITTED', 'PENDING_INFO', 'APPROVED', 'REJECTED'] as const
+const KYC_STATUS_OPTIONS = KYC_STATUS_VALUES
 
 const AML_HIT_COLOR: Record<AMLHitResult, { bg: string; text: string; label: string }> = {
   STRONG_HIT:    { bg: 'rgba(239,68,68,0.12)',   text: '#ef4444', label: 'Strong Hit' },
@@ -231,11 +232,10 @@ function ScreeningAlertCard({ alert }: { alert: AMLAlert }) {
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  DRAFT:        'bg-[rgba(120,113,108,0.15)] text-[#9A8060]',
-  SUBMITTED:    'bg-[rgba(201,169,110,0.15)] text-[#C9A96E]',
-  PENDING_INFO: 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]',
-  APPROVED:     'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
-  REJECTED:     'bg-[rgba(239,68,68,0.12)] text-[#ef4444]',
+  DRAFT:    'bg-[rgba(120,113,108,0.15)] text-[#9A8060]',
+  APPROVED: 'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
+  REJECTED: 'bg-[rgba(239,68,68,0.12)] text-[#ef4444]',
+  INACTIVE: 'bg-[rgba(120,113,108,0.12)] text-[#78716c]',
 }
 
 const DOCUMENT_TYPE_LABEL: Record<string, string> = {
@@ -618,7 +618,7 @@ export default function KYCDetailPage() {
     }
   }
 
-  async function doAction(action: 'APPROVE' | 'REJECT' | 'REQUEST_INFO' | 'CANCEL_APPROVAL') {
+  async function doAction(action: 'APPROVE' | 'REJECT' | 'CANCEL_APPROVAL' | 'SET_INACTIVE') {
     if (!selected) return
     if (action === 'REJECT' && !reason.trim()) {
       toast.error(t('reasonRequired'))
@@ -762,7 +762,7 @@ export default function KYCDetailPage() {
             </span>
           ) : null}
           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[selected.kycStatus] ?? ''}`}>
-            {selected.kycStatus}
+            {kycStatusLabel(selected.kycStatus)}
           </span>
           <div className="ml-auto flex items-center gap-2">
             {!editing ? (
@@ -941,11 +941,13 @@ export default function KYCDetailPage() {
               style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)', outline: 'none' }}
             >
               {KYC_STATUS_OPTIONS.map(status => (
-                <option key={status} value={status} style={{ background: 'var(--surface-raised)' }}>{status}</option>
+                <option key={status} value={status} style={{ background: 'var(--surface-raised)' }}>
+                  {KYC_STATUS_LABELS[status]}
+                </option>
               ))}
             </select>
             <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-              If a submitted or approved KYC has no code, the next CL code will be generated automatically.
+              If a draft or approved KYC has no code, the next CL code will be generated automatically.
             </p>
           </div>
           <KycPersonEditForm
@@ -1564,7 +1566,7 @@ export default function KYCDetailPage() {
       {/* Actions */}
       {!editing ? (
       <div className="border-t pt-4" style={{ borderColor: 'var(--border-subtle)' }}>
-        {selected.kycStatus === 'DRAFT' || selected.kycStatus === 'SUBMITTED' || selected.kycStatus === 'PENDING_INFO' ? (
+        {selected.kycStatus === 'DRAFT' || selected.kycStatus === 'REJECTED' ? (
           <div className="space-y-3">
             <div className="space-y-1">
               <label className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('rejectReason')}</label>
@@ -1577,12 +1579,9 @@ export default function KYCDetailPage() {
                 onChange={e => setReason(e.target.value)}
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button disabled={loading} onClick={() => doAction('APPROVE')} className="bg-green-600 hover:bg-green-700">
                 {t('approve')}
-              </Button>
-              <Button variant="outline" disabled={loading} onClick={() => doAction('REQUEST_INFO')}>
-                {t('requestInfo')}
               </Button>
               <Button
                 variant="outline"
@@ -1592,22 +1591,44 @@ export default function KYCDetailPage() {
               >
                 {t('reject')}
               </Button>
+              <Button
+                variant="outline"
+                disabled={loading}
+                onClick={() => doAction('SET_INACTIVE')}
+                style={{ color: '#78716c', borderColor: 'rgba(120,113,108,0.35)' }}
+              >
+                Mark Inactive
+              </Button>
             </div>
           </div>
         ) : selected.kycStatus === 'APPROVED' ? (
           <div className="space-y-3">
             <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-              {t('approvedCanCancel', { defaultValue: 'This KYC is approved. You can cancel the approval and return it to the submitted queue.' })}
+              {t('approvedCanCancel', { defaultValue: 'This KYC is approved. You can cancel the approval (back to Draft) or mark it Inactive.' })}
             </p>
-            <Button
-              variant="outline"
-              disabled={loading}
-              onClick={() => doAction('CANCEL_APPROVAL')}
-              style={{ color: '#f59e0b', borderColor: 'rgba(245,158,11,0.35)' }}
-            >
-              {t('cancelApproval', { defaultValue: 'Cancel Approved' })}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                disabled={loading}
+                onClick={() => doAction('CANCEL_APPROVAL')}
+                style={{ color: '#f59e0b', borderColor: 'rgba(245,158,11,0.35)' }}
+              >
+                {t('cancelApproval', { defaultValue: 'Cancel Approved' })}
+              </Button>
+              <Button
+                variant="outline"
+                disabled={loading}
+                onClick={() => doAction('SET_INACTIVE')}
+                style={{ color: '#78716c', borderColor: 'rgba(120,113,108,0.35)' }}
+              >
+                Mark Inactive
+              </Button>
+            </div>
           </div>
+        ) : selected.kycStatus === 'INACTIVE' ? (
+          <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+            This KYC is inactive. Change status in Edit to reactivate (Draft / Approved / Rejected).
+          </p>
         ) : (
           <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>{t('alreadyProcessed')}</p>
         )}
