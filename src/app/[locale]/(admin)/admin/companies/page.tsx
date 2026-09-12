@@ -3,11 +3,11 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { COMPANY_STATUS_LABELS } from '@/lib/company/company-status'
+import { COMPANY_STATUS_LABELS, COMPANY_STATUSES } from '@/lib/company/company-status'
 import {
   COMPANY_JURISDICTIONS,
-  COMPANY_JURISDICTION_LABELS_ZH,
-  companyJurisdictionLabelZh,
+  COMPANY_JURISDICTION_LABELS,
+  companyJurisdictionLabel,
 } from '@/lib/company/jurisdiction'
 import { Link, useRouter } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
@@ -52,6 +52,7 @@ export default function CompaniesPage() {
   const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
   const [jurisdiction, setJurisdiction] = useState('')
+  const [status, setStatus] = useState('')
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
   const [updatingFinancialId, setUpdatingFinancialId] = useState<string | null>(null)
@@ -61,6 +62,7 @@ export default function CompaniesPage() {
     try {
       const params = new URLSearchParams({ q: search, page: String(page) })
       if (jurisdiction) params.set('jurisdiction', jurisdiction)
+      if (status) params.set('status', status)
       const res = await fetch(`/api/admin/companies?${params}`)
       const json = await res.json()
       setCompanies(json.companies ?? [])
@@ -70,7 +72,7 @@ export default function CompaniesPage() {
     } finally {
       setLoading(false)
     }
-  }, [search, jurisdiction, page])
+  }, [search, jurisdiction, status, page])
 
   async function toggleFinancialModule(company: Company, enabled: boolean) {
     const previous = company.financialEnabled
@@ -128,7 +130,27 @@ export default function CompaniesPage() {
           <option value="" style={{ background: 'var(--surface-raised)' }}>{t('jurisdictionAll')}</option>
           {COMPANY_JURISDICTIONS.map(j => (
             <option key={j} value={j} style={{ background: 'var(--surface-raised)' }}>
-              {COMPANY_JURISDICTION_LABELS_ZH[j]}
+              {COMPANY_JURISDICTION_LABELS[j]}
+            </option>
+          ))}
+        </select>
+        <select
+          value={status}
+          onChange={e => { setStatus(e.target.value); setPage(1) }}
+          aria-label={t('statusFilter')}
+          className="h-9 rounded-md px-3 text-sm"
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border-subtle)',
+            color: 'var(--foreground)',
+            outline: 'none',
+            minWidth: '8rem',
+          }}
+        >
+          <option value="" style={{ background: 'var(--surface-raised)' }}>{t('statusAll')}</option>
+          {COMPANY_STATUSES.map(s => (
+            <option key={s} value={s} style={{ background: 'var(--surface-raised)' }}>
+              {COMPANY_STATUS_LABELS[s]}
             </option>
           ))}
         </select>
@@ -169,7 +191,7 @@ export default function CompaniesPage() {
                 >
                   <td className="px-4 py-3 font-semibold" style={{ color: '#C9A96E' }}>{c.companyCode ?? '—'}</td>
                   <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
-                    {companyJurisdictionLabelZh(c.companyType) ?? '—'}
+                    {companyJurisdictionLabel(c.companyType) ?? '—'}
                   </td>
                   <td className="px-4 py-3">
                     <p className="font-medium" style={{ color: 'var(--foreground)' }}>{c.nameEn}</p>

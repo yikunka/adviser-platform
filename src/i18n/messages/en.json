@@ -783,6 +783,8 @@
       "jurisdictionFilter": "Jurisdiction",
       "jurisdictionAll": "All jurisdictions",
       "jurisdictionColumn": "Jurisdiction",
+      "statusFilter": "Status",
+      "statusAll": "All statuses",
       "exportCsv": "Export CSV",
       "companyCode": "Company Code",
       "companyName": "Company Name",

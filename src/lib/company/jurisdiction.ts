@@ -38,3 +38,8 @@ export function companyJurisdictionLabelZh(companyType: string | null | undefine
   if (!companyType) return null
   return COMPANY_JURISDICTION_LABELS_ZH[companyType as CompanyJurisdiction] ?? companyType
 }
+
+export function companyJurisdictionLabel(companyType: string | null | undefined): string | null {
+  if (!companyType) return null
+  return COMPANY_JURISDICTION_LABELS[companyType as CompanyJurisdiction] ?? companyType
+}

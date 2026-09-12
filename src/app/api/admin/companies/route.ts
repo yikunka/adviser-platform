@@ -12,6 +12,7 @@ import {
   COMPANY_JURISDICTION_CODE_PREFIX,
   COMPANY_JURISDICTIONS,
 } from '@/lib/company/jurisdiction'
+import { COMPANY_STATUSES } from '@/lib/company/company-status'
 import {
   buildCompanyOwnershipNode,
   computeEffectiveNaturalOwners,
@@ -62,6 +63,7 @@ export async function GET(req: NextRequest) {
   const page = parseInt(searchParams.get('page') ?? '1')
   const requestedLimit = parseInt(searchParams.get('limit') ?? '20')
   const jurisdiction = searchParams.get('jurisdiction') ?? ''
+  const status = searchParams.get('status') ?? ''
   const limit = Number.isFinite(requestedLimit)
     ? Math.min(Math.max(requestedLimit, 1), searchParams.get('picker') === '1' ? 500 : 100)
     : 20
@@ -74,10 +76,15 @@ export async function GET(req: NextRequest) {
     jurisdiction && (COMPANY_JURISDICTIONS as readonly string[]).includes(jurisdiction)
       ? { companyType: jurisdiction }
       : {}
+  const statusFilter =
+    status && (COMPANY_STATUSES as readonly string[]).includes(status)
+      ? { status: status as (typeof COMPANY_STATUSES)[number] }
+      : {}
   const where = {
     deletedAt: null as null,
     ...(accessFilter ?? {}),
     ...jurisdictionFilter,
+    ...statusFilter,
     ...(search
       ? {
           OR: [
@@ -114,7 +121,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ companies, total, page, limit })
   }
 
-  const useLegacySort = !search && !jurisdictionFilter.companyType && access.kind === 'all'
+  const useLegacySort = !search && !jurisdictionFilter.companyType && !statusFilter.status && access.kind === 'all'
 
   async function withUbos<T extends { id: string }>(companies: T[]) {
     if (companies.length === 0) return companies.map(c => ({ ...c, ubos: [] as Array<{ nameEn: string; nameZh: string | null; effectivePercent: number }> }))
