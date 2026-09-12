@@ -22,6 +22,10 @@ const reviewSchema = z.object({
 
 const REVIEW_ACTIONS = new Set(['APPROVE', 'REJECT', 'REQUEST_INFO', 'CANCEL_APPROVAL'])
 
+const adminNotesSchema = z.object({
+  adminNotes: z.string().max(5000),
+})
+
 const kycRecordInclude = {
   kycDocuments: {
     orderBy: { uploadedAt: 'desc' as const },
@@ -90,6 +94,29 @@ export async function PATCH(
 
   const before = await prisma.keyPerson.findUnique({ where: { id } })
   if (!before) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  // Lightweight notes-only update (does not require full KYC form payload)
+  if (
+    body &&
+    typeof body === 'object' &&
+    'adminNotes' in body &&
+    Object.keys(body as object).every(k => k === 'adminNotes')
+  ) {
+    const notesParsed = adminNotesSchema.safeParse(body)
+    if (!notesParsed.success) return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
+    const keyPerson = await prisma.keyPerson.update({
+      where: { id },
+      data: { adminNotes: notesParsed.data.adminNotes.trim() || null },
+      include: kycRecordInclude,
+    })
+    await logAudit(session!.user.id, 'KYC_ADMIN_NOTES', 'KeyPerson', id, before, keyPerson)
+    const relatedCompanies = await getRelatedCompaniesForKeyPerson({
+      id: keyPerson.id,
+      submittedByUserId: keyPerson.submittedByUserId,
+      submittedByEmail: keyPerson.submittedByUser?.email ?? null,
+    })
+    return NextResponse.json({ ...keyPerson, relatedCompanies })
+  }
 
   if (isReviewBody(body)) {
     const parsed = reviewSchema.safeParse(body)

@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { ChevronLeft, Download, Eye, Pencil, Sparkles, Trash2, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import { KycPersonEditForm } from '@/components/admin/KycPersonEditForm'
 import { keyPersonToFormValues, type KycPersonInput } from '@/lib/kyc/personZod'
 import { Link, useRouter } from '@/i18n/navigation'
@@ -137,6 +138,7 @@ type KYCRecord = {
   declarationDate: string | null
   kycStatus: string
   updatedAt: string
+  adminNotes: string | null
   kycDocuments: KYCDocument[]
   submittedByUser: { id: string; email: string; nameEn: string } | null
   companyLinks: Array<{
@@ -345,6 +347,8 @@ export default function KYCDetailPage() {
   const [editStatus, setEditStatus] = useState<KYCRecord['kycStatus']>('DRAFT')
   const [editClientId, setEditClientId] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
+  const [adminNotesDraft, setAdminNotesDraft] = useState('')
+  const [savingNotes, setSavingNotes] = useState(false)
 
   async function fetchAML(personId: string) {
     setAmlData(null)
@@ -373,6 +377,7 @@ export default function KYCDetailPage() {
       }
       const data = (await res.json()) as KYCRecord
       setSelected(data)
+      setAdminNotesDraft(data.adminNotes ?? '')
       void fetchAML(personId)
     } catch {
       setSelected(null)
@@ -502,6 +507,29 @@ export default function KYCDetailPage() {
     setEditValues(null)
     setEditStatus('DRAFT')
     setEditClientId('')
+  }
+
+  async function saveAdminNotes() {
+    if (!selected) return
+    setSavingNotes(true)
+    try {
+      const res = await fetch(`/api/admin/kyc/${selected.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminNotes: adminNotesDraft }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(typeof json?.error === 'string' ? json.error : '保存备注失败')
+        return
+      }
+      const updated = json as KYCRecord
+      setSelected(prev => (prev ? { ...prev, ...updated, adminNotes: updated.adminNotes ?? null } : prev))
+      setAdminNotesDraft(updated.adminNotes ?? '')
+      toast.success('备注已保存')
+    } finally {
+      setSavingNotes(false)
+    }
   }
 
   async function analyzeUploadedDocs() {
@@ -846,6 +874,33 @@ export default function KYCDetailPage() {
           </ul>
         )}
       </div>
+
+      <DetailSection title="备注 / Admin Notes">
+        <p className="mb-2 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+          填写文件上没有的客户信息，仅后台可见。
+        </p>
+        <Textarea
+          value={adminNotesDraft}
+          onChange={e => setAdminNotesDraft(e.target.value)}
+          rows={5}
+          maxLength={5000}
+          placeholder="例如：补充联系方式、亲属关系说明、面谈记录、特殊合规关注点等…"
+          className="border-[#2A2418] bg-[#141410] text-[var(--foreground)] placeholder:text-[#5C5448]"
+        />
+        <div className="mt-2 flex items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            disabled={savingNotes || adminNotesDraft === (selected.adminNotes ?? '')}
+            onClick={() => void saveAdminNotes()}
+          >
+            {savingNotes ? '保存中…' : '保存备注'}
+          </Button>
+          {adminNotesDraft !== (selected.adminNotes ?? '') && (
+            <span className="text-xs" style={{ color: '#f59e0b' }}>未保存</span>
+          )}
+        </div>
+      </DetailSection>
 
       {editing && editValues ? (
         <>

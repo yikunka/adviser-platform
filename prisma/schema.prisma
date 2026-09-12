@@ -722,6 +722,8 @@ model KeyPerson {
   amlLastChecked     DateTime?
   amlRiskLevel       RiskLevel?
   amlAlert           Boolean           @default(false)
+  /// Staff-only free-text notes (info not present on uploaded documents)
+  adminNotes         String?           @map("admin_notes")
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
