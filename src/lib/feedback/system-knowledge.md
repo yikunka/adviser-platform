@@ -225,7 +225,7 @@ Memorial diamond jewellery service (lab-grown diamonds from cremation remains). 
 
 ### Public Pages (`/sfsdiamond/`)
 - **Floating AI Chat Widget**: gold (#C9A96E) circular button fixed at bottom-right of all SFS Diamond pages; opens a 340×480 chat panel; answers visitor questions about company info, the CVD process, FAQ content, ordering, and memorial diamond details; powered by `claude-haiku-4-5-20251001` via `/api/sfsdiamond/chat`; knowledge is embedded statically in the server-side system prompt (no DB query); no authentication required
-- **Home**: hero, process overview, team, four value pillars, Eternity Ring 3D visualization, B2B-only partner section (distributor development, packaging, online system, real-time tracking)
+- **Home**: factory-first B2B homepage — memorial hero with distributor CTAs, factory proof strip (CVD / lead time / 4C / tracking / B2B-only), in-house lab editorial, manufacturing capability gallery, B2B partner supports (distributor development, packaging, online system, real-time tracking), production video, six-stage journey, team, partner closing CTA; Eternity Ring 3D visualization on hero
 - **About**: company background, mission, vision
 - **Technology**: diamond creation process (CVD growth explained); Step 1 carbon extraction cards (1.1–1.5) and Step 2 CVD growth cards (2.1–2.6) use dedicated lab photos matched to each sub-step
 - **Memorial Diamonds**: product showcase with **Our Collection** gallery — loads active Ring / Necklace / Earring / Bracelet designs from SFS diamond specs; category filters; product-grid UI without prices; local image fallbacks when remote photos fail; excludes loose diamond / non-jewellery items

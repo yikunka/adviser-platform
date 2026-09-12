@@ -4,26 +4,44 @@ import VideoPlayer from './components/VideoPlayer'
 import EternityRing from './components/EternityRing'
 import { ossImg } from '@/lib/oss-img'
 
+const FACTORY_PROOF = [
+  { label: 'Production model', value: 'In-house CVD factory' },
+  { label: 'Lead time', value: '2–3 months' },
+  { label: 'Quality', value: '4C + certificate' },
+  { label: 'Traceability', value: 'Live process tracking' },
+  { label: 'Channel', value: 'B2B distributors only' },
+]
+
+const CAPABILITIES = [
+  {
+    title: 'CVD Laboratory',
+    desc: 'Heavy-asset growth under our own roof — seed, plasma, and crystal control stay in-house.',
+    img: '/sfsdiamond/cvd-machine.jpeg',
+  },
+  {
+    title: 'Cut & Polish',
+    desc: 'Precision finishing into our signature Eternity Cut, ready for partner jewellery settings.',
+    img: '/sfsdiamond/process-5.png',
+  },
+  {
+    title: 'Certified Delivery',
+    desc: 'Quality documentation and branded presentation designed for professional client handover.',
+    img: '/sfsdiamond/igi-quality-cert.png',
+  },
+  {
+    title: 'Partner Visibility',
+    desc: 'Online ordering and real-time production status so distributors stay ahead of every commission.',
+    img: '/sfsdiamond/step-polish.jpg',
+  },
+]
+
 const PROCESS = [
-  { step: '01', title: 'Confirm Order',    desc: 'Contact our team to begin. We guide you through every option and handle paperwork with care.',           img: '/sfsdiamond/process-1.jpg' },
-  { step: '02', title: 'Collect Remains',  desc: 'Deliver 60g of ashes or 1g of hair to us in person or via secure, verified courier.',                    img: '/sfsdiamond/process-2.jpg' },
-  { step: '03', title: 'Extract Carbon',   desc: 'Our laboratory carefully purifies and extracts carbon using physical and chemical processes.',             img: '/sfsdiamond/process-3.jpg' },
-  { step: '04', title: 'Grow Diamond',     desc: 'Carbon atoms are deposited layer by layer inside our CVD reactor, forming a perfect crystal lattice.',    img: '/sfsdiamond/process-4.jpg' },
-  { step: '05', title: 'Cut & Polish',     desc: 'Master craftsmen shape your diamond to our signature Eternity Cut, then hand-polish for maximum brilliance.', img: '/sfsdiamond/process-5.png' },
-  { step: '06', title: 'Delivery',         desc: 'Your certified memorial diamond is delivered within 2–3 months, accompanied by a full quality certificate.',   img: '/sfsdiamond/process-6.jpeg' },
-]
-
-const TEAM = [
-  { name: 'Kenny Wong',  role: 'Tech Lead',        img: '/sfsdiamond/team-1.jpg' },
-  { name: 'Patrick Lau', role: 'Sales Lead',       img: '/sfsdiamond/team-2.png' },
-  { name: 'Ema Li',      role: 'Product Designer',  img: '/sfsdiamond/team-3.jpg' },
-]
-
-const PILLARS = [
-  { icon: '◈', title: 'Precision with Purpose',            desc: 'Every diamond is grown with exacting scientific precision, ensuring the memory it carries is perfectly preserved.' },
-  { icon: '◎', title: 'Trust & Transparency',              desc: 'Unique traceability codes track your loved one\'s remains throughout the entire transformation process.' },
-  { icon: '✦', title: 'A Tribute Beyond Time',             desc: 'Diamonds are forever. So is the love that created them. Our memorial stones outlast generations.' },
-  { icon: '⬡', title: 'More Than Science',                 desc: 'We approach each commission as a sacred commitment — combining laboratory excellence with genuine compassion.' },
+  { step: '01', title: 'Partner Order', desc: 'Distributors place commissions through our B2B workflow with clear specs and documentation.' },
+  { step: '02', title: 'Secure Intake', desc: 'Ashes or hair received via verified courier or in-person handover — labelled and logged.' },
+  { step: '03', title: 'Carbon Extraction', desc: 'Laboratory purification isolates carbon from remains under controlled protocols.' },
+  { step: '04', title: 'CVD Growth', desc: 'Atoms deposit layer by layer in our reactors until a real diamond crystal forms.' },
+  { step: '05', title: 'Cut & Finish', desc: 'Master craftsmen shape the Eternity Cut and polish for brilliance and fire.' },
+  { step: '06', title: 'Certify & Ship', desc: 'Quality certificate, traceability, and packaging — ready for your local market clients.' },
 ]
 
 const PARTNER_SUPPORTS = [
@@ -49,16 +67,20 @@ const PARTNER_SUPPORTS = [
   },
 ]
 
+const TEAM = [
+  { name: 'Kenny Wong', role: 'Tech Lead', img: '/sfsdiamond/team-1.jpg' },
+  { name: 'Patrick Lau', role: 'Sales Lead', img: '/sfsdiamond/team-2.png' },
+  { name: 'Ema Li', role: 'Product Designer', img: '/sfsdiamond/team-3.jpg' },
+]
+
 export default function SFSHomePage() {
   return (
     <>
-      {/* ── Hero ── */}
+      {/* ── Hero: memorial warmth + factory identity ── */}
       <section className="relative min-h-screen flex items-center overflow-hidden" style={{ background: '#050305' }}>
-        {/* SVG atmospheric background */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={ossImg('/sfsdiamond/hero-love.svg')} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
         <EternityRing />
-        {/* Desktop: readability panel on left. Mobile: keep left side readable — avoid strong shadow that eats narrow lines */}
         <div
           className="absolute inset-0 hidden md:block pointer-events-none"
           style={{ background: 'linear-gradient(90deg, rgba(2,1,3,0.82) 0%, rgba(2,1,3,0.60) 28%, rgba(2,1,3,0.20) 52%, transparent 68%)' }}
@@ -70,12 +92,10 @@ export default function SFSHomePage() {
               'linear-gradient(165deg, rgba(2,1,3,0.94) 0%, rgba(2,1,3,0.68) min(72vw, 18rem), rgba(2,1,3,0.28) max(82vw, 20rem), transparent 100%)',
           }}
         />
-        {/* Ring side — very subtle inner glow so crystal reads against dark */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{ background: 'radial-gradient(ellipse 38% 55% at 70% 50%, rgba(201,169,110,0.07) 0%, transparent 100%)' }}
         />
-        {/* Top + bottom edge fade for clean framing */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{ background: 'linear-gradient(180deg, rgba(2,1,3,0.55) 0%, transparent 18%, transparent 80%, rgba(2,1,3,0.65) 100%)' }}
@@ -86,7 +106,6 @@ export default function SFSHomePage() {
             'relative z-10 box-border w-full py-24',
             'max-md:mx-0 max-md:max-w-none max-md:pl-[max(1rem,calc(env(safe-area-inset-left,0px)+14px))]',
             'max-md:pr-[max(1rem,calc(env(safe-area-inset-right,0px)+14px))]',
-            // 桌面：不要用 translate（窄屏笔记本会裁切）；用「随视口变」的左边距把文案放进渐变区
             'md:mx-auto md:max-w-6xl md:pl-[clamp(2.5rem,min(14vw,8rem),8rem)] md:pr-[clamp(1.5rem,4vw,2.5rem)]',
           ].join(' ')}
         >
@@ -94,7 +113,7 @@ export default function SFSHomePage() {
             className="mb-5 text-xs uppercase tracking-[0.3em] hyphens-none"
             style={{ color: '#C9A96E', textWrap: 'balance' }}
           >
-            Memorial Diamond · CVD Technology
+            B2B Memorial Diamond Factory · CVD
           </p>
           <h1
             className="mb-6 max-w-3xl font-bold leading-[1.1] text-[clamp(2.125rem,6.5vw+0.85rem,3.5rem)] md:text-7xl md:leading-tight"
@@ -109,87 +128,158 @@ export default function SFSHomePage() {
             className="mb-10 max-w-xl text-base leading-relaxed hyphens-none sm:text-lg md:text-xl"
             style={{ color: 'rgba(245,240,232,0.85)', textWrap: 'pretty' }}
           >
-            Turning love into everlasting brilliance. We transform cremated ashes or hair into
-            certified lab-grown diamonds — a luminous tribute that lasts forever.
+            We manufacture certified memorial diamonds from ashes or hair — and equip professional
+            distributors with the factory, packaging, and systems to own their local markets.
           </p>
           <div className="flex flex-wrap gap-4">
-            <Link
-              href="/sfsdiamond/order"
+            <a
+              href="mailto:patricklau@sfsdiamonds.com?subject=SFS%20Distributor%20Partnership"
               className="px-8 py-3.5 rounded-full font-medium text-sm transition-all hover:opacity-90"
               style={{ background: '#C9A96E', color: '#0A0805' }}
             >
-              Place Your Order
-            </Link>
+              Become a Distributor
+            </a>
             <Link
-              href="/sfsdiamond/memorial-diamonds"
+              href="/sfsdiamond/technology"
               className="px-8 py-3.5 rounded-full font-medium text-sm border transition-all hover:bg-white/10"
               style={{ border: '1px solid rgba(245,240,232,0.4)', color: '#F5F0E8' }}
             >
-              Explore Memorial Diamonds
+              See Our Factory Process
             </Link>
           </div>
         </div>
       </section>
 
-      {/* ── Core pillars ── */}
-      <section className="py-24" style={{ background: '#FAFAF8' }}>
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#C9A96E' }}>Our Promise</p>
-            <h2 className="text-3xl md:text-4xl font-bold" style={{ fontFamily: 'Georgia, serif', color: '#1A1A1A' }}>
-              Precision, Trust &amp; Compassion
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {PILLARS.map(p => (
-              <div
-                key={p.title}
-                className="rounded-2xl p-7 flex flex-col gap-4"
-                style={{ background: '#FFFFFF', border: '1px solid #EDE7D8', boxShadow: '0 1px 12px rgba(0,0,0,0.04)' }}
-              >
-                <span className="text-2xl" style={{ color: '#C9A96E' }}>{p.icon}</span>
-                <h3 className="font-semibold text-base" style={{ color: '#1A1A1A' }}>{p.title}</h3>
-                <p className="text-sm leading-relaxed" style={{ color: '#6B5E4A' }}>{p.desc}</p>
+      {/* ── Factory proof ── */}
+      <section style={{ background: '#0A0805', borderTop: '1px solid rgba(201,169,110,0.18)' }}>
+        <div className="max-w-6xl mx-auto px-6 py-10 md:py-12">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-8 md:gap-6">
+            {FACTORY_PROOF.map(item => (
+              <div key={item.label} className="md:border-l md:pl-5 first:md:border-l-0 first:md:pl-0" style={{ borderColor: 'rgba(201,169,110,0.16)' }}>
+                <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: '#C9A96E' }}>
+                  {item.label}
+                </p>
+                <p className="text-sm md:text-base font-semibold leading-snug" style={{ color: '#F5F0E8', fontFamily: 'Georgia, serif' }}>
+                  {item.value}
+                </p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Diamond visual + about ── */}
-      <section className="py-24" style={{ background: '#F2EDE3' }}>
-        <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-14 items-center">
-          <div className="relative rounded-3xl overflow-hidden aspect-square max-w-md mx-auto md:mx-0 shadow-xl">
-            <Image src="/sfsdiamond/diamond-crystal.jpg" alt="Diamond crystal" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-widest mb-4" style={{ color: '#C9A96E' }}>What We Do</p>
-            <h2 className="text-3xl md:text-4xl font-bold mb-6" style={{ fontFamily: 'Georgia, serif', color: '#1A1A1A' }}>
-              Diamonds Born<br />from Life Itself
-            </h2>
-            <div className="space-y-4 text-sm leading-relaxed" style={{ color: '#4A3E30' }}>
-              <p>
-                SFS Technology Group is a global leader in memorial diamond creation. Unlike other
-                providers, we operate our own laboratory and CVD factory — a heavy-asset company
-                with full in-house control over every stage of production.
+      {/* ── Own the factory ── */}
+      <section className="py-24 md:py-28" style={{ background: '#F2EDE3' }}>
+        <div className="max-w-6xl mx-auto px-6 grid lg:grid-cols-2 gap-14 lg:gap-20 items-center">
+          <div className="relative order-2 lg:order-1">
+            <div className="relative rounded-[2rem] overflow-hidden aspect-[4/5] max-w-lg shadow-xl">
+              <Image
+                src="/sfsdiamond/chemical.jpg"
+                alt="SFS CVD laboratory and factory floor"
+                fill
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover"
+              />
+            </div>
+            <div
+              className="absolute -bottom-5 -right-2 md:right-6 max-w-[14rem] rounded-2xl p-5"
+              style={{ background: '#0A0805', border: '1px solid rgba(201,169,110,0.35)' }}
+            >
+              <p className="text-[10px] uppercase tracking-[0.18em] mb-2" style={{ color: '#C9A96E' }}>
+                Heavy-asset producer
               </p>
-              <p>
-                We believe that <em>love never fades; it takes on a new form.</em> Through Chemical
-                Vapor Deposition, carbon extracted from your loved one&apos;s remains is guided — atom by
-                atom — into a perfect crystalline lattice: a real, certified diamond.
-              </p>
-              <p>
-                Each stone comes with a unique traceability code and quality certificate. This is not
-                merely science — it is a sacred commitment to the families who trust us.
+              <p className="text-sm leading-snug" style={{ color: '#F5F0E8', fontFamily: 'Georgia, serif' }}>
+                Own lab. Own CVD. Full production control.
               </p>
             </div>
-            <Link
-              href="/sfsdiamond/about"
-              className="inline-block mt-8 text-sm font-medium border-b-2 transition-opacity hover:opacity-70"
-              style={{ borderColor: '#C9A96E', color: '#1A1A1A' }}
+          </div>
+
+          <div className="order-1 lg:order-2">
+            <p className="text-xs uppercase tracking-widest mb-4" style={{ color: '#C9A96E' }}>
+              The Factory Behind the Diamond
+            </p>
+            <h2
+              className="text-3xl md:text-5xl font-bold mb-6 leading-[1.15]"
+              style={{ fontFamily: 'Georgia, serif', color: '#1A1A1A' }}
             >
-              About SFS Technology →
-            </Link>
+              Diamonds grown in our laboratory — not traded from a middleman.
+            </h2>
+            <div className="space-y-4 text-sm md:text-base leading-relaxed" style={{ color: '#4A3E30' }}>
+              <p>
+                SFS Technology Group is a memorial-diamond manufacturer. We extract carbon from
+                ashes or hair, grow real diamonds through Chemical Vapor Deposition, cut our
+                signature Eternity form, and ship certified stones to professional partners.
+              </p>
+              <p>
+                Love never fades; it takes a new form. We keep the science rigorous and the
+                reverence intact — so distributors can sell with factory-backed trust.
+              </p>
+            </div>
+            <div className="mt-9 flex flex-wrap gap-4">
+              <Link
+                href="/sfsdiamond/about"
+                className="text-sm font-medium border-b-2 pb-0.5 transition-opacity hover:opacity-70"
+                style={{ borderColor: '#C9A96E', color: '#1A1A1A' }}
+              >
+                About SFS Technology →
+              </Link>
+              <Link
+                href="/sfsdiamond/memorial-diamonds"
+                className="text-sm font-medium border-b-2 pb-0.5 transition-opacity hover:opacity-70"
+                style={{ borderColor: '#C9A96E', color: '#1A1A1A' }}
+              >
+                View memorial diamonds →
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Manufacturing capabilities ── */}
+      <section className="py-24" style={{ background: '#FAFAF8' }}>
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="max-w-2xl mb-14">
+            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#C9A96E' }}>
+              What Partners Get
+            </p>
+            <h2 className="text-3xl md:text-4xl font-bold" style={{ fontFamily: 'Georgia, serif', color: '#1A1A1A' }}>
+              Factory capability, not just a product catalogue.
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 lg:gap-6">
+            {CAPABILITIES.map((item, i) => (
+              <article
+                key={item.title}
+                className="relative overflow-hidden rounded-[1.75rem] min-h-[17rem] md:min-h-[20rem]"
+              >
+                <Image
+                  src={item.img}
+                  alt={item.title}
+                  fill
+                  sizes="(max-width: 640px) 100vw, 50vw"
+                  className="object-cover transition-transform duration-700 hover:scale-105"
+                />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background:
+                      'linear-gradient(to top, rgba(10,8,5,0.88) 0%, rgba(10,8,5,0.35) 45%, rgba(10,8,5,0.12) 100%)',
+                  }}
+                />
+                <div className="absolute inset-x-0 bottom-0 p-6 md:p-7">
+                  <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: '#C9A96E' }}>
+                    0{i + 1}
+                  </p>
+                  <h3 className="text-xl font-semibold mb-2" style={{ fontFamily: 'Georgia, serif', color: '#F5F0E8' }}>
+                    {item.title}
+                  </h3>
+                  <p className="text-sm leading-relaxed max-w-md" style={{ color: 'rgba(245,240,232,0.72)' }}>
+                    {item.desc}
+                  </p>
+                </div>
+              </article>
+            ))}
           </div>
         </div>
       </section>
@@ -198,12 +288,12 @@ export default function SFSHomePage() {
       <section className="relative overflow-hidden" style={{ background: '#0A0805' }}>
         <div className="absolute inset-0">
           <Image
-            src="/sfsdiamond/chemical.jpg"
+            src="/sfsdiamond/company.jpg"
             alt=""
             fill
             sizes="100vw"
             className="object-cover"
-            style={{ opacity: 0.28 }}
+            style={{ opacity: 0.22 }}
             aria-hidden
           />
           <div
@@ -331,10 +421,10 @@ export default function SFSHomePage() {
       {/* ── Video ── */}
       <section className="py-24" style={{ background: '#111111' }}>
         <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-12">
-            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#C9A96E' }}>See It for Yourself</p>
+          <div className="max-w-2xl mb-12">
+            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#C9A96E' }}>Inside Production</p>
             <h2 className="text-3xl md:text-4xl font-bold" style={{ fontFamily: 'Georgia, serif', color: '#F5F0E8' }}>
-              The Art of Transformation
+              From remains to certified brilliance.
             </h2>
           </div>
           <div className="flex justify-center">
@@ -343,47 +433,47 @@ export default function SFSHomePage() {
         </div>
       </section>
 
-      {/* ── 6-step process ── */}
+      {/* ── Production journey (editorial, not card grid) ── */}
       <section className="py-24" style={{ background: '#FAFAF8' }}>
         <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#C9A96E' }}>From Ashes to Diamond</p>
-            <h2 className="text-3xl md:text-4xl font-bold" style={{ fontFamily: 'Georgia, serif', color: '#1A1A1A' }}>
-              Six Steps of Transformation
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {PROCESS.map(p => (
-              <div
-                key={p.step}
-                className="rounded-2xl overflow-hidden"
-                style={{ background: '#FFFFFF', border: '1px solid #EDE7D8', boxShadow: '0 1px 12px rgba(0,0,0,0.04)' }}
-              >
-                <div className="relative h-52 w-full">
-                  <Image src={p.img} alt={p.title} fill className="object-cover" />
-                  <div
-                    className="absolute top-4 left-4 rounded-full w-9 h-9 flex items-center justify-center text-xs font-bold"
-                    style={{ background: '#C9A96E', color: '#0A0805' }}
-                  >
-                    {p.step}
-                  </div>
-                </div>
-                <div className="p-6">
-                  <h3 className="font-semibold text-base mb-2" style={{ color: '#1A1A1A' }}>{p.title}</h3>
-                  <p className="text-sm leading-relaxed" style={{ color: '#6B5E4A' }}>{p.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="text-center mt-12">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-14">
+            <div className="max-w-xl">
+              <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#C9A96E' }}>
+                Production Journey
+              </p>
+              <h2 className="text-3xl md:text-4xl font-bold" style={{ fontFamily: 'Georgia, serif', color: '#1A1A1A' }}>
+                Six controlled stages from partner order to certified stone.
+              </h2>
+            </div>
             <Link
               href="/sfsdiamond/technology"
-              className="inline-block px-8 py-3.5 rounded-full font-medium text-sm transition-all hover:opacity-90"
-              style={{ background: '#1A1A1A', color: '#F5F0E8' }}
+              className="shrink-0 text-sm font-medium border-b-2 pb-0.5 transition-opacity hover:opacity-70 self-start md:self-auto"
+              style={{ borderColor: '#C9A96E', color: '#1A1A1A' }}
             >
-              Deep Dive into Our Technology
+              Deep dive into technology →
             </Link>
           </div>
+
+          <ol className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-10">
+            {PROCESS.map(p => (
+              <li key={p.step} className="flex gap-4">
+                <span
+                  className="shrink-0 text-sm font-semibold tracking-[0.14em] pt-0.5"
+                  style={{ color: '#C9A96E' }}
+                >
+                  {p.step}
+                </span>
+                <div>
+                  <h3 className="text-base font-semibold mb-2" style={{ color: '#1A1A1A' }}>
+                    {p.title}
+                  </h3>
+                  <p className="text-sm leading-relaxed" style={{ color: '#6B5E4A' }}>
+                    {p.desc}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
 
@@ -391,9 +481,9 @@ export default function SFSHomePage() {
       <section className="py-24" style={{ background: '#111111' }}>
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-16">
-            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#C9A96E' }}>The People Behind Each Diamond</p>
+            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#C9A96E' }}>Partnership Team</p>
             <h2 className="text-3xl md:text-4xl font-bold" style={{ fontFamily: 'Georgia, serif', color: '#F5F0E8' }}>
-              Our Team
+              People behind every commission
             </h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-3xl mx-auto">
@@ -412,25 +502,27 @@ export default function SFSHomePage() {
         </div>
       </section>
 
-      {/* ── CTA ── */}
-      <section className="py-24 text-center" style={{ background: '#F2EDE3' }}>
-        <div className="max-w-2xl mx-auto px-6">
-          <p className="text-xs uppercase tracking-widest mb-4" style={{ color: '#C9A96E' }}>Begin the Journey</p>
+      {/* ── Closing CTA: partner-first ── */}
+      <section className="py-24" style={{ background: '#F2EDE3' }}>
+        <div className="max-w-3xl mx-auto px-6 text-center">
+          <p className="text-xs uppercase tracking-widest mb-4" style={{ color: '#C9A96E' }}>
+            Partner with SFS
+          </p>
           <h2 className="text-3xl md:text-4xl font-bold mb-6" style={{ fontFamily: 'Georgia, serif', color: '#1A1A1A' }}>
-            Keep Your Loved One<br />Close, Forever
+            Bring a memorial diamond factory<br className="hidden sm:block" /> into your market.
           </h2>
           <p className="text-sm leading-relaxed mb-10" style={{ color: '#4A3E30' }}>
-            Every memorial diamond is unique — as unique as the life it honours. Reach out to our
-            team and we&apos;ll walk you through the entire process with patience and care.
+            Talk to our team about distributor terms, packaging, online ordering, and real-time
+            production tracking. We manufacture; you own the relationship with your clients.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
-            <Link
-              href="/sfsdiamond/order"
+            <a
+              href="mailto:patricklau@sfsdiamonds.com?subject=SFS%20Distributor%20Partnership"
               className="px-8 py-3.5 rounded-full font-medium text-sm transition-all hover:opacity-90"
               style={{ background: '#C9A96E', color: '#0A0805' }}
             >
-              Place Your Order
-            </Link>
+              Become a Distributor
+            </a>
             <a
               href="tel:+85265600073"
               className="px-8 py-3.5 rounded-full font-medium text-sm transition-all hover:opacity-90"
@@ -438,13 +530,13 @@ export default function SFSHomePage() {
             >
               Call (852) 6560 0073
             </a>
-            <a
-              href="mailto:patricklau@sfsdiamonds.com"
+            <Link
+              href="/sfsdiamond/order"
               className="px-8 py-3.5 rounded-full font-medium text-sm border transition-all hover:bg-black/5"
               style={{ border: '1px solid #C9A96E', color: '#1A1A1A' }}
             >
-              Email Us
-            </a>
+              Partner Order Portal
+            </Link>
           </div>
         </div>
       </section>
