@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -37,8 +37,14 @@ function loginErrorMessage(error: string | undefined, code: string | undefined) 
 export default function SFSLoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [justRegistered, setJustRegistered] = useState(false)
 
   const form = useForm<FormData>({ resolver: zodResolver(schema) })
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('registered') === '1') setJustRegistered(true)
+  }, [])
 
   async function onSubmit(data: FormData) {
     setLoading(true)
@@ -85,6 +91,15 @@ export default function SFSLoginPage() {
           <p className="text-sm mt-1" style={{ color: '#6B5E4A' }}>
             Sign in to your SFS Diamond account
           </p>
+          {justRegistered && (
+            <p
+              className="mt-4 text-sm leading-relaxed rounded-xl px-3 py-2.5"
+              style={{ background: 'rgba(201,169,110,0.12)', color: '#6B5E4A' }}
+            >
+              Account created. After sign-in, order details stay hidden until our team approves your
+              distributor access.
+            </p>
+          )}
         </div>
 
         <form method="post" action="#" onSubmit={form.handleSubmit(onSubmit)} className="px-8 py-6 space-y-5">

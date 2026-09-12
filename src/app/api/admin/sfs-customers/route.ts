@@ -26,6 +26,7 @@ type SfsCustomerRow = {
   notes: string | null
   isActive: boolean | null
   emailVerified: string | null
+  accountApprovalStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | null
   createdAt: string
   orderCount: number
   latestOrderAt: string | null
@@ -99,7 +100,7 @@ export async function GET(req: NextRequest) {
   const [customers, users, orders] = await Promise.all([
     prisma.sfsCustomer.findMany({
       orderBy: { createdAt: 'desc' },
-      include: { user: { select: { id: true, email: true, nameEn: true, phone: true, mailingAddress: true, isActive: true, emailVerified: true, createdAt: true } } },
+      include: { user: { select: { id: true, email: true, nameEn: true, phone: true, mailingAddress: true, isActive: true, emailVerified: true, accountApprovalStatus: true, createdAt: true } } },
     }),
     prisma.user.findMany({
       where: { platform: 'SFS_DIAMOND' },
@@ -112,6 +113,7 @@ export async function GET(req: NextRequest) {
         mailingAddress: true,
         isActive: true,
         emailVerified: true,
+        accountApprovalStatus: true,
         createdAt: true,
       },
     }),
@@ -165,6 +167,7 @@ export async function GET(req: NextRequest) {
       notes: profile?.notes ?? null,
       isActive: user.isActive,
       emailVerified: user.emailVerified?.toISOString() ?? null,
+      accountApprovalStatus: user.accountApprovalStatus,
       createdAt: (profile?.createdAt ?? user.createdAt).toISOString(),
       orderCount: userOrders.length,
       latestOrderAt: latest?.createdAt.toISOString() ?? null,
@@ -187,6 +190,7 @@ export async function GET(req: NextRequest) {
       notes: customer.notes,
       isActive: null,
       emailVerified: null,
+      accountApprovalStatus: null,
       createdAt: customer.createdAt.toISOString(),
       orderCount: customerOrders.length,
       latestOrderAt: latest?.createdAt.toISOString() ?? null,
@@ -217,6 +221,7 @@ export async function GET(req: NextRequest) {
       notes: null,
       isActive: null,
       emailVerified: null,
+      accountApprovalStatus: null,
       createdAt: latest.createdAt.toISOString(),
       orderCount: group.length,
       latestOrderAt: latest.createdAt.toISOString(),

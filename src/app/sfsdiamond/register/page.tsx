@@ -59,7 +59,7 @@ export default function SFSRegisterPage() {
       })
       const json = await res.json().catch(() => ({})) as Record<string, unknown>
       if (!res.ok) { setServerError(typeof json.error === 'string' ? json.error : 'Registration failed'); return }
-      if (json.devAutoVerified) { router.push('/sfsdiamond/login'); return }
+      if (json.devAutoVerified) { router.push('/sfsdiamond/login?registered=1'); return }
       setUserId(json.userId as string)
       setStep('verify')
     } finally {
@@ -77,7 +77,7 @@ export default function SFSRegisterPage() {
         body: JSON.stringify({ userId, otp: data.otp }),
       })
       if (!res.ok) { const j = await res.json().catch(() => ({})) as Record<string, unknown>; setServerError(typeof j.error === 'string' ? j.error : 'Verification failed'); return }
-      router.push('/sfsdiamond/login')
+      router.push('/sfsdiamond/login?registered=1')
     } finally {
       setLoading(false)
     }
@@ -107,7 +107,7 @@ export default function SFSRegisterPage() {
           </h1>
           <p className="text-sm mt-1" style={{ color: '#6B5E4A' }}>
             {step === 'register'
-              ? 'Join SFS Diamond to place and track your memorial diamond orders.'
+              ? 'Create a distributor account. Staff approval is required before you can view order details.'
               : 'Enter the 6-digit code sent to your email.'}
           </p>
         </div>

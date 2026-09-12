@@ -7,6 +7,7 @@ import {
   headObjectMeta,
   uploadToR2,
 } from '@/lib/storage/r2'
+import { getSfsAccountAccess, sfsApprovalForbiddenResponse } from '@/lib/sfs/account-approval'
 
 const ADMIN_ROLES = new Set(['STAFF', 'COMPLIANCE', 'SUPER_ADMIN'])
 
@@ -39,6 +40,11 @@ export async function GET(
 
   const { id } = await params
   const isAdmin = ADMIN_ROLES.has(session.user.role)
+
+  if (!isAdmin && session.user.platform === 'SFS_DIAMOND') {
+    const access = await getSfsAccountAccess(session.user.id, session.user.platform)
+    if (!access.approved) return sfsApprovalForbiddenResponse(access.status)
+  }
 
   const order = await prisma.sfsOrder.findUnique({
     where: { id },

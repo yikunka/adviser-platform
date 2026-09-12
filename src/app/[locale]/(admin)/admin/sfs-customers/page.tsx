@@ -21,6 +21,7 @@ type CustomerRow = {
   notes: string | null
   isActive: boolean | null
   emailVerified: string | null
+  accountApprovalStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | null
   createdAt: string
   orderCount: number
   latestOrderAt: string | null
@@ -49,6 +50,12 @@ const SOURCE_STYLE: Record<CustomerRow['source'], { label: string; bg: string; c
   ACCOUNT: { label: 'Account', bg: 'rgba(56,189,248,0.13)', color: '#38bdf8' },
   MANUAL: { label: 'Manual', bg: 'rgba(201,169,110,0.14)', color: '#C9A96E' },
   ORDER_ONLY: { label: 'Order contact', bg: 'rgba(120,113,108,0.16)', color: '#9A8060' },
+}
+
+const APPROVAL_STYLE: Record<'PENDING' | 'APPROVED' | 'REJECTED', { label: string; bg: string; color: string }> = {
+  PENDING: { label: '待審批', bg: 'rgba(245,158,11,0.14)', color: '#d97706' },
+  APPROVED: { label: '已批准', bg: 'rgba(16,185,129,0.12)', color: '#059669' },
+  REJECTED: { label: '已拒絕', bg: 'rgba(239,68,68,0.12)', color: '#ef4444' },
 }
 
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
@@ -425,6 +432,7 @@ export default function SfsCustomersPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<CustomerRow | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [approvingId, setApprovingId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [mergeTargetId, setMergeTargetId] = useState<string>('')
   const [merging, setMerging] = useState(false)
@@ -535,6 +543,31 @@ export default function SfsCustomersPage() {
     }
   }
 
+  async function handleApproval(customer: CustomerRow, status: 'APPROVED' | 'REJECTED' | 'PENDING') {
+    if (!customer.userId) {
+      toast.error('Only registered accounts can change 權限.')
+      return
+    }
+    if (customer.accountApprovalStatus === status) return
+
+    setApprovingId(customer.id)
+    try {
+      const res = await fetch(`/api/admin/sfs-customers/${encodeURIComponent(customer.id)}/approval`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error ?? 'Failed to update 權限')
+      toast.success(`權限已更新為「${APPROVAL_STYLE[status].label}」`)
+      fetchCustomers()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update 權限.')
+    } finally {
+      setApprovingId(null)
+    }
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -601,7 +634,7 @@ export default function SfsCustomersPage() {
               <thead style={{ background: 'var(--surface-modal)', borderBottom: '1px solid var(--border-subtle)' }}>
                 <tr>
                   <th className="px-3 py-3 w-10" />
-                  {['Customer', 'Contact', 'Address', 'Orders', 'Latest order', 'Source', 'Created'].map(h => (
+                  {['Customer', 'Contact', 'Address', 'Orders', 'Latest order', 'Source', '權限', 'Created'].map(h => (
                     <th key={h} className="px-4 py-3 text-left font-medium whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
                   ))}
                   <th className="px-4 py-3" />
@@ -610,11 +643,11 @@ export default function SfsCustomersPage() {
               <tbody className="divide-y divide-[var(--border-subtle)]">
                 {loading ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>Loading...</td>
+                    <td colSpan={10} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>Loading...</td>
                   </tr>
                 ) : customers.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-12 text-center">
+                    <td colSpan={10} className="px-4 py-12 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <ContactRound size={28} style={{ color: '#C9A96E', opacity: 0.45 }} />
                         <span style={{ color: 'var(--muted-foreground)' }}>{search ? 'No customers match your search.' : 'No SFS customers yet.'}</span>
@@ -625,6 +658,9 @@ export default function SfsCustomersPage() {
                   const source = SOURCE_STYLE[customer.source]
                   const latest = customer.latestOrder
                   const status = latest ? (STATUS_STYLE[latest.status] ?? STATUS_STYLE.PENDING) : null
+                  const approval = customer.accountApprovalStatus
+                    ? APPROVAL_STYLE[customer.accountApprovalStatus]
+                    : null
                   const checked = selectedIds.includes(customer.id)
                   return (
                     <tr key={customer.id} className="hover:bg-[var(--surface-panel)]/50 align-top">
@@ -687,6 +723,38 @@ export default function SfsCustomersPage() {
                         <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium" style={{ background: source.bg, color: source.color }}>
                           {source.label}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap min-w-[140px]">
+                        {customer.userId && customer.accountApprovalStatus ? (
+                          <Select
+                            value={customer.accountApprovalStatus}
+                            disabled={approvingId === customer.id}
+                            onValueChange={value => {
+                              if (value === 'PENDING' || value === 'APPROVED' || value === 'REJECTED') {
+                                void handleApproval(customer, value)
+                              }
+                            }}
+                          >
+                            <SelectTrigger
+                              className="w-[128px] h-8 text-xs font-medium"
+                              style={
+                                approval
+                                  ? { background: approval.bg, color: approval.color, borderColor: 'transparent' }
+                                  : undefined
+                              }
+                              aria-label={`更改 ${customer.name} 的權限`}
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="PENDING">{APPROVAL_STYLE.PENDING.label}</SelectItem>
+                              <SelectItem value="APPROVED">{APPROVAL_STYLE.APPROVED.label}</SelectItem>
+                              <SelectItem value="REJECTED">{APPROVAL_STYLE.REJECTED.label}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span style={{ color: 'var(--muted-foreground)' }}>-</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>{formatDate(customer.createdAt)}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">

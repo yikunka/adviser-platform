@@ -40,7 +40,17 @@ export async function POST(req: NextRequest) {
 
     const passwordHash = await bcrypt.hash(password, 12)
     const user = await prisma.user.create({
-      data: { email, passwordHash, nameEn, phone, platform },
+      data: {
+        email,
+        passwordHash,
+        nameEn,
+        phone,
+        platform,
+        // Online SFS registrations require staff approval before order details are visible.
+        ...(platform === 'SFS_DIAMOND'
+          ? { accountApprovalStatus: 'PENDING' as const }
+          : {}),
+      },
     })
 
     if (platform === 'SFS_DIAMOND') {

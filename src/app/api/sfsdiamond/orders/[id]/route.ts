@@ -9,6 +9,7 @@ import {
 } from '@/lib/sfs/order-input'
 import { deleteSfsDesignFile } from '@/lib/storage/r2'
 import { claimPendingDesignUploads, hashSfsDesignDraftToken, SFS_DESIGN_DRAFT_COOKIE } from '@/lib/sfs/pending-design-uploads'
+import { getSfsAccountAccess, sfsApprovalForbiddenResponse } from '@/lib/sfs/account-approval'
 
 const EDITABLE_STATUSES = ['PENDING', 'QUOTED', 'CANCELLED'] as const
 
@@ -20,6 +21,9 @@ export async function PATCH(
   if (!session || session.user.platform !== 'SFS_DIAMOND') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  const access = await getSfsAccountAccess(session.user.id, session.user.platform)
+  if (!access.approved) return sfsApprovalForbiddenResponse(access.status)
 
   const { id } = await params
   const order = await prisma.sfsOrder.findUnique({
@@ -160,6 +164,9 @@ export async function GET(
   if (!session || session.user.platform !== 'SFS_DIAMOND') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  const access = await getSfsAccountAccess(session.user.id, session.user.platform)
+  if (!access.approved) return sfsApprovalForbiddenResponse(access.status)
 
   const { id } = await params
   const order = await prisma.sfsOrder.findUnique({

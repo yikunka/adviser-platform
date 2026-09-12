@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db/prisma'
 import OrderWizard, { type WizardFormData } from '@/app/sfsdiamond/components/OrderWizard'
 import { getSfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options-server'
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget'
+import { getSfsAccountAccess } from '@/lib/sfs/account-approval'
 
 const EDITABLE_STATUSES = ['PENDING', 'QUOTED', 'CANCELLED']
 
@@ -14,6 +15,10 @@ export default async function EditOrderPage({
 }) {
   const session = await auth()
   if (!session) redirect('/sfsdiamond/login')
+  if (session.user.platform !== 'SFS_DIAMOND') redirect('/sfsdiamond/login')
+
+  const access = await getSfsAccountAccess(session.user.id, session.user.platform)
+  if (!access.approved) redirect('/sfsdiamond/dashboard')
 
   const { id } = await params
   const [order, specOptions] = await Promise.all([

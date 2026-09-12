@@ -8,6 +8,7 @@ import {
   validateSfsOrderSpecOptions,
 } from '@/lib/sfs/order-input'
 import { claimPendingDesignUploads, hashSfsDesignDraftToken, SFS_DESIGN_DRAFT_COOKIE } from '@/lib/sfs/pending-design-uploads'
+import { getSfsAccountAccess, sfsApprovalForbiddenResponse } from '@/lib/sfs/account-approval'
 
 // Generate next sequential sample code: SFSB000001, SFSB000002, …
 async function generateSampleCode(): Promise<string> {
@@ -159,6 +160,9 @@ export async function GET() {
   if (!session || session.user.platform !== 'SFS_DIAMOND') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  const access = await getSfsAccountAccess(session.user.id, session.user.platform)
+  if (!access.approved) return sfsApprovalForbiddenResponse(access.status)
 
   const orders = await prisma.sfsOrder.findMany({
     where: { userId: session.user.id },

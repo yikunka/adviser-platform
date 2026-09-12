@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
+import { getSfsAccountAccess, sfsApprovalForbiddenResponse } from '@/lib/sfs/account-approval'
 
 const bodySchema = z.object({
   customerInternalOrderCode: z
@@ -19,6 +20,9 @@ export async function PATCH(
   if (!session || session.user.platform !== 'SFS_DIAMOND') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  const access = await getSfsAccountAccess(session.user.id, session.user.platform)
+  if (!access.approved) return sfsApprovalForbiddenResponse(access.status)
 
   const { id } = await params
   const order = await prisma.sfsOrder.findUnique({ where: { id } })

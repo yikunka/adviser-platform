@@ -37,6 +37,13 @@ enum Platform {
   SFS_DIAMOND
 }
 
+/// Online SFS self-registration must be approved before the client can view order/dashboard details.
+enum AccountApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum CompanyStatus {
   ACTIVE
   INACTIVE
@@ -277,6 +284,11 @@ model User {
   adminMenuKeys  String[]   @default([])
   isActive       Boolean    @default(true)
   emailVerified  DateTime?
+  /// SFS_DIAMOND self-registered accounts start PENDING until staff approve access to order details.
+  /// Non-SFS users and admin-provisioned accounts use APPROVED.
+  accountApprovalStatus AccountApprovalStatus @default(APPROVED)
+  accountApprovedAt     DateTime?
+  accountApprovedById   String?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
