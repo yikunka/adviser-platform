@@ -11,6 +11,12 @@ import { DatePickerPopover } from '@/components/ui/date-picker-popover'
 import { BUSINESS_NATURE_OPTIONS } from '@/lib/kyc/kycFieldOptions'
 import { type NAR1UiAnalysisResult } from '@/lib/company/nar1-analysis'
 import { COMPANY_LEGAL_TYPE_VALUES, type CompanyLegalType } from '@/lib/company/company-legal-type'
+import { COMPANY_STATUS_LABELS } from '@/lib/company/company-status'
+import {
+  COMPANY_JURISDICTIONS,
+  COMPANY_JURISDICTION_LABELS,
+  type CompanyJurisdiction,
+} from '@/lib/company/jurisdiction'
 import { TCSP_REGISTERED_OFFICE_ADDRESS } from '@/lib/company/office-address'
 import {
   buildCompanyFileManagementSections,
@@ -175,6 +181,7 @@ type Company = {
   financialYearEndMonth: number | null
   businessNature: string | null
   status: string
+  serviceTier: string
   financialEnabled: boolean
   hasCompanyBox: boolean
   hasCompanySquareSeal: boolean
@@ -481,6 +488,7 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
     companyNumber: company.companyNumber ?? '',
     companyCode: company.companyCode ?? '',
     companyLegalType: company.companyLegalType ?? '',
+    companyType: company.companyType ?? '',
     clientUserId: company.clientUserId ?? '',
     dateOfIncorporation: company.dateOfIncorporation ? company.dateOfIncorporation.slice(0, 10) : '',
     registeredAddress: company.registeredAddress ?? '',
@@ -489,7 +497,7 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
       : '') as '' | '3' | '12',
     businessNature: company.businessNature ?? '',
     status: company.status,
-    serviceTier: '',
+    serviceTier: company.serviceTier ?? '',
     financialEnabled: company.financialEnabled,
     financialManagerId: company.financialManagerId ?? '',
     staffUserIds: company.staffAssignments?.map(assignment => assignment.user.id) ?? [],
@@ -558,6 +566,7 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
       if (form.nameZh) body.nameZh = form.nameZh
       if (form.companyNumber) body.companyNumber = form.companyNumber
       body.companyCode = form.companyCode.trim() || null
+      body.companyType = form.companyType || null
       body.companyLegalType = form.companyLegalType || null
       body.clientUserId = form.clientUserId || null
       if (form.dateOfIncorporation) body.dateOfIncorporation = new Date(form.dateOfIncorporation).toISOString()
@@ -626,14 +635,25 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
           <DateInput value={form.dateOfIncorporation} onChange={v => set('dateOfIncorporation', v)} />
         </div>
         <div>
-          <label style={labelStyle}>Company Type</label>
-          <select value={form.companyLegalType} onChange={e => set('companyLegalType', e.target.value)} style={fieldStyle}>
-            <option value="" style={{ background: '#141414' }}>— Select company type —</option>
-            {COMPANY_LEGAL_TYPE_VALUES.map(type => (
-              <option key={type} value={type} style={{ background: '#141414' }}>{type}</option>
+          <label style={labelStyle}>Jurisdiction</label>
+          <select value={form.companyType} onChange={e => set('companyType', e.target.value)} style={fieldStyle}>
+            <option value="" style={{ background: '#141414' }}>— Select jurisdiction —</option>
+            {COMPANY_JURISDICTIONS.map(j => (
+              <option key={j} value={j} style={{ background: '#141414' }}>
+                {COMPANY_JURISDICTION_LABELS[j]}
+              </option>
             ))}
           </select>
         </div>
+      </div>
+      <div>
+        <label style={labelStyle}>Company Type</label>
+        <select value={form.companyLegalType} onChange={e => set('companyLegalType', e.target.value)} style={fieldStyle}>
+          <option value="" style={{ background: '#141414' }}>— Select company type —</option>
+          {COMPANY_LEGAL_TYPE_VALUES.map(type => (
+            <option key={type} value={type} style={{ background: '#141414' }}>{type}</option>
+          ))}
+        </select>
       </div>
       <div>
         <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
@@ -707,18 +727,19 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
           <label style={labelStyle}>Status</label>
           <select value={form.status} onChange={e => set('status', e.target.value)} style={fieldStyle}>
             <option value="ACTIVE" style={{ background: '#141414' }}>Active</option>
-            <option value="DORMANT" style={{ background: '#141414' }}>Dormant</option>
-            <option value="STRUCK_OFF" style={{ background: '#141414' }}>Struck Off</option>
+            <option value="INACTIVE" style={{ background: '#141414' }}>Inactive</option>
             <option value="DEREGISTERED" style={{ background: '#141414' }}>Deregistered</option>
           </select>
         </div>
         <div>
           <label style={labelStyle}>Service Tier</label>
           <select value={form.serviceTier} onChange={e => set('serviceTier', e.target.value)} style={fieldStyle}>
-            <option value="" style={{ background: '#141414' }}>— Unchanged —</option>
-            <option value="BASIC" style={{ background: '#141414' }}>Basic</option>
-            <option value="PROFESSIONAL" style={{ background: '#141414' }}>Professional</option>
-            <option value="PREMIUM" style={{ background: '#141414' }}>Premium</option>
+            <option value="" style={{ background: '#141414' }}>— Select —</option>
+            <option value="COMP_SET_UP" style={{ background: '#141414' }}>Comp Set Up</option>
+            <option value="CS" style={{ background: '#141414' }}>CS</option>
+            <option value="CS_VO" style={{ background: '#141414' }}>CS+VO</option>
+            <option value="CS_BK" style={{ background: '#141414' }}>CS+BK</option>
+            <option value="CS_VO_BK" style={{ background: '#141414' }}>CS+VO+BK</option>
           </select>
         </div>
       </div>
@@ -2284,7 +2305,7 @@ export default function CompanyDetailPage() {
             {company.companyNumber && <span className="text-sm" style={{ color: '#5A5040' }}>Co. No. {company.companyNumber}</span>}
             {company.companyType && (
               <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(201,169,110,0.1)', color: '#C9A96E', border: '1px solid rgba(201,169,110,0.2)' }}>
-                {company.companyType === 'HONG_KONG' ? 'Hong Kong' : company.companyType === 'BVI' ? 'BVI' : company.companyType === 'CAYMAN' ? 'Cayman' : company.companyType === 'MARSHALL' ? 'Marshall' : company.companyType}
+                {COMPANY_JURISDICTION_LABELS[company.companyType as CompanyJurisdiction] ?? company.companyType}
               </span>
             )}
             {company.companyLegalType && (
@@ -2296,7 +2317,7 @@ export default function CompanyDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           <span className={`px-3 py-1 rounded-full text-sm font-medium ${STATUS_COLOR[company.status] ?? 'bg-[rgba(120,113,108,0.15)] text-[#9A8060]'}`}>
-            {company.status}
+            {COMPANY_STATUS_LABELS[company.status as keyof typeof COMPANY_STATUS_LABELS] ?? company.status}
           </span>
           <Button size="sm" variant="outline" onClick={() => setModal({ type: 'company', mode: 'edit', data: company })}>
             Edit
@@ -2322,6 +2343,7 @@ export default function CompanyDetailPage() {
             {[
               ['Registered Address', company.registeredAddress ?? '—'],
               ['Date of Incorporation', company.dateOfIncorporation ? new Date(company.dateOfIncorporation).toLocaleDateString('en-HK') : '—'],
+              ['Jurisdiction', COMPANY_JURISDICTION_LABELS[company.companyType as CompanyJurisdiction] ?? company.companyType ?? '—'],
               ['Company Type', company.companyLegalType ?? '—'],
               ['Financial Year End', company.financialYearEndMonth === 3 ? 'March 31st' : company.financialYearEndMonth === 12 ? 'December 31st' : '—'],
               ['Business Nature', company.businessNature ?? '—'],

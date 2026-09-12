@@ -7,6 +7,11 @@ import {
   buildCompanyAccessWhere,
   resolveCompanyAccess,
 } from '@/lib/company-access'
+import { COMPANY_SERVICE_TIERS } from '@/lib/company/service-tiers'
+import {
+  COMPANY_JURISDICTION_CODE_PREFIX,
+  COMPANY_JURISDICTIONS,
+} from '@/lib/company/jurisdiction'
 import {
   buildCompanyOwnershipNode,
   computeEffectiveNaturalOwners,
@@ -15,15 +20,9 @@ import {
 } from '@/lib/aml/ownershipLookThrough'
 import { z } from 'zod'
 
-const COMPANY_TYPE_PREFIX: Record<string, string> = {
-  HONG_KONG: 'AA',
-  BVI:       'BV',
-  CAYMAN:    'CA',
-  MARSHALL:  'MS',
-}
-
 async function nextCompanyCode(companyType: string): Promise<string> {
-  const prefix = COMPANY_TYPE_PREFIX[companyType] ?? 'AA'
+  const prefix =
+    COMPANY_JURISDICTION_CODE_PREFIX[companyType as keyof typeof COMPANY_JURISDICTION_CODE_PREFIX] ?? 'AA'
   const rows = await prisma.$queryRaw<Array<{ max_no: number | null }>>`
     SELECT MAX(CAST(SUBSTRING("companyCode" FROM 3) AS INTEGER)) AS max_no
     FROM companies
@@ -38,13 +37,13 @@ const createSchema = z
     nameEn: z.string().min(1).max(200),
     nameZh: z.string().max(200).optional(),
     companyNumber: z.string().max(20).optional(),
-    companyType: z.enum(['HONG_KONG', 'BVI', 'CAYMAN', 'MARSHALL']).optional(),
+    companyType: z.enum(COMPANY_JURISDICTIONS).optional(),
     dateOfIncorporation: z.string().optional(),
     registeredAddress: z.string().max(500).optional(),
     businessNature: z.string().max(500).optional(),
     /** Calendar month of financial year end: 3 = 31 Mar, 12 = 31 Dec */
     financialYearEndMonth: z.union([z.literal(3), z.literal(12)]).optional().nullable(),
-    serviceTier: z.enum(['BASIC', 'PROFESSIONAL', 'PREMIUM']).optional(),
+    serviceTier: z.enum(COMPANY_SERVICE_TIERS).optional(),
     /** Pick from verified CLIENT users (admin UI). */
     clientUserId: z.string().cuid().optional(),
     /** CLIENT signup email when not choosing from list (e.g. not yet verified). */

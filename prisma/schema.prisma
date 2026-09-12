@@ -39,15 +39,16 @@ enum Platform {
 
 enum CompanyStatus {
   ACTIVE
-  DORMANT
-  STRUCK_OFF
+  INACTIVE
   DEREGISTERED
 }
 
 enum ServiceTier {
-  BASIC
-  PROFESSIONAL
-  PREMIUM
+  COMP_SET_UP
+  CS
+  CS_VO
+  CS_BK
+  CS_VO_BK
 }
 
 enum CompanyFileAssetType {
@@ -401,7 +402,7 @@ model Company {
   businessRegNumber     String?
   brExpiryDate          DateTime?
   status                CompanyStatus @default(ACTIVE)
-  serviceTier           ServiceTier   @default(BASIC)
+  serviceTier           ServiceTier   @default(COMP_SET_UP)
   financialEnabled      Boolean       @default(true)
   internalNotes         String?
   deletedAt             DateTime?

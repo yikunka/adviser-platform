@@ -10,6 +10,11 @@ import { Input } from '@/components/ui/input'
 import { DatePickerPopover } from '@/components/ui/date-picker-popover'
 import { BUSINESS_NATURE_OPTIONS } from '@/lib/kyc/kycFieldOptions'
 import { TCSP_REGISTERED_OFFICE_ADDRESS } from '@/lib/company/office-address'
+import {
+  COMPANY_JURISDICTIONS,
+  COMPANY_JURISDICTION_LABELS,
+  type CompanyJurisdiction,
+} from '@/lib/company/jurisdiction'
 
 const fieldStyle: React.CSSProperties = {
   width: '100%',
@@ -62,12 +67,12 @@ export default function NewCompanyPage() {
     nameEn: '',
     nameZh: '',
     companyNumber: '',
-    companyType: '' as '' | 'HONG_KONG' | 'BVI' | 'CAYMAN' | 'MARSHALL',
+    companyType: '' as '' | CompanyJurisdiction,
     dateOfIncorporation: '',
     registeredAddress: '',
     businessNature: '',
     financialYearEndMonth: '' as '' | '3' | '12',
-    serviceTier: '' as '' | 'BASIC' | 'PROFESSIONAL' | 'PREMIUM',
+    serviceTier: '' as '' | 'COMP_SET_UP' | 'CS' | 'CS_VO' | 'CS_BK' | 'CS_VO_BK',
     clientUserId: '',
     clientUserEmail: '',
   })
@@ -407,17 +412,18 @@ export default function NewCompanyPage() {
         </div>
 
         <div>
-          <label style={labelStyle}>Company Jurisdiction</label>
+          <label style={labelStyle}>Jurisdiction</label>
           <select
             value={form.companyType}
             onChange={e => set('companyType', e.target.value)}
             style={fieldStyle}
           >
-            <option value="" style={{ background: '#141414' }}>— Select company jurisdiction —</option>
-            <option value="HONG_KONG" style={{ background: '#141414' }}>Hong Kong Company</option>
-            <option value="CAYMAN" style={{ background: '#141414' }}>Cayman Company</option>
-            <option value="BVI" style={{ background: '#141414' }}>BVI Company</option>
-            <option value="MARSHALL" style={{ background: '#141414' }}>Marshall Company</option>
+            <option value="" style={{ background: '#141414' }}>— Select jurisdiction —</option>
+            {COMPANY_JURISDICTIONS.map(j => (
+              <option key={j} value={j} style={{ background: '#141414' }}>
+                {COMPANY_JURISDICTION_LABELS[j]}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -514,9 +520,11 @@ export default function NewCompanyPage() {
           <label style={labelStyle}>Service Tier</label>
           <select value={form.serviceTier} onChange={e => set('serviceTier', e.target.value)} style={fieldStyle}>
             <option value="" style={{ background: '#141414' }}>— None —</option>
-            <option value="BASIC" style={{ background: '#141414' }}>Basic</option>
-            <option value="PROFESSIONAL" style={{ background: '#141414' }}>Professional</option>
-            <option value="PREMIUM" style={{ background: '#141414' }}>Premium</option>
+            <option value="COMP_SET_UP" style={{ background: '#141414' }}>Comp Set Up</option>
+            <option value="CS" style={{ background: '#141414' }}>CS</option>
+            <option value="CS_VO" style={{ background: '#141414' }}>CS+VO</option>
+            <option value="CS_BK" style={{ background: '#141414' }}>CS+BK</option>
+            <option value="CS_VO_BK" style={{ background: '#141414' }}>CS+VO+BK</option>
           </select>
         </div>
 

@@ -4,19 +4,23 @@ import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
 import { z } from 'zod'
 import { COMPANY_LEGAL_TYPE_VALUES } from '@/lib/company/company-legal-type'
+import { COMPANY_SERVICE_TIERS } from '@/lib/company/service-tiers'
+import { COMPANY_STATUSES } from '@/lib/company/company-status'
+import { COMPANY_JURISDICTIONS } from '@/lib/company/jurisdiction'
 
 const updateSchema = z.object({
   nameEn: z.string().min(1).max(200).optional(),
   nameZh: z.string().max(200).optional(),
   companyNumber: z.string().max(20).optional(),
   companyCode: z.string().max(20).optional().nullable(),
+  companyType: z.enum(COMPANY_JURISDICTIONS).optional().nullable(),
   companyLegalType: z.enum(COMPANY_LEGAL_TYPE_VALUES).optional().nullable(),
   dateOfIncorporation: z.string().optional(),
   registeredAddress: z.string().max(500).optional(),
   businessNature: z.string().max(500).optional(),
   financialYearEndMonth: z.union([z.literal(3), z.literal(12)]).optional().nullable(),
-  status: z.enum(['ACTIVE', 'DORMANT', 'STRUCK_OFF', 'DEREGISTERED']).optional(),
-  serviceTier: z.enum(['BASIC', 'PROFESSIONAL', 'PREMIUM']).optional(),
+  status: z.enum(COMPANY_STATUSES).optional(),
+  serviceTier: z.enum(COMPANY_SERVICE_TIERS).optional(),
   financialEnabled: z.boolean().optional(),
   assignedStaffId: z.string().cuid().optional().nullable(),
   financialManagerId: z.string().cuid().optional().nullable(),

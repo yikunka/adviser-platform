@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
+import { COMPANY_STATUS_LABELS } from '@/lib/company/company-status'
 import { Link, useRouter } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -26,8 +27,7 @@ type Company = {
 
 const STATUS_COLOR: Record<string, string> = {
   ACTIVE:       'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
-  DORMANT:      'bg-[rgba(234,179,8,0.12)] text-[#eab308]',
-  STRUCK_OFF:   'bg-[rgba(239,68,68,0.12)] text-[#ef4444]',
+  INACTIVE:     'bg-[rgba(234,179,8,0.12)] text-[#eab308]',
   DEREGISTERED: 'bg-[rgba(120,113,108,0.15)] text-[#9A8060]',
 }
 
@@ -170,7 +170,7 @@ export default function CompaniesPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[c.status] ?? ''}`}>
-                      {c.status}
+                      {COMPANY_STATUS_LABELS[c.status as keyof typeof COMPANY_STATUS_LABELS] ?? c.status}
                     </span>
                   </td>
                   <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>{c.clientUser?.nameEn ?? '—'}</td>
