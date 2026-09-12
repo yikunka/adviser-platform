@@ -140,6 +140,7 @@ export default function CompaniesPage() {
             <thead style={{ background: 'var(--surface-panel)', borderBottom: '1px solid var(--border-subtle)' }}>
               <tr>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('companyCode')}</th>
+                <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('jurisdictionColumn')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('companyName')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('companyNumber')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('incorporationDate')}</th>
@@ -153,9 +154,9 @@ export default function CompaniesPage() {
             </thead>
             <tbody className="divide-y divide-[var(--border-subtle)]">
               {loading ? (
-                <tr><td colSpan={10} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>Loading...</td></tr>
+                <tr><td colSpan={11} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>Loading...</td></tr>
               ) : companies.length === 0 ? (
-                <tr><td colSpan={10} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>{t('empty')}</td></tr>
+                <tr><td colSpan={11} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>{t('empty')}</td></tr>
               ) : companies.map(c => (
                 <tr
                   key={c.id}
@@ -167,25 +168,12 @@ export default function CompaniesPage() {
                   }}
                 >
                   <td className="px-4 py-3 font-semibold" style={{ color: '#C9A96E' }}>{c.companyCode ?? '—'}</td>
+                  <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
+                    {companyJurisdictionLabelZh(c.companyType) ?? '—'}
+                  </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-start gap-2">
-                      {companyJurisdictionLabelZh(c.companyType) ? (
-                        <span
-                          className="mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none"
-                          style={{
-                            background: 'rgba(56,189,248,0.12)',
-                            color: '#38bdf8',
-                            border: '1px solid rgba(56,189,248,0.28)',
-                          }}
-                        >
-                          {companyJurisdictionLabelZh(c.companyType)}
-                        </span>
-                      ) : null}
-                      <div className="min-w-0">
-                        <p className="font-medium" style={{ color: 'var(--foreground)' }}>{c.nameEn}</p>
-                        {c.nameZh && <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{c.nameZh}</p>}
-                      </div>
-                    </div>
+                    <p className="font-medium" style={{ color: 'var(--foreground)' }}>{c.nameEn}</p>
+                    {c.nameZh && <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{c.nameZh}</p>}
                   </td>
                   <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>{c.companyNumber}</td>
                   <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>

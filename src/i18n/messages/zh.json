@@ -782,6 +782,7 @@
       "search": "搜尋公司...",
       "jurisdictionFilter": "註冊地",
       "jurisdictionAll": "全部註冊地",
+      "jurisdictionColumn": "註冊地",
       "exportCsv": "匯出CSV",
       "companyCode": "公司代碼",
       "companyName": "公司名稱",

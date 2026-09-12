@@ -782,6 +782,7 @@
       "search": "Search companies...",
       "jurisdictionFilter": "Jurisdiction",
       "jurisdictionAll": "All jurisdictions",
+      "jurisdictionColumn": "Jurisdiction",
       "exportCsv": "Export CSV",
       "companyCode": "Company Code",
       "companyName": "Company Name",
