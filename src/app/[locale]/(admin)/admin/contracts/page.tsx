@@ -48,7 +48,7 @@ const inputClass = 'w-full rounded-lg px-3 py-2.5 text-sm outline-none'
 function inputStyle(): React.CSSProperties {
   return {
     background: '#0F0D08',
-    border: '1px solid #2A2418',
+    border: '1px solid var(--border-subtle)',
     color: 'var(--foreground)',
   }
 }
@@ -213,7 +213,7 @@ export default function ContractsPage() {
 
       <div className="overflow-hidden rounded-lg" style={card}>
         <table className="w-full text-left text-sm">
-          <thead style={{ background: '#111108', color: 'var(--muted-foreground)' }}>
+          <thead style={{ background: 'var(--surface-modal)', color: 'var(--muted-foreground)' }}>
             <tr>
               <th className="px-4 py-3 font-medium">合同名称</th>
               <th className="px-4 py-3 font-medium">合同日期</th>

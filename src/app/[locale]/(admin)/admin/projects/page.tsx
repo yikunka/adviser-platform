@@ -57,7 +57,7 @@ const inputClass = 'w-full rounded-lg px-3 py-2.5 text-sm outline-none'
 function inputStyle(): React.CSSProperties {
   return {
     background: '#0F0D08',
-    border: '1px solid #2A2418',
+    border: '1px solid var(--border-subtle)',
     color: 'var(--foreground)',
   }
 }

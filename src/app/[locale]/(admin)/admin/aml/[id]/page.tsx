@@ -64,7 +64,7 @@ function JsonBlock({ label, value }: { label: string; value: unknown }) {
   return (
     <div className="space-y-1 text-sm">
       <p className="font-medium" style={{ color: 'var(--muted-foreground)' }}>{label}</p>
-      <pre className="max-h-72 overflow-auto rounded-md border border-[#2A2418] p-3 whitespace-pre-wrap" style={{ background: '#0A0A0A', color: 'var(--foreground)' }}>
+      <pre className="max-h-72 overflow-auto rounded-md border border-[var(--border-subtle)] p-3 whitespace-pre-wrap" style={{ background: 'var(--surface)', color: 'var(--foreground)' }}>
         {typeof value === 'string' ? value : JSON.stringify(value, null, 2)}
       </pre>
     </div>
@@ -120,7 +120,7 @@ export default function AMLAlertDetailPage() {
   if (!alert) return <div className="p-8" style={{ color: '#ef4444' }}>Alert not found</div>
 
   const isResolved = alert.resolution !== 'PENDING'
-  const resultStyle = RESULT_COLOR[alert.result] ?? { banner: 'bg-[rgba(120,113,108,0.1)] border-[#2A2418]', text: 'text-[#9A8060]' }
+  const resultStyle = RESULT_COLOR[alert.result] ?? { banner: 'bg-[rgba(120,113,108,0.1)] border-[var(--border-subtle)]', text: 'text-[#9A8060]' }
 
   return (
     <div className="p-6 max-w-3xl space-y-6">
@@ -245,7 +245,7 @@ export default function AMLAlertDetailPage() {
               onChange={e => setNotes(e.target.value)}
               placeholder={t('resolution.notesPlaceholder')}
               rows={4}
-              style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: 'var(--foreground)' }}
+              style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)' }}
             />
           </div>
 
@@ -256,7 +256,7 @@ export default function AMLAlertDetailPage() {
             </p>
             <div
               className="flex flex-wrap items-center gap-3 rounded-md border border-dashed px-3 py-3"
-              style={{ borderColor: '#2A2418', background: '#0A0A0A' }}
+              style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface)' }}
             >
               <button
                 type="button"
@@ -331,7 +331,7 @@ export default function AMLAlertDetailPage() {
           </p>
         </div>
       ) : (
-        <div className="rounded-lg p-4 space-y-2" style={{ background: '#1A1A12', border: '1px solid #2A2418' }}>
+        <div className="rounded-lg p-4 space-y-2" style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-subtle)' }}>
           <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
             <span className="font-medium" style={{ color: 'var(--foreground)' }}>Resolution:</span>{' '}
             {alert.resolution.replace('_', ' ')}

@@ -260,12 +260,12 @@ export function PaymentFormDialog({
                   本次 {money(amountNumber)} · 已分配 {money(allocatedTotal)} · 未分配 {money(unallocated)}
                 </span>
               </Label>
-              <Button size="sm" variant="outline" style={{ borderColor: '#2A2418' }} onClick={autoAllocate} disabled={openDocs.length === 0}>
+              <Button size="sm" variant="outline" style={{ borderColor: 'var(--border-subtle)' }} onClick={autoAllocate} disabled={openDocs.length === 0}>
                 按到期顺序自动分配
               </Button>
             </div>
             {openDocs.length === 0 ? (
-              <div className="rounded-md border px-4 py-5 text-center text-sm" style={{ borderColor: '#2A2418', color: '#5A5040' }}>
+              <div className="rounded-md border px-4 py-5 text-center text-sm" style={{ borderColor: 'var(--border-subtle)', color: '#5A5040' }}>
                 {partyId ? `该${config.partyLabel}暂无未结${config.docLabel}（可登记为预${config.payLabel}）` : `请先选择${config.partyLabel}`}
               </div>
             ) : (
@@ -274,7 +274,7 @@ export function PaymentFormDialog({
                   <div
                     key={doc.id}
                     className="grid grid-cols-[1fr_110px_110px_130px] items-center gap-2 rounded-md border px-3 py-2 text-sm"
-                    style={{ borderColor: '#2A2418' }}
+                    style={{ borderColor: 'var(--border-subtle)' }}
                   >
                     <div>
                       <span className="font-mono">{doc.docNo}</span>
@@ -307,7 +307,7 @@ export function PaymentFormDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" style={{ borderColor: '#2A2418' }} onClick={() => onOpenChange(false)}>
+          <Button variant="outline" style={{ borderColor: 'var(--border-subtle)' }} onClick={() => onOpenChange(false)}>
             取消
           </Button>
           <Button onClick={() => void save()} disabled={saving} style={{ background: '#C9A96E', color: '#0A0805' }}>

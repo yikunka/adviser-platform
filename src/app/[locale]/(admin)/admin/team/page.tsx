@@ -34,8 +34,8 @@ const th: React.CSSProperties = {
   fontWeight: 500,
   fontSize: '0.8125rem',
   color: 'var(--muted-foreground)',
-  background: '#111108',
-  borderBottom: '1px solid #2A2418',
+  background: 'var(--surface-modal)',
+  borderBottom: '1px solid var(--border-subtle)',
 }
 
 const td: React.CSSProperties = {
@@ -95,7 +95,7 @@ function FormFields({
           value={role}
           onChange={e => setRole(e.target.value as UserRole)}
           className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
-          style={{ background: '#1A1A12', border: '1px solid #2A2418', color: 'var(--foreground)' }}
+          style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)' }}
         >
           <option value="STAFF">Staff</option>
           <option value="COMPLIANCE">Compliance</option>
@@ -108,7 +108,7 @@ function FormFields({
           <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
             {t('dynamicRole')}
           </p>
-          <div className="rounded-lg p-3 space-y-2" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
+          <div className="rounded-lg p-3 space-y-2" style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)' }}>
             {availableRoles.map(r => {
               const checked = adminRoleIds.has(r.id)
               return (
@@ -307,7 +307,7 @@ function EditorModal({
     >
       <div
         className="w-full max-w-lg rounded-2xl p-7 space-y-5 max-h-[90vh] overflow-y-auto"
-        style={{ background: '#111111', border: '1px solid #2A2418' }}
+        style={{ background: 'var(--surface-modal)', border: '1px solid var(--border-subtle)' }}
       >
         <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>
           {mode === 'create' ? t('createTitle') : t('editTitle')}
@@ -323,7 +323,7 @@ function EditorModal({
               value={email}
               onChange={e => setEmail(e.target.value)}
               className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
-              style={{ background: '#1A1A12', border: '1px solid #2A2418', color: 'var(--foreground)' }}
+              style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)' }}
             />
           </div>
           <div className="space-y-1.5">
@@ -335,7 +335,7 @@ function EditorModal({
               value={nameEn}
               onChange={e => setNameEn(e.target.value)}
               className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
-              style={{ background: '#1A1A12', border: '1px solid #2A2418', color: 'var(--foreground)' }}
+              style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)' }}
             />
           </div>
           <div className="space-y-1.5">
@@ -349,7 +349,7 @@ function EditorModal({
               value={password}
               onChange={e => setPassword(e.target.value)}
               className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
-              style={{ background: '#1A1A12', border: '1px solid #2A2418', color: 'var(--foreground)' }}
+              style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)' }}
             />
           </div>
           <FormFields
@@ -368,7 +368,7 @@ function EditorModal({
               type="button"
               onClick={onClose}
               className="flex-1 py-2.5 rounded-lg text-sm font-medium"
-              style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}
+              style={{ border: '1px solid var(--border-subtle)', color: 'var(--muted-foreground)' }}
             >
               {t('cancel')}
             </button>
@@ -503,7 +503,7 @@ export default function AdminTeamPage() {
                   return (
                     <tr
                       key={u.id}
-                      className="cursor-pointer transition-colors hover:bg-[#111108]"
+                      className="cursor-pointer transition-colors hover:bg-[var(--surface-modal)]"
                       onClick={() => {
                         setEditUser(u)
                         setEditorMode('edit')

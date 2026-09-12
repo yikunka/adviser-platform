@@ -167,7 +167,7 @@ function CustomerContractsSection({
   }
 
   return (
-    <div className="space-y-3 rounded-md p-4" style={{ background: '#0A0A0A', border: '1px solid #2A2418' }}>
+    <div className="space-y-3 rounded-md p-4" style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)' }}>
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Cooperation contracts</h3>
@@ -220,7 +220,7 @@ function CustomerContractsSection({
             <div
               key={contract.id}
               className="flex flex-wrap items-center justify-between gap-3 rounded-md px-3 py-2"
-              style={{ border: '1px solid #2A2418' }}
+              style={{ border: '1px solid var(--border-subtle)' }}
             >
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium truncate" style={{ color: 'var(--foreground)' }}>{contract.fileName}</p>
@@ -331,7 +331,7 @@ function CustomerModal({
       style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg p-6 space-y-5" style={{ background: '#111111', border: '1px solid #2A2418' }}>
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg p-6 space-y-5" style={{ background: 'var(--surface-modal)', border: '1px solid var(--border-subtle)' }}>
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>
@@ -347,7 +347,7 @@ function CustomerModal({
             type="button"
             onClick={onClose}
             className="h-8 w-8 inline-flex items-center justify-center rounded-md"
-            style={{ color: 'var(--muted-foreground)', border: '1px solid #2A2418' }}
+            style={{ color: 'var(--muted-foreground)', border: '1px solid var(--border-subtle)' }}
             aria-label="Close"
           >
             <X size={14} />
@@ -379,7 +379,7 @@ function CustomerModal({
               maxLength={500}
               rows={3}
               className="w-full rounded-md px-3 py-2 text-sm outline-none"
-              style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: 'var(--foreground)' }}
+              style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)' }}
             />
           </label>
 
@@ -391,7 +391,7 @@ function CustomerModal({
               maxLength={2000}
               rows={3}
               className="w-full rounded-md px-3 py-2 text-sm outline-none"
-              style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: 'var(--foreground)' }}
+              style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)' }}
             />
           </label>
 
@@ -598,7 +598,7 @@ export default function SfsCustomersPage() {
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead style={{ background: '#111108', borderBottom: '1px solid #2A2418' }}>
+              <thead style={{ background: 'var(--surface-modal)', borderBottom: '1px solid var(--border-subtle)' }}>
                 <tr>
                   <th className="px-3 py-3 w-10" />
                   {['Customer', 'Contact', 'Address', 'Orders', 'Latest order', 'Source', 'Created'].map(h => (
@@ -607,7 +607,7 @@ export default function SfsCustomersPage() {
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#2A2418]">
+              <tbody className="divide-y divide-[var(--border-subtle)]">
                 {loading ? (
                   <tr>
                     <td colSpan={9} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>Loading...</td>
@@ -627,7 +627,7 @@ export default function SfsCustomersPage() {
                   const status = latest ? (STATUS_STYLE[latest.status] ?? STATUS_STYLE.PENDING) : null
                   const checked = selectedIds.includes(customer.id)
                   return (
-                    <tr key={customer.id} className="hover:bg-[#1A1A12]/50 align-top">
+                    <tr key={customer.id} className="hover:bg-[var(--surface-panel)]/50 align-top">
                       <td className="px-3 py-3">
                         <input
                           type="checkbox"

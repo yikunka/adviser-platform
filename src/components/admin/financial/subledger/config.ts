@@ -196,24 +196,24 @@ export function money(value: number) {
 }
 
 export const inputStyle = {
-  background: '#0E0E0A',
-  border: '1px solid #2A2418',
-  color: '#FFF7E6',
+  background: 'var(--surface-input)',
+  border: '1px solid var(--border-subtle)',
+  color: 'var(--text-bright)',
   caretColor: '#C9A96E',
-  colorScheme: 'dark',
+  colorScheme: 'inherit',
 } as const
 
 export const fieldClassName =
-  'financial-field bg-[#0E0E0A] border-[#2A2418] text-[#FFF7E6] placeholder:text-[#9F927B] caret-[#C9A96E] shadow-inner shadow-black/20 focus-visible:border-[#C9A96E] focus-visible:ring-[#C9A96E]/25'
+  'financial-field bg-[var(--surface-input)] border-[var(--border-subtle)] text-[var(--text-bright)] placeholder:text-[var(--text-placeholder)] caret-[#C9A96E] shadow-inner shadow-black/20 focus-visible:border-[#C9A96E] focus-visible:ring-[#C9A96E]/25'
 
 export const accountPickerInputClassName =
-  'financial-field bg-[#0E0E0A] border-[#2A2418] text-[#FFF7E6] placeholder:text-[#9F927B] caret-[#C9A96E] shadow-inner shadow-black/20 focus-visible:border-[#C9A96E] focus-visible:ring-[#C9A96E]/25'
+  'financial-field bg-[var(--surface-input)] border-[var(--border-subtle)] text-[var(--text-bright)] placeholder:text-[var(--text-placeholder)] caret-[#C9A96E] shadow-inner shadow-black/20 focus-visible:border-[#C9A96E] focus-visible:ring-[#C9A96E]/25'
 
 export const selectContentClassName =
-  'financial-select-content border border-[#2A2418] bg-[#11100B] text-[#FFF7E6] shadow-xl shadow-black/30'
+  'financial-select-content border border-[var(--border-subtle)] bg-[var(--surface-modal)] text-[var(--text-bright)] shadow-xl shadow-black/30'
 
 export const selectItemClassName =
-  'text-[#FFF7E6] focus:bg-[#1F1A12] focus:text-[#FFF7E6] data-[highlighted]:bg-[#1F1A12] data-[highlighted]:text-[#FFF7E6]'
+  'text-[var(--text-bright)] focus:bg-[var(--surface-panel)] focus:text-[var(--text-bright)] data-[highlighted]:bg-[var(--surface-panel)] data-[highlighted]:text-[var(--text-bright)]'
 
 export const financialModalContentClassName =
-  'financial-modal border-[#2A2418] bg-[#11110E] text-[#FFF7E6] shadow-2xl ring-[#3A3428]'
+  'financial-modal border-[var(--border-subtle)] bg-[var(--surface-modal)] text-[var(--text-bright)] shadow-2xl ring-[var(--border-strong)]'

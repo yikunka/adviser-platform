@@ -663,7 +663,7 @@ export default function AdminFinancialJournalPage() {
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={importing}
-                  style={{ borderColor: '#2A2418' }}
+                  style={{ borderColor: 'var(--border-subtle)' }}
                 >
                   <Upload size={15} className="mr-2" /> {importing ? '导入中...' : '导入 Excel'}
                 </Button>
@@ -702,12 +702,12 @@ export default function AdminFinancialJournalPage() {
       </div>
 
       {readOnly ? (
-        <div className="rounded-lg border border-[#C9A96E55] bg-[#C9A96E14] px-4 py-3 text-sm" style={{ color: '#EADDC3' }}>
+        <div className="rounded-lg border border-[#C9A96E55] bg-[#C9A96E14] px-4 py-3 text-sm" style={{ color: 'var(--text-label)' }}>
           Staff 账号在日记账模块仅可查看与打印，不能导入、创建、编辑、过账、取消或彻底删除凭证。
         </div>
       ) : null}
 
-      <Card className="rounded-lg border-[#2A2418] bg-card">
+      <Card className="rounded-lg border-[var(--border-subtle)] bg-card">
         <CardHeader className="pb-4">
           <div className="flex flex-wrap items-center gap-4">
             <Input
@@ -718,7 +718,7 @@ export default function AdminFinancialJournalPage() {
               }}
               placeholder="搜索凭证号、摘要、科目..."
               className="max-w-xs"
-              style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
+              style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)' }}
             />
             <Input
               type="month"
@@ -728,7 +728,7 @@ export default function AdminFinancialJournalPage() {
                 setPage(1)
               }}
               className="max-w-[160px]"
-              style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
+              style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)' }}
             />
             <Select
               value={filterStatus}
@@ -737,7 +737,7 @@ export default function AdminFinancialJournalPage() {
                 setPage(1)
               }}
             >
-              <SelectTrigger className="w-[140px]" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
+              <SelectTrigger className="w-[140px]" style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)' }}>
                 <SelectValue placeholder="全部状态" />
               </SelectTrigger>
               <SelectContent>
@@ -757,7 +757,7 @@ export default function AdminFinancialJournalPage() {
             <div
               className="mt-3 rounded-md border px-3 py-2 text-xs"
               style={{
-                borderColor: importResult.errors?.length ? '#ef4444' : '#2A2418',
+                borderColor: importResult.errors?.length ? '#ef4444' : 'var(--border-subtle)',
                 color: importResult.errors?.length ? '#fecaca' : '#C9A96E',
                 background: importResult.errors?.length ? 'rgba(239,68,68,0.08)' : 'rgba(201,169,110,0.08)',
               }}
@@ -839,7 +839,7 @@ export default function AdminFinancialJournalPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" style={{ borderColor: '#2A2418', color: '#C9A96E' }}>
+                        <Badge variant="outline" style={{ borderColor: 'var(--border-subtle)', color: '#C9A96E' }}>
                           {journalSourceTypeListLabel(entry.sourceType)}
                         </Badge>
                       </TableCell>
@@ -939,7 +939,7 @@ export default function AdminFinancialJournalPage() {
                     size="sm"
                     onClick={() => setPage(p => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    style={{ borderColor: '#2A2418' }}
+                    style={{ borderColor: 'var(--border-subtle)' }}
                   >
                     上一页
                   </Button>
@@ -948,7 +948,7 @@ export default function AdminFinancialJournalPage() {
                     size="sm"
                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                     disabled={page >= totalPages}
-                    style={{ borderColor: '#2A2418' }}
+                    style={{ borderColor: 'var(--border-subtle)' }}
                   >
                     下一页
                   </Button>

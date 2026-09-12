@@ -409,11 +409,11 @@ export default function KYCQueuePage() {
                 onChange={e => setCreateClientId(e.target.value)}
                 disabled={creating}
                 className="mt-2 w-full rounded-md px-3 py-2 text-sm"
-                style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: 'var(--foreground)', outline: 'none' }}
+                style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)', outline: 'none' }}
               >
-                <option value="" style={{ background: '#141414' }}>Select client account</option>
+                <option value="" style={{ background: 'var(--surface-raised)' }}>Select client account</option>
                 {clients.map(client => (
-                  <option key={client.id} value={client.id} style={{ background: '#141414' }}>
+                  <option key={client.id} value={client.id} style={{ background: 'var(--surface-raised)' }}>
                     {client.email} — {client.nameEn}{client.nameZh ? ` (${client.nameZh})` : ''}
                   </option>
                 ))}
@@ -464,7 +464,7 @@ export default function KYCQueuePage() {
               style={
                 filterStatus === s
                   ? { background: 'rgba(201,169,110,0.2)', color: '#C9A96E', border: '1px solid #C9A96E' }
-                  : { background: '#1E1A12', color: '#7A7060', border: '1px solid #2A2418' }
+                  : { background: 'var(--surface-panel)', color: '#7A7060', border: '1px solid var(--border-subtle)' }
               }
             >
               {filterLabel(s, t('all'))}
@@ -494,10 +494,10 @@ export default function KYCQueuePage() {
               onChange={e => setSearchInput(e.target.value)}
               placeholder="Search KYC, name, ID, email, company..."
               className="h-9 w-full rounded-md pl-9 pr-3 text-sm"
-              style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: 'var(--foreground)', outline: 'none' }}
+              style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)', outline: 'none' }}
             />
           </div>
-          <Button type="submit" variant="outline" className="h-9" style={{ borderColor: '#2A2418', color: '#C9A96E' }}>
+          <Button type="submit" variant="outline" className="h-9" style={{ borderColor: 'var(--border-subtle)', color: '#C9A96E' }}>
             Search
           </Button>
           {searchQuery ? (
@@ -505,7 +505,7 @@ export default function KYCQueuePage() {
               type="button"
               variant="outline"
               className="h-9"
-              style={{ borderColor: '#2A2418' }}
+              style={{ borderColor: 'var(--border-subtle)' }}
               onClick={() => { setSearchInput(''); setSearchQuery(''); setPage(1) }}
             >
               Clear
@@ -520,7 +520,7 @@ export default function KYCQueuePage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[#2A2418] text-left" style={{ color: 'var(--muted-foreground)' }}>
+                  <tr className="border-b border-[var(--border-subtle)] text-left" style={{ color: 'var(--muted-foreground)' }}>
                     <th className="px-4 py-3 font-medium">KYC Code / Name</th>
                     <th className="px-4 py-3 font-medium">Client Account</th>
                     <th className="px-4 py-3 font-medium">Company</th>
@@ -529,7 +529,7 @@ export default function KYCQueuePage() {
                     <th className="px-4 py-3 font-medium">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#2A2418]">
+                <tbody className="divide-y divide-[var(--border-subtle)]">
               {records.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>{t('empty')}</td>
@@ -543,7 +543,7 @@ export default function KYCQueuePage() {
                   onClick={() => router.push(`/admin/kyc/${r.id}`)}
                   className="px-4 py-3 cursor-pointer transition-colors"
                   style={{ background: 'transparent' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#1A1A12' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--surface-panel)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
                 >
                   <td className="px-4 py-3">
@@ -595,7 +595,7 @@ export default function KYCQueuePage() {
                 </tbody>
               </table>
             </div>
-            <div className="flex flex-col gap-3 border-t border-[#2A2418] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 border-t border-[var(--border-subtle)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
                 Showing {startRow}-{endRow} of {total}
               </p>
@@ -606,7 +606,7 @@ export default function KYCQueuePage() {
                   className="h-8 gap-1.5 px-2.5 text-xs"
                   disabled={page <= 1}
                   onClick={() => setPage(p => Math.max(1, p - 1))}
-                  style={{ borderColor: '#2A2418' }}
+                  style={{ borderColor: 'var(--border-subtle)' }}
                 >
                   <ChevronLeft size={14} />
                   Prev
@@ -620,7 +620,7 @@ export default function KYCQueuePage() {
                   className="h-8 gap-1.5 px-2.5 text-xs"
                   disabled={page >= totalPages}
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  style={{ borderColor: '#2A2418' }}
+                  style={{ borderColor: 'var(--border-subtle)' }}
                 >
                   Next
                   <ChevronRight size={14} />
@@ -647,7 +647,7 @@ export default function KYCQueuePage() {
                   <button
                     type="button"
                     onClick={cancelAdd}
-                    className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#2A2418]"
+                    className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border-subtle)]"
                     aria-label="Close add KYC"
                   >
                     <X size={16} />
@@ -663,11 +663,11 @@ export default function KYCQueuePage() {
                     onChange={e => setManualClientId(e.target.value)}
                     disabled={savingCreate}
                     className="w-full rounded-md px-3 py-2 text-sm"
-                    style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: 'var(--foreground)', outline: 'none' }}
+                    style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)', outline: 'none' }}
                   >
-                    <option value="" style={{ background: '#141414' }}>Select client account</option>
+                    <option value="" style={{ background: 'var(--surface-raised)' }}>Select client account</option>
                     {clients.map(client => (
-                      <option key={client.id} value={client.id} style={{ background: '#141414' }}>
+                      <option key={client.id} value={client.id} style={{ background: 'var(--surface-raised)' }}>
                         {client.email} — {client.nameEn}{client.nameZh ? ` (${client.nameZh})` : ''}
                       </option>
                     ))}
@@ -680,7 +680,7 @@ export default function KYCQueuePage() {
                   disabled={savingCreate}
                 />
 
-                <div className="flex flex-wrap gap-2 border-t pt-4" style={{ borderColor: '#2A2418' }}>
+                <div className="flex flex-wrap gap-2 border-t pt-4" style={{ borderColor: 'var(--border-subtle)' }}>
                   <Button disabled={savingCreate} onClick={() => saveCreate('SAVE_DRAFT')}>
                     {savingCreate ? 'Saving…' : 'Save draft'}
                   </Button>
@@ -688,7 +688,7 @@ export default function KYCQueuePage() {
                     variant="outline"
                     disabled={savingCreate}
                     onClick={() => saveCreate('SUBMIT')}
-                    style={{ borderColor: '#2A2418', color: '#C9A96E' }}
+                    style={{ borderColor: 'var(--border-subtle)', color: '#C9A96E' }}
                   >
                     Submit for review
                   </Button>

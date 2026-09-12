@@ -11,7 +11,7 @@ A multi-platform back-office system operated by a licensed TCSP (Trust and Compa
 
 Admin console is at `/[locale]/admin/`. Roles: `SUPER_ADMIN`, `COMPLIANCE`, `STAFF`, `CLIENT`. Staff access is further restricted by per-menu permission keys and per-platform flags.
 
-Admin left navigation is grouped by module. Menu groups can be collapsed/expanded, and only one group stays expanded at a time; the current route's group opens automatically, including company-scoped financial sub-routes under Finance Management. The bottom utility area, including Requirements / Feedback and Logout, stays fixed within the browser viewport while admin content scrolls independently.
+Admin left navigation is grouped by module. Menu groups can be collapsed/expanded, and only one group stays expanded at a time; the current route's group opens automatically, including company-scoped financial sub-routes under Finance Management. The bottom utility area, including Requirements / Feedback and Logout, stays fixed within the browser viewport while admin content scrolls independently. Top-right **Day / Night** toggle switches between night (black × gold) and day (warm paper × gold) UI; preference is stored in the browser.
 
 ---
 
@@ -28,7 +28,7 @@ Manages the full portfolio of client companies.
 - Company statuses: `Active`, `Inactive`, `Deregistered`
 - Company create/edit uses **Jurisdiction** (`Hong Kong`, `BVI`, `Cayman`, `Bermuda`, `Marshall`) for code-prefix jurisdiction (`AA` / `BV` / `CA` / `BM` / `MS`)
 - Auto-generates company codes by jurisdiction: `AA#####` (HK), `BV#####` (BVI), `CA#####` (Cayman), `BM#####` (Bermuda), `MS#####` (Marshall)
-- Company detail editing includes a separate **Company Type** field for legal/entity category values such as `private company limited by shares`, `public company limited by shares`, `company limited by guarantee`, `branch office`, `BVI`, `CAYMAN`, `BERMUDA`, and `MARSHALL`; this field is independent from the company jurisdiction and does not affect code generation
+- Company detail editing includes a separate **Company Type** field for legal/entity category values: `Private Company Limited by Shares`, `Public Company Limited by Shares`, `Company Limited by Guarantee`, `Private Unlimited Company`, `Public Unlimited Company`, and `Branch Office`; this field is independent from **Jurisdiction** and does not affect code generation
 - Company create/edit includes **Financial Year End** (before Business Nature): March 31st or December 31st checkboxes (mutually exclusive); stored as month `3` or `12`
 - Company detail overview shows Financial Year End above Business Nature, then **周年申报截止日** below Business Nature (incorporation month/day + 42 days, shown as `MM-DD`)
 - Company detail overview includes a **文件管理** group with three toggles for `公司盒`, `公司方印`, and `公司圆印`; a single expand/collapse control beside the section title shows or hides all enabled items' IN/OUT forms and full movement history (collapsed by default); each enabled item can store dated `IN` / `OUT` movement records with handler and notes

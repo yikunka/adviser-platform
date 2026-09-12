@@ -57,7 +57,7 @@ export function PartySelect({
       </SelectTrigger>
       <SelectContent className={selectContentClassName}>
         {options.length === 0 ? (
-          <div className="px-3 py-2 text-sm text-[#B8AD98]">暂无可选单位，请先在「往来单位」中创建</div>
+          <div className="px-3 py-2 text-sm text-[var(--text-dim)]">暂无可选单位，请先在「往来单位」中创建</div>
         ) : (
           options.map(option => (
             <SelectItem key={option.id} value={option.id} className={selectItemClassName}>

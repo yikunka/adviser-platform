@@ -6,9 +6,9 @@ import { ClientDocumentDownloadLink } from '@/components/client/ClientDocumentDo
 
 type Props = { params: Promise<{ locale: string; id: string }> }
 
-const thStyle = 'text-left px-4 py-3 text-sm font-medium text-[#7A7060] bg-[#1A1A12] border-b border-[#2A2418]'
+const thStyle = 'text-left px-4 py-3 text-sm font-medium text-[#7A7060] bg-[var(--surface-panel)] border-b border-[var(--border-subtle)]'
 const tdStyle = 'px-4 py-3 text-sm text-[#9A8060]'
-const tdPrimary = 'px-4 py-3 text-sm font-medium text-[#F0EAD8]'
+const tdPrimary = 'px-4 py-3 text-sm font-medium text-[var(--text-cream)]'
 const cardStyle: React.CSSProperties = { background: 'var(--card)', border: '1px solid var(--border)' }
 
 const STATUTORY_DOCS = [
@@ -34,7 +34,7 @@ function DownloadLink({ id, children }: { id: string; children: React.ReactNode 
     <ClientDocumentDownloadLink
       id={id}
       className="inline-flex items-center rounded-md border px-2.5 py-1.5 text-xs font-medium hover:underline disabled:opacity-60"
-      style={{ borderColor: '#2A2418', color: '#C9A96E', background: 'transparent', cursor: 'pointer' }}
+      style={{ borderColor: 'var(--border-subtle)', color: '#C9A96E', background: 'transparent', cursor: 'pointer' }}
     >
       {children}
     </ClientDocumentDownloadLink>
@@ -67,17 +67,17 @@ function ClientYearGroupedDocList({
   return (
     <>
       {years.map(year => (
-        <div key={year} style={{ borderTop: '1px solid #2A2418' }}>
-          <div className="px-4 py-2.5 text-sm font-medium" style={{ color: '#F0EAD8' }}>
+        <div key={year} style={{ borderTop: '1px solid var(--border-subtle)' }}>
+          <div className="px-4 py-2.5 text-sm font-medium" style={{ color: 'var(--text-cream)' }}>
             {year}
             <span className="ml-2 text-xs font-normal" style={{ color: '#5A5040' }}>
               {groups[year].length} file{groups[year].length !== 1 ? 's' : ''}
             </span>
           </div>
-          <ul className="divide-y divide-[#2A2418]">
+          <ul className="divide-y divide-[var(--border-subtle)]">
             {groups[year].map(doc => (
               <li key={doc.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                <span className="min-w-0 truncate text-sm" style={{ color: '#F0EAD8' }}>{doc.name}</span>
+                <span className="min-w-0 truncate text-sm" style={{ color: 'var(--text-cream)' }}>{doc.name}</span>
                 <div className="flex shrink-0 items-center gap-2">
                   <span className="text-xs" style={{ color: '#5A5040' }}>{fmt(doc.createdAt)}</span>
                   <DownloadLink id={doc.id}>Download</DownloadLink>
@@ -124,7 +124,7 @@ export default async function ClientCompanyDetailPage({ params }: Props) {
       {/* Header */}
       <div>
         <Link href="/companies" className="text-sm mb-2 block" style={{ color: '#7A7060' }}>← Back to Companies</Link>
-        <h1 className="text-2xl font-bold" style={{ color: '#F0EAD8' }}>{company.nameEn}</h1>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-cream)' }}>{company.nameEn}</h1>
         {company.nameZh && <p className="mt-0.5 text-sm" style={{ color: '#9A8060' }}>{company.nameZh}</p>}
         {company.companyNumber && <p className="text-xs mt-1" style={{ color: '#5A5040' }}>Co. No. {company.companyNumber}</p>}
       </div>
@@ -132,11 +132,11 @@ export default async function ClientCompanyDetailPage({ params }: Props) {
       {/* Overview */}
       <section>
         <h2 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: '#7A7060' }}>Overview</h2>
-        <div className="rounded-lg overflow-hidden divide-y divide-[#2A2418]" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+        <div className="rounded-lg overflow-hidden divide-y divide-[var(--border-subtle)]" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
           {sections.map(({ label, value }) => (
             <div key={label} className="flex px-4 py-3">
               <span className="w-52 shrink-0 text-sm font-medium" style={{ color: '#7A7060' }}>{label}</span>
-              <span className="text-sm" style={{ color: '#F0EAD8' }}>{value}</span>
+              <span className="text-sm" style={{ color: 'var(--text-cream)' }}>{value}</span>
             </div>
           ))}
         </div>
@@ -148,16 +148,16 @@ export default async function ClientCompanyDetailPage({ params }: Props) {
           const docs = company.documents.filter(d => d.documentType === type && !isGeneratedDoc(d))
           return (
             <div key={type} className="rounded-lg overflow-hidden" style={cardStyle}>
-              <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
-                <span className="text-sm font-semibold" style={{ color: '#F0EAD8' }}>{label}</span>
+              <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                <span className="text-sm font-semibold" style={{ color: 'var(--text-cream)' }}>{label}</span>
               </div>
               {docs.length === 0 ? (
                 <EmptyDocRow>No files uploaded yet.</EmptyDocRow>
               ) : (
-                <ul className="divide-y divide-[#2A2418]">
+                <ul className="divide-y divide-[var(--border-subtle)]">
                   {docs.map(doc => (
                     <li key={doc.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                      <span className="min-w-0 truncate text-sm" style={{ color: '#F0EAD8' }}>{doc.name}</span>
+                      <span className="min-w-0 truncate text-sm" style={{ color: 'var(--text-cream)' }}>{doc.name}</span>
                       <div className="flex shrink-0 items-center gap-2">
                         <span className="text-xs" style={{ color: '#5A5040' }}>{fmt(doc.createdAt)}</span>
                         <DownloadLink id={doc.id}>Download</DownloadLink>
@@ -171,17 +171,17 @@ export default async function ClientCompanyDetailPage({ params }: Props) {
         })}
 
         <div className="rounded-lg overflow-hidden" style={cardStyle}>
-          <div className="px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
-            <span className="text-sm font-semibold" style={{ color: '#F0EAD8' }}>Annual Return (NAR1)</span>
+          <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+            <span className="text-sm font-semibold" style={{ color: 'var(--text-cream)' }}>Annual Return (NAR1)</span>
           </div>
           {company.documents.filter(d => d.documentType === 'NAR1' && !isGeneratedDoc(d)).length === 0 ? (
             <EmptyDocRow>No NAR1 files uploaded yet.</EmptyDocRow>
           ) : (
-            <ul className="divide-y divide-[#2A2418]">
+            <ul className="divide-y divide-[var(--border-subtle)]">
               {company.documents.filter(d => d.documentType === 'NAR1' && !isGeneratedDoc(d)).map(doc => (
                 <li key={doc.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
                   <div className="min-w-0">
-                    <span className="block truncate text-sm" style={{ color: '#F0EAD8' }}>{doc.name}</span>
+                    <span className="block truncate text-sm" style={{ color: 'var(--text-cream)' }}>{doc.name}</span>
                     <span className="text-xs" style={{ color: '#5A5040' }}>{doc.notes ?? (doc.effectiveDate ? `Year: ${new Date(doc.effectiveDate).getFullYear()}` : 'Year not set')}</span>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
@@ -195,8 +195,8 @@ export default async function ClientCompanyDetailPage({ params }: Props) {
         </div>
 
         <div className="rounded-lg overflow-hidden" style={cardStyle}>
-          <div className="px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
-            <span className="text-sm font-semibold" style={{ color: '#F0EAD8' }}>Audit and Tax Computation</span>
+          <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+            <span className="text-sm font-semibold" style={{ color: 'var(--text-cream)' }}>Audit and Tax Computation</span>
             <p className="text-xs mt-1" style={{ color: '#5A5040' }}>Files are grouped by year. Multiple files per year may be available.</p>
           </div>
           <ClientYearGroupedDocList
@@ -222,7 +222,7 @@ export default async function ClientCompanyDetailPage({ params }: Props) {
                 <th className={thStyle}>Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#2A2418]">
+            <tbody className="divide-y divide-[var(--border-subtle)]">
               {company.directors.map(d => (
                 <tr key={d.id}>
                   <td className={tdPrimary}>{d.nameEn}{d.nameZh ? ` (${d.nameZh})` : ''}</td>
@@ -259,7 +259,7 @@ export default async function ClientCompanyDetailPage({ params }: Props) {
                 <th className={thStyle}>Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#2A2418]">
+            <tbody className="divide-y divide-[var(--border-subtle)]">
               {company.members.map(m => (
                 <tr key={m.id}>
                   <td className={tdPrimary}>{m.nameEn}{m.nameZh ? ` (${m.nameZh})` : ''}</td>
@@ -296,7 +296,7 @@ export default async function ClientCompanyDetailPage({ params }: Props) {
                 <th className={thStyle}>Becoming Date</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#2A2418]">
+            <tbody className="divide-y divide-[var(--border-subtle)]">
               {company.significantControllers.map(sc => (
                 <tr key={sc.id}>
                   <td className={tdPrimary}>{sc.nameEn}{sc.nameZh ? ` (${sc.nameZh})` : ''}</td>

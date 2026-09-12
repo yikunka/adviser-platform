@@ -155,7 +155,7 @@ export function DatePickerPopover({
           align="start"
           sideOffset={6}
           className={cn(
-            'w-auto border-[#2A2418] bg-[#111111] p-2 shadow-lg ring-[#3A3428]'
+            'w-auto border-[var(--border-subtle)] bg-[var(--surface-modal)] p-2 shadow-lg ring-[var(--border-strong)]'
           )}
         >
           {open ? (
@@ -174,7 +174,7 @@ export function DatePickerPopover({
                 day: cn('text-[#F0EAD8]'),
                 outside: cn('text-muted-foreground'),
                 disabled: cn('opacity-35'),
-                today: cn('rounded-md bg-[#2A2418]/80'),
+                today: cn('rounded-md bg-[var(--border-subtle)]/80'),
               }}
               onSelect={(date) => {
                 if (!date) return

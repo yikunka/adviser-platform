@@ -180,8 +180,8 @@ function AccountTreeRows({
             <div
               className={cn(
                 'grid grid-cols-[auto_1fr_auto_auto] items-center gap-2 rounded-md px-2 py-1.5 text-sm',
-                selected ? 'bg-[#2A2418] text-[#FFF7E6]' : highlighted ? 'bg-[#1E1A12] text-[#FFF7E6]' : 'text-[#EADDC3]',
-                selectable ? 'hover:bg-[#1E1A12]' : 'opacity-80',
+                selected ? 'bg-[var(--border-subtle)] text-[var(--text-bright)]' : highlighted ? 'bg-[var(--surface-panel)] text-[var(--text-bright)]' : 'text-[#EADDC3]',
+                selectable ? 'hover:bg-[var(--surface-panel)]' : 'opacity-80',
               )}
               style={{ paddingLeft: `${8 + depth * 18}px` }}
             >
@@ -190,7 +190,7 @@ function AccountTreeRows({
                 onMouseDown={event => event.preventDefault()}
                 onClick={() => hasChildren && onToggle(node.id)}
                 disabled={!hasChildren}
-                className="grid size-6 place-items-center rounded text-[#B8AD98] disabled:opacity-30"
+                className="grid size-6 place-items-center rounded text-[var(--text-dim)] disabled:opacity-30"
                 aria-label={expanded ? '收起下级科目' : '展开下级科目'}
               >
                 {hasChildren ? (
@@ -232,7 +232,7 @@ function AccountTreeRows({
               </button>
 
               {showBalance ? (
-                <div className="whitespace-nowrap rounded border border-[#2A2418] bg-[#0B0B08] px-2 py-1 text-right text-xs font-medium text-[#C9A96E]">
+                <div className="whitespace-nowrap rounded border border-[var(--border-subtle)] bg-[#0B0B08] px-2 py-1 text-right text-xs font-medium text-[#C9A96E]">
                   {accountBalanceLabel(node)}
                 </div>
               ) : (
@@ -527,17 +527,17 @@ export function AccountCombobox({
           className={cn(
             'h-9 w-full justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm font-normal',
             'focus-visible:border-[#C9A96E] focus-visible:ring-3 focus-visible:ring-[#C9A96E]/25',
-            'hover:bg-[#1E1A12] hover:text-[#FFF7E6] aria-expanded:bg-[#1E1A12]',
+            'hover:bg-[var(--surface-panel)] hover:text-[var(--text-bright)] aria-expanded:bg-[var(--surface-panel)]',
             inputClassName,
           )}
         >
           <span className="flex min-w-0 items-center gap-2">
-            <FolderTree size={14} className="shrink-0 text-[#9F927B]" />
-            <span className={cn('truncate', !displayValue && 'text-[#9F927B]')}>
+            <FolderTree size={14} className="shrink-0 text-[var(--text-placeholder)]" />
+            <span className={cn('truncate', !displayValue && 'text-[var(--text-placeholder)]')}>
               {displayValue || placeholder}
             </span>
           </span>
-          <ChevronDown size={14} className="shrink-0 text-[#9F927B]" />
+          <ChevronDown size={14} className="shrink-0 text-[var(--text-placeholder)]" />
         </Button>
 
         <Dialog
@@ -552,10 +552,10 @@ export function AccountCombobox({
             setTreeDialogOpen(next)
           }}
         >
-          <DialogContent className="financial-modal max-h-[88vh] overflow-hidden border-[#2A2418] bg-[#11110E] text-[#FFF7E6] shadow-2xl ring-[#3A3428] sm:max-w-2xl">
+          <DialogContent className="financial-modal max-h-[88vh] overflow-hidden border-[var(--border-subtle)] bg-[var(--surface-modal)] text-[var(--text-bright)] shadow-2xl ring-[var(--border-strong)] sm:max-w-2xl">
             <DialogHeader>
-              <DialogTitle className="text-[#FFF7E6]">{dialogTitle}</DialogTitle>
-              <DialogDescription className="text-[#B8AD98]">
+              <DialogTitle className="text-[var(--text-bright)]">{dialogTitle}</DialogTitle>
+              <DialogDescription className="text-[var(--text-dim)]">
                 通过树形层级浏览一级、二级、三级科目，也可以输入编码或名称搜索。
               </DialogDescription>
             </DialogHeader>
@@ -563,7 +563,7 @@ export function AccountCombobox({
             <div className="relative">
               <Search
                 size={14}
-                className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#9F927B]"
+                className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--text-placeholder)]"
               />
               <input
                 value={search}
@@ -601,15 +601,15 @@ export function AccountCombobox({
                 placeholder="输入科目编码或名称搜索..."
                 autoFocus
                 className={cn(
-                  'h-10 w-full rounded-lg border border-[#2A2418] bg-[#0E0E0A] py-2 pl-9 pr-3 text-sm text-[#FFF7E6] outline-none placeholder:text-[#9F927B]',
+                  'h-10 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-input)] py-2 pl-9 pr-3 text-sm text-[var(--text-bright)] outline-none placeholder:text-[var(--text-placeholder)]',
                   'focus-visible:border-[#C9A96E] focus-visible:ring-3 focus-visible:ring-[#C9A96E]/25',
                 )}
               />
             </div>
 
-            <div ref={dialogListRef} className="max-h-[56vh] overflow-y-auto rounded-lg border border-[#2A2418] bg-[#0B0B08] p-1.5">
+            <div ref={dialogListRef} className="max-h-[56vh] overflow-y-auto rounded-lg border border-[var(--border-subtle)] bg-[#0B0B08] p-1.5">
               {treeNodes.length === 0 ? (
-                <div className="px-3 py-8 text-center text-sm text-[#B8AD98]">
+                <div className="px-3 py-8 text-center text-sm text-[var(--text-dim)]">
                   {emptyMessage}
                 </div>
               ) : (
@@ -635,7 +635,7 @@ export function AccountCombobox({
       <div className="relative">
         <Search
           size={13}
-          className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#9F927B]"
+          className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--text-placeholder)]"
         />
         <input
           ref={inputRef}
@@ -705,7 +705,7 @@ export function AccountCombobox({
         />
         <ChevronDown
           size={14}
-          className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#9F927B]"
+          className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--text-placeholder)]"
         />
       </div>
 
@@ -714,10 +714,10 @@ export function AccountCombobox({
           ref={listboxRef}
           id={listboxId}
           role="listbox"
-          className="financial-account-combobox-dropdown absolute z-50 mt-1 w-full min-w-0 max-h-72 overflow-y-auto rounded-lg border border-[#2A2418] bg-[#11110E] p-1.5 text-[#FFF7E6] shadow-xl sm:min-w-80"
+          className="financial-account-combobox-dropdown absolute z-50 mt-1 w-full min-w-0 max-h-72 overflow-y-auto rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-modal)] p-1.5 text-[var(--text-bright)] shadow-xl sm:min-w-80"
         >
           {renderOptions.length === 0 ? (
-            <div className="px-3 py-4 text-center text-sm text-[#B8AD98]">
+            <div className="px-3 py-4 text-center text-sm text-[var(--text-dim)]">
               {emptyMessage}
             </div>
           ) : (
@@ -733,7 +733,7 @@ export function AccountCombobox({
                 onMouseDown={e => e.preventDefault()}
                 onMouseEnter={() => setHighlightedIndex(index)}
                 onClick={() => selectOption(option)}
-                className="flex w-full items-start gap-2.5 rounded-md px-2.5 py-2.5 text-left text-sm text-[#FFF7E6] transition-colors hover:bg-[#1E1A12] data-[highlighted=true]:bg-[#1E1A12]"
+                className="flex w-full items-start gap-2.5 rounded-md px-2.5 py-2.5 text-left text-sm text-[var(--text-bright)] transition-colors hover:bg-[var(--surface-panel)] data-[highlighted=true]:bg-[var(--surface-panel)]"
               >
                 <span
                   className="mt-1 block size-2.5 shrink-0 rounded-full ring-2 ring-black/20"

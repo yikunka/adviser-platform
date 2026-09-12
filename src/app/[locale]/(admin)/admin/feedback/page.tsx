@@ -113,7 +113,7 @@ function ApiKeyInput({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <label className="text-xs font-medium" style={{ color: '#EADDC3' }}>{label}</label>
+        <label className="text-xs font-medium" style={{ color: 'var(--text-label)' }}>{label}</label>
         {hint && (
           <span className="text-xs font-mono" style={{ color: '#C9A96E' }}>
             已保存：{hint}
@@ -127,7 +127,7 @@ function ApiKeyInput({
           onChange={e => onChange(e.target.value)}
           placeholder={hint ? `留空则保持现有 Key (${hint})` : placeholder}
           className="pr-9 text-sm"
-          style={{ background: '#0E0E0A', border: '1px solid #2A2418', color: '#FFF7E6' }}
+          style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)', color: 'var(--text-bright)' }}
           autoComplete="off"
         />
         <button
@@ -272,7 +272,7 @@ function ConfigTab() {
 
   return (
     <div className="space-y-5">
-      <Card className="rounded-lg border-[#2A2418] bg-card">
+      <Card className="rounded-lg border-[var(--border-subtle)] bg-card">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2" style={{ color: 'var(--foreground)' }}>
             <Settings2 size={16} style={{ color: '#C9A96E' }} />
@@ -288,9 +288,9 @@ function ConfigTab() {
           {/* ── 供应商 + 模型 ── */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium" style={{ color: '#EADDC3' }}>供应商</label>
+              <label className="text-sm font-medium" style={{ color: 'var(--text-label)' }}>供应商</label>
               <Select value={provider} onValueChange={v => handleProviderChange(v as Provider)}>
-                <SelectTrigger style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
+                <SelectTrigger style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)' }}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -301,9 +301,9 @@ function ConfigTab() {
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium" style={{ color: '#EADDC3' }}>模型</label>
+              <label className="text-sm font-medium" style={{ color: 'var(--text-label)' }}>模型</label>
               <Select value={model} onValueChange={v => v && setModel(v)}>
-                <SelectTrigger style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
+                <SelectTrigger style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)' }}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -374,7 +374,7 @@ function ConfigTab() {
               disabled={testing || !hasKey}
               variant="outline"
               size="sm"
-              style={{ borderColor: '#2A2418', color: 'var(--foreground)' }}
+              style={{ borderColor: 'var(--border-subtle)', color: 'var(--foreground)' }}
             >
               {testing
                 ? <><Loader2 size={13} className="animate-spin mr-1.5" />测试中…</>
@@ -387,7 +387,7 @@ function ConfigTab() {
       </Card>
 
       {/* ── Dev Tool API Key ── */}
-      <Card className="rounded-lg border-[#2A2418] bg-card">
+      <Card className="rounded-lg border-[var(--border-subtle)] bg-card">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2" style={{ color: 'var(--foreground)' }}>
             <KeyRound size={16} style={{ color: '#C9A96E' }} />
@@ -395,7 +395,7 @@ function ConfigTab() {
           </CardTitle>
           <CardDescription>
             供外部开发管理工具通过 Bearer Token 查询需求列表。发现接口：
-            <code className="ml-1 text-xs px-1 py-0.5 rounded" style={{ background: '#1A1A12', color: '#C9A96E' }}>
+            <code className="ml-1 text-xs px-1 py-0.5 rounded" style={{ background: 'var(--surface-panel)', color: '#C9A96E' }}>
               GET /api/devtool/info
             </code>
           </CardDescription>
@@ -421,7 +421,7 @@ function ConfigTab() {
               <div className="flex items-center gap-2">
                 <code
                   className="flex-1 text-xs font-mono break-all rounded px-2 py-1.5 select-all"
-                  style={{ background: '#0E0E0A', color: '#FFF7E6', border: '1px solid #2A2418' }}
+                  style={{ background: 'var(--surface-input)', color: 'var(--text-bright)', border: '1px solid var(--border-subtle)' }}
                 >
                   {newRawKey}
                 </code>
@@ -429,7 +429,7 @@ function ConfigTab() {
                   size="sm"
                   variant="outline"
                   className="shrink-0"
-                  style={{ borderColor: '#2A2418' }}
+                  style={{ borderColor: 'var(--border-subtle)' }}
                   onClick={() => { navigator.clipboard.writeText(newRawKey); toast.success('已复制') }}
                 >
                   <ClipboardCopy size={13} />
@@ -444,7 +444,7 @@ function ConfigTab() {
               disabled={generatingKey}
               size="sm"
               variant="outline"
-              style={{ borderColor: '#2A2418' }}
+              style={{ borderColor: 'var(--border-subtle)' }}
             >
               {generatingKey
                 ? <><Loader2 size={13} className="animate-spin mr-1.5" />生成中…</>
@@ -467,9 +467,9 @@ function ConfigTab() {
 
           <div
             className="rounded-lg p-3 text-xs space-y-1.5"
-            style={{ background: '#0E0E0A', border: '1px solid #1E1A14', color: '#7A7060' }}
+            style={{ background: 'var(--surface-input)', border: '1px solid #1E1A14', color: '#7A7060' }}
           >
-            <p className="font-medium" style={{ color: '#9F927B' }}>开发工具接入方式</p>
+            <p className="font-medium" style={{ color: 'var(--text-placeholder)' }}>开发工具接入方式</p>
             <p>① 探测服务器：<code className="font-mono" style={{ color: '#C9A96E' }}>GET /api/devtool/info</code></p>
             <p>② 查询需求：<code className="font-mono" style={{ color: '#C9A96E' }}>GET /api/devtool/requirements?status=ACCEPTED</code>（PENDING 仅内部可见）</p>
             <p>③ 更新状态：<code className="font-mono" style={{ color: '#C9A96E' }}>PATCH /api/devtool/requirements/:id  {'{"status":"IN_PROGRESS"}'}</code></p>
@@ -691,7 +691,7 @@ function RequirementsTab() {
           共 {items.length} 条需求
         </p>
         <Select value={filterStatus} onValueChange={v => setFilterStatus(v ?? 'ALL')}>
-          <SelectTrigger className="w-[140px]" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
+          <SelectTrigger className="w-[140px]" style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)' }}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -702,7 +702,7 @@ function RequirementsTab() {
         </Select>
       </div>
 
-      <Card className="rounded-lg border-[#2A2418] bg-card">
+      <Card className="rounded-lg border-[var(--border-subtle)] bg-card">
         <CardContent className="p-0">
           {loading ? (
             <div className="p-8 text-center flex items-center justify-center gap-2" style={{ color: 'var(--muted-foreground)' }}>
@@ -898,7 +898,7 @@ function RequirementsTab() {
             type="button"
             onClick={() => setSelectedIds(new Set())}
             className="text-xs transition-opacity hover:opacity-100 opacity-50"
-            style={{ color: '#9F927B' }}
+            style={{ color: 'var(--text-placeholder)' }}
           >
             取消
           </button>
@@ -907,9 +907,9 @@ function RequirementsTab() {
 
       {/* Detail dialog */}
       <Dialog open={!!detailItem} onOpenChange={open => !open && setDetailItem(null)}>
-        <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col border-[#2A2418] bg-[#11110E] text-[#FFF7E6]">
+        <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col border-[var(--border-subtle)] bg-[var(--surface-modal)] text-[var(--text-bright)]">
           <DialogHeader className="flex-shrink-0">
-            <DialogTitle className="text-[#FFF7E6] text-base flex items-center gap-2">
+            <DialogTitle className="text-[var(--text-bright)] text-base flex items-center gap-2">
               {detailItem?.number && (
                 <span className="text-sm font-mono font-normal shrink-0" style={{ color: '#7A6A50' }}>
                   #{detailItem.number}
@@ -952,7 +952,7 @@ function RequirementsTab() {
               </div>
 
               {/* Meta */}
-              <div className="grid grid-cols-3 gap-3 text-xs" style={{ color: '#9F927B' }}>
+              <div className="grid grid-cols-3 gap-3 text-xs" style={{ color: 'var(--text-placeholder)' }}>
                 <div>
                   <p className="font-medium mb-0.5">来源页面</p>
                   <p className="font-mono truncate" title={detailItem.pageUrl}>{detailItem.pageUrl}</p>
@@ -970,7 +970,7 @@ function RequirementsTab() {
               {/* Attachments */}
               {detailItem.attachments && detailItem.attachments.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium mb-2" style={{ color: '#9F927B' }}>
+                  <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-placeholder)' }}>
                     附件 ({detailItem.attachments.length})
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -981,7 +981,7 @@ function RequirementsTab() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs hover:border-[#C9A96E66] transition-colors"
-                        style={{ background: '#1E1A14', border: '1px solid #2A2418', color: '#C4B89A' }}
+                        style={{ background: '#1E1A14', border: '1px solid var(--border-subtle)', color: '#C4B89A' }}
                       >
                         {a.type.startsWith('image/') ? '🖼' : '📎'} {a.name}
                       </a>
@@ -992,7 +992,7 @@ function RequirementsTab() {
 
               {/* Conversation */}
               <div>
-                <p className="text-xs font-medium mb-2 flex items-center gap-1.5" style={{ color: '#9F927B' }}>
+                <p className="text-xs font-medium mb-2 flex items-center gap-1.5" style={{ color: 'var(--text-placeholder)' }}>
                   聊天记录
                   {detailLoading && <Loader2 size={11} className="animate-spin" />}
                 </p>
@@ -1010,7 +1010,7 @@ function RequirementsTab() {
                           style={
                             msg.role === 'user'
                               ? { background: '#C9A96E', color: '#0A0805' }
-                              : { background: '#1E1A14', color: '#C4B89A', border: '1px solid #2A2418' }
+                              : { background: '#1E1A14', color: '#C4B89A', border: '1px solid var(--border-subtle)' }
                           }
                         >
                           {msg.content}
@@ -1037,7 +1037,7 @@ function RequirementsTab() {
 
               {/* Status */}
               <div>
-                <p className="text-xs font-medium mb-1.5" style={{ color: '#9F927B' }}>更新状态</p>
+                <p className="text-xs font-medium mb-1.5" style={{ color: 'var(--text-placeholder)' }}>更新状态</p>
                 <div className="flex gap-2 flex-wrap">
                   {STATUS_OPTIONS.filter(s => s.value !== 'ALL').map(opt => (
                     <button
@@ -1047,7 +1047,7 @@ function RequirementsTab() {
                       onClick={() => updateStatus(detailItem.id, opt.value)}
                       className="text-xs px-3 py-1.5 rounded-lg border transition-colors"
                       style={{
-                        borderColor: detailItem.status === opt.value ? '#C9A96E' : '#2A2418',
+                        borderColor: detailItem.status === opt.value ? '#C9A96E' : 'var(--border-subtle)',
                         background: detailItem.status === opt.value ? 'rgba(201,169,110,0.15)' : 'transparent',
                         color: detailItem.status === opt.value ? '#C9A96E' : '#9F927B',
                       }}
@@ -1086,7 +1086,7 @@ export default function AdminFeedbackPage() {
       </div>
 
       <Tabs defaultValue="requirements">
-        <TabsList className="border-[#2A2418] bg-[#0E0E0A]">
+        <TabsList className="border-[var(--border-subtle)] bg-[var(--surface-input)]">
           <TabsTrigger value="requirements" className="data-[state=active]:text-[#C9A96E]">
             需求列表
           </TabsTrigger>

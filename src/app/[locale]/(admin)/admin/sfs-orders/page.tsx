@@ -153,9 +153,9 @@ export default function AdminSfsOrdersPage() {
             onChange={e => { setSearch(e.target.value); setPage(1) }}
             placeholder="Search name, email, sample code…"
             className="w-full pl-8 pr-3 py-2 rounded-lg text-sm outline-none"
-            style={{ background: '#0E0E0A', border: '1px solid #2A2418', color: 'var(--foreground)' }}
+            style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)' }}
             onFocus={e => (e.currentTarget.style.borderColor = '#C9A96E')}
-            onBlur={e  => (e.currentTarget.style.borderColor = '#2A2418')}
+            onBlur={e  => (e.currentTarget.style.borderColor = 'var(--border-subtle)')}
           />
         </div>
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by status">
@@ -222,7 +222,7 @@ export default function AdminSfsOrdersPage() {
                   return (
                     <tr
                       key={order.id}
-                      className="cursor-pointer transition-colors hover:bg-[#111108]"
+                      className="cursor-pointer transition-colors hover:bg-[var(--surface-modal)]"
                       style={{ borderBottom: i < orders.length - 1 ? '1px solid var(--border)' : 'none' }}
                       tabIndex={0}
                       onClick={() => router.push(`/admin/sfs-orders/${order.id}`)}

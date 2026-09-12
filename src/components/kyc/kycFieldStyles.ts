@@ -3,9 +3,9 @@ import type React from 'react'
 /** Default input style for client KYC portal */
 export const kycClientFieldStyle: React.CSSProperties = {
   width: '100%',
-  background: '#0A0A0A',
-  border: '1px solid #2A2418',
-  color: '#F0EAD8',
+  background: 'var(--surface)',
+  border: '1px solid var(--border-subtle)',
+  color: 'var(--text-cream)',
   borderRadius: '0.375rem',
   padding: '0.5rem 0.75rem',
   fontSize: '0.875rem',
@@ -16,8 +16,8 @@ export const kycClientFieldStyle: React.CSSProperties = {
 /** Admin edit form — uses theme CSS variables */
 export const kycAdminFieldStyle: React.CSSProperties = {
   width: '100%',
-  background: '#0A0A0A',
-  border: '1px solid #2A2418',
+  background: 'var(--surface)',
+  border: '1px solid var(--border-subtle)',
   color: 'var(--foreground)',
   borderRadius: '0.375rem',
   padding: '0.5rem 0.75rem',
@@ -25,4 +25,4 @@ export const kycAdminFieldStyle: React.CSSProperties = {
   outline: 'none',
 }
 
-export const kycSelectOptionStyle = { background: '#141414' }
+export const kycSelectOptionStyle = { background: 'var(--surface-raised)' }

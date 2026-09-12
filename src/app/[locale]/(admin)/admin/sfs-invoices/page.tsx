@@ -85,7 +85,7 @@ export default function SfsInvoicesPage() {
           value={status}
           onChange={e => { setStatus(e.target.value); setPage(1) }}
           className="max-w-xs rounded-md px-3 py-2 text-sm"
-          style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: '#F0EAD8' }}
+          style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--text-cream)' }}
         >
           <option value="">{t('allStatuses')}</option>
           {(['DRAFT', 'SENT', 'PAID', 'CANCELLED'] as const).map(s => (
@@ -97,7 +97,7 @@ export default function SfsInvoicesPage() {
       <Card>
         <CardContent className="p-0">
           <table className="w-full text-sm">
-            <thead style={{ background: '#1A1A12', borderBottom: '1px solid #2A2418' }}>
+            <thead style={{ background: 'var(--surface-panel)', borderBottom: '1px solid var(--border-subtle)' }}>
               <tr>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('invoiceNumber')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('order')}</th>
@@ -108,13 +108,13 @@ export default function SfsInvoicesPage() {
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#2A2418]">
+            <tbody className="divide-y divide-[var(--border-subtle)]">
               {loading ? (
                 <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>{t('loading')}</td></tr>
               ) : invoices.length === 0 ? (
                 <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>{t('empty')}</td></tr>
               ) : invoices.map(inv => (
-                <tr key={inv.id} className="hover:bg-[#1A1A12]/50">
+                <tr key={inv.id} className="hover:bg-[var(--surface-panel)]/50">
                   <td className="px-4 py-3 font-mono text-xs">{inv.invoiceNumber}</td>
                   <td className="px-4 py-3">
                     {inv.order ? (

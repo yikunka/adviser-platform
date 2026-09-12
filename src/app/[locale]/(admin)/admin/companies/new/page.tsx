@@ -18,9 +18,9 @@ import {
 
 const fieldStyle: React.CSSProperties = {
   width: '100%',
-  background: '#0A0A0A',
-  border: '1px solid #2A2418',
-  color: '#F0EAD8',
+  background: 'var(--surface)',
+  border: '1px solid var(--border-subtle)',
+  color: 'var(--text-cream)',
   borderRadius: '0.375rem',
   padding: '0.5rem 0.75rem',
   fontSize: '0.875rem',
@@ -267,7 +267,7 @@ export default function NewCompanyPage() {
       >
         <div
           className="rounded-lg p-4 space-y-3"
-          style={{ background: '#0A0A0A', border: '1px solid #2A2418' }}
+          style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)' }}
         >
           <div>
             <label style={{ ...labelStyle, color: '#C9A96E' }}>{t('clientOwner')}</label>
@@ -317,9 +317,9 @@ export default function NewCompanyPage() {
                 disabled={clientsLoading}
                 style={fieldStyle}
               >
-                <option value="" style={{ background: '#141414' }}>{t('clientSelectPlaceholder')}</option>
+                <option value="" style={{ background: 'var(--surface-raised)' }}>{t('clientSelectPlaceholder')}</option>
                 {verifiedClients.map(c => (
-                  <option key={c.id} value={c.id} style={{ background: '#141414' }}>
+                  <option key={c.id} value={c.id} style={{ background: 'var(--surface-raised)' }}>
                     {c.email} — {c.nameEn}{c.nameZh ? ` (${c.nameZh})` : ''}
                   </option>
                 ))}
@@ -347,7 +347,7 @@ export default function NewCompanyPage() {
 
         <div
           className="rounded-lg p-4 space-y-3"
-          style={{ background: '#0A0A0A', border: '1px solid #2A2418' }}
+          style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)' }}
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -367,7 +367,7 @@ export default function NewCompanyPage() {
                   />
                   <span
                     className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
-                    style={{ borderColor: '#2A2418', color: 'var(--foreground)', background: 'transparent', cursor: 'inherit' }}
+                    style={{ borderColor: 'var(--border-subtle)', color: 'var(--foreground)', background: 'transparent', cursor: 'inherit' }}
                   >
                     Upload {docType}
                   </span>
@@ -382,7 +382,7 @@ export default function NewCompanyPage() {
           {companyUploads.length === 0 ? (
             <p className="text-sm" style={{ color: '#5A5040' }}>No company documents selected.</p>
           ) : (
-            <ul className="divide-y divide-[#2A2418] rounded-md" style={{ border: '1px solid #2A2418' }}>
+            <ul className="divide-y divide-[var(--border-subtle)] rounded-md" style={{ border: '1px solid var(--border-subtle)' }}>
               {companyUploads.map(item => (
                 <li key={item.id} className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
@@ -418,9 +418,9 @@ export default function NewCompanyPage() {
             onChange={e => set('companyType', e.target.value)}
             style={fieldStyle}
           >
-            <option value="" style={{ background: '#141414' }}>— Select jurisdiction —</option>
+            <option value="" style={{ background: 'var(--surface-raised)' }}>— Select jurisdiction —</option>
             {COMPANY_JURISDICTIONS.map(j => (
-              <option key={j} value={j} style={{ background: '#141414' }}>
+              <option key={j} value={j} style={{ background: 'var(--surface-raised)' }}>
                 {COMPANY_JURISDICTION_LABELS[j]}
               </option>
             ))}
@@ -437,7 +437,7 @@ export default function NewCompanyPage() {
             <DatePickerPopover
               value={form.dateOfIncorporation}
               onChange={(v) => set('dateOfIncorporation', v)}
-              style={{ ...fieldStyle, colorScheme: 'dark' }}
+              style={{ ...fieldStyle, colorScheme: 'inherit' }}
             />
           </div>
         </div>
@@ -506,12 +506,12 @@ export default function NewCompanyPage() {
             onChange={e => set('businessNature', e.target.value)}
             style={fieldStyle}
           >
-            <option value="" style={{ background: '#141414' }}>— Select business nature —</option>
+            <option value="" style={{ background: 'var(--surface-raised)' }}>— Select business nature —</option>
             {form.businessNature && !BUSINESS_NATURE_OPTIONS.some(opt => opt.value === form.businessNature) ? (
-              <option value={form.businessNature} style={{ background: '#141414' }}>{form.businessNature}</option>
+              <option value={form.businessNature} style={{ background: 'var(--surface-raised)' }}>{form.businessNature}</option>
             ) : null}
             {BUSINESS_NATURE_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value} style={{ background: '#141414' }}>{opt.label}</option>
+              <option key={opt.value} value={opt.value} style={{ background: 'var(--surface-raised)' }}>{opt.label}</option>
             ))}
           </select>
         </div>
@@ -519,12 +519,12 @@ export default function NewCompanyPage() {
         <div>
           <label style={labelStyle}>Service Tier</label>
           <select value={form.serviceTier} onChange={e => set('serviceTier', e.target.value)} style={fieldStyle}>
-            <option value="" style={{ background: '#141414' }}>— None —</option>
-            <option value="COMP_SET_UP" style={{ background: '#141414' }}>Comp Set Up</option>
-            <option value="CS" style={{ background: '#141414' }}>CS</option>
-            <option value="CS_VO" style={{ background: '#141414' }}>CS+VO</option>
-            <option value="CS_BK" style={{ background: '#141414' }}>CS+BK</option>
-            <option value="CS_VO_BK" style={{ background: '#141414' }}>CS+VO+BK</option>
+            <option value="" style={{ background: 'var(--surface-raised)' }}>— None —</option>
+            <option value="COMP_SET_UP" style={{ background: 'var(--surface-raised)' }}>Comp Set Up</option>
+            <option value="CS" style={{ background: 'var(--surface-raised)' }}>CS</option>
+            <option value="CS_VO" style={{ background: 'var(--surface-raised)' }}>CS+VO</option>
+            <option value="CS_BK" style={{ background: 'var(--surface-raised)' }}>CS+BK</option>
+            <option value="CS_VO_BK" style={{ background: 'var(--surface-raised)' }}>CS+VO+BK</option>
           </select>
         </div>
 

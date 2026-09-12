@@ -219,7 +219,7 @@ export default function NewInvoicePage() {
                 setBillToEmail('')
               }}
               className="w-full rounded-md px-3 py-2 text-sm"
-              style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: '#F0EAD8' }}
+              style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--text-cream)' }}
             >
               <option value="COMPANY">{t('companyCustomer')}</option>
               <option value="INDIVIDUAL">{t('individualCustomer')}</option>
@@ -231,7 +231,7 @@ export default function NewInvoicePage() {
               value={customerId}
               onChange={e => selectCustomer(e.target.value)}
               className="w-full rounded-md px-3 py-2 text-sm"
-              style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: '#F0EAD8' }}
+              style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--text-cream)' }}
             >
               <option value="">
                 {customerType === 'COMPANY' ? t('selectCompany') : t('selectIndividual')}
@@ -334,7 +334,7 @@ export default function NewInvoicePage() {
             onUpdateLine={updateLine}
             onSelectTcspServicePrice={selectTcspServicePrice}
           />
-          <div className="pt-4 border-t text-sm space-y-1" style={{ borderColor: '#2A2418' }}>
+          <div className="pt-4 border-t text-sm space-y-1" style={{ borderColor: 'var(--border-subtle)' }}>
             <div className="flex justify-between"><span>{t('subtotal')}</span><span>HKD {totals.subtotal.toFixed(2)}</span></div>
             <div className="flex justify-between font-semibold"><span>{t('total')}</span><span>HKD {totals.total.toFixed(2)}</span></div>
           </div>

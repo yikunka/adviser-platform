@@ -412,7 +412,7 @@ export default function InvoiceDetailPage() {
                 onUpdateLine={updateLine}
                 onSelectTcspServicePrice={selectTcspServicePrice}
               />
-              <div className="pt-4 border-t text-sm space-y-1" style={{ borderColor: '#2A2418' }}>
+              <div className="pt-4 border-t text-sm space-y-1" style={{ borderColor: 'var(--border-subtle)' }}>
                 <div className="flex justify-between"><span>{t('subtotal')}</span><span>{invoice.currency} {totals.subtotal.toFixed(2)}</span></div>
                 <div className="flex justify-between font-semibold"><span>{t('total')}</span><span>{invoice.currency} {totals.total.toFixed(2)}</span></div>
               </div>
@@ -420,7 +420,7 @@ export default function InvoiceDetailPage() {
           ) : (
             <>
               <table className="w-full text-sm">
-                <thead style={{ background: '#1A1A12', borderBottom: '1px solid #2A2418' }}>
+                <thead style={{ background: 'var(--surface-panel)', borderBottom: '1px solid var(--border-subtle)' }}>
                   <tr>
                     <th className="px-4 py-3 text-left">{t('description')}</th>
                     <th className="px-4 py-3 text-right">{t('quantity')}</th>
@@ -428,7 +428,7 @@ export default function InvoiceDetailPage() {
                     <th className="px-4 py-3 text-right">{t('amount')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#2A2418]">
+                <tbody className="divide-y divide-[var(--border-subtle)]">
                   {invoice.lineItems.map(line => (
                     <tr key={line.id}>
                       <td className="px-4 py-3 whitespace-pre-wrap">{line.description}</td>
@@ -448,7 +448,7 @@ export default function InvoiceDetailPage() {
                   ))}
                 </tbody>
               </table>
-              <div className="px-4 py-4 text-sm space-y-1 border-t" style={{ borderColor: '#2A2418' }}>
+              <div className="px-4 py-4 text-sm space-y-1 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
                 <div className="flex justify-between"><span>{t('subtotal')}</span><span>{invoice.currency} {Number(invoice.subtotal).toFixed(2)}</span></div>
                 <div className="flex justify-between font-semibold text-base">
                   <span>{t('total')}</span>

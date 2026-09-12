@@ -78,7 +78,7 @@ export function InvoiceLineItemsEditor({
           <div
             key={index}
             className="rounded-xl border p-3 sm:p-4"
-            style={{ borderColor: '#2A2418', background: 'rgba(26, 26, 18, 0.35)' }}
+            style={{ borderColor: 'var(--border-subtle)', background: 'rgba(26, 26, 18, 0.35)' }}
           >
             <div className="grid gap-3 xl:grid-cols-[minmax(0,2.9fr)_minmax(260px,1.45fr)_auto] xl:items-start">
               <div className="space-y-1.5">
@@ -89,11 +89,11 @@ export function InvoiceLineItemsEditor({
                   value={line.tcspServicePriceId}
                   onChange={e => onSelectTcspServicePrice(index, e.target.value)}
                   className="h-10 w-full rounded-md px-3 text-sm"
-                  style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: '#F0EAD8' }}
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--text-cream)' }}
                 >
                   <option value="">{tcspServicePricePlaceholderLabel}</option>
                   {tcspServicePrices.map(price => (
-                    <option key={price.id} value={price.id} style={{ background: '#141414' }}>
+                    <option key={price.id} value={price.id} style={{ background: 'var(--surface-raised)' }}>
                       {price.label}
                     </option>
                   ))}
@@ -147,7 +147,7 @@ export function InvoiceLineItemsEditor({
               <div className="flex items-start justify-between gap-3 xl:min-w-[148px] xl:flex-col xl:items-end">
                 <div
                   className="rounded-lg border px-3 py-2 text-right"
-                  style={{ borderColor: '#2A2418', background: '#11110C' }}
+                  style={{ borderColor: 'var(--border-subtle)', background: '#11110C' }}
                 >
                   <div className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--muted-foreground)' }}>
                     {amountLabel}
@@ -179,7 +179,7 @@ export function InvoiceLineItemsEditor({
                             })
                           }}
                           className="h-9 w-full rounded-md px-2 text-xs"
-                          style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: '#F0EAD8' }}
+                          style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--text-cream)' }}
                         >
                           <option value="">{discountLabel}</option>
                           <option value="PERCENT">{discountPercentOptionLabel}</option>

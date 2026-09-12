@@ -150,7 +150,7 @@ export function NoteFormDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" style={{ borderColor: '#2A2418' }} onClick={() => onOpenChange(false)}>
+          <Button variant="outline" style={{ borderColor: 'var(--border-subtle)' }} onClick={() => onOpenChange(false)}>
             取消
           </Button>
           <Button onClick={() => void save()} disabled={saving} style={{ background: '#C9A96E', color: '#0A0805' }}>
@@ -239,7 +239,7 @@ export function NoteApplyDialog({
         </DialogHeader>
         <div className="space-y-1.5 max-h-[50vh] overflow-y-auto">
           {openDocs.length === 0 ? (
-            <div className="rounded-md border px-4 py-5 text-center text-sm" style={{ borderColor: '#2A2418', color: '#5A5040' }}>
+            <div className="rounded-md border px-4 py-5 text-center text-sm" style={{ borderColor: 'var(--border-subtle)', color: '#5A5040' }}>
               该{config.partyLabel}暂无未结{config.docLabel}
             </div>
           ) : (
@@ -247,7 +247,7 @@ export function NoteApplyDialog({
               <div
                 key={doc.id}
                 className="grid grid-cols-[1fr_110px_130px] items-center gap-2 rounded-md border px-3 py-2 text-sm"
-                style={{ borderColor: '#2A2418' }}
+                style={{ borderColor: 'var(--border-subtle)' }}
               >
                 <span className="font-mono">{doc.docNo}</span>
                 <span className="text-right" style={{ color: '#f59e0b' }}>
@@ -269,7 +269,7 @@ export function NoteApplyDialog({
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" style={{ borderColor: '#2A2418' }} onClick={() => onOpenChange(false)}>
+          <Button variant="outline" style={{ borderColor: 'var(--border-subtle)' }} onClick={() => onOpenChange(false)}>
             取消
           </Button>
           <Button onClick={() => void save()} disabled={saving} style={{ background: '#C9A96E', color: '#0A0805' }}>

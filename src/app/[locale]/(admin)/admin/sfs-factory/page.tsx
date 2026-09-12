@@ -140,9 +140,9 @@ function SectionFilterChips({
           onClick={() => onChange(chip.id)}
           className="rounded-full px-3 py-1.5 text-xs font-medium border transition-colors"
           style={{
-            borderColor: value === chip.id ? '#C9A96E' : '#2A2418',
+            borderColor: value === chip.id ? '#C9A96E' : 'var(--border-subtle)',
             color: value === chip.id ? '#C9A96E' : 'var(--muted-foreground)',
-            background: value === chip.id ? 'rgba(201,169,110,0.12)' : '#0A0A0A',
+            background: value === chip.id ? 'rgba(201,169,110,0.12)' : 'var(--surface)',
           }}
         >
           {chip.label}
@@ -207,16 +207,16 @@ function MultiDiamondDiscountEditor({
             </Button>
           </div>
         </div>
-        <div className="overflow-x-auto rounded-md" style={{ border: '1px solid #2A2418' }}>
+        <div className="overflow-x-auto rounded-md" style={{ border: '1px solid var(--border-subtle)' }}>
           <table className="w-full text-sm">
-            <thead style={{ background: '#111108' }}>
+            <thead style={{ background: 'var(--surface-modal)' }}>
               <tr>
                 <th className="px-3 py-2 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>Min diamonds</th>
                 <th className="px-3 py-2 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>Diamond-part discount %</th>
                 <th className="px-3 py-2 w-20" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#2A2418]">
+            <tbody className="divide-y divide-[var(--border-subtle)]">
               {tiers.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="px-3 py-4 text-xs" style={{ color: 'var(--muted-foreground)' }}>
@@ -451,7 +451,7 @@ function StandardPricesPanel() {
               {section.groups.map(group => (
                 <Card key={group.category}>
                   <CardContent className="p-0">
-                    <div className="px-4 py-2.5 flex items-center justify-between border-b border-[#2A2418]">
+                    <div className="px-4 py-2.5 flex items-center justify-between border-b border-[var(--border-subtle)]">
                       <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>
                         {group.label}
                       </span>
@@ -461,7 +461,7 @@ function StandardPricesPanel() {
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
-                        <thead style={{ background: '#111108', borderBottom: '1px solid #2A2418' }}>
+                        <thead style={{ background: 'var(--surface-modal)', borderBottom: '1px solid var(--border-subtle)' }}>
                           <tr>
                             <th className="px-4 py-2.5 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>Option</th>
                             <th className="px-4 py-2.5 text-right font-medium" style={{ color: 'var(--muted-foreground)' }}>Current</th>
@@ -471,12 +471,12 @@ function StandardPricesPanel() {
                             <th className="px-4 py-2.5 w-24" />
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#2A2418]">
+                        <tbody className="divide-y divide-[var(--border-subtle)]">
                           {group.options.map(option => {
                             const draft = drafts[option.id] ?? ''
                             const dirty = (option.price == null || option.price === '' ? '' : String(Number(option.price))) !== draft.trim()
                             return (
-                              <tr key={option.id} className="hover:bg-[#1A1A12]/50">
+                              <tr key={option.id} className="hover:bg-[var(--surface-panel)]/50">
                                 <td className="px-4 py-2.5 min-w-[200px]" style={{ color: 'var(--foreground)' }}>
                                   {option.label}
                                   {!option.isActive && (
@@ -794,7 +794,7 @@ function CustomerPricesPanel() {
             }}
             items={customerSelectItems}
           >
-            <SelectTrigger className="w-full" style={{ background: '#0A0A0A', border: '1px solid #2A2418' }}>
+            <SelectTrigger className="w-full" style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)' }}>
               <SelectValue placeholder={loadingCustomers ? 'Loading...' : 'Select a customer'} />
             </SelectTrigger>
             <SelectContent>
@@ -815,7 +815,7 @@ function CustomerPricesPanel() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3 rounded-md p-4" style={{ background: '#0A0A0A', border: '1px solid #2A2418' }}>
+        <div className="space-y-3 rounded-md p-4" style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)' }}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>
@@ -885,9 +885,9 @@ function CustomerPricesPanel() {
                           {priceKindLabel(group.category)}
                         </span>
                       </div>
-                      <div className="overflow-x-auto rounded-md" style={{ border: '1px solid #2A2418' }}>
+                      <div className="overflow-x-auto rounded-md" style={{ border: '1px solid var(--border-subtle)' }}>
                         <table className="w-full text-sm">
-                          <thead style={{ background: '#111108' }}>
+                          <thead style={{ background: 'var(--surface-modal)' }}>
                             <tr>
                               <th className="px-3 py-2 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>Option</th>
                               <th className="px-3 py-2 text-right font-medium" style={{ color: 'var(--muted-foreground)' }}>Standard</th>
@@ -895,7 +895,7 @@ function CustomerPricesPanel() {
                               <th className="px-3 py-2 w-20" />
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-[#2A2418]">
+                          <tbody className="divide-y divide-[var(--border-subtle)]">
                             {group.options.map(option => {
                               const key = `${option.category}|${option.value}`
                               const globalPrice = option.price == null ? null : Number(option.price)
@@ -976,7 +976,7 @@ export default function SfsFactoryPage() {
       </div>
 
       <Tabs defaultValue="standard" className="space-y-4">
-        <TabsList className="bg-[#0E0E0A] border border-[#2A2418]">
+        <TabsList className="bg-[var(--surface-input)] border border-[var(--border-subtle)]">
           <TabsTrigger value="standard">标准价格</TabsTrigger>
           <TabsTrigger value="customer">客户价格</TabsTrigger>
         </TabsList>

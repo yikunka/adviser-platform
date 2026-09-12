@@ -25,9 +25,9 @@ const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
 
 const selectStyle: React.CSSProperties = {
   width: '100%',
-  background: '#0C0C0C',
-  border: '1px solid #2A2418',
-  color: '#F0EAD8',
+  background: 'var(--background)',
+  border: '1px solid var(--border-subtle)',
+  color: 'var(--text-cream)',
   borderRadius: '0.375rem',
   padding: '0.625rem 0.75rem',
   fontSize: '0.875rem',
@@ -108,10 +108,10 @@ export default function OrdersPage() {
                 {...form.register('orderType')}
                 style={selectStyle}
                 onFocus={e => (e.currentTarget.style.borderColor = '#C9A96E')}
-                onBlur={e => (e.currentTarget.style.borderColor = '#2A2418')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'var(--border-subtle)')}
               >
                 {(['INCORPORATION', 'REGISTERED_ADDRESS', 'ANNUAL_RETURN', 'ACCOUNTING', 'ADVISORY'] as const).map(type => (
-                  <option key={type} value={type} style={{ background: '#141414' }}>
+                  <option key={type} value={type} style={{ background: 'var(--surface-raised)' }}>
                     {t(`types.${type.toLowerCase()}`)}
                   </option>
                 ))}
@@ -128,9 +128,9 @@ export default function OrdersPage() {
                 {...form.register('description')}
                 placeholder={t('descriptionPlaceholder')}
                 className="w-full rounded-md px-3 py-2.5 text-sm outline-none transition-all resize-none"
-                style={{ background: '#0C0C0C', border: '1px solid #2A2418', color: '#F0EAD8' }}
+                style={{ background: 'var(--background)', border: '1px solid var(--border-subtle)', color: 'var(--text-cream)' }}
                 onFocus={e => (e.currentTarget.style.borderColor = '#C9A96E')}
-                onBlur={e => (e.currentTarget.style.borderColor = '#2A2418')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'var(--border-subtle)')}
               />
             </div>
 
@@ -185,7 +185,7 @@ export default function OrdersPage() {
             className="grid px-5 py-3 text-xs font-medium uppercase tracking-wider"
             style={{
               gridTemplateColumns: '1.5fr 120px 120px 1fr',
-              background: '#0A0A0A',
+              background: 'var(--surface)',
               borderBottom: '1px solid var(--border)',
               color: 'var(--muted-foreground)',
             }}

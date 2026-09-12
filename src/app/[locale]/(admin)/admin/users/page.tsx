@@ -29,8 +29,8 @@ const th: React.CSSProperties = {
   fontWeight: 500,
   fontSize: '0.8125rem',
   color: 'var(--muted-foreground)',
-  background: '#111108',
-  borderBottom: '1px solid #2A2418',
+  background: 'var(--surface-modal)',
+  borderBottom: '1px solid var(--border-subtle)',
   whiteSpace: 'nowrap',
 }
 
@@ -54,8 +54,8 @@ const TABS: { key: PlatformKey; label: string }[] = [
 
 function inputStyle(focused: boolean): React.CSSProperties {
   return {
-    background: '#1A1A12',
-    border: `1px solid ${focused ? '#C9A96E' : '#2A2418'}`,
+    background: 'var(--surface-panel)',
+    border: `1px solid ${focused ? '#C9A96E' : 'var(--border-subtle)'}`,
     color: 'var(--foreground)',
   }
 }
@@ -101,7 +101,7 @@ function AddUserModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
     >
       <div
         className="w-full max-w-md rounded-2xl p-7 space-y-5"
-        style={{ background: '#111111', border: '1px solid #2A2418' }}
+        style={{ background: 'var(--surface-modal)', border: '1px solid var(--border-subtle)' }}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
@@ -151,7 +151,7 @@ function AddUserModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
                 return (
                   <button key={p} type="button" onClick={() => setPlatform(p)}
                     className="flex items-center gap-2.5 rounded-lg px-4 py-3 text-sm font-medium transition-all"
-                    style={{ background: selected ? badge.bg : '#1A1A12', border: `1px solid ${selected ? badge.text + '55' : '#2A2418'}`, color: selected ? badge.text : 'var(--muted-foreground)' }}
+                    style={{ background: selected ? badge.bg : 'var(--surface-panel)', border: `1px solid ${selected ? badge.text + '55' : 'var(--border-subtle)'}`, color: selected ? badge.text : 'var(--muted-foreground)' }}
                   >
                     <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: selected ? badge.text : '#4A4030' }} />
                     {badge.label}
@@ -161,7 +161,7 @@ function AddUserModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
             </div>
           </div>
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm font-medium" style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}>Cancel</button>
+            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm font-medium" style={{ border: '1px solid var(--border-subtle)', color: 'var(--muted-foreground)' }}>Cancel</button>
             <button type="submit" disabled={loading} className="flex-1 py-2.5 rounded-lg text-sm font-medium disabled:opacity-60" style={{ background: '#C9A96E', color: '#0A0805' }}>
               {loading ? 'Creating…' : 'Create User'}
             </button>
@@ -209,7 +209,7 @@ function EditUserModal({ user, onClose, onSaved }: { user: User; onClose: () => 
       style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="w-full max-w-md rounded-2xl p-7 space-y-5" style={{ background: '#111111', border: '1px solid #2A2418' }}>
+      <div className="w-full max-w-md rounded-2xl p-7 space-y-5" style={{ background: 'var(--surface-modal)', border: '1px solid var(--border-subtle)' }}>
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>Edit User</h2>
           <button onClick={onClose} className="text-sm px-3 py-1 rounded-md" style={{ color: 'var(--muted-foreground)' }}>✕</button>
@@ -234,7 +234,7 @@ function EditUserModal({ user, onClose, onSaved }: { user: User; onClose: () => 
             />
           </div>
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm font-medium" style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}>Cancel</button>
+            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm font-medium" style={{ border: '1px solid var(--border-subtle)', color: 'var(--muted-foreground)' }}>Cancel</button>
             <button type="submit" disabled={loading} className="flex-1 py-2.5 rounded-lg text-sm font-medium disabled:opacity-60" style={{ background: '#C9A96E', color: '#0A0805' }}>
               {loading ? 'Saving…' : 'Save Changes'}
             </button>
@@ -274,7 +274,7 @@ function DeleteConfirmModal({ user, onClose, onDeleted }: { user: User; onClose:
       style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="w-full max-w-sm rounded-2xl p-7 space-y-5" style={{ background: '#111111', border: '1px solid #2A2418' }}>
+      <div className="w-full max-w-sm rounded-2xl p-7 space-y-5" style={{ background: 'var(--surface-modal)', border: '1px solid var(--border-subtle)' }}>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(239,68,68,0.15)' }}>
             <Trash2 size={18} style={{ color: '#ef4444' }} />
@@ -288,7 +288,7 @@ function DeleteConfirmModal({ user, onClose, onDeleted }: { user: User; onClose:
           Are you sure you want to permanently delete <span style={{ color: 'var(--foreground)', fontWeight: 500 }}>{user.nameEn}</span> ({user.email})?
         </p>
         <div className="flex gap-3">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm font-medium" style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}>Cancel</button>
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm font-medium" style={{ border: '1px solid var(--border-subtle)', color: 'var(--muted-foreground)' }}>Cancel</button>
           <button onClick={handleDelete} disabled={loading} className="flex-1 py-2.5 rounded-lg text-sm font-medium disabled:opacity-60" style={{ background: '#ef4444', color: '#fff' }}>
             {loading ? 'Deleting…' : 'Delete'}
           </button>
@@ -369,7 +369,7 @@ export default function AdminUsersPage() {
 
       {/* Filters */}
       <div style={card} className="p-4 flex flex-col sm:flex-row gap-3">
-        <div className="flex gap-1 rounded-lg p-1" style={{ background: '#0E0E0A' }}>
+        <div className="flex gap-1 rounded-lg p-1" style={{ background: 'var(--surface-input)' }}>
           {TABS.map(t => (
             <button
               key={t.key}
@@ -378,7 +378,7 @@ export default function AdminUsersPage() {
               style={{
                 background: tab === t.key ? '#1E1C14' : 'transparent',
                 color: tab === t.key ? '#C9A96E' : 'var(--muted-foreground)',
-                border: tab === t.key ? '1px solid #2A2418' : '1px solid transparent',
+                border: tab === t.key ? '1px solid var(--border-subtle)' : '1px solid transparent',
               }}
             >
               {t.label}
@@ -390,9 +390,9 @@ export default function AdminUsersPage() {
           <input
             type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search email or name…"
             className="w-full pl-8 pr-3 py-2 rounded-lg text-sm outline-none"
-            style={{ background: '#0E0E0A', border: '1px solid #2A2418', color: 'var(--foreground)' }}
+            style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)' }}
             onFocus={e => (e.currentTarget.style.borderColor = '#C9A96E')}
-            onBlur={e => (e.currentTarget.style.borderColor = '#2A2418')}
+            onBlur={e => (e.currentTarget.style.borderColor = 'var(--border-subtle)')}
           />
         </div>
       </div>
@@ -424,7 +424,7 @@ export default function AdminUsersPage() {
                   return (
                     <tr
                       key={u.id}
-                      className="cursor-pointer transition-colors hover:bg-[#111108]"
+                      className="cursor-pointer transition-colors hover:bg-[var(--surface-modal)]"
                       style={{ opacity: disabled ? 0.6 : 1 }}
                       onClick={() => setEditTarget(u)}
                       tabIndex={0}

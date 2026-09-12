@@ -189,7 +189,7 @@ export default function NewSfsInvoicePage() {
               value={orderId}
               onChange={e => setOrderId(e.target.value)}
               className="w-full rounded-md px-3 py-2 text-sm"
-              style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: '#F0EAD8' }}
+              style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--text-cream)' }}
             >
               <option value="">{t('selectOrder')}</option>
               {orders.map(o => (
@@ -287,7 +287,7 @@ export default function NewSfsInvoicePage() {
               </div>
             </div>
           ))}
-          <div className="pt-4 border-t text-sm space-y-1" style={{ borderColor: '#2A2418' }}>
+          <div className="pt-4 border-t text-sm space-y-1" style={{ borderColor: 'var(--border-subtle)' }}>
             <div className="flex justify-between"><span>{t('subtotal')}</span><span>HKD {totals.subtotal.toFixed(2)}</span></div>
             <div className="flex justify-between"><span>{t('tax')}</span><span>HKD {totals.taxAmount.toFixed(2)}</span></div>
             <div className="flex justify-between font-semibold"><span>{t('total')}</span><span>HKD {totals.total.toFixed(2)}</span></div>
@@ -303,7 +303,7 @@ export default function NewSfsInvoicePage() {
             onChange={e => setNotes(e.target.value)}
             rows={3}
             className="w-full rounded-md px-3 py-2 text-sm"
-            style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: '#F0EAD8' }}
+            style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--text-cream)' }}
           />
         </CardContent>
       </Card>

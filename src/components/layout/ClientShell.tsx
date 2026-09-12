@@ -17,6 +17,8 @@ import {
   ChevronRight,
   Bell,
 } from 'lucide-react'
+import { PlatformThemeProvider, usePlatformTheme } from '@/components/theme/PlatformThemeProvider'
+import { ThemeToggle } from '@/components/theme/ThemeToggle'
 
 const NAV_ITEMS = [
   { href: '/dashboard',  key: 'dashboard',  Icon: LayoutDashboard },
@@ -25,7 +27,7 @@ const NAV_ITEMS = [
   { href: '/orders',     key: 'orders',     Icon: ShoppingBag     },
 ] as const
 
-export default function ClientShell({
+function ClientShellInner({
   children,
   userName,
 }: {
@@ -36,6 +38,7 @@ export default function ClientShell({
   const pathname = usePathname()
   const params = useParams()
   const locale = (params.locale as string) ?? 'zh'
+  const { themeClass } = usePlatformTheme()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   function isActive(href: string) {
@@ -43,7 +46,7 @@ export default function ClientShell({
   }
 
   return (
-    <div className="theme-dark min-h-screen flex" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
+    <div className={`${themeClass} min-h-screen flex`} style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
 
       {/* ── Sidebar ───────────────────────────────────────────────── */}
       <aside
@@ -62,7 +65,14 @@ export default function ClientShell({
         <div className="flex items-center px-5 py-4" style={{ borderBottom: '1px solid var(--sidebar-border)' }}>
           <Link href="/" className="flex items-center gap-3" onClick={() => setSidebarOpen(false)}>
             <Image src="/logo.png" alt="" width={28} height={28} className="object-contain flex-shrink-0" />
-            <Image src="/logo_text.avif" alt="6AM Advisory" width={110} height={28} className="object-contain" style={{ filter: 'brightness(1.08)' }} />
+            <Image
+              src="/logo_text.avif"
+              alt="6AM Advisory"
+              width={110}
+              height={28}
+              className="object-contain"
+              style={{ filter: 'var(--logo-filter)' }}
+            />
           </Link>
         </div>
 
@@ -108,7 +118,7 @@ export default function ClientShell({
           <div className="flex items-center gap-3 px-3 py-2 rounded-md" style={{ background: 'var(--sidebar-accent)' }}>
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-              style={{ background: 'var(--gold)', color: '#0C0C0C' }}
+              style={{ background: 'var(--gold)', color: 'var(--primary-foreground)' }}
             >
               {userName.charAt(0).toUpperCase()}
             </div>
@@ -141,7 +151,7 @@ export default function ClientShell({
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 md:hidden"
-          style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(2px)' }}
+          style={{ background: 'var(--overlay)', backdropFilter: 'blur(2px)' }}
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -170,7 +180,8 @@ export default function ClientShell({
           <div />
 
           {/* Right actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ml-auto">
+            <ThemeToggle />
             <button
               className="p-2 rounded-md transition-colors"
               style={{ color: 'var(--muted-foreground)' }}
@@ -180,7 +191,7 @@ export default function ClientShell({
             </button>
             <div
               className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-              style={{ background: 'var(--gold)', color: '#0C0C0C' }}
+              style={{ background: 'var(--gold)', color: 'var(--primary-foreground)' }}
             >
               {userName.charAt(0).toUpperCase()}
             </div>
@@ -193,5 +204,16 @@ export default function ClientShell({
         </main>
       </div>
     </div>
+  )
+}
+
+export default function ClientShell(props: {
+  children: React.ReactNode
+  userName: string
+}) {
+  return (
+    <PlatformThemeProvider>
+      <ClientShellInner {...props} />
+    </PlatformThemeProvider>
   )
 }

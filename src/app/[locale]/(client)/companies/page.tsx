@@ -24,26 +24,26 @@ export default async function ClientCompaniesPage({ params }: Props) {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold" style={{ color: '#F0EAD8' }}>My Companies</h1>
+      <h1 className="text-2xl font-bold" style={{ color: 'var(--text-cream)' }}>My Companies</h1>
 
       {companies.length === 0 ? (
         <p className="text-sm" style={{ color: '#5A5040' }}>No companies assigned to your account yet.</p>
       ) : (
         <div className="rounded-lg overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
-          <div className="grid grid-cols-[1.5fr_9rem_9rem_5rem] px-4 py-3 text-sm font-medium text-[#7A7060] bg-[#1A1A12] border-b border-[#2A2418]">
+          <div className="grid grid-cols-[1.5fr_9rem_9rem_5rem] px-4 py-3 text-sm font-medium text-[#7A7060] bg-[var(--surface-panel)] border-b border-[var(--border-subtle)]">
             <span>Company Name</span>
             <span>Co. No.</span>
             <span>Status</span>
             <span />
           </div>
-          <div className="divide-y divide-[#2A2418]">
+          <div className="divide-y divide-[var(--border-subtle)]">
             {companies.map(c => (
               <Link
                 key={c.id}
                 href={`/companies/${c.id}`}
-                className="grid grid-cols-[1.5fr_9rem_9rem_5rem] items-center px-4 py-3 text-sm transition-colors hover:bg-[#1A1A12]"
+                className="grid grid-cols-[1.5fr_9rem_9rem_5rem] items-center px-4 py-3 text-sm transition-colors hover:bg-[var(--surface-panel)]"
               >
-                <div className="font-medium" style={{ color: '#F0EAD8' }}>
+                <div className="font-medium" style={{ color: 'var(--text-cream)' }}>
                     {c.nameEn}
                     {c.nameZh && <span className="block text-xs mt-0.5" style={{ color: '#7A7060' }}>{c.nameZh}</span>}
                 </div>

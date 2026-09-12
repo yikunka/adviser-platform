@@ -112,16 +112,16 @@ function PermMatrix({
               </button>
               <span className="text-xs font-bold uppercase tracking-widest"
                 style={{ color: '#C9A96E' }}>{group.group}</span>
-              <div className="flex-1 h-px" style={{ background: '#2A2418' }} />
+              <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
             </div>
 
-            <div className="rounded-lg overflow-hidden" style={{ border: '1px solid #2A2418' }}>
+            <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
               {/* Column header */}
               <div className="grid text-center"
                 style={{
                   gridTemplateColumns: `1fr repeat(${ALL_ACTIONS.length}, 44px)`,
-                  background: '#111108',
-                  borderBottom: '1px solid #2A2418',
+                  background: 'var(--surface-modal)',
+                  borderBottom: '1px solid var(--border-subtle)',
                 }}
               >
                 <div className="px-3 py-2 text-left text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
@@ -169,7 +169,7 @@ function PermMatrix({
                           style={{
                             color: pageAllActions ? '#0A0805' : pageSomeActions ? '#C9A96E' : '#4A3A28',
                             background: pageAllActions ? '#C9A96E' : pageSomeActions ? 'rgba(201,169,110,0.15)' : 'transparent',
-                            border: `1px solid ${pageAllActions || pageSomeActions ? '#C9A96E44' : '#2A2418'}`,
+                            border: `1px solid ${pageAllActions || pageSomeActions ? '#C9A96E44' : 'var(--border-subtle)'}`,
                           }}
                         >
                           全
@@ -192,7 +192,7 @@ function PermMatrix({
                               dim={!hasView}
                             />
                           ) : (
-                            <span className="text-xs" style={{ color: '#2A2418' }}>—</span>
+                            <span className="text-xs" style={{ color: 'var(--border-subtle)' }}>—</span>
                           )}
                         </div>
                       )
@@ -227,7 +227,7 @@ function Checkbox({
       className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-all"
       style={{
         background: checked ? '#C9A96E' : 'transparent',
-        border: `1px solid ${checked ? '#C9A96E' : dim ? '#2A2418' : '#4A3A28'}`,
+        border: `1px solid ${checked ? '#C9A96E' : dim ? 'var(--border-subtle)' : '#4A3A28'}`,
         opacity: disabled && !checked ? 0.35 : 1,
         cursor: disabled ? 'default' : 'pointer',
       }}
@@ -305,13 +305,13 @@ function RoleEditor({
         className="w-full max-w-4xl rounded-2xl flex flex-col"
         style={{
           background: '#0d0d0d',
-          border: '1px solid #2A2418',
+          border: '1px solid var(--border-subtle)',
           maxHeight: '92vh',
         }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 flex-shrink-0"
-          style={{ borderBottom: '1px solid #2A2418' }}>
+          style={{ borderBottom: '1px solid var(--border-subtle)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--foreground)' }}>
             {role ? '编辑角色' : '创建角色'}
           </h2>
@@ -324,7 +324,7 @@ function RoleEditor({
         <form onSubmit={submit} className="flex flex-col flex-1 min-h-0">
           {/* Basic info */}
           <div className="px-6 py-4 flex-shrink-0 grid grid-cols-2 gap-4"
-            style={{ borderBottom: '1px solid #2A2418' }}>
+            style={{ borderBottom: '1px solid var(--border-subtle)' }}>
             <div className="space-y-1.5">
               <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
                 角色名称 <span style={{ color: '#ef4444' }}>*</span>
@@ -336,7 +336,7 @@ function RoleEditor({
                 disabled={role?.isSystem}
                 placeholder="e.g. SFS 操作员"
                 className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                style={{ background: '#1A1A12', border: '1px solid #2A2418', color: 'var(--foreground)' }}
+                style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)' }}
               />
             </div>
             <div className="space-y-1.5">
@@ -348,7 +348,7 @@ function RoleEditor({
                 onChange={e => setDescription(e.target.value)}
                 placeholder="角色描述（可选）"
                 className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                style={{ background: '#1A1A12', border: '1px solid #2A2418', color: 'var(--foreground)' }}
+                style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)' }}
               />
             </div>
             <div className="space-y-1.5 col-span-2">
@@ -393,7 +393,7 @@ function RoleEditor({
 
           {/* Footer */}
           <div className="flex items-center justify-between px-6 py-4 flex-shrink-0"
-            style={{ borderTop: '1px solid #2A2418' }}>
+            style={{ borderTop: '1px solid var(--border-subtle)' }}>
             {role?.isSystem && (
               <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
                 系统内置角色，权限不可修改
@@ -402,7 +402,7 @@ function RoleEditor({
             <div className="flex gap-3 ml-auto">
               <button type="button" onClick={onClose}
                 className="px-5 py-2 rounded-lg text-sm font-medium"
-                style={{ border: '1px solid #2A2418', color: 'var(--muted-foreground)' }}>
+                style={{ border: '1px solid var(--border-subtle)', color: 'var(--muted-foreground)' }}>
                 取消
               </button>
               {!role?.isSystem && (
@@ -481,7 +481,7 @@ export default function AdminRolesPage() {
         </div>
       ) : roles.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-40 rounded-xl gap-3"
-          style={{ border: '1px dashed #2A2418', color: 'var(--muted-foreground)' }}>
+          style={{ border: '1px dashed var(--border-subtle)', color: 'var(--muted-foreground)' }}>
           <ShieldCheck size={28} strokeWidth={1.2} />
           <p className="text-sm">暂无自定义角色，点击「新建角色」开始</p>
         </div>

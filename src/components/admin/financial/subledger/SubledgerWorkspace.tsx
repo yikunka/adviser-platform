@@ -298,7 +298,7 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
             variant="outline"
             onClick={() => void exportCurrentView()}
             disabled={loading || exporting}
-            className="border-[#2A2418] bg-transparent text-[#FFF7E6] hover:bg-[#1A160F] hover:text-[#FFF7E6]"
+            className="border-[var(--border-subtle)] bg-transparent text-[var(--text-bright)] hover:bg-[#1A160F] hover:text-[var(--text-bright)]"
           >
             <Download size={15} className="mr-2" />
             {exporting ? '导出中...' : '导出 Excel'}
@@ -307,7 +307,7 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
       </div>
 
       {readOnly ? (
-        <div className="rounded-lg border border-[#C9A96E55] bg-[#C9A96E14] px-4 py-3 text-sm" style={{ color: '#EADDC3' }}>
+        <div className="rounded-lg border border-[#C9A96E55] bg-[#C9A96E14] px-4 py-3 text-sm" style={{ color: 'var(--text-label)' }}>
           Staff 账号在 {config.title} 模块仅可查看与导出，不能新增、编辑、过账、核销或作废单据。
         </div>
       ) : null}
@@ -322,7 +322,7 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
 
         {/* ── 单据 ── */}
         <TabsContent value="docs">
-          <Card className="rounded-lg border-[#2A2418] bg-card">
+          <Card className="rounded-lg border-[var(--border-subtle)] bg-card">
             <CardHeader className="pb-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <Input
@@ -469,7 +469,7 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
 
         {/* ── 收/付款 ── */}
         <TabsContent value="payments">
-          <Card className="rounded-lg border-[#2A2418] bg-card">
+          <Card className="rounded-lg border-[var(--border-subtle)] bg-card">
             <CardHeader className="pb-4">
               <div className="flex justify-end">
                 {!readOnly ? (
@@ -552,7 +552,7 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
 
         {/* ── 贷项/借项 ── */}
         <TabsContent value="notes">
-          <Card className="rounded-lg border-[#2A2418] bg-card">
+          <Card className="rounded-lg border-[var(--border-subtle)] bg-card">
             <CardHeader className="pb-4">
               <div className="flex justify-end">
                 {!readOnly ? (
@@ -653,7 +653,7 @@ export function SubledgerWorkspace({ side }: { side: SubledgerSide }) {
 
         {/* ── 账龄 ── */}
         <TabsContent value="aging">
-          <Card className="rounded-lg border-[#2A2418] bg-card">
+          <Card className="rounded-lg border-[var(--border-subtle)] bg-card">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-3">
                 <span className="text-sm" style={{ color: 'var(--muted-foreground)' }}>截止日期</span>

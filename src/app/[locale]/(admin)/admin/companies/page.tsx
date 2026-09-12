@@ -109,7 +109,7 @@ export default function CompaniesPage() {
       <Card>
         <CardContent className="p-0">
           <table className="w-full text-sm">
-            <thead style={{ background: '#1A1A12', borderBottom: '1px solid #2A2418' }}>
+            <thead style={{ background: 'var(--surface-panel)', borderBottom: '1px solid var(--border-subtle)' }}>
               <tr>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('companyCode')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('companyName')}</th>
@@ -123,7 +123,7 @@ export default function CompaniesPage() {
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#2A2418]">
+            <tbody className="divide-y divide-[var(--border-subtle)]">
               {loading ? (
                 <tr><td colSpan={10} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>Loading...</td></tr>
               ) : companies.length === 0 ? (
@@ -131,7 +131,7 @@ export default function CompaniesPage() {
               ) : companies.map(c => (
                 <tr
                   key={c.id}
-                  className="cursor-pointer transition-colors hover:bg-[#1A1A12]"
+                  className="cursor-pointer transition-colors hover:bg-[var(--surface-panel)]"
                   tabIndex={0}
                   onClick={() => router.push(`/admin/companies/${c.id}`)}
                   onKeyDown={e => {
@@ -187,8 +187,8 @@ export default function CompaniesPage() {
                       }}
                       className="inline-flex h-6 w-11 items-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-60"
                       style={{
-                        borderColor: c.financialEnabled ? '#C9A96E' : '#2A2418',
-                        background: c.financialEnabled ? 'rgba(201,169,110,0.35)' : '#0E0E0A',
+                        borderColor: c.financialEnabled ? '#C9A96E' : 'var(--border-subtle)',
+                        background: c.financialEnabled ? 'rgba(201,169,110,0.35)' : 'var(--surface-input)',
                       }}
                     >
                       <span

@@ -21,7 +21,7 @@ const moduleStyles = {
     tileBg: 'rgba(37,99,235,0.05)',
     tileBorder: 'rgba(56,189,248,0.22)',
     buttonBorder: 'rgba(56,189,248,0.28)',
-    buttonHover: 'hover:bg-[#0B1D22]',
+    buttonHover: 'hover:bg-[var(--accent)]',
   },
   sfs: {
     card: 'border border-[#C9A96E33] bg-[linear-gradient(180deg,rgba(201,169,110,0.10),rgba(201,169,110,0.02))]',
@@ -29,7 +29,7 @@ const moduleStyles = {
     tileBg: 'rgba(201,169,110,0.05)',
     tileBorder: 'rgba(201,169,110,0.22)',
     buttonBorder: 'rgba(201,169,110,0.28)',
-    buttonHover: 'hover:bg-[#1A1A12]',
+    buttonHover: 'hover:bg-[var(--surface-panel)]',
   },
 } as const
 
@@ -354,7 +354,7 @@ export default async function AdminDashboardPage() {
               <Link
                 key={label}
                 href={href}
-                className="group rounded-lg p-4 transition-colors hover:bg-[#0B1D22]"
+                className="group rounded-lg p-4 transition-colors hover:bg-[var(--accent)]"
                 style={{ border: `1px solid ${moduleStyles.adviser.tileBorder}`, background: moduleStyles.adviser.tileBg }}
               >
                 <span className="block h-1 w-8 rounded-full mb-4" style={{ background: accent }} />
@@ -380,7 +380,7 @@ export default async function AdminDashboardPage() {
                     <li key={item.id}>
                       <Link
                         href={item.href}
-                        className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 px-4 py-3 text-sm transition-colors hover:bg-[#0B1D22]"
+                        className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 px-4 py-3 text-sm transition-colors hover:bg-[var(--accent)]"
                       >
                         <span
                           className="inline-flex w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
@@ -439,7 +439,7 @@ export default async function AdminDashboardPage() {
                   <Link
                     key={label}
                     href={href}
-                    className="group rounded-lg p-4 transition-colors hover:bg-[#1A1A12]"
+                    className="group rounded-lg p-4 transition-colors hover:bg-[var(--surface-panel)]"
                     style={{ border: `1px solid ${moduleStyles.sfs.tileBorder}`, background: moduleStyles.sfs.tileBg }}
                   >
                     <span className="block h-1 w-8 rounded-full mb-4" style={{ background: accent }} />
@@ -476,12 +476,12 @@ export default async function AdminDashboardPage() {
               {sfsTodos.length === 0 ? (
                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>{t('sfs.todoEmpty')}</p>
               ) : (
-                <ul className="divide-y divide-[#2A2418] rounded-lg overflow-hidden" style={{ border: '1px solid #2A2418' }}>
+                <ul className="divide-y divide-[var(--border-subtle)] rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
                   {sfsTodos.map(item => (
                     <li key={item.id}>
                       <Link
                         href={item.href}
-                        className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 px-4 py-3 text-sm transition-colors hover:bg-[#1A1A12]"
+                        className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 px-4 py-3 text-sm transition-colors hover:bg-[var(--surface-panel)]"
                       >
                         <span
                           className="inline-flex w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"

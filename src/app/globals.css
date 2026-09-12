@@ -101,7 +101,7 @@ html {
   --sidebar-ring: #C9A96E;
 }
 
-/* ── Client portal dark theme ──────────────────────────────────────── */
+/* ── Night view (black × gold) ─────────────────────────────────────── */
 .theme-dark {
   --background: #0C0C0C;
   --foreground: #F0EAD8;
@@ -130,10 +130,91 @@ html {
   --sidebar-accent-foreground: #C9A96E;
   --sidebar-border: #2A2418;
   --sidebar-ring: #C9A96E;
+
+  /* Surface aliases — used by migrated hardcoded hexes */
+  --surface: #0A0A0A;
+  --surface-raised: #141414;
+  --surface-panel: #1A1A12;
+  --surface-sunken: #080808;
+  --surface-modal: #11110E;
+  --surface-input: #0E0E0A;
+  --surface-footer: #16130E;
+  --border-subtle: #2A2418;
+  --border-strong: #3A3428;
+  --text-bright: #FFF7E6;
+  --text-cream: #F0EAD8;
+  --text-body: #D2C6B0;
+  --text-label: #D7C9AE;
+  --text-dim: #B8AD98;
+  --text-placeholder: #9F927B;
+  --chrome: #080808;
+  --overlay: rgba(0, 0, 0, 0.75);
+  --logo-filter: brightness(1.08);
+  color-scheme: dark;
+}
+
+/* ── Day view (warm paper × gold) ──────────────────────────────────── */
+.theme-day {
+  --gold: #A67C3D;
+  --gold-muted: #8A6E42;
+  --background: #F5F1EA;
+  --foreground: #1A1612;
+  --card: #FFFFFF;
+  --card-foreground: #1A1612;
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1612;
+  --primary: #A67C3D;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EBE4D8;
+  --secondary-foreground: #3A3020;
+  --muted: #EBE4D8;
+  --muted-foreground: #6B5E4E;
+  --accent: #EFE8DC;
+  --accent-foreground: #3A3020;
+  --destructive: #C0392B;
+  --border: #D9CFBF;
+  --input: #FFFFFF;
+  --ring: #A67C3D;
+  --radius: 0.5rem;
+  --sidebar: #EFE8DC;
+  --sidebar-foreground: #1A1612;
+  --sidebar-primary: #A67C3D;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #E4DACC;
+  --sidebar-accent-foreground: #A67C3D;
+  --sidebar-border: #D9CFBF;
+  --sidebar-ring: #A67C3D;
+
+  --surface: #FFFFFF;
+  --surface-raised: #FFFFFF;
+  --surface-panel: #EFE8DC;
+  --surface-sunken: #E8E0D4;
+  --surface-modal: #FFFFFF;
+  --surface-input: #FFFFFF;
+  --surface-footer: #F3EEE6;
+  --border-subtle: #D9CFBF;
+  --border-strong: #C4B6A0;
+  --text-bright: #1A1612;
+  --text-cream: #1A1612;
+  --text-body: #4A4238;
+  --text-label: #5C5346;
+  --text-dim: #6B5E4E;
+  --text-placeholder: #8A7E6E;
+  --chrome: #EFE8DC;
+  --overlay: rgba(26, 22, 18, 0.45);
+  --logo-filter: brightness(0.28);
+  color-scheme: light;
 }
 
 /* ── Admin console: stronger contrast for dense operational screens ── */
 .admin-console {
+  color: var(--foreground);
+  font-weight: 450;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.theme-dark.admin-console {
   --background: #0B0B0A;
   --foreground: #FFF7E6;
   --card-foreground: #FFF7E6;
@@ -142,10 +223,17 @@ html {
   --secondary-foreground: #EADDC3;
   --accent-foreground: #F0D090;
   --sidebar-foreground: #F7EEDC;
-  color: var(--foreground);
-  font-weight: 450;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+}
+
+.theme-day.admin-console {
+  --background: #F5F1EA;
+  --foreground: #1A1612;
+  --card-foreground: #1A1612;
+  --popover-foreground: #1A1612;
+  --muted-foreground: #6B5E4E;
+  --secondary-foreground: #3A3020;
+  --accent-foreground: #A67C3D;
+  --sidebar-foreground: #1A1612;
 }
 
 .admin-console main {
@@ -189,49 +277,61 @@ html {
 }
 
 .admin-console th {
-  color: #D7C9AE !important;
+  color: var(--text-label) !important;
 }
 
 .admin-console td {
-  color: #D2C6B0 !important;
+  color: var(--text-body) !important;
 }
 
 .admin-console input,
 .admin-console textarea,
 .admin-console select {
-  color: #FFF7E6 !important;
+  color: var(--text-bright) !important;
 }
 
 .admin-console input::placeholder,
 .admin-console textarea::placeholder {
-  color: #9F927B !important;
+  color: var(--text-placeholder) !important;
 }
 
-.admin-console [style*="var(--muted-foreground)"],
-.admin-console [style*="#7A7060"],
-.admin-console [style*="#5A5040"],
-.admin-console [style*="#6A5A40"],
-.admin-console [style*="#9A8060"] {
+.theme-dark.admin-console [style*="var(--muted-foreground)"],
+.theme-dark.admin-console [style*="#7A7060"],
+.theme-dark.admin-console [style*="#5A5040"],
+.theme-dark.admin-console [style*="#6A5A40"],
+.theme-dark.admin-console [style*="#9A8060"] {
   color: #B8AD98 !important;
 }
 
-.admin-console [style*="var(--foreground)"] {
+.theme-dark.admin-console [style*="var(--foreground)"] {
   color: #FFF7E6 !important;
+}
+
+.theme-day.admin-console [style*="var(--muted-foreground)"],
+.theme-day.admin-console [style*="#7A7060"],
+.theme-day.admin-console [style*="#5A5040"],
+.theme-day.admin-console [style*="#6A5A40"],
+.theme-day.admin-console [style*="#9A8060"] {
+  color: #6B5E4E !important;
+}
+
+.theme-day.admin-console [style*="var(--foreground)"] {
+  color: #1A1612 !important;
 }
 
 /* Financial dialogs render through portals, outside `.admin-console`.
    Keep their contrast explicit instead of inheriting light-theme tokens. */
 .financial-modal {
-  background: #11110E !important;
-  color: #FFF7E6 !important;
-  border-color: #2A2418 !important;
+  background: var(--surface-modal) !important;
+  color: var(--text-bright) !important;
+  border-color: var(--border-subtle) !important;
 }
 
 .financial-modal [data-slot="dialog-title"],
 .financial-modal label,
 .financial-modal th,
 .financial-modal td {
-  color: #FFF7E6 !important;
+  color: var(--text-bright) !important;
 }
 
 .financial-modal [data-slot="dialog-title"] {
@@ -245,50 +345,50 @@ html {
 
 .financial-modal [data-slot="dialog-description"],
 .financial-modal .financial-muted {
-  color: #B8AD98 !important;
+  color: var(--text-dim) !important;
 }
 
 .financial-modal input,
 .financial-modal textarea,
 .financial-modal [data-slot="select-trigger"],
 .financial-modal [data-slot="date-picker-trigger"] {
-  background: #0E0E0A !important;
-  border-color: #2A2418 !important;
-  color: #FFF7E6 !important;
+  background: var(--surface-input) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-bright) !important;
 }
 
 .financial-modal input::placeholder,
 .financial-modal textarea::placeholder {
-  color: #9F927B !important;
+  color: var(--text-placeholder) !important;
 }
 
 .financial-field {
-  color-scheme: dark;
-  accent-color: #C9A96E;
-  -webkit-text-fill-color: #FFF7E6;
+  color-scheme: inherit;
+  accent-color: var(--gold);
+  -webkit-text-fill-color: var(--text-bright);
 }
 
 .financial-field::placeholder {
-  color: #9F927B !important;
-  -webkit-text-fill-color: #9F927B;
+  color: var(--text-placeholder) !important;
+  -webkit-text-fill-color: var(--text-placeholder);
   opacity: 1;
 }
 
 .financial-field[data-placeholder] {
-  color: #B8AD98 !important;
-  -webkit-text-fill-color: #B8AD98;
+  color: var(--text-dim) !important;
+  -webkit-text-fill-color: var(--text-dim);
 }
 
 .financial-field svg {
-  color: #C9A96E !important;
+  color: var(--gold) !important;
 }
 
 .financial-field:hover {
-  border-color: #3A3020 !important;
+  border-color: var(--border-strong) !important;
 }
 
 .financial-field:focus-visible {
-  border-color: #C9A96E !important;
+  border-color: var(--gold) !important;
   box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.18), inset 0 1px 0 rgba(255, 247, 230, 0.04) !important;
 }
 
@@ -303,13 +403,18 @@ html {
   opacity: 0.92;
 }
 
+.theme-day .financial-field::-webkit-calendar-picker-indicator {
+  filter: none;
+  opacity: 0.75;
+}
+
 .financial-field:hover::-webkit-calendar-picker-indicator,
 .financial-field:focus::-webkit-calendar-picker-indicator {
   opacity: 1;
 }
 
 .financial-field::-webkit-date-and-time-value {
-  color: #FFF7E6;
+  color: var(--text-bright);
   text-align: left;
 }
 
@@ -319,9 +424,14 @@ html {
   opacity: 0.86;
 }
 
+.theme-day .financial-field::-webkit-inner-spin-button,
+.theme-day .financial-field::-webkit-outer-spin-button {
+  filter: none;
+}
+
 .financial-modal [data-slot="dialog-footer"] {
-  background: #16130E !important;
-  border-color: #2A2418 !important;
+  background: var(--surface-footer) !important;
+  border-color: var(--border-subtle) !important;
 }
 
 .financial-modal [data-slot="button"][data-variant="outline"],
@@ -330,9 +440,9 @@ html {
 }
 
 .financial-select-content {
-  background: #11110E !important;
-  border-color: #2A2418 !important;
-  color: #FFF7E6 !important;
+  background: var(--surface-modal) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-bright) !important;
   font-family: var(--font-sans) !important;
 }
 
@@ -342,29 +452,29 @@ html {
 }
 
 .financial-account-combobox-dropdown {
-  background: #11110E !important;
-  border-color: #2A2418 !important;
-  color: #FFF7E6 !important;
+  background: var(--surface-modal) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-bright) !important;
 }
 
 .financial-account-combobox-dropdown button {
-  color: #FFF7E6 !important;
+  color: var(--text-bright) !important;
 }
 
 .financial-account-combobox-dropdown button[data-selected='true'] {
-  color: #C9A96E !important;
+  color: var(--gold) !important;
 }
 
 .financial-account-combobox-dropdown button[data-highlighted='true'] {
-  background: #1E1A12 !important;
+  background: var(--surface-panel) !important;
 }
 
 .financial-account-combobox-dropdown button:hover {
-  background: #1E1A12 !important;
+  background: var(--surface-panel) !important;
 }
 
 .financial-account-combobox-muted {
-  color: #B8AD98 !important;
+  color: var(--text-dim) !important;
 }
 
 @layer base {
@@ -379,42 +489,54 @@ html {
   }
 }
 
-/* ── Gold scrollbar for dark theme ────────────────────────────────── */
-.theme-dark ::-webkit-scrollbar {
+/* ── Gold scrollbar for themed shells ─────────────────────────────── */
+.theme-dark ::-webkit-scrollbar,
+.theme-day ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 .theme-dark ::-webkit-scrollbar-track {
   background: #0C0C0C;
 }
+.theme-day ::-webkit-scrollbar-track {
+  background: #EFE8DC;
+}
 .theme-dark ::-webkit-scrollbar-thumb {
   background: #2A2418;
   border-radius: 3px;
 }
-.theme-dark ::-webkit-scrollbar-thumb:hover {
-  background: #C9A96E;
+.theme-day ::-webkit-scrollbar-thumb {
+  background: #D9CFBF;
+  border-radius: 3px;
+}
+.theme-dark ::-webkit-scrollbar-thumb:hover,
+.theme-day ::-webkit-scrollbar-thumb:hover {
+  background: var(--gold);
 }
 
 /* ── Portal hover utilities (CSS-only, safe in Server Components) ──── */
 .portal-card-hover {
   transition: border-color 150ms, background 150ms;
 }
-.theme-dark .portal-card-hover:hover {
-  border-color: #C9A96E !important;
+.theme-dark .portal-card-hover:hover,
+.theme-day .portal-card-hover:hover {
+  border-color: var(--gold) !important;
   background: var(--accent) !important;
 }
 .portal-row-hover {
   transition: background 120ms;
 }
-.theme-dark .portal-row-hover:hover {
+.theme-dark .portal-row-hover:hover,
+.theme-day .portal-row-hover:hover {
   background: var(--accent) !important;
 }
 .portal-btn-outline {
   transition: border-color 150ms, color 150ms;
 }
-.theme-dark .portal-btn-outline:hover {
-  border-color: #C9A96E !important;
-  color: #C9A96E !important;
+.theme-dark .portal-btn-outline:hover,
+.theme-day .portal-btn-outline:hover {
+  border-color: var(--gold) !important;
+  color: var(--gold) !important;
 }
 
 /* ── Gold shimmer utility ──────────────────────────────────────────── */

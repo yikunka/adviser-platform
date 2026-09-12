@@ -61,12 +61,12 @@ type Props = {
   onSaved: () => void | Promise<void>
 }
 
-const modalContentClassName = 'financial-modal max-h-[90vh] overflow-y-auto border-[#2A2418] bg-[#11110E] text-[#FFF7E6] shadow-2xl ring-[#3A3428] sm:max-w-xl'
-const modalFooterClassName = 'mt-4 border-[#2A2418] bg-[#16130E]'
-const labelClassName = 'text-[#EADDC3]'
-const fieldClassName = 'border-[#2A2418] bg-[#0E0E0A] text-[#FFF7E6] placeholder:text-[#9F927B]'
-const selectContentClassName = 'financial-select-content border-[#2A2418] bg-[#11110E] text-[#FFF7E6]'
-const secondaryButtonClassName = 'border-[#3A3428] bg-[#0E0E0A] text-[#FFF7E6] hover:bg-[#1E1A12] hover:text-[#FFF7E6]'
+const modalContentClassName = 'financial-modal max-h-[90vh] overflow-y-auto border-[var(--border-subtle)] bg-[var(--surface-modal)] text-[var(--text-bright)] shadow-2xl ring-[var(--border-strong)] sm:max-w-xl'
+const modalFooterClassName = 'mt-4 border-[var(--border-subtle)] bg-[var(--surface-footer)]'
+const labelClassName = 'text-[var(--text-label)]'
+const fieldClassName = 'border-[var(--border-subtle)] bg-[var(--surface-input)] text-[var(--text-bright)] placeholder:text-[var(--text-placeholder)]'
+const selectContentClassName = 'financial-select-content border-[var(--border-subtle)] bg-[var(--surface-modal)] text-[var(--text-bright)]'
+const secondaryButtonClassName = 'border-[var(--border-strong)] bg-[var(--surface-input)] text-[var(--text-bright)] hover:bg-[var(--surface-panel)] hover:text-[var(--text-bright)]'
 type OpeningBalanceSide = 'DEBIT' | 'CREDIT'
 
 function defaultOpeningPeriod() {
@@ -243,8 +243,8 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={modalContentClassName}>
         <DialogHeader>
-          <DialogTitle className="text-[#FFF7E6]">{account ? '编辑科目' : '新增科目'}</DialogTitle>
-          <DialogDescription className="text-[#B8AD98]">维护会计科目的结构和期初余额。</DialogDescription>
+          <DialogTitle className="text-[var(--text-bright)]">{account ? '编辑科目' : '新增科目'}</DialogTitle>
+          <DialogDescription className="text-[var(--text-dim)]">维护会计科目的结构和期初余额。</DialogDescription>
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
@@ -322,10 +322,10 @@ export function AccountFormDialog({ open, onOpenChange, account, companyId, acco
             </label>
           </div>
 
-          <div className="rounded-lg border border-[#2A2418] bg-[#0E0E0A] p-4">
+          <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-input)] p-4">
             <div className="mb-3">
-              <h3 className="text-sm font-semibold text-[#FFF7E6]">期初及累计数</h3>
-              <p className="mt-1 text-xs text-[#B8AD98]">
+              <h3 className="text-sm font-semibold text-[var(--text-bright)]">期初及累计数</h3>
+              <p className="mt-1 text-xs text-[var(--text-dim)]">
                 {enteredBalancesEditable
                   ? '可填写或修改此科目的期初余额和本年累计发生数。'
                   : openingBalanceBlockedMessage}

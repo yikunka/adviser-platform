@@ -108,7 +108,7 @@ export default function DocumentsPage() {
             className="grid px-5 py-3 text-xs font-medium uppercase tracking-wider"
             style={{
               gridTemplateColumns: '1fr 100px 160px 120px 80px',
-              background: '#0A0A0A',
+              background: 'var(--surface)',
               borderBottom: '1px solid var(--border)',
               color: 'var(--muted-foreground)',
             }}

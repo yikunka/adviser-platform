@@ -266,19 +266,19 @@ export default function AdminFinancialLedgerPage() {
             variant="outline"
             size="sm"
             onClick={exportToCSV}
-            style={{ borderColor: '#2A2418', color: 'var(--foreground)' }}
+            style={{ borderColor: 'var(--border-subtle)', color: 'var(--foreground)' }}
           >
             <Download size={15} className="mr-2" /> 导出 CSV
           </Button>
         </div>
       </div>
 
-      <Card className="rounded-lg border-[#2A2418] bg-card">
+      <Card className="rounded-lg border-[var(--border-subtle)] bg-card">
         <CardHeader className="pb-4">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="flex flex-wrap items-end gap-3">
               <Select value={filterAccountType} onValueChange={value => setFilterAccountType(value ?? 'ALL')}>
-                <SelectTrigger className="w-[180px]" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
+                <SelectTrigger className="w-[180px]" style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)' }}>
                   <SelectValue placeholder="全部科目" />
                 </SelectTrigger>
                 <SelectContent>
@@ -296,7 +296,7 @@ export default function AdminFinancialLedgerPage() {
                 onChange={e => setFilterPeriod(e.target.value)}
                 className="w-[150px]"
                 aria-label="期间"
-                style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
+                style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)' }}
               />
               <Input
                 type="date"
@@ -304,7 +304,7 @@ export default function AdminFinancialLedgerPage() {
                 onChange={e => setStartDate(e.target.value)}
                 className="w-[150px]"
                 aria-label="开始日期"
-                style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
+                style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)' }}
               />
               <Input
                 type="date"
@@ -312,14 +312,14 @@ export default function AdminFinancialLedgerPage() {
                 onChange={e => setEndDate(e.target.value)}
                 className="w-[150px]"
                 aria-label="结束日期"
-                style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
+                style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)' }}
               />
               <Input
                 value={voucherNo}
                 onChange={e => setVoucherNo(e.target.value)}
                 placeholder="凭证号"
                 className="w-[150px]"
-                style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
+                style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)' }}
               />
               <Button size="sm" onClick={fetchLedgers} style={{ background: '#C9A96E', color: '#0A0805' }}>
                 筛选
@@ -337,7 +337,7 @@ export default function AdminFinancialLedgerPage() {
                   setLevel3AccountId('ALL')
                 }}
               >
-                <SelectTrigger className="w-[190px]" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
+                <SelectTrigger className="w-[190px]" style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)' }}>
                   <SelectValue placeholder="一级科目">
                     {selectedAccountLabel(accounts, level1AccountId, '全部一级科目')}
                   </SelectValue>
@@ -360,7 +360,7 @@ export default function AdminFinancialLedgerPage() {
                 }}
                 disabled={level1AccountId === 'ALL' || level2Accounts.length === 0}
               >
-                <SelectTrigger className="w-[190px]" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
+                <SelectTrigger className="w-[190px]" style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)' }}>
                   <SelectValue placeholder="二级科目">
                     {selectedAccountLabel(accounts, level2AccountId, '全部二级科目')}
                   </SelectValue>
@@ -382,7 +382,7 @@ export default function AdminFinancialLedgerPage() {
                 }}
                 disabled={level2AccountId === 'ALL' || level3Accounts.length === 0}
               >
-                <SelectTrigger className="w-[190px]" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
+                <SelectTrigger className="w-[190px]" style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)' }}>
                   <SelectValue placeholder="三级科目">
                     {selectedAccountLabel(accounts, level3AccountId, '全部三级科目')}
                   </SelectValue>
@@ -410,7 +410,7 @@ export default function AdminFinancialLedgerPage() {
                   placeholder="输入科目号，如 1001"
                   className="w-[190px]"
                   aria-label="科目号搜索"
-                  style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
+                  style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)' }}
                 />
                 <Button
                   size="sm"
@@ -449,7 +449,7 @@ export default function AdminFinancialLedgerPage() {
               <TableBody>
                 {ledgerAccounts.map(group => (
                   <Fragment key={group.accountId}>
-                    <TableRow className="bg-[#16130E] hover:bg-[#16130E]">
+                    <TableRow className="bg-[var(--surface-footer)] hover:bg-[var(--surface-footer)]">
                       <TableCell colSpan={7}>
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -475,7 +475,7 @@ export default function AdminFinancialLedgerPage() {
                         </div>
                       </TableCell>
                     </TableRow>
-                    <TableRow className="bg-[#0E0E0A]">
+                    <TableRow className="bg-[var(--surface-input)]">
                       <TableCell className="text-muted-foreground">{openingDateLabel(group) || '-'}</TableCell>
                       <TableCell className="text-muted-foreground">-</TableCell>
                       <TableCell className="font-medium text-[#C9A96E]">期初余额</TableCell>
@@ -485,7 +485,7 @@ export default function AdminFinancialLedgerPage() {
                       <TableCell className="text-right font-mono">{formatMoney(group.openingBalanceCredit)}</TableCell>
                     </TableRow>
                     {group.entries.map((entry, idx) => (
-                      <TableRow key={entry.id} style={{ background: idx % 2 === 0 ? 'transparent' : '#0E0E0A' }}>
+                      <TableRow key={entry.id} style={{ background: idx % 2 === 0 ? 'transparent' : 'var(--surface-input)' }}>
                         <TableCell>{new Date(entry.date).toLocaleDateString('zh-HK')}</TableCell>
                         <TableCell className="font-mono">
                           <div className="flex items-center gap-1">

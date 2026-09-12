@@ -127,7 +127,7 @@ export function FinancialHistoryLedgerBooksPanel() {
       </div>
 
       {!readOnly ? (
-        <Card className="rounded-lg border-[#2A2418] bg-card">
+        <Card className="rounded-lg border-[var(--border-subtle)] bg-card">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2 text-sm font-medium text-[#C9A96E]">
               <Upload size={16} />
@@ -139,14 +139,14 @@ export function FinancialHistoryLedgerBooksPanel() {
               value={title}
               onChange={event => setTitle(event.target.value)}
               placeholder="档案标题（可选）"
-              style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
+              style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)' }}
             />
             <Textarea
               value={notes}
               onChange={event => setNotes(event.target.value)}
               placeholder="备注（可选）"
               className="min-h-[40px]"
-              style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
+              style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)' }}
             />
             <div className="flex items-start">
               <input
@@ -169,12 +169,12 @@ export function FinancialHistoryLedgerBooksPanel() {
           </CardContent>
         </Card>
       ) : (
-        <div className="rounded-lg border border-[#C9A96E55] bg-[#C9A96E14] px-4 py-3 text-sm" style={{ color: '#EADDC3' }}>
+        <div className="rounded-lg border border-[#C9A96E55] bg-[#C9A96E14] px-4 py-3 text-sm" style={{ color: 'var(--text-label)' }}>
           Staff 账号可查看和下载历史账套，不能上传新的历史账套档案。
         </div>
       )}
 
-      <Card className="rounded-lg border-[#2A2418] bg-card">
+      <Card className="rounded-lg border-[var(--border-subtle)] bg-card">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2 text-sm font-medium text-[#C9A96E]">
             <FileSpreadsheet size={16} />
@@ -191,7 +191,7 @@ export function FinancialHistoryLedgerBooksPanel() {
           ) : (
             <div className="space-y-4">
               {books.map(book => (
-                <div key={book.id} className="rounded-lg border border-[#2A2418] bg-[#0E0E0A] p-4">
+                <div key={book.id} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-input)] p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <h3 className="font-semibold">{book.title}</h3>
@@ -204,13 +204,13 @@ export function FinancialHistoryLedgerBooksPanel() {
                       variant="outline"
                       size="sm"
                       onClick={() => void downloadBook(book)}
-                      style={{ borderColor: '#2A2418' }}
+                      style={{ borderColor: 'var(--border-subtle)' }}
                     >
                       <Download size={15} className="mr-2" />
                       下载原文件
                     </Button>
                   </div>
-                  <div className="mt-4 overflow-x-auto rounded-md border border-[#2A2418]">
+                  <div className="mt-4 overflow-x-auto rounded-md border border-[var(--border-subtle)]">
                     <Table>
                       <TableHeader>
                         <TableRow>

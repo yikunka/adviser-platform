@@ -94,9 +94,9 @@ const STEPS = [
 
 const fieldStyle: React.CSSProperties = {
   width: '100%',
-  background: '#0A0A0A',
-  border: '1px solid #2A2418',
-  color: '#F0EAD8',
+  background: 'var(--surface)',
+  border: '1px solid var(--border-subtle)',
+  color: 'var(--text-cream)',
   borderRadius: '0.375rem',
   padding: '0.5rem 0.75rem',
   fontSize: '0.875rem',
@@ -295,8 +295,8 @@ function UploadZone({
         {...getRootProps()}
         className="rounded-lg p-4 flex flex-col items-center gap-2 text-center cursor-pointer transition-all"
         style={{
-          border: `2px dashed ${isDragActive ? '#C9A96E' : '#2A2418'}`,
-          borderColor: error ? '#ef4444' : isDragActive ? '#C9A96E' : '#2A2418',
+          border: `2px dashed ${isDragActive ? '#C9A96E' : 'var(--border-subtle)'}`,
+          borderColor: error ? '#ef4444' : isDragActive ? '#C9A96E' : 'var(--border-subtle)',
           background: isDragActive ? 'rgba(201,169,110,0.06)' : 'var(--background)',
           opacity: isLocked || !slotId ? 0.5 : 1,
           pointerEvents: isLocked || !slotId ? 'none' : 'auto',
@@ -767,7 +767,7 @@ export default function KYCPage() {
               window.location.href = '/api/kyc/export'
             }}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border"
-            style={{ borderColor: '#2A2418', color: '#C9A96E' }}
+            style={{ borderColor: 'var(--border-subtle)', color: '#C9A96E' }}
           >
             <Download size={14} />
             {t('downloadKycDoc', { defaultValue: 'Download Word' })}
@@ -803,7 +803,7 @@ export default function KYCPage() {
               >
                 {label}
                 {code ? (
-                  <span className="ml-1.5 text-[10px] opacity-90" style={{ color: '#F0EAD8' }}>
+                  <span className="ml-1.5 text-[10px] opacity-90" style={{ color: 'var(--text-cream)' }}>
                     {code}
                   </span>
                 ) : null}
@@ -829,7 +829,7 @@ export default function KYCPage() {
           type="button"
           onClick={addPerson}
           className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-sm"
-          style={{ color: '#C9A96E', border: '1px dashed #2A2418' }}
+          style={{ color: '#C9A96E', border: '1px dashed var(--border-subtle)' }}
         >
           <Plus size={16} />
           {t('addPerson', { defaultValue: 'Add person' })}

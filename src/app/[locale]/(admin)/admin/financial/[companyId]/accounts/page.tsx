@@ -103,12 +103,12 @@ export default function AdminFinancialAccountsPage() {
       </div>
 
       {readOnly ? (
-        <div className="rounded-lg border border-[#C9A96E55] bg-[#C9A96E14] px-4 py-3 text-sm" style={{ color: '#EADDC3' }}>
+        <div className="rounded-lg border border-[#C9A96E55] bg-[#C9A96E14] px-4 py-3 text-sm" style={{ color: 'var(--text-label)' }}>
           Staff 账号在财务模块为只读模式：可查看科目与报表，但不能新增、编辑或删除财务数据。
         </div>
       ) : null}
 
-      <Card className="rounded-lg border-[#2A2418] bg-card">
+      <Card className="rounded-lg border-[var(--border-subtle)] bg-card">
         <CardHeader className="pb-4">
           <div className="flex items-center gap-4">
             <Input
@@ -116,7 +116,7 @@ export default function AdminFinancialAccountsPage() {
               onChange={e => setSearch(e.target.value)}
               placeholder="按编码或名称搜索..."
               className="max-w-sm"
-              style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
+              style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)' }}
             />
           </div>
         </CardHeader>
@@ -218,7 +218,7 @@ export default function AdminFinancialAccountsPage() {
                     size="sm"
                     onClick={() => setPage(p => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    style={{ borderColor: '#2A2418' }}
+                    style={{ borderColor: 'var(--border-subtle)' }}
                   >
                     上一页
                   </Button>
@@ -227,7 +227,7 @@ export default function AdminFinancialAccountsPage() {
                     size="sm"
                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                     disabled={page >= totalPages}
-                    style={{ borderColor: '#2A2418' }}
+                    style={{ borderColor: 'var(--border-subtle)' }}
                   >
                     下一页
                   </Button>

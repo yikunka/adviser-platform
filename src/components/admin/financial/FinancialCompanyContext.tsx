@@ -110,11 +110,11 @@ export function FinancialCompanyProvider({
     <FinancialCompanyContext.Provider value={value}>
       {needsCompany && !company && loading ? null : needsCompany && !company ? (
         <div className="p-6">
-          <div className="rounded-lg border border-[#2A2418] bg-card p-8 text-center">
+          <div className="rounded-lg border border-[var(--border-subtle)] bg-card p-8 text-center">
             <p className="text-sm text-muted-foreground">请先选择客户公司，再打开此财务页面。</p>
             <Link
               href="/admin/financial"
-              className="mt-4 inline-flex rounded-md border border-[#2A2418] px-3 py-2 text-sm font-medium hover:border-[#C9A96E66]"
+              className="mt-4 inline-flex rounded-md border border-[var(--border-subtle)] px-3 py-2 text-sm font-medium hover:border-[#C9A96E66]"
               style={{ color: '#C9A96E' }}
             >
               选择公司

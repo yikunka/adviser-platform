@@ -14,7 +14,7 @@ export default function AdminFinancialSelectCompanyPage() {
       {loading ? null : company ? (
         <FinancialCompanyDashboard />
       ) : (
-        <div className="rounded-lg border border-[#2A2418] bg-card p-8 text-center text-sm text-muted-foreground">
+        <div className="rounded-lg border border-[var(--border-subtle)] bg-card p-8 text-center text-sm text-muted-foreground">
           请先在上方选择客户公司，再进入财务工作台。
         </div>
       )}

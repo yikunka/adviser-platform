@@ -114,7 +114,7 @@ export function FinancialCompanyDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="border-[#2A2418] text-[#C9A96E]">
+            <Badge variant="outline" className="border-[var(--border-subtle)] text-[#C9A96E]">
               代理记账
             </Badge>
           </div>
@@ -123,7 +123,7 @@ export function FinancialCompanyDashboard() {
 
       <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {statCards.map(({ label, value, Icon, tone }) => (
-          <Card key={label} className="rounded-lg border-[#2A2418] bg-card">
+          <Card key={label} className="rounded-lg border-[var(--border-subtle)] bg-card">
             <CardContent className="pt-2">
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -149,7 +149,7 @@ export function FinancialCompanyDashboard() {
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {modules.map(({ title, desc, href, Icon }) => (
           <Link key={href} href={href} className="group">
-            <Card className="h-full rounded-lg border-[#2A2418] bg-card transition-colors group-hover:border-[#C9A96E66]">
+            <Card className="h-full rounded-lg border-[var(--border-subtle)] bg-card transition-colors group-hover:border-[#C9A96E66]">
               <CardHeader>
                 <div className="flex items-center justify-between gap-3">
                   <span

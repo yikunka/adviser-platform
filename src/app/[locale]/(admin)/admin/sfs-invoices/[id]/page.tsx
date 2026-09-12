@@ -170,7 +170,7 @@ export default function SfsInvoiceDetailPage() {
         <CardHeader><CardTitle>{t('lineItems')}</CardTitle></CardHeader>
         <CardContent className="p-0">
           <table className="w-full text-sm">
-            <thead style={{ background: '#1A1A12', borderBottom: '1px solid #2A2418' }}>
+            <thead style={{ background: 'var(--surface-panel)', borderBottom: '1px solid var(--border-subtle)' }}>
               <tr>
                 <th className="px-4 py-3 text-left">{t('description')}</th>
                 <th className="px-4 py-3 text-right">{t('quantity')}</th>
@@ -179,7 +179,7 @@ export default function SfsInvoiceDetailPage() {
                 <th className="px-4 py-3 text-right">{t('amount')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#2A2418]">
+            <tbody className="divide-y divide-[var(--border-subtle)]">
               {invoice.lineItems.map(line => (
                 <tr key={line.id}>
                   <td className="px-4 py-3">{line.description}</td>
@@ -193,7 +193,7 @@ export default function SfsInvoiceDetailPage() {
               ))}
             </tbody>
           </table>
-          <div className="px-4 py-4 text-sm space-y-1 border-t" style={{ borderColor: '#2A2418' }}>
+          <div className="px-4 py-4 text-sm space-y-1 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
             <div className="flex justify-between"><span>{t('subtotal')}</span><span>{invoice.currency} {Number(invoice.subtotal).toFixed(2)}</span></div>
             <div className="flex justify-between">
               <span>{t('tax')}</span>

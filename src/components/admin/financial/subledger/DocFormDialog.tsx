@@ -216,8 +216,8 @@ export function DocFormDialog({
                           variant="outline"
                           className="h-8 px-2.5 text-xs"
                           style={{
-                            borderColor: active ? '#C9A96E' : '#2A2418',
-                            background: active ? 'rgba(201,169,110,0.15)' : '#0E0E0A',
+                            borderColor: active ? '#C9A96E' : 'var(--border-subtle)',
+                            background: active ? 'rgba(201,169,110,0.15)' : 'var(--surface-input)',
                             color: active ? '#C9A96E' : '#FFF7E6',
                           }}
                           onClick={() => setTaxRate(preset.value)}
@@ -238,7 +238,7 @@ export function DocFormDialog({
               <Button
                 size="sm"
                 variant="outline"
-                className="border-[#C9A96E] bg-[#211B10] text-[#FFF7E6] shadow-sm shadow-black/20 hover:bg-[#C9A96E] hover:text-[#0A0805]"
+                className="border-[#C9A96E] bg-[#211B10] text-[var(--text-bright)] shadow-sm shadow-black/20 hover:bg-[#C9A96E] hover:text-[#0A0805]"
                 onClick={() => setLines(c => [...c, emptyLine()])}
               >
                 <Plus size={14} className="mr-1" /> 加一行
@@ -284,7 +284,7 @@ export function DocFormDialog({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 w-8 p-0 border border-[#4A3426] bg-[#1A1210] text-[#F7B4A7] hover:bg-[#3A1712] hover:text-[#FFE7E2] disabled:border-[#2A2418] disabled:bg-transparent disabled:text-[#6B6254]"
+                    className="h-8 w-8 p-0 border border-[#4A3426] bg-[#1A1210] text-[#F7B4A7] hover:bg-[#3A1712] hover:text-[#FFE7E2] disabled:border-[var(--border-subtle)] disabled:bg-transparent disabled:text-[#6B6254]"
                     disabled={lines.length === 1}
                     onClick={() => setLines(c => c.filter((_, i) => i !== index))}
                   >
@@ -300,7 +300,7 @@ export function DocFormDialog({
             <Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={fieldClassName} style={inputStyle} />
           </div>
 
-          <div className="rounded-md border px-4 py-3 text-sm space-y-1" style={{ borderColor: '#2A2418' }}>
+          <div className="rounded-md border px-4 py-3 text-sm space-y-1" style={{ borderColor: 'var(--border-subtle)' }}>
             <div className="flex justify-between">
               <span style={{ color: 'var(--muted-foreground)' }}>小计</span>
               <span>{money(totals.subtotal)}</span>
@@ -319,7 +319,7 @@ export function DocFormDialog({
         <DialogFooter>
           <Button
             variant="outline"
-            className="border-[#8A7A5A] bg-[#1A1812] text-[#FFF7E6] hover:bg-[#2A2418] hover:text-[#FFF7E6]"
+            className="border-[#8A7A5A] bg-[#1A1812] text-[var(--text-bright)] hover:bg-[var(--border-subtle)] hover:text-[var(--text-bright)]"
             onClick={() => onOpenChange(false)}
           >
             取消

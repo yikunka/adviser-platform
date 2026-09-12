@@ -55,7 +55,7 @@ export function FinancialCompanySelector() {
     : null
 
   return (
-    <div className="rounded-lg border border-[#2A2418] bg-card p-4 space-y-3">
+    <div className="rounded-lg border border-[var(--border-subtle)] bg-card p-4 space-y-3">
       <div>
         <h1 className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>
           {t('selectCompanyTitle')}
@@ -71,8 +71,8 @@ export function FinancialCompanySelector() {
           <button
             type="button"
             onClick={openDropdown}
-            className="flex w-full items-center gap-2 rounded-md border border-[#2A2418] px-3 py-2 text-sm transition-colors hover:border-[#C9A96E66]"
-            style={{ background: '#0E0E0A', color: selectedCompany ? 'var(--foreground)' : 'var(--muted-foreground)' }}
+            className="flex w-full items-center gap-2 rounded-md border border-[var(--border-subtle)] px-3 py-2 text-sm transition-colors hover:border-[#C9A96E66]"
+            style={{ background: 'var(--surface-input)', color: selectedCompany ? 'var(--foreground)' : 'var(--muted-foreground)' }}
           >
             <span className="flex-1 text-left truncate">{triggerLabel}</span>
             {selectedCompany && (
@@ -94,7 +94,7 @@ export function FinancialCompanySelector() {
               onKeyDown={e => e.key === 'Escape' && close()}
               placeholder={t('searchPlaceholder')}
               className="w-full rounded-md border border-[#C9A96E66] py-2 pl-8 pr-3 text-sm outline-none"
-              style={{ background: '#0E0E0A', color: 'var(--foreground)' }}
+              style={{ background: 'var(--surface-input)', color: 'var(--foreground)' }}
             />
           </div>
         )}
@@ -108,8 +108,8 @@ export function FinancialCompanySelector() {
         {/* Dropdown list */}
         {open && (
           <div
-            className="absolute top-full left-0 right-0 z-50 mt-1 max-h-64 overflow-y-auto rounded-md border border-[#2A2418]"
-            style={{ background: '#0E0E0A', boxShadow: '0 4px 20px rgba(0,0,0,0.6)' }}
+            className="absolute top-full left-0 right-0 z-50 mt-1 max-h-64 overflow-y-auto rounded-md border border-[var(--border-subtle)]"
+            style={{ background: 'var(--surface-input)', boxShadow: '0 4px 20px rgba(0,0,0,0.6)' }}
           >
             {loading ? (
               <div className="px-4 py-6 text-center text-sm" style={{ color: 'var(--muted-foreground)' }}>
@@ -120,7 +120,7 @@ export function FinancialCompanySelector() {
                 {t('empty')}
               </div>
             ) : (
-              <div className="divide-y divide-[#2A2418]">
+              <div className="divide-y divide-[var(--border-subtle)]">
                 {filtered.map(company => {
                   const isSelected = company.id === selectedCompanyId
                   return (
@@ -128,7 +128,7 @@ export function FinancialCompanySelector() {
                       key={company.id}
                       type="button"
                       onMouseDown={e => { e.preventDefault(); select(company.id) }}
-                      className="flex w-full items-start gap-3 px-4 py-2.5 text-left text-sm transition-colors hover:bg-[#1A1A12]"
+                      className="flex w-full items-start gap-3 px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--surface-panel)]"
                       style={{ borderLeft: isSelected ? '2px solid #C9A96E' : '2px solid transparent' }}
                     >
                       <span className="min-w-0 flex-1">
@@ -139,7 +139,7 @@ export function FinancialCompanySelector() {
                           {company.nameEn}
                         </span>
                         {company.financialManagerName ? (
-                          <span className="mt-0.5 block truncate text-xs" style={{ color: '#9F927B' }}>
+                          <span className="mt-0.5 block truncate text-xs" style={{ color: 'var(--text-placeholder)' }}>
                             {t('financialManagerLabel', { name: company.financialManagerName })}
                           </span>
                         ) : null}

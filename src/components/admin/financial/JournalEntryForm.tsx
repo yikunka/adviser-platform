@@ -69,16 +69,16 @@ type Props = {
   onContinued?: () => void
 }
 
-const modalContentClassName = 'financial-modal max-h-[96vh] w-[min(96vw,83rem)] overflow-y-auto border-[#2A2418] bg-[#11110E] text-[#FFF7E6] shadow-2xl ring-[#3A3428] sm:max-w-[83rem]'
-const modalFooterClassName = 'border-[#2A2418] bg-[#16130E]'
+const modalContentClassName = 'financial-modal max-h-[96vh] w-[min(96vw,83rem)] overflow-y-auto border-[var(--border-subtle)] bg-[var(--surface-modal)] text-[var(--text-bright)] shadow-2xl ring-[var(--border-strong)] sm:max-w-[83rem]'
+const modalFooterClassName = 'border-[var(--border-subtle)] bg-[var(--surface-footer)]'
 const labelClassName = 'text-[#EADDC3]'
-const fieldClassName = 'border-[#2A2418] bg-[#0E0E0A] text-[#FFF7E6] placeholder:text-[#9F927B]'
+const fieldClassName = 'border-[var(--border-subtle)] bg-[var(--surface-input)] text-[var(--text-bright)] placeholder:text-[var(--text-placeholder)]'
 const lineFieldClassName = `${fieldClassName} h-14 min-h-14 py-3 text-base`
 const lineTableCellClassName = 'py-4 align-middle'
-const selectContentClassName = 'financial-select-content border-[#2A2418] bg-[#11110E] text-[#FFF7E6]'
-const secondaryButtonClassName = 'border-[#3A3428] bg-[#0E0E0A] text-[#FFF7E6] hover:bg-[#1E1A12] hover:text-[#FFF7E6]'
+const selectContentClassName = 'financial-select-content border-[var(--border-subtle)] bg-[var(--surface-modal)] text-[var(--text-bright)]'
+const secondaryButtonClassName = 'border-[var(--border-strong)] bg-[var(--surface-input)] text-[var(--text-bright)] hover:bg-[var(--surface-panel)] hover:text-[var(--text-bright)]'
 const warningTextClassName = 'text-xs text-[#f59e0b]'
-const sourceTypeOptionClassName = 'flex cursor-pointer items-center gap-2 rounded-lg border border-[#2A2418] bg-[#0E0E0A] px-3 py-2 text-sm text-[#EADDC3] has-checked:border-[#C9A96E] has-checked:bg-[#C9A96E1F] has-checked:text-[#FFF7E6]'
+const sourceTypeOptionClassName = 'flex cursor-pointer items-center gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-input)] px-3 py-2 text-sm text-[#EADDC3] has-checked:border-[#C9A96E] has-checked:bg-[#C9A96E1F] has-checked:text-[var(--text-bright)]'
 
 function selectedCompanyLabel(companies: ScopeCompany[], id: string) {
   const company = companies.find(row => row.id === id)
@@ -340,10 +340,10 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={modalContentClassName}>
         <DialogHeader>
-          <DialogTitle className="text-[#FFF7E6]">
+          <DialogTitle className="text-[var(--text-bright)]">
             {isReopeningCancelled ? '重新编辑已取消日记账' : entry ? '编辑日记账' : '新增日记账'}
           </DialogTitle>
-          <DialogDescription className="text-[#B8AD98]">
+          <DialogDescription className="text-[var(--text-dim)]">
             {isReopeningCancelled
               ? '保存后凭证将恢复为待过账，可继续审核并过账生成总账记录。'
               : '保存后状态为待过账，使用审核并过账生成总账记录。'}
@@ -446,7 +446,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
 
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-[#FFF7E6]">分录明细</span>
+              <span className="text-sm font-medium text-[var(--text-bright)]">分录明细</span>
               {!totals.balanced && (
                 <Badge variant="outline" style={{ borderColor: '#f59e0b', color: '#f59e0b' }}>
                   差额：{(totals.debit - totals.credit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -465,7 +465,7 @@ export function JournalEntryForm({ open, onOpenChange, entry, fixedCompanyId, on
             </Button>
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-[#2A2418] bg-[#0B0B08]">
+          <div className="overflow-x-auto rounded-lg border border-[var(--border-subtle)] bg-[#0B0B08]">
             <Table>
               <TableHeader>
                 <TableRow>

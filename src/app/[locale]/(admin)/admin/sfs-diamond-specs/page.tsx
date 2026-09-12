@@ -157,7 +157,7 @@ function SpecModal({
       style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="w-full max-w-2xl rounded-lg p-6 space-y-5" style={{ background: '#111111', border: '1px solid #2A2418' }}>
+      <div className="w-full max-w-2xl rounded-lg p-6 space-y-5" style={{ background: 'var(--surface-modal)', border: '1px solid var(--border-subtle)' }}>
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>
@@ -171,7 +171,7 @@ function SpecModal({
             type="button"
             onClick={onClose}
             className="h-8 w-8 inline-flex items-center justify-center rounded-md"
-            style={{ color: 'var(--muted-foreground)', border: '1px solid #2A2418' }}
+            style={{ color: 'var(--muted-foreground)', border: '1px solid var(--border-subtle)' }}
             aria-label="Close"
           >
             <X size={14} />
@@ -183,7 +183,7 @@ function SpecModal({
             <label className="space-y-1.5">
               <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Category</span>
               <Select value={form.category} onValueChange={v => update('category', (v ?? 'SHAPE') as Category)}>
-                <SelectTrigger className="w-full" style={{ background: '#0A0A0A', border: '1px solid #2A2418' }}>
+                <SelectTrigger className="w-full" style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)' }}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -219,7 +219,7 @@ function SpecModal({
           <div className="grid gap-4 md:grid-cols-[160px_1fr]">
             <div
               className="h-36 rounded-lg flex items-center justify-center overflow-hidden"
-              style={{ background: '#0A0A0A', border: '1px solid #2A2418' }}
+              style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)' }}
             >
               {form.imageUrl ? (
                 <img src={form.imageUrl} alt={form.label || 'Spec image'} className="h-full w-full object-contain p-3" />
@@ -380,9 +380,9 @@ export default function SfsDiamondSpecsPage() {
           onClick={() => setFilter('ALL')}
           className="rounded-full px-3 py-1.5 text-xs font-medium border transition-colors"
           style={{
-            borderColor: filter === 'ALL' ? '#C9A96E' : '#2A2418',
+            borderColor: filter === 'ALL' ? '#C9A96E' : 'var(--border-subtle)',
             color: filter === 'ALL' ? '#C9A96E' : 'var(--muted-foreground)',
-            background: filter === 'ALL' ? 'rgba(201,169,110,0.12)' : '#0A0A0A',
+            background: filter === 'ALL' ? 'rgba(201,169,110,0.12)' : 'var(--surface)',
           }}
         >
           All
@@ -394,9 +394,9 @@ export default function SfsDiamondSpecsPage() {
             onClick={() => setFilter(category.value)}
             className="rounded-full px-3 py-1.5 text-xs font-medium border transition-colors"
             style={{
-              borderColor: filter === category.value ? '#C9A96E' : '#2A2418',
+              borderColor: filter === category.value ? '#C9A96E' : 'var(--border-subtle)',
               color: filter === category.value ? '#C9A96E' : 'var(--muted-foreground)',
-              background: filter === category.value ? 'rgba(201,169,110,0.12)' : '#0A0A0A',
+              background: filter === category.value ? 'rgba(201,169,110,0.12)' : 'var(--surface)',
             }}
           >
             {category.label}
@@ -408,14 +408,14 @@ export default function SfsDiamondSpecsPage() {
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead style={{ background: '#111108', borderBottom: '1px solid #2A2418' }}>
+              <thead style={{ background: 'var(--surface-modal)', borderBottom: '1px solid var(--border-subtle)' }}>
                 <tr>
                   {['Preview', 'Category', 'Label', 'Value', 'Sort', 'Status', 'Actions'].map(h => (
                     <th key={h} className="px-4 py-3 text-left font-medium whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#2A2418]">
+              <tbody className="divide-y divide-[var(--border-subtle)]">
                 {loading ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>
@@ -432,9 +432,9 @@ export default function SfsDiamondSpecsPage() {
                     </td>
                   </tr>
                 ) : filtered.map(option => (
-                  <tr key={option.id} className="hover:bg-[#1A1A12]/50 align-middle">
+                  <tr key={option.id} className="hover:bg-[var(--surface-panel)]/50 align-middle">
                     <td className="px-4 py-3">
-                      <div className="h-14 w-20 rounded-md flex items-center justify-center overflow-hidden" style={{ background: '#0A0A0A', border: '1px solid #2A2418' }}>
+                      <div className="h-14 w-20 rounded-md flex items-center justify-center overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)' }}>
                         {option.imageUrl ? (
                           <img src={option.imageUrl} alt={option.label} className="h-full w-full object-contain p-1.5" />
                         ) : (

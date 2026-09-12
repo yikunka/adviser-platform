@@ -56,9 +56,9 @@ const STATUS_COLORS: Record<JournalEntryDetails['status'], string> = {
   POSTED: '#10b981',
   CANCELLED: '#ef4444',
 }
-const modalContentClassName = 'financial-modal max-h-[92vh] overflow-y-auto border-[#2A2418] bg-[#11110E] text-[#FFF7E6] shadow-2xl ring-[#3A3428] sm:max-w-4xl'
-const modalFooterClassName = 'border-[#2A2418] bg-[#16130E]'
-const secondaryButtonClassName = 'border-[#3A3428] bg-[#0E0E0A] text-[#FFF7E6] hover:bg-[#1E1A12] hover:text-[#FFF7E6]'
+const modalContentClassName = 'financial-modal max-h-[92vh] overflow-y-auto border-[var(--border-subtle)] bg-[var(--surface-modal)] text-[var(--text-bright)] shadow-2xl ring-[var(--border-strong)] sm:max-w-4xl'
+const modalFooterClassName = 'border-[var(--border-subtle)] bg-[var(--surface-footer)]'
+const secondaryButtonClassName = 'border-[var(--border-strong)] bg-[var(--surface-input)] text-[var(--text-bright)] hover:bg-[var(--surface-panel)] hover:text-[var(--text-bright)]'
 
 function money(value: number) {
   return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -113,34 +113,34 @@ export function JournalViewModal({ open, onOpenChange, entry, onPosted, onPrint,
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={modalContentClassName}>
         <DialogHeader>
-          <DialogTitle className="text-[#FFF7E6]">{entry?.voucherNo ?? '日记账'}</DialogTitle>
-          <DialogDescription className="text-[#B8AD98]">日记账凭证详情。</DialogDescription>
+          <DialogTitle className="text-[var(--text-bright)]">{entry?.voucherNo ?? '日记账'}</DialogTitle>
+          <DialogDescription className="text-[var(--text-dim)]">日记账凭证详情。</DialogDescription>
         </DialogHeader>
 
         {entry ? (
           <div className="space-y-5">
-            <div className="grid gap-3 rounded-lg border border-[#2A2418] bg-[#0E0E0A] p-4 sm:grid-cols-2">
+            <div className="grid gap-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-input)] p-4 sm:grid-cols-2">
               <div>
-                <div className="text-xs text-[#B8AD98]">凭证号</div>
+                <div className="text-xs text-[var(--text-dim)]">凭证号</div>
                 <div className="font-mono">{entry.voucherNo}</div>
               </div>
               <div>
-                <div className="text-xs text-[#B8AD98]">日期</div>
+                <div className="text-xs text-[var(--text-dim)]">日期</div>
                 <div>{new Date(entry.date).toLocaleDateString('zh-HK')}</div>
               </div>
               <div className="sm:col-span-2">
-                <div className="text-xs text-[#B8AD98]">摘要</div>
+                <div className="text-xs text-[var(--text-dim)]">摘要</div>
                 <div>{entry.description}</div>
               </div>
               <div>
-                <div className="text-xs text-[#B8AD98]">状态</div>
+                <div className="text-xs text-[var(--text-dim)]">状态</div>
                 <Badge variant="outline" style={{ borderColor: STATUS_COLORS[entry.status], color: STATUS_COLORS[entry.status] }}>
                   {entry.status === 'DRAFT' ? '待过账' : entry.status === 'POSTED' ? '已过账' : '已取消'}
                 </Badge>
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-lg border border-[#2A2418] bg-[#0B0B08]">
+            <div className="overflow-x-auto rounded-lg border border-[var(--border-subtle)] bg-[#0B0B08]">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -177,11 +177,11 @@ export function JournalViewModal({ open, onOpenChange, entry, onPosted, onPrint,
 
             <div className="grid gap-3 text-sm sm:grid-cols-2">
               <div>
-                <span className="text-[#B8AD98]">创建人：</span>
+                <span className="text-[var(--text-dim)]">创建人：</span>
                 {entry.createdBy || '系统'}
               </div>
               <div>
-                <span className="text-[#B8AD98]">创建时间：</span>
+                <span className="text-[var(--text-dim)]">创建时间：</span>
                 {entry.createdAt ? new Date(entry.createdAt).toLocaleString('zh-HK') : '-'}
               </div>
             </div>

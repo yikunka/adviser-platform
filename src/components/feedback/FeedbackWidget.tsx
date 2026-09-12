@@ -491,19 +491,19 @@ export function FeedbackWidget({ locale = 'zh' }: { locale?: FeedbackWidgetLocal
               width: '100%',
               maxWidth: 440,
               height: 580,
-              background: '#11110E',
-              border: '1px solid #2A2418',
+              background: 'var(--surface-modal)',
+              border: '1px solid var(--border-subtle)',
               boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
             }}
           >
             {/* Header */}
             <div
               className="flex items-center justify-between px-4 py-3 rounded-t-2xl flex-shrink-0"
-              style={{ borderBottom: '1px solid #2A2418', background: '#161410' }}
+              style={{ borderBottom: '1px solid var(--border-subtle)', background: '#161410' }}
             >
               <div className="flex items-center gap-2">
                 <MessageSquarePlus size={16} style={{ color: '#C9A96E' }} />
-                <span className="text-sm font-semibold" style={{ color: '#FFF7E6' }}>
+                <span className="text-sm font-semibold" style={{ color: 'var(--text-bright)' }}>
                   {copy.dialogTitle}
                 </span>
               </div>
@@ -513,7 +513,7 @@ export function FeedbackWidget({ locale = 'zh' }: { locale?: FeedbackWidgetLocal
                     type="button"
                     onClick={reset}
                     className="p-1.5 rounded-md text-xs transition-colors hover:bg-white/5"
-                    style={{ color: '#9F927B' }}
+                    style={{ color: 'var(--text-placeholder)' }}
                     title={copy.resetLabel}
                   >
                     {copy.resetLabel}
@@ -523,7 +523,7 @@ export function FeedbackWidget({ locale = 'zh' }: { locale?: FeedbackWidgetLocal
                   type="button"
                   onClick={closeDialog}
                   className="p-1.5 rounded-md transition-colors hover:bg-white/5"
-                  style={{ color: '#9F927B' }}
+                  style={{ color: 'var(--text-placeholder)' }}
                   aria-label="Close"
                 >
                   <X size={16} />
@@ -558,7 +558,7 @@ export function FeedbackWidget({ locale = 'zh' }: { locale?: FeedbackWidgetLocal
                           style={
                             msg.role === 'user'
                               ? { background: '#C9A96E', color: '#0A0805' }
-                              : { background: '#1E1A14', color: '#EDE4D0', border: '1px solid #2A2418' }
+                              : { background: '#1E1A14', color: '#EDE4D0', border: '1px solid var(--border-subtle)' }
                           }
                         >
                           {isStreamingPlaceholder ? (
@@ -591,7 +591,7 @@ export function FeedbackWidget({ locale = 'zh' }: { locale?: FeedbackWidgetLocal
                     >
                       <div className="flex items-start justify-between gap-2">
                         <CheckCircle size={15} style={{ color: '#C9A96E', flexShrink: 0, marginTop: 1 }} />
-                        <span className="flex-1 font-medium" style={{ color: '#FFF7E6' }}>
+                        <span className="flex-1 font-medium" style={{ color: 'var(--text-bright)' }}>
                           {confirmed.title}
                         </span>
                         <span
@@ -669,7 +669,7 @@ export function FeedbackWidget({ locale = 'zh' }: { locale?: FeedbackWidgetLocal
               <form
                 onSubmit={handleSubmit}
                 className="flex-shrink-0 p-3 flex items-end gap-2"
-                style={{ borderTop: '1px solid #2A2418' }}
+                style={{ borderTop: '1px solid var(--border-subtle)' }}
               >
                 {/* Hidden file input */}
                 <input
@@ -687,7 +687,7 @@ export function FeedbackWidget({ locale = 'zh' }: { locale?: FeedbackWidgetLocal
                   onClick={() => fileInputRef.current?.click()}
                   disabled={streaming || isUploading}
                   className="flex-shrink-0 flex items-center justify-center rounded-xl p-2.5 transition-opacity disabled:opacity-40"
-                  style={{ border: '1px solid #2A2418', color: '#7A6A50' }}
+                  style={{ border: '1px solid var(--border-subtle)', color: '#7A6A50' }}
                   title={copy.uploadTitle}
                 >
                   {isUploading ? <Loader2 size={15} className="animate-spin" /> : <Paperclip size={15} />}
@@ -703,9 +703,9 @@ export function FeedbackWidget({ locale = 'zh' }: { locale?: FeedbackWidgetLocal
                   disabled={streaming}
                   className="flex-1 resize-none rounded-xl px-3 py-2 text-sm outline-none disabled:opacity-50"
                   style={{
-                    background: '#0E0E0A',
-                    border: '1px solid #2A2418',
-                    color: '#FFF7E6',
+                    background: 'var(--surface-input)',
+                    border: '1px solid var(--border-subtle)',
+                    color: 'var(--text-bright)',
                     minHeight: 40,
                     maxHeight: 120,
                   }}

@@ -44,6 +44,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html suppressHydrationWarning className="h-full antialiased">
       <body suppressHydrationWarning className="min-h-full flex flex-col bg-background text-foreground">
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('6am-platform-theme');if(t!=='day'&&t!=='night')return;var c=t==='day'?'theme-day':'theme-dark';document.documentElement.classList.add(c);if(t==='night')document.documentElement.classList.add('dark');document.documentElement.setAttribute('data-ui-theme',t);document.documentElement.style.colorScheme=t==='day'?'light':'dark';}catch(e){}})();`,
+          }}
+        />
         {children}
       </body>
     </html>

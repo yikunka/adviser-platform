@@ -94,7 +94,7 @@ const RESOLUTION_COLOR: Record<string, string> = {
 const thStyle: React.CSSProperties = {
   textAlign: 'left', padding: '0.75rem 1rem', fontWeight: 500,
   fontSize: '0.875rem', color: 'var(--muted-foreground)',
-  background: '#1A1A12', borderBottom: '1px solid #2A2418',
+  background: 'var(--surface-panel)', borderBottom: '1px solid var(--border-subtle)',
 }
 
 export default function AMLPage() {
@@ -343,7 +343,7 @@ export default function AMLPage() {
       const expanded = expandedSourceId === s.id
       const bundle = sourceRecords[s.id]
       const mainRow = (
-        <tr key={s.id} className="hover:bg-[#1A1A12] transition-colors">
+        <tr key={s.id} className="hover:bg-[var(--surface-panel)] transition-colors">
           <td className="px-4 py-2.5 font-mono text-xs" style={{ color: 'var(--muted-foreground)' }}>{s.seqNo}</td>
           <td className="px-4 py-2.5">
             <button
@@ -371,7 +371,7 @@ export default function AMLPage() {
       if (!expanded) return [mainRow]
       const detailRow = (
         <tr key={`${s.id}-records`}>
-          <td colSpan={6} className="px-4 py-3" style={{ background: '#0E0E0A' }}>
+          <td colSpan={6} className="px-4 py-3" style={{ background: 'var(--surface-input)' }}>
             {bundle?.loading ? (
               <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Loading list content…</p>
             ) : !bundle?.records.length ? (
@@ -381,16 +381,16 @@ export default function AMLPage() {
                 <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
                   Showing {bundle.records.length} of {bundle.total.toLocaleString()} records
                 </p>
-                <div className="max-h-64 overflow-y-auto rounded border border-[#2A2418]">
+                <div className="max-h-64 overflow-y-auto rounded border border-[var(--border-subtle)]">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr style={{ background: '#1A1A12' }}>
+                      <tr style={{ background: 'var(--surface-panel)' }}>
                         {['Name', 'Aliases', 'Type', 'Reason'].map(h => (
                           <th key={h} className="px-3 py-2 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#2A2418]">
+                    <tbody className="divide-y divide-[var(--border-subtle)]">
                       {bundle.records.map(rec => (
                         <tr key={rec.id}>
                           <td className="px-3 py-1.5" style={{ color: 'var(--foreground)' }}>{rec.primaryName}</td>
@@ -418,13 +418,13 @@ export default function AMLPage() {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr style={{ background: '#1A1A12', borderBottom: '1px solid #2A2418' }}>
+            <tr style={{ background: 'var(--surface-panel)', borderBottom: '1px solid var(--border-subtle)' }}>
               {['#', '名单 / List', 'Format', 'Last Downloaded', 'Records in DB', 'Last Run Status'].map(h => (
                 <th key={h} className="px-4 py-2 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#2A2418]">
+          <tbody className="divide-y divide-[var(--border-subtle)]">
             {renderSourceRows(rows)}
           </tbody>
         </table>
@@ -434,16 +434,16 @@ export default function AMLPage() {
 
   function renderFatfEntryTable(entries: FatfListEntry[]) {
     return (
-      <div className="max-h-80 overflow-y-auto rounded border border-[#2A2418]">
+      <div className="max-h-80 overflow-y-auto rounded border border-[var(--border-subtle)]">
         <table className="w-full text-xs">
           <thead>
-            <tr style={{ background: '#1A1A12' }}>
+            <tr style={{ background: 'var(--surface-panel)' }}>
               {['Jurisdiction / 司法管轄區', 'Aliases / 別名', 'Listing reason', 'As of'].map(h => (
                 <th key={h} className="px-3 py-2 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#2A2418]">
+          <tbody className="divide-y divide-[var(--border-subtle)]">
             {entries.map((e, i) => (
               <tr key={`${e.name}-${i}`}>
                 <td className="px-3 py-2 font-medium" style={{ color: 'var(--foreground)' }}>{e.name}</td>
@@ -486,7 +486,7 @@ export default function AMLPage() {
       <div className="rounded-lg overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
         <button
           className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
-          style={{ color: 'var(--foreground)', borderBottom: showSources ? '1px solid #2A2418' : 'none' }}
+          style={{ color: 'var(--foreground)', borderBottom: showSources ? '1px solid var(--border-subtle)' : 'none' }}
           onClick={() => setShowSources(v => !v)}
         >
           <span>制裁名单状态 · Sanctions Lists ({sanctionsSources.length})</span>
@@ -500,7 +500,7 @@ export default function AMLPage() {
         <button
           type="button"
           className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
-          style={{ color: 'var(--foreground)', borderBottom: showFatfSources ? '1px solid #2A2418' : 'none' }}
+          style={{ color: 'var(--foreground)', borderBottom: showFatfSources ? '1px solid var(--border-subtle)' : 'none' }}
           onClick={() => setShowFatfSources(v => !v)}
         >
           <span>
@@ -509,7 +509,7 @@ export default function AMLPage() {
           <span style={{ color: 'var(--muted-foreground)' }}>{showFatfSources ? '▲' : '▼'}</span>
         </button>
         {showFatfSources && (
-          <div className="divide-y divide-[#2A2418]">
+          <div className="divide-y divide-[var(--border-subtle)]">
             {(fatfLists.length
               ? fatfLists
               : [
@@ -549,7 +549,7 @@ export default function AMLPage() {
                 <div key={list.key}>
                   <button
                     type="button"
-                    className="w-full flex items-start justify-between gap-3 px-4 py-3 text-left hover:bg-[#1A1A12] transition-colors"
+                    className="w-full flex items-start justify-between gap-3 px-4 py-3 text-left hover:bg-[var(--surface-panel)] transition-colors"
                     onClick={() => setExpandedFatfKey(open ? null : list.key)}
                   >
                     <div className="min-w-0">
@@ -578,7 +578,7 @@ export default function AMLPage() {
                     </div>
                   </button>
                   {open ? (
-                    <div className="px-4 pb-4 space-y-2" style={{ background: '#0E0E0A' }}>
+                    <div className="px-4 pb-4 space-y-2" style={{ background: 'var(--surface-input)' }}>
                       {list.referenceUrl ? (
                         <a
                           href={list.referenceUrl}
@@ -611,14 +611,14 @@ export default function AMLPage() {
         <button
           type="button"
           className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
-          style={{ color: 'var(--foreground)', borderBottom: showPepScreening ? '1px solid #2A2418' : 'none' }}
+          style={{ color: 'var(--foreground)', borderBottom: showPepScreening ? '1px solid var(--border-subtle)' : 'none' }}
           onClick={() => setShowPepScreening(v => !v)}
         >
           <span>PEP Screening · OpenSanctions</span>
           <span style={{ color: 'var(--muted-foreground)' }}>{showPepScreening ? '▲' : '▼'}</span>
         </button>
         {showPepScreening && (
-          <div className="px-4 py-4 space-y-3" style={{ background: '#0E0E0A' }}>
+          <div className="px-4 py-4 space-y-3" style={{ background: 'var(--surface-input)' }}>
             <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
               PEP Screening
             </p>
@@ -655,7 +655,7 @@ export default function AMLPage() {
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium hover:underline"
-                style={{ borderColor: '#2A2418', color: '#C9A96E' }}
+                style={{ borderColor: 'var(--border-subtle)', color: '#C9A96E' }}
               >
                 opensanctions.org →
               </a>
@@ -664,7 +664,7 @@ export default function AMLPage() {
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium hover:underline"
-                style={{ borderColor: '#2A2418', color: '#C9A96E' }}
+                style={{ borderColor: 'var(--border-subtle)', color: '#C9A96E' }}
               >
                 PEP dataset →
               </a>
@@ -720,11 +720,11 @@ export default function AMLPage() {
                 <th style={thStyle} />
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#2A2418]">
+            <tbody className="divide-y divide-[var(--border-subtle)]">
               {alerts.map(alert => (
                 <tr
                   key={alert.id}
-                  className="cursor-pointer hover:bg-[#1A1A12] transition-colors"
+                  className="cursor-pointer hover:bg-[var(--surface-panel)] transition-colors"
                   tabIndex={0}
                   onClick={() => router.push(`/admin/aml/${alert.id}`)}
                   onKeyDown={e => {

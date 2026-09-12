@@ -746,7 +746,7 @@ export default function KYCDetailPage() {
       <div className="flex items-start gap-3 flex-wrap">
         <Link
           href="/admin/kyc"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#2A2418] shrink-0 mt-0.5"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border-subtle)] shrink-0 mt-0.5"
           aria-label="Back to KYC queue"
         >
           <ChevronLeft size={16} style={{ color: '#C9A96E' }} />
@@ -757,7 +757,7 @@ export default function KYCDetailPage() {
             {selected.nameZh ? ` (${selected.nameZh})` : ''}
           </h1>
           {selected.kycCode ? (
-            <span className="rounded-md border border-[#2A2418] px-2 py-0.5 text-xs font-semibold" style={{ color: '#C9A96E' }}>
+            <span className="rounded-md border border-[var(--border-subtle)] px-2 py-0.5 text-xs font-semibold" style={{ color: '#C9A96E' }}>
               {selected.kycCode}
             </span>
           ) : null}
@@ -771,7 +771,7 @@ export default function KYCDetailPage() {
                   type="button"
                   variant="outline"
                   className="h-8 gap-1.5 px-2.5 text-xs"
-                  style={{ borderColor: '#2A2418', color: '#C9A96E' }}
+                  style={{ borderColor: 'var(--border-subtle)', color: '#C9A96E' }}
                   disabled={analyzingDocs}
                   onClick={() => void analyzeUploadedDocs()}
                 >
@@ -782,7 +782,7 @@ export default function KYCDetailPage() {
                   type="button"
                   variant="outline"
                   className="h-8 gap-1.5 px-2.5 text-xs"
-                  style={{ borderColor: '#2A2418', color: '#C9A96E' }}
+                  style={{ borderColor: 'var(--border-subtle)', color: '#C9A96E' }}
                   onClick={startEdit}
                 >
                   <Pencil size={14} />
@@ -817,7 +817,7 @@ export default function KYCDetailPage() {
         return (
           <div
             className="rounded-lg px-3 py-2 text-sm"
-            style={{ background: 'rgba(201,169,110,0.1)', border: '1px solid #2A2418' }}
+            style={{ background: 'rgba(201,169,110,0.1)', border: '1px solid var(--border-subtle)' }}
           >
             <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--muted-foreground)' }}>
               {t('clientAccount')}
@@ -885,7 +885,7 @@ export default function KYCDetailPage() {
           rows={5}
           maxLength={5000}
           placeholder="例如：补充联系方式、亲属关系说明、面谈记录、特殊合规关注点等…"
-          className="border-[#2A2418] bg-[#141410] text-[var(--foreground)] placeholder:text-[#5C5448]"
+          className="border-[var(--border-subtle)] bg-[#141410] text-[var(--foreground)] placeholder:text-[#5C5448]"
         />
         <div className="mt-2 flex items-center gap-2">
           <Button
@@ -912,7 +912,7 @@ export default function KYCDetailPage() {
               Analysis draft from ID / address / KYC declaration — review and edit below, then Save to apply. Nothing is written until you save.
             </div>
           ) : null}
-          <div className="rounded-lg border border-[#2A2418] p-3">
+          <div className="rounded-lg border border-[var(--border-subtle)] p-3">
             <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
               Client Account
             </label>
@@ -921,11 +921,11 @@ export default function KYCDetailPage() {
               onChange={e => setEditClientId(e.target.value)}
               disabled={savingEdit}
               className="mb-3 w-full rounded-md px-3 py-2 text-sm"
-              style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: 'var(--foreground)', outline: 'none' }}
+              style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)', outline: 'none' }}
             >
-              <option value="" style={{ background: '#141414' }}>No client account</option>
+              <option value="" style={{ background: 'var(--surface-raised)' }}>No client account</option>
               {clients.map(client => (
-                <option key={client.id} value={client.id} style={{ background: '#141414' }}>
+                <option key={client.id} value={client.id} style={{ background: 'var(--surface-raised)' }}>
                   {client.email} — {client.nameEn}{client.nameZh ? ` (${client.nameZh})` : ''}
                 </option>
               ))}
@@ -938,10 +938,10 @@ export default function KYCDetailPage() {
               onChange={e => setEditStatus(e.target.value)}
               disabled={savingEdit}
               className="w-full rounded-md px-3 py-2 text-sm"
-              style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: 'var(--foreground)', outline: 'none' }}
+              style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)', outline: 'none' }}
             >
               {KYC_STATUS_OPTIONS.map(status => (
-                <option key={status} value={status} style={{ background: '#141414' }}>{status}</option>
+                <option key={status} value={status} style={{ background: 'var(--surface-raised)' }}>{status}</option>
               ))}
             </select>
             <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
@@ -953,7 +953,7 @@ export default function KYCDetailPage() {
             onChange={setEditValues}
             disabled={savingEdit}
           />
-          <div className="flex gap-2 border-t pt-4" style={{ borderColor: '#2A2418' }}>
+          <div className="flex gap-2 border-t pt-4" style={{ borderColor: 'var(--border-subtle)' }}>
             <Button disabled={savingEdit} onClick={saveEdit}>
               {savingEdit ? 'Saving…' : analysisDraft ? 'Confirm & save draft' : 'Save changes'}
             </Button>
@@ -1037,7 +1037,7 @@ export default function KYCDetailPage() {
             type="button"
             variant="outline"
             className="h-8 gap-1.5 px-2.5 text-xs"
-            style={{ borderColor: '#2A2418', color: '#C9A96E' }}
+            style={{ borderColor: 'var(--border-subtle)', color: '#C9A96E' }}
             disabled={analyzingDocs || editing}
             onClick={() => void analyzeUploadedDocs()}
           >
@@ -1049,7 +1049,7 @@ export default function KYCDetailPage() {
           {VISIBLE_KYC_DOCUMENT_TYPES.map(docType => (
             <label
               key={docType}
-              className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-[#2A2418] px-2.5 text-xs"
+              className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-[var(--border-subtle)] px-2.5 text-xs"
               style={{ color: uploadingDocType === docType ? 'var(--muted-foreground)' : '#C9A96E' }}
             >
               <Upload size={14} />
@@ -1084,7 +1084,7 @@ export default function KYCDetailPage() {
               {visibleDocs.map(doc => (
                 <li
                   key={doc.id}
-                  className="flex flex-col gap-2 rounded-md border border-[#2A2418] px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-2 rounded-md border border-[var(--border-subtle)] px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium" style={{ color: 'var(--foreground)' }} title={doc.fileName}>
@@ -1099,7 +1099,7 @@ export default function KYCDetailPage() {
                       href={fileHref(doc)}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[#2A2418] px-2.5 text-xs"
+                      className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[var(--border-subtle)] px-2.5 text-xs"
                       style={{ color: '#C9A96E' }}
                     >
                       <Eye size={14} />
@@ -1107,7 +1107,7 @@ export default function KYCDetailPage() {
                     </a>
                     <a
                       href={fileHref(doc, true)}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[#2A2418] px-2.5 text-xs"
+                      className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[var(--border-subtle)] px-2.5 text-xs"
                       style={{ color: '#C9A96E' }}
                     >
                       <Download size={14} />
@@ -1131,7 +1131,7 @@ export default function KYCDetailPage() {
       </DetailSection>
 
       {/* Four-step screening: AML → FATF → PEP → Adverse media */}
-      <div className="border-t pt-4 space-y-3" style={{ borderColor: '#2A2418' }}>
+      <div className="border-t pt-4 space-y-3" style={{ borderColor: 'var(--border-subtle)' }}>
         <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#C9A96E' }}>
           Screening (AML → FATF → PEP → Adverse media)
         </p>
@@ -1186,7 +1186,7 @@ export default function KYCDetailPage() {
                   <div
                     key={step.key}
                     className="rounded-lg border px-3 py-2.5 space-y-3"
-                    style={{ borderColor: '#2A2418', background: 'rgba(201,169,110,0.04)' }}
+                    style={{ borderColor: 'var(--border-subtle)', background: 'rgba(201,169,110,0.04)' }}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -1212,7 +1212,7 @@ export default function KYCDetailPage() {
                         onClick={() => void runScreenStep(step.key)}
                         className="text-xs h-7 px-3 shrink-0"
                         style={{
-                          borderColor: '#2A2418',
+                          borderColor: 'var(--border-subtle)',
                           color: !step.enabled || amlLoading ? 'var(--muted-foreground)' : '#C9A96E',
                         }}
                       >
@@ -1229,7 +1229,7 @@ export default function KYCDetailPage() {
                         && !step.status.skipped,
                       )
                       return (
-                        <div className="space-y-3 border-t pt-3" style={{ borderColor: '#2A2418' }}>
+                        <div className="space-y-3 border-t pt-3" style={{ borderColor: 'var(--border-subtle)' }}>
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
                               PEP alerts (AML&PEP screening)
@@ -1265,7 +1265,7 @@ export default function KYCDetailPage() {
                               </p>
                               <textarea
                                 className="w-full rounded-md px-3 py-2 text-xs"
-                                style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: 'var(--foreground)', outline: 'none' }}
+                                style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)', outline: 'none' }}
                                 rows={2}
                                 placeholder="Explain the PEP match disposition (required)…"
                                 value={pepPassNotes}
@@ -1278,7 +1278,7 @@ export default function KYCDetailPage() {
                                 onClick={() => void submitManualPepPass()}
                                 className="text-xs h-8 px-3"
                                 style={{
-                                  borderColor: '#2A2418',
+                                  borderColor: 'var(--border-subtle)',
                                   color: amlLoading || !pepPassNotes.trim() ? 'var(--muted-foreground)' : '#C9A96E',
                                 }}
                               >
@@ -1307,7 +1307,7 @@ export default function KYCDetailPage() {
                 return (
                   <div
                     className="rounded-lg border px-3 py-3 space-y-3"
-                    style={{ borderColor: '#2A2418', background: 'rgba(201,169,110,0.06)' }}
+                    style={{ borderColor: 'var(--border-subtle)', background: 'rgba(201,169,110,0.06)' }}
                   >
                     <div>
                       <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
@@ -1340,7 +1340,7 @@ export default function KYCDetailPage() {
                       <label
                         className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border px-3 text-xs"
                         style={{
-                          borderColor: '#2A2418',
+                          borderColor: 'var(--border-subtle)',
                           color: uploadingDocType ? 'var(--muted-foreground)' : '#C9A96E',
                         }}
                       >
@@ -1385,7 +1385,7 @@ export default function KYCDetailPage() {
                       </p>
                       <textarea
                         className="w-full rounded-md px-3 py-2 text-xs"
-                        style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: 'var(--foreground)', outline: 'none' }}
+                        style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)', outline: 'none' }}
                         rows={2}
                         placeholder="Sources checked, findings, rationale…"
                         value={adverseMediaNotes}
@@ -1462,7 +1462,7 @@ export default function KYCDetailPage() {
       </div>
 
       {/* Due Diligence Reports */}
-      <div className="border-t pt-4" style={{ borderColor: '#2A2418' }}>
+      <div className="border-t pt-4" style={{ borderColor: 'var(--border-subtle)' }}>
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#C9A96E' }}>Due Diligence Reports</p>
@@ -1484,7 +1484,7 @@ export default function KYCDetailPage() {
                 }}
               />
               <span
-                className="inline-flex h-7 items-center rounded-md border border-[#2A2418] px-3 text-xs"
+                className="inline-flex h-7 items-center rounded-md border border-[var(--border-subtle)] px-3 text-xs"
                 style={{ color: uploadingDocType === 'PERSON_DDR' ? 'var(--muted-foreground)' : 'var(--foreground)' }}
               >
                 {uploadingDocType === 'PERSON_DDR' ? 'Uploading…' : 'Upload signed'}
@@ -1496,7 +1496,7 @@ export default function KYCDetailPage() {
               onClick={generatePersonDdr}
               className="text-xs h-7 px-3"
               style={{
-                borderColor: '#2A2418',
+                borderColor: 'var(--border-subtle)',
                 color: generatingDdr || !amlData?.gate?.canGenerateDdr ? 'var(--muted-foreground)' : '#C9A96E',
               }}
               title={!amlData?.gate?.canGenerateDdr ? 'Complete AML → FATF → PEP → Adverse media (all CLEAR) first' : undefined}
@@ -1524,7 +1524,7 @@ export default function KYCDetailPage() {
               {ddrDocs.map(doc => (
                 <li
                   key={doc.id}
-                  className="flex items-center justify-between gap-2 rounded-md border border-[#2A2418] px-3 py-2"
+                  className="flex items-center justify-between gap-2 rounded-md border border-[var(--border-subtle)] px-3 py-2"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium" style={{ color: 'var(--foreground)' }} title={doc.fileName}>
@@ -1538,7 +1538,7 @@ export default function KYCDetailPage() {
                     <button
                       type="button"
                       onClick={() => downloadKycDoc(doc)}
-                      className="inline-flex h-7 items-center gap-1 rounded-md border border-[#2A2418] px-2 text-xs"
+                      className="inline-flex h-7 items-center gap-1 rounded-md border border-[var(--border-subtle)] px-2 text-xs"
                       style={{ color: '#C9A96E' }}
                     >
                       <Download size={12} />
@@ -1563,14 +1563,14 @@ export default function KYCDetailPage() {
 
       {/* Actions */}
       {!editing ? (
-      <div className="border-t pt-4" style={{ borderColor: '#2A2418' }}>
+      <div className="border-t pt-4" style={{ borderColor: 'var(--border-subtle)' }}>
         {selected.kycStatus === 'DRAFT' || selected.kycStatus === 'SUBMITTED' || selected.kycStatus === 'PENDING_INFO' ? (
           <div className="space-y-3">
             <div className="space-y-1">
               <label className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('rejectReason')}</label>
               <textarea
                 className="w-full rounded-md px-3 py-2 text-sm"
-                style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: 'var(--foreground)', outline: 'none' }}
+                style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)', outline: 'none' }}
                 rows={3}
                 placeholder={t('reasonPlaceholder')}
                 value={reason}

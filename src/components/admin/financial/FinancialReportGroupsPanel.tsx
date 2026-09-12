@@ -113,7 +113,7 @@ export function FinancialReportGroupsPanel() {
   }
 
   return (
-    <div className="rounded-lg border border-[#2A2418] bg-card p-4 space-y-4">
+    <div className="rounded-lg border border-[var(--border-subtle)] bg-card p-4 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>
@@ -129,7 +129,7 @@ export function FinancialReportGroupsPanel() {
       </div>
 
       {readOnly ? (
-        <div className="rounded-lg border border-[#C9A96E55] bg-[#C9A96E14] px-4 py-3 text-sm" style={{ color: '#EADDC3' }}>
+        <div className="rounded-lg border border-[#C9A96E55] bg-[#C9A96E14] px-4 py-3 text-sm" style={{ color: 'var(--text-label)' }}>
           Staff 账号可查看和导出合并报表，但不能新增或删除合并报表组合。
         </div>
       ) : null}
@@ -141,7 +141,7 @@ export function FinancialReportGroupsPanel() {
             onChange={e => setName(e.target.value)}
             placeholder="组合名称"
             className="h-9"
-            style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
+            style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)' }}
           />
           <div className="flex gap-2 overflow-x-auto pb-1">
             {companies.map(company => {
@@ -154,8 +154,8 @@ export function FinancialReportGroupsPanel() {
                   className="shrink-0 rounded-md border px-3 py-2 text-left text-xs"
                   style={{
                     minWidth: 190,
-                    borderColor: checked ? '#C9A96E' : '#2A2418',
-                    background: checked ? 'rgba(201,169,110,0.10)' : '#0E0E0A',
+                    borderColor: checked ? '#C9A96E' : 'var(--border-subtle)',
+                    background: checked ? 'rgba(201,169,110,0.10)' : 'var(--surface-input)',
                     color: checked ? '#FFF7E6' : 'var(--foreground)',
                   }}
                 >
@@ -188,8 +188,8 @@ export function FinancialReportGroupsPanel() {
                 className="flex shrink-0 items-center gap-2 rounded-md border px-3 py-2"
                 style={{
                   minWidth: 240,
-                  borderColor: active ? '#C9A96E' : '#2A2418',
-                  background: active ? 'rgba(201,169,110,0.10)' : '#0E0E0A',
+                  borderColor: active ? '#C9A96E' : 'var(--border-subtle)',
+                  background: active ? 'rgba(201,169,110,0.10)' : 'var(--surface-input)',
                 }}
               >
                 <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setSelectedGroupId(group.id)}>
@@ -220,7 +220,7 @@ export function FinancialReportGroupsPanel() {
       </div>
 
       {selectedGroup ? (
-        <div className="border-t border-[#2A2418] pt-4">
+        <div className="border-t border-[var(--border-subtle)] pt-4">
           <div className="mb-3 flex items-center gap-2 text-sm font-medium" style={{ color: '#C9A96E' }}>
             <FileBarChart size={15} />
             {selectedGroup.name}

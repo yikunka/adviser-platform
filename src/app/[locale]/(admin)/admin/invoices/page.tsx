@@ -241,7 +241,7 @@ export default function InvoicesPage() {
                 accept="application/pdf,.pdf"
                 onChange={handleHistoryFileChange}
                 disabled={historyUploading}
-                className="block w-full rounded-md border border-[#2A2418] bg-[#0A0A0A] px-3 py-2 text-sm"
+                className="block w-full rounded-md border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-2 text-sm"
               />
             </div>
             <div>
@@ -288,7 +288,7 @@ export default function InvoicesPage() {
           value={status}
           onChange={e => { setStatus(e.target.value); setPage(1) }}
           className="max-w-xs rounded-md px-3 py-2 text-sm"
-          style={{ background: '#0A0A0A', border: '1px solid #2A2418', color: '#F0EAD8' }}
+          style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--text-cream)' }}
         >
           <option value="">{t('allStatuses')}</option>
           {(['DRAFT', 'SENT', 'PAID', 'CANCELLED'] as const).map(s => (
@@ -300,7 +300,7 @@ export default function InvoicesPage() {
       <Card>
         <CardContent className="p-0">
           <table className="w-full text-sm">
-            <thead style={{ background: '#1A1A12', borderBottom: '1px solid #2A2418' }}>
+            <thead style={{ background: 'var(--surface-panel)', borderBottom: '1px solid var(--border-subtle)' }}>
               <tr>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('invoiceNumber')}</th>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--muted-foreground)' }}>{t('customer')}</th>
@@ -311,13 +311,13 @@ export default function InvoicesPage() {
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#2A2418]">
+            <tbody className="divide-y divide-[var(--border-subtle)]">
               {loading ? (
                 <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>{t('loading')}</td></tr>
               ) : invoices.length === 0 ? (
                 <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: 'var(--muted-foreground)' }}>{t('empty')}</td></tr>
               ) : invoices.map(inv => (
-                <tr key={inv.id} className="hover:bg-[#1A1A12]/50">
+                <tr key={inv.id} className="hover:bg-[var(--surface-panel)]/50">
                   <td className="px-4 py-3 font-mono text-xs">{inv.invoiceNumber}</td>
                   <td className="px-4 py-3">
                     <div>{inv.company?.nameEn ?? inv.keyPerson?.nameEn ?? inv.billToName}</div>
@@ -377,7 +377,7 @@ export default function InvoicesPage() {
           ) : (
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
               {historicalFiles.map(file => (
-                <div key={file.id} className="rounded-md border border-[#2A2418] bg-[#0E0E0A] p-3">
+                <div key={file.id} className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface-input)] p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{file.title}</p>
@@ -398,7 +398,7 @@ export default function InvoicesPage() {
                       <Download size={15} />
                     </Button>
                   </div>
-                  <div className="mt-3 border-t border-[#2A2418] pt-3">
+                  <div className="mt-3 border-t border-[var(--border-subtle)] pt-3">
                     <div className="mb-2 flex items-center justify-between gap-2">
                       <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>备注</p>
                       {editingHistoryFileId === file.id ? (

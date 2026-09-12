@@ -364,13 +364,13 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
               {scope.subtitle}
             </p>
           </div>
-          <Badge variant="outline" className="border-[#2A2418] text-[#C9A96E]">
+          <Badge variant="outline" className="border-[var(--border-subtle)] text-[#C9A96E]">
             HKFRS
           </Badge>
         </div>
       </div>
 
-      <Card className="rounded-lg border-[#2A2418] bg-card">
+      <Card className="rounded-lg border-[var(--border-subtle)] bg-card">
         <CardHeader className="pb-4">
           <div className="flex flex-wrap items-center gap-4">
             <Input
@@ -391,10 +391,10 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
             </Button>
             {reports ? (
               <>
-                <Button variant="outline" size="sm" onClick={exportWorkbook} style={{ borderColor: '#2A2418' }}>
+                <Button variant="outline" size="sm" onClick={exportWorkbook} style={{ borderColor: 'var(--border-subtle)' }}>
                   <Download size={15} className="mr-2" /> 导出全部报表
                 </Button>
-                <Button variant="outline" size="sm" onClick={exportTrialBalance} style={{ borderColor: '#2A2418' }}>
+                <Button variant="outline" size="sm" onClick={exportTrialBalance} style={{ borderColor: 'var(--border-subtle)' }}>
                   <Download size={15} className="mr-2" /> 导出试算平衡表
                 </Button>
               </>
@@ -412,7 +412,7 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
             </div>
           ) : (
             <Tabs defaultValue="trial-balance">
-              <TabsList className="mb-4 flex flex-wrap h-auto gap-1 bg-[#0E0E0A] border border-[#2A2418] p-1">
+              <TabsList className="mb-4 flex flex-wrap h-auto gap-1 bg-[var(--surface-input)] border border-[var(--border-subtle)] p-1">
                 <TabsTrigger value="trial-balance">试算平衡表</TabsTrigger>
                 <TabsTrigger value="income">损益表</TabsTrigger>
                 <TabsTrigger value="balance">资产负债表</TabsTrigger>
@@ -430,11 +430,11 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                     >
                       <SelectTrigger
                         className="min-w-[140px]"
-                        style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}
+                        style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)' }}
                       >
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="border-[#2A2418] bg-card">
+                      <SelectContent className="border-[var(--border-subtle)] bg-card">
                         {TRIAL_BALANCE_LEVEL_OPTIONS.map(option => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.label}
@@ -694,7 +694,7 @@ function ExpandableBalanceSheetTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-[#2A2418]">
+    <div className="overflow-x-auto rounded-lg border border-[var(--border-subtle)]">
       <Table>
         <TableHeader>
           <TableRow>
@@ -753,7 +753,7 @@ function ExpandableBalanceSheetTable({
 function AccountingEquationAlert({ equation }: { equation: AccountingEquationCheck }) {
   return (
     <div className="space-y-3">
-      <div className="grid gap-2 rounded-lg border border-[#2A2418] bg-[#0E0E0A] p-4 text-sm sm:grid-cols-3">
+      <div className="grid gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-input)] p-4 text-sm sm:grid-cols-3">
         <div className="flex justify-between sm:block">
           <span className="text-muted-foreground">资产合计</span>
           <span className="font-mono">{money(equation.totalAssets)}</span>
@@ -767,7 +767,7 @@ function AccountingEquationAlert({ equation }: { equation: AccountingEquationChe
           <span className="font-mono">{money(equation.totalEquity)}</span>
         </div>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#2A2418] bg-[#0E0E0A] px-4 py-3 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-input)] px-4 py-3 text-sm">
         <span className="text-muted-foreground">会计恒等式：资产 = 负债 + 所有者权益</span>
         <Badge
           variant="outline"
@@ -877,7 +877,7 @@ function StatementTable({
     header.includes('金额') || header.includes('借方') || header.includes('贷方')
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-[#2A2418]">
+    <div className="overflow-x-auto rounded-lg border border-[var(--border-subtle)]">
       <Table className={columnLayout === 'pl' ? 'table-fixed w-full' : undefined}>
         {columnLayout === 'pl' ? (
           <colgroup>
@@ -928,7 +928,7 @@ function StatementTable({
               className={
                 footer.highlight
                   ? 'border-[#C9A96E66] bg-[#C9A96E14] font-semibold'
-                  : 'bg-[#0E0E0A] font-semibold'
+                  : 'bg-[var(--surface-input)] font-semibold'
               }
             >
               <TableCell colSpan={2}>{footer.label}</TableCell>
@@ -945,7 +945,7 @@ function StatementTable({
 function TotalsFooter({ left, right, highlight }: { left: string; right: string; highlight?: boolean }) {
   return (
     <div
-      className={`flex justify-between rounded-lg border px-4 py-3 text-sm ${highlight ? 'border-[#C9A96E66] bg-[#C9A96E14] font-semibold' : 'border-[#2A2418] bg-[#0E0E0A]'}`}
+      className={`flex justify-between rounded-lg border px-4 py-3 text-sm ${highlight ? 'border-[#C9A96E66] bg-[#C9A96E14] font-semibold' : 'border-[var(--border-subtle)] bg-[var(--surface-input)]'}`}
     >
       <span>{left}</span>
       <span className="font-mono">{right}</span>
@@ -956,7 +956,7 @@ function TotalsFooter({ left, right, highlight }: { left: string; right: string;
 function CashFlowSection({ title, items }: { title: string; items: { label: string; amount: number }[] }) {
   return (
     <Section title={title}>
-      <div className="space-y-2 rounded-lg border border-[#2A2418] bg-[#0E0E0A] p-4">
+      <div className="space-y-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-input)] p-4">
         {items.map(item => (
           <div key={item.label} className="flex justify-between text-sm">
             <span>{reportLineLabel(item.label)}</span>
@@ -1016,7 +1016,7 @@ function TrialBalanceTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-[#2A2418]">
+    <div className="overflow-x-auto rounded-lg border border-[var(--border-subtle)]">
       <Table>
         <TableHeader>
           <TableRow>
@@ -1062,7 +1062,7 @@ function TrialBalanceTable({
                 {row.isSummary && (
                   <span
                     className="ml-2 rounded px-1 py-0.5 text-[10px] font-normal"
-                    style={{ background: 'rgba(42,36,24,0.08)', color: '#2A2418' }}
+                    style={{ background: 'rgba(42,36,24,0.08)', color: 'var(--border-subtle)' }}
                   >
                     一级汇总
                   </span>

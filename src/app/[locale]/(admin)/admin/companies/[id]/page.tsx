@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import { DatePickerPopover } from '@/components/ui/date-picker-popover'
 import { BUSINESS_NATURE_OPTIONS } from '@/lib/kyc/kycFieldOptions'
 import { type NAR1UiAnalysisResult } from '@/lib/company/nar1-analysis'
-import { COMPANY_LEGAL_TYPE_VALUES, type CompanyLegalType } from '@/lib/company/company-legal-type'
+import { COMPANY_LEGAL_TYPE_VALUES, normalizeCompanyLegalType } from '@/lib/company/company-legal-type'
 import { COMPANY_STATUS_LABELS } from '@/lib/company/company-status'
 import {
   COMPANY_JURISDICTIONS,
@@ -169,7 +169,7 @@ type Company = {
   companyNumber: string | null
   companyCode: string | null
   companyType: string | null
-  companyLegalType: CompanyLegalType | null
+  companyLegalType: string | null
   clientUserId: string | null
   pendingClientEmail: string | null
   clientUser: { nameEn: string; email: string } | null
@@ -237,10 +237,10 @@ const STATUS_COLOR: Record<string, string> = {
 }
 
 const cardStyle: React.CSSProperties = { background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '0.5rem', overflow: 'hidden' }
-const thStyle: React.CSSProperties = { textAlign: 'left', padding: '0.75rem 1rem', fontWeight: 500, fontSize: '0.875rem', color: 'var(--muted-foreground)', background: '#1A1A12', borderBottom: '1px solid #2A2418' }
+const thStyle: React.CSSProperties = { textAlign: 'left', padding: '0.75rem 1rem', fontWeight: 500, fontSize: '0.875rem', color: 'var(--muted-foreground)', background: 'var(--surface-panel)', borderBottom: '1px solid var(--border-subtle)' }
 const tdStyle: React.CSSProperties = { padding: '0.75rem 1rem', color: 'var(--muted-foreground)', fontSize: '0.875rem' }
 const tdPrimaryStyle: React.CSSProperties = { ...tdStyle, color: 'var(--foreground)', fontWeight: 500 }
-const fieldStyle: React.CSSProperties = { width: '100%', background: '#0A0A0A', border: '1px solid #2A2418', color: '#F0EAD8', borderRadius: '0.375rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', outline: 'none' }
+const fieldStyle: React.CSSProperties = { width: '100%', background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--text-cream)', borderRadius: '0.375rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', outline: 'none' }
 const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.75rem', fontWeight: 500, color: '#7A7060', marginBottom: '0.375rem' }
 
 const defaultFileManagementForm = (assetType: CompanyFileManagementAssetType) => ({
@@ -278,7 +278,7 @@ function DateInput({ value, onChange, required, disabled }: {
       onChange={onChange}
       required={required}
       disabled={disabled}
-      style={{ ...fieldStyle, colorScheme: 'dark' }}
+      style={{ ...fieldStyle, colorScheme: 'inherit' }}
     />
   )
 }
@@ -319,7 +319,7 @@ function YearGroupedDocs({
       {years.map(year => {
         const open = openYears.has(year)
         return (
-          <div key={year} style={{ borderTop: '1px solid #2A2418' }}>
+          <div key={year} style={{ borderTop: '1px solid var(--border-subtle)' }}>
             <button
               type="button"
               className="flex w-full items-center justify-between px-4 py-2.5 text-sm"
@@ -334,7 +334,7 @@ function YearGroupedDocs({
               <span style={{ color: '#5A5040', fontSize: '0.75rem' }}>{open ? '▲' : '▼'} {groups[year].length} file{groups[year].length !== 1 ? 's' : ''}</span>
             </button>
             {open && (
-              <ul className="divide-y divide-[#2A2418]">
+              <ul className="divide-y divide-[var(--border-subtle)]">
                 {groups[year].map(doc => (
                   <li key={doc.id} className="flex items-center justify-between px-4 py-2.5">
                     <span className="text-sm truncate max-w-xs" style={{ color: 'var(--foreground)' }}>{doc.name}</span>
@@ -400,9 +400,9 @@ function OwnershipLeafCard({ node }: { node: OwnershipNode }) {
       {node.nameZh ? <p className="mt-0.5 text-[11px] leading-snug" style={{ color: '#7A7060' }}>{node.nameZh}</p> : null}
       {node.companyNumber ? <p className="mt-0.5 text-[11px]" style={{ color: '#7A7060' }}>Co. No. {node.companyNumber}</p> : null}
       {hasMeta ? (
-        <div className="mt-1.5 space-y-0.5 text-[11px]" style={{ color: '#B8AD98' }}>
+        <div className="mt-1.5 space-y-0.5 text-[11px]" style={{ color: 'var(--text-dim)' }}>
           {node.ownershipPercent != null ? (
-            <p className="font-semibold" style={{ color: '#F0EAD8' }}>{node.ownershipPercent}%</p>
+            <p className="font-semibold" style={{ color: 'var(--text-cream)' }}>{node.ownershipPercent}%</p>
           ) : null}
           {node.sharesHeld != null ? <p>{node.sharesHeld.toLocaleString()} shares</p> : null}
           {node.shareClass ? <p>{node.shareClass}</p> : null}
@@ -487,7 +487,7 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
     nameZh: company.nameZh ?? '',
     companyNumber: company.companyNumber ?? '',
     companyCode: company.companyCode ?? '',
-    companyLegalType: company.companyLegalType ?? '',
+    companyLegalType: normalizeCompanyLegalType(company.companyLegalType) ?? company.companyLegalType ?? '',
     companyType: company.companyType ?? '',
     clientUserId: company.clientUserId ?? '',
     dateOfIncorporation: company.dateOfIncorporation ? company.dateOfIncorporation.slice(0, 10) : '',
@@ -567,7 +567,7 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
       if (form.companyNumber) body.companyNumber = form.companyNumber
       body.companyCode = form.companyCode.trim() || null
       body.companyType = form.companyType || null
-      body.companyLegalType = form.companyLegalType || null
+      body.companyLegalType = normalizeCompanyLegalType(form.companyLegalType)
       body.clientUserId = form.clientUserId || null
       if (form.dateOfIncorporation) body.dateOfIncorporation = new Date(form.dateOfIncorporation).toISOString()
       if (form.registeredAddress) body.registeredAddress = form.registeredAddress
@@ -618,9 +618,9 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
           disabled={clientsLoading || saving}
           style={fieldStyle}
         >
-          <option value="" style={{ background: '#141414' }}>No client account</option>
+          <option value="" style={{ background: 'var(--surface-raised)' }}>No client account</option>
           {clients.map(client => (
-            <option key={client.id} value={client.id} style={{ background: '#141414' }}>
+            <option key={client.id} value={client.id} style={{ background: 'var(--surface-raised)' }}>
               {client.email} — {client.nameEn}{client.nameZh ? ` (${client.nameZh})` : ''}
             </option>
           ))}
@@ -637,9 +637,9 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
         <div>
           <label style={labelStyle}>Jurisdiction</label>
           <select value={form.companyType} onChange={e => set('companyType', e.target.value)} style={fieldStyle}>
-            <option value="" style={{ background: '#141414' }}>— Select jurisdiction —</option>
+            <option value="" style={{ background: 'var(--surface-raised)' }}>— Select jurisdiction —</option>
             {COMPANY_JURISDICTIONS.map(j => (
-              <option key={j} value={j} style={{ background: '#141414' }}>
+              <option key={j} value={j} style={{ background: 'var(--surface-raised)' }}>
                 {COMPANY_JURISDICTION_LABELS[j]}
               </option>
             ))}
@@ -649,9 +649,14 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
       <div>
         <label style={labelStyle}>Company Type</label>
         <select value={form.companyLegalType} onChange={e => set('companyLegalType', e.target.value)} style={fieldStyle}>
-          <option value="" style={{ background: '#141414' }}>— Select company type —</option>
+          <option value="" style={{ background: 'var(--surface-raised)' }}>— Select company type —</option>
+          {form.companyLegalType && !(COMPANY_LEGAL_TYPE_VALUES as readonly string[]).includes(form.companyLegalType) ? (
+            <option value={form.companyLegalType} style={{ background: 'var(--surface-raised)' }}>
+              {form.companyLegalType} (legacy — choose a new type)
+            </option>
+          ) : null}
           {COMPANY_LEGAL_TYPE_VALUES.map(type => (
-            <option key={type} value={type} style={{ background: '#141414' }}>{type}</option>
+            <option key={type} value={type} style={{ background: 'var(--surface-raised)' }}>{type}</option>
           ))}
         </select>
       </div>
@@ -713,12 +718,12 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
       <div>
         <label style={labelStyle}>Business Nature</label>
         <select value={form.businessNature} onChange={e => set('businessNature', e.target.value)} style={fieldStyle}>
-          <option value="" style={{ background: '#141414' }}>— Select business nature —</option>
+          <option value="" style={{ background: 'var(--surface-raised)' }}>— Select business nature —</option>
           {form.businessNature && !BUSINESS_NATURE_OPTIONS.some(opt => opt.value === form.businessNature) ? (
-            <option value={form.businessNature} style={{ background: '#141414' }}>{form.businessNature}</option>
+            <option value={form.businessNature} style={{ background: 'var(--surface-raised)' }}>{form.businessNature}</option>
           ) : null}
           {BUSINESS_NATURE_OPTIONS.map(opt => (
-            <option key={opt.value} value={opt.value} style={{ background: '#141414' }}>{opt.label}</option>
+            <option key={opt.value} value={opt.value} style={{ background: 'var(--surface-raised)' }}>{opt.label}</option>
           ))}
         </select>
       </div>
@@ -726,20 +731,20 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
         <div>
           <label style={labelStyle}>Status</label>
           <select value={form.status} onChange={e => set('status', e.target.value)} style={fieldStyle}>
-            <option value="ACTIVE" style={{ background: '#141414' }}>Active</option>
-            <option value="INACTIVE" style={{ background: '#141414' }}>Inactive</option>
-            <option value="DEREGISTERED" style={{ background: '#141414' }}>Deregistered</option>
+            <option value="ACTIVE" style={{ background: 'var(--surface-raised)' }}>Active</option>
+            <option value="INACTIVE" style={{ background: 'var(--surface-raised)' }}>Inactive</option>
+            <option value="DEREGISTERED" style={{ background: 'var(--surface-raised)' }}>Deregistered</option>
           </select>
         </div>
         <div>
           <label style={labelStyle}>Service Tier</label>
           <select value={form.serviceTier} onChange={e => set('serviceTier', e.target.value)} style={fieldStyle}>
-            <option value="" style={{ background: '#141414' }}>— Select —</option>
-            <option value="COMP_SET_UP" style={{ background: '#141414' }}>Comp Set Up</option>
-            <option value="CS" style={{ background: '#141414' }}>CS</option>
-            <option value="CS_VO" style={{ background: '#141414' }}>CS+VO</option>
-            <option value="CS_BK" style={{ background: '#141414' }}>CS+BK</option>
-            <option value="CS_VO_BK" style={{ background: '#141414' }}>CS+VO+BK</option>
+            <option value="" style={{ background: 'var(--surface-raised)' }}>— Select —</option>
+            <option value="COMP_SET_UP" style={{ background: 'var(--surface-raised)' }}>Comp Set Up</option>
+            <option value="CS" style={{ background: 'var(--surface-raised)' }}>CS</option>
+            <option value="CS_VO" style={{ background: 'var(--surface-raised)' }}>CS+VO</option>
+            <option value="CS_BK" style={{ background: 'var(--surface-raised)' }}>CS+BK</option>
+            <option value="CS_VO_BK" style={{ background: 'var(--surface-raised)' }}>CS+VO+BK</option>
           </select>
         </div>
       </div>
@@ -766,9 +771,9 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
           disabled={staffLoading || saving || !form.financialEnabled}
           style={fieldStyle}
         >
-          <option value="" style={{ background: '#141414' }}>Assign later</option>
+          <option value="" style={{ background: 'var(--surface-raised)' }}>Assign later</option>
           {staffOptions.map(staff => (
-            <option key={staff.id} value={staff.id} style={{ background: '#141414' }}>
+            <option key={staff.id} value={staff.id} style={{ background: 'var(--surface-raised)' }}>
               {staff.nameEn} — {staff.role} · {staff.email}
             </option>
           ))}
@@ -779,7 +784,7 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
       </div>
       <div>
         <label style={labelStyle}>Staff Access</label>
-        <div className="rounded-md border border-[#2A2418] bg-[#0A0A0A] p-3">
+        <div className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface)] p-3">
           {staffLoading ? (
             <p className="text-sm" style={{ color: '#7A7060' }}>Loading staff...</p>
           ) : staffOptions.length === 0 ? (
@@ -793,8 +798,8 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
                     key={staff.id}
                     className="flex items-start gap-2 rounded-md border px-3 py-2 text-sm"
                     style={{
-                      borderColor: checked ? '#C9A96E' : '#2A2418',
-                      background: checked ? 'rgba(201,169,110,0.10)' : '#0E0E0A',
+                      borderColor: checked ? '#C9A96E' : 'var(--border-subtle)',
+                      background: checked ? 'rgba(201,169,110,0.10)' : 'var(--surface-input)',
                       color: 'var(--foreground)',
                     }}
                   >
@@ -851,14 +856,14 @@ function KycLinkPicker({
   }
 
   return (
-    <div className="rounded-lg p-3 mb-1" style={{ background: '#0D0D08', border: '1px solid #2A2418' }}>
+    <div className="rounded-lg p-3 mb-1" style={{ background: '#0D0D08', border: '1px solid var(--border-subtle)' }}>
       <label style={{ ...labelStyle, color: '#C9A96E' }}>
         {prefillOnSelect ? '关联 KYC 人员' : 'Linked KYC person'}
       </label>
       <select value={value} onChange={handleChange} style={fieldStyle}>
-        <option value="" style={{ background: '#141414' }}>— 暂不关联 KYC —</option>
+        <option value="" style={{ background: 'var(--surface-raised)' }}>— 暂不关联 KYC —</option>
         {persons.map(p => (
-          <option key={p.id} value={p.id} style={{ background: '#141414' }}>
+          <option key={p.id} value={p.id} style={{ background: 'var(--surface-raised)' }}>
             {p.nameEn}{p.nameZh ? ` (${p.nameZh})` : ''} · {p.kycStatus}
           </option>
         ))}
@@ -910,7 +915,7 @@ function KycLinkWithConfirm({
       {pending && (
         <div
           className="rounded-lg p-3 space-y-3 -mt-1"
-          style={{ background: '#1A1A12', border: '1px solid #C9A96E' }}
+          style={{ background: 'var(--surface-panel)', border: '1px solid #C9A96E' }}
         >
           <p className="text-sm" style={{ color: 'var(--foreground)' }}>
             已选择关联 <span className="font-medium">{pending.nameEn}</span>
@@ -1101,10 +1106,10 @@ function DirectorForm({ companyId, initial, kycPersons, onDone }: {
         <div>
           <label style={labelStyle}>ID Type</label>
           <select value={form.idType} onChange={e => set('idType', e.target.value)} style={fieldStyle}>
-            <option value="" style={{ background: '#141414' }}>— None —</option>
-            <option value="HKID" style={{ background: '#141414' }}>HKID</option>
-            <option value="PASSPORT" style={{ background: '#141414' }}>Passport</option>
-            <option value="OTHER" style={{ background: '#141414' }}>Other</option>
+            <option value="" style={{ background: 'var(--surface-raised)' }}>— None —</option>
+            <option value="HKID" style={{ background: 'var(--surface-raised)' }}>HKID</option>
+            <option value="PASSPORT" style={{ background: 'var(--surface-raised)' }}>Passport</option>
+            <option value="OTHER" style={{ background: 'var(--surface-raised)' }}>Other</option>
           </select>
         </div>
         <div>
@@ -1115,8 +1120,8 @@ function DirectorForm({ companyId, initial, kycPersons, onDone }: {
       <div>
         <label style={labelStyle}>Status</label>
         <select value={form.status} onChange={e => set('status', e.target.value)} style={fieldStyle}>
-          <option value="ACTIVE" style={{ background: '#141414' }}>Active</option>
-          <option value="CEASED" style={{ background: '#141414' }}>Ceased</option>
+          <option value="ACTIVE" style={{ background: 'var(--surface-raised)' }}>Active</option>
+          <option value="CEASED" style={{ background: 'var(--surface-raised)' }}>Ceased</option>
         </select>
       </div>
       <div className="flex justify-end gap-2 pt-1">
@@ -1283,7 +1288,7 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
     } finally { setSaving(false) }
   }
 
-  const divider = <div style={{ borderTop: '1px solid #2A2418', margin: '4px 0' }} />
+  const divider = <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '4px 0' }} />
   const sectionLabel = (t: string) => (
     <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#C9A96E', margin: '4px 0 8px' }}>{t}</p>
   )
@@ -1317,9 +1322,9 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
         <div>
           <label style={labelStyle}>Share Class *</label>
           <select value={form.shareClass} onChange={e => set('shareClass', e.target.value)} style={fieldStyle}>
-            <option value="ORDINARY" style={{ background: '#141414' }}>Ordinary</option>
-            <option value="PREFERENCE" style={{ background: '#141414' }}>Preference</option>
-            <option value="OTHER" style={{ background: '#141414' }}>Other</option>
+            <option value="ORDINARY" style={{ background: 'var(--surface-raised)' }}>Ordinary</option>
+            <option value="PREFERENCE" style={{ background: 'var(--surface-raised)' }}>Preference</option>
+            <option value="OTHER" style={{ background: 'var(--surface-raised)' }}>Other</option>
           </select>
         </div>
         <div>
@@ -1329,8 +1334,8 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
         <div>
           <label style={labelStyle}>Status</label>
           <select value={form.status} onChange={e => set('status', e.target.value)} style={fieldStyle}>
-            <option value="ACTIVE" style={{ background: '#141414' }}>Active</option>
-            <option value="TRANSFERRED_OUT" style={{ background: '#141414' }}>Transferred Out</option>
+            <option value="ACTIVE" style={{ background: 'var(--surface-raised)' }}>Active</option>
+            <option value="TRANSFERRED_OUT" style={{ background: 'var(--surface-raised)' }}>Transferred Out</option>
           </select>
         </div>
       </div>
@@ -1346,15 +1351,15 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
       </div>
 
       {addTx && (
-        <div className="rounded-lg p-4 space-y-3" style={{ background: '#0A0A06', border: '1px solid #2A2418' }}>
+        <div className="rounded-lg p-4 space-y-3" style={{ background: '#0A0A06', border: '1px solid var(--border-subtle)' }}>
           {sectionLabel('Transaction details')}
           <div className="grid sm:grid-cols-3 gap-3">
             <div>
               <label style={labelStyle}>Transaction Type *</label>
               <select value={tx.transactionType} onChange={e => setT('transactionType', e.target.value)} style={fieldStyle}>
-                <option value="ALLOTMENT" style={{ background: '#141414' }}>Allotment</option>
-                <option value="TRANSFER_IN" style={{ background: '#141414' }}>Transfer In</option>
-                <option value="TRANSFER_OUT" style={{ background: '#141414' }}>Transfer Out</option>
+                <option value="ALLOTMENT" style={{ background: 'var(--surface-raised)' }}>Allotment</option>
+                <option value="TRANSFER_IN" style={{ background: 'var(--surface-raised)' }}>Transfer In</option>
+                <option value="TRANSFER_OUT" style={{ background: 'var(--surface-raised)' }}>Transfer Out</option>
               </select>
             </div>
             <div>
@@ -1593,17 +1598,17 @@ function ControllerForm({ companyId, initial, kycPersons, onDone }: {
         <div>
           <label style={labelStyle}>Entity Type</label>
           <select value={form.isLegalEntity} onChange={e => set('isLegalEntity', e.target.value)} style={fieldStyle}>
-            <option value="false" style={{ background: '#141414' }}>Individual (Natural Person)</option>
-            <option value="true" style={{ background: '#141414' }}>Legal Entity</option>
+            <option value="false" style={{ background: 'var(--surface-raised)' }}>Individual (Natural Person)</option>
+            <option value="true" style={{ background: 'var(--surface-raised)' }}>Legal Entity</option>
           </select>
         </div>
         {!isLegal && (
           <div>
             <label style={labelStyle}>ID Type</label>
             <select value={form.idType} onChange={e => set('idType', e.target.value)} style={fieldStyle}>
-              <option value="HKID" style={{ background: '#141414' }}>HKID</option>
-              <option value="PASSPORT" style={{ background: '#141414' }}>Passport</option>
-              <option value="OTHER" style={{ background: '#141414' }}>Other</option>
+              <option value="HKID" style={{ background: 'var(--surface-raised)' }}>HKID</option>
+              <option value="PASSPORT" style={{ background: 'var(--surface-raised)' }}>Passport</option>
+              <option value="OTHER" style={{ background: 'var(--surface-raised)' }}>Other</option>
             </select>
           </div>
         )}
@@ -1860,7 +1865,7 @@ function Nar1AnalysisPreview({
         <h4 className="text-sm font-semibold mb-2" style={{ color: '#C9A96E' }}>Directors ({result.directors.length})</h4>
         <div className="space-y-2">
           {result.directors.map((d, i) => (
-            <div key={i} className="text-xs p-2 rounded bg-[#1A1A12]" style={{ border: '1px solid #2A2418' }}>
+            <div key={i} className="text-xs p-2 rounded bg-[var(--surface-panel)]" style={{ border: '1px solid var(--border-subtle)' }}>
               <div className="flex justify-between">
                 <span style={{ color: 'var(--foreground)' }}>{d.nameEn}</span>
                 <span style={{ color: '#5A5040' }}>{fmtDate(d.dateOfAppointment)}</span>
@@ -1883,7 +1888,7 @@ function Nar1AnalysisPreview({
         <h4 className="text-sm font-semibold mb-2" style={{ color: '#C9A96E' }}>Members ({result.members.length})</h4>
         <div className="space-y-2">
           {result.members.map((m, i) => (
-            <div key={i} className="text-xs p-2 rounded bg-[#1A1A12]" style={{ border: '1px solid #2A2418' }}>
+            <div key={i} className="text-xs p-2 rounded bg-[var(--surface-panel)]" style={{ border: '1px solid var(--border-subtle)' }}>
               <div className="flex justify-between">
                 <span style={{ color: 'var(--foreground)' }}>{m.nameEn}</span>
                 <span style={{ color: '#5A5040' }}>{fmtDate(m.becomingDate)}</span>
@@ -1909,7 +1914,7 @@ function Nar1AnalysisPreview({
         <h4 className="text-sm font-semibold mb-2" style={{ color: '#C9A96E' }}>Significant Controllers ({result.significantControllers.length})</h4>
         <div className="space-y-2">
           {result.significantControllers.map((sc, i) => (
-            <div key={i} className="text-xs p-2 rounded bg-[#1A1A12]" style={{ border: '1px solid #2A2418' }}>
+            <div key={i} className="text-xs p-2 rounded bg-[var(--surface-panel)]" style={{ border: '1px solid var(--border-subtle)' }}>
               <div className="flex justify-between">
                 <span style={{ color: 'var(--foreground)' }}>{sc.nameEn}</span>
                 <span style={{ color: '#5A5040' }}>{fmtDate(sc.becomingDate)}</span>
@@ -2310,7 +2315,7 @@ export default function CompanyDetailPage() {
             )}
             {company.companyLegalType && (
               <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(56,189,248,0.10)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.22)' }}>
-                {company.companyLegalType}
+                {normalizeCompanyLegalType(company.companyLegalType) ?? company.companyLegalType}
               </span>
             )}
           </div>
@@ -2339,12 +2344,12 @@ export default function CompanyDetailPage() {
 
         {/* Overview */}
         <TabsContent value="overview" className="mt-4 space-y-4">
-          <div style={{ ...cardStyle, overflow: 'visible' }} className="divide-y divide-[#2A2418]">
+          <div style={{ ...cardStyle, overflow: 'visible' }} className="divide-y divide-[var(--border-subtle)]">
             {[
               ['Registered Address', company.registeredAddress ?? '—'],
               ['Date of Incorporation', company.dateOfIncorporation ? new Date(company.dateOfIncorporation).toLocaleDateString('en-HK') : '—'],
               ['Jurisdiction', COMPANY_JURISDICTION_LABELS[company.companyType as CompanyJurisdiction] ?? company.companyType ?? '—'],
-              ['Company Type', company.companyLegalType ?? '—'],
+              ['Company Type', normalizeCompanyLegalType(company.companyLegalType) ?? company.companyLegalType ?? '—'],
               ['Financial Year End', company.financialYearEndMonth === 3 ? 'March 31st' : company.financialYearEndMonth === 12 ? 'December 31st' : '—'],
               ['Business Nature', company.businessNature ?? '—'],
               ['周年申报截止日', annualReturnDeadline(company.dateOfIncorporation)],
@@ -2357,14 +2362,14 @@ export default function CompanyDetailPage() {
           </div>
 
           <div style={cardStyle}>
-            <div className="flex items-start justify-between gap-3 px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
+            <div className="flex items-start justify-between gap-3 px-4 py-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-3">
                   <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>文件管理</h3>
                   <button
                     type="button"
                     className="shrink-0 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors hover:bg-[rgba(201,169,110,0.08)]"
-                    style={{ borderColor: '#2A2418', color: '#C9A96E' }}
+                    style={{ borderColor: 'var(--border-subtle)', color: '#C9A96E' }}
                     onClick={() => setFileManagementExpanded(v => !v)}
                     aria-expanded={fileManagementExpanded}
                   >
@@ -2386,7 +2391,7 @@ export default function CompanyDetailPage() {
                   <div
                     key={section.assetType}
                     className="rounded-lg border p-4"
-                    style={{ borderColor: '#2A2418', background: 'rgba(26, 26, 18, 0.35)' }}
+                    style={{ borderColor: 'var(--border-subtle)', background: 'rgba(26, 26, 18, 0.35)' }}
                   >
                     <label className="flex items-center gap-3">
                       <input
@@ -2419,8 +2424,8 @@ export default function CompanyDetailPage() {
                               }))}
                               style={fieldStyle}
                             >
-                              <option value="IN" style={{ background: '#141414' }}>入库</option>
-                              <option value="OUT" style={{ background: '#141414' }}>出库</option>
+                              <option value="IN" style={{ background: 'var(--surface-raised)' }}>入库</option>
+                              <option value="OUT" style={{ background: 'var(--surface-raised)' }}>出库</option>
                             </select>
                           </div>
                           <div>
@@ -2470,7 +2475,7 @@ export default function CompanyDetailPage() {
                           <p className="text-sm" style={{ color: '#5A5040' }}>暂无出入库记录。</p>
                         ) : (
                           <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-[#2A2418] text-sm">
+                            <table className="min-w-full divide-y divide-[var(--border-subtle)] text-sm">
                               <thead>
                                 <tr>
                                   <th style={thStyle}>类型</th>
@@ -2480,7 +2485,7 @@ export default function CompanyDetailPage() {
                                   <th style={thStyle}>操作</th>
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-[#2A2418]">
+                              <tbody className="divide-y divide-[var(--border-subtle)]">
                                 {section.records.map(record => (
                                   <tr key={record.id}>
                                     <td style={tdPrimaryStyle}>{record.movementType === 'IN' ? '入库' : '出库'}</td>
@@ -2523,7 +2528,7 @@ export default function CompanyDetailPage() {
             const docs = company.documents.filter(d => d.documentType === docType && !isGeneratedDoc(d))
             return (
               <div key={docType} style={cardStyle}>
-                <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
+                <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                   <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{label}</span>
                   <label style={{ cursor: uploading === docType ? 'not-allowed' : 'pointer' }}>
                     <input
@@ -2539,7 +2544,7 @@ export default function CompanyDetailPage() {
                     />
                     <span
                       className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-medium transition-colors"
-                      style={{ borderColor: '#2A2418', color: uploading === docType ? '#5A5040' : 'var(--foreground)', background: 'transparent', cursor: 'inherit' }}
+                      style={{ borderColor: 'var(--border-subtle)', color: uploading === docType ? '#5A5040' : 'var(--foreground)', background: 'transparent', cursor: 'inherit' }}
                     >
                       {uploading === docType ? 'Uploading…' : docType === 'AA' ? 'Upload AA files' : `Upload ${docType}`}
                     </span>
@@ -2548,7 +2553,7 @@ export default function CompanyDetailPage() {
                 {docs.length === 0 ? (
                   <p className="px-4 py-3 text-sm" style={{ color: '#5A5040' }}>No files uploaded yet.</p>
                 ) : (
-                  <ul className="divide-y divide-[#2A2418]">
+                  <ul className="divide-y divide-[var(--border-subtle)]">
                     {docs.map(doc => (
                       <li key={doc.id} className="flex items-center justify-between px-4 py-2.5">
                         <span className="text-sm truncate max-w-xs" style={{ color: 'var(--foreground)' }}>{doc.name}</span>
@@ -2567,7 +2572,7 @@ export default function CompanyDetailPage() {
 
           {/* BR — year-tagged upload */}
           <div style={cardStyle}>
-            <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderBottom: '1px solid #2A2418' }}>
+            <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
               <div>
                 <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Business Registration Certificate (BR)</span>
                 <p className="text-xs mt-1" style={{ color: '#5A5040' }}>Choose the year before uploading the yearly BR document.</p>
@@ -2575,7 +2580,7 @@ export default function CompanyDetailPage() {
               <div className="flex items-center gap-2">
                 <select value={brYear} onChange={e => setBrYear(e.target.value)} style={{ ...fieldStyle, width: 120 }}>
                   {Array.from({ length: 12 }, (_, i) => String(new Date().getFullYear() + 2 - i)).map(year => (
-                    <option key={year} value={year} style={{ background: '#141414' }}>{year}</option>
+                    <option key={year} value={year} style={{ background: 'var(--surface-raised)' }}>{year}</option>
                   ))}
                 </select>
                 <label style={{ cursor: uploading === 'BR' ? 'not-allowed' : 'pointer' }}>
@@ -2591,7 +2596,7 @@ export default function CompanyDetailPage() {
                   />
                   <span
                     className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-medium transition-colors"
-                    style={{ borderColor: '#2A2418', color: uploading === 'BR' ? '#5A5040' : 'var(--foreground)', background: 'transparent', cursor: 'inherit' }}
+                    style={{ borderColor: 'var(--border-subtle)', color: uploading === 'BR' ? '#5A5040' : 'var(--foreground)', background: 'transparent', cursor: 'inherit' }}
                   >
                     {uploading === 'BR' ? 'Uploading…' : `Upload BR ${brYear}`}
                   </span>
@@ -2607,7 +2612,7 @@ export default function CompanyDetailPage() {
 
           {/* NAR1 — year-tagged upload */}
           <div style={cardStyle}>
-            <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderBottom: '1px solid #2A2418' }}>
+            <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
               <div>
                 <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Annual Return (NAR1)</span>
                 <p className="text-xs mt-1" style={{ color: '#5A5040' }}>Choose the filing year before uploading the yearly NAR1 document.</p>
@@ -2615,7 +2620,7 @@ export default function CompanyDetailPage() {
               <div className="flex items-center gap-2">
                 <select value={nar1Year} onChange={e => setNar1Year(e.target.value)} style={{ ...fieldStyle, width: 120 }}>
                   {Array.from({ length: 12 }, (_, i) => String(new Date().getFullYear() + 2 - i)).map(year => (
-                    <option key={year} value={year} style={{ background: '#141414' }}>{year}</option>
+                    <option key={year} value={year} style={{ background: 'var(--surface-raised)' }}>{year}</option>
                   ))}
                 </select>
                 <label style={{ cursor: uploading === 'NAR1' ? 'not-allowed' : 'pointer' }}>
@@ -2631,7 +2636,7 @@ export default function CompanyDetailPage() {
                   />
                   <span
                     className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-medium transition-colors"
-                    style={{ borderColor: '#2A2418', color: uploading === 'NAR1' ? '#5A5040' : 'var(--foreground)', background: 'transparent', cursor: 'inherit' }}
+                    style={{ borderColor: 'var(--border-subtle)', color: uploading === 'NAR1' ? '#5A5040' : 'var(--foreground)', background: 'transparent', cursor: 'inherit' }}
                   >
                     {uploading === 'NAR1' ? 'Uploading…' : `Upload NAR1 ${nar1Year}`}
                   </span>
@@ -2649,7 +2654,7 @@ export default function CompanyDetailPage() {
 
           {/* Audit and Tax Computation — year-tagged, multiple files per year */}
           <div style={cardStyle}>
-            <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderBottom: '1px solid #2A2418' }}>
+            <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
               <div>
                 <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Audit and Tax Computation</span>
                 <p className="text-xs mt-1" style={{ color: '#5A5040' }}>Choose the year before uploading. Multiple files per year are supported.</p>
@@ -2657,7 +2662,7 @@ export default function CompanyDetailPage() {
               <div className="flex items-center gap-2">
                 <select value={auditTaxYear} onChange={e => setAuditTaxYear(e.target.value)} style={{ ...fieldStyle, width: 120 }}>
                   {Array.from({ length: 12 }, (_, i) => String(new Date().getFullYear() + 2 - i)).map(year => (
-                    <option key={year} value={year} style={{ background: '#141414' }}>{year}</option>
+                    <option key={year} value={year} style={{ background: 'var(--surface-raised)' }}>{year}</option>
                   ))}
                 </select>
                 <label style={{ cursor: uploading === 'AUDIT_TAX' ? 'not-allowed' : 'pointer' }}>
@@ -2674,7 +2679,7 @@ export default function CompanyDetailPage() {
                   />
                   <span
                     className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-medium transition-colors"
-                    style={{ borderColor: '#2A2418', color: uploading === 'AUDIT_TAX' ? '#5A5040' : 'var(--foreground)', background: 'transparent', cursor: 'inherit' }}
+                    style={{ borderColor: 'var(--border-subtle)', color: uploading === 'AUDIT_TAX' ? '#5A5040' : 'var(--foreground)', background: 'transparent', cursor: 'inherit' }}
                   >
                     {uploading === 'AUDIT_TAX' ? 'Uploading…' : `Upload ${auditTaxYear}`}
                   </span>
@@ -2689,7 +2694,7 @@ export default function CompanyDetailPage() {
           </div>
 
           <div style={cardStyle}>
-            <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
+            <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
               <div>
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Due Diligence Report</h3>
                 <p className="text-xs mt-1" style={{ color: '#5A5040' }}>
@@ -2713,7 +2718,7 @@ export default function CompanyDetailPage() {
                   />
                   <span
                     className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-medium"
-                    style={{ borderColor: '#2A2418', color: uploading === 'DDR' ? '#5A5040' : 'var(--foreground)' }}
+                    style={{ borderColor: 'var(--border-subtle)', color: uploading === 'DDR' ? '#5A5040' : 'var(--foreground)' }}
                   >
                     {uploading === 'DDR' ? 'Uploading…' : 'Upload signed'}
                   </span>
@@ -2728,9 +2733,9 @@ export default function CompanyDetailPage() {
               return (
                 <>
                   {signedDdrDocs.length > 0 && (
-                    <div className="px-4 py-2" style={{ borderBottom: '1px solid #2A2418' }}>
+                    <div className="px-4 py-2" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                       <p className="text-xs mb-2 font-medium" style={{ color: '#C9A96E' }}>Signed uploads</p>
-                      <ul className="divide-y divide-[#2A2418]">
+                      <ul className="divide-y divide-[var(--border-subtle)]">
                         {signedDdrDocs.map(doc => (
                           <li key={doc.id} className="flex items-center justify-between py-2">
                             <div className="min-w-0">
@@ -2749,7 +2754,7 @@ export default function CompanyDetailPage() {
                   {ddrDocs.length === 0 ? (
                     <p className="px-4 py-3 text-sm" style={{ color: '#5A5040' }}>No generated due diligence reports yet.</p>
                   ) : (
-                    <ul className="divide-y divide-[#2A2418]">
+                    <ul className="divide-y divide-[var(--border-subtle)]">
                       {(showOlderDdr ? ddrDocs : ddrDocs.slice(0, 1)).map(doc => (
                         <li key={doc.id} className="flex items-center justify-between px-4 py-2.5">
                           <div className="min-w-0">
@@ -2766,7 +2771,7 @@ export default function CompanyDetailPage() {
                         <li>
                           <button
                             type="button"
-                            className="w-full px-4 py-2 text-xs text-left transition-colors hover:bg-[#1A1A12]"
+                            className="w-full px-4 py-2 text-xs text-left transition-colors hover:bg-[var(--surface-panel)]"
                             style={{ color: '#5A5040' }}
                             onClick={() => setShowOlderDdr(v => !v)}
                           >
@@ -2795,7 +2800,7 @@ export default function CompanyDetailPage() {
               <>
                 {/* ── Create new case ─────────────────────────────────────── */}
                 <div style={cardStyle}>
-                  <div className="px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
+                  <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                     <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>New Case</span>
                     <p className="text-xs mt-0.5" style={{ color: '#5A5040' }}>Select an existing case type or enter a new one.</p>
                   </div>
@@ -2810,11 +2815,11 @@ export default function CompanyDetailPage() {
                         }}
                         style={{ ...fieldStyle, width: 240 }}
                       >
-                        <option value="" style={{ background: '#141414' }}>— Select case type —</option>
+                        <option value="" style={{ background: 'var(--surface-raised)' }}>— Select case type —</option>
                         {pastCaseTypes.map(n => (
-                          <option key={n} value={n} style={{ background: '#141414' }}>{n}</option>
+                          <option key={n} value={n} style={{ background: 'var(--surface-raised)' }}>{n}</option>
                         ))}
-                        <option value="__new__" style={{ background: '#141414' }}>— Enter new type… —</option>
+                        <option value="__new__" style={{ background: 'var(--surface-raised)' }}>— Enter new type… —</option>
                       </select>
                     </div>
                     {/* Show text input when "new type" chosen or no past types */}
@@ -2952,11 +2957,11 @@ export default function CompanyDetailPage() {
                     return (
                       <div key={fc.id} style={cardStyle}>
                         {/* Case header */}
-                        <div className="px-4 py-3 flex flex-wrap items-start gap-3" style={{ borderBottom: isExpanded ? '1px solid #2A2418' : undefined }}>
+                        <div className="px-4 py-3 flex flex-wrap items-start gap-3" style={{ borderBottom: isExpanded ? '1px solid var(--border-subtle)' : undefined }}>
                           <button
                             type="button"
                             className="mt-7 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border text-xs"
-                            style={{ borderColor: '#2A2418', color: '#C9A96E' }}
+                            style={{ borderColor: 'var(--border-subtle)', color: '#C9A96E' }}
                             onClick={() => setExpandedCases(p => ({ ...p, [fc.id]: !isExpanded }))}
                             aria-label={isExpanded ? 'Collapse case' : 'Expand case'}
                           >
@@ -2983,9 +2988,9 @@ export default function CompanyDetailPage() {
                                   style={{ ...fieldStyle, width: 200 }}
                                 >
                                   {pastCaseTypes.map(n => (
-                                    <option key={n} value={n} style={{ background: '#141414' }}>{n}</option>
+                                    <option key={n} value={n} style={{ background: 'var(--surface-raised)' }}>{n}</option>
                                   ))}
-                                  <option value="__new__" style={{ background: '#141414' }}>— Enter new type… —</option>
+                                  <option value="__new__" style={{ background: 'var(--surface-raised)' }}>— Enter new type… —</option>
                                 </select>
                                 {(!pastCaseTypes.includes(edit.name)) && (
                                   <input
@@ -3019,7 +3024,7 @@ export default function CompanyDetailPage() {
                         {isExpanded ? (
                           <>
                             {/* Main file */}
-                            <div className="px-4 py-3" style={{ borderBottom: '1px solid #2A2418' }}>
+                            <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                               <p className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: '#7A7060' }}>Main File</p>
                               {mainFile ? (
                                 <div className="flex items-center gap-3">
@@ -3032,7 +3037,7 @@ export default function CompanyDetailPage() {
                                   <input type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" className="hidden" disabled={!!uploadingCase}
                                     onChange={e => { const f = e.target.files?.[0]; if (f) { uploadMainFile(f); e.target.value = '' } }} />
                                   <span className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-medium"
-                                    style={{ borderColor: '#2A2418', color: uploadingCase === fc.id + ':main' ? '#5A5040' : 'var(--foreground)', cursor: 'inherit' }}>
+                                    style={{ borderColor: 'var(--border-subtle)', color: uploadingCase === fc.id + ':main' ? '#5A5040' : 'var(--foreground)', cursor: 'inherit' }}>
                                     {uploadingCase === fc.id + ':main' ? 'Uploading...' : 'Upload Main File'}
                                   </span>
                                 </label>
@@ -3044,7 +3049,7 @@ export default function CompanyDetailPage() {
                           <p className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: '#7A7060' }}>Supporting Files</p>
 
                           {/* Add supporting file form */}
-                          <div className="rounded-md p-3 mb-4 space-y-3" style={{ border: '1px solid #2A2418', background: '#0D0D0D' }}>
+                          <div className="rounded-md p-3 mb-4 space-y-3" style={{ border: '1px solid var(--border-subtle)', background: '#0D0D0D' }}>
                             <p className="text-xs font-medium" style={{ color: '#C9A96E' }}>Add Supporting File</p>
                             <div className="flex flex-wrap items-end gap-3">
                               {/* Document type */}
@@ -3061,11 +3066,11 @@ export default function CompanyDetailPage() {
                                   }}
                                   style={{ ...fieldStyle, width: 200 }}
                                 >
-                                  <option value="" style={{ background: '#141414' }}>— Select type —</option>
+                                  <option value="" style={{ background: 'var(--surface-raised)' }}>— Select type —</option>
                                   {pastDocTypes.map(t => (
-                                    <option key={t} value={t} style={{ background: '#141414' }}>{t}</option>
+                                    <option key={t} value={t} style={{ background: 'var(--surface-raised)' }}>{t}</option>
                                   ))}
-                                  <option value="__new__" style={{ background: '#141414' }}>— Enter new type… —</option>
+                                  <option value="__new__" style={{ background: 'var(--surface-raised)' }}>— Enter new type… —</option>
                                 </select>
                               </div>
                               {(sf.isCustomType || !pastDocTypes.includes(sf.customDocumentType)) && (
@@ -3116,7 +3121,7 @@ export default function CompanyDetailPage() {
                               {supporting.length === 0 ? (
                                 <p className="text-xs" style={{ color: '#5A5040' }}>No supporting files yet.</p>
                               ) : (
-                                <ul className="divide-y divide-[#2A2418]">
+                                <ul className="divide-y divide-[var(--border-subtle)]">
                                   {supporting.map(doc => (
                                     <li key={doc.id} className="py-3">
                                       <div className="flex items-start justify-between gap-2">
@@ -3183,9 +3188,9 @@ export default function CompanyDetailPage() {
                     <th style={{ ...thStyle, width: '6rem' }} />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#2A2418]">
+                <tbody className="divide-y divide-[var(--border-subtle)]">
                   {company.directors.map(d => (
-                    <tr key={d.id} className="hover:bg-[#1A1A12] transition-colors">
+                    <tr key={d.id} className="hover:bg-[var(--surface-panel)] transition-colors">
                       <td style={tdPrimaryStyle}>{d.nameEn}{d.nameZh ? ` (${d.nameZh})` : ''}</td>
                       <td style={tdStyle}>{fmt(d.dateOfAppointment)}</td>
                       <td style={tdStyle}>{fmt(d.dateOfCessation)}</td>
@@ -3237,12 +3242,12 @@ export default function CompanyDetailPage() {
                     <th style={{ ...thStyle, width: '6rem' }} />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#2A2418]">
+                <tbody className="divide-y divide-[var(--border-subtle)]">
                   {company.members.map(m => {
                     const latestTx = m.shareTransactions?.[0]
                     const sharesHeld = latestTx?.sharesHeld
                     return (
-                    <tr key={m.id} className="hover:bg-[#1A1A12] transition-colors">
+                    <tr key={m.id} className="hover:bg-[var(--surface-panel)] transition-colors">
                       <td style={tdPrimaryStyle}>{m.nameEn}{m.nameZh ? ` (${m.nameZh})` : ''}</td>
                       <td style={tdStyle}>{m.shareClass}</td>
                       <td style={tdStyle}>{sharesHeld != null ? sharesHeld.toLocaleString() : '—'}</td>
@@ -3299,9 +3304,9 @@ export default function CompanyDetailPage() {
                       <th style={{ ...thStyle, width: '6rem' }} />
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#2A2418]">
+                  <tbody className="divide-y divide-[var(--border-subtle)]">
                     {company.significantControllers.map(sc => (
-                      <tr key={sc.id} className="hover:bg-[#1A1A12] transition-colors">
+                      <tr key={sc.id} className="hover:bg-[var(--surface-panel)] transition-colors">
                         <td style={tdPrimaryStyle}>{sc.nameEn}{sc.nameZh ? ` (${sc.nameZh})` : ''}</td>
                         <td style={tdStyle}>{sc.natureOfControl ?? '—'}</td>
                         <td style={tdStyle}>{fmt(sc.becomingDate)}</td>
@@ -3340,9 +3345,9 @@ export default function CompanyDetailPage() {
                       <th style={{ ...thStyle, width: '6rem' }} />
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#2A2418]">
+                  <tbody className="divide-y divide-[var(--border-subtle)]">
                     {company.designatedReps.map(dr => (
-                      <tr key={dr.id} className="hover:bg-[#1A1A12] transition-colors">
+                      <tr key={dr.id} className="hover:bg-[var(--surface-panel)] transition-colors">
                         <td style={tdPrimaryStyle}>{dr.name}</td>
                         <td style={tdStyle}>{dr.capacity ?? '—'}</td>
                         <td style={tdStyle}>{dr.telFax ?? '—'}</td>
@@ -3413,8 +3418,8 @@ export default function CompanyDetailPage() {
       {/* NAR1 Analysis Result Preview Modal */}
       {showNar1AnalysisResult && nar1AnalysisResult && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
-          <div className="w-full max-w-3xl bg-[#141414] rounded-lg shadow-xl border border-[#2A2418]" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[#2A2418]">
+          <div className="w-full max-w-3xl bg-[var(--surface-raised)] rounded-lg shadow-xl border border-[var(--border-subtle)]" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-subtle)]">
               <h3 className="text-base font-semibold" style={{ color: 'var(--foreground)' }}>NAR1 Analysis Preview</h3>
               <button onClick={() => setShowNar1AnalysisResult(false)} className="text-xl leading-none" style={{ color: 'var(--muted-foreground)' }}>✕</button>
             </div>

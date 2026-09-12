@@ -8,6 +8,8 @@ import { signOut } from 'next-auth/react'
 import Image from 'next/image'
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget'
 import { AdminPermissionProvider } from '@/components/admin/AdminPermissionContext'
+import { PlatformThemeProvider, usePlatformTheme } from '@/components/theme/PlatformThemeProvider'
+import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import {
   LayoutDashboard,
   Building2,
@@ -139,7 +141,7 @@ function AdminRouteGuard({
   return <>{children}</>
 }
 
-export default function AdminShell({
+function AdminShellInner({
   children,
   userName,
   userRole,
@@ -159,6 +161,7 @@ export default function AdminShell({
   const pathname = usePathname()
   const params = useParams()
   const navLocale = (params.locale as string) ?? locale
+  const { themeClass } = usePlatformTheme()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const financialCompanyId = pathname.match(/\/admin\/financial\/([^/]+)\//)?.[1] ?? null
@@ -203,7 +206,7 @@ export default function AdminShell({
 
   return (
     <div
-      className={ADMIN_SHELL_CLASSNAMES.root}
+      className={`${themeClass} ${ADMIN_SHELL_CLASSNAMES.root}`}
       style={{ background: 'var(--background)', color: 'var(--foreground)' }}
     >
       <aside
@@ -211,7 +214,7 @@ export default function AdminShell({
           ${ADMIN_SHELL_CLASSNAMES.sidebar}
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
-        style={{ background: '#080808', borderRight: '1px solid var(--sidebar-border)' }}
+        style={{ background: 'var(--chrome)', borderRight: '1px solid var(--sidebar-border)' }}
       >
         <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--sidebar-border)' }}>
           <Link href="/" className="flex items-center gap-3" onClick={() => setSidebarOpen(false)}>
@@ -222,7 +225,7 @@ export default function AdminShell({
               width={100}
               height={26}
               className="object-contain"
-              style={{ filter: 'brightness(1.08)' }}
+              style={{ filter: 'var(--logo-filter)' }}
             />
           </Link>
           <div className="mt-3 flex items-center gap-2">
@@ -381,7 +384,7 @@ export default function AdminShell({
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 md:hidden"
-          style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(2px)' }}
+          style={{ background: 'var(--overlay)', backdropFilter: 'blur(2px)' }}
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -389,7 +392,7 @@ export default function AdminShell({
       <div className={ADMIN_SHELL_CLASSNAMES.frame}>
         <header
           className="h-14 flex items-center justify-between px-4 flex-shrink-0"
-          style={{ background: '#080808', borderBottom: '1px solid var(--sidebar-border)' }}
+          style={{ background: 'var(--chrome)', borderBottom: '1px solid var(--sidebar-border)' }}
         >
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -402,12 +405,13 @@ export default function AdminShell({
 
           <div className="md:hidden flex items-center gap-2">
             <Image src="/logo.png" alt="" width={20} height={20} className="object-contain" />
-            <span className="text-sm font-semibold" style={{ color: '#C9A96E' }}>
+            <span className="text-sm font-semibold" style={{ color: 'var(--gold)' }}>
               Admin Console
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ml-auto">
+            <ThemeToggle />
             <button
               className="p-2 rounded-md transition-colors"
               style={{ color: 'var(--muted-foreground)' }}
@@ -435,5 +439,20 @@ export default function AdminShell({
       {/* Feedback / requirements widget — visible on all admin pages */}
       <FeedbackWidget />
     </div>
+  )
+}
+
+export default function AdminShell(props: {
+  children: React.ReactNode
+  userName: string
+  userRole: string
+  menuAccess: MenuAccess
+  permissions: string[] | null
+  locale: string
+}) {
+  return (
+    <PlatformThemeProvider>
+      <AdminShellInner {...props} />
+    </PlatformThemeProvider>
   )
 }

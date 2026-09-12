@@ -27,9 +27,9 @@ type StatementKind = 'INCOME_STATEMENT' | 'BALANCE_SHEET'
 
 const fieldStyle: React.CSSProperties = {
   width: '100%',
-  background: '#0A0A0A',
-  border: '1px solid #2A2418',
-  color: '#F0EAD8',
+  background: 'var(--surface)',
+  border: '1px solid var(--border-subtle)',
+  color: 'var(--text-cream)',
   borderRadius: '0.375rem',
   padding: '0.5rem 0.75rem',
   fontSize: '0.875rem',
@@ -75,7 +75,7 @@ function SectionAccountPicker({
       className="rounded-lg overflow-hidden"
       style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
     >
-      <div className="px-4 py-3 flex items-center justify-between gap-3" style={{ borderBottom: '1px solid #2A2418' }}>
+      <div className="px-4 py-3 flex items-center justify-between gap-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
         <div>
           <p className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{label}</p>
           <p className="text-[11px] mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
@@ -91,7 +91,7 @@ function SectionAccountPicker({
           disabled={disabled}
         />
       </div>
-      <div className="max-h-56 overflow-y-auto divide-y divide-[#2A2418]">
+      <div className="max-h-56 overflow-y-auto divide-y divide-[var(--border-subtle)]">
         {filtered.length === 0 ? (
           <p className="px-4 py-6 text-xs text-center" style={{ color: 'var(--muted-foreground)' }}>无匹配科目</p>
         ) : filtered.map(account => {
@@ -99,7 +99,7 @@ function SectionAccountPicker({
           return (
             <label
               key={account.id}
-              className="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer hover:bg-[#111108]"
+              className="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer hover:bg-[var(--surface-modal)]"
               style={{ color: 'var(--foreground)', paddingLeft: `${0.75 + (account.level - 1) * 0.75}rem` }}
             >
               <input

@@ -34,7 +34,7 @@ export default function AdminSettingsPage() {
               Choose the display language for the admin console.
             </p>
           </div>
-          <div className="inline-flex rounded-lg p-1" style={{ background: '#0E0E0A', border: '1px solid #2A2418' }}>
+          <div className="inline-flex rounded-lg p-1" style={{ background: 'var(--surface-input)', border: '1px solid var(--border-subtle)' }}>
             {[
               { key: 'zh', label: '中文' },
               { key: 'en', label: 'EN' },
@@ -70,7 +70,7 @@ export default function AdminSettingsPage() {
             ['Version', '1.0.0'],
             ['Environment', process.env.NODE_ENV ?? 'production'],
           ].map(([label, value]) => (
-            <div key={label} className="flex justify-between py-2 border-b border-[#2A2418]">
+            <div key={label} className="flex justify-between py-2 border-b border-[var(--border-subtle)]">
               <span style={{ color: 'var(--muted-foreground)' }}>{label}</span>
               <span style={{ color: 'var(--foreground)' }}>{value}</span>
             </div>
