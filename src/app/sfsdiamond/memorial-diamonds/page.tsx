@@ -18,17 +18,17 @@ const MEANINGS = [
   {
     title: 'Unbreakable Bond',
     desc: 'The enduring spirit of your loved one, bound into the hardest substance on earth.',
-    img: '/sfsdiamond/bond.jpg',
+    img: '/sfsdiamond/meaning-unbreakable-bond.png',
   },
   {
     title: 'Timeless Tribute',
     desc: 'A gem that shines forever — just like the cherished memories held within it.',
-    img: '/sfsdiamond/masonry.jpeg',
+    img: '/sfsdiamond/meaning-timeless-tribute.png',
   },
   {
     title: 'Symbol of Continuity',
     desc: 'Love and memory live on infinitely. The Eternity Cut is a visible promise of that continuity.',
-    img: '/sfsdiamond/diamond-crystal.jpg',
+    img: '/sfsdiamond/meaning-continuity.png',
   },
 ]
 

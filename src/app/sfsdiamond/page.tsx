@@ -26,6 +26,29 @@ const PILLARS = [
   { icon: '⬡', title: 'More Than Science',                 desc: 'We approach each commission as a sacred commitment — combining laboratory excellence with genuine compassion.' },
 ]
 
+const PARTNER_SUPPORTS = [
+  {
+    num: '01',
+    title: 'Global Distributor Development',
+    desc: 'Training, product guidance, and go-to-market collaboration so you can own your regional memorial-diamond market with confidence.',
+  },
+  {
+    num: '02',
+    title: 'Packaging Support',
+    desc: 'Premium presentation and packaging systems that deliver a consistent, high-end brand experience to every client you serve.',
+  },
+  {
+    num: '03',
+    title: 'Online Order System',
+    desc: 'A partner-ready platform to place and manage commissions — built for professional B2B volume, not consumer checkout.',
+  },
+  {
+    num: '04',
+    title: 'Real-Time Process Tracking',
+    desc: 'Live production status from intake to delivery, so your team — and your clients — always know where each diamond stands.',
+  },
+]
+
 export default function SFSHomePage() {
   return (
     <>
@@ -172,77 +195,135 @@ export default function SFSHomePage() {
       </section>
 
       {/* ── B2B partners ── */}
-      <section className="py-24" style={{ background: '#FAFAF8' }}>
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="max-w-3xl mx-auto text-center mb-14">
-            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#C9A96E' }}>Business Partners</p>
-            <h2 className="text-3xl md:text-4xl font-bold mb-5" style={{ fontFamily: 'Georgia, serif', color: '#1A1A1A' }}>
-              B2B Only — Built for<br />Professional Distributors
-            </h2>
-            <p className="text-sm leading-relaxed" style={{ color: '#4A3E30' }}>
-              SFS works exclusively with business partners. We help professional distributors
-              grow their local memorial-diamond markets with factory-backed quality, branded
-              packaging, and digital tools that keep every order transparent from intake to delivery.
-            </p>
-          </div>
+      <section className="relative overflow-hidden" style={{ background: '#0A0805' }}>
+        <div className="absolute inset-0">
+          <Image
+            src="/sfsdiamond/chemical.jpg"
+            alt=""
+            fill
+            sizes="100vw"
+            className="object-cover"
+            style={{ opacity: 0.28 }}
+            aria-hidden
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(115deg, rgba(10,8,5,0.94) 0%, rgba(10,8,5,0.78) 42%, rgba(10,8,5,0.55) 100%)',
+            }}
+          />
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                'radial-gradient(ellipse 50% 60% at 85% 20%, rgba(201,169,110,0.14) 0%, transparent 70%)',
+            }}
+          />
+        </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-12">
-            {[
-              {
-                title: 'Global Distributor Development',
-                desc: 'We support partners building regional sales networks — with training, product guidance, and go-to-market collaboration tailored to their market.',
-              },
-              {
-                title: 'Packaging Support',
-                desc: 'Professional presentation materials and packaging options help distributors deliver a consistent, premium brand experience to their clients.',
-              },
-              {
-                title: 'Online Order System',
-                desc: 'Place and manage partner orders through our online platform — streamlined workflows designed for professional B2B operations.',
-              },
-              {
-                title: 'Real-Time Process Tracking',
-                desc: 'Follow each commission through production with live status updates, so your team and clients always know where the diamond stands.',
-              },
-            ].map(item => (
-              <div
-                key={item.title}
-                className="rounded-2xl p-6 flex flex-col gap-3"
-                style={{ background: '#FFFFFF', border: '1px solid #EDE7D8', boxShadow: '0 1px 12px rgba(0,0,0,0.04)' }}
+        <div className="relative z-10 max-w-6xl mx-auto px-6 py-24 md:py-28">
+          <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-12 lg:gap-16 items-end mb-16 md:mb-20">
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] mb-5" style={{ color: '#C9A96E' }}>
+                Business Partners
+              </p>
+              <h2
+                className="text-3xl md:text-5xl font-bold leading-[1.12] mb-6"
+                style={{ fontFamily: 'Georgia, serif', color: '#F5F0E8' }}
               >
-                <h3 className="font-semibold text-base" style={{ color: '#1A1A1A' }}>{item.title}</h3>
-                <p className="text-sm leading-relaxed" style={{ color: '#6B5E4A' }}>{item.desc}</p>
+                B2B Only.
+                <br />
+                <span style={{ color: '#C9A96E' }}>Your Market.</span>
+                <br />
+                Our Factory.
+              </h2>
+              <p className="max-w-xl text-sm md:text-base leading-relaxed mb-9" style={{ color: 'rgba(245,240,232,0.72)' }}>
+                SFS works exclusively with professional distributors. We put our CVD laboratory,
+                branded packaging, online ordering, and live production tracking behind partners
+                who want to build — and own — their local memorial-diamond market.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <a
+                  href="mailto:patricklau@sfsdiamonds.com?subject=SFS%20Distributor%20Partnership"
+                  className="px-8 py-3.5 rounded-full font-medium text-sm transition-all hover:opacity-90"
+                  style={{ background: '#C9A96E', color: '#0A0805' }}
+                >
+                  Become a Distributor
+                </a>
+                <a
+                  href="tel:+85265600073"
+                  className="px-8 py-3.5 rounded-full font-medium text-sm border transition-all hover:bg-white/5"
+                  style={{ border: '1px solid rgba(201,169,110,0.55)', color: '#F5F0E8' }}
+                >
+                  Call (852) 6560 0073
+                </a>
               </div>
-            ))}
+            </div>
+
+            <div className="lg:pb-2">
+              <div
+                className="rounded-3xl p-7 md:p-8"
+                style={{
+                  background: 'rgba(245,240,232,0.05)',
+                  border: '1px solid rgba(201,169,110,0.28)',
+                  backdropFilter: 'blur(8px)',
+                }}
+              >
+                <p
+                  className="text-xl md:text-2xl leading-snug mb-5"
+                  style={{ fontFamily: 'Georgia, serif', color: '#F5F0E8' }}
+                >
+                  Not a retail brand. A factory partner for professionals who sell with trust.
+                </p>
+                <p className="text-sm leading-relaxed mb-6" style={{ color: 'rgba(245,240,232,0.62)' }}>
+                  From first enquiry to certified delivery, we equip distributors with the systems
+                  and craftsmanship that turn local demand into lasting client relationships.
+                </p>
+                <div className="flex flex-wrap gap-x-8 gap-y-3 text-xs uppercase tracking-[0.18em]" style={{ color: '#C9A96E' }}>
+                  <span>Factory Direct</span>
+                  <span>Partner Systems</span>
+                  <span>Global Reach</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div
-            className="rounded-2xl p-8 md:p-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6"
-            style={{ background: '#FFFFFF', border: '1px solid #EDE7D8', boxShadow: '0 1px 12px rgba(0,0,0,0.04)' }}
+            className="grid grid-cols-1 md:grid-cols-2 overflow-hidden rounded-3xl"
+            style={{ border: '1px solid rgba(201,169,110,0.22)' }}
           >
-            <div className="max-w-xl">
-              <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#C9A96E' }}>Partner with SFS</p>
-              <p className="text-sm leading-relaxed" style={{ color: '#4A3E30' }}>
-                Looking to become a distributor? Our team will walk you through partnership terms,
-                market support, and how to launch with our CVD memorial diamond programme.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3 shrink-0">
-              <a
-                href="mailto:patricklau@sfsdiamonds.com?subject=SFS%20Distributor%20Partnership"
-                className="px-7 py-3 rounded-full font-medium text-sm transition-all hover:opacity-90"
-                style={{ background: '#C9A96E', color: '#0A0805' }}
+            {PARTNER_SUPPORTS.map((item, i) => (
+              <div
+                key={item.title}
+                className={[
+                  'group p-7 md:p-8 transition-colors duration-300 hover:bg-white/[0.04]',
+                  i < PARTNER_SUPPORTS.length - 1 ? 'border-b md:border-b-0' : '',
+                  i % 2 === 0 ? 'md:border-r' : '',
+                  i < 2 ? 'md:border-b' : '',
+                ].join(' ')}
+                style={{
+                  background: 'rgba(10,8,5,0.35)',
+                  borderColor: 'rgba(201,169,110,0.14)',
+                }}
               >
-                Enquire as a Distributor
-              </a>
-              <a
-                href="tel:+85265600073"
-                className="px-7 py-3 rounded-full font-medium text-sm border transition-all hover:bg-black/5"
-                style={{ border: '1px solid #C9A96E', color: '#1A1A1A' }}
-              >
-                Call (852) 6560 0073
-              </a>
-            </div>
+                <p
+                  className="text-xs font-semibold tracking-[0.2em] mb-4 transition-colors duration-300 group-hover:text-[#E4C78A]"
+                  style={{ color: '#C9A96E' }}
+                >
+                  {item.num}
+                </p>
+                <h3
+                  className="text-lg font-semibold mb-3"
+                  style={{ fontFamily: 'Georgia, serif', color: '#F5F0E8' }}
+                >
+                  {item.title}
+                </h3>
+                <p className="text-sm leading-relaxed" style={{ color: 'rgba(245,240,232,0.58)' }}>
+                  {item.desc}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
