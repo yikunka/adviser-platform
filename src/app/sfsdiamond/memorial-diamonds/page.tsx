@@ -10,10 +10,26 @@ export const metadata: Metadata = {
 }
 
 const MEANINGS = [
-  { title: 'Eternal Love',         desc: 'An everlasting connection — the ∞ form represents a love that has no end and no beginning.',          img: '/sfsdiamond/eternal-love.png' },
-  { title: 'Unbreakable Bond',     desc: 'The enduring spirit of your loved one, bound into the hardest substance on earth.',                  img: '/sfsdiamond/bond.jpg' },
-  { title: 'Timeless Tribute',     desc: 'A gem that shines forever — just like the cherished memories held within it.',                       img: '/sfsdiamond/tribute.jpg' },
-  { title: 'Symbol of Continuity', desc: 'Love and memory live on infinitely. The Eternity Cut is a visible promise of that continuity.',      img: '/sfsdiamond/continuity.jpeg' },
+  {
+    title: 'Eternal Love',
+    desc: 'An everlasting connection — the ∞ form represents a love that has no end and no beginning.',
+    img: '/sfsdiamond/necklace-life.jpg',
+  },
+  {
+    title: 'Unbreakable Bond',
+    desc: 'The enduring spirit of your loved one, bound into the hardest substance on earth.',
+    img: '/sfsdiamond/bond.jpg',
+  },
+  {
+    title: 'Timeless Tribute',
+    desc: 'A gem that shines forever — just like the cherished memories held within it.',
+    img: '/sfsdiamond/masonry.jpeg',
+  },
+  {
+    title: 'Symbol of Continuity',
+    desc: 'Love and memory live on infinitely. The Eternity Cut is a visible promise of that continuity.',
+    img: '/sfsdiamond/diamond-crystal.jpg',
+  },
 ]
 
 export default function MemorialDiamondsPage() {
@@ -111,8 +127,8 @@ export default function MemorialDiamondsPage() {
               Forever with Your Loved One
             </h2>
             <p className="mt-4 text-sm max-w-xl mx-auto" style={{ color: '#6B5E4A' }}>
-              Browse our jewellery settings — rings, necklaces, earrings, and bracelets — with the
-              same product photos used in ordering.
+              Browse our jewellery settings — rings, necklaces, earrings, and bracelets — and find
+              the design that will carry your memorial diamond.
             </p>
           </div>
           <CollectionShowcase />

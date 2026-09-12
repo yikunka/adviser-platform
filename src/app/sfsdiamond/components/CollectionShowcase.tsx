@@ -1,20 +1,17 @@
 'use client'
 
-import { useEffect, useEffectEvent, useMemo, useState } from 'react'
-import Image from 'next/image'
+import { useEffect, useMemo, useState } from 'react'
 import {
   getDefaultSfsOrderSpecOptions,
   type SfsOrderSpecOptions,
   type SfsSpecOption,
 } from '@/lib/sfs/diamond-spec-options'
-import { formatSfsPriceLabel } from '@/lib/sfs/effective-pricing'
 
 export type CollectionCategory = 'all' | 'ring' | 'necklace' | 'earring' | 'bracelet'
 
 export type CollectionProduct = {
   id: string
   name: string
-  price: string | null
   desc: string
   img: string
   category: Exclude<CollectionCategory, 'all'>
@@ -31,6 +28,39 @@ const FILTERS: { id: CollectionCategory; label: string }[] = [
 const GOLD = '#C9A96E'
 const DARK = '#1A1A1A'
 const MUTED = '#6B5E4A'
+const BORDER = '#EDE7D8'
+const PLACEHOLDER = '/sfsdiamond/diamond-crystal.jpg'
+
+/** Reliable local photos keyed by category + normalised design label. */
+const LOCAL_IMAGE_BY_KEY: Record<string, string> = {
+  'ring:solitaire': '/sfsdiamond/order/ring-solitaire.png',
+  'ring:pave': '/sfsdiamond/order/ring-pave.png',
+  'ring:pavé': '/sfsdiamond/order/ring-pave.png',
+  'ring:halo': '/sfsdiamond/order/ring-halo.png',
+  'ring:r-classic': '/sfsdiamond/order/ring-R-Classic.jpg',
+  'ring:classic': '/sfsdiamond/ring-classic.jpg',
+  'necklace:classic': '/sfsdiamond/order/necklace-classic.jpeg',
+  'necklace:plain': '/sfsdiamond/order/necklace-plain.jpeg',
+  'necklace:buddha': '/sfsdiamond/order/necklace-buddha.jpeg',
+  'necklace:cross': '/sfsdiamond/order/necklace-cross.jpeg',
+  'necklace:yinyang': '/sfsdiamond/order/necklace-yinyang.jpeg',
+  'necklace:yin-yang': '/sfsdiamond/order/necklace-yinyang.jpeg',
+  'necklace:life': '/sfsdiamond/necklace-life.jpg',
+  'necklace:bagua': '/sfsdiamond/necklace-bagua.jpg',
+  'bracelet:classic': '/sfsdiamond/order/necklace-classic.jpeg',
+  'bracelet:plain': '/sfsdiamond/order/necklace-plain.jpeg',
+}
+
+const CATEGORY_FALLBACK: Record<CollectionProduct['category'], string> = {
+  ring: '/sfsdiamond/ring-classic.jpg',
+  necklace: '/sfsdiamond/order/necklace-classic.jpeg',
+  earring: '/sfsdiamond/diamond-crystal.jpg',
+  bracelet: '/sfsdiamond/order/necklace-plain.jpeg',
+}
+
+function normaliseKey(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')
+}
 
 function categoryLabel(category: CollectionProduct['category']) {
   switch (category) {
@@ -58,20 +88,51 @@ function categoryDesc(category: CollectionProduct['category'], design: string) {
   }
 }
 
+function localImageFor(category: CollectionProduct['category'], label: string, value: string) {
+  return (
+    LOCAL_IMAGE_BY_KEY[`${category}:${normaliseKey(label)}`]
+    ?? LOCAL_IMAGE_BY_KEY[`${category}:${normaliseKey(value)}`]
+    ?? null
+  )
+}
+
+/**
+ * Prefer a stable public path when possible. Absolute/signed OSS URLs often break
+ * through Next `<Image>` + the CDN loader — we still try them first when no local
+ * match exists, then fall back via <ProductPhoto onError>.
+ */
+function resolveImage(
+  category: CollectionProduct['category'],
+  label: string,
+  value: string,
+  imageUrl: string | null,
+): string | null {
+  const local = localImageFor(category, label, value)
+  if (imageUrl?.startsWith('/sfsdiamond/')) return imageUrl
+  if (local) return local
+  if (imageUrl?.startsWith('http://') || imageUrl?.startsWith('https://')) return imageUrl
+  if (imageUrl?.startsWith('/')) return imageUrl
+  return CATEGORY_FALLBACK[category] ?? PLACEHOLDER
+}
+
 function mapDesigns(
   options: SfsSpecOption[],
   category: CollectionProduct['category'],
 ): CollectionProduct[] {
   return options
-    .filter(option => option.isActive && Boolean(option.imageUrl))
-    .map(option => ({
-      id: `${category}-${option.id}`,
-      name: `${categoryLabel(category)} — ${option.label}`,
-      price: formatSfsPriceLabel(option.price),
-      desc: categoryDesc(category, option.label),
-      img: option.imageUrl as string,
-      category,
-    }))
+    .filter(option => option.isActive)
+    .map(option => {
+      const img = resolveImage(category, option.label, option.value, option.imageUrl)
+      if (!img) return null
+      return {
+        id: `${category}-${option.id}`,
+        name: `${categoryLabel(category)} — ${option.label}`,
+        desc: categoryDesc(category, option.label),
+        img,
+        category,
+      }
+    })
+    .filter((item): item is CollectionProduct => item != null)
 }
 
 function productsFromSpecOptions(spec: SfsOrderSpecOptions): CollectionProduct[] {
@@ -83,13 +144,46 @@ function productsFromSpecOptions(spec: SfsOrderSpecOptions): CollectionProduct[]
   ]
 }
 
+function ProductPhoto({
+  src,
+  alt,
+  category,
+  label,
+}: {
+  src: string
+  alt: string
+  category: CollectionProduct['category']
+  label: string
+}) {
+  const [current, setCurrent] = useState(src)
+
+  useEffect(() => {
+    setCurrent(src)
+  }, [src])
+
+  return (
+    // Native <img>: signed OSS URLs and absolute CDNs break under next/image + oss-loader.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={current}
+      alt={alt}
+      className="h-full w-full object-contain p-5 transition-transform duration-500 group-hover:scale-[1.03]"
+      loading="lazy"
+      decoding="async"
+      onError={() => {
+        const local = localImageFor(category, label, label)
+        const fallback = local ?? CATEGORY_FALLBACK[category] ?? PLACEHOLDER
+        if (current !== fallback) setCurrent(fallback)
+      }}
+    />
+  )
+}
+
 export default function CollectionShowcase() {
   const [products, setProducts] = useState<CollectionProduct[]>(() =>
     productsFromSpecOptions(getDefaultSfsOrderSpecOptions()),
   )
   const [filter, setFilter] = useState<CollectionCategory>('all')
-  const [activeId, setActiveId] = useState('')
-  const [paused, setPaused] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -121,169 +215,92 @@ export default function CollectionShowcase() {
     [filter, products],
   )
 
-  const active = filtered.find(p => p.id === activeId) ?? filtered[0]
-
-  useEffect(() => {
-    if (!filtered.some(p => p.id === activeId) && filtered[0]) {
-      setActiveId(filtered[0].id)
-    }
-  }, [filter, filtered, activeId])
-
-  const onAutoAdvance = useEffectEvent(() => {
-    if (paused || filtered.length < 2 || !active) return
-    const index = filtered.findIndex(p => p.id === active.id)
-    const next = filtered[(index + 1) % filtered.length]
-    if (next) setActiveId(next.id)
-  })
-
-  useEffect(() => {
-    const timer = window.setInterval(() => onAutoAdvance(), 4200)
-    return () => window.clearInterval(timer)
-  }, [filter, paused, active?.id, filtered.length, onAutoAdvance])
-
-  if (!active) {
+  if (filtered.length === 0) {
     return (
       <p className="text-center text-sm" style={{ color: MUTED }}>
-        {loading ? 'Loading collection…' : 'No jewellery products with photos are available yet.'}
+        {loading ? 'Loading collection…' : 'No jewellery products are available yet.'}
       </p>
     )
   }
 
   return (
     <div className="space-y-10">
-      <div className="flex flex-wrap items-center justify-center gap-2">
+      <div
+        className="flex flex-wrap items-center justify-center gap-x-1 gap-y-2 border-b pb-1"
+        style={{ borderColor: BORDER }}
+        role="tablist"
+        aria-label="Collection categories"
+      >
         {availableFilters.map(item => {
           const selected = filter === item.id
           return (
             <button
               key={item.id}
               type="button"
+              role="tab"
+              aria-selected={selected}
               onClick={() => setFilter(item.id)}
-              className="rounded-full px-4 py-2 text-xs font-semibold tracking-wide transition-all"
-              style={{
-                background: selected ? DARK : '#FFFFFF',
-                color: selected ? '#F5F0E8' : MUTED,
-                border: `1px solid ${selected ? DARK : '#EDE7D8'}`,
-              }}
+              className="relative px-4 py-2.5 text-xs font-semibold tracking-[0.14em] uppercase transition-colors"
+              style={{ color: selected ? DARK : MUTED }}
             >
               {item.label}
+              <span
+                className="absolute inset-x-3 bottom-0 h-0.5 rounded-full transition-opacity"
+                style={{ background: GOLD, opacity: selected ? 1 : 0 }}
+              />
             </button>
           )
         })}
       </div>
 
-      <div
-        className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-stretch"
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
-        onFocusCapture={() => setPaused(true)}
-        onBlurCapture={e => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setPaused(false)
-        }}
-      >
-        <div
-          className="relative overflow-hidden rounded-3xl"
-          style={{
-            minHeight: '22rem',
-            background: '#111111',
-            border: '1px solid #2A2418',
-          }}
-        >
-          <div key={active.id} className="absolute inset-0 transition-opacity duration-500">
-            <Image
-              src={active.img}
-              alt={active.name}
-              fill
-              sizes="(max-width: 1024px) 100vw, 60vw"
-              className="object-cover"
-              priority
-            />
-            <div
-              className="absolute inset-0"
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {filtered.map(product => {
+          const designLabel = product.name.includes('—')
+            ? product.name.split('—').slice(1).join('—').trim()
+            : product.name
+          return (
+            <article
+              key={product.id}
+              className="group overflow-hidden rounded-2xl transition-shadow duration-300 hover:shadow-[0_12px_36px_rgba(26,26,26,0.08)]"
               style={{
-                background:
-                  'linear-gradient(to top, rgba(10,8,5,0.88) 0%, rgba(10,8,5,0.35) 45%, rgba(10,8,5,0.15) 100%)',
+                background: '#FFFFFF',
+                border: `1px solid ${BORDER}`,
               }}
-            />
-          </div>
-
-          <div className="relative z-10 flex h-full min-h-[22rem] flex-col justify-end p-6 md:p-8">
-            <p className="mb-2 text-[10px] uppercase tracking-[0.24em]" style={{ color: GOLD }}>
-              {categoryLabel(active.category)}
-            </p>
-            <h3
-              className="mb-2 text-2xl font-bold md:text-3xl"
-              style={{ fontFamily: 'Georgia, serif', color: '#FFFFFF' }}
             >
-              {active.name}
-            </h3>
-            <p className="mb-4 max-w-lg text-sm leading-relaxed" style={{ color: '#D8CFC0' }}>
-              {active.desc}
-            </p>
-            {active.price ? (
-              <p className="text-sm font-bold" style={{ color: GOLD }}>{active.price}</p>
-            ) : null}
-
-            <div className="mt-6 flex flex-wrap gap-2">
-              {filtered.map(product => {
-                const selected = product.id === active.id
-                return (
-                  <button
-                    key={product.id}
-                    type="button"
-                    aria-label={`Show ${product.name}`}
-                    onClick={() => setActiveId(product.id)}
-                    className="h-1.5 rounded-full transition-all"
-                    style={{
-                      width: selected ? '1.75rem' : '0.65rem',
-                      background: selected ? GOLD : 'rgba(245,240,232,0.35)',
-                    }}
-                  />
-                )
-              })}
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 content-start">
-          {filtered.map(product => {
-            const selected = product.id === active.id
-            return (
-              <button
-                key={product.id}
-                type="button"
-                onClick={() => setActiveId(product.id)}
-                className="group overflow-hidden rounded-2xl text-left transition-all"
+              <div
+                className="relative aspect-[5/4] overflow-hidden"
                 style={{
-                  background: '#FFFFFF',
-                  border: `1px solid ${selected ? GOLD : '#EDE7D8'}`,
-                  boxShadow: selected ? '0 8px 28px rgba(201,169,110,0.18)' : '0 1px 12px rgba(0,0,0,0.04)',
+                  background:
+                    'linear-gradient(165deg, #F7F3EB 0%, #EFE8DA 48%, #E8DFD0 100%)',
                 }}
               >
-                <div className="relative aspect-[4/3] overflow-hidden">
-                  <Image
-                    src={product.img}
-                    alt={product.name}
-                    fill
-                    sizes="(max-width: 640px) 50vw, 20vw"
-                    className="object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
+                <ProductPhoto
+                  src={product.img}
+                  alt={product.name}
+                  category={product.category}
+                  label={designLabel}
+                />
+                <div
+                  className="pointer-events-none absolute left-4 top-4 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]"
+                  style={{ background: 'rgba(255,255,255,0.88)', color: GOLD }}
+                >
+                  {categoryLabel(product.category)}
                 </div>
-                <div className="space-y-1 p-3">
-                  <p className="text-[10px] uppercase tracking-wider" style={{ color: GOLD }}>
-                    {categoryLabel(product.category)}
-                  </p>
-                  <p className="text-sm font-semibold leading-snug" style={{ color: DARK }}>
-                    {product.name}
-                  </p>
-                  {product.price ? (
-                    <p className="text-xs font-semibold" style={{ color: GOLD }}>{product.price}</p>
-                  ) : null}
-                </div>
-              </button>
-            )
-          })}
-        </div>
+              </div>
+              <div className="space-y-2 px-5 py-4">
+                <h3
+                  className="text-lg font-semibold leading-snug"
+                  style={{ fontFamily: 'Georgia, serif', color: DARK }}
+                >
+                  {designLabel}
+                </h3>
+                <p className="text-sm leading-relaxed" style={{ color: MUTED }}>
+                  {product.desc}
+                </p>
+              </div>
+            </article>
+          )
+        })}
       </div>
     </div>
   )
