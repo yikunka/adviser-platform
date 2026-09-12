@@ -111,8 +111,8 @@ export default function MemorialDiamondsPage() {
               Forever with Your Loved One
             </h2>
             <p className="mt-4 text-sm max-w-xl mx-auto" style={{ color: '#6B5E4A' }}>
-              Browse memorial diamonds, necklaces, and rings — filter by category and explore each
-              setting with live product photography.
+              Browse our jewellery settings — rings, necklaces, earrings, and bracelets — with the
+              same product photos used in ordering.
             </p>
           </div>
           <CollectionShowcase />

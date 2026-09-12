@@ -1,115 +1,31 @@
 'use client'
 
-import { useEffect, useEffectEvent, useState } from 'react'
+import { useEffect, useEffectEvent, useMemo, useState } from 'react'
 import Image from 'next/image'
+import {
+  getDefaultSfsOrderSpecOptions,
+  type SfsOrderSpecOptions,
+  type SfsSpecOption,
+} from '@/lib/sfs/diamond-spec-options'
+import { formatSfsPriceLabel } from '@/lib/sfs/effective-pricing'
 
-export type CollectionCategory = 'all' | 'diamond' | 'necklace' | 'ring'
+export type CollectionCategory = 'all' | 'ring' | 'necklace' | 'earring' | 'bracelet'
 
 export type CollectionProduct = {
   id: string
   name: string
-  price: string
+  price: string | null
   desc: string
   img: string
   category: Exclude<CollectionCategory, 'all'>
 }
 
-export const COLLECTION_PRODUCTS: CollectionProduct[] = [
-  {
-    id: 'memorial-diamond',
-    name: 'Memorial Diamond',
-    price: 'HK$10,999',
-    desc: "A certified CVD diamond grown from your loved one's ashes or hair.",
-    img: '/sfsdiamond/eternity-cut.jpg',
-    category: 'diamond',
-  },
-  {
-    id: 'necklace-life',
-    name: 'Necklace — Life',
-    price: 'HK$99,999',
-    desc: 'Memorial diamond set in a delicate life-symbol pendant.',
-    img: '/sfsdiamond/necklace-life.jpg',
-    category: 'necklace',
-  },
-  {
-    id: 'necklace-bagua',
-    name: 'Necklace — Bagua',
-    price: 'HK$99,999',
-    desc: 'Diamond pendant with traditional Bagua eight-trigram design.',
-    img: '/sfsdiamond/necklace-bagua.jpg',
-    category: 'necklace',
-  },
-  {
-    id: 'necklace-buddha',
-    name: 'Necklace — Buddha',
-    price: 'HK$99,999',
-    desc: 'Memorial diamond set within a serene Buddha silhouette pendant.',
-    img: '/sfsdiamond/necklace-buddha.jpg',
-    category: 'necklace',
-  },
-  {
-    id: 'necklace-cross',
-    name: 'Necklace — Cross',
-    price: 'HK$99,999',
-    desc: 'A Christian cross pendant encasing the memorial diamond.',
-    img: '/sfsdiamond/necklace-cross.png',
-    category: 'necklace',
-  },
-  {
-    id: 'necklace-classic',
-    name: 'Necklace — Classic',
-    price: 'HK$99,999',
-    desc: 'A refined classic pendant setting for your memorial diamond.',
-    img: '/sfsdiamond/order/necklace-classic.jpeg',
-    category: 'necklace',
-  },
-  {
-    id: 'necklace-yinyang',
-    name: 'Necklace — Yin Yang',
-    price: 'HK$99,999',
-    desc: 'Balanced yin-yang pendant designed to cradle the memorial stone.',
-    img: '/sfsdiamond/order/necklace-yinyang.jpeg',
-    category: 'necklace',
-  },
-  {
-    id: 'ring-classic',
-    name: 'Diamond Ring — Classic',
-    price: 'HK$99,999',
-    desc: 'A timeless classic solitaire ring featuring the memorial stone.',
-    img: '/sfsdiamond/ring-classic.jpg',
-    category: 'ring',
-  },
-  {
-    id: 'ring-solitaire',
-    name: 'Diamond Ring — Solitaire',
-    price: 'HK$99,999',
-    desc: 'Clean solitaire mount that lets the memorial diamond take centre stage.',
-    img: '/sfsdiamond/order/ring-solitaire.png',
-    category: 'ring',
-  },
-  {
-    id: 'ring-halo',
-    name: 'Diamond Ring — Halo',
-    price: 'HK$99,999',
-    desc: 'A luminous halo setting that amplifies the fire of your memorial diamond.',
-    img: '/sfsdiamond/order/ring-halo.png',
-    category: 'ring',
-  },
-  {
-    id: 'ring-pave',
-    name: 'Diamond Ring — Pavé',
-    price: 'HK$99,999',
-    desc: 'Pavé band detailing for a soft cascade of brilliance around the centre stone.',
-    img: '/sfsdiamond/order/ring-pave.png',
-    category: 'ring',
-  },
-]
-
 const FILTERS: { id: CollectionCategory; label: string }[] = [
   { id: 'all', label: 'All' },
-  { id: 'diamond', label: 'Diamond' },
-  { id: 'necklace', label: 'Necklace' },
   { id: 'ring', label: 'Ring' },
+  { id: 'necklace', label: 'Necklace' },
+  { id: 'earring', label: 'Earring' },
+  { id: 'bracelet', label: 'Bracelet' },
 ]
 
 const GOLD = '#C9A96E'
@@ -118,36 +34,94 @@ const MUTED = '#6B5E4A'
 
 function categoryLabel(category: CollectionProduct['category']) {
   switch (category) {
-    case 'diamond':
-      return 'Loose diamond'
-    case 'necklace':
-      return 'Necklace'
     case 'ring':
       return 'Ring'
+    case 'necklace':
+      return 'Necklace'
+    case 'earring':
+      return 'Earring'
+    case 'bracelet':
+      return 'Bracelet'
   }
 }
 
+function categoryDesc(category: CollectionProduct['category'], design: string) {
+  switch (category) {
+    case 'ring':
+      return `${design} ring setting for your memorial diamond.`
+    case 'necklace':
+      return `${design} necklace pendant crafted to hold your memorial diamond.`
+    case 'earring':
+      return `${design} earring design featuring your memorial diamond.`
+    case 'bracelet':
+      return `${design} bracelet setting for your memorial diamond.`
+  }
+}
+
+function mapDesigns(
+  options: SfsSpecOption[],
+  category: CollectionProduct['category'],
+): CollectionProduct[] {
+  return options
+    .filter(option => option.isActive && Boolean(option.imageUrl))
+    .map(option => ({
+      id: `${category}-${option.id}`,
+      name: `${categoryLabel(category)} — ${option.label}`,
+      price: formatSfsPriceLabel(option.price),
+      desc: categoryDesc(category, option.label),
+      img: option.imageUrl as string,
+      category,
+    }))
+}
+
+function productsFromSpecOptions(spec: SfsOrderSpecOptions): CollectionProduct[] {
+  return [
+    ...mapDesigns(spec.ringDesigns, 'ring'),
+    ...mapDesigns(spec.necklaceDesigns, 'necklace'),
+    ...mapDesigns(spec.earringDesigns, 'earring'),
+    ...mapDesigns(spec.braceletDesigns, 'bracelet'),
+  ]
+}
+
 export default function CollectionShowcase() {
+  const [products, setProducts] = useState<CollectionProduct[]>(() =>
+    productsFromSpecOptions(getDefaultSfsOrderSpecOptions()),
+  )
   const [filter, setFilter] = useState<CollectionCategory>('all')
-  const [activeId, setActiveId] = useState(COLLECTION_PRODUCTS[0]?.id ?? '')
+  const [activeId, setActiveId] = useState('')
   const [paused, setPaused] = useState(false)
+  const [loading, setLoading] = useState(true)
 
-  const filtered =
-    filter === 'all'
-      ? COLLECTION_PRODUCTS
-      : COLLECTION_PRODUCTS.filter(p => p.category === filter)
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const res = await fetch('/api/sfsdiamond/pricing')
+        if (!res.ok) return
+        const json = await res.json()
+        const next = productsFromSpecOptions(json.specOptions as SfsOrderSpecOptions)
+        if (!cancelled && next.length > 0) setProducts(next)
+      } catch {
+        // Keep default catalog fallback.
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    void load()
+    return () => { cancelled = true }
+  }, [])
 
-  const active =
-    filtered.find(p => p.id === activeId)
-    ?? filtered[0]
-    ?? COLLECTION_PRODUCTS[0]
+  const availableFilters = useMemo(() => {
+    const present = new Set(products.map(p => p.category))
+    return FILTERS.filter(f => f.id === 'all' || present.has(f.id as Exclude<CollectionCategory, 'all'>))
+  }, [products])
 
-  const onAutoAdvance = useEffectEvent(() => {
-    if (paused || filtered.length < 2) return
-    const index = filtered.findIndex(p => p.id === active.id)
-    const next = filtered[(index + 1) % filtered.length]
-    if (next) setActiveId(next.id)
-  })
+  const filtered = useMemo(
+    () => (filter === 'all' ? products : products.filter(p => p.category === filter)),
+    [filter, products],
+  )
+
+  const active = filtered.find(p => p.id === activeId) ?? filtered[0]
 
   useEffect(() => {
     if (!filtered.some(p => p.id === activeId) && filtered[0]) {
@@ -155,15 +129,30 @@ export default function CollectionShowcase() {
     }
   }, [filter, filtered, activeId])
 
+  const onAutoAdvance = useEffectEvent(() => {
+    if (paused || filtered.length < 2 || !active) return
+    const index = filtered.findIndex(p => p.id === active.id)
+    const next = filtered[(index + 1) % filtered.length]
+    if (next) setActiveId(next.id)
+  })
+
   useEffect(() => {
     const timer = window.setInterval(() => onAutoAdvance(), 4200)
     return () => window.clearInterval(timer)
-  }, [filter, paused, active.id, filtered.length, onAutoAdvance])
+  }, [filter, paused, active?.id, filtered.length, onAutoAdvance])
+
+  if (!active) {
+    return (
+      <p className="text-center text-sm" style={{ color: MUTED }}>
+        {loading ? 'Loading collection…' : 'No jewellery products with photos are available yet.'}
+      </p>
+    )
+  }
 
   return (
     <div className="space-y-10">
       <div className="flex flex-wrap items-center justify-center gap-2">
-        {FILTERS.map(item => {
+        {availableFilters.map(item => {
           const selected = filter === item.id
           return (
             <button
@@ -231,7 +220,9 @@ export default function CollectionShowcase() {
             <p className="mb-4 max-w-lg text-sm leading-relaxed" style={{ color: '#D8CFC0' }}>
               {active.desc}
             </p>
-            <p className="text-sm font-bold" style={{ color: GOLD }}>{active.price}</p>
+            {active.price ? (
+              <p className="text-sm font-bold" style={{ color: GOLD }}>{active.price}</p>
+            ) : null}
 
             <div className="mt-6 flex flex-wrap gap-2">
               {filtered.map(product => {
@@ -255,7 +246,7 @@ export default function CollectionShowcase() {
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:gap-4 content-start">
-          {filtered.map((product, index) => {
+          {filtered.map(product => {
             const selected = product.id === active.id
             return (
               <button
@@ -267,7 +258,6 @@ export default function CollectionShowcase() {
                   background: '#FFFFFF',
                   border: `1px solid ${selected ? GOLD : '#EDE7D8'}`,
                   boxShadow: selected ? '0 8px 28px rgba(201,169,110,0.18)' : '0 1px 12px rgba(0,0,0,0.04)',
-                  animationDelay: `${index * 40}ms`,
                 }}
               >
                 <div className="relative aspect-[4/3] overflow-hidden">
@@ -286,7 +276,9 @@ export default function CollectionShowcase() {
                   <p className="text-sm font-semibold leading-snug" style={{ color: DARK }}>
                     {product.name}
                   </p>
-                  <p className="text-xs font-semibold" style={{ color: GOLD }}>{product.price}</p>
+                  {product.price ? (
+                    <p className="text-xs font-semibold" style={{ color: GOLD }}>{product.price}</p>
+                  ) : null}
                 </div>
               </button>
             )

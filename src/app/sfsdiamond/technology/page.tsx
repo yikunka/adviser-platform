@@ -192,7 +192,13 @@ export default function TechnologyPage() {
       <section className="py-20" style={{ background: '#111111' }}>
         <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-14 items-center">
           <div className="relative rounded-3xl overflow-hidden shadow-xl" style={{ aspectRatio: '1/1', maxWidth: 440 }}>
-            <Image src="/sfsdiamond/qc-diagram.png" alt="Quality Control" fill sizes="(max-width: 768px) 100vw, 440px" className="object-cover" />
+            <Image
+              src="/sfsdiamond/igi-quality-cert.png"
+              alt="Diamond with IGI-style quality grading certificate"
+              fill
+              sizes="(max-width: 768px) 100vw, 440px"
+              className="object-cover"
+            />
           </div>
           <div>
             <p className="text-xs uppercase tracking-widest mb-4" style={{ color: '#C9A96E' }}>Guarantee</p>
@@ -202,7 +208,8 @@ export default function TechnologyPage() {
             <p className="text-sm leading-relaxed mb-6" style={{ color: '#A89880' }}>
               Every memorial diamond is graded by the internationally recognised 4C framework —
               Colour, Clarity, Cut, and Carat Weight — before delivery. Each stone is accompanied by
-              a full quality certificate and a unique traceability code linked to the original remains.
+              a full quality certificate (such as IGI grading documentation) and a unique
+              traceability code linked to the original remains.
             </p>
             <div className="grid grid-cols-2 gap-3">
               {['Colour', 'Clarity', 'Cut', 'Carat Weight'].map(c => (

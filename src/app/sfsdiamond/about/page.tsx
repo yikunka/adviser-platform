@@ -52,7 +52,13 @@ export default function AboutPage() {
             </div>
           </div>
           <div className="relative rounded-3xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/3' }}>
-            <Image src="/sfsdiamond/sfs-logo-alt.png" alt="SFS Diamond logo" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-contain p-10 bg-white" />
+            <Image
+              src="/sfsdiamond/chemical.jpg"
+              alt="SFS Technology Group CVD laboratory and factory"
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-cover"
+            />
           </div>
         </div>
       </section>

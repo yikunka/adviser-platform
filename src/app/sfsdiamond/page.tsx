@@ -171,6 +171,82 @@ export default function SFSHomePage() {
         </div>
       </section>
 
+      {/* ── B2B partners ── */}
+      <section className="py-24" style={{ background: '#FAFAF8' }}>
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="max-w-3xl mx-auto text-center mb-14">
+            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#C9A96E' }}>Business Partners</p>
+            <h2 className="text-3xl md:text-4xl font-bold mb-5" style={{ fontFamily: 'Georgia, serif', color: '#1A1A1A' }}>
+              B2B Only — Built for<br />Professional Distributors
+            </h2>
+            <p className="text-sm leading-relaxed" style={{ color: '#4A3E30' }}>
+              SFS works exclusively with business partners. We help professional distributors
+              grow their local memorial-diamond markets with factory-backed quality, branded
+              packaging, and digital tools that keep every order transparent from intake to delivery.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-12">
+            {[
+              {
+                title: 'Global Distributor Development',
+                desc: 'We support partners building regional sales networks — with training, product guidance, and go-to-market collaboration tailored to their market.',
+              },
+              {
+                title: 'Packaging Support',
+                desc: 'Professional presentation materials and packaging options help distributors deliver a consistent, premium brand experience to their clients.',
+              },
+              {
+                title: 'Online Order System',
+                desc: 'Place and manage partner orders through our online platform — streamlined workflows designed for professional B2B operations.',
+              },
+              {
+                title: 'Real-Time Process Tracking',
+                desc: 'Follow each commission through production with live status updates, so your team and clients always know where the diamond stands.',
+              },
+            ].map(item => (
+              <div
+                key={item.title}
+                className="rounded-2xl p-6 flex flex-col gap-3"
+                style={{ background: '#FFFFFF', border: '1px solid #EDE7D8', boxShadow: '0 1px 12px rgba(0,0,0,0.04)' }}
+              >
+                <h3 className="font-semibold text-base" style={{ color: '#1A1A1A' }}>{item.title}</h3>
+                <p className="text-sm leading-relaxed" style={{ color: '#6B5E4A' }}>{item.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div
+            className="rounded-2xl p-8 md:p-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6"
+            style={{ background: '#FFFFFF', border: '1px solid #EDE7D8', boxShadow: '0 1px 12px rgba(0,0,0,0.04)' }}
+          >
+            <div className="max-w-xl">
+              <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#C9A96E' }}>Partner with SFS</p>
+              <p className="text-sm leading-relaxed" style={{ color: '#4A3E30' }}>
+                Looking to become a distributor? Our team will walk you through partnership terms,
+                market support, and how to launch with our CVD memorial diamond programme.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3 shrink-0">
+              <a
+                href="mailto:patricklau@sfsdiamonds.com?subject=SFS%20Distributor%20Partnership"
+                className="px-7 py-3 rounded-full font-medium text-sm transition-all hover:opacity-90"
+                style={{ background: '#C9A96E', color: '#0A0805' }}
+              >
+                Enquire as a Distributor
+              </a>
+              <a
+                href="tel:+85265600073"
+                className="px-7 py-3 rounded-full font-medium text-sm border transition-all hover:bg-black/5"
+                style={{ border: '1px solid #C9A96E', color: '#1A1A1A' }}
+              >
+                Call (852) 6560 0073
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── Video ── */}
       <section className="py-24" style={{ background: '#111111' }}>
         <div className="max-w-6xl mx-auto px-6">
