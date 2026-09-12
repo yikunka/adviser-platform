@@ -9,20 +9,20 @@ export const metadata: Metadata = {
 }
 
 const EXTRACTION_STEPS = [
-  { num: '1.1', title: 'Labelling & Tracking',      desc: 'Each sample is assigned a unique identification code for full traceability throughout the process.',           img: '/sfsdiamond/process-1.jpg' },
-  { num: '1.2', title: 'Grinding',                   desc: 'The ashes are milled to increase reaction surface area, enabling thorough chemical purification.',             img: '/sfsdiamond/process-2.jpg' },
-  { num: '1.3', title: 'Chemical Purification',      desc: 'Calcium phosphate and other minerals are removed, isolating the pure carbon component.',                      img: '/sfsdiamond/extraction.jpg' },
-  { num: '1.4', title: 'High-Temperature Treatment', desc: 'Purified carbon is treated in oxygen-free conditions to prevent oxidation and ensure maximum purity.',        img: '/sfsdiamond/chemical.jpg' },
-  { num: '1.5', title: 'Vaporisation',               desc: 'The purified carbon is converted into gas form, ready to be fed into the CVD chamber.',                      img: '/sfsdiamond/carbon-source.webp' },
+  { num: '1.1', title: 'Labelling & Tracking',      desc: 'Each sample is assigned a unique identification code for full traceability throughout the process.',           img: '/sfsdiamond/extract-1-labelling.png' },
+  { num: '1.2', title: 'Grinding',                   desc: 'The ashes are milled to increase reaction surface area, enabling thorough chemical purification.',             img: '/sfsdiamond/extract-2-grinding.png' },
+  { num: '1.3', title: 'Chemical Purification',      desc: 'Calcium phosphate and other minerals are removed, isolating the pure carbon component.',                      img: '/sfsdiamond/extract-3-purification.png' },
+  { num: '1.4', title: 'High-Temperature Treatment', desc: 'Purified carbon is treated in oxygen-free conditions to prevent oxidation and ensure maximum purity.',        img: '/sfsdiamond/extract-4-heat.png' },
+  { num: '1.5', title: 'Vaporisation',               desc: 'The purified carbon is converted into gas form, ready to be fed into the CVD chamber.',                      img: '/sfsdiamond/extract-5-vaporisation.png' },
 ]
 
 const CVD_STEPS = [
-  { num: '2.1', title: 'Seed Preparation',       desc: 'A high-purity diamond seed crystal is placed inside a vacuum chamber.',                                             img: '/sfsdiamond/cvd-machine.jpeg' },
-  { num: '2.2', title: 'Carbon Gas Introduction', desc: 'A precisely controlled mixture of carbon-rich gases is introduced at low pressure.',                              img: '/sfsdiamond/cvd-diagram.jpg' },
-  { num: '2.3', title: 'Plasma Activation',       desc: 'High-energy microwave plasma breaks down the gas molecules, releasing carbon atoms.',                             img: '/sfsdiamond/growth.jpg' },
-  { num: '2.4', title: 'Layer-by-Layer Growth',   desc: 'Carbon atoms settle onto the seed and arrange into a perfect crystalline lattice — an atom-thick layer at a time.', img: '/sfsdiamond/diamond-pure.jpg' },
-  { num: '2.5', title: 'Controlled Duration',     desc: 'Growth continues for weeks to months depending on the desired carat weight and specifications.',                  img: '/sfsdiamond/craft-1.jpg' },
-  { num: '2.6', title: 'Post-Growth Treatment',   desc: 'The raw diamond is cooled and extracted. It may show a brownish tint at this stage — normal for CVD stones.',     img: '/sfsdiamond/craft-2.jpg' },
+  { num: '2.1', title: 'Seed Preparation',       desc: 'A high-purity diamond seed crystal is placed inside a vacuum chamber.',                                             img: '/sfsdiamond/cvd-1-seed.png' },
+  { num: '2.2', title: 'Carbon Gas Introduction', desc: 'A precisely controlled mixture of carbon-rich gases is introduced at low pressure.',                              img: '/sfsdiamond/cvd-2-gas.png' },
+  { num: '2.3', title: 'Plasma Activation',       desc: 'High-energy microwave plasma breaks down the gas molecules, releasing carbon atoms.',                             img: '/sfsdiamond/cvd-3-plasma.png' },
+  { num: '2.4', title: 'Layer-by-Layer Growth',   desc: 'Carbon atoms settle onto the seed and arrange into a perfect crystalline lattice — an atom-thick layer at a time.', img: '/sfsdiamond/cvd-4-growth.png' },
+  { num: '2.5', title: 'Controlled Duration',     desc: 'Growth continues for weeks to months depending on the desired carat weight and specifications.',                  img: '/sfsdiamond/cvd-5-duration.png' },
+  { num: '2.6', title: 'Post-Growth Treatment',   desc: 'The raw diamond is cooled and extracted. It may show a brownish tint at this stage — normal for CVD stones.',     img: '/sfsdiamond/cvd-6-postgrowth.png' },
 ]
 
 const CRAFT_STEPS = [

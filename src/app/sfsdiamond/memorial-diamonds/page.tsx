@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
+import CollectionShowcase from '../components/CollectionShowcase'
 
 export const metadata: Metadata = {
   title: 'Memorial Diamonds',
@@ -13,15 +14,6 @@ const MEANINGS = [
   { title: 'Unbreakable Bond',     desc: 'The enduring spirit of your loved one, bound into the hardest substance on earth.',                  img: '/sfsdiamond/bond.jpg' },
   { title: 'Timeless Tribute',     desc: 'A gem that shines forever — just like the cherished memories held within it.',                       img: '/sfsdiamond/tribute.jpg' },
   { title: 'Symbol of Continuity', desc: 'Love and memory live on infinitely. The Eternity Cut is a visible promise of that continuity.',      img: '/sfsdiamond/continuity.jpeg' },
-]
-
-const PRODUCTS = [
-  { name: 'Memorial Diamond',         price: 'HK$10,999',  img: '/sfsdiamond/eternity-cut.jpg',   desc: 'A certified CVD diamond grown from your loved one\'s ashes or hair.' },
-  { name: 'Necklace — Life',          price: 'HK$99,999',  img: '/sfsdiamond/necklace-life.jpg',  desc: 'Memorial diamond set in a delicate life-symbol pendant.' },
-  { name: 'Necklace — Bagua',         price: 'HK$99,999',  img: '/sfsdiamond/necklace-bagua.jpg', desc: 'Diamond pendant with traditional Bagua eight-trigram design.' },
-  { name: 'Diamond Ring — Classic',   price: 'HK$99,999',  img: '/sfsdiamond/ring-classic.jpg',   desc: 'A timeless classic solitaire ring featuring the memorial stone.' },
-  { name: 'Necklace — Buddha',        price: 'HK$99,999',  img: '/sfsdiamond/necklace-buddha.jpg',desc: 'Memorial diamond set within a serene Buddha silhouette pendant.' },
-  { name: 'Necklace — Cross',         price: 'HK$99,999',  img: '/sfsdiamond/necklace-cross.png', desc: 'A Christian cross pendant encasing the memorial diamond.' },
 ]
 
 export default function MemorialDiamondsPage() {
@@ -63,7 +55,6 @@ export default function MemorialDiamondsPage() {
                 ensuring that the light it carries reflects the life it honours.
               </p>
             </div>
-            {/* Specs */}
             <div className="mt-8 rounded-2xl p-6 grid grid-cols-2 gap-4" style={{ background: '#F2EDE3' }}>
               {[
                 ['Technology',  'CVD'],
@@ -111,43 +102,20 @@ export default function MemorialDiamondsPage() {
         </div>
       </section>
 
-      {/* ── Product grid ── */}
+      {/* ── Product collection (dynamic) ── */}
       <section className="py-24" style={{ background: '#FAFAF8' }}>
         <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#C9A96E' }}>Our Collection</p>
             <h2 className="text-3xl md:text-4xl font-bold" style={{ fontFamily: 'Georgia, serif', color: '#1A1A1A' }}>
               Forever with Your Loved One
             </h2>
             <p className="mt-4 text-sm max-w-xl mx-auto" style={{ color: '#6B5E4A' }}>
-              Choose from our curated jewellery settings, each designed to honour the life of
-              someone irreplaceable.
+              Browse memorial diamonds, necklaces, and rings — filter by category and explore each
+              setting with live product photography.
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {PRODUCTS.map(p => (
-              <div
-                key={p.name}
-                className="rounded-2xl overflow-hidden flex flex-col group"
-                style={{ background: '#FFFFFF', border: '1px solid #EDE7D8', boxShadow: '0 1px 12px rgba(0,0,0,0.04)' }}
-              >
-                <div className="relative h-64 overflow-hidden">
-                  <Image
-                    src={p.img}
-                    alt={p.name}
-                    fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className="object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                </div>
-                <div className="p-6 flex flex-col gap-2 flex-1">
-                  <h3 className="font-semibold text-base" style={{ color: '#1A1A1A' }}>{p.name}</h3>
-                  <p className="text-xs leading-relaxed flex-1" style={{ color: '#6B5E4A' }}>{p.desc}</p>
-                  <p className="text-sm font-bold mt-3" style={{ color: '#C9A96E' }}>{p.price}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <CollectionShowcase />
         </div>
       </section>
 
