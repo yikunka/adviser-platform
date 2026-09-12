@@ -15,6 +15,7 @@ import {
 import {
   buildCompanyOwnershipNode,
   computeEffectiveNaturalOwners,
+  indexCompaniesById,
   indexCompaniesByName,
   loadAllCompaniesWithMembers,
 } from '@/lib/aml/ownershipLookThrough'
@@ -59,13 +60,17 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const search = searchParams.get('q') ?? ''
   const page = parseInt(searchParams.get('page') ?? '1')
-  const limit = 20
+  const requestedLimit = parseInt(searchParams.get('limit') ?? '20')
+  const limit = Number.isFinite(requestedLimit)
+    ? Math.min(Math.max(requestedLimit, 1), searchParams.get('picker') === '1' ? 500 : 100)
+    : 20
   const skip = (page - 1) * limit
 
   const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
 
   const accessFilter = buildCompanyAccessWhere(access)
   const where = {
+    deletedAt: null as null,
     ...(accessFilter ?? {}),
     ...(search
       ? {
@@ -79,17 +84,40 @@ export async function GET(req: NextRequest) {
       : {}),
   }
 
+  // Lightweight list for member / link pickers (no UBO computation)
+  if (searchParams.get('picker') === '1') {
+    const [companies, total] = await Promise.all([
+      prisma.company.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: [{ companyCode: 'asc' }, { nameEn: 'asc' }],
+        select: {
+          id: true,
+          nameEn: true,
+          nameZh: true,
+          companyCode: true,
+          companyNumber: true,
+          registeredAddress: true,
+          status: true,
+        },
+      }),
+      prisma.company.count({ where }),
+    ])
+    return NextResponse.json({ companies, total, page, limit })
+  }
+
   const useLegacySort = !search && access.kind === 'all'
 
   async function withUbos<T extends { id: string }>(companies: T[]) {
     if (companies.length === 0) return companies.map(c => ({ ...c, ubos: [] as Array<{ nameEn: string; nameZh: string | null; effectivePercent: number }> }))
     const allWithMembers = await loadAllCompaniesWithMembers()
     const byName = indexCompaniesByName(allWithMembers)
-    const byId = new Map(allWithMembers.map(c => [c.id, c]))
+    const byId = indexCompaniesById(allWithMembers)
     return companies.map(company => {
       const root = byId.get(company.id)
       if (!root) return { ...company, ubos: [] }
-      const structure = buildCompanyOwnershipNode(root, byName, new Set())
+      const structure = buildCompanyOwnershipNode(root, byName, new Set(), undefined, byId)
       const ubos = computeEffectiveNaturalOwners(structure).map(u => ({
         nameEn: u.nameEn,
         nameZh: u.nameZh,

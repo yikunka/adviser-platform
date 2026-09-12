@@ -32,6 +32,7 @@ const createSchema = z.object({
   status: z.enum(['ACTIVE', 'TRANSFERRED_OUT']).optional(),
   transaction: txSchema.optional(),
   keyPersonId: z.string().cuid().nullable().optional(),
+  linkedCompanyId: z.string().cuid().nullable().optional(),
 })
 
 export async function POST(
@@ -49,12 +50,34 @@ export async function POST(
   const parsed = createSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
 
-  const { transaction, ...memberData } = parsed.data
+  const { transaction, keyPersonId, linkedCompanyId, ...memberData } = parsed.data
+
+  if (linkedCompanyId) {
+    if (linkedCompanyId === companyId) {
+      return NextResponse.json({ error: 'Cannot link member to the same company' }, { status: 400 })
+    }
+    const linked = await prisma.company.findFirst({
+      where: { id: linkedCompanyId, deletedAt: null },
+      select: { id: true },
+    })
+    if (!linked) return NextResponse.json({ error: 'Linked company not found' }, { status: 400 })
+  }
+
+  if (keyPersonId) {
+    const person = await prisma.keyPerson.findUnique({ where: { id: keyPersonId }, select: { id: true } })
+    if (!person) return NextResponse.json({ error: 'Linked KYC person not found' }, { status: 400 })
+  }
+
+  // Prefer one link type: corporate vs natural person (linked company wins if both sent)
+  const finalLinkedCompanyId = linkedCompanyId ?? null
+  const finalKeyPersonId = finalLinkedCompanyId ? null : (keyPersonId ?? null)
 
   const member = await prisma.member.create({
     data: {
       ...memberData,
       companyId,
+      keyPersonId: finalKeyPersonId,
+      linkedCompanyId: finalLinkedCompanyId,
       ...(transaction
         ? {
             shareTransactions: {

@@ -32,6 +32,7 @@ const updateSchema = z.object({
   occupation: z.string().max(200).optional(),
   status: z.enum(['ACTIVE', 'TRANSFERRED_OUT']).optional(),
   keyPersonId: z.string().cuid().nullable().optional(),
+  linkedCompanyId: z.string().cuid().nullable().optional(),
   transaction: txSchema.optional(),
   removeInitialTransaction: z.boolean().optional(),
 })
@@ -69,13 +70,57 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const parsed = updateSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
 
-  const { transaction, removeInitialTransaction, ...memberData } = parsed.data
+  const { transaction, removeInitialTransaction, keyPersonId, linkedCompanyId, ...memberData } = parsed.data
+
+  if (linkedCompanyId) {
+    if (linkedCompanyId === companyId) {
+      return NextResponse.json({ error: 'Cannot link member to the same company' }, { status: 400 })
+    }
+    const linked = await prisma.company.findFirst({
+      where: { id: linkedCompanyId, deletedAt: null },
+      select: { id: true },
+    })
+    if (!linked) return NextResponse.json({ error: 'Linked company not found' }, { status: 400 })
+  }
+
+  if (keyPersonId) {
+    const person = await prisma.keyPerson.findUnique({ where: { id: keyPersonId }, select: { id: true } })
+    if (!person) return NextResponse.json({ error: 'Linked KYC person not found' }, { status: 400 })
+  }
+
+  const data: Record<string, unknown> = { ...memberData }
+
+  if (linkedCompanyId !== undefined || keyPersonId !== undefined) {
+    const nextLinked =
+      linkedCompanyId !== undefined ? linkedCompanyId : before.linkedCompanyId
+    const nextKey =
+      keyPersonId !== undefined ? keyPersonId : before.keyPersonId
+
+    if (linkedCompanyId !== undefined && linkedCompanyId) {
+      data.linkedCompanyId = linkedCompanyId
+      data.keyPersonId = null
+    } else if (keyPersonId !== undefined && keyPersonId) {
+      data.keyPersonId = keyPersonId
+      data.linkedCompanyId = null
+    } else {
+      // Explicit clears / remaining state
+      if (linkedCompanyId !== undefined) data.linkedCompanyId = linkedCompanyId
+      if (keyPersonId !== undefined) data.keyPersonId = keyPersonId
+      // If both end up set somehow, prefer company
+      if (nextLinked && nextKey && linkedCompanyId === undefined && keyPersonId !== undefined) {
+        data.linkedCompanyId = null
+      }
+      if (nextLinked && nextKey && keyPersonId === undefined && linkedCompanyId !== undefined) {
+        data.keyPersonId = null
+      }
+    }
+  }
 
   try {
     await prisma.$transaction(async tx => {
       await tx.member.update({
         where: { id: memberId },
-        data: memberData,
+        data,
       })
 
       if (transaction) {
@@ -117,7 +162,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const member = await prisma.member.findUnique({
     where: { id: memberId },
-    include: { shareTransactions: { orderBy: { transactionDate: 'desc' } } },
+    include: {
+      shareTransactions: { orderBy: { transactionDate: 'desc' } },
+      linkedCompany: { select: { id: true, nameEn: true, nameZh: true, companyCode: true } },
+      keyPerson: { select: { id: true, nameEn: true, nameZh: true, kycStatus: true } },
+    },
   })
 
   await logAudit(session!.user.id, 'UPDATE', 'Member', memberId, before, member)

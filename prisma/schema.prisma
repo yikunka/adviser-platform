@@ -423,6 +423,7 @@ model Company {
 
   directors              Director[]
   members                Member[]
+  linkedAsMembers        Member[]                      @relation("MemberLinkedCompany")
   significantControllers SignificantController[]
   designatedReps         DesignatedRepresentative[]
   documents              Document[]
@@ -575,6 +576,8 @@ model Member {
   id                String       @id @default(cuid())
   companyId         String
   keyPersonId       String?
+  /// Corporate shareholder: link to another company in the portfolio (mutually exclusive with keyPersonId in UI)
+  linkedCompanyId   String?
   nameEn            String
   nameZh            String?
   shareClass        ShareClass   @default(ORDINARY)
@@ -586,9 +589,11 @@ model Member {
 
   company           Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
   keyPerson         KeyPerson?         @relation(fields: [keyPersonId], references: [id], onDelete: SetNull)
+  linkedCompany     Company?           @relation("MemberLinkedCompany", fields: [linkedCompanyId], references: [id], onDelete: SetNull)
   shareTransactions ShareTransaction[]
 
   @@index([keyPersonId])
+  @@index([linkedCompanyId])
   @@map("members")
 }
 

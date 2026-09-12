@@ -43,7 +43,14 @@ export async function GET(
     where: { id },
     include: {
       directors: { orderBy: { dateOfAppointment: 'desc' } },
-      members: { orderBy: { createdAt: 'desc' }, include: { shareTransactions: { orderBy: { transactionDate: 'desc' } } } },
+      members: {
+        orderBy: { createdAt: 'desc' },
+        include: {
+          shareTransactions: { orderBy: { transactionDate: 'desc' } },
+          linkedCompany: { select: { id: true, nameEn: true, nameZh: true, companyCode: true, registeredAddress: true } },
+          keyPerson: { select: { id: true, nameEn: true, nameZh: true, kycStatus: true } },
+        },
+      },
       significantControllers: true,
       designatedReps: { orderBy: { entryDate: 'asc' } },
       documents: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' } },

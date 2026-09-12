@@ -94,6 +94,7 @@ type ShareTransaction = {
 type Member = {
   id: string
   keyPersonId: string | null
+  linkedCompanyId?: string | null
   nameEn: string
   nameZh: string | null
   shareClass: string
@@ -101,6 +102,28 @@ type Member = {
   occupation: string | null
   status: string
   shareTransactions?: ShareTransaction[]
+  linkedCompany?: {
+    id: string
+    nameEn: string
+    nameZh: string | null
+    companyCode: string | null
+    registeredAddress: string | null
+  } | null
+  keyPerson?: {
+    id: string
+    nameEn: string
+    nameZh: string | null
+    kycStatus: string
+  } | null
+}
+
+type CompanyPickerOption = {
+  id: string
+  nameEn: string
+  nameZh: string | null
+  companyCode: string | null
+  companyNumber: string | null
+  registeredAddress: string | null
 }
 
 type DesignatedRep = {
@@ -856,8 +879,8 @@ function KycLinkPicker({
   }
 
   return (
-    <div className="rounded-lg p-3 mb-1" style={{ background: '#0D0D08', border: '1px solid var(--border-subtle)' }}>
-      <label style={{ ...labelStyle, color: '#C9A96E' }}>
+    <div className="rounded-lg p-3 mb-1" style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-subtle)' }}>
+      <label style={{ ...labelStyle, color: 'var(--gold)' }}>
         {prefillOnSelect ? '关联 KYC 人员' : 'Linked KYC person'}
       </label>
       <select value={value} onChange={handleChange} style={fieldStyle}>
@@ -868,7 +891,7 @@ function KycLinkPicker({
           </option>
         ))}
       </select>
-      <p className="text-[11px] mt-1" style={{ color: '#5A5040' }}>
+      <p className="text-[11px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
         保存后可随时更改关联；若 KYC 尚未建立，可先保存登记册资料。
       </p>
     </div>
@@ -1225,8 +1248,11 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
   const initialTx = getInitialShareTransaction(initial?.shareTransactions)
   const [saving, setSaving] = useState(false)
   const [addTx, setAddTx] = useState(!isEdit || !!initialTx)
+  const [companyOptions, setCompanyOptions] = useState<CompanyPickerOption[]>([])
+  const [companySearch, setCompanySearch] = useState('')
   const [form, setForm] = useState({
     keyPersonId: initial?.keyPersonId ?? '',
+    linkedCompanyId: initial?.linkedCompanyId ?? initial?.linkedCompany?.id ?? '',
     nameEn: initial?.nameEn ?? '',
     nameZh: initial?.nameZh ?? '',
     shareClass: initial?.shareClass ?? 'ORDINARY',
@@ -1239,21 +1265,65 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })) }
   function setT(k: string, v: string) { setTx(t => ({ ...t, [k]: v })) }
 
+  useEffect(() => {
+    const q = companySearch.trim()
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams({ picker: '1', limit: '200', page: '1' })
+      if (q) params.set('q', q)
+      fetch(`/api/admin/companies?${params}`)
+        .then(r => r.ok ? r.json() : { companies: [] })
+        .then(data => {
+          const rows = Array.isArray(data.companies) ? data.companies as CompanyPickerOption[] : []
+          // Keep currently linked company visible even if outside page
+          if (initial?.linkedCompany && !rows.some(c => c.id === initial.linkedCompany!.id)) {
+            rows.unshift({
+              id: initial.linkedCompany.id,
+              nameEn: initial.linkedCompany.nameEn,
+              nameZh: initial.linkedCompany.nameZh,
+              companyCode: initial.linkedCompany.companyCode,
+              companyNumber: null,
+              registeredAddress: initial.linkedCompany.registeredAddress,
+            })
+          }
+          setCompanyOptions(rows.filter(c => c.id !== companyId))
+        })
+        .catch(() => setCompanyOptions([]))
+    }, q ? 250 : 0)
+    return () => clearTimeout(timer)
+  }, [companySearch, companyId, initial?.linkedCompany])
+
   function linkKycOnly(p: KycPerson | null) {
     if (!p) {
       setForm(f => ({ ...f, keyPersonId: '' }))
       return
     }
-    setForm(f => ({ ...f, keyPersonId: p.id }))
+    setForm(f => ({ ...f, keyPersonId: p.id, linkedCompanyId: '' }))
   }
 
   function prefillFromKyc(p: KycPerson) {
     setForm(f => ({
       ...f,
       keyPersonId: p.id,
+      linkedCompanyId: '',
       nameEn: p.nameEn,
       nameZh: p.nameZh ?? f.nameZh,
       registeredAddress: p.homeAddress ?? p.contactAddress ?? f.registeredAddress,
+    }))
+  }
+
+  function linkCompany(c: CompanyPickerOption | null) {
+    if (!c) {
+      setForm(f => ({ ...f, linkedCompanyId: '' }))
+      return
+    }
+    setForm(f => ({
+      ...f,
+      linkedCompanyId: c.id,
+      keyPersonId: '',
+      nameEn: c.nameEn,
+      nameZh: c.nameZh ?? '',
+      registeredAddress: c.registeredAddress ?? f.registeredAddress,
+      occupation: f.occupation || 'Corporate',
     }))
   }
 
@@ -1269,7 +1339,14 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
       }
       if (form.nameZh) body.nameZh = form.nameZh
       if (form.occupation) body.occupation = form.occupation
-      body.keyPersonId = form.keyPersonId || null
+
+      if (form.linkedCompanyId) {
+        body.linkedCompanyId = form.linkedCompanyId
+        body.keyPersonId = null
+      } else {
+        body.linkedCompanyId = null
+        body.keyPersonId = form.keyPersonId || null
+      }
 
       if (addTx && tx.sharesHeld !== '') {
         body.transaction = buildMemberTransactionBody(tx)
@@ -1282,7 +1359,11 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
         : `/api/admin/companies/${companyId}/members`
       const method = isEdit ? 'PATCH' : 'POST'
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-      if (!res.ok) { toast.error('Failed to save member'); return }
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        toast.error(err?.error ?? 'Failed to save member')
+        return
+      }
       toast.success(isEdit ? 'Member updated' : 'Member added')
       onDone()
     } finally { setSaving(false) }
@@ -1290,18 +1371,55 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
 
   const divider = <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '4px 0' }} />
   const sectionLabel = (t: string) => (
-    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#C9A96E', margin: '4px 0 8px' }}>{t}</p>
+    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--gold)', margin: '4px 0 8px' }}>{t}</p>
   )
+  const isCorporate = !!form.linkedCompanyId
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <KycLinkWithConfirm
-        persons={kycPersons}
-        value={form.keyPersonId}
-        confirmWhenLinking={isEdit && !initial?.keyPersonId}
-        onLinkOnly={linkKycOnly}
-        onPrefill={prefillFromKyc}
-      />
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div className={isCorporate ? 'opacity-50 pointer-events-none' : undefined}>
+          <KycLinkWithConfirm
+            persons={kycPersons}
+            value={form.keyPersonId}
+            confirmWhenLinking={isEdit && !initial?.keyPersonId}
+            onLinkOnly={linkKycOnly}
+            onPrefill={prefillFromKyc}
+          />
+        </div>
+        <div className="rounded-lg p-3 mb-1" style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-subtle)' }}>
+          <label style={{ ...labelStyle, color: 'var(--gold)' }}>Linked company</label>
+          <Input
+            value={companySearch}
+            onChange={e => setCompanySearch(e.target.value)}
+            placeholder="Search company code / name…"
+            style={{ ...fieldStyle, marginBottom: 8 }}
+          />
+          <select
+            value={form.linkedCompanyId}
+            onChange={e => {
+              const id = e.target.value
+              if (!id) {
+                linkCompany(null)
+                return
+              }
+              const c = companyOptions.find(row => row.id === id) ?? null
+              linkCompany(c)
+            }}
+            style={fieldStyle}
+          >
+            <option value="" style={{ background: 'var(--surface-raised)' }}>— Not a corporate member —</option>
+            {companyOptions.map(c => (
+              <option key={c.id} value={c.id} style={{ background: 'var(--surface-raised)' }}>
+                {c.companyCode ? `${c.companyCode} · ` : ''}{c.nameEn}{c.nameZh ? ` (${c.nameZh})` : ''}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
+            Corporate shareholder: link to another portfolio company. Clears KYC person link.
+          </p>
+        </div>
+      </div>
 
       {/* Member details */}
       <div className="grid sm:grid-cols-2 gap-4">
@@ -1351,7 +1469,7 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
       </div>
 
       {addTx && (
-        <div className="rounded-lg p-4 space-y-3" style={{ background: '#0A0A06', border: '1px solid var(--border-subtle)' }}>
+        <div className="rounded-lg p-4 space-y-3" style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-subtle)' }}>
           {sectionLabel('Transaction details')}
           <div className="grid sm:grid-cols-3 gap-3">
             <div>
@@ -1439,8 +1557,8 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
           {divider}
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
-              <label style={{ ...labelStyle, color: '#C9A96E' }}>Shares Held (Net Balance) *</label>
-              <Input type="number" min="0" required={addTx} style={{ ...fieldStyle, borderColor: '#C9A96E' }}
+              <label style={{ ...labelStyle, color: 'var(--gold)' }}>Shares Held (Net Balance) *</label>
+              <Input type="number" min="0" required={addTx} style={{ ...fieldStyle, borderColor: 'var(--gold)' }}
                 value={tx.sharesHeld} onChange={e => setT('sharesHeld', e.target.value)} placeholder="e.g. 10000" />
             </div>
           </div>
@@ -3235,6 +3353,7 @@ export default function CompanyDetailPage() {
                 <thead>
                   <tr>
                     <th style={thStyle}>Name</th>
+                    <th style={thStyle}>Link</th>
                     <th style={thStyle}>Share Class</th>
                     <th style={thStyle}>Shares Held</th>
                     <th style={thStyle}>Occupation</th>
@@ -3249,13 +3368,26 @@ export default function CompanyDetailPage() {
                     return (
                     <tr key={m.id} className="hover:bg-[var(--surface-panel)] transition-colors">
                       <td style={tdPrimaryStyle}>{m.nameEn}{m.nameZh ? ` (${m.nameZh})` : ''}</td>
+                      <td style={tdStyle}>
+                        {m.linkedCompany || m.linkedCompanyId ? (
+                          <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(56,189,248,0.10)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.22)' }}>
+                            Company{m.linkedCompany?.companyCode ? ` · ${m.linkedCompany.companyCode}` : ''}
+                          </span>
+                        ) : m.keyPersonId || m.keyPerson ? (
+                          <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(201,169,110,0.12)', color: 'var(--gold)', border: '1px solid rgba(201,169,110,0.28)' }}>
+                            KYC
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--muted-foreground)' }}>—</span>
+                        )}
+                      </td>
                       <td style={tdStyle}>{m.shareClass}</td>
                       <td style={tdStyle}>{sharesHeld != null ? sharesHeld.toLocaleString() : '—'}</td>
                       <td style={tdStyle}>{m.occupation ?? '—'}</td>
                       <td style={tdStyle}><Badge variant={m.status === 'ACTIVE' ? 'default' : 'secondary'}>{m.status}</Badge></td>
                       <td style={tdStyle}>
                         <div className="flex gap-2">
-                          <button onClick={() => setModal({ type: 'member', mode: 'edit', data: m })} className="text-xs hover:underline" style={{ color: '#C9A96E' }}>Edit</button>
+                          <button onClick={() => setModal({ type: 'member', mode: 'edit', data: m })} className="text-xs hover:underline" style={{ color: 'var(--gold)' }}>Edit</button>
                           <button onClick={() => deleteItem('members', m.id)} className="text-xs hover:underline" style={{ color: '#ef4444' }}>Delete</button>
                         </div>
                       </td>
@@ -3263,7 +3395,7 @@ export default function CompanyDetailPage() {
                     )
                   })}
                   {company.members.length === 0 && (
-                    <tr><td colSpan={6} className="px-4 py-6 text-center" style={{ color: '#5A5040' }}>No members — click Add Member to get started</td></tr>
+                    <tr><td colSpan={7} className="px-4 py-6 text-center" style={{ color: 'var(--muted-foreground)' }}>No members — click Add Member to get started</td></tr>
                   )}
                 </tbody>
               </table>

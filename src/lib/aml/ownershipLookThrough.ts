@@ -16,6 +16,7 @@ export type CompanyWithMembers = {
   members: {
     id: string
     keyPersonId: string | null
+    linkedCompanyId: string | null
     nameEn: string
     nameZh: string | null
     shareClass: string
@@ -72,11 +73,16 @@ export function indexCompaniesByName(companies: CompanyWithMembers[]) {
   return byName
 }
 
+export function indexCompaniesById(companies: CompanyWithMembers[]) {
+  return new Map(companies.map(c => [c.id, c]))
+}
+
 export function buildCompanyOwnershipNode(
   company: CompanyWithMembers,
   byName: Map<string, CompanyWithMembers>,
   visited: Set<string>,
   meta?: Pick<OwnershipNode, 'shareClass' | 'sharesHeld' | 'ownershipPercent'>,
+  byId?: Map<string, CompanyWithMembers>,
 ): OwnershipNode {
   if (visited.has(company.id)) {
     return {
@@ -99,6 +105,7 @@ export function buildCompanyOwnershipNode(
   nextVisited.add(company.id)
   const activeMembers = company.members.filter(member => member.status === 'ACTIVE')
   const totalShares = activeMembers.reduce((sum, member) => sum + (latestShares(member) ?? 0), 0)
+  const idIndex = byId ?? indexCompaniesById([...byName.values()])
 
   return {
     id: company.id,
@@ -117,7 +124,9 @@ export function buildCompanyOwnershipNode(
       const ownershipPercent = totalShares > 0 && sharesHeld != null
         ? Number(((sharesHeld / totalShares) * 100).toFixed(4))
         : null
-      const matchedCompany = byName.get(normalizeName(member.nameEn))
+      const matchedCompany =
+        (member.linkedCompanyId ? idIndex.get(member.linkedCompanyId) : undefined)
+        ?? byName.get(normalizeName(member.nameEn))
         ?? byName.get(normalizeName(member.nameZh))
       const metaForMember = {
         shareClass: member.shareClass,
@@ -126,7 +135,7 @@ export function buildCompanyOwnershipNode(
       }
 
       if (matchedCompany && matchedCompany.id !== company.id) {
-        return buildCompanyOwnershipNode(matchedCompany, byName, nextVisited, metaForMember)
+        return buildCompanyOwnershipNode(matchedCompany, byName, nextVisited, metaForMember, idIndex)
       }
 
       return {
@@ -223,6 +232,7 @@ export async function loadAllCompaniesWithMembers(): Promise<CompanyWithMembers[
         select: {
           id: true,
           keyPersonId: true,
+          linkedCompanyId: true,
           nameEn: true,
           nameZh: true,
           shareClass: true,
@@ -245,7 +255,13 @@ export async function getOwnershipStructureForCompany(companyId: string): Promis
   const companies = await loadAllCompaniesWithMembers()
   const root = companies.find(c => c.id === companyId)
   if (!root) return null
-  const structure = buildCompanyOwnershipNode(root, indexCompaniesByName(companies), new Set())
+  const structure = buildCompanyOwnershipNode(
+    root,
+    indexCompaniesByName(companies),
+    new Set(),
+    undefined,
+    indexCompaniesById(companies),
+  )
   const ubos = computeEffectiveNaturalOwners(structure)
   return { structure, ubos }
 }

@@ -1,13 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/rbac'
 import {
   buildCompanyOwnershipNode,
+  indexCompaniesById,
   indexCompaniesByName,
   loadAllCompaniesWithMembers,
 } from '@/lib/aml/ownershipLookThrough'
 
 export async function GET(
-  _req: NextRequest,
+  _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { error } = await requireRole('STAFF', { adminMenu: 'companies' })
@@ -19,6 +20,12 @@ export async function GET(
   if (!root) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   return NextResponse.json({
-    structure: buildCompanyOwnershipNode(root, indexCompaniesByName(companies), new Set()),
+    structure: buildCompanyOwnershipNode(
+      root,
+      indexCompaniesByName(companies),
+      new Set(),
+      undefined,
+      indexCompaniesById(companies),
+    ),
   })
 }
