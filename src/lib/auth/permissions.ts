@@ -40,6 +40,7 @@ export const PERMISSION_GROUPS: PermGroup[] = [
       { menuKey: 'invoices',  label: '发票管理', actions: ['create', 'edit', 'delete'] },
       { menuKey: 'projects',  label: '项目管理', actions: ['create', 'edit', 'delete'] },
       { menuKey: 'contracts', label: '合同管理', actions: ['create', 'edit', 'delete'] },
+      { menuKey: 'forms',    label: '表格下载', actions: ['create', 'edit', 'delete'] },
       { menuKey: 'tcspPricing', label: 'TCSP服务价格单', actions: ['create', 'edit', 'delete'] },
     ],
   },

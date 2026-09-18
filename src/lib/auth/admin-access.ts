@@ -15,6 +15,7 @@ export const ADMIN_MENU_KEYS = [
   'invoices',
   'projects',
   'contracts',
+  'forms',
   'tcspPricing',
   'users',
   'sfsCustomers',
@@ -47,6 +48,7 @@ export const MENU_PLATFORM: Record<AdminMenuKey, Platform | 'GLOBAL'> = {
   invoices: 'ADVISER',
   projects: 'ADVISER',
   contracts: 'ADVISER',
+  forms: 'ADVISER',
   tcspPricing: 'ADVISER',
   users: 'GLOBAL',
   sfsCustomers: 'SFS_DIAMOND',
@@ -154,6 +156,8 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
       return 'projects'
     case 'contracts':
       return 'contracts'
+    case 'forms':
+      return 'forms'
     case 'tcsp-pricing':
       return 'tcspPricing'
     case 'users':
@@ -200,6 +204,7 @@ export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: stri
   { key: 'invoices', label: 'Invoices', group: 'Adviser' },
   { key: 'projects', label: 'Projects', group: 'Adviser' },
   { key: 'contracts', label: 'Contracts', group: 'Adviser' },
+  { key: 'forms', label: 'Form downloads', group: 'Adviser' },
   { key: 'tcspPricing', label: 'TCSP service pricing', group: 'Adviser' },
   { key: 'users', label: 'Customer account management', group: 'System' },
   { key: 'sfsCustomers', label: 'SFS customers', group: 'SFS Diamond' },

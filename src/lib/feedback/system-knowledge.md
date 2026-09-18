@@ -143,6 +143,12 @@ Independent Adviser contract management, not linked to client companies.
 - Contract metadata includes contract name, start date, end date, and notes; metadata can be edited after upload
 - Access and actions are controlled by Role Management permissions `contracts`, `contracts.create`, `contracts.edit`, and `contracts.delete`
 
+### 6c2. Form downloads (`/admin/forms`)
+Shared Adviser form library, not linked to client companies.
+- Staff upload blank forms (PDF, Word, Excel; max 15 MB) with a name and optional notes, then download them from the list
+- Name and notes can be edited after upload; delete removes the file
+- Access and actions are controlled by Role Management permissions `forms`, `forms.create`, `forms.edit`, and `forms.delete`
+
 ### 6d. TCSP Service Pricing (`/admin/tcsp-pricing`)
 Central price-list management for TCSP service quotes.
 - Maintains service pricing by jurisdiction (`HK`, `BVI`, `CAYMAN`, `MARSHALL`), customer level (`经销客户` / `普通客户`), free-text service content, currency, amount, and notes
@@ -154,7 +160,7 @@ Central price-list management for TCSP service quotes.
 Staff access control.
 - System roles: `SUPER_ADMIN`, `COMPLIANCE`, `STAFF`
 - Per-staff platform access flags (Adviser / SFS Diamond)
-- Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, projects, contracts, tcspPricing, team, feedback, sfs-customers, sfs-orders, sfs-invoices)
+- Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, projects, contracts, forms, tcspPricing, team, feedback, sfs-customers, sfs-orders, sfs-invoices)
 - Dynamic role assignment: each staff member can be assigned multiple dynamic `AdminRole` records (from Role Management); effective access is the union of all selected roles' page + button-level permissions
 - Legacy mode: no restrictions; new mode: explicit per-menu grants
 - Create / edit / deactivate staff accounts

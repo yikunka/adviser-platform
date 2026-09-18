@@ -303,6 +303,7 @@ model User {
   uploadedFinancialHistoryBooks       FinancialHistoryLedgerBook[]  @relation("FinancialHistoryLedgerBookUploader")
   uploadedHistoricalInvoices          HistoricalInvoiceFile[]       @relation("HistoricalInvoiceFileUploader")
   uploadedAdviserContracts            AdviserContract[]             @relation("AdviserContractUploader")
+  uploadedAdviserForms                AdviserForm[]                 @relation("AdviserFormUploader")
   createdTcspServicePrices            TcspServicePrice[]            @relation("TcspServicePriceCreator")
   updatedTcspServicePrices            TcspServicePrice[]            @relation("TcspServicePriceUpdater")
   createdAdvProjects                  AdvProject[]                  @relation("AdvProjectCreator")
@@ -1176,6 +1177,25 @@ model AdviserContract {
   @@index([startDate])
   @@index([endDate])
   @@map("adv_contracts")
+}
+
+/// Shared blank forms for the Adviser platform (not tied to a client company).
+model AdviserForm {
+  id           String   @id @default(cuid())
+  formName     String
+  notes        String?
+  fileName     String
+  storageKey   String
+  mimeType     String
+  fileSize     Int
+  uploadedById String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  uploadedBy User @relation("AdviserFormUploader", fields: [uploadedById], references: [id])
+
+  @@index([formName])
+  @@map("adv_forms")
 }
 
 model TcspServicePrice {

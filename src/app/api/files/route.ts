@@ -27,6 +27,8 @@ const MIME_MAP: Record<string, string> = {
   webp: 'image/webp',
   doc: 'application/msword',
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 }
 
 const STAFF_ROLES = ['STAFF', 'COMPLIANCE', 'SUPER_ADMIN']
