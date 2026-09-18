@@ -250,7 +250,7 @@ export async function loadAllCompaniesWithMembers(): Promise<CompanyWithMembers[
           shareClass: true,
           status: true,
           shareTransactions: {
-            orderBy: { transactionDate: 'desc' },
+            orderBy: [{ transactionDate: 'desc' }, { createdAt: 'desc' }],
             take: 1,
             select: { sharesHeld: true, transactionDate: true },
           },

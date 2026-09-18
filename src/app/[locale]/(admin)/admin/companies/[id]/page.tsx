@@ -1323,42 +1323,13 @@ const TX_EMPTY = {
   sharesHeld: '',
 }
 
-function numField(value: number | null | undefined) {
-  return value != null ? String(value) : ''
-}
-
-function decimalField(value: string | number | null | undefined) {
-  if (value == null || value === '') return ''
-  return String(value)
-}
-
-function getInitialShareTransaction(transactions?: ShareTransaction[]) {
+function getLatestShareTransaction(transactions?: ShareTransaction[]) {
   if (!transactions?.length) return undefined
-  return [...transactions].sort(
-    (a, b) => new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime(),
-  )[0]
-}
-
-function shareTransactionToForm(stx: ShareTransaction) {
-  return {
-    id: stx.id,
-    transactionType: stx.transactionType,
-    transactionDate: stx.transactionDate.slice(0, 10),
-    allotmentTransferNo: stx.allotmentTransferNo ?? '',
-    certificateNo: stx.certificateNo ?? '',
-    sharesAcquired: numField(stx.sharesAcquired),
-    distinctiveNosFrom: numField(stx.distinctiveNosFrom),
-    distinctiveNosTo: numField(stx.distinctiveNosTo),
-    amountPaid: decimalField(stx.amountPaid),
-    sharesTransferred: numField(stx.sharesTransferred),
-    certificateSurrendered: stx.certificateSurrendered ?? '',
-    certificateSurrenderedShares: numField(stx.certificateSurrenderedShares),
-    balanceCertificateNo: stx.balanceCertificateNo ?? '',
-    balanceCertificateShares: numField(stx.balanceCertificateShares),
-    balanceDistinctiveNosFrom: numField(stx.balanceDistinctiveNosFrom),
-    balanceDistinctiveNosTo: numField(stx.balanceDistinctiveNosTo),
-    sharesHeld: numField(stx.sharesHeld),
-  }
+  return [...transactions].sort((a, b) => {
+    const byDate = new Date(b.transactionDate).getTime() - new Date(a.transactionDate).getTime()
+    if (byDate !== 0) return byDate
+    return String(b.id).localeCompare(String(a.id))
+  })[0]
 }
 
 function buildMemberTransactionBody(tx: typeof TX_EMPTY) {
@@ -1367,7 +1338,6 @@ function buildMemberTransactionBody(tx: typeof TX_EMPTY) {
     transactionDate: tx.transactionDate,
     sharesHeld: Number(tx.sharesHeld),
   }
-  if (tx.id) body.id = tx.id
   if (tx.allotmentTransferNo) body.allotmentTransferNo = tx.allotmentTransferNo
   if (tx.certificateNo) body.certificateNo = tx.certificateNo
   if (tx.sharesAcquired !== '') body.sharesAcquired = Number(tx.sharesAcquired)
@@ -1391,9 +1361,15 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
   onDone: () => void
 }) {
   const isEdit = !!initial
-  const initialTx = getInitialShareTransaction(initial?.shareTransactions)
+  const history = [...(initial?.shareTransactions ?? [])].sort((a, b) => {
+    const byDate = new Date(b.transactionDate).getTime() - new Date(a.transactionDate).getTime()
+    if (byDate !== 0) return byDate
+    return String(b.id).localeCompare(String(a.id))
+  })
+  const latestTx = getLatestShareTransaction(initial?.shareTransactions)
   const [saving, setSaving] = useState(false)
-  const [addTx, setAddTx] = useState(!isEdit || !!initialTx)
+  // Create: add first transaction by default. Edit: off until staff chooses to append.
+  const [addTx, setAddTx] = useState(!isEdit)
   const [companyOptions, setCompanyOptions] = useState<CompanyPickerOption[]>([])
   const [companySearch, setCompanySearch] = useState('')
   const [form, setForm] = useState({
@@ -1406,7 +1382,11 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
     occupation: initial?.occupation ?? '',
     status: initial?.status ?? 'ACTIVE',
   })
-  const [tx, setTx] = useState(() => (initialTx ? shareTransactionToForm(initialTx) : TX_EMPTY))
+  const [tx, setTx] = useState(() => ({
+    ...TX_EMPTY,
+    transactionType: isEdit ? 'TRANSFER_OUT' : 'ALLOTMENT',
+    sharesHeld: isEdit && latestTx?.sharesHeld === 0 ? '0' : '',
+  }))
 
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })) }
   function setT(k: string, v: string) { setTx(t => ({ ...t, [k]: v })) }
@@ -1473,6 +1453,17 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
     }))
   }
 
+  function onTransactionTypeChange(type: string) {
+    setTx(t => {
+      const next = { ...t, transactionType: type }
+      // Transfer out typically ends with 0 remaining shares
+      if (type === 'TRANSFER_OUT' && (t.sharesHeld === '' || t.sharesHeld === String(latestTx?.sharesHeld ?? ''))) {
+        next.sharesHeld = '0'
+      }
+      return next
+    })
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
@@ -1496,8 +1487,6 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
 
       if (addTx && tx.sharesHeld !== '') {
         body.transaction = buildMemberTransactionBody(tx)
-      } else if (isEdit && initialTx?.id) {
-        body.removeInitialTransaction = true
       }
 
       const url = isEdit
@@ -1692,23 +1681,67 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
         </div>
       </div>
 
-      {/* Initial share transaction */}
+      {/* Share transaction history + append */}
       {divider}
+      {isEdit && history.length > 0 && (
+        <div className="space-y-2">
+          {sectionLabel('Share transaction history (latest first)')}
+          <div className="overflow-hidden rounded-lg" style={{ border: '1px solid var(--border-subtle)' }}>
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ background: 'var(--surface-panel)' }}>
+                  <th style={thStyle}>Date</th>
+                  <th style={thStyle}>Type</th>
+                  <th style={thStyle}>Shares held</th>
+                  <th style={thStyle}>Acquired / Transferred</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border-subtle)]">
+                {history.map(row => (
+                  <tr key={row.id}>
+                    <td style={tdStyle}>{fmt(row.transactionDate)}</td>
+                    <td style={tdStyle}>{shareTransactionTypeLabel(row.transactionType)}</td>
+                    <td style={tdPrimaryStyle}>{row.sharesHeld.toLocaleString()}</td>
+                    <td style={tdStyle}>
+                      {row.sharesAcquired != null ? `+${row.sharesAcquired.toLocaleString()}` : '—'}
+                      {' / '}
+                      {row.sharesTransferred != null ? `−${row.sharesTransferred.toLocaleString()}` : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {latestTx && (
+            <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+              Current holding used for ROM / ownership chart:{' '}
+              <span style={{ color: 'var(--gold)' }}>{latestTx.sharesHeld.toLocaleString()} shares</span>
+              {' · '}{shareTransactionTypeLabel(latestTx.transactionType)} on {fmt(latestTx.transactionDate)}
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="flex items-center gap-3">
         <input type="checkbox" id="addTx" checked={addTx} onChange={e => setAddTx(e.target.checked)}
           style={{ accentColor: '#C9A96E', width: 14, height: 14 }} />
         <label htmlFor="addTx" style={{ ...labelStyle, marginBottom: 0, cursor: 'pointer' }}>
-          {isEdit && initialTx ? 'Initial share transaction' : 'Add initial share transaction'}
+          {isEdit ? 'Add new share transaction (Allotment / Transfer in / Transfer out)' : 'Add initial share transaction'}
         </label>
       </div>
 
       {addTx && (
         <div className="rounded-lg p-4 space-y-3" style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-subtle)' }}>
+          {isEdit && (
+            <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+              This creates a new history row. It does not overwrite earlier allotments. For a full transfer out, set Type to Transfer out and Shares Held (Net Balance) to 0.
+            </p>
+          )}
           {sectionLabel('Transaction details')}
           <div className="grid sm:grid-cols-3 gap-3">
             <div>
               <label style={labelStyle}>Transaction Type *</label>
-              <select value={tx.transactionType} onChange={e => setT('transactionType', e.target.value)} style={fieldStyle}>
+              <select value={tx.transactionType} onChange={e => onTransactionTypeChange(e.target.value)} style={fieldStyle}>
                 <option value="ALLOTMENT" style={{ background: 'var(--surface-raised)' }}>Allotment</option>
                 <option value="TRANSFER_IN" style={{ background: 'var(--surface-raised)' }}>Transfer In</option>
                 <option value="TRANSFER_OUT" style={{ background: 'var(--surface-raised)' }}>Transfer Out</option>
@@ -1794,6 +1827,9 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
               <label style={{ ...labelStyle, color: 'var(--gold)' }}>Shares Held (Net Balance) *</label>
               <Input type="number" min="0" required={addTx} style={{ ...fieldStyle, borderColor: 'var(--gold)' }}
                 value={tx.sharesHeld} onChange={e => setT('sharesHeld', e.target.value)} placeholder="e.g. 10000" />
+              <p className="mt-1 text-[11px]" style={{ color: 'var(--muted-foreground)' }}>
+                After this transaction, how many shares does this member still hold? Use 0 for a full transfer out.
+              </p>
             </div>
           </div>
         </div>

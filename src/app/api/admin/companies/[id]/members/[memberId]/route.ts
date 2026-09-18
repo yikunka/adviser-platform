@@ -34,7 +34,11 @@ const updateSchema = z.object({
   status: z.enum(['ACTIVE', 'TRANSFERRED_OUT']).optional(),
   keyPersonId: z.string().cuid().nullable().optional(),
   linkedCompanyId: z.string().cuid().nullable().optional(),
+  /** Create a new share transaction, or update one when `id` is set. */
   transaction: txSchema.optional(),
+  /** Delete one transaction by id (optional). Prefer this over removeInitialTransaction. */
+  removeTransactionId: z.string().cuid().optional(),
+  /** @deprecated Prefer removeTransactionId. Deletes the chronologically first transaction only. */
   removeInitialTransaction: z.boolean().optional(),
 })
 
@@ -56,6 +60,27 @@ function getInitialShareTransaction<T extends { id: string; transactionDate: Dat
   )[0]
 }
 
+async function syncStatusFromLatestHolding(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma interactive transaction client
+  tx: any,
+  memberId: string,
+  explicitStatus: 'ACTIVE' | 'TRANSFERRED_OUT' | undefined,
+) {
+  if (explicitStatus !== undefined) return
+
+  const latest = await tx.shareTransaction.findFirst({
+    where: { memberId },
+    orderBy: [{ transactionDate: 'desc' }, { createdAt: 'desc' }],
+    select: { sharesHeld: true },
+  })
+  if (!latest) return
+
+  await tx.member.update({
+    where: { id: memberId },
+    data: { status: latest.sharesHeld <= 0 ? 'TRANSFERRED_OUT' : 'ACTIVE' },
+  })
+}
+
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { session, error } = await requireRole('STAFF', { adminMenu: 'companies' })
   if (error) return error
@@ -71,7 +96,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const parsed = updateSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
 
-  const { transaction, removeInitialTransaction, keyPersonId, linkedCompanyId, ...memberData } = parsed.data
+  const {
+    transaction,
+    removeTransactionId,
+    removeInitialTransaction,
+    keyPersonId,
+    linkedCompanyId,
+    ...memberData
+  } = parsed.data
 
   if (linkedCompanyId) {
     if (linkedCompanyId === companyId) {
@@ -104,10 +136,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       data.keyPersonId = keyPersonId
       data.linkedCompanyId = null
     } else {
-      // Explicit clears / remaining state
       if (linkedCompanyId !== undefined) data.linkedCompanyId = linkedCompanyId
       if (keyPersonId !== undefined) data.keyPersonId = keyPersonId
-      // If both end up set somehow, prefer company
       if (nextLinked && nextKey && linkedCompanyId === undefined && keyPersonId !== undefined) {
         data.linkedCompanyId = null
       }
@@ -135,22 +165,23 @@ export async function PATCH(req: NextRequest, { params }: Params) {
             where: { id: transaction.id },
             data: txData,
           })
-        } else if (before.shareTransactions.length === 0) {
+        } else {
+          // Always append a new transaction — do not overwrite the initial allotment
           await tx.shareTransaction.create({
             data: { memberId, ...txData },
           })
-        } else {
-          const initial = getInitialShareTransaction(before.shareTransactions)
-          if (!initial) return
-          await tx.shareTransaction.update({
-            where: { id: initial.id },
-            data: txData,
-          })
         }
+        await syncStatusFromLatestHolding(tx, memberId, memberData.status)
+      } else if (removeTransactionId) {
+        const existing = before.shareTransactions.find(st => st.id === removeTransactionId)
+        if (!existing) throw new Error('NOT_FOUND_TX')
+        await tx.shareTransaction.delete({ where: { id: removeTransactionId } })
+        await syncStatusFromLatestHolding(tx, memberId, memberData.status)
       } else if (removeInitialTransaction) {
         const initial = getInitialShareTransaction(before.shareTransactions)
         if (initial) {
           await tx.shareTransaction.delete({ where: { id: initial.id } })
+          await syncStatusFromLatestHolding(tx, memberId, memberData.status)
         }
       }
     })
@@ -164,7 +195,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const member = await prisma.member.findUnique({
     where: { id: memberId },
     include: {
-      shareTransactions: { orderBy: { transactionDate: 'desc' } },
+      shareTransactions: { orderBy: [{ transactionDate: 'desc' }, { createdAt: 'desc' }] },
       linkedCompany: { select: { id: true, nameEn: true, nameZh: true, companyCode: true } },
       keyPerson: { select: { id: true, nameEn: true, nameZh: true, kycStatus: true } },
     },

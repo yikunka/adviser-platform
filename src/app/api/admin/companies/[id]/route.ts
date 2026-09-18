@@ -54,7 +54,7 @@ export async function GET(
       members: {
         orderBy: { createdAt: 'desc' },
         include: {
-          shareTransactions: { orderBy: { transactionDate: 'desc' } },
+          shareTransactions: { orderBy: [{ transactionDate: 'desc' }, { createdAt: 'desc' }] },
           linkedCompany: { select: { id: true, nameEn: true, nameZh: true, companyCode: true, registeredAddress: true } },
           keyPerson: { select: { id: true, nameEn: true, nameZh: true, kycStatus: true } },
         },

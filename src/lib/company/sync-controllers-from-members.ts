@@ -15,12 +15,14 @@ export type SyncControllersFromMembersResult = {
 }
 
 function latestSharesHeld(
-  transactions: Array<{ sharesHeld: number; transactionDate: Date }>,
+  transactions: Array<{ sharesHeld: number; transactionDate: Date; createdAt?: Date }>,
 ): number | null {
   if (transactions.length === 0) return null
-  return [...transactions].sort(
-    (a, b) => b.transactionDate.getTime() - a.transactionDate.getTime(),
-  )[0]?.sharesHeld ?? null
+  return [...transactions].sort((a, b) => {
+    const byDate = b.transactionDate.getTime() - a.transactionDate.getTime()
+    if (byDate !== 0) return byDate
+    return (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0)
+  })[0]?.sharesHeld ?? null
 }
 
 function natureOfControlFromShares(pct: number): string {
@@ -41,8 +43,8 @@ export async function syncControllersFromMembers(
       where: { companyId, status: 'ACTIVE' },
       include: {
         shareTransactions: {
-          orderBy: { transactionDate: 'desc' },
-          select: { sharesHeld: true, transactionDate: true },
+          orderBy: [{ transactionDate: 'desc' }, { createdAt: 'desc' }],
+          select: { sharesHeld: true, transactionDate: true, createdAt: true },
         },
         linkedCompany: {
           select: { id: true, nameEn: true, nameZh: true, companyNumber: true, registeredAddress: true },
