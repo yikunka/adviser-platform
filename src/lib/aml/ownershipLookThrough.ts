@@ -124,11 +124,16 @@ export function buildCompanyOwnershipNode(
     sharesHeld: meta?.sharesHeld ?? null,
     ownershipPercent: meta?.ownershipPercent ?? null,
     circular: false,
-    children: activeMembers.map(member => {
+    children: activeMembers.flatMap(member => {
       const sharesHeld = latestShares(member)
-      const ownershipPercent = totalShares > 0 && sharesHeld != null
+      // Ownership chart: only members who still hold shares at the latest transaction
+      if (sharesHeld == null || sharesHeld <= 0) return []
+
+      const ownershipPercent = totalShares > 0
         ? Number(((sharesHeld / totalShares) * 100).toFixed(4))
         : null
+      if (ownershipPercent === 0) return []
+
       const matchedCompany =
         (member.linkedCompanyId ? idIndex.get(member.linkedCompanyId) : undefined)
         ?? byName.get(normalizeName(member.nameEn))
@@ -140,10 +145,10 @@ export function buildCompanyOwnershipNode(
       }
 
       if (matchedCompany && matchedCompany.id !== company.id) {
-        return buildCompanyOwnershipNode(matchedCompany, byName, nextVisited, metaForMember, idIndex)
+        return [buildCompanyOwnershipNode(matchedCompany, byName, nextVisited, metaForMember, idIndex)]
       }
 
-      return {
+      return [{
         id: member.id,
         type: 'PERSON' as const,
         nameEn: member.nameEn,
@@ -157,7 +162,7 @@ export function buildCompanyOwnershipNode(
         ownershipPercent,
         circular: false,
         children: [],
-      }
+      }]
     }),
   }
 }

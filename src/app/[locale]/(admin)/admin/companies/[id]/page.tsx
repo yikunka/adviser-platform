@@ -476,9 +476,22 @@ function OwnershipLeafCard({ node }: { node: OwnershipNode }) {
   )
 }
 
-/** Shareholders / parent owners on top, company at the bottom (inverted ownership tree). */
+function shareTransactionTypeLabel(type: string | null | undefined) {
+  switch (type) {
+    case 'ALLOTMENT':
+      return 'Allotment'
+    case 'TRANSFER_IN':
+      return 'Transfer in'
+    case 'TRANSFER_OUT':
+      return 'Transfer out'
+    default:
+      return type || '—'
+  }
+}
 function OwnershipTreeNode({ node }: { node: OwnershipNode }) {
-  const owners = node.children
+  const owners = node.children.filter(
+    child => (child.sharesHeld ?? 0) > 0 && child.ownershipPercent !== 0,
+  )
   const showOwnersAbove = node.type === 'COMPANY' && owners.length > 0
 
   if (!showOwnersAbove) {
@@ -3812,6 +3825,8 @@ export default function CompanyDetailPage() {
                     <th style={thStyle}>Name</th>
                     <th style={thStyle}>Link</th>
                     <th style={thStyle}>Share Class</th>
+                    <th style={thStyle}>Date</th>
+                    <th style={thStyle}>Type</th>
                     <th style={thStyle}>Shares Held</th>
                     <th style={thStyle}>Occupation</th>
                     <th style={thStyle}>Status</th>
@@ -3839,6 +3854,8 @@ export default function CompanyDetailPage() {
                         )}
                       </td>
                       <td style={tdStyle}>{m.shareClass}</td>
+                      <td style={tdStyle}>{fmt(latestTx?.transactionDate)}</td>
+                      <td style={tdStyle}>{shareTransactionTypeLabel(latestTx?.transactionType)}</td>
                       <td style={tdStyle}>{sharesHeld != null ? sharesHeld.toLocaleString() : '—'}</td>
                       <td style={tdStyle}>{m.occupation ?? '—'}</td>
                       <td style={tdStyle}><Badge variant={m.status === 'ACTIVE' ? 'default' : 'secondary'}>{m.status}</Badge></td>
@@ -3852,7 +3869,7 @@ export default function CompanyDetailPage() {
                     )
                   })}
                   {company.members.length === 0 && (
-                    <tr><td colSpan={7} className="px-4 py-6 text-center" style={{ color: 'var(--muted-foreground)' }}>No members — click Add Member to get started</td></tr>
+                    <tr><td colSpan={9} className="px-4 py-6 text-center" style={{ color: 'var(--muted-foreground)' }}>No members — click Add Member to get started</td></tr>
                   )}
                 </tbody>
               </table>
