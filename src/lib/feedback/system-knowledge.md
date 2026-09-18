@@ -24,7 +24,7 @@ Key metrics at a glance, grouped by platform module:
 
 ### 2. Companies (`/admin/companies`)
 Manages the full portfolio of client companies.
-- List with search (name / code / registration number), status badge, assigned client, company incorporation date, **周年申报截止日** (incorporation month/day + 42 days, shown as `MM-DD`), **UBO** (look-through natural persons with effective ownership > 25%, name + %), financial-module toggle
+- List with search (name / code / registration number), status badge, assigned client, company incorporation date, **周年申报截止日** (incorporation month/day + 42 days, shown as `MM-DD`), **現任董事** (active directors; Chinese name if present, otherwise English), **UBO** (look-through natural persons with effective ownership > 25%, name + %), financial-module toggle
 - Company statuses: `Active`, `Inactive`, `Deregistered`
 - Company create/edit uses **Jurisdiction** (`Hong Kong`, `BVI`, `Cayman`, `Bermuda`, `Marshall`, `PRC`) for code-prefix jurisdiction (`AA` / `BV` / `CA` / `BM` / `MS` / `PR`)
 - Company list shows a **註冊地** column with English jurisdiction labels (Hong Kong / BVI / Cayman / Bermuda / Marshall / PRC) and has jurisdiction + status filters next to search

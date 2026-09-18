@@ -161,6 +161,11 @@ export async function GET(req: NextRequest) {
           assignedStaff: { select: { nameEn: true } },
           financialManager: { select: { nameEn: true, email: true } },
           clientUser: { select: { nameEn: true, email: true } },
+          directors: {
+            where: { status: 'ACTIVE' },
+            select: { nameEn: true, nameZh: true },
+            orderBy: { dateOfAppointment: 'asc' },
+          },
         },
       }),
       prisma.company.count({ where }),
@@ -181,6 +186,11 @@ export async function GET(req: NextRequest) {
         assignedStaff: { select: { nameEn: true } },
         financialManager: { select: { nameEn: true, email: true } },
         clientUser: { select: { nameEn: true, email: true } },
+        directors: {
+          where: { status: 'ACTIVE' },
+          select: { nameEn: true, nameZh: true },
+          orderBy: { dateOfAppointment: 'asc' },
+        },
       },
     }),
     prisma.company.count({ where }),
