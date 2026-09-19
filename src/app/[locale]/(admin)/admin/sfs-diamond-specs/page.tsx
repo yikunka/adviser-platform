@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ImagePlus, Loader2, Pencil, Plus, SlidersHorizontal, Trash2, X } from 'lucide-react'
+import { sfsDesignStoresChainLength } from '@/lib/sfs/diamond-spec-options'
 
 type Category =
   | 'SOURCE'
@@ -26,6 +27,7 @@ type SpecOption = {
   label: string
   value: string
   imageUrl: string | null
+  chainLength: string | null
   price: string | number | null
   sortOrder: number
   isActive: boolean
@@ -38,6 +40,7 @@ type FormValues = {
   label: string
   value: string
   imageUrl: string
+  chainLength: string
   sortOrder: number
   isActive: boolean
 }
@@ -60,6 +63,7 @@ const EMPTY_FORM: FormValues = {
   label: '',
   value: '',
   imageUrl: '',
+  chainLength: '',
   sortOrder: 0,
   isActive: true,
 }
@@ -74,6 +78,7 @@ function toForm(option?: SpecOption | null, category: Category = 'SOURCE'): Form
     label: option.label,
     value: option.value,
     imageUrl: option.imageUrl ?? '',
+    chainLength: option.chainLength ?? '',
     sortOrder: option.sortOrder,
     isActive: option.isActive,
   }
@@ -100,6 +105,7 @@ function SpecModal({
       ...prev,
       [key]: value,
       ...(key === 'label' && !option && !prev.value ? { value: String(value) } : {}),
+      ...(key === 'category' && !sfsDesignStoresChainLength(String(value)) ? { chainLength: '' } : {}),
     }))
   }
 
@@ -134,6 +140,7 @@ function SpecModal({
             ...form,
             value: form.value.trim() || form.label.trim(),
             imageUrl: form.imageUrl.trim() || null,
+            chainLength: sfsDesignStoresChainLength(form.category) ? form.chainLength.trim() || null : null,
           }),
         },
       )
@@ -215,6 +222,21 @@ function SpecModal({
               <Input value={form.value} onChange={e => update('value', e.target.value)} maxLength={120} placeholder="Defaults to label" />
             </label>
           </div>
+
+          {sfsDesignStoresChainLength(form.category) && (
+            <label className="space-y-1.5 block max-w-xs">
+              <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Length</span>
+              <Input
+                value={form.chainLength}
+                onChange={e => update('chainLength', e.target.value)}
+                maxLength={40}
+                placeholder={form.category === 'BRACELET_DESIGN' ? 'e.g. 18 cm' : 'e.g. 45 cm'}
+              />
+              <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                Filled on the client order when this design is selected. The client can still change it.
+              </span>
+            </label>
+          )}
 
           <div className="grid gap-4 md:grid-cols-[160px_1fr]">
             <div
@@ -325,6 +347,11 @@ export default function SfsDiamondSpecsPage() {
     })
   }, [filter, options])
 
+  const showLength = filter === 'ALL' || filter === 'NECKLACE_DESIGN' || filter === 'BRACELET_DESIGN'
+  const tableHeaders = showLength
+    ? ['Preview', 'Category', 'Label', 'Value', 'Length', 'Sort', 'Status', 'Actions']
+    : ['Preview', 'Category', 'Label', 'Value', 'Sort', 'Status', 'Actions']
+
   async function toggleActive(option: SpecOption) {
     setUpdatingId(option.id)
     try {
@@ -410,7 +437,7 @@ export default function SfsDiamondSpecsPage() {
             <table className="w-full text-sm">
               <thead style={{ background: 'var(--surface-modal)', borderBottom: '1px solid var(--border-subtle)' }}>
                 <tr>
-                  {['Preview', 'Category', 'Label', 'Value', 'Sort', 'Status', 'Actions'].map(h => (
+                  {tableHeaders.map(h => (
                     <th key={h} className="px-4 py-3 text-left font-medium whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
                   ))}
                 </tr>
@@ -418,13 +445,13 @@ export default function SfsDiamondSpecsPage() {
               <tbody className="divide-y divide-[var(--border-subtle)]">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>
+                    <td colSpan={tableHeaders.length} className="px-4 py-12 text-center" style={{ color: 'var(--muted-foreground)' }}>
                       <Loader2 size={16} className="inline animate-spin mr-2" /> Loading...
                     </td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center">
+                    <td colSpan={tableHeaders.length} className="px-4 py-12 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <SlidersHorizontal size={28} style={{ color: '#C9A96E', opacity: 0.45 }} />
                         <span style={{ color: 'var(--muted-foreground)' }}>No spec options yet.</span>
@@ -445,6 +472,11 @@ export default function SfsDiamondSpecsPage() {
                     <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>{CATEGORY_LABEL[option.category]}</td>
                     <td className="px-4 py-3 min-w-[180px] font-medium" style={{ color: 'var(--foreground)' }}>{option.label}</td>
                     <td className="px-4 py-3 min-w-[180px]" style={{ color: 'var(--muted-foreground)' }}>{option.value}</td>
+                    {showLength && (
+                      <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>
+                        {option.chainLength || '—'}
+                      </td>
+                    )}
                     <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>{option.sortOrder}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span

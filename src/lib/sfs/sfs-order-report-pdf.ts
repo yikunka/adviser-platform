@@ -110,7 +110,7 @@ export function reportFilename(order: Pick<SfsOrderReportPayload, 'sampleCode' |
 export async function renderSfsOrderReportPdf(order: SfsOrderReportPayload): Promise<{ bytes: Buffer; filename: string }> {
   const diamonds = order.diamonds as {
     code?: string; carat?: string; shape?: string; type?: string
-    design?: string; metal?: string; ringSize?: string
+    design?: string; metal?: string; ringSize?: string; chainLength?: string
   }[]
 
   const stepImageMap = new Map<string, (PDFImage | null)[]>()
@@ -323,6 +323,9 @@ export async function renderSfsOrderReportPdf(order: SfsOrderReportPayload): Pro
     const extras = [d.design, d.metal].filter(Boolean).map(safe).join(', ')
     if (extras) drawKVIndented('Design / Metal', extras)
     if (d.ringSize) drawKVIndented('Ring Size (EU)', d.ringSize)
+    if (d.chainLength) {
+      drawKVIndented(d.type === 'Bracelet' ? 'Bracelet Length' : 'Necklace Length', d.chainLength)
+    }
     y -= 4
   })
 

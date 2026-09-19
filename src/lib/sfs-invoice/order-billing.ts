@@ -14,6 +14,7 @@ type DiamondRow = {
   design?: string
   metal?: string
   ringSize?: string
+  chainLength?: string
 }
 
 function diamondLineDescription(d: DiamondRow, memorialName: string): string {
@@ -22,6 +23,7 @@ function diamondLineDescription(d: DiamondRow, memorialName: string): string {
     d.shape,
     d.type,
     d.design,
+    d.chainLength,
     d.metal && `(${d.metal})`,
   ].filter(Boolean)
   const spec = parts.length > 0 ? parts.join(' ') : 'Memorial diamond'

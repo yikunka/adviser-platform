@@ -6,6 +6,7 @@ export type SfsSpecOption = {
   label: string
   value: string
   imageUrl: string | null
+  chainLength: string | null
   /**
    * Pricing value; meaning depends on category (CARAT = base price, SOURCE/COLOR/SHAPE/METAL =
    * additive adjustment, *_DESIGN = jewellery design price). Null = unset, treated as 0.
@@ -22,6 +23,7 @@ export type SfsSpecOptionRow = {
   label: string
   value: string
   imageUrl: string | null
+  chainLength?: string | null
   price?: number | string | { toString(): string } | null
   sortOrder: number
   isActive: boolean
@@ -34,6 +36,7 @@ function normalizeSpecOption(row: SfsSpecOptionRow): SfsSpecOption {
     label: row.label,
     value: row.value,
     imageUrl: row.imageUrl ?? null,
+    chainLength: row.chainLength?.trim() || null,
     price: row.price == null ? null : Number(row.price),
     sortOrder: row.sortOrder,
     isActive: row.isActive,
@@ -77,6 +80,10 @@ export const SFS_SPEC_CATEGORY_LABELS: Record<SfsDiamondSpecCategory, string> = 
   EARRING_DESIGN: 'Earring Design',
   BRACELET_DESIGN: 'Bracelet Design',
   METAL: 'Metal',
+}
+
+export function sfsDesignStoresChainLength(category: string) {
+  return category === 'NECKLACE_DESIGN' || category === 'BRACELET_DESIGN'
 }
 
 export const SFS_DESIGN_IMAGE_CATEGORIES = new Set<SfsDiamondSpecCategory>([
@@ -157,6 +164,7 @@ function option(
     label,
     value: label,
     imageUrl,
+    chainLength: null,
     price: null,
     sortOrder,
     isActive: true,

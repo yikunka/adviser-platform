@@ -56,6 +56,7 @@ type DiamondItem = {
   designNotes?: string
   metal?: string
   ringSize?: string
+  chainLength?: string
   size?: string
   cut?: string
 }

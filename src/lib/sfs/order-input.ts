@@ -11,6 +11,7 @@ export const sfsDiamondItemInputSchema = z.object({
   shape: z.string().min(1),
   type: z.string().min(1),
   ringSize: z.string().optional(),
+  chainLength: z.string().max(40).optional(),
   design: z.string().optional(),
   designNotes: z.string().max(1000).optional(),
   metal: z.string().optional(),
@@ -55,6 +56,9 @@ export async function validateSfsOrderSpecOptions(input: SfsOrderInput): Promise
     if (!shapes.has(diamond.shape)) return `${label}: invalid shape`
     if (!settingTypes.has(diamond.type)) return `${label}: invalid setting type`
     if (diamond.type === 'Ring' && !diamond.ringSize?.trim()) return `${label}: ring size is required`
+    if ((diamond.type === 'Necklace' || diamond.type === 'Bracelet') && !diamond.chainLength?.trim()) {
+      return `${label}: ${diamond.type === 'Bracelet' ? 'bracelet' : 'necklace'} length is required`
+    }
 
     const custom = isSfsCustomDesign(diamond.design)
     if (custom) {

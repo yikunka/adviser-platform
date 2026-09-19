@@ -43,6 +43,7 @@ export default async function EditOrderPage({
     shape?: string
     type?: string
     ringSize?: string
+    chainLength?: string
     design?: string
     designNotes?: string
     metal?: string
@@ -66,6 +67,7 @@ export default async function EditOrderPage({
       shape:    d.shape    ?? '',
       type:     d.type     ?? '',
       ringSize: d.ringSize ?? '',
+      chainLength: d.chainLength ?? '',
       design:   d.design   ?? '',
       designNotes: d.designNotes ?? '',
       designUploads: order.designAttachments

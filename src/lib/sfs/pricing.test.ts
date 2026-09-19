@@ -3,7 +3,7 @@ import { computeSfsOrderPricing, resolveMultiDiamondDiscountPct } from '@/lib/sf
 import { type SfsOrderSpecOptions, type SfsSpecOption } from '@/lib/sfs/diamond-spec-options'
 
 function opt(category: SfsSpecOption['category'], value: string, price: number | null): SfsSpecOption {
-  return { id: `${category}-${value}`, category, label: value, value, imageUrl: null, price, sortOrder: 0, isActive: true }
+  return { id: `${category}-${value}`, category, label: value, value, imageUrl: null, chainLength: null, price, sortOrder: 0, isActive: true }
 }
 
 function specOptions(overrides: Partial<SfsOrderSpecOptions> = {}): SfsOrderSpecOptions {

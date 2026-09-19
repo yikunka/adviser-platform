@@ -1747,6 +1747,8 @@ model SfsDiamondSpecOption {
   label       String
   value       String
   imageUrl    String?
+  /// Default length for necklace and bracelet designs. The order form fills this in and the client can edit it.
+  chainLength String?
   // Pricing — meaning depends on category:
   //   CARAT          → diamond base price
   //   SOURCE / COLOR / SHAPE → additive price adjustment (may be negative)

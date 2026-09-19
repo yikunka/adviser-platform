@@ -25,6 +25,7 @@ export type DiamondItem = {
   shape: string
   type: string
   ringSize: string
+  chainLength: string
   design: string
   designNotes: string
   designUploads: DesignUploadRef[]
@@ -52,6 +53,7 @@ const EMPTY_DIAMOND: DiamondItem = {
   shape: '',
   type: '',
   ringSize: '',
+  chainLength: '',
   design: '',
   designNotes: '',
   designUploads: [],
@@ -729,7 +731,7 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
         </p>
         <div className="flex flex-wrap gap-2">
           {specOptions.settingTypes.map(t => (
-            <CheckCard key={t.id} checked={item.type === t.value} onChange={() => onChange({ type: t.value, design: '', designNotes: '', designUploads: [], ringSize: '' })}>
+            <CheckCard key={t.id} checked={item.type === t.value} onChange={() => onChange({ type: t.value, design: '', designNotes: '', designUploads: [], ringSize: '', chainLength: '' })}>
               {t.label}
             </CheckCard>
           ))}
@@ -761,7 +763,14 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
                 label={d.label}
                 src={d.imageUrl}
                 selected={item.design === d.value}
-                onClick={() => onChange({ design: d.value, designNotes: '', designUploads: [] })}
+                onClick={() => onChange({
+                  design: d.value,
+                  designNotes: '',
+                  designUploads: [],
+                  ...(item.type === 'Necklace' || item.type === 'Bracelet'
+                    ? { chainLength: d.chainLength?.trim() ?? '' }
+                    : {}),
+                })}
                 tall
                 priceLabel={formatSfsPriceLabel(d.price)}
               />
@@ -770,12 +779,27 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
               label="Custom"
               src={null}
               selected={isSfsCustomDesign(item.design)}
-              onClick={() => onChange({ design: SFS_CUSTOM_DESIGN_VALUE })}
+              onClick={() => onChange({
+                design: SFS_CUSTOM_DESIGN_VALUE,
+                ...(item.type === 'Necklace' || item.type === 'Bracelet' ? { chainLength: '' } : {}),
+              })}
               tall
               priceLabel="Quote"
             />
           </div>
         </div>
+      )}
+
+      {(item.type === 'Necklace' || item.type === 'Bracelet') && (
+        <Field label={item.type === 'Necklace' ? 'Necklace Length' : 'Bracelet Length'} required>
+          <Input
+            type="text"
+            value={item.chainLength}
+            onChange={e => onChange({ chainLength: e.target.value })}
+            placeholder={item.type === 'Necklace' ? 'e.g. 45 cm' : 'e.g. 18 cm'}
+            style={{ maxWidth: 180 }}
+          />
+        </Field>
       )}
 
       {isSfsCustomDesign(item.design) && (
@@ -954,6 +978,12 @@ function Step5({
             <SummaryRow label="Shape" value={d.shape} />
             <SummaryRow label="Type" value={d.type} />
             {d.ringSize && <SummaryRow label="Ring Size (EU)" value={d.ringSize} />}
+            {d.chainLength && (
+              <SummaryRow
+                label={d.type === 'Bracelet' ? 'Bracelet Length' : 'Necklace Length'}
+                value={d.chainLength}
+              />
+            )}
             {d.design && <SummaryRow label="Design" value={d.design} />}
             {isSfsCustomDesign(d.design) && d.designUploads.length > 0 && (
               <SummaryRow label="Design files" value={d.designUploads.map(f => f.fileName).join(', ')} />
@@ -1116,6 +1146,9 @@ export default function OrderWizard({
         if (!d.shape) return `Diamond #${i + 1}: please select a shape.`
         if (!d.type) return `Diamond #${i + 1}: please select a setting type.`
         if (d.type === 'Ring' && !d.ringSize) return `Diamond #${i + 1}: please enter a ring size.`
+        if ((d.type === 'Necklace' || d.type === 'Bracelet') && !d.chainLength.trim()) {
+          return `Diamond #${i + 1}: please enter a ${d.type === 'Bracelet' ? 'bracelet' : 'necklace'} length.`
+        }
         if (d.type !== 'Diamond only' && !d.design) return `Diamond #${i + 1}: please select a design.`
         if (isSfsCustomDesign(d.design) && d.designUploads.length === 0) {
           return `Diamond #${i + 1}: please upload at least one custom design file.`
@@ -1160,6 +1193,7 @@ export default function OrderWizard({
         shape:    d.shape,
         type:     d.type,
         ringSize: d.ringSize  || undefined,
+        chainLength: d.chainLength.trim() || undefined,
         design:   d.design    || undefined,
         designNotes: d.designNotes.trim() || undefined,
         metal:    d.metal     || undefined,

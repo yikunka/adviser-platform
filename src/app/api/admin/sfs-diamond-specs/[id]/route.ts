@@ -4,13 +4,14 @@ import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/auth/rbac'
 import { logAudit } from '@/lib/audit/logger'
 import { prisma } from '@/lib/db/prisma'
-import { SFS_SPEC_CATEGORIES } from '@/lib/sfs/diamond-spec-options'
+import { SFS_SPEC_CATEGORIES, sfsDesignStoresChainLength } from '@/lib/sfs/diamond-spec-options'
 
 const updateSchema = z.object({
   category: z.enum(SFS_SPEC_CATEGORIES).optional(),
   label: z.string().trim().min(1).max(120).optional(),
   value: z.string().trim().max(120).optional(),
   imageUrl: z.string().trim().max(2000).optional().nullable(),
+  chainLength: z.string().trim().max(40).optional().nullable(),
   price: z.coerce.number().finite().min(-1_000_000).max(1_000_000).optional().nullable(),
   sortOrder: z.coerce.number().int().min(0).max(100000).optional(),
   isActive: z.boolean().optional(),
@@ -54,6 +55,13 @@ export async function PATCH(
         ...(data.label !== undefined ? { label: data.label } : {}),
         ...(data.value !== undefined ? { value: data.value.trim() || (data.label ?? before.label) } : {}),
         ...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl?.trim() || null } : {}),
+        ...((data.chainLength !== undefined || data.category !== undefined)
+          ? {
+              chainLength: sfsDesignStoresChainLength(data.category ?? before.category)
+                ? (data.chainLength ?? before.chainLength)?.trim() || null
+                : null,
+            }
+          : {}),
         ...(data.price !== undefined ? { price: data.price ?? null } : {}),
         ...(data.sortOrder !== undefined ? { sortOrder: data.sortOrder } : {}),
         ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),

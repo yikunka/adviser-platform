@@ -8,6 +8,7 @@ export type DiamondDetail = {
   shape?: string
   type?: string
   ringSize?: string
+  chainLength?: string
   design?: string
   metal?: string
   cut?: string
@@ -78,6 +79,10 @@ function Modal({ diamond, index, onClose }: { diamond: DiamondDetail; index: num
           <Row label="Shape"      value={diamond.shape} />
           <Row label="Setting"    value={diamond.type} />
           <Row label="Ring Size"  value={diamond.ringSize} />
+          <Row
+            label={diamond.type === 'Bracelet' ? 'Bracelet Length' : 'Necklace Length'}
+            value={diamond.chainLength}
+          />
           <Row label="Design"     value={diamond.design} />
           <Row label="Metal"      value={diamond.metal} />
           <Row label="Cut"        value={diamond.cut} />
@@ -119,7 +124,7 @@ export default function DiamondCards({
       <div className="space-y-2">
         {diamonds.map((d, i) => {
           const summary = [d.carat && `${d.carat} ct`, d.shape, d.type].filter(Boolean).join(' · ')
-          const detail  = [d.design, d.metal, d.ringSize && `Size ${d.ringSize}`].filter(Boolean).join(' · ')
+          const detail  = [d.design, d.metal, d.ringSize && `Size ${d.ringSize}`, d.chainLength && `Length ${d.chainLength}`].filter(Boolean).join(' · ')
           return (
             <button
               key={i}
