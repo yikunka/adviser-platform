@@ -15,7 +15,14 @@ export async function GET(
   const invoice = await prisma.invoice.findUnique({
     where: { id },
     include: {
-      lineItems: { orderBy: { sortOrder: 'asc' } },
+      lineItems: {
+        orderBy: { sortOrder: 'asc' },
+        include: {
+          tcspServicePrice: {
+            select: { jurisdiction: true, customerLevel: true, serviceContent: true },
+          },
+        },
+      },
       company: { select: { nameEn: true, companyCode: true, companyNumber: true } },
       keyPerson: { select: { nameEn: true, kycCode: true, idType: true, idNumber: true } },
     },

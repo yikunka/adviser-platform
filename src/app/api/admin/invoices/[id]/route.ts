@@ -33,7 +33,14 @@ async function loadInvoice(id: string) {
   return prisma.invoice.findUnique({
     where: { id },
     include: {
-      lineItems: { orderBy: { sortOrder: 'asc' } },
+      lineItems: {
+        orderBy: { sortOrder: 'asc' },
+        include: {
+          tcspServicePrice: {
+            select: { id: true, jurisdiction: true, customerLevel: true, serviceContent: true },
+          },
+        },
+      },
       company: { select: { id: true, nameEn: true, companyCode: true, companyNumber: true } },
       keyPerson: { select: { id: true, nameEn: true, kycCode: true, idType: true, idNumber: true } },
       createdBy: { select: { id: true, nameEn: true, email: true } },
@@ -168,7 +175,14 @@ export async function PATCH(
           : {}),
       },
       include: {
-        lineItems: { orderBy: { sortOrder: 'asc' } },
+        lineItems: {
+          orderBy: { sortOrder: 'asc' },
+          include: {
+            tcspServicePrice: {
+              select: { id: true, jurisdiction: true, customerLevel: true, serviceContent: true },
+            },
+          },
+        },
         company: { select: { id: true, nameEn: true, companyCode: true, companyNumber: true } },
         keyPerson: { select: { id: true, nameEn: true, kycCode: true, idType: true, idNumber: true } },
         createdBy: { select: { nameEn: true } },

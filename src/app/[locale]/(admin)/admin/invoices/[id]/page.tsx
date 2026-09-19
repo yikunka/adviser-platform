@@ -17,9 +17,17 @@ import { tcspCustomerLevelLabel } from '@/lib/adviser/tcsp-pricing'
 import { computeTotals } from '@/lib/invoice/calc'
 import { applyTcspServicePriceToLine, buildTcspServicePriceOptionLabel } from '@/lib/invoice/tcsp-service-pricing'
 
+type LinkedTcspPrice = {
+  id: string
+  jurisdiction: string
+  customerLevel: string
+  serviceContent: string
+}
+
 type LineItem = {
   id: string
   tcspServicePriceId?: string | null
+  tcspServicePrice?: LinkedTcspPrice | null
   description: string
   quantity: string
   unitPrice: string
@@ -86,7 +94,14 @@ function mapInvoiceToDraft(invoice: InvoiceDetail): DraftFormState {
     billToEmail: invoice.billToEmail ?? '',
     notes: invoice.notes ?? '',
     lines: invoice.lineItems.map(line => ({
-      tcspServicePriceId: line.tcspServicePriceId ?? '',
+      tcspServicePriceId: line.tcspServicePriceId ?? line.tcspServicePrice?.id ?? '',
+      tcspServicePriceLabel: line.tcspServicePrice
+        ? buildTcspServicePriceOptionLabel({
+            jurisdiction: line.tcspServicePrice.jurisdiction,
+            customerLevelLabel: tcspCustomerLevelLabel(line.tcspServicePrice.customerLevel),
+            serviceContent: line.tcspServicePrice.serviceContent,
+          })
+        : '',
       description: line.description,
       quantity: String(Number(line.quantity)),
       unitPrice: String(Number(line.unitPrice)),
@@ -193,7 +208,7 @@ export default function InvoiceDetailPage() {
 
   function selectTcspServicePrice(index: number, tcspServicePriceId: string) {
     if (!tcspServicePriceId) {
-      updateLine(index, { tcspServicePriceId: '' })
+      updateLine(index, { tcspServicePriceId: '', tcspServicePriceLabel: '' })
       return
     }
     const price = tcspServicePrices.find(item => item.id === tcspServicePriceId)
@@ -205,12 +220,19 @@ export default function InvoiceDetailPage() {
             ...current,
             lines: current.lines.map((line, lineIndex) => (
               lineIndex === index
-                ? applyTcspServicePriceToLine(line, {
-                    id: price.id,
-                    serviceContent: price.serviceContent,
-                    amount: price.amount,
-                    notes: price.notes,
-                  })
+                ? {
+                    ...applyTcspServicePriceToLine(line, {
+                      id: price.id,
+                      serviceContent: price.serviceContent,
+                      amount: price.amount,
+                      notes: price.notes,
+                    }),
+                    tcspServicePriceLabel: buildTcspServicePriceOptionLabel({
+                      jurisdiction: price.jurisdiction,
+                      customerLevelLabel: tcspCustomerLevelLabel(price.customerLevel),
+                      serviceContent: price.serviceContent,
+                    }),
+                  }
                 : line
             )),
           }
@@ -384,10 +406,11 @@ export default function InvoiceDetailPage() {
 
       <Card>
         <CardHeader><CardTitle>{t('lineItems')}</CardTitle></CardHeader>
-        <CardContent className={invoice.status === 'DRAFT' ? 'space-y-3' : 'p-0'}>
-          {invoice.status === 'DRAFT' && draft ? (
+        <CardContent className="space-y-3">
+          {draft ? (
             <>
               <InvoiceLineItemsEditor
+                readOnly={invoice.status !== 'DRAFT'}
                 amountLabel={t('amount')}
                 currency={invoice.currency}
                 addLineLabel={t('addLine')}
@@ -412,48 +435,15 @@ export default function InvoiceDetailPage() {
                 onSelectTcspServicePrice={selectTcspServicePrice}
               />
               <div className="pt-4 border-t text-sm" style={{ borderColor: 'var(--border-subtle)' }}>
-                <div className="flex justify-between font-semibold"><span>{t('total')}</span><span>{invoice.currency} {totals.total.toFixed(2)}</span></div>
-              </div>
-            </>
-          ) : (
-            <>
-              <table className="w-full text-sm">
-                <thead style={{ background: 'var(--surface-panel)', borderBottom: '1px solid var(--border-subtle)' }}>
-                  <tr>
-                    <th className="px-4 py-3 text-left">{t('description')}</th>
-                    <th className="px-4 py-3 text-right">{t('quantity')}</th>
-                    <th className="px-4 py-3 text-right">{t('unitPrice')}</th>
-                    <th className="px-4 py-3 text-right">{t('amount')}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border-subtle)]">
-                  {invoice.lineItems.map(line => (
-                    <tr key={line.id}>
-                      <td className="px-4 py-3 whitespace-pre-wrap">{line.description}</td>
-                      <td className="px-4 py-3 text-right">{Number(line.quantity)}</td>
-                      <td className="px-4 py-3 text-right">{invoice.currency} {Number(line.unitPrice).toFixed(2)}</td>
-                      <td className="px-4 py-3 text-right">
-                        <div>{invoice.currency} {Number(line.amount).toFixed(2)}</div>
-                        {line.discountType && Number(line.discountValue ?? 0) > 0 ? (
-                          <div className="mt-1 text-[11px]" style={{ color: 'var(--muted-foreground)' }}>
-                            {t('discount')}: {line.discountType === 'PERCENT'
-                              ? `${Number(line.discountValue).toFixed(2)}%`
-                              : `${invoice.currency} ${Number(line.discountValue).toFixed(2)}`}
-                          </div>
-                        ) : null}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="px-4 py-4 text-sm border-t" style={{ borderColor: 'var(--border-subtle)' }}>
-                <div className="flex justify-between font-semibold text-base">
+                <div className="flex justify-between font-semibold">
                   <span>{t('total')}</span>
-                  <span>{invoice.currency} {Number(invoice.total).toFixed(2)}</span>
+                  <span>
+                    {invoice.currency} {(invoice.status === 'DRAFT' ? totals.total : Number(invoice.total)).toFixed(2)}
+                  </span>
                 </div>
               </div>
             </>
-          )}
+          ) : null}
         </CardContent>
       </Card>
 

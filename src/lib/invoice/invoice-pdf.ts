@@ -1,9 +1,18 @@
 import { PDFDocument, rgb, type PDFFont } from 'pdf-lib'
 import type { Invoice, InvoiceLineItem, Company, KeyPerson } from '@prisma/client'
+import { tcspCustomerLevelLabel } from '@/lib/adviser/tcsp-pricing'
 import { loadPdfFonts } from '@/lib/pdf/cjk-font'
 
+export type InvoicePdfLine = InvoiceLineItem & {
+  tcspServicePrice?: {
+    jurisdiction: string
+    customerLevel: string
+    serviceContent: string
+  } | null
+}
+
 export type InvoicePdfPayload = Invoice & {
-  lineItems: InvoiceLineItem[]
+  lineItems: InvoicePdfLine[]
   company: Pick<Company, 'nameEn' | 'companyCode' | 'companyNumber'> | null
   keyPerson?: Pick<KeyPerson, 'nameEn' | 'kycCode' | 'idType' | 'idNumber'> | null
 }
@@ -42,6 +51,20 @@ function fmtMoney(n: { toString(): string } | number, currency: string): string 
 
 export function invoicePdfFilename(invoice: Pick<Invoice, 'invoiceNumber'>): string {
   return `${safe(invoice.invoiceNumber).replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`
+}
+
+function lineDescriptionText(line: InvoicePdfLine): string {
+  const price = line.tcspServicePrice
+  const serviceLabel = price
+    ? [price.jurisdiction, tcspCustomerLevelLabel(price.customerLevel), price.serviceContent]
+        .map(part => part.trim())
+        .filter(Boolean)
+        .join(' / ')
+    : ''
+  const description = (line.description ?? '').trim()
+  if (!serviceLabel) return description
+  if (!description || description === price?.serviceContent.trim() || description === serviceLabel) return serviceLabel
+  return `${serviceLabel}\n${description}`
 }
 
 export async function renderInvoicePdf(invoice: InvoicePdfPayload): Promise<Uint8Array> {
@@ -248,7 +271,7 @@ export async function renderInvoicePdf(invoice: InvoicePdfPayload): Promise<Uint
 
   const sorted = [...invoice.lineItems].sort((a, b) => a.sortOrder - b.sortOrder)
   sorted.forEach((line, index) => {
-    const descLines = wrapToWidth(line.description || '', reg, 8, cols[1].w)
+    const descLines = wrapToWidth(lineDescriptionText(line), reg, 8, cols[1].w)
     const rowHeight = Math.max(16, Math.max(descLines.length, 1) * 11 + 4)
     ensureSpace(rowHeight)
     const rowTop = y

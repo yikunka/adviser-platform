@@ -9,7 +9,9 @@ import type { InvoiceLineTcspDraft } from '@/lib/invoice/tcsp-service-pricing'
 
 export type InvoiceLineDiscountType = '' | 'PERCENT' | 'FIXED'
 
-export type InvoiceLineDraft = InvoiceLineTcspDraft
+export type InvoiceLineDraft = InvoiceLineTcspDraft & {
+  tcspServicePriceLabel?: string
+}
 
 type InvoiceLineItemsEditorProps = {
   amountLabel: string
@@ -28,6 +30,7 @@ type InvoiceLineItemsEditorProps = {
   tcspServicePricePlaceholderLabel: string
   tcspServicePrices: { id: string; label: string }[]
   lines: InvoiceLineDraft[]
+  readOnly?: boolean
   onAddLine: () => void
   onRemoveLine: (index: number) => void
   onUpdateLine: (index: number, patch: Partial<InvoiceLineDraft>) => void
@@ -67,6 +70,7 @@ export function InvoiceLineItemsEditor({
   tcspServicePricePlaceholderLabel,
   tcspServicePrices,
   lines,
+  readOnly = false,
   onAddLine,
   onRemoveLine,
   onUpdateLine,
@@ -84,7 +88,7 @@ export function InvoiceLineItemsEditor({
               <th style={{ ...th, width: 140 }}>{discountTypeLabel}</th>
               <th style={{ ...th, width: 120 }}>{discountValueLabel}</th>
               <th style={{ ...th, width: 140 }}>{amountLabel}</th>
-              <th style={{ ...th, width: 72 }} />
+              {readOnly ? null : <th style={{ ...th, width: 72 }} />}
             </tr>
           </thead>
           <tbody>
@@ -95,85 +99,128 @@ export function InvoiceLineItemsEditor({
               const discountType = line.discountType || null
               const amount = lineAmount(quantity, unitPrice, discountType, discountValue).toFixed(2)
 
+              const serviceLabel = line.tcspServicePriceLabel
+                || tcspServicePrices.find(price => price.id === line.tcspServicePriceId)?.label
+                || ''
+              const discountTypeText = !line.discountType || discountValue <= 0
+                ? ''
+                : line.discountType === 'PERCENT'
+                  ? discountPercentOptionLabel
+                  : discountFixedOptionLabel
+              const discountValueText = !line.discountType || discountValue <= 0
+                ? ''
+                : line.discountType === 'PERCENT'
+                  ? `${discountValue.toFixed(2)}%`
+                  : `${currency} ${discountValue.toFixed(2)}`
+
               return (
                 <tr key={index} style={{ borderTop: '1px solid var(--border-subtle)' }}>
                   <td className="px-3 py-2 text-center align-middle font-medium" style={{ color: 'var(--foreground)' }}>
                     {index + 1}
                   </td>
                   <td className="px-3 py-2 align-middle">
-                    <div className="space-y-2">
+                    {readOnly ? (
+                      <div className="space-y-1">
+                        {serviceLabel ? (
+                          <div className="font-medium" style={{ color: 'var(--foreground)' }}>{serviceLabel}</div>
+                        ) : null}
+                        {line.description ? (
+                          <div className="whitespace-pre-wrap" style={{ color: serviceLabel ? 'var(--muted-foreground)' : 'var(--foreground)' }}>
+                            {line.description}
+                          </div>
+                        ) : serviceLabel ? null : (
+                          <div style={{ color: 'var(--muted-foreground)' }}>—</div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <select
+                          value={line.tcspServicePriceId}
+                          onChange={e => onSelectTcspServicePrice(index, e.target.value)}
+                          className={controlClass}
+                          style={controlStyle}
+                        >
+                          <option value="">{tcspServicePricePlaceholderLabel}</option>
+                          {tcspServicePrices.map(price => (
+                            <option key={price.id} value={price.id}>
+                              {price.label}
+                            </option>
+                          ))}
+                        </select>
+                        <Textarea
+                          value={line.description}
+                          placeholder={descriptionLabel}
+                          rows={2}
+                          onChange={e => onUpdateLine(index, { description: e.target.value })}
+                          className="min-h-16 resize-y"
+                        />
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 align-middle whitespace-nowrap" style={{ color: 'var(--foreground)' }}>
+                    {readOnly ? (
+                      `${currency} ${unitPrice.toFixed(2)}`
+                    ) : (
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={line.unitPrice}
+                        onChange={e => onUpdateLine(index, { unitPrice: e.target.value })}
+                        className="h-9"
+                      />
+                    )}
+                  </td>
+                  <td className="px-3 py-2 align-middle" style={{ color: 'var(--foreground)' }}>
+                    {readOnly ? (
+                      discountTypeText || '—'
+                    ) : (
                       <select
-                        value={line.tcspServicePriceId}
-                        onChange={e => onSelectTcspServicePrice(index, e.target.value)}
+                        value={line.discountType}
+                        onChange={e => {
+                          const nextType = e.target.value as InvoiceLineDiscountType
+                          onUpdateLine(index, {
+                            discountType: nextType,
+                            discountValue: nextType ? line.discountValue : '',
+                          })
+                        }}
                         className={controlClass}
                         style={controlStyle}
                       >
-                        <option value="">{tcspServicePricePlaceholderLabel}</option>
-                        {tcspServicePrices.map(price => (
-                          <option key={price.id} value={price.id}>
-                            {price.label}
-                          </option>
-                        ))}
+                        <option value="">{discountLabel}</option>
+                        <option value="PERCENT">{discountPercentOptionLabel}</option>
+                        <option value="FIXED">{discountFixedOptionLabel}</option>
                       </select>
-                      <Textarea
-                        value={line.description}
-                        placeholder={descriptionLabel}
-                        rows={2}
-                        onChange={e => onUpdateLine(index, { description: e.target.value })}
-                        className="min-h-16 resize-y"
+                    )}
+                  </td>
+                  <td className="px-3 py-2 align-middle whitespace-nowrap" style={{ color: 'var(--foreground)' }}>
+                    {readOnly ? (
+                      discountValueText || '—'
+                    ) : (
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder={line.discountType === 'PERCENT' ? '%' : currency}
+                        value={line.discountValue}
+                        onChange={e => onUpdateLine(index, { discountValue: e.target.value })}
+                        className="h-9"
+                        disabled={!line.discountType}
                       />
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 align-middle">
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={line.unitPrice}
-                      onChange={e => onUpdateLine(index, { unitPrice: e.target.value })}
-                      className="h-9"
-                    />
-                  </td>
-                  <td className="px-3 py-2 align-middle">
-                    <select
-                      value={line.discountType}
-                      onChange={e => {
-                        const nextType = e.target.value as InvoiceLineDiscountType
-                        onUpdateLine(index, {
-                          discountType: nextType,
-                          discountValue: nextType ? line.discountValue : '',
-                        })
-                      }}
-                      className={controlClass}
-                      style={controlStyle}
-                    >
-                      <option value="">{discountLabel}</option>
-                      <option value="PERCENT">{discountPercentOptionLabel}</option>
-                      <option value="FIXED">{discountFixedOptionLabel}</option>
-                    </select>
-                  </td>
-                  <td className="px-3 py-2 align-middle">
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder={line.discountType === 'PERCENT' ? '%' : currency}
-                      value={line.discountValue}
-                      onChange={e => onUpdateLine(index, { discountValue: e.target.value })}
-                      className="h-9"
-                      disabled={!line.discountType}
-                    />
+                    )}
                   </td>
                   <td className="px-3 py-2 align-middle whitespace-nowrap font-semibold" style={{ color: 'var(--foreground)' }}>
                     {currency} {amount}
                   </td>
-                  <td className="px-2 py-2 align-middle text-right">
-                    {lines.length > 1 ? (
-                      <Button type="button" variant="ghost" size="sm" onClick={() => onRemoveLine(index)}>
-                        {removeLineLabel}
-                      </Button>
-                    ) : null}
-                  </td>
+                  {readOnly ? null : (
+                    <td className="px-2 py-2 align-middle text-right">
+                      {lines.length > 1 ? (
+                        <Button type="button" variant="ghost" size="sm" onClick={() => onRemoveLine(index)}>
+                          {removeLineLabel}
+                        </Button>
+                      ) : null}
+                    </td>
+                  )}
                 </tr>
               )
             })}
@@ -181,9 +228,11 @@ export function InvoiceLineItemsEditor({
         </table>
       </div>
 
-      <Button type="button" variant="outline" size="sm" onClick={onAddLine}>
-        {addLineLabel}
-      </Button>
+      {readOnly ? null : (
+        <Button type="button" variant="outline" size="sm" onClick={onAddLine}>
+          {addLineLabel}
+        </Button>
+      )}
     </div>
   )
 }
