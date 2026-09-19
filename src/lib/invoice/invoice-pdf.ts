@@ -197,7 +197,7 @@ export async function renderInvoicePdf(invoice: InvoicePdfPayload): Promise<Uint
   const cols: { label: string; w: number; x: number; align: 'left' | 'right' }[] = [
     { label: 'No.', w: fixed.no, x: 0, align: 'left' },
     { label: 'TCSP service price', w: descW, x: 0, align: 'left' },
-    { label: 'Unit price', w: fixed.unit, x: 0, align: 'right' },
+    { label: 'Unit price', w: fixed.unit, x: 0, align: 'left' },
     { label: 'Discount type', w: fixed.discountType, x: 0, align: 'left' },
     { label: 'Discount value', w: fixed.discountValue, x: 0, align: 'right' },
     { label: 'Amount', w: fixed.amount, x: 0, align: 'right' },
@@ -293,7 +293,7 @@ export async function renderInvoicePdf(invoice: InvoicePdfPayload): Promise<Uint
         }
       }
     })
-    drawRight(fmtMoney(line.unitPrice, invoice.currency), cols[2].x + cols[2].w, rowTop, 8, reg, cols[2].w)
+    drawFitted(fmtMoney(line.unitPrice, invoice.currency), cols[2].x, rowTop, 8, reg, cols[2].w)
     drawFitted(discountTypeLabel(line.discountType, discountValue), cols[3].x, rowTop, 8, reg, cols[3].w)
     drawRight(discountValueLabel(line), cols[4].x + cols[4].w, rowTop, 8, reg, cols[4].w)
     drawRight(fmtMoney(line.amount, invoice.currency), cols[5].x + cols[5].w, rowTop, 8, reg, cols[5].w)
