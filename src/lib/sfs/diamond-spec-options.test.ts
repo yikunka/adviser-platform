@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   SFS_DESIGN_IMAGE_CATEGORIES,
   SFS_SPEC_CATEGORIES,
+  defaultChainLengthForSettingType,
   getDefaultSfsOrderSpecOptions,
   getDesignOptionGroupsForSettingType,
   getDesignOptionsForSettingType,
@@ -23,6 +24,16 @@ describe('SFS diamond design options', () => {
 
     expect(groups.map(group => group.label)).toEqual(['Earring Design'])
     expect(groups[0]?.options.map(option => option.value)).toEqual(['Stud', 'Drop', 'Hoop'])
+  })
+
+  it('prefills a shared bracelet length before a design is chosen', () => {
+    const options = getDefaultSfsOrderSpecOptions()
+    options.braceletDesigns = options.braceletDesigns.map(option => ({ ...option, chainLength: '18' }))
+    expect(defaultChainLengthForSettingType('Bracelet', options)).toBe('18')
+    expect(defaultChainLengthForSettingType('Bracelet', options, 'Tennis')).toBe('18')
+    options.braceletDesigns[0] = { ...options.braceletDesigns[0], chainLength: '16' }
+    expect(defaultChainLengthForSettingType('Bracelet', options)).toBe('')
+    expect(defaultChainLengthForSettingType('Bracelet', options, 'Tennis')).toBe('16')
   })
 
   it('does not accept bracelet design values for earring validation through flattened design options', () => {

@@ -61,6 +61,8 @@ export default async function EditOrderPage({
     sourceOther:    order.sourceOther ?? '',
     remarks:        order.remarks ?? '',
     mailingPackage: order.mailingPackage,
+    mailingCompany: order.mailingCompany ?? '',
+    mailTrackingCode: order.mailTrackingCode ?? '',
     color:          order.color,
     diamonds: diamonds.map((d, index) => ({
       carat:    d.carat    ?? '',

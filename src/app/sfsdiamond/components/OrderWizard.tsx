@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { getDesignOptionGroupsForSettingType, type SfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options'
+import { getDesignOptionGroupsForSettingType, defaultChainLengthForSettingType, type SfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options'
 import { getCaratPreviewDiameter } from '@/lib/sfs/carat-preview'
 import { formatSfsMetalPercentLabel, formatSfsPriceLabel } from '@/lib/sfs/effective-pricing'
 import { computeSfsOrderPricing, type SfsMultiDiamondDiscountTier } from '@/lib/sfs/pricing'
@@ -44,6 +44,8 @@ export type WizardFormData = {
   sourceOther: string
   remarks: string
   mailingPackage: string
+  mailingCompany: string
+  mailTrackingCode: string
   color: string
   diamonds: DiamondItem[]
 }
@@ -72,6 +74,8 @@ export const WIZARD_INITIAL: WizardFormData = {
   sourceOther: '',
   remarks: '',
   mailingPackage: 'Own Package',
+  mailingCompany: '',
+  mailTrackingCode: '',
   color: '',
   diamonds: [{ ...EMPTY_DIAMOND }],
 }
@@ -416,6 +420,24 @@ function Step2({ data, update, specOptions }: {
           </CheckCard>
         </div>
       </Field>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <Field label="Mailing Company">
+          <Input
+            value={data.mailingCompany}
+            onChange={e => update({ mailingCompany: e.target.value })}
+            placeholder="e.g. SF Express"
+            maxLength={120}
+          />
+        </Field>
+        <Field label="Mail Tracking Code">
+          <Input
+            value={data.mailTrackingCode}
+            onChange={e => update({ mailTrackingCode: e.target.value })}
+            placeholder="e.g. SF1234567890"
+            maxLength={80}
+          />
+        </Field>
+      </div>
     </div>
   )
 }
@@ -706,7 +728,18 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
         </p>
         <div className="flex flex-wrap gap-2">
           {specOptions.settingTypes.map(t => (
-            <CheckCard key={t.id} checked={item.type === t.value} onChange={() => onChange({ type: t.value, design: '', designNotes: '', designUploads: [], ringSize: '', chainLength: '' })}>
+            <CheckCard
+              key={t.id}
+              checked={item.type === t.value}
+              onChange={() => onChange({
+                type: t.value,
+                design: '',
+                designNotes: '',
+                designUploads: [],
+                ringSize: '',
+                chainLength: defaultChainLengthForSettingType(t.value, specOptions),
+              })}
+            >
               {t.label}
             </CheckCard>
           ))}
@@ -743,7 +776,7 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
                   designNotes: '',
                   designUploads: [],
                   ...(item.type === 'Necklace' || item.type === 'Bracelet'
-                    ? { chainLength: d.chainLength?.trim() ?? '' }
+                    ? { chainLength: d.chainLength?.trim() || defaultChainLengthForSettingType(item.type, specOptions) }
                     : {}),
                 })}
                 tall
@@ -931,6 +964,8 @@ function Step5({
         <SummaryRow label="Source" value={data.sourceType} />
         <SummaryRow label="Remarks" value={data.remarks} />
         <SummaryRow label="Package" value={data.mailingPackage} />
+        <SummaryRow label="Mailing Company" value={data.mailingCompany} />
+        <SummaryRow label="Tracking Code" value={data.mailTrackingCode} />
         <SummaryRow label="Color" value={data.color} />
       </div>
 
@@ -1051,9 +1086,18 @@ export default function OrderWizard({
       .then(r => r.json())
       .then(body => {
         if (cancelled || !body?.specOptions) return
-        setPricedSpecs(body.specOptions as SfsOrderSpecOptions)
+        const nextSpecs = body.specOptions as SfsOrderSpecOptions
+        setPricedSpecs(nextSpecs)
         setPersonalized(Boolean(body.personalized))
         setDiscountTiers(Array.isArray(body.multiDiamondDiscountTiers) ? body.multiDiamondDiscountTiers : [])
+        setData(prev => ({
+          ...prev,
+          diamonds: prev.diamonds.map(diamond => {
+            if (diamond.chainLength.trim() || isSfsCustomDesign(diamond.design)) return diamond
+            const chainLength = defaultChainLengthForSettingType(diamond.type, nextSpecs, diamond.design)
+            return chainLength ? { ...diamond, chainLength } : diamond
+          }),
+        }))
       })
       .catch(() => {/* keep server-provided catalog */})
     return () => { cancelled = true }
@@ -1160,6 +1204,8 @@ export default function OrderWizard({
       sourceOther: '',
       remarks: data.remarks || undefined,
       mailingPackage: data.mailingPackage,
+      mailingCompany: data.mailingCompany.trim() || undefined,
+      mailTrackingCode: data.mailTrackingCode.trim() || undefined,
       color: data.color,
       diamonds: data.diamonds.map(d => ({
         carat:    d.carat,

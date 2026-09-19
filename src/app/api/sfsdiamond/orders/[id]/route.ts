@@ -65,6 +65,8 @@ export async function PATCH(
     sourceOther,
     remarks,
     mailingPackage,
+    mailingCompany,
+    mailTrackingCode,
     color,
   } = parsed.data
 
@@ -114,6 +116,8 @@ export async function PATCH(
         sourceOther,
         remarks,
         mailingPackage,
+        mailingCompany: mailingCompany?.trim() || null,
+        mailTrackingCode: mailTrackingCode?.trim() || null,
         color,
         diamonds,
         ...(order.status === 'CANCELLED' && { status: 'PENDING' }),

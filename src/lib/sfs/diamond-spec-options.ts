@@ -199,6 +199,26 @@ export function getDesignOptionsForSettingType(
   return getDesignOptionGroupsForSettingType(settingType, options).flatMap(group => group.options)
 }
 
+/** Length copied onto the order when Necklace or Bracelet is chosen.
+ *  A selected design uses that design's length. Otherwise, if every design that
+ *  has a length uses the same one, that shared length is the default.
+ */
+export function defaultChainLengthForSettingType(
+  settingType: string,
+  options: SfsOrderSpecOptions,
+  design = '',
+): string {
+  if (settingType !== 'Necklace' && settingType !== 'Bracelet') return ''
+  const designs = getDesignOptionsForSettingType(settingType, options)
+  if (design) {
+    return designs.find(item => item.value === design)?.chainLength?.trim() ?? ''
+  }
+  const lengths = [...new Set(
+    designs.map(item => item.chainLength?.trim()).filter((value): value is string => Boolean(value)),
+  )]
+  return lengths.length === 1 ? lengths[0] : ''
+}
+
 export function getDesignOptionGroupsForSettingType(
   settingType: string,
   options: SfsOrderSpecOptions,

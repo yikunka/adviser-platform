@@ -1522,6 +1522,8 @@ model SfsOrder {
   sourceOther    String?
   remarks        String?
   mailingPackage String
+  mailingCompany   String?
+  mailTrackingCode String?
 
   // Part 3 — Color
   color String

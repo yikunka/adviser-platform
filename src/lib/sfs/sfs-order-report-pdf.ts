@@ -72,6 +72,8 @@ export function reportFingerprint(order: SfsOrderReportPayload): string {
     sourceOther: order.sourceOther,
     remarks: order.remarks,
     mailingPackage: order.mailingPackage,
+    mailingCompany: order.mailingCompany,
+    mailTrackingCode: order.mailTrackingCode,
     color: order.color,
     diamonds: order.diamonds,
     sampleReceivedAt: order.sampleReceivedAt?.toISOString() ?? null,
@@ -309,6 +311,8 @@ export async function renderSfsOrderReportPdf(order: SfsOrderReportPayload): Pro
   drawKV('Source Type',     order.sourceType + (order.sourceOther ? ` - ${order.sourceOther}` : ''))
   drawKV('Diamond Color',   order.color)
   if (order.remarks) drawKV('Remarks', order.remarks)
+  if (order.mailingCompany) drawKV('Mailing Company', order.mailingCompany)
+  if (order.mailTrackingCode) drawKV('Mail Tracking Code', order.mailTrackingCode)
   y -= 4
 
   sectionHeader(`Diamonds (${diamonds.length})`)

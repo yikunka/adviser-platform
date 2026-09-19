@@ -58,6 +58,8 @@ export async function POST(req: NextRequest) {
     sourceOther,
     remarks,
     mailingPackage,
+    mailingCompany,
+    mailTrackingCode,
     color,
   } = parsed.data
 
@@ -114,6 +116,8 @@ export async function POST(req: NextRequest) {
         sourceOther,
         remarks,
         mailingPackage,
+        mailingCompany: mailingCompany?.trim() || null,
+        mailTrackingCode: mailTrackingCode?.trim() || null,
         color,
         date: new Date().toISOString().slice(0, 10),
         sampleCode,

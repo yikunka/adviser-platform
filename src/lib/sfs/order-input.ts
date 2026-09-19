@@ -29,6 +29,8 @@ export const sfsOrderInputSchema = z.object({
   sourceOther: z.string().optional(),
   remarks: z.string().optional(),
   mailingPackage: z.string().min(1),
+  mailingCompany: z.string().trim().max(120).optional(),
+  mailTrackingCode: z.string().trim().max(80).optional(),
   color: z.string().min(1),
   diamonds: z.array(sfsDiamondItemInputSchema).min(1).max(8),
 })

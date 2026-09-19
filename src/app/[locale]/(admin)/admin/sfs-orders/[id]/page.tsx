@@ -80,6 +80,8 @@ type Order = {
   phone: string
   contactNumber?: string
   sourceType: string
+  mailingCompany?: string | null
+  mailTrackingCode?: string | null
   color: string
   mailingAddress: string
   diamonds: DiamondItem[]
@@ -1040,6 +1042,8 @@ export default function AdminSfsOrderDetailPage() {
             ['Email', order.email],
             ['Phone', order.contactNumber || order.phone || '—'],
             ['Source', order.sourceType],
+            ['Mailing company', order.mailingCompany || '—'],
+            ['Tracking code', order.mailTrackingCode || '—'],
             ['Address', order.mailingAddress || '—'],
             ['Customer ref.', order.customerInternalOrderCode || '—'],
           ].map(([k, v]) => (
