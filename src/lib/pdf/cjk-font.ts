@@ -53,8 +53,11 @@ function loadFontkitBridge(): { fontkit: Fontkit; subset: boolean } | null {
 }
 
 async function firstExistingFontPath(): Promise<string | null> {
+  // pdf-lib drops CJK outlines when subsetting CFF fonts (Noto CJK OTF/TTC).
+  // WenQuanYi Micro Hei is a TrueType glyf font, so Chinese survives subsetting.
   const candidates = [
     process.env.DDR_PDF_FONT_PATH,
+    path.join(/* turbopackIgnore: true */ process.cwd(), 'assets/fonts/wqy-microhei.ttc'),
     path.join(/* turbopackIgnore: true */ process.cwd(), 'assets/fonts/NotoSansCJK-Regular.otf'),
     path.join(/* turbopackIgnore: true */ process.cwd(), 'assets/fonts/NotoSansCJKsc-Regular.otf'),
     '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
