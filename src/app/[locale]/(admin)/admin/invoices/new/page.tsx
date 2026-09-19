@@ -230,7 +230,7 @@ export default function NewInvoicePage() {
   }
 
   return (
-    <div className="space-y-4 max-w-4xl">
+    <div className="space-y-4 max-w-7xl">
       <div className="flex items-center gap-3">
         <Link href={projectId ? `/admin/projects/${projectId}` : '/admin/invoices'}>
           <Button variant="outline" size="sm">{t('back')}</Button>
@@ -356,14 +356,12 @@ export default function NewInvoicePage() {
             addLineLabel={t('addLine')}
             removeLineLabel={t('removeLine')}
             descriptionLabel={t('description')}
-            quantityLabel={t('quantity')}
             unitPriceLabel={t('unitPrice')}
             discountLabel={t('discount')}
             discountTypeLabel={t('discountType')}
             discountValueLabel={t('discountValue')}
             discountPercentOptionLabel={t('discountPercent')}
             discountFixedOptionLabel={t('discountFixed')}
-            originalAmountLabel={t('originalAmount')}
             tcspServicePriceLabel={t('tcspServicePrice')}
             tcspServicePricePlaceholderLabel={t('tcspServicePricePlaceholder')}
             tcspServicePrices={tcspServicePriceOptions}
@@ -373,8 +371,7 @@ export default function NewInvoicePage() {
             onUpdateLine={updateLine}
             onSelectTcspServicePrice={selectTcspServicePrice}
           />
-          <div className="pt-4 border-t text-sm space-y-1" style={{ borderColor: 'var(--border-subtle)' }}>
-            <div className="flex justify-between"><span>{t('subtotal')}</span><span>HKD {totals.subtotal.toFixed(2)}</span></div>
+          <div className="pt-4 border-t text-sm" style={{ borderColor: 'var(--border-subtle)' }}>
             <div className="flex justify-between font-semibold"><span>{t('total')}</span><span>HKD {totals.total.toFixed(2)}</span></div>
           </div>
         </CardContent>
