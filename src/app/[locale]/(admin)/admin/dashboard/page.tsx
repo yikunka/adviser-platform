@@ -13,6 +13,13 @@ import {
   listDdrComplianceTodos,
   type DdrTodoItem,
 } from '@/lib/docgen/ddr-quarter'
+import {
+  formatBookedPeriod,
+  listFinancialBookingProgress,
+  monthsBehindPeriod,
+  previousCalendarMonth,
+  type BookingProgressRow,
+} from '@/lib/financial/booking-progress'
 
 const moduleStyles = {
   adviser: {
@@ -95,9 +102,10 @@ export default async function AdminDashboardPage() {
   const canOrders = canSee('sfsOrders')
   const canInvoices = canSee('sfsInvoices')
   const showDdrTodos = canSee('companies') || canSee('kyc')
+  const showBookingProgress = canSee('financial')
   const quarter = calendarQuarterRange(today)
 
-  const [totalCompanies, pendingKyc, amlAlerts, upcomingAR, ddrTodosRaw] = await Promise.all([
+  const [totalCompanies, pendingKyc, amlAlerts, upcomingAR, ddrTodosRaw, bookingRows] = await Promise.all([
     prisma.company.count({ where: { status: 'ACTIVE' } }),
     prisma.keyPerson.count({ where: { kycStatus: 'DRAFT' } }),
     prisma.aMLAlert.count({ where: { resolution: 'PENDING' } }),
@@ -112,6 +120,9 @@ export default async function AdminDashboardPage() {
       },
     }),
     showDdrTodos ? listDdrComplianceTodos(today, 30) : Promise.resolve([] as DdrTodoItem[]),
+    showBookingProgress && session?.user?.id
+      ? listFinancialBookingProgress(session.user.id, session.user.role)
+      : Promise.resolve([] as BookingProgressRow[]),
   ])
 
   const ddrTodos = ddrTodosRaw.filter(item => {
@@ -406,6 +417,68 @@ export default async function AdminDashboardPage() {
                     </li>
                   ))}
                 </ul>
+              )}
+            </div>
+          )}
+
+          {showBookingProgress && (
+            <div>
+              <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--foreground)' }}>做帐进度</h3>
+              <p className="text-xs mb-3" style={{ color: 'var(--muted-foreground)' }}>
+                已开启财务管理的公司，最后已过账月份。应做到 {formatBookedPeriod(previousCalendarMonth(today))}；未做帐或落后的公司排在前面。
+              </p>
+              {bookingRows.length === 0 ? (
+                <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>没有已开启财务管理的公司。</p>
+              ) : (
+                <div className="overflow-x-auto rounded-lg" style={{ border: '1px solid #1E3A4C' }}>
+                  <table className="w-full text-sm">
+                    <thead style={{ color: 'var(--muted-foreground)' }}>
+                      <tr>
+                        <th className="px-4 py-2 text-left font-medium">公司代码</th>
+                        <th className="px-4 py-2 text-left font-medium">公司名称</th>
+                        <th className="px-4 py-2 text-left font-medium">财务负责人</th>
+                        <th className="px-4 py-2 text-left font-medium">最后做帐月份</th>
+                        <th className="px-4 py-2 text-left font-medium">状态</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bookingRows.map(row => {
+                        const duePeriod = previousCalendarMonth(today)
+                        const behind = monthsBehindPeriod(row.lastBookedPeriod, duePeriod)
+                        const overdue = !row.lastBookedPeriod || (behind != null && behind > 0)
+                        return (
+                          <tr key={row.id} style={{ borderTop: '1px solid #1E3A4C' }}>
+                            <td className="px-4 py-2 font-semibold" style={{ color: '#C9A96E' }}>
+                              <Link href={`/admin/financial/${row.id}/journal`}>{row.companyCode ?? '—'}</Link>
+                            </td>
+                            <td className="px-4 py-2" style={{ color: 'var(--foreground)' }}>
+                              <Link href={`/admin/financial/${row.id}/journal`}>{row.nameEn}</Link>
+                            </td>
+                            <td className="px-4 py-2" style={{ color: 'var(--muted-foreground)' }}>{row.financialManagerName ?? '—'}</td>
+                            <td className="px-4 py-2" style={{ color: 'var(--foreground)' }}>
+                              {row.lastBookedPeriod ? formatBookedPeriod(row.lastBookedPeriod) : '—'}
+                            </td>
+                            <td className="px-4 py-2">
+                              <span
+                                className="rounded-full px-2 py-0.5 text-xs font-medium"
+                                style={{
+                                  background: overdue ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.12)',
+                                  color: overdue ? '#ef4444' : '#10b981',
+                                }}
+                              >
+                                {!row.lastBookedPeriod
+                                  ? '未做帐'
+                                  : behind != null && behind > 0
+                                    ? `落后 ${behind} 个月`
+                                    : '已更新'}
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           )}

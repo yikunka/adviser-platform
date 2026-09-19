@@ -79,28 +79,7 @@ export async function GET() {
       managerNameByCompanyId.get(company.id)
       ?? company.financialManager?.nameEn
       ?? null,
-    lastBookedPeriod: null as string | null,
   }))
-
-  if (companiesWithManager.length > 0) {
-    const booked = await prisma.journalEntry.groupBy({
-      by: ['companyId'],
-      where: {
-        status: 'POSTED',
-        companyId: { in: companiesWithManager.map(company => company.id) },
-      },
-      _max: { period: true },
-    })
-    const periodByCompanyId = new Map(
-      booked
-        .filter(row => row.companyId)
-        .map(row => [row.companyId as string, row._max.period]),
-    )
-    for (const company of companiesWithManager) {
-      const period = periodByCompanyId.get(company.id)
-      company.lastBookedPeriod = period && /^\d{4}-\d{2}$/.test(period) ? period : null
-    }
-  }
 
   return NextResponse.json({ groups: [], companies: companiesWithManager })
 }
