@@ -194,20 +194,22 @@ export async function renderInvoicePdf(invoice: InvoicePdfPayload): Promise<Uint
   const gap = 4
   const fixed = { no: 22, unit: 86, discountType: 72, discountValue: 78, amount: 82 }
   const descW = CW - gap * 5 - fixed.no - fixed.unit - fixed.discountType - fixed.discountValue - fixed.amount
-  const cols: { label: string; w: number; x: number }[] = [
-    { label: 'No.', w: fixed.no, x: 0 },
-    { label: 'TCSP service price', w: descW, x: 0 },
-    { label: 'Unit price', w: fixed.unit, x: 0 },
-    { label: 'Discount type', w: fixed.discountType, x: 0 },
-    { label: 'Discount value', w: fixed.discountValue, x: 0 },
-    { label: 'Amount', w: fixed.amount, x: 0 },
+  const cols: { label: string; w: number; x: number; align: 'left' | 'right' }[] = [
+    { label: 'No.', w: fixed.no, x: 0, align: 'left' },
+    { label: 'TCSP service price', w: descW, x: 0, align: 'left' },
+    { label: 'Unit price', w: fixed.unit, x: 0, align: 'right' },
+    { label: 'Discount type', w: fixed.discountType, x: 0, align: 'left' },
+    { label: 'Discount value', w: fixed.discountValue, x: 0, align: 'right' },
+    { label: 'Amount', w: fixed.amount, x: 0, align: 'right' },
   ]
   let colX = ML
   for (const col of cols) {
     col.x = colX
     let headerSize = 7.5
     while (headerSize > 6 && bold.widthOfTextAtSize(col.label, headerSize) > col.w) headerSize -= 0.25
-    page.drawText(col.label, { x: col.x, y, size: headerSize, font: bold, color: GREY })
+    const headerWidth = bold.widthOfTextAtSize(col.label, headerSize)
+    const headerX = col.align === 'right' ? col.x + col.w - headerWidth : col.x
+    page.drawText(col.label, { x: headerX, y, size: headerSize, font: bold, color: GREY })
     colX += col.w + gap
   }
   y -= 10
