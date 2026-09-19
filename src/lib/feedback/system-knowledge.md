@@ -158,6 +158,15 @@ Central price-list management for TCSP service quotes.
 - The same jurisdiction + customer level + service content combination is unique to prevent duplicate quote rows
 - Access and actions are controlled by Role Management permissions `tcspPricing`, `tcspPricing.create`, `tcspPricing.edit`, and `tcspPricing.delete`
 
+### 6e. Work tasks (`/admin/tasks`)
+Independent secretarial task files. Not stored in company documents, not produced by company docgen, and not the shared form-download library.
+- Hub lists task categories. The first category is **成员/股东的变更**, with one task: **股份转让**
+- Share transfer selects an existing company, a member as transferor, and an approved KYC person, another company, or a member as transferee. Names and addresses are prefilled and can be edited on the task only
+- Generating the task fills the Word templates (instrument of transfer, bought and sold note, directors' resolution, new share certificate, and optional IRD confirmations) and stores the downloads on the task. Staff download them and submit the stamp-duty pack to the Inland Revenue Department. A normal share transfer has no Companies Registry form
+- Submit does **not** append a share transaction, change member holdings, or update the register of members
+- Accounts, audit report, and articles are still collected from the client; they are not generated
+- Access: `workTasks`. Generating files requires `workTasks.create`
+
 ### 7. Team Management (`/admin/team`)
 Staff access control.
 - System roles: `SUPER_ADMIN`, `COMPLIANCE`, `STAFF`

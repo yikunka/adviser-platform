@@ -304,6 +304,7 @@ model User {
   uploadedHistoricalInvoices          HistoricalInvoiceFile[]       @relation("HistoricalInvoiceFileUploader")
   uploadedAdviserContracts            AdviserContract[]             @relation("AdviserContractUploader")
   uploadedAdviserForms                AdviserForm[]                 @relation("AdviserFormUploader")
+  createdAdvWorkTasks                 AdvWorkTask[]                 @relation("AdvWorkTaskCreator")
   createdTcspServicePrices            TcspServicePrice[]            @relation("TcspServicePriceCreator")
   updatedTcspServicePrices            TcspServicePrice[]            @relation("TcspServicePriceUpdater")
   createdAdvProjects                  AdvProject[]                  @relation("AdvProjectCreator")
@@ -445,6 +446,7 @@ model Company {
   keyPersonLinks         CompanyKeyPerson[]
   serviceOrders          ServiceOrder[]
   advProjects            AdvProject[]
+  workTasks              AdvWorkTask[]
   auditLogs              AuditLog[]                    @relation("CompanyAuditLog")
   finAccounts            FinAccount[]
   journalEntries         JournalEntry[]
@@ -1196,6 +1198,47 @@ model AdviserForm {
 
   @@index([formName])
   @@map("adv_forms")
+}
+
+enum AdvWorkTaskKind {
+  SHARE_TRANSFER
+}
+
+/// Secretarial work-task pack. Files live here only — not in company documents,
+/// and generating a task does not append share transactions.
+model AdvWorkTask {
+  id          String          @id @default(cuid())
+  taskNumber  String          @unique
+  kind        AdvWorkTaskKind
+  companyId   String
+  payload     Json
+  createdById String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  company   Company          @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  createdBy User             @relation("AdvWorkTaskCreator", fields: [createdById], references: [id])
+  files     AdvWorkTaskFile[]
+
+  @@index([companyId, createdAt])
+  @@index([kind, createdAt])
+  @@map("adv_work_tasks")
+}
+
+model AdvWorkTaskFile {
+  id          String   @id @default(cuid())
+  taskId      String
+  templateKey String
+  fileName    String
+  storageKey  String
+  mimeType    String
+  fileSize    Int
+  createdAt   DateTime @default(now())
+
+  task AdvWorkTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("adv_work_task_files")
 }
 
 model TcspServicePrice {

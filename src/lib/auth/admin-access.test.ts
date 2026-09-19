@@ -8,6 +8,7 @@ describe('Adviser contract, projects and TCSP pricing access', () => {
     expect(ADMIN_MENU_KEYS).toContain('forms')
     expect(ADMIN_MENU_KEYS).toContain('projects')
     expect(ADMIN_MENU_KEYS).toContain('tcspPricing')
+    expect(ADMIN_MENU_KEYS).toContain('workTasks')
     expect(MENU_PLATFORM.contracts).toBe('ADVISER')
     expect(MENU_PLATFORM.forms).toBe('ADVISER')
     expect(MENU_PLATFORM.projects).toBe('ADVISER')
@@ -25,6 +26,9 @@ describe('Adviser contract, projects and TCSP pricing access', () => {
     expect(pathnameToAdminMenuKey('/zh/admin/forms')).toBe('forms')
     expect(pathnameToAdminMenuKey('/zh/admin/projects')).toBe('projects')
     expect(pathnameToAdminMenuKey('/zh/admin/tcsp-pricing')).toBe('tcspPricing')
+    expect(pathnameToAdminMenuKey('/zh/admin/tasks')).toBe('workTasks')
+    expect(pathnameToAdminMenuKey('/zh/admin/tasks/share-transfer')).toBe('workTasks')
+    expect(isValidPermission('workTasks.create')).toBe(true)
   })
 })
 
