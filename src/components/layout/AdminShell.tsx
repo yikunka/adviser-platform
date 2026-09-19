@@ -67,9 +67,9 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/admin/companies', key: 'companies', Icon: Building2 },
       { href: '/admin/kyc', key: 'kyc', Icon: ClipboardCheck },
+      { href: '/admin/projects', key: 'projects', Icon: FolderKanban },
       { href: '/admin/aml', key: 'aml', Icon: ShieldAlert },
       { href: '/admin/invoices', key: 'invoices', Icon: FileText },
-      { href: '/admin/projects', key: 'projects', Icon: FolderKanban },
       { href: '/admin/contracts', key: 'contracts', Icon: FileText },
       { href: '/admin/forms', key: 'forms', Icon: FileSpreadsheet },
       { href: '/admin/tcsp-pricing', key: 'tcspPricing', Icon: HandCoins },
