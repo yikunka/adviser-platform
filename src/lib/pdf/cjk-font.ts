@@ -46,35 +46,52 @@ function loadFontkitBridge(): { fontkit: Fontkit; subset: boolean } | null {
   const fontkit: Fontkit = {
     create(data: Uint8Array) {
       const result = rawFontkit.create(data) as Font & { fonts?: Font[] }
-      return (result.fonts?.length ? preferredCollectionFont(result.fonts) : result) as Font
+      const faces = result.fonts?.length ? result.fonts : [result]
+      const glyfFaces = faces.filter(face => faceTableNames(face).includes('glyf'))
+      const pool = glyfFaces.length ? glyfFaces : faces
+      return preferredCollectionFont(pool)
     },
   }
   return { fontkit, subset: true }
 }
 
+function faceTableNames(font: Font): string[] {
+  const directory = (font as Font & { directory?: { tables?: Record<string, unknown> } }).directory
+  return Object.keys(directory?.tables ?? {})
+}
+
+async function fontFileHasGlyfFace(fontPath: string): Promise<boolean> {
+  const fk = (pdfLibFontkit as unknown as { default?: Fontkit } & Fontkit)
+  const rawFontkit = (fk.default ?? fk) as Fontkit
+  if (!rawFontkit || typeof rawFontkit.create !== 'function') return false
+  try {
+    const bytes = await fs.readFile(fontPath)
+    const created = rawFontkit.create(bytes) as Font & { fonts?: Font[] }
+    const faces = created.fonts?.length ? created.fonts : [created]
+    return faces.some(face => faceTableNames(face).includes('glyf'))
+  } catch {
+    return false
+  }
+}
+
 async function firstExistingFontPath(): Promise<string | null> {
-  // pdf-lib drops CJK outlines when subsetting CFF fonts (Noto CJK OTF/TTC).
-  // WenQuanYi Micro Hei is a TrueType glyf font, so Chinese survives subsetting.
+  // pdf-lib drops CJK outlines when subsetting CFF fonts such as Noto CJK.
+  // AR PL UMing is a Songti/Ming TrueType face, close to Times for Latin text.
   const candidates = [
     process.env.DDR_PDF_FONT_PATH,
+    path.join(/* turbopackIgnore: true */ process.cwd(), 'assets/fonts/uming.ttc'),
+    '/usr/share/fonts/truetype/arphic/uming.ttc',
     path.join(/* turbopackIgnore: true */ process.cwd(), 'assets/fonts/wqy-microhei.ttc'),
-    path.join(/* turbopackIgnore: true */ process.cwd(), 'assets/fonts/NotoSansCJK-Regular.otf'),
-    path.join(/* turbopackIgnore: true */ process.cwd(), 'assets/fonts/NotoSansCJKsc-Regular.otf'),
-    '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
-    '/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf',
-    '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
-    '/usr/share/fonts/google-noto-cjk/NotoSansCJK-Regular.ttc',
+    '/usr/share/fonts/wqy-microhei/wqy-microhei.ttc',
     '/System/Library/Fonts/Supplemental/Arial Unicode.ttf',
-    '/System/Library/Fonts/Hiragino Sans GB.ttc',
-    '/System/Library/Fonts/STHeiti Medium.ttc',
   ].filter(Boolean) as string[]
-  for (const p of candidates) {
+  for (const candidate of candidates) {
     try {
-      await fs.access(p)
-      return p
+      await fs.access(candidate)
     } catch {
-      /* try next */
+      continue
     }
+    if (await fontFileHasGlyfFace(candidate)) return candidate
   }
   return null
 }
