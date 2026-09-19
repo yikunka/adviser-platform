@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
       where,
       skip,
       take: limit,
-      orderBy: [{ endDate: 'asc' }, { createdAt: 'desc' }],
+      orderBy: [{ projectNumber: 'desc' }],
       include: projectInclude,
     }),
     prisma.advProject.count({ where }),

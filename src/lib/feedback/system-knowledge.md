@@ -127,10 +127,10 @@ Service invoicing for TCSP professional fees.
 
 ### 6b. Projects (`/admin/projects`)
 Service engagements for client companies or approved individual KYC persons.
-- Each project gets an auto-generated project number `PRJ-YYYY-NNNNN` (shown in list and detail; searchable). The project list opens the detail page by clicking that project number
+- Each project gets an auto-generated project number `PRJ-YYYY-NNNNN` (shown in list and detail; searchable). The project list is sorted by project number, newest first, and opens the detail page by clicking that project number
 - The project list shows **开票状态** and **收款状态** rolled up from linked invoices (cancelled invoices ignored). 开票: 未开票 (none or drafts only) / 部分开票 (mix of drafts and issued) / 已开票 (every active invoice is sent or paid). 收款: 未收款 / 部分收款 / 已收款, counted only on issued invoices (`SENT` / `PAID`)
 - Customer type: company or natural person (`INDIVIDUAL`, approved KYC only)
-- Period is optional: annual/custom date range, or one-time work with no start/end (no auto-expire / renew)
+- Period is optional: annual/custom date range, or one-time work with no start/end (no auto-expire / renew). On the new-project form, a period defaults to one year: picking or changing the start date sets the end date to one year later. The end date can still be edited manually
 - Project types: company incorporation, corporate secretarial, accounting, other
 - Statuses: `ACTIVE` → `COMPLETED` / `EXPIRED` / `CANCELLED` / `RENEWED`; overdue period projects auto-mark as `EXPIRED` when listed or opened
 - Register work items (tasks) when needed and mark them done when finished

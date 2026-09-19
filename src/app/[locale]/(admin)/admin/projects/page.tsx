@@ -78,11 +78,18 @@ function dateOnly(value: string | null | undefined) {
   return value ? value.slice(0, 10) : ''
 }
 
+function localDateIso(date = new Date()) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 function addOneYearIso(start: string) {
   if (!start) return ''
-  const d = new Date(`${start}T00:00:00`)
-  d.setFullYear(d.getFullYear() + 1)
-  return d.toISOString().slice(0, 10)
+  const [year, month, day] = start.split('-').map(Number)
+  if (!year || !month || !day) return ''
+  return localDateIso(new Date(year + 1, month - 1, day))
 }
 
 function clientLabel(project: ProjectRow) {
@@ -115,8 +122,8 @@ export default function ProjectsPage() {
     title: '',
     projectType: 'CORPORATE_SECRETARIAL' as keyof typeof PROJECT_TYPE_LABELS,
     hasPeriod: true,
-    startDate: new Date().toISOString().slice(0, 10),
-    endDate: addOneYearIso(new Date().toISOString().slice(0, 10)),
+    startDate: localDateIso(),
+    endDate: addOneYearIso(localDateIso()),
     autoRenew: true,
     notes: '',
   })
@@ -201,8 +208,8 @@ export default function ProjectsPage() {
         title: '',
         notes: '',
         hasPeriod: true,
-        startDate: new Date().toISOString().slice(0, 10),
-        endDate: addOneYearIso(new Date().toISOString().slice(0, 10)),
+        startDate: localDateIso(),
+        endDate: addOneYearIso(localDateIso()),
         autoRenew: true,
       }))
       await fetchProjects()
@@ -437,17 +444,18 @@ export default function ProjectsPage() {
                 <input
                   type="checkbox"
                   checked={draft.hasPeriod}
-                  onChange={e => setDraft(d => ({
-                    ...d,
-                    hasPeriod: e.target.checked,
-                    autoRenew: e.target.checked ? d.autoRenew : false,
-                    startDate: e.target.checked
-                      ? (d.startDate || new Date().toISOString().slice(0, 10))
-                      : d.startDate,
-                    endDate: e.target.checked
-                      ? (d.endDate || addOneYearIso(d.startDate || new Date().toISOString().slice(0, 10)))
-                      : d.endDate,
-                  }))}
+                  onChange={e => setDraft(d => {
+                    const startDate = e.target.checked
+                      ? (d.startDate || localDateIso())
+                      : d.startDate
+                    return {
+                      ...d,
+                      hasPeriod: e.target.checked,
+                      autoRenew: e.target.checked ? d.autoRenew : false,
+                      startDate,
+                      endDate: e.target.checked ? addOneYearIso(startDate) : d.endDate,
+                    }
+                  })}
                 />
                 有服务周期（取消勾选 = 一次性、无时限）
               </label>
@@ -464,7 +472,7 @@ export default function ProjectsPage() {
                         onChange={e => setDraft(d => ({
                           ...d,
                           startDate: e.target.value,
-                          endDate: d.endDate || addOneYearIso(e.target.value),
+                          endDate: addOneYearIso(e.target.value),
                         }))}
                       />
                     </div>
