@@ -20,7 +20,7 @@ export const sfsDiamondItemInputSchema = z.object({
 
 export const sfsOrderInputSchema = z.object({
   memorialName: z.string().min(1),
-  relationship: z.string().min(1),
+  relationship: z.string().optional().default(''),
   clientName: z.string().min(1),
   contactNumber: z.string().min(1),
   email: z.string().email(),

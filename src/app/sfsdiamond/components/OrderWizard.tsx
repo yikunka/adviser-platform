@@ -330,7 +330,6 @@ function NavButtons({ step, total, onBack, onNext, nextLabel, disabled }: {
 // ─── Step 1 ───────────────────────────────────────────────────────────────────
 
 function Step1({ data, update }: { data: WizardFormData; update: (p: Partial<WizardFormData>) => void }) {
-  const RELATIONS = ['Spouse', 'Parent', 'Children', 'Sibling', 'Friend', 'Pet']
   return (
     <div className="space-y-6">
       <SectionTitle step={1} title="Client Information" />
@@ -343,27 +342,6 @@ function Step1({ data, update }: { data: WizardFormData; update: (p: Partial<Wiz
         <GroupLabel>Memorial</GroupLabel>
         <Field label="Memorial / Deceased Name" required>
           <Input value={data.memorialName} onChange={e => update({ memorialName: e.target.value })} placeholder="Name of your loved one" />
-        </Field>
-        <Field label="Relationship" required>
-          <div className="flex flex-wrap gap-2">
-            {RELATIONS.map(r => (
-              <CheckCard
-                key={r}
-                checked={data.relationship === r}
-                onChange={() => update({ relationship: r, relationshipPet: r === 'Pet' ? data.relationshipPet : '' })}
-              >
-                {r}
-              </CheckCard>
-            ))}
-          </div>
-          {data.relationship === 'Pet' && (
-            <Input
-              className="mt-2"
-              value={data.relationshipPet}
-              onChange={e => update({ relationshipPet: e.target.value })}
-              placeholder="Pet name / type"
-            />
-          )}
         </Field>
       </div>
 
@@ -420,9 +398,6 @@ function Step2({ data, update, specOptions }: {
               priceLabel={formatSfsPriceLabel(source.price, { additive: true })}
             />
           ))}
-          <CheckCard checked={data.sourceType === 'Other'} onChange={() => update({ sourceType: 'Other', sourceOther: '' })}>
-            Other carbon source
-          </CheckCard>
         </div>
       </Field>
 
@@ -941,7 +916,6 @@ function Step5({
       <div className="rounded-2xl border p-6 space-y-1" style={{ borderColor: BORDER }}>
         <p className="font-semibold mb-3" style={{ color: DARK }}>Memorial</p>
         <SummaryRow label="Memorial Name" value={data.memorialName} />
-        <SummaryRow label="Relationship" value={data.relationship === 'Pet' ? `Pet — ${data.relationshipPet}` : data.relationship} />
       </div>
 
       <div className="rounded-2xl border p-6 space-y-1" style={{ borderColor: BORDER }}>
@@ -1126,7 +1100,6 @@ export default function OrderWizard({
   const validateStep = (): string => {
     if (step === 1) {
       if (!data.memorialName) return 'Please enter the memorial name.'
-      if (!data.relationship) return 'Please select a relationship.'
       if (!data.clientName) return 'Please enter your name.'
       if (!data.contactNumber) return 'Please enter a contact number.'
       if (!data.email || !/\S+@\S+\.\S+/.test(data.email)) return 'Please enter a valid email.'

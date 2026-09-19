@@ -113,6 +113,39 @@ export async function GET(req: NextRequest) {
         }
       : {}),
   }
+  if (scope === 'options') {
+    const [companies, people] = await Promise.all([
+      prisma.company.findMany({
+        where: { deletedAt: null, ...(accessWhere ?? {}) },
+        orderBy: { nameEn: 'asc' },
+        take: 500,
+        select: {
+          id: true,
+          nameEn: true,
+          nameZh: true,
+          companyCode: true,
+          companyNumber: true,
+          businessRegNumber: true,
+          registeredAddress: true,
+        },
+      }),
+      prisma.keyPerson.findMany({
+        orderBy: { nameEn: 'asc' },
+        take: 500,
+        select: {
+          id: true,
+          nameEn: true,
+          nameZh: true,
+          kycCode: true,
+          homeAddress: true,
+          contactAddress: true,
+          position: true,
+        },
+      }),
+    ])
+    return NextResponse.json({ companies, people })
+  }
+
   const companies = await prisma.company.findMany({
     where: companyWhere,
     orderBy: { nameEn: 'asc' },

@@ -99,8 +99,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 export default function ShareTransferPage() {
   const router = useRouter()
   const canCreate = useAdminPermission('workTasks.create')
-  const [companyQuery, setCompanyQuery] = useState('')
-  const [companyHits, setCompanyHits] = useState<CompanyHit[]>([])
+  const [companies, setCompanies] = useState<CompanyHit[]>([])
+  const [people, setPeople] = useState<PersonHit[]>([])
   const [companyId, setCompanyId] = useState('')
   const [companyNameEn, setCompanyNameEn] = useState('')
   const [companyNameZh, setCompanyNameZh] = useState('')
@@ -111,9 +111,6 @@ export default function ShareTransferPage() {
   const [transferDate, setTransferDate] = useState(todayIso)
   const [transferor, setTransferor] = useState<PartyDraft>(emptyParty)
   const [transferee, setTransferee] = useState<PartyDraft>(emptyParty)
-  const [partyQuery, setPartyQuery] = useState('')
-  const [partyPeople, setPartyPeople] = useState<PersonHit[]>([])
-  const [partyCompanies, setPartyCompanies] = useState<CompanyHit[]>([])
   const [numberOfShares, setNumberOfShares] = useState('')
   const [shareClass, setShareClass] = useState('Ordinary')
   const [parValue, setParValue] = useState('1.00')
@@ -131,15 +128,21 @@ export default function ShareTransferPage() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    const handle = window.setTimeout(() => {
-      const params = new URLSearchParams({ q: companyQuery, scope: 'company' })
-      fetch(`/api/admin/work-tasks/context?${params}`)
-        .then(res => res.json())
-        .then(json => setCompanyHits(Array.isArray(json.companies) ? json.companies : []))
-        .catch(() => setCompanyHits([]))
-    }, 250)
-    return () => window.clearTimeout(handle)
-  }, [companyQuery])
+    let cancelled = false
+    fetch('/api/admin/work-tasks/context?scope=options')
+      .then(res => res.json())
+      .then(json => {
+        if (cancelled) return
+        setCompanies(Array.isArray(json.companies) ? json.companies : [])
+        setPeople(Array.isArray(json.people) ? json.people : [])
+      })
+      .catch(() => {
+        if (!cancelled) toast.error('载入公司或自然人列表失败。')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (!companyId) return
@@ -171,30 +174,35 @@ export default function ShareTransferPage() {
     }
   }, [companyId])
 
-  useEffect(() => {
-    const q = partyQuery.trim()
-    if (q.length < 1) {
-      setPartyPeople([])
-      setPartyCompanies([])
+  function personLabel(person: PersonHit) {
+    const name = person.nameZh || person.nameEn
+    return person.kycCode ? `${name} · ${person.kycCode}` : name
+  }
+
+  function applyPerson(personId: string, target: 'transferor' | 'transferee') {
+    const setParty = target === 'transferor' ? setTransferor : setTransferee
+    if (!personId) {
+      setParty(current => ({ ...current, keyPersonId: null, memberId: null, companyId: null }))
       return
     }
-    const handle = window.setTimeout(() => {
-      const params = new URLSearchParams({ q, scope: 'party' })
-      fetch(`/api/admin/work-tasks/context?${params}`)
-        .then(res => res.json())
-        .then(json => {
-          setPartyPeople(Array.isArray(json.people) ? json.people : [])
-          setPartyCompanies(Array.isArray(json.companies) ? json.companies : [])
-        })
-        .catch(() => {
-          setPartyPeople([])
-          setPartyCompanies([])
-        })
-    }, 250)
-    return () => window.clearTimeout(handle)
-  }, [partyQuery])
+    const person = people.find(item => item.id === personId)
+    if (!person) return
+    setParty({
+      name: person.nameEn,
+      address: person.contactAddress || person.homeAddress || '',
+      occupation: person.position || '',
+      keyPersonId: person.id,
+      companyId: null,
+      memberId: null,
+    })
+  }
 
   function applyMember(memberId: string, target: 'transferor' | 'transferee') {
+    const setParty = target === 'transferor' ? setTransferor : setTransferee
+    if (!memberId) {
+      setParty(current => ({ ...current, memberId: null }))
+      return
+    }
     const member = members.find(item => item.id === memberId)
     if (!member) return
     const party: PartyDraft = {
@@ -284,49 +292,31 @@ export default function ShareTransferPage() {
 
       <section className="grid gap-3 p-5" style={card}>
         <Field label="公司">
-          <input
+          <select
             className={inputClass}
             style={inputStyle()}
-            value={companyQuery}
-            placeholder="搜索公司名称或编号"
-            onChange={event => setCompanyQuery(event.target.value)}
-          />
-        </Field>
-        {companyId ? (
-          <button
-            type="button"
-            className="text-left text-sm"
-            style={{ color: '#3b82f6' }}
-            onClick={() => {
-              setCompanyId('')
-              setCompanyQuery('')
-              setMembers([])
-              setDirectors([])
+            value={companyId}
+            onChange={event => {
+              const nextId = event.target.value
+              setCompanyId(nextId)
+              if (!nextId) {
+                setMembers([])
+                setDirectors([])
+                setCompanyNameEn('')
+                setCompanyNameZh('')
+                setBrNo('')
+                setCompanyNo('')
+              }
             }}
           >
-            更换公司
-          </button>
-        ) : null}
-        {companyHits.length > 0 && !companyId && companyQuery.trim() ? (
-          <ul className="max-h-48 overflow-auto rounded-lg text-sm" style={{ border: '1px solid var(--border)' }}>
-            {companyHits.map(company => (
-              <li key={company.id}>
-                <button
-                  type="button"
-                  className="w-full px-3 py-2 text-left"
-                  onClick={() => {
-                    setCompanyId(company.id)
-                    setCompanyQuery(company.nameZh || company.nameEn)
-                    setCompanyHits([])
-                  }}
-                >
-                  {company.nameZh || company.nameEn}
-                  <span className="ml-2" style={{ color: 'var(--muted-foreground)' }}>{company.companyCode || company.companyNumber}</span>
-                </button>
-              </li>
+            <option value="">从公司管理选择</option>
+            {companies.map(company => (
+              <option key={company.id} value={company.id}>
+                {(company.nameZh || company.nameEn)}{company.companyCode ? ` · ${company.companyCode}` : ''}
+              </option>
             ))}
-          </ul>
-        ) : null}
+          </select>
+        </Field>
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="英文名称">
             <input className={inputClass} style={inputStyle()} value={companyNameEn} onChange={event => setCompanyNameEn(event.target.value)} />
@@ -346,9 +336,17 @@ export default function ShareTransferPage() {
       <section className="grid gap-4 p-5 md:grid-cols-2" style={card}>
         <div className="flex flex-col gap-3">
           <h2 className="text-sm font-semibold">转出方</h2>
-          <Field label="现有成员">
+          <Field label="自然人管理">
+            <select className={inputClass} style={inputStyle()} value={transferor.keyPersonId ?? ''} onChange={event => applyPerson(event.target.value, 'transferor')}>
+              <option value="">手工输入</option>
+              {people.map(person => (
+                <option key={person.id} value={person.id}>{personLabel(person)}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="本公司成员">
             <select className={inputClass} style={inputStyle()} value={transferor.memberId ?? ''} onChange={event => applyMember(event.target.value, 'transferor')}>
-              <option value="">选择成员</option>
+              <option value="">手工输入</option>
               {members.map(member => (
                 <option key={member.id} value={member.id}>
                   {member.nameEn}{member.sharesHeld != null ? ` · ${member.sharesHeld} 股` : ''}
@@ -368,62 +366,17 @@ export default function ShareTransferPage() {
         </div>
         <div className="flex flex-col gap-3">
           <h2 className="text-sm font-semibold">转入方</h2>
-          <Field label="搜索已批准自然人，或其他公司">
-            <input className={inputClass} style={inputStyle()} value={partyQuery} placeholder="姓名 / KYC 编号 / 公司" onChange={event => setPartyQuery(event.target.value)} />
+          <Field label="自然人管理">
+            <select className={inputClass} style={inputStyle()} value={transferee.keyPersonId ?? ''} onChange={event => applyPerson(event.target.value, 'transferee')}>
+              <option value="">手工输入</option>
+              {people.map(person => (
+                <option key={person.id} value={person.id}>{personLabel(person)}</option>
+              ))}
+            </select>
           </Field>
-          {(partyPeople.length > 0 || partyCompanies.length > 0) ? (
-            <ul className="max-h-40 overflow-auto rounded-lg text-sm" style={{ border: '1px solid var(--border)' }}>
-              {partyPeople.map(person => (
-                <li key={person.id}>
-                  <button
-                    type="button"
-                    className="w-full px-3 py-2 text-left"
-                    onClick={() => {
-                      setTransferee({
-                        name: person.nameEn,
-                        address: person.contactAddress || person.homeAddress || '',
-                        occupation: person.position || '',
-                        keyPersonId: person.id,
-                        companyId: null,
-                        memberId: null,
-                      })
-                      setPartyQuery('')
-                      setPartyPeople([])
-                      setPartyCompanies([])
-                    }}
-                  >
-                    自然人 {person.nameZh || person.nameEn}
-                  </button>
-                </li>
-              ))}
-              {partyCompanies.filter(company => company.id !== companyId).map(company => (
-                <li key={company.id}>
-                  <button
-                    type="button"
-                    className="w-full px-3 py-2 text-left"
-                    onClick={() => {
-                      setTransferee({
-                        name: company.nameEn,
-                        address: company.registeredAddress || '',
-                        occupation: '',
-                        keyPersonId: null,
-                        companyId: company.id,
-                        memberId: null,
-                      })
-                      setPartyQuery('')
-                      setPartyPeople([])
-                      setPartyCompanies([])
-                    }}
-                  >
-                    公司 {company.nameZh || company.nameEn}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          <Field label="也可从现有成员选择">
+          <Field label="本公司成员">
             <select className={inputClass} style={inputStyle()} value={transferee.memberId ?? ''} onChange={event => applyMember(event.target.value, 'transferee')}>
-              <option value="">选择成员</option>
+              <option value="">手工输入</option>
               {members.map(member => (
                 <option key={member.id} value={member.id}>{member.nameEn}</option>
               ))}

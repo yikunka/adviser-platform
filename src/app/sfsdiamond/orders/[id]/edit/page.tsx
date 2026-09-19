@@ -57,7 +57,7 @@ export default async function EditOrderPage({
     contactNumber:  order.contactNumber,
     email:          order.email,
     mailingAddress: order.mailingAddress,
-    sourceType:     order.sourceType,
+    sourceType:     order.sourceType === 'Other' ? '' : order.sourceType,
     sourceOther:    order.sourceOther ?? '',
     remarks:        order.remarks ?? '',
     mailingPackage: order.mailingPackage,
