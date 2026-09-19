@@ -168,81 +168,110 @@ export async function renderInvoicePdf(invoice: InvoicePdfPayload): Promise<Uint
   page.drawLine({ start: { x: ML, y }, end: { x: W - MR, y }, thickness: 0.5, color: GOLD })
   y -= 18
 
-  const cols = [
-    { label: 'No.', x: ML, w: 28 },
-    { label: 'Description', x: ML + 28, w: 187 },
-    { label: 'Unit price', x: ML + 215, w: 78 },
-    { label: 'Discount', x: ML + 293, w: 58 },
-    { label: 'Value', x: ML + 351, w: 62 },
-    { label: 'Amount', x: ML + 413, w: 82 },
+  const gap = 6
+  const cols: { label: string; w: number; x: number }[] = [
+    { label: 'No.', w: 22, x: 0 },
+    { label: 'Description', w: 161, x: 0 },
+    { label: 'Unit price', w: 84, x: 0 },
+    { label: 'Discount', w: 58, x: 0 },
+    { label: 'Value', w: 62, x: 0 },
+    { label: 'Amount', w: 78, x: 0 },
   ]
-  for (const c of cols) {
-    page.drawText(c.label, { x: c.x, y, size: 8, font: bold, color: GREY })
+  let colX = ML
+  for (const col of cols) {
+    col.x = colX
+    page.drawText(col.label, { x: col.x, y, size: 8, font: bold, color: GREY })
+    colX += col.w + gap
   }
   y -= 10
   page.drawLine({ start: { x: ML, y }, end: { x: W - MR, y }, thickness: 0.3, color: GREY })
   y -= 14
 
   function wrapToWidth(text: string, font: PDFFont, size: number, maxWidth: number) {
-    const source = textOf(text)
+    const source = textOf(text).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').trim()
+    if (!source || source === '-') return []
     const lines: string[] = []
     let current = ''
     for (const ch of source) {
       if (ch === '\n') {
-        lines.push(current)
+        if (current.trim()) lines.push(current.trim())
         current = ''
         continue
       }
       const next = current + ch
-      if (font.widthOfTextAtSize(next, size) > maxWidth && current) {
-        lines.push(current)
-        current = ch === ' ' ? '' : ch
+      if (font.widthOfTextAtSize(next, size) > maxWidth && current.trim()) {
+        lines.push(current.trim())
+        current = ch.trim()
       } else {
         current = next
       }
     }
-    if (current) lines.push(current)
-    return lines.length ? lines : ['-']
+    if (current.trim()) lines.push(current.trim())
+    return lines
   }
 
-  function drawRight(text: string, right: number, atY: number, size: number, font: PDFFont) {
+  function drawFitted(text: string, x: number, atY: number, size: number, font: PDFFont, maxWidth: number) {
     const rendered = textOf(text)
+    if (!rendered || rendered === '-') return
+    let drawSize = size
+    while (drawSize > 6 && font.widthOfTextAtSize(rendered, drawSize) > maxWidth) drawSize -= 0.5
+    page.drawText(rendered, { x, y: atY, size: drawSize, font, color: BLACK })
+  }
+
+  function drawRight(text: string, right: number, atY: number, size: number, font: PDFFont, maxWidth: number) {
+    const rendered = textOf(text)
+    if (!rendered || rendered === '-') return
+    let drawSize = size
+    while (drawSize > 6 && font.widthOfTextAtSize(rendered, drawSize) > maxWidth) drawSize -= 0.5
     page.drawText(rendered, {
-      x: right - font.widthOfTextAtSize(rendered, size),
+      x: right - font.widthOfTextAtSize(rendered, drawSize),
       y: atY,
-      size,
+      size: drawSize,
       font,
       color: BLACK,
     })
   }
 
-  function discountTypeLabel(type: InvoiceLineItem['discountType']) {
+  function discountTypeLabel(type: InvoiceLineItem['discountType'], value: number) {
+    if (!type || !Number.isFinite(value) || value <= 0) return ''
     if (type === 'PERCENT') return 'Percent'
     if (type === 'FIXED') return 'Fixed'
-    return '-'
+    return ''
   }
 
   function discountValueLabel(line: InvoiceLineItem) {
     const value = line.discountValue == null ? 0 : Number(line.discountValue.toString())
-    if (!line.discountType || !Number.isFinite(value) || value <= 0) return '-'
+    if (!line.discountType || !Number.isFinite(value) || value <= 0) return ''
     if (line.discountType === 'PERCENT') return `${value.toFixed(2)}%`
     return fmtMoney(value, invoice.currency)
   }
 
   const sorted = [...invoice.lineItems].sort((a, b) => a.sortOrder - b.sortOrder)
   sorted.forEach((line, index) => {
-    const descLines = wrapToWidth(line.description, reg, 8, cols[1].w - 6)
-    const rowHeight = Math.max(16, descLines.length * 11 + 4)
+    const descLines = wrapToWidth(line.description || '', reg, 8, cols[1].w)
+    const rowHeight = Math.max(16, Math.max(descLines.length, 1) * 11 + 4)
     ensureSpace(rowHeight)
     const rowTop = y
+    const discountValue = line.discountValue == null ? 0 : Number(line.discountValue.toString())
     page.drawText(String(index + 1), { x: cols[0].x, y: rowTop, size: 8, font: reg, color: BLACK })
-    descLines.forEach((descLine, lineIndex) => {
-      page.drawText(descLine, { x: cols[1].x, y: rowTop - lineIndex * 11, size: 8, font: reg, color: BLACK })
-    })
-    drawRight(fmtMoney(line.unitPrice, invoice.currency), cols[2].x + cols[2].w, rowTop, 8, reg)
-    page.drawText(discountTypeLabel(line.discountType), { x: cols[3].x, y: rowTop, size: 8, font: reg, color: BLACK })
-    drawRight(discountValueLabel(line), cols[4].x + cols[4].w, rowTop, 8, reg)
-    drawRight(fmtMoney(line.amount, invoice.currency), cols[5].x + cols[5].w, rowTop, 8, reg)
+    if (descLines.length === 0) {
+      page.drawText('-', { x: cols[1].x, y: rowTop, size: 8, font: reg, color: GREY })
+    } else {
+      descLines.forEach((descLine, lineIndex) => {
+        try {
+          page.drawText(descLine, { x: cols[1].x, y: rowTop - lineIndex * 11, size: 8, font: reg, color: BLACK })
+        } catch {
+          const fallback = descLine.replace(/[^\x00-\xFF]/g, '?')
+          if (fallback.trim()) {
+            page.drawText(fallback, { x: cols[1].x, y: rowTop - lineIndex * 11, size: 8, font: reg, color: BLACK })
+          }
+        }
+      })
+    }
+    drawRight(fmtMoney(line.unitPrice, invoice.currency), cols[2].x + cols[2].w, rowTop, 8, reg, cols[2].w)
+    drawFitted(discountTypeLabel(line.discountType, discountValue), cols[3].x, rowTop, 8, reg, cols[3].w)
+    drawRight(discountValueLabel(line), cols[4].x + cols[4].w, rowTop, 8, reg, cols[4].w)
+    drawRight(fmtMoney(line.amount, invoice.currency), cols[5].x + cols[5].w, rowTop, 8, reg, cols[5].w)
     y = rowTop - rowHeight
   })
 
@@ -254,7 +283,7 @@ export async function renderInvoicePdf(invoice: InvoicePdfPayload): Promise<Uint
   const totalLabel = 'Total'
   const totalValue = fmtMoney(invoice.total, invoice.currency)
   page.drawText(totalLabel, { x: W - MR - 140, y, size: 11, font: bold, color: GOLD })
-  drawRight(totalValue, W - MR, y, 11, bold)
+  drawRight(totalValue, W - MR, y, 11, bold, 120)
   y -= 16
 
   if (invoice.notes?.trim()) {
