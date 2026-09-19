@@ -113,8 +113,6 @@ export default function NewInvoicePage() {
         jurisdiction: price.jurisdiction,
         customerLevelLabel: tcspCustomerLevelLabel(price.customerLevel),
         serviceContent: price.serviceContent,
-        currency: price.currency,
-        amount: price.amount,
       }),
     })),
     [tcspServicePrices],

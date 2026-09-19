@@ -56,8 +56,6 @@ describe('invoice TCSP service pricing', () => {
       jurisdiction: 'HK',
       customerLevelLabel: 'VIP顾客',
       serviceContent: 'Company incorporation',
-      currency: 'HKD',
-      amount: '8500.00',
-    })).toBe('HK / VIP顾客 / Company incorporation / HKD 8500')
+    })).toBe('HK / VIP顾客 / Company incorporation')
   })
 })

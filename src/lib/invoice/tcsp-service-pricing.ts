@@ -18,8 +18,6 @@ type TcspServicePriceOptionLabelInput = {
   jurisdiction: string
   customerLevelLabel: string
   serviceContent: string
-  currency: string
-  amount: string | number
 }
 
 function normalizeAmountInput(value: string | number): string {
@@ -45,6 +43,5 @@ export function buildTcspServicePriceOptionLabel(input: TcspServicePriceOptionLa
     input.jurisdiction,
     input.customerLevelLabel,
     input.serviceContent,
-    `${input.currency} ${normalizeAmountInput(input.amount)}`,
   ].join(' / ')
 }
