@@ -15,6 +15,7 @@ type InvoiceLineItemsEditorProps = {
   currency: string
   addLineLabel: string
   removeLineLabel: string
+  itemNoLabel: string
   descriptionLabel: string
   unitPriceLabel: string
   discountLabel: string
@@ -53,6 +54,7 @@ export function InvoiceLineItemsEditor({
   currency,
   addLineLabel,
   removeLineLabel,
+  itemNoLabel,
   descriptionLabel,
   unitPriceLabel,
   discountLabel,
@@ -75,8 +77,8 @@ export function InvoiceLineItemsEditor({
         <table className="w-full min-w-[980px] text-sm">
           <thead style={{ background: 'var(--surface-panel)', borderBottom: '1px solid var(--border-subtle)' }}>
             <tr>
-              <th style={{ ...th, minWidth: 180 }}>{descriptionLabel}</th>
-              <th style={{ ...th, minWidth: 220 }}>{tcspServicePriceLabel}</th>
+              <th style={{ ...th, width: 56, textAlign: 'center' }}>{itemNoLabel}</th>
+              <th style={{ ...th, minWidth: 280 }}>{tcspServicePriceLabel}</th>
               <th style={{ ...th, width: 120 }}>{unitPriceLabel}</th>
               <th style={{ ...th, width: 140 }}>{discountTypeLabel}</th>
               <th style={{ ...th, width: 120 }}>{discountValueLabel}</th>
@@ -94,27 +96,31 @@ export function InvoiceLineItemsEditor({
 
               return (
                 <tr key={index} style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                  <td className="px-3 py-2 align-middle">
-                    <Input
-                      value={line.description}
-                      onChange={e => onUpdateLine(index, { description: e.target.value })}
-                      className="h-9"
-                    />
+                  <td className="px-3 py-2 text-center align-middle font-medium" style={{ color: 'var(--foreground)' }}>
+                    {index + 1}
                   </td>
                   <td className="px-3 py-2 align-middle">
-                    <select
-                      value={line.tcspServicePriceId}
-                      onChange={e => onSelectTcspServicePrice(index, e.target.value)}
-                      className={controlClass}
-                      style={controlStyle}
-                    >
-                      <option value="">{tcspServicePricePlaceholderLabel}</option>
-                      {tcspServicePrices.map(price => (
-                        <option key={price.id} value={price.id}>
-                          {price.label}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="space-y-2">
+                      <select
+                        value={line.tcspServicePriceId}
+                        onChange={e => onSelectTcspServicePrice(index, e.target.value)}
+                        className={controlClass}
+                        style={controlStyle}
+                      >
+                        <option value="">{tcspServicePricePlaceholderLabel}</option>
+                        {tcspServicePrices.map(price => (
+                          <option key={price.id} value={price.id}>
+                            {price.label}
+                          </option>
+                        ))}
+                      </select>
+                      <Input
+                        value={line.description}
+                        placeholder={descriptionLabel}
+                        onChange={e => onUpdateLine(index, { description: e.target.value })}
+                        className="h-9"
+                      />
+                    </div>
                   </td>
                   <td className="px-3 py-2 align-middle">
                     <Input

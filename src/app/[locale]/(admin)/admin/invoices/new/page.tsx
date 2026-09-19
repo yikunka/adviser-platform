@@ -355,6 +355,7 @@ export default function NewInvoicePage() {
             currency="HKD"
             addLineLabel={t('addLine')}
             removeLineLabel={t('removeLine')}
+            itemNoLabel={t('itemNo')}
             descriptionLabel={t('description')}
             unitPriceLabel={t('unitPrice')}
             discountLabel={t('discount')}
