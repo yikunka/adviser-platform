@@ -474,7 +474,11 @@ cmd_deploy() {
 
   if [[ "$NEED_BUILD" == 1 ]]; then
     echo "▶ 同步构建产物到 ${REMOTE}:${REMOTE_DIR} ..."
-    rsync -az --delete -e "$RSYNC_E" .next/standalone/ "${REMOTE}:${REMOTE_DIR}/"
+    # node_modules 不使用 --delete：standalone 只含 nft 追踪的精简子集，
+    # --delete 会删掉远端手工安装的 prisma CLI 完整依赖，导致迁移失败和 PM2 崩溃。
+    rsync -az --delete -e "$RSYNC_E" --exclude 'node_modules' .next/standalone/ "${REMOTE}:${REMOTE_DIR}/"
+    ssh_remote "mkdir -p '${REMOTE_DIR}/node_modules'"
+    rsync -az -e "$RSYNC_E" .next/standalone/node_modules/ "${REMOTE}:${REMOTE_DIR}/node_modules/"
     rsync -az --delete -e "$RSYNC_E" .next/static/ "${REMOTE}:${REMOTE_DIR}/.next/static/"
     rsync -az --delete -e "$RSYNC_E" public/ "${REMOTE}:${REMOTE_DIR}/public/"
     rsync -az -e "$RSYNC_E" assets/fonts/ "${REMOTE}:${REMOTE_DIR}/assets/fonts/"
@@ -765,8 +769,11 @@ _deploy_local_sync_to_app_dir() {
   mkdir -p "$APP_DIR/.next/static" "$APP_DIR/public" "$APP_DIR/prisma"
 
   if [[ "$need_build" == 1 ]]; then
-    # standalone is synced into the application root. Keep deployment state,
+    # Standalone is synced into the application root. Keep deployment state,
     # runtime configuration, and the local Prisma CLI that migrations use.
+    # node_modules must not be synced with --delete: the standalone trace is a
+    # subset, and deleting the rest breaks `prisma migrate deploy`.
+    mkdir -p "$APP_DIR/node_modules"
     rsync -a --delete \
       --exclude '.env' \
       --exclude '.adviser-deploy-rev' \
@@ -774,10 +781,9 @@ _deploy_local_sync_to_app_dir() {
       --exclude 'deploy.sh' \
       --exclude 'package.json' \
       --exclude 'package-lock.json' \
-      --exclude 'node_modules/prisma/***' \
-      --exclude 'node_modules/@prisma/***' \
-      --exclude 'node_modules/.bin/prisma' \
+      --exclude 'node_modules' \
       .next/standalone/ "$APP_DIR/"
+    rsync -a .next/standalone/node_modules/ "$APP_DIR/node_modules/"
     rsync -a --delete .next/static/ "$APP_DIR/.next/static/"
     rsync -a --delete public/ "$APP_DIR/public/"
     rsync -a assets/fonts/ "$APP_DIR/assets/fonts/"
