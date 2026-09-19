@@ -23,6 +23,16 @@ describe('share transfer document fill', () => {
     expect(integerToWords(2510)).toBe('TWO THOUSAND FIVE HUNDRED AND TEN')
   })
 
+  it('underlines a filled value without underlining the label', () => {
+    const xml = '<w:r><w:rPr><w:b/></w:rPr><w:t>HK$[Amount] Only</w:t></w:r>'
+    const filled = fillBracketPlaceholders(xml, { '[Amount]': '100' }, { underline: true })
+    expect(filled).toContain('>HK$</w:t>')
+    expect(filled).toContain('>100</w:t>')
+    expect(filled).toContain('> Only</w:t>')
+    expect(filled.match(/<w:u w:val="single"\/>/g)).toHaveLength(1)
+    expect(filled).toContain('<w:b/>')
+  })
+
   it('fills repeated tokens and leaves witness blanks', () => {
     const xml = '[Company Name (English)] / [Occupation] / [Occupation] / Witness name: [Name]'
     const filled = fillBracketPlaceholders(xml, {

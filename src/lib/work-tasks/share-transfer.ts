@@ -110,7 +110,9 @@ export async function renderShareTransferDocuments(input: ShareTransferInput) {
     const doc = shareTransferDocument(key)
     if (!doc) throw new Error(`未知文件：${key}`)
     const templatePath = await resolveShareTransferTemplate(doc.fileName)
-    const buffer = await fillDocxTemplate(templatePath, values)
+    const buffer = await fillDocxTemplate(templatePath, values, {
+      underline: key === 'instrument' || key === 'bought-sold',
+    })
     rendered.push({
       templateKey: key,
       fileName: downloadName(doc.label, input.companyNameEn),
