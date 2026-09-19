@@ -898,7 +898,7 @@
       "updated": "Invoice updated.",
       "updateFailed": "Failed to update invoice.",
       "saveChanges": "Save changes",
-      "editDraft": "Edit draft invoice",
+      "editDraft": "Edit invoice",
       "notFound": "Invoice not found.",
       "downloadPdf": "Download PDF",
       "markSent": "Mark as sent",

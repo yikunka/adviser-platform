@@ -102,6 +102,18 @@ export async function PATCH(
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
   }
+  const editsContent = parsed.data.issueDate !== undefined
+    || parsed.data.dueDate !== undefined
+    || parsed.data.currency !== undefined
+    || parsed.data.taxRate !== undefined
+    || parsed.data.billToName !== undefined
+    || parsed.data.billToAddress !== undefined
+    || parsed.data.billToEmail !== undefined
+    || parsed.data.notes !== undefined
+    || parsed.data.lineItems !== undefined
+  if (before.status === 'CANCELLED' && editsContent) {
+    return NextResponse.json({ error: 'Cancelled invoices cannot be edited' }, { status: 400 })
+  }
   if (
     parsed.data.lineItems &&
     !(await assertTcspServicePricesExist(parsed.data.lineItems.map(line => line.tcspServicePriceId)))

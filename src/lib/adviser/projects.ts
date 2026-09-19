@@ -47,11 +47,7 @@ export type ProjectWithRelations = Prisma.AdvProjectGetPayload<{ include: typeof
 
 type ProjectAccessFields = Pick<AdvProject, 'companyId' | 'customerType' | 'keyPersonId'>
 
-function addOneYear(date: Date): Date {
-  const next = new Date(date)
-  next.setFullYear(next.getFullYear() + 1)
-  return next
-}
+export { defaultRenewalWindow } from '@/lib/adviser/project-period'
 
 /** Mark ACTIVE projects past endDate as EXPIRED (null endDate = no expiry). */
 export async function expireOverdueProjects(ids?: string[]) {
@@ -64,13 +60,6 @@ export async function expireOverdueProjects(ids?: string[]) {
     },
     data: { status: 'EXPIRED' },
   })
-}
-
-export function defaultRenewalWindow(fromEndDate: Date): { startDate: Date; endDate: Date } {
-  return {
-    startDate: fromEndDate,
-    endDate: addOneYear(fromEndDate),
-  }
 }
 
 /** Company-scoped projects respect company access; individual KYC projects are open to all project staff. */

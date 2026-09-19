@@ -24,6 +24,7 @@ import {
   PROJECT_TYPE_LABELS,
   TASK_STATUS_LABELS,
 } from '@/lib/adviser/project-labels'
+import { localDateIso, periodEndOneYearAfter } from '@/lib/adviser/project-period'
 
 type Task = {
   id: string
@@ -479,13 +480,11 @@ export default function ProjectDetailPage() {
               disabled={!canEdit || saving}
               onChange={e => {
                 if (e.target.checked) {
-                  const start = dateOnly(project.startDate) || new Date().toISOString().slice(0, 10)
-                  const endBase = new Date(`${start}T00:00:00`)
-                  endBase.setFullYear(endBase.getFullYear() + 1)
+                  const start = dateOnly(project.startDate) || localDateIso()
                   void saveMeta({
                     hasPeriod: true,
                     startDate: start,
-                    endDate: endBase.toISOString().slice(0, 10),
+                    endDate: periodEndOneYearAfter(start),
                     autoRenew: true,
                   })
                 } else {
@@ -506,7 +505,11 @@ export default function ProjectDetailPage() {
                     style={inputStyle()}
                     value={dateOnly(project.startDate)}
                     disabled={!canEdit || saving}
-                    onChange={e => void saveMeta({ hasPeriod: true, startDate: e.target.value })}
+                    onChange={e => void saveMeta({
+                      hasPeriod: true,
+                      startDate: e.target.value,
+                      endDate: periodEndOneYearAfter(e.target.value),
+                    })}
                   />
                 </div>
                 <div>

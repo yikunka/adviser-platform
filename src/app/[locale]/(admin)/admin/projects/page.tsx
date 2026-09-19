@@ -16,6 +16,7 @@ import {
   type ProjectCollectionStatus,
   type ProjectInvoicingStatus,
 } from '@/lib/adviser/project-labels'
+import { localDateIso, periodEndOneYearAfter } from '@/lib/adviser/project-period'
 
 type ProjectRow = {
   id: string
@@ -78,20 +79,6 @@ function dateOnly(value: string | null | undefined) {
   return value ? value.slice(0, 10) : ''
 }
 
-function localDateIso(date = new Date()) {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-function addOneYearIso(start: string) {
-  if (!start) return ''
-  const [year, month, day] = start.split('-').map(Number)
-  if (!year || !month || !day) return ''
-  return localDateIso(new Date(year + 1, month - 1, day))
-}
-
 function clientLabel(project: ProjectRow) {
   if (project.customerType === 'INDIVIDUAL' && project.keyPerson) {
     return `${project.keyPerson.kycCode ? `${project.keyPerson.kycCode} · ` : ''}${project.keyPerson.nameEn}`
@@ -123,7 +110,7 @@ export default function ProjectsPage() {
     projectType: 'CORPORATE_SECRETARIAL' as keyof typeof PROJECT_TYPE_LABELS,
     hasPeriod: true,
     startDate: localDateIso(),
-    endDate: addOneYearIso(localDateIso()),
+    endDate: periodEndOneYearAfter(localDateIso()),
     autoRenew: true,
     notes: '',
   })
@@ -209,7 +196,7 @@ export default function ProjectsPage() {
         notes: '',
         hasPeriod: true,
         startDate: localDateIso(),
-        endDate: addOneYearIso(localDateIso()),
+        endDate: periodEndOneYearAfter(localDateIso()),
         autoRenew: true,
       }))
       await fetchProjects()
@@ -238,8 +225,8 @@ export default function ProjectsPage() {
         )}
       </div>
 
-      <div className="flex flex-wrap gap-3" style={card}>
-        <div className="flex flex-1 items-center gap-2 px-3 py-2 min-w-[200px]">
+      <div className="flex flex-wrap items-center gap-3 p-3" style={card}>
+        <div className="flex min-w-[220px] flex-1 items-center gap-2">
           <Search size={16} style={{ color: 'var(--muted-foreground)' }} />
           <input
             className="w-full bg-transparent text-sm outline-none"
@@ -283,60 +270,66 @@ export default function ProjectsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--muted-foreground)' }}>
-                  <th className="px-4 py-3 text-left font-medium">项目号</th>
-                  <th className="px-4 py-3 text-left font-medium">客户</th>
-                  <th className="px-4 py-3 text-left font-medium">项目</th>
-                  <th className="px-4 py-3 text-left font-medium">类型</th>
-                  <th className="px-4 py-3 text-left font-medium">周期</th>
-                  <th className="px-4 py-3 text-left font-medium">状态</th>
-                  <th className="px-4 py-3 text-left font-medium">开票状态</th>
-                  <th className="px-4 py-3 text-left font-medium">收款状态</th>
-                  <th className="px-4 py-3 text-left font-medium">工作</th>
+            <table className="w-full min-w-[920px] text-left text-sm">
+              <thead style={{ background: 'var(--surface-modal)', color: 'var(--muted-foreground)' }}>
+                <tr>
+                  <th className="px-4 py-3 font-medium whitespace-nowrap">项目号</th>
+                  <th className="px-4 py-3 font-medium">客户</th>
+                  <th className="px-4 py-3 font-medium">项目</th>
+                  <th className="px-4 py-3 font-medium whitespace-nowrap">类型</th>
+                  <th className="px-4 py-3 font-medium whitespace-nowrap">周期</th>
+                  <th className="px-4 py-3 font-medium whitespace-nowrap">状态</th>
+                  <th className="px-4 py-3 font-medium whitespace-nowrap">开票</th>
+                  <th className="px-4 py-3 font-medium whitespace-nowrap">收款</th>
+                  <th className="px-4 py-3 font-medium whitespace-nowrap">工作</th>
                 </tr>
               </thead>
               <tbody>
                 {projects.map(project => (
-                  <tr key={project.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td className="px-4 py-3 font-mono text-xs font-semibold" style={{ color: '#C9A96E' }}>
+                  <tr key={project.id} className="align-top" style={{ borderTop: '1px solid var(--border)' }}>
+                    <td className="px-4 py-3 font-mono text-xs font-semibold whitespace-nowrap" style={{ color: '#C9A96E' }}>
                       <Link href={`/admin/projects/${project.id}`} className="hover:underline">
                         {project.projectNumber}
                       </Link>
                     </td>
                     <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
-                      <span className="mr-1 text-[10px] uppercase tracking-wide opacity-70">
+                      <div>{clientLabel(project)}</div>
+                      <div className="mt-0.5 text-xs opacity-70">
                         {project.customerType === 'INDIVIDUAL' ? '自然人' : '公司'}
-                      </span>
-                      {clientLabel(project)}
+                      </div>
                     </td>
                     <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
                       {project.title}
                     </td>
-                    <td className="px-4 py-3">{PROJECT_TYPE_LABELS[project.projectType]}</td>
                     <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>
-                      {project.summary.hasPeriod
-                        ? `${dateOnly(project.startDate)} → ${dateOnly(project.endDate)}`
-                        : '一次性（无时限）'}
+                      {PROJECT_TYPE_LABELS[project.projectType]}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs leading-5" style={{ color: 'var(--muted-foreground)' }}>
+                      {project.summary.hasPeriod ? (
+                        <>
+                          <div>{dateOnly(project.startDate)}</div>
+                          <div>至 {dateOnly(project.endDate)}</div>
+                        </>
+                      ) : '一次性'}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_COLOR[project.status] ?? ''}`}>
+                      <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs ${STATUS_COLOR[project.status] ?? ''}`}>
                         {PROJECT_STATUS_LABELS[project.status]}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`rounded-full px-2 py-0.5 text-xs ${BILLING_COLOR[project.summary.invoicingStatus]}`}>
+                      <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs ${BILLING_COLOR[project.summary.invoicingStatus]}`}>
                         {PROJECT_INVOICING_LABELS[project.summary.invoicingStatus]}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`rounded-full px-2 py-0.5 text-xs ${BILLING_COLOR[project.summary.collectionStatus]}`}>
+                      <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs ${BILLING_COLOR[project.summary.collectionStatus]}`}>
                         {PROJECT_COLLECTION_LABELS[project.summary.collectionStatus]}
                       </span>
                     </td>
-                    <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
-                      待办 {project.summary.openTasks} / 共 {project.summary.taskCount}
+                    <td className="px-4 py-3 whitespace-nowrap text-xs leading-5" style={{ color: 'var(--muted-foreground)' }}>
+                      <div>待办 {project.summary.openTasks}</div>
+                      <div>共 {project.summary.taskCount}</div>
                     </td>
                   </tr>
                 ))}
@@ -346,16 +339,16 @@ export default function ProjectsPage() {
         )}
       </div>
 
-      {pageCount > 1 && (
-        <div className="flex items-center justify-between text-sm" style={{ color: 'var(--muted-foreground)' }}>
-          <span>共 {total} 条</span>
+      <div className="flex items-center justify-between text-sm" style={{ color: 'var(--muted-foreground)' }}>
+        <span>共 {total} 条</span>
+        {pageCount > 1 && (
           <div className="flex gap-2">
             <Button variant="outline" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>上一页</Button>
             <span className="px-2 py-2">{page} / {pageCount}</span>
             <Button variant="outline" disabled={page >= pageCount} onClick={() => setPage(p => p + 1)}>下一页</Button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {createOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -453,7 +446,7 @@ export default function ProjectsPage() {
                       hasPeriod: e.target.checked,
                       autoRenew: e.target.checked ? d.autoRenew : false,
                       startDate,
-                      endDate: e.target.checked ? addOneYearIso(startDate) : d.endDate,
+                      endDate: e.target.checked ? periodEndOneYearAfter(startDate) : d.endDate,
                     }
                   })}
                 />
@@ -472,7 +465,7 @@ export default function ProjectsPage() {
                         onChange={e => setDraft(d => ({
                           ...d,
                           startDate: e.target.value,
-                          endDate: addOneYearIso(e.target.value),
+                          endDate: periodEndOneYearAfter(e.target.value),
                         }))}
                       />
                     </div>

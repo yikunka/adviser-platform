@@ -294,6 +294,8 @@ export default function InvoiceDetailPage() {
     return <p style={{ color: 'var(--muted-foreground)' }}>{t('notFound')}</p>
   }
 
+  const editable = invoice.status !== 'CANCELLED'
+
   return (
     <div className="space-y-4 max-w-7xl">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -311,7 +313,7 @@ export default function InvoiceDetailPage() {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {invoice.status === 'DRAFT' && (
+          {editable && (
             <Button disabled={updating} onClick={saveDraftChanges}>{t('saveChanges')}</Button>
           )}
           <Button variant="outline" onClick={downloadPdf}>
@@ -359,7 +361,7 @@ export default function InvoiceDetailPage() {
         </CardContent>
       </Card>
 
-      {invoice.status === 'DRAFT' && draft ? (
+      {editable && draft ? (
         <Card>
           <CardHeader><CardTitle>{t('editDraft')}</CardTitle></CardHeader>
           <CardContent className="space-y-5">
@@ -410,7 +412,7 @@ export default function InvoiceDetailPage() {
           {draft ? (
             <>
               <InvoiceLineItemsEditor
-                readOnly={invoice.status !== 'DRAFT'}
+                readOnly={!editable}
                 amountLabel={t('amount')}
                 currency={invoice.currency}
                 addLineLabel={t('addLine')}
@@ -438,7 +440,7 @@ export default function InvoiceDetailPage() {
                 <div className="flex justify-between font-semibold">
                   <span>{t('total')}</span>
                   <span>
-                    {invoice.currency} {(invoice.status === 'DRAFT' ? totals.total : Number(invoice.total)).toFixed(2)}
+                    {invoice.currency} {(editable ? totals.total : Number(invoice.total)).toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -447,7 +449,7 @@ export default function InvoiceDetailPage() {
         </CardContent>
       </Card>
 
-      {invoice.status !== 'DRAFT' && invoice.notes && (
+      {!editable && invoice.notes && (
         <Card>
           <CardHeader><CardTitle>{t('notes')}</CardTitle></CardHeader>
           <CardContent className="text-sm whitespace-pre-wrap">{invoice.notes}</CardContent>
