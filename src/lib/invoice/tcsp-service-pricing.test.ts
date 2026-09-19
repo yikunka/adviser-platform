@@ -20,16 +20,35 @@ describe('invoice TCSP service pricing', () => {
       id: 'price_1',
       serviceContent: 'Annual return filing service',
       amount: '1200.00',
+      notes: '  Filing for the year ended 31 March  ',
     })
 
     expect(next).toEqual({
       tcspServicePriceId: 'price_1',
-      description: 'Annual return filing service',
+      description: 'Filing for the year ended 31 March',
       quantity: '2',
       unitPrice: '1200',
       discountType: 'PERCENT',
       discountValue: '10',
     })
+  })
+
+  it('falls back to service content when the price has no notes', () => {
+    const line: InvoiceLineTcspDraft = {
+      tcspServicePriceId: '',
+      description: '',
+      quantity: '1',
+      unitPrice: '0',
+      discountType: '',
+      discountValue: '',
+    }
+
+    expect(applyTcspServicePriceToLine(line, {
+      id: 'price_2',
+      serviceContent: 'Company incorporation',
+      amount: 8500,
+      notes: '   ',
+    }).description).toBe('Company incorporation')
   })
 
   it('builds a readable select label from the TCSP price dimensions', () => {

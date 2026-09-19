@@ -11,6 +11,7 @@ type TcspServicePriceInput = {
   id: string
   serviceContent: string
   amount: string | number
+  notes?: string | null
 }
 
 type TcspServicePriceOptionLabelInput = {
@@ -30,10 +31,11 @@ export function applyTcspServicePriceToLine(
   line: InvoiceLineTcspDraft,
   servicePrice: TcspServicePriceInput,
 ): InvoiceLineTcspDraft {
+  const notes = (servicePrice.notes ?? '').trim()
   return {
     ...line,
     tcspServicePriceId: servicePrice.id,
-    description: servicePrice.serviceContent,
+    description: notes || servicePrice.serviceContent,
     unitPrice: normalizeAmountInput(servicePrice.amount),
   }
 }

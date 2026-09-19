@@ -3,6 +3,7 @@
 import type { CSSProperties } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { lineAmount } from '@/lib/invoice/calc'
 import type { InvoiceLineTcspDraft } from '@/lib/invoice/tcsp-service-pricing'
 
@@ -114,11 +115,12 @@ export function InvoiceLineItemsEditor({
                           </option>
                         ))}
                       </select>
-                      <Input
+                      <Textarea
                         value={line.description}
                         placeholder={descriptionLabel}
+                        rows={2}
                         onChange={e => onUpdateLine(index, { description: e.target.value })}
-                        className="h-9"
+                        className="min-h-16 resize-y"
                       />
                     </div>
                   </td>

@@ -35,6 +35,7 @@ type TcspServicePriceOption = {
   serviceContent: string
   currency: string
   amount: string
+  notes?: string | null
 }
 
 type InvoiceDetail = {
@@ -210,6 +211,7 @@ export default function InvoiceDetailPage() {
                     id: price.id,
                     serviceContent: price.serviceContent,
                     amount: price.amount,
+                    notes: price.notes,
                   })
                 : line
             )),

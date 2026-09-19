@@ -36,6 +36,7 @@ type TcspServicePriceOption = {
   serviceContent: string
   currency: string
   amount: string
+  notes?: string | null
 }
 
 const emptyLine = (): InvoiceLineDraft => ({
@@ -152,6 +153,7 @@ export default function NewInvoicePage() {
             id: price.id,
             serviceContent: price.serviceContent,
             amount: price.amount,
+            notes: price.notes,
           })
         : line
     )))

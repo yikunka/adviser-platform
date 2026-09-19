@@ -9,7 +9,7 @@ import { z } from 'zod'
 
 const lineSchema = z.object({
   tcspServicePriceId: z.string().cuid().optional().nullable(),
-  description: z.string().min(1).max(500),
+  description: z.string().min(1).max(2000),
   quantity: z.number().positive().max(999999),
   unitPrice: z.number().min(0).max(999999999),
   discountType: z.enum(['PERCENT', 'FIXED']).optional().nullable(),
