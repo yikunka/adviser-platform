@@ -191,15 +191,15 @@ export async function renderInvoicePdf(invoice: InvoicePdfPayload): Promise<Uint
   page.drawLine({ start: { x: ML, y }, end: { x: W - MR, y }, thickness: 0.5, color: GOLD })
   y -= 18
 
-  const gap = 4
-  const fixed = { no: 22, unit: 86, discountType: 72, discountValue: 78, amount: 82 }
+  const gap = 8
+  const fixed = { no: 22, unit: 74, discountType: 78, discountValue: 74, amount: 82 }
   const descW = CW - gap * 5 - fixed.no - fixed.unit - fixed.discountType - fixed.discountValue - fixed.amount
   const cols: { label: string; w: number; x: number; align: 'left' | 'right' }[] = [
     { label: 'No.', w: fixed.no, x: 0, align: 'left' },
     { label: 'TCSP service price', w: descW, x: 0, align: 'left' },
     { label: 'Unit price', w: fixed.unit, x: 0, align: 'left' },
     { label: 'Discount type', w: fixed.discountType, x: 0, align: 'left' },
-    { label: 'Discount value', w: fixed.discountValue, x: 0, align: 'right' },
+    { label: 'Discount value', w: fixed.discountValue, x: 0, align: 'left' },
     { label: 'Amount', w: fixed.amount, x: 0, align: 'right' },
   ]
   let colX = ML
@@ -295,7 +295,7 @@ export async function renderInvoicePdf(invoice: InvoicePdfPayload): Promise<Uint
     })
     drawFitted(fmtMoney(line.unitPrice, invoice.currency), cols[2].x, rowTop, 8, reg, cols[2].w)
     drawFitted(discountTypeLabel(line.discountType, discountValue), cols[3].x, rowTop, 8, reg, cols[3].w)
-    drawRight(discountValueLabel(line), cols[4].x + cols[4].w, rowTop, 8, reg, cols[4].w)
+    drawFitted(discountValueLabel(line), cols[4].x, rowTop, 8, reg, cols[4].w)
     drawRight(fmtMoney(line.amount, invoice.currency), cols[5].x + cols[5].w, rowTop, 8, reg, cols[5].w)
     y = rowTop - rowHeight
   })
