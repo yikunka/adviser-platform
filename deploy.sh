@@ -24,6 +24,7 @@
 #   DEPLOY_FORCE_FULL=1 — 全流程（依赖 install、prisma generate、next build、同步、migrate、PM2）；对 deploy（SSH）同样有效
 #   DEPLOY_FF_ONLY_GIT=0 — 使用普通 git pull（默认 1 = --ff-only）
 #   DEPLOY_DISCARD_LOCKFILE=0 — 不自动丢弃服务器上 package-lock.json 本地改动（默认 1 = 丢弃后再 pull）
+#   DEPLOY_DISCARD_DEPLOY_SH=0 — 不自动丢弃服务器上 deploy.sh 本地改动（默认 1 = 丢弃后再 pull）
 #
 # deploy（设 DEPLOY_HOST）：同样基于 .adviser-deploy-rev 增量
 #   部署前从远端读取 $REMOTE_DIR/.adviser-deploy-rev，与本地 HEAD 比对，只构建 / rsync / migrate 变更涉及的部分。
@@ -611,6 +612,18 @@ _deploy_discard_lockfile_drift() {
   fi
 }
 
+_deploy_discard_deploy_sh_drift() {
+  if [[ "${DEPLOY_DISCARD_DEPLOY_SH:-1}" != "1" ]]; then
+    return 0
+  fi
+  if ! git -C "$SCRIPT_DIR" diff --quiet -- deploy.sh 2>/dev/null; then
+    echo "▶ 丢弃服务器上 deploy.sh 的本地改动（避免挡住 git pull）…"
+    git -C "$SCRIPT_DIR" checkout -- deploy.sh 2>/dev/null \
+      || git -C "$SCRIPT_DIR" restore deploy.sh 2>/dev/null \
+      || true
+  fi
+}
+
 _deploy_local_git_pull_maybe() {
   if [[ "${DEPLOY_SKIP_GIT_PULL:-}" == "1" ]]; then
     echo "▶ 跳过 git pull（DEPLOY_SKIP_GIT_PULL=1）"
@@ -621,6 +634,7 @@ _deploy_local_git_pull_maybe() {
     return 0
   fi
   _deploy_discard_lockfile_drift
+  _deploy_discard_deploy_sh_drift
   echo "▶ git pull…"
   local before
   before="$(git -C "$SCRIPT_DIR" rev-parse HEAD)"
