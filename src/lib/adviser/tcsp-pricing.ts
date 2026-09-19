@@ -7,7 +7,7 @@ export const TCSP_JURISDICTIONS = [
 
 export const TCSP_CUSTOMER_LEVELS = [
   { value: 'DISTRIBUTOR', label: '经销客户' },
-  { value: 'STANDARD', label: '普通客户' },
+  { value: 'STANDARD', label: 'VIP顾客' },
 ] as const
 
 export type TcspJurisdiction = typeof TCSP_JURISDICTIONS[number]['value']

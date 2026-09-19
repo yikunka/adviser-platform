@@ -119,7 +119,7 @@ Staff users in Adviser financial pages are read-only by default: they can open f
 Service invoicing for TCSP professional fees.
 - List with search, status filter
 - Invoice statuses: `DRAFT` → `SENT` → `PAID` / `CANCELLED`
-- Create invoices for either a linked client company or an approved personal KYC identity; billing fields are auto-filled from the selected customer and can be manually adjusted; line items support description, quantity, unit price, and an optional per-line discount entered either as a percentage or a fixed amount; each line can also link to a TCSP service-price entry to auto-fill description and unit price while still allowing later manual edits that only affect the invoice snapshot; the form remains no-tax (`0%`) and the editor no longer shows a separate tax line under the subtotal/total summary; the line-item editor uses a wider multi-line description field with quantity/unit-price controls grouped beside it; the new-invoice form includes due-date quick options for `月结`, `月结30天`, and `月结60天`, which calculate and fill the due date from the issue date (or today if the issue date is empty)
+- Create invoices for either a linked client company or an approved personal KYC identity; billing fields are auto-filled from the selected customer and can be manually adjusted; line items support description, quantity, unit price, and an optional per-line discount entered either as a percentage or a fixed amount; each line can also link to a TCSP service-price entry to auto-fill description and unit price while still allowing later manual edits that only affect the invoice snapshot; the form remains no-tax (`0%`) and the editor no longer shows a separate tax line under the subtotal/total summary; each invoice line is a stacked form (TCSP price, description, then quantity, unit price, discount, and amount on one row); the new-invoice form includes due-date quick options for `月结`, `月结30天`, and `月结60天`, which calculate and fill the due date from the issue date (or today if the issue date is empty)
 - Edit DRAFT invoices from the invoice detail page, including billing fields, dates, notes, and line items; status changes remain available there
 - Generate and download PDF; the PDF uses global 6AM Advisory sender contact details in the header and Bank of China (Hong Kong) / FPS payment instructions in the footer
 - Upload historical invoice PDFs from the invoice list via **添加历史发票**; admins can add/edit a text note for each uploaded historical PDF and the note is shown directly in the historical-file list; uploaded historical files are stored as downloadable archives and do not create or modify formal invoice records, numbering, totals, or statuses
@@ -127,7 +127,7 @@ Service invoicing for TCSP professional fees.
 
 ### 6b. Projects (`/admin/projects`)
 Service engagements for client companies or approved individual KYC persons.
-- Each project gets an auto-generated project number `PRJ-YYYY-NNNNN` (shown in list and detail; searchable)
+- Each project gets an auto-generated project number `PRJ-YYYY-NNNNN` (shown in list and detail; searchable). The project list opens the detail page by clicking that project number
 - Customer type: company or natural person (`INDIVIDUAL`, approved KYC only)
 - Period is optional: annual/custom date range, or one-time work with no start/end (no auto-expire / renew)
 - Project types: company incorporation, corporate secretarial, accounting, other
@@ -152,7 +152,7 @@ Shared Adviser form library, not linked to client companies.
 
 ### 6d. TCSP Service Pricing (`/admin/tcsp-pricing`)
 Central price-list management for TCSP service quotes.
-- Maintains service pricing by jurisdiction (`HK`, `BVI`, `CAYMAN`, `MARSHALL`), customer level (`经销客户` / `普通客户`), free-text service content, currency, amount, and notes
+- Maintains service pricing by jurisdiction (`HK`, `BVI`, `CAYMAN`, `MARSHALL`), customer level (`经销客户` / `VIP顾客`), free-text service content, currency, amount, and notes
 - Service content is a single admin-entered description field, so admins can cover any current or future TCSP service without selecting a preset category or item
 - The same jurisdiction + customer level + service content combination is unique to prevent duplicate quote rows
 - Access and actions are controlled by Role Management permissions `tcspPricing`, `tcspPricing.create`, `tcspPricing.edit`, and `tcspPricing.delete`

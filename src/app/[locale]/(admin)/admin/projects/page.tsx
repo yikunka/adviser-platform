@@ -280,7 +280,7 @@ export default function ProjectsPage() {
               <tbody>
                 {projects.map(project => (
                   <tr key={project.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                    <td className="px-4 py-3 font-mono text-xs font-semibold" style={{ color: '#C9A96E' }}>
                       <Link href={`/admin/projects/${project.id}`} className="hover:underline">
                         {project.projectNumber}
                       </Link>
@@ -291,10 +291,8 @@ export default function ProjectsPage() {
                       </span>
                       {clientLabel(project)}
                     </td>
-                    <td className="px-4 py-3">
-                      <Link href={`/admin/projects/${project.id}`} className="font-medium hover:underline" style={{ color: 'var(--foreground)' }}>
-                        {project.title}
-                      </Link>
+                    <td className="px-4 py-3 font-medium" style={{ color: 'var(--foreground)' }}>
+                      {project.title}
                     </td>
                     <td className="px-4 py-3">{PROJECT_TYPE_LABELS[project.projectType]}</td>
                     <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>

@@ -1,5 +1,6 @@
 'use client'
 
+import type { CSSProperties, ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -34,6 +35,30 @@ type InvoiceLineItemsEditorProps = {
   onSelectTcspServicePrice: (index: number, tcspServicePriceId: string) => void
 }
 
+const controlClass = 'h-9 w-full rounded-lg px-2.5 text-sm'
+const controlStyle: CSSProperties = {
+  background: 'var(--surface)',
+  border: '1px solid var(--border-subtle)',
+  color: 'var(--text-cream)',
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: string
+  children: ReactNode
+}) {
+  return (
+    <label className="block space-y-1.5">
+      <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+        {label}
+      </span>
+      {children}
+    </label>
+  )
+}
+
 export function InvoiceLineItemsEditor({
   amountLabel,
   currency,
@@ -59,12 +84,6 @@ export function InvoiceLineItemsEditor({
 }: InvoiceLineItemsEditorProps) {
   return (
     <div className="space-y-3">
-      <div className="flex justify-end">
-        <Button type="button" variant="outline" size="sm" onClick={onAddLine}>
-          {addLineLabel}
-        </Button>
-      </div>
-
       {lines.map((line, index) => {
         const quantity = parseFloat(line.quantity) || 0
         const unitPrice = parseFloat(line.unitPrice) || 0
@@ -72,148 +91,130 @@ export function InvoiceLineItemsEditor({
         const discountType = line.discountType || null
         const originalAmount = lineSubtotal(quantity, unitPrice).toFixed(2)
         const amount = lineAmount(quantity, unitPrice, discountType, discountValue).toFixed(2)
-        const hasDiscount = discountType && discountValue > 0
+        const hasDiscount = Boolean(discountType && discountValue > 0)
 
         return (
           <div
             key={index}
-            className="rounded-xl border p-3 sm:p-4"
+            className="overflow-hidden rounded-lg border"
             style={{ borderColor: 'var(--border-subtle)', background: 'rgba(26, 26, 18, 0.35)' }}
           >
-            <div className="grid gap-3 xl:grid-cols-[minmax(0,2.9fr)_minmax(260px,1.45fr)_auto] xl:items-start">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--muted-foreground)' }}>
-                  {tcspServicePriceLabel}
-                </label>
+            <div
+              className="flex items-center justify-between gap-3 px-3 py-2"
+              style={{ borderBottom: '1px solid var(--border-subtle)' }}
+            >
+              <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                {index + 1}
+              </span>
+              {lines.length > 1 ? (
+                <Button type="button" variant="ghost" size="sm" onClick={() => onRemoveLine(index)}>
+                  {removeLineLabel}
+                </Button>
+              ) : null}
+            </div>
+
+            <div className="space-y-3 p-3">
+              <Field label={tcspServicePriceLabel}>
                 <select
                   value={line.tcspServicePriceId}
                   onChange={e => onSelectTcspServicePrice(index, e.target.value)}
-                  className="h-10 w-full rounded-md px-3 text-sm"
-                  style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--text-cream)' }}
+                  className={controlClass}
+                  style={controlStyle}
                 >
                   <option value="">{tcspServicePricePlaceholderLabel}</option>
                   {tcspServicePrices.map(price => (
-                    <option key={price.id} value={price.id} style={{ background: 'var(--surface-raised)' }}>
+                    <option key={price.id} value={price.id}>
                       {price.label}
                     </option>
                   ))}
                 </select>
-              </div>
+              </Field>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--muted-foreground)' }}>
-                  {descriptionLabel}
-                </label>
+              <Field label={descriptionLabel}>
                 <Textarea
-                  rows={3}
-                  placeholder={descriptionLabel}
+                  rows={2}
                   value={line.description}
                   onChange={e => onUpdateLine(index, { description: e.target.value })}
-                  className="min-h-24 resize-y"
+                  className="min-h-16 resize-y"
                 />
-              </div>
+              </Field>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--muted-foreground)' }}>
-                    {quantityLabel}
-                  </label>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                <Field label={quantityLabel}>
                   <Input
                     type="number"
                     min="0"
                     step="0.01"
-                    placeholder={quantityLabel}
                     value={line.quantity}
                     onChange={e => onUpdateLine(index, { quantity: e.target.value })}
-                    className="h-10"
+                    className="h-9"
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--muted-foreground)' }}>
-                    {unitPriceLabel}
-                  </label>
+                </Field>
+                <Field label={unitPriceLabel}>
                   <Input
                     type="number"
                     min="0"
                     step="0.01"
-                    placeholder={unitPriceLabel}
                     value={line.unitPrice}
                     onChange={e => onUpdateLine(index, { unitPrice: e.target.value })}
-                    className="h-10"
+                    className="h-9"
                   />
-                </div>
-              </div>
-
-              <div className="flex items-start justify-between gap-3 xl:min-w-[148px] xl:flex-col xl:items-end">
-                <div
-                  className="rounded-lg border px-3 py-2 text-right"
-                  style={{ borderColor: 'var(--border-subtle)', background: '#11110C' }}
-                >
-                  <div className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--muted-foreground)' }}>
+                </Field>
+                <Field label={discountTypeLabel}>
+                  <select
+                    value={line.discountType}
+                    onChange={e => {
+                      const nextType = e.target.value as InvoiceLineDiscountType
+                      onUpdateLine(index, {
+                        discountType: nextType,
+                        discountValue: nextType ? line.discountValue : '',
+                      })
+                    }}
+                    className={controlClass}
+                    style={controlStyle}
+                  >
+                    <option value="">{discountLabel}</option>
+                    <option value="PERCENT">{discountPercentOptionLabel}</option>
+                    <option value="FIXED">{discountFixedOptionLabel}</option>
+                  </select>
+                </Field>
+                <Field label={discountValueLabel}>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder={line.discountType === 'PERCENT' ? '%' : currency}
+                    value={line.discountValue}
+                    onChange={e => onUpdateLine(index, { discountValue: e.target.value })}
+                    className="h-9"
+                    disabled={!line.discountType}
+                  />
+                </Field>
+                <div className="space-y-1.5">
+                  <span className="block text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
                     {amountLabel}
-                  </div>
-                  <div className="mt-1 text-sm font-semibold" style={{ color: 'var(--foreground)' }}>
+                  </span>
+                  <div
+                    className="flex h-9 items-center rounded-lg px-2.5 text-sm font-semibold"
+                    style={{ border: '1px solid var(--border-subtle)', background: '#11110C', color: 'var(--foreground)' }}
+                  >
                     {currency} {amount}
                   </div>
                   {hasDiscount ? (
-                    <div className="mt-1 text-[11px]" style={{ color: 'var(--muted-foreground)' }}>
+                    <p className="text-[11px]" style={{ color: 'var(--muted-foreground)' }}>
                       {originalAmountLabel}: {currency} {originalAmount}
-                    </div>
+                    </p>
                   ) : null}
-                  <div className="mt-3 space-y-1.5 text-left">
-                    <div className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--muted-foreground)' }}>
-                      {discountLabel}
-                    </div>
-                    <div className="grid gap-2">
-                      <label className="space-y-1">
-                        <span className="text-[11px]" style={{ color: 'var(--muted-foreground)' }}>
-                          {discountTypeLabel}
-                        </span>
-                        <select
-                          value={line.discountType}
-                          onChange={e => {
-                            const nextType = e.target.value as InvoiceLineDiscountType
-                            onUpdateLine(index, {
-                              discountType: nextType,
-                              discountValue: nextType ? line.discountValue : '',
-                            })
-                          }}
-                          className="h-9 w-full rounded-md px-2 text-xs"
-                          style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--text-cream)' }}
-                        >
-                          <option value="">{discountLabel}</option>
-                          <option value="PERCENT">{discountPercentOptionLabel}</option>
-                          <option value="FIXED">{discountFixedOptionLabel}</option>
-                        </select>
-                      </label>
-                      <label className="space-y-1">
-                        <span className="text-[11px]" style={{ color: 'var(--muted-foreground)' }}>
-                          {discountValueLabel}
-                        </span>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder={line.discountType === 'PERCENT' ? '%' : currency}
-                          value={line.discountValue}
-                          onChange={e => onUpdateLine(index, { discountValue: e.target.value })}
-                          className="h-9"
-                          disabled={!line.discountType}
-                        />
-                      </label>
-                    </div>
-                  </div>
                 </div>
-                {lines.length > 1 && (
-                  <Button type="button" variant="ghost" size="sm" onClick={() => onRemoveLine(index)}>
-                    {removeLineLabel}
-                  </Button>
-                )}
               </div>
             </div>
           </div>
         )
       })}
+
+      <Button type="button" variant="outline" size="sm" onClick={onAddLine}>
+        {addLineLabel}
+      </Button>
     </div>
   )
 }
