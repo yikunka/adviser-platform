@@ -31,15 +31,8 @@ export const SHARE_TRANSFER_DOCUMENTS = [
     key: 'ird-written',
     fileName: 'Written Confirmation to IRD.docx',
     label: '致税务局确认书',
-    hint: '无买卖协议、无香港物业',
+    hint: '无买卖协议、无香港物业、尚未开业',
     defaultOn: true,
-  },
-  {
-    key: 'no-business',
-    fileName: 'Share Transfer Confirmation - No Business Commenced.docx',
-    label: '确认：尚未开业',
-    hint: '公司尚未开业、没有审计报告时勾选',
-    defaultOn: false,
   },
 ] as const
 
