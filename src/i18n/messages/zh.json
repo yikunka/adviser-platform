@@ -853,6 +853,7 @@
       "dueDate": "到期日",
       "dueDatePresetHint": "快速選項按開票日期計算；若開票日期留空，則以當天計算。手動修改到期日後會取消快速選項。",
       "dueDatePreset": {
+        "CASH": "現結",
         "MONTH_END": "月結",
         "MONTH_END_30": "月結30天",
         "MONTH_END_60": "月結60天"
@@ -898,6 +899,8 @@
       "updated": "發票已更新。",
       "updateFailed": "更新發票失敗。",
       "saveChanges": "儲存變更",
+      "modify": "修改",
+      "cancelEdit": "取消",
       "editDraft": "編輯發票",
       "notFound": "找不到發票。",
       "downloadPdf": "下載 PDF",

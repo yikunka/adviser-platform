@@ -47,7 +47,7 @@ const emptyLine = (): InvoiceLineDraft => ({
   discountType: '',
   discountValue: '',
 })
-const dueDatePresets: InvoiceDueDatePreset[] = ['MONTH_END', 'MONTH_END_30', 'MONTH_END_60']
+const dueDatePresets: InvoiceDueDatePreset[] = ['CASH', 'MONTH_END', 'MONTH_END_30', 'MONTH_END_60']
 
 export default function NewInvoicePage() {
   const t = useTranslations('admin.invoices')

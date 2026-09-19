@@ -282,15 +282,14 @@ export default function ProjectsPage() {
                   <th className="px-4 py-3 font-medium whitespace-nowrap">开票</th>
                   <th className="px-4 py-3 font-medium whitespace-nowrap">收款</th>
                   <th className="px-4 py-3 font-medium whitespace-nowrap">工作</th>
+                  <th className="px-4 py-3 font-medium" />
                 </tr>
               </thead>
               <tbody>
                 {projects.map(project => (
                   <tr key={project.id} className="align-top" style={{ borderTop: '1px solid var(--border)' }}>
-                    <td className="px-4 py-3 font-mono text-xs font-semibold whitespace-nowrap" style={{ color: '#C9A96E' }}>
-                      <Link href={`/admin/projects/${project.id}`} className="hover:underline">
-                        {project.projectNumber}
-                      </Link>
+                    <td className="px-4 py-3 font-mono text-xs whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>
+                      {project.projectNumber}
                     </td>
                     <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
                       <div>{clientLabel(project)}</div>
@@ -330,6 +329,11 @@ export default function ProjectsPage() {
                     <td className="px-4 py-3 whitespace-nowrap text-xs leading-5" style={{ color: 'var(--muted-foreground)' }}>
                       <div>待办 {project.summary.openTasks}</div>
                       <div>共 {project.summary.taskCount}</div>
+                    </td>
+                    <td className="px-4 py-3 text-right align-middle">
+                      <Link href={`/admin/projects/${project.id}`}>
+                        <Button variant="outline" size="sm">查看</Button>
+                      </Link>
                     </td>
                   </tr>
                 ))}

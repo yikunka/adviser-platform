@@ -1,4 +1,4 @@
-export type InvoiceDueDatePreset = 'MONTH_END' | 'MONTH_END_30' | 'MONTH_END_60'
+export type InvoiceDueDatePreset = 'CASH' | 'MONTH_END' | 'MONTH_END_30' | 'MONTH_END_60'
 
 function parseYmdDate(value: string | null | undefined): Date | null {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
@@ -38,6 +38,7 @@ export function computeInvoiceDueDate(
   const baseDate = parseYmdDate(referenceDate) ?? fallbackDate
   const monthEnd = endOfMonth(baseDate)
 
+  if (preset === 'CASH') return formatYmdDate(baseDate)
   if (preset === 'MONTH_END') return formatYmdDate(monthEnd)
   if (preset === 'MONTH_END_30') return formatYmdDate(addDays(monthEnd, 30))
   return formatYmdDate(addDays(monthEnd, 60))

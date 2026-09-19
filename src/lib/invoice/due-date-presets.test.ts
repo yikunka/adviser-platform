@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { computeInvoiceDueDate } from './due-date-presets'
 
 describe('computeInvoiceDueDate', () => {
+  it('uses the issue date itself for cash terms', () => {
+    expect(computeInvoiceDueDate('CASH', '2026-05-18')).toBe('2026-05-18')
+    expect(computeInvoiceDueDate('CASH', '', new Date(2026, 1, 5))).toBe('2026-02-05')
+  })
+
   it('returns the end of the reference month for month-end terms', () => {
     expect(computeInvoiceDueDate('MONTH_END', '2026-06-15')).toBe('2026-06-30')
   })

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 import { Download } from 'lucide-react'
 import { InvoiceLineItemsEditor, type InvoiceLineDraft } from '@/components/admin/invoices/InvoiceLineItemsEditor'
 import { tcspCustomerLevelLabel } from '@/lib/adviser/tcsp-pricing'
@@ -120,6 +121,8 @@ export default function InvoiceDetailPage() {
   const [draft, setDraft] = useState<DraftFormState | null>(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const canEdit = useAdminPermission('invoices.edit')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -129,6 +132,7 @@ export default function InvoiceDetailPage() {
       if (!res.ok) throw new Error()
       setInvoice(json)
       setDraft(mapInvoiceToDraft(json))
+      setEditing(false)
     } catch {
       toast.error(t('loadFailed'))
     } finally {
@@ -279,6 +283,7 @@ export default function InvoiceDetailPage() {
       if (!res.ok) throw new Error(json?.error ?? 'Failed')
       setInvoice(json)
       setDraft(mapInvoiceToDraft(json))
+      setEditing(false)
       toast.success(t('updated'))
     } catch {
       toast.error(t('updateFailed'))
@@ -294,7 +299,18 @@ export default function InvoiceDetailPage() {
     return <p style={{ color: 'var(--muted-foreground)' }}>{t('notFound')}</p>
   }
 
-  const editable = invoice.status !== 'CANCELLED'
+  const canModify = canEdit && (invoice.status === 'DRAFT' || invoice.status === 'SENT')
+  const currentInvoice = invoice
+
+  function startEditing() {
+    setDraft(mapInvoiceToDraft(currentInvoice))
+    setEditing(true)
+  }
+
+  function cancelEditing() {
+    setDraft(mapInvoiceToDraft(currentInvoice))
+    setEditing(false)
+  }
 
   return (
     <div className="space-y-4 max-w-7xl">
@@ -313,20 +329,25 @@ export default function InvoiceDetailPage() {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {editable && (
-            <Button disabled={updating} onClick={saveDraftChanges}>{t('saveChanges')}</Button>
-          )}
+          {editing ? (
+            <>
+              <Button disabled={updating} onClick={saveDraftChanges}>{t('saveChanges')}</Button>
+              <Button variant="outline" disabled={updating} onClick={cancelEditing}>{t('cancelEdit')}</Button>
+            </>
+          ) : canModify ? (
+            <Button variant="outline" onClick={startEditing}>{t('modify')}</Button>
+          ) : null}
           <Button variant="outline" onClick={downloadPdf}>
             <Download size={14} className="mr-1" />
             {t('downloadPdf')}
           </Button>
-          {invoice.status === 'DRAFT' && (
+          {canEdit && !editing && invoice.status === 'DRAFT' && (
             <Button disabled={updating} onClick={() => updateStatus('SENT')}>{t('markSent')}</Button>
           )}
-          {invoice.status === 'SENT' && (
+          {canEdit && !editing && invoice.status === 'SENT' && (
             <Button disabled={updating} onClick={() => updateStatus('PAID')}>{t('markPaid')}</Button>
           )}
-          {(invoice.status === 'DRAFT' || invoice.status === 'SENT') && (
+          {canEdit && !editing && (invoice.status === 'DRAFT' || invoice.status === 'SENT') && (
             <Button variant="outline" disabled={updating} onClick={() => updateStatus('CANCELLED')}>
               {t('cancel')}
             </Button>
@@ -361,7 +382,7 @@ export default function InvoiceDetailPage() {
         </CardContent>
       </Card>
 
-      {editable && draft ? (
+      {editing && draft ? (
         <Card>
           <CardHeader><CardTitle>{t('editDraft')}</CardTitle></CardHeader>
           <CardContent className="space-y-5">
@@ -412,7 +433,7 @@ export default function InvoiceDetailPage() {
           {draft ? (
             <>
               <InvoiceLineItemsEditor
-                readOnly={!editable}
+                readOnly={!editing}
                 amountLabel={t('amount')}
                 currency={invoice.currency}
                 addLineLabel={t('addLine')}
@@ -440,7 +461,7 @@ export default function InvoiceDetailPage() {
                 <div className="flex justify-between font-semibold">
                   <span>{t('total')}</span>
                   <span>
-                    {invoice.currency} {(editable ? totals.total : Number(invoice.total)).toFixed(2)}
+                    {invoice.currency} {(editing ? totals.total : Number(invoice.total)).toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -449,7 +470,7 @@ export default function InvoiceDetailPage() {
         </CardContent>
       </Card>
 
-      {!editable && invoice.notes && (
+      {!editing && invoice.notes && (
         <Card>
           <CardHeader><CardTitle>{t('notes')}</CardTitle></CardHeader>
           <CardContent className="text-sm whitespace-pre-wrap">{invoice.notes}</CardContent>

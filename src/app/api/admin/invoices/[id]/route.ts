@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { UserRole } from '@prisma/client'
-import { requireRole } from '@/lib/auth/rbac'
+import { requirePermission, requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
@@ -86,7 +86,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { session, error } = await requireRole('STAFF', { adminMenu: 'invoices' })
+  const { session, error } = await requirePermission('invoices.edit')
   if (error) return error
 
   const { id } = await params
@@ -111,8 +111,15 @@ export async function PATCH(
     || parsed.data.billToEmail !== undefined
     || parsed.data.notes !== undefined
     || parsed.data.lineItems !== undefined
-  if (before.status === 'CANCELLED' && editsContent) {
-    return NextResponse.json({ error: 'Cancelled invoices cannot be edited' }, { status: 400 })
+  if (before.status === 'PAID' && parsed.data.status !== undefined && parsed.data.status !== 'PAID') {
+    return NextResponse.json({ error: 'Paid invoices cannot be edited' }, { status: 400 })
+  }
+  if ((before.status === 'PAID' || before.status === 'CANCELLED') && editsContent) {
+    return NextResponse.json({
+      error: before.status === 'PAID'
+        ? 'Paid invoices cannot be edited'
+        : 'Cancelled invoices cannot be edited',
+    }, { status: 400 })
   }
   if (
     parsed.data.lineItems &&
