@@ -2,9 +2,19 @@ import { describe, expect, it } from 'vitest'
 import PizZip from 'pizzip'
 import { fillBracketPlaceholders, fillDocxTemplate } from './fill-docx'
 import { integerToWords } from './number-words'
+import { naturalPersonNameSurnameFirst } from './person-name'
 import { resolveShareTransferTemplate, shareTransferPlaceholders, type ShareTransferInput } from './share-transfer'
 
 describe('share transfer document fill', () => {
+  it('puts a natural person surname first', () => {
+    expect(naturalPersonNameSurnameFirst({
+      firstName: 'Yibing',
+      lastName: 'LU',
+      nameEn: 'Yibing LU',
+    })).toBe('LU Yibing')
+    expect(naturalPersonNameSurnameFirst({ nameEn: '6AM Technology Limited' })).toBe('6AM Technology Limited')
+  })
+
   it('writes English share counts', () => {
     expect(integerToWords(1)).toBe('ONE')
     expect(integerToWords(21)).toBe('TWENTY-ONE')
@@ -84,15 +94,16 @@ describe('share transfer document fill', () => {
     expect(xml).not.toContain('[Transferor Name]')
     expect(xml).not.toContain('Witness address')
     expect(xml).not.toContain('[Address]')
-    expect(xml).toContain('[Name]')
-    const text = xml.replace(/<[^>]+>/g, '')
-    const transferorCaption = text.indexOf('Witness signature                                      Transferor')
-    const transfereeCaption = text.indexOf('Witness signature                                      Transferee')
-    expect(transferorCaption).toBeGreaterThan(-1)
-    expect(text.indexOf('Ada Chan', transferorCaption)).toBeGreaterThan(transferorCaption)
-    expect(text.indexOf('Ada Chan', transferorCaption)).toBeLessThan(text.indexOf('Witness name: [Name]', transferorCaption))
-    expect(transfereeCaption).toBeGreaterThan(transferorCaption)
-    expect(text.indexOf('Ben Lee', transfereeCaption)).toBeGreaterThan(transfereeCaption)
-    expect(text.indexOf('Ben Lee', transfereeCaption)).toBeLessThan(text.indexOf('Witness name: [Name]', transfereeCaption))
+    expect(xml).toContain('Witness name:')
+    expect(xml).not.toContain('[Name]')
+    const paragraphs = [...xml.matchAll(/<w:p[ >][\s\S]*?<\/w:p>/g)].map(match => match[0])
+    for (const name of ['Ada Chan', 'Ben Lee']) {
+      const signature = paragraphs.find(paragraph => {
+        const text = [...paragraph.matchAll(/<w:t[^>]*>(.*?)<\/w:t>/g)].map(match => match[1]).join('')
+        return text === name
+      })
+      expect(signature, `${name} signature line`).toBeTruthy()
+      expect(signature).toContain('<w:jc w:val="center"/>')
+    }
   })
 })

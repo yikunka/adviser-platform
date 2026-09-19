@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
             status: true,
             keyPersonId: true,
             linkedCompanyId: true,
-            keyPerson: { select: { homeAddress: true, contactAddress: true, position: true } },
+            keyPerson: { select: { firstName: true, lastName: true, otherName: true, homeAddress: true, contactAddress: true, position: true } },
             linkedCompany: { select: { registeredAddress: true } },
             shareTransactions: {
               orderBy: [{ transactionDate: 'desc' }, { createdAt: 'desc' }],
@@ -87,6 +87,9 @@ export async function GET(req: NextRequest) {
             || member.linkedCompany?.registeredAddress
             || '',
           occupation: member.occupation || member.keyPerson?.position || '',
+          firstName: member.keyPerson?.firstName ?? '',
+          lastName: member.keyPerson?.lastName ?? '',
+          otherName: member.keyPerson?.otherName ?? '',
           shareClass: shareClassLabel(member.shareClass),
           status: member.status,
           sharesHeld: latest?.sharesHeld ?? null,
@@ -134,6 +137,9 @@ export async function GET(req: NextRequest) {
         take: 500,
         select: {
           id: true,
+          firstName: true,
+          lastName: true,
+          otherName: true,
           nameEn: true,
           nameZh: true,
           kycCode: true,
@@ -177,6 +183,9 @@ export async function GET(req: NextRequest) {
         take: 20,
         select: {
           id: true,
+          firstName: true,
+          lastName: true,
+          otherName: true,
           nameEn: true,
           nameZh: true,
           kycCode: true,

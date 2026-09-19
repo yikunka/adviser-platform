@@ -8,6 +8,7 @@ import { Link } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
+import { naturalPersonNameSurnameFirst } from '@/lib/work-tasks/person-name'
 import { SHARE_TRANSFER_DOCUMENTS, type ShareTransferDocumentKey } from '@/lib/work-tasks/share-transfer-docs'
 
 type CompanyHit = {
@@ -32,12 +33,18 @@ type MemberOption = {
   certificateNo: string
   keyPersonId: string | null
   linkedCompanyId: string | null
+  firstName?: string
+  lastName?: string
+  otherName?: string
 }
 
 type DirectorOption = { id: string; nameEn: string; nameZh: string | null }
 
 type PersonHit = {
   id: string
+  firstName?: string | null
+  lastName?: string | null
+  otherName?: string | null
   nameEn: string
   nameZh: string | null
   kycCode: string | null
@@ -188,7 +195,7 @@ export default function ShareTransferPage() {
     const person = people.find(item => item.id === personId)
     if (!person) return
     setParty({
-      name: person.nameEn,
+      name: naturalPersonNameSurnameFirst(person),
       address: person.contactAddress || person.homeAddress || '',
       occupation: person.position || '',
       keyPersonId: person.id,
@@ -206,7 +213,9 @@ export default function ShareTransferPage() {
     const member = members.find(item => item.id === memberId)
     if (!member) return
     const party: PartyDraft = {
-      name: member.nameEn,
+      name: member.keyPersonId && !member.linkedCompanyId
+        ? naturalPersonNameSurnameFirst(member)
+        : member.nameEn,
       address: member.address,
       occupation: member.occupation,
       keyPersonId: member.keyPersonId,
