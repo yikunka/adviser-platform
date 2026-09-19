@@ -134,6 +134,7 @@ Service engagements for client companies or approved individual KYC persons.
 - Statuses: `ACTIVE` → `COMPLETED` / `EXPIRED` / `CANCELLED` / `RENEWED`; overdue period projects auto-mark as `EXPIRED` when listed or opened
 - Register work items (tasks) when needed and mark them done when finished
 - Link invoices for the same customer; each linked row has an **Open invoice** button and a **paid checkbox** (勾选 = `PAID` 已收款, 取消 = `SENT` 未收款; draft/cancelled invoices cannot be toggled here)
+- Staff who can open invoices can click **开新发票** from the project invoice section (and from the link dialog). It opens `/admin/invoices/new` with the project customer prefilled; after the invoice is created it is automatically linked back to this project
 - When a period ends, create the next-period project (start = prior end, end = +1 year by default) with a new project number; prior project becomes `RENEWED`; one-time projects cannot be renewed
 - Access and actions: `projects`, `projects.create`, `projects.edit`, `projects.delete`
 

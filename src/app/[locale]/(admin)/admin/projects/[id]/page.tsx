@@ -123,6 +123,16 @@ function clientLabel(project: ProjectDetail) {
   return '—'
 }
 
+function newInvoiceHref(project: ProjectDetail) {
+  const params = new URLSearchParams({
+    customerType: project.customerType,
+    projectId: project.id,
+  })
+  const customerId = project.customerType === 'INDIVIDUAL' ? project.keyPerson?.id : project.company?.id
+  if (customerId) params.set('customerId', customerId)
+  return `/admin/invoices/new?${params.toString()}`
+}
+
 export default function ProjectDetailPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
@@ -130,6 +140,7 @@ export default function ProjectDetailPage() {
   const canEdit = useAdminPermission('projects.edit')
   const canCreate = useAdminPermission('projects.create')
   const canDelete = useAdminPermission('projects.delete')
+  const canInvoices = useAdminPermission('invoices')
 
   const [project, setProject] = useState<ProjectDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -619,9 +630,18 @@ export default function ProjectDetailPage() {
             <div className="flex items-center justify-between gap-2">
               <h2 className="font-semibold" style={{ color: 'var(--foreground)' }}>关联发票 / 收款</h2>
               {canEdit && (
-                <Button variant="outline" onClick={openLinkDialog}>
-                  <Link2 size={16} className="mr-2" /> 关联发票
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  {canInvoices && (
+                    <Link href={newInvoiceHref(project)}>
+                      <Button variant="outline">
+                        <Plus size={16} className="mr-2" /> 开新发票
+                      </Button>
+                    </Link>
+                  )}
+                  <Button variant="outline" onClick={openLinkDialog}>
+                    <Link2 size={16} className="mr-2" /> 关联发票
+                  </Button>
+                </div>
               )}
             </div>
             {project.invoices.length === 0 ? (
@@ -724,6 +744,13 @@ export default function ProjectDetailPage() {
                   </li>
                 ))}
               </ul>
+            )}
+            {canInvoices && (
+              <Link href={newInvoiceHref(project)} onClick={() => setLinkOpen(false)}>
+                <Button variant="outline" className="w-full">
+                  <Plus size={16} className="mr-2" /> 开新发票
+                </Button>
+              </Link>
             )}
           </div>
         </div>

@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { Link, useRouter } from '@/i18n/navigation'
@@ -50,6 +51,9 @@ const dueDatePresets: InvoiceDueDatePreset[] = ['MONTH_END', 'MONTH_END_30', 'MO
 export default function NewInvoicePage() {
   const t = useTranslations('admin.invoices')
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const projectId = searchParams.get('projectId')
+  const prefilledRef = useRef(false)
   const [customers, setCustomers] = useState<CustomerOption[]>([])
   const [tcspServicePrices, setTcspServicePrices] = useState<TcspServicePriceOption[]>([])
   const [customerType, setCustomerType] = useState<CustomerType>('COMPANY')
@@ -77,6 +81,25 @@ export default function NewInvoicePage() {
       .then(json => setTcspServicePrices(json.prices ?? []))
       .catch(() => toast.error(t('loadFailed')))
   }, [t])
+
+  useEffect(() => {
+    if (prefilledRef.current || customers.length === 0) return
+    const type = searchParams.get('customerType')
+    const customerIdParam = searchParams.get('customerId')
+    if (type !== 'COMPANY' && type !== 'INDIVIDUAL') return
+    const customer = customerIdParam
+      ? customers.find(item => item.type === type && item.id === customerIdParam)
+      : undefined
+    if (customerIdParam && !customer) return
+    setCustomerType(type)
+    if (customer) {
+      setCustomerId(customer.id)
+      setBillToName(customer.billToName)
+      setBillToAddress(customer.billToAddress ?? '')
+      setBillToEmail(customer.billToEmail ?? '')
+    }
+    prefilledRef.current = true
+  }, [customers, searchParams])
 
   const customerOptions = useMemo(
     () => customers.filter(customer => customer.type === customerType),
@@ -186,6 +209,17 @@ export default function NewInvoicePage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Failed')
+      if (projectId && json.id) {
+        const linkRes = await fetch(`/api/admin/projects/${projectId}/invoices`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ invoiceId: json.id }),
+        })
+        if (!linkRes.ok) {
+          const linkJson = await linkRes.json().catch(() => ({}))
+          toast.error(typeof linkJson.error === 'string' ? linkJson.error : '发票已开出，但未能自动关联到项目。')
+        }
+      }
       toast.success(t('created'))
       router.push(`/admin/invoices/${json.id}`)
     } catch {
@@ -198,10 +232,15 @@ export default function NewInvoicePage() {
   return (
     <div className="space-y-4 max-w-4xl">
       <div className="flex items-center gap-3">
-        <Link href="/admin/invoices">
+        <Link href={projectId ? `/admin/projects/${projectId}` : '/admin/invoices'}>
           <Button variant="outline" size="sm">{t('back')}</Button>
         </Link>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>{t('createTitle')}</h1>
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>{t('createTitle')}</h1>
+          {projectId && (
+            <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>开出后会自动关联回当前项目。</p>
+          )}
+        </div>
       </div>
 
       <Card>
