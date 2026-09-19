@@ -17,7 +17,6 @@ type CompanyHit = {
   nameZh: string | null
   companyCode: string | null
   companyNumber: string | null
-  businessRegNumber: string | null
   registeredAddress?: string | null
 }
 
@@ -111,7 +110,6 @@ export default function ShareTransferPage() {
   const [companyId, setCompanyId] = useState('')
   const [companyNameEn, setCompanyNameEn] = useState('')
   const [companyNameZh, setCompanyNameZh] = useState('')
-  const [brNo, setBrNo] = useState('')
   const [companyNo, setCompanyNo] = useState('')
   const [members, setMembers] = useState<MemberOption[]>([])
   const [directors, setDirectors] = useState<DirectorOption[]>([])
@@ -164,7 +162,6 @@ export default function ShareTransferPage() {
         if (cancelled) return
         setCompanyNameEn(json.company.nameEn ?? '')
         setCompanyNameZh(json.company.nameZh ?? '')
-        setBrNo(json.company.businessRegNumber ?? '')
         setCompanyNo(json.company.companyNumber ?? '')
         setUseCommonSeal(Boolean(json.company.hasCompanyRoundSeal))
         setMembers(Array.isArray(json.members) ? json.members : [])
@@ -259,7 +256,6 @@ export default function ShareTransferPage() {
           companyId,
           companyNameEn,
           companyNameZh,
-          brNo,
           companyNo,
           transferDate,
           transferor,
@@ -313,7 +309,6 @@ export default function ShareTransferPage() {
                 setDirectors([])
                 setCompanyNameEn('')
                 setCompanyNameZh('')
-                setBrNo('')
                 setCompanyNo('')
               }
             }}
@@ -332,9 +327,6 @@ export default function ShareTransferPage() {
           </Field>
           <Field label="中文名称">
             <input className={inputClass} style={inputStyle()} value={companyNameZh} onChange={event => setCompanyNameZh(event.target.value)} />
-          </Field>
-          <Field label="商业登记号">
-            <input className={inputClass} style={inputStyle()} value={brNo} onChange={event => setBrNo(event.target.value)} />
           </Field>
           <Field label="公司编号">
             <input className={inputClass} style={inputStyle()} value={companyNo} onChange={event => setCompanyNo(event.target.value)} />

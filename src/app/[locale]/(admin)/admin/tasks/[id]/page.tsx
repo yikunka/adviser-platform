@@ -28,7 +28,6 @@ type TaskDetail = {
   payload: {
     companyNameEn?: string
     companyNameZh?: string
-    brNo?: string
     companyNo?: string
     transferDate?: string
     numberOfShares?: number
@@ -105,7 +104,6 @@ export default function WorkTaskDetailPage() {
       {payload ? (
         <section className="grid gap-2 p-5 text-sm" style={card}>
           <p>公司：{payload.companyNameZh || payload.companyNameEn || task?.company.nameEn}</p>
-          <p>商业登记号：{payload.brNo || '—'}</p>
           <p>公司编号：{payload.companyNo || '—'}</p>
           <p>转让日期：{payload.transferDate}</p>
           <p>转出：{payload.transferor?.name}　转入：{payload.transferee?.name}</p>
