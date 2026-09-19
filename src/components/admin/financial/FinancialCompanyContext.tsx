@@ -14,6 +14,8 @@ export type FinancialCompanyInfo = {
   companyCode: string | null
   financialManagerName?: string | null
   financialReadOnly?: boolean
+  /** Latest posted journal period YYYY-MM, or null when no books have been posted. */
+  lastBookedPeriod?: string | null
 }
 
 // URL-based company context — when present, takes priority over the global selector context.
