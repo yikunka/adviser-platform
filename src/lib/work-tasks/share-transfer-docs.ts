@@ -35,20 +35,6 @@ export const SHARE_TRANSFER_DOCUMENTS = [
     defaultOn: true,
   },
   {
-    key: 'no-spa',
-    fileName: 'Confirmation - No SPA by Transferor.docx',
-    label: '转出方确认：无买卖协议',
-    hint: '只在没有买卖协议时勾选',
-    defaultOn: false,
-  },
-  {
-    key: 'no-spa-property',
-    fileName: 'Share Transfer Confirmation - No SPA No Property.docx',
-    label: '确认：无买卖协议且无物业',
-    hint: '与致税务局确认书内容重叠，按需要勾选',
-    defaultOn: false,
-  },
-  {
     key: 'no-business',
     fileName: 'Share Transfer Confirmation - No Business Commenced.docx',
     label: '确认：尚未开业',
