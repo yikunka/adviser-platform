@@ -9,8 +9,12 @@ import { Link } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
 import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 import {
+  PROJECT_COLLECTION_LABELS,
+  PROJECT_INVOICING_LABELS,
   PROJECT_STATUS_LABELS,
   PROJECT_TYPE_LABELS,
+  type ProjectCollectionStatus,
+  type ProjectInvoicingStatus,
 } from '@/lib/adviser/project-labels'
 
 type ProjectRow = {
@@ -29,14 +33,22 @@ type ProjectRow = {
     openTasks: number
     taskCount: number
     invoiceCount: number
-    paidCount: number
-    unpaidCount: number
+    invoicingStatus: ProjectInvoicingStatus
+    collectionStatus: ProjectCollectionStatus
     hasPeriod: boolean
   }
 }
 
 type CompanyOption = { id: string; nameEn: string; companyCode: string | null }
 type PersonOption = { id: string; nameEn: string; kycCode: string | null }
+
+const BILLING_COLOR: Record<ProjectInvoicingStatus | ProjectCollectionStatus, string> = {
+  NOT_INVOICED: 'bg-[rgba(120,113,108,0.15)] text-[#9A8060]',
+  PARTIAL: 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]',
+  INVOICED: 'bg-[rgba(59,130,246,0.12)] text-[#3b82f6]',
+  UNPAID: 'bg-[rgba(239,68,68,0.12)] text-[#ef4444]',
+  PAID: 'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
+}
 
 const STATUS_COLOR: Record<string, string> = {
   ACTIVE: 'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
@@ -273,7 +285,8 @@ export default function ProjectsPage() {
                   <th className="px-4 py-3 text-left font-medium">类型</th>
                   <th className="px-4 py-3 text-left font-medium">周期</th>
                   <th className="px-4 py-3 text-left font-medium">状态</th>
-                  <th className="px-4 py-3 text-left font-medium">收款</th>
+                  <th className="px-4 py-3 text-left font-medium">开票状态</th>
+                  <th className="px-4 py-3 text-left font-medium">收款状态</th>
                   <th className="px-4 py-3 text-left font-medium">工作</th>
                 </tr>
               </thead>
@@ -291,7 +304,7 @@ export default function ProjectsPage() {
                       </span>
                       {clientLabel(project)}
                     </td>
-                    <td className="px-4 py-3 font-medium" style={{ color: 'var(--foreground)' }}>
+                    <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
                       {project.title}
                     </td>
                     <td className="px-4 py-3">{PROJECT_TYPE_LABELS[project.projectType]}</td>
@@ -305,8 +318,15 @@ export default function ProjectsPage() {
                         {PROJECT_STATUS_LABELS[project.status]}
                       </span>
                     </td>
-                    <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
-                      已收 {project.summary.paidCount} / 未收 {project.summary.unpaidCount}
+                    <td className="px-4 py-3">
+                      <span className={`rounded-full px-2 py-0.5 text-xs ${BILLING_COLOR[project.summary.invoicingStatus]}`}>
+                        {PROJECT_INVOICING_LABELS[project.summary.invoicingStatus]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded-full px-2 py-0.5 text-xs ${BILLING_COLOR[project.summary.collectionStatus]}`}>
+                        {PROJECT_COLLECTION_LABELS[project.summary.collectionStatus]}
+                      </span>
                     </td>
                     <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>
                       待办 {project.summary.openTasks} / 共 {project.summary.taskCount}

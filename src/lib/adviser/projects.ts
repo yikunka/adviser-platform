@@ -6,6 +6,7 @@ import {
   resolveCompanyAccess,
   type CompanyAccess,
 } from '@/lib/company-access'
+import { summarizeProjectBilling } from '@/lib/adviser/project-labels'
 
 export { PROJECT_TYPES, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS } from '@/lib/adviser/project-labels'
 
@@ -100,6 +101,7 @@ export function serializeProject(project: ProjectWithRelations) {
   const linked = project.invoices.map(link => link.invoice)
   const paidCount = linked.filter(inv => inv.status === 'PAID').length
   const unpaidCount = linked.filter(inv => inv.status === 'SENT').length
+  const billing = summarizeProjectBilling(linked.map(inv => inv.status))
 
   return {
     ...project,
@@ -130,6 +132,8 @@ export function serializeProject(project: ProjectWithRelations) {
       invoiceCount: project._count.invoices,
       paidCount,
       unpaidCount,
+      invoicingStatus: billing.invoicingStatus,
+      collectionStatus: billing.collectionStatus,
       hasPeriod: Boolean(project.startDate && project.endDate),
     },
   }
