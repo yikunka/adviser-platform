@@ -7,6 +7,32 @@ import { useParams } from 'next/navigation'
 import { Link } from '@/i18n/navigation'
 import { shareTransferDocument } from '@/lib/work-tasks/share-transfer-docs'
 
+type TaskKind = 'SHARE_TRANSFER' | 'COMPANY_NAME_CHANGE' | 'REGISTERED_OFFICE_ADDRESS' | 'REGISTER_LOCATION' | 'ACCOUNTING_REFERENCE_DATE'
+
+const TASK_TITLE: Record<TaskKind, string> = {
+  SHARE_TRANSFER: '股份转让',
+  COMPANY_NAME_CHANGE: '公司/营业名称',
+  REGISTERED_OFFICE_ADDRESS: '公司注册/营业地址',
+  REGISTER_LOCATION: '登记册备存地点',
+  ACCOUNTING_REFERENCE_DATE: '会计参照日',
+}
+
+const TASK_NOTE: Record<TaskKind, string> = {
+  SHARE_TRANSFER: '下载后交税务局盖印。这项任务没有改股东纪录，也不会向公司注册处交表。',
+  COMPANY_NAME_CHANGE: '下载特别决议和表格 NNC2 后交给公司注册处。这项任务没有改公司管理里的名称。',
+  REGISTERED_OFFICE_ADDRESS: '下载表格 NR1 后交给公司注册处。这项任务没有改公司管理里的注册地址。',
+  REGISTER_LOCATION: '下载表格 NR2 后交给公司注册处。这项任务没有改公司纪录的存放地点。',
+  ACCOUNTING_REFERENCE_DATE: '下载表格 NAC4 后交给公司注册处。这项任务没有改公司的会计参照月。',
+}
+
+const FILE_LABEL: Record<string, string> = {
+  'special-resolution': '特别决议（更改公司名称）',
+  nnc2: 'NNC2 更改公司名称通知书',
+  nr1: 'NR1 注册办事处地址更改通知书',
+  nr2: 'NR2 登记册及公司纪录备存地点通知书',
+  nac4: 'NAC4 更改会计参照日通知书',
+}
+
 type Party = {
   name?: string
   address?: string
@@ -24,7 +50,7 @@ type TaskFile = {
 type TaskDetail = {
   id: string
   taskNumber: string
-  kind: 'SHARE_TRANSFER' | 'COMPANY_NAME_CHANGE'
+  kind: TaskKind
   createdAt: string
   payload: {
     companyNameEn?: string
@@ -43,8 +69,18 @@ type TaskDetail = {
     shareholderNames?: string[]
     brn?: string
     signatoryName?: string
-    signatoryCapacity?: 'DIRECTOR' | 'COMPANY_SECRETARY'
+    signatoryCapacity?: string
     signatoryDate?: string
+    flat?: string
+    building?: string
+    street?: string
+    district?: string
+    effectiveDate?: string
+    location?: string
+    currentPeriodEnd?: string
+    change?: string
+    newPeriodEnd?: string
+    resolutionDate?: string
   }
   company: { nameEn: string; nameZh: string | null }
   createdBy: { nameEn: string }
@@ -101,12 +137,10 @@ export default function WorkTaskDetailPage() {
       <div>
         <Link href="/admin/tasks" className="text-sm" style={{ color: 'var(--muted-foreground)' }}>工作任务</Link>
         <h1 className="mt-2 text-xl font-semibold" style={{ color: 'var(--foreground)' }}>
-          {task?.kind === 'COMPANY_NAME_CHANGE' ? '公司/营业名称' : '股份转让'} {task?.taskNumber ?? ''}
+          {task ? TASK_TITLE[task.kind] : '工作任务'} {task?.taskNumber ?? ''}
         </h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-          {task?.kind === 'COMPANY_NAME_CHANGE'
-            ? '下载特别决议和表格 NNC2 后交给公司注册处。这项任务没有改公司管理里的名称。'
-            : '下载后交税务局盖印。这项任务没有改股东纪录，也不会向公司注册处交表。'}
+          {task ? TASK_NOTE[task.kind] : ''}
         </p>
       </div>
 
@@ -125,7 +159,7 @@ export default function WorkTaskDetailPage() {
         </section>
       ) : null}
 
-      {payload && task?.kind !== 'COMPANY_NAME_CHANGE' ? (
+      {payload && task?.kind === 'SHARE_TRANSFER' ? (
         <section className="grid gap-2 p-5 text-sm" style={card}>
           <p>公司：{payload.companyNameZh || payload.companyNameEn || task?.company.nameEn}</p>
           <p>公司编号：{payload.companyNo || '—'}</p>
@@ -137,16 +171,37 @@ export default function WorkTaskDetailPage() {
         </section>
       ) : null}
 
+      {payload && task && task.kind !== 'SHARE_TRANSFER' && task.kind !== 'COMPANY_NAME_CHANGE' ? (
+        <section className="grid gap-2 p-5 text-sm" style={card}>
+          <p>公司：{payload.companyNameZh || payload.companyNameEn || task.company.nameEn}</p>
+          <p>公司编号：{payload.companyNo || '—'}</p>
+          {task.kind === 'ACCOUNTING_REFERENCE_DATE' ? (
+            <>
+              <p>现行会计期终结：{payload.currentPeriodEnd || '—'}</p>
+              <p>{payload.change === 'EXTEND' ? '延长' : '缩短'}至：{payload.newPeriodEnd || '—'}</p>
+              <p>董事决议日期：{payload.resolutionDate || '—'}</p>
+            </>
+          ) : (
+            <>
+              <p>生效日期：{payload.effectiveDate || '—'}</p>
+              <p>
+                {task.kind === 'REGISTER_LOCATION' && payload.location === 'REGISTERED_OFFICE'
+                  ? '改为备存于注册办事处'
+                  : [payload.flat, payload.building, payload.street, payload.district].filter(Boolean).join('，') || '—'}
+              </p>
+            </>
+          )}
+          <p>签署：{payload.signatoryName || '—'} {payload.signatoryDate || ''}</p>
+          <p style={{ color: 'var(--muted-foreground)' }}>由 {task.createdBy.nameEn} 生成</p>
+        </section>
+      ) : null}
+
       <section className="p-5" style={card}>
         <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>下载文件</h2>
         <ul className="mt-3 flex flex-col gap-2">
           {(task?.files ?? []).map(file => {
             const doc = shareTransferDocument(file.templateKey)
-            const label = file.templateKey === 'special-resolution'
-              ? '特别决议（更改公司名称）'
-              : file.templateKey === 'nnc2'
-                ? 'NNC2 更改公司名称通知书'
-                : (doc?.label ?? file.fileName)
+            const label = FILE_LABEL[file.templateKey] ?? doc?.label ?? file.fileName
             return (
               <li key={file.id} className="flex items-center justify-between gap-3 text-sm">
                 <span>

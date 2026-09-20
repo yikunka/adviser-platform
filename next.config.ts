@@ -27,7 +27,14 @@ const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: turbopackRoot,
   outputFileTracingIncludes: {
-    "/*": ["./assets/fonts/**/*", "./assets/secretarial/**/*", "./CR_Forms/NNC2_Change_of_Company_Name.pdf"],
+    "/*": [
+      "./assets/fonts/**/*",
+      "./assets/secretarial/**/*",
+      "./CR_Forms/NNC2_Change_of_Company_Name.pdf",
+      "./CR_Forms/NR1_Change_Registered_Office_Address.pdf",
+      "./CR_Forms/NR2_Location_of_Registers.pdf",
+      "./CR_Forms/NAC4_Alteration_Accounting_Reference_Date.pdf",
+    ],
   },
   outputFileTracingExcludes: {
     "/*": ["./next.config.ts", "./uploads/**/*", "./aml-downloads/**/*"],

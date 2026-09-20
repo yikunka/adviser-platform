@@ -34,6 +34,8 @@ export async function GET(req: NextRequest) {
         nameZh: true,
         companyNumber: true,
         businessRegNumber: true,
+        registeredAddress: true,
+        financialYearEndMonth: true,
         hasCompanyRoundSeal: true,
         directors: {
           where: { status: 'ACTIVE' },
@@ -72,6 +74,8 @@ export async function GET(req: NextRequest) {
         nameZh: company.nameZh ?? '',
         companyNumber: company.companyNumber ?? '',
         businessRegNumber: company.businessRegNumber ?? '',
+        registeredAddress: company.registeredAddress ?? '',
+        financialYearEndMonth: company.financialYearEndMonth,
         hasCompanyRoundSeal: company.hasCompanyRoundSeal,
       },
       directors: company.directors,

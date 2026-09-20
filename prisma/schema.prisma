@@ -1203,6 +1203,9 @@ model AdviserForm {
 enum AdvWorkTaskKind {
   SHARE_TRANSFER
   COMPANY_NAME_CHANGE
+  REGISTERED_OFFICE_ADDRESS
+  REGISTER_LOCATION
+  ACCOUNTING_REFERENCE_DATE
 }
 
 /// Secretarial work-task pack. Files live here only — not in company documents,
