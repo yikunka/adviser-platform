@@ -82,8 +82,16 @@ function setText(form: ReturnType<PDFDocument['getForm']>, name: string, value: 
     field.setMaxLength(value.length)
   }
   field.setText(value)
-  const appearance = field.acroField.getDefaultAppearance() ?? ''
-  if (/(?:^|\s)0\s+Tf/.test(appearance)) field.setFontSize(12)
+  forceBlackText(field.acroField)
+}
+
+/** Readers redraw live form values in blue. RGB black is baked into the appearance. */
+function forceBlackText(field: { getDefaultAppearance(): string | undefined; setDefaultAppearance(appearance: string): void }) {
+  const appearance = field.getDefaultAppearance() ?? ''
+  const sizeMatch = appearance.match(/(\d+(?:\.\d+)?)\s+Tf/)
+  const parsed = sizeMatch ? Number(sizeMatch[1]) : 12
+  const size = parsed > 0 ? parsed : 12
+  field.setDefaultAppearance(`0 0 0 rg /F ${size} Tf`)
 }
 
 function strikeCapacity(form: ReturnType<PDFDocument['getForm']>, capacity: Nnc2Values['signatoryCapacity']) {
@@ -91,6 +99,7 @@ function strikeCapacity(form: ReturnType<PDFDocument['getForm']>, capacity: Nnc2
   const field = form.getDropdown(fieldName)
   const strike = field.getOptions().find(option => option.includes(STRIKE) || option.includes('-'))
   if (strike) field.select(strike)
+  forceBlackText(field.acroField)
 }
 
 export async function renderNnc2(input: CompanyNameChangeInput): Promise<Buffer> {
@@ -120,6 +129,7 @@ export async function renderNnc2(input: CompanyNameChangeInput): Promise<Buffer>
   setText(form, 'fill_16_P.1', values.presentorEmail)
   setText(form, 'fill_17_P.1', values.presentorReference)
   form.updateFieldAppearances(fonts.regular)
+  form.flatten({ updateFieldAppearances: false })
   return Buffer.from(await doc.save())
 }
 

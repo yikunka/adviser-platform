@@ -38,6 +38,7 @@ import {
   Factory,
   FolderKanban,
   ClipboardList,
+  ListChecks,
 } from 'lucide-react'
 import type { AdminMenuKey } from '@/lib/auth/admin-access'
 import { pathnameToAdminMenuKey, adminMenusAllow } from '@/lib/auth/admin-access'
@@ -93,6 +94,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/admin/sfs-customers', key: 'sfsCustomers', Icon: ContactRound },
       { href: '/admin/sfs-orders', key: 'sfsOrders', Icon: Diamond },
+      { href: '/admin/sfs-order-tracker', key: 'sfsOrders', labelKey: 'sfsOrderTracker', Icon: ListChecks },
       { href: '/admin/sfs-diamond-specs', key: 'sfsDiamondSpecs', Icon: SlidersHorizontal },
       { href: '/admin/sfs-factory', key: 'sfsFactory', Icon: Factory },
       { href: '/admin/sfs-invoices', key: 'sfsInvoices', Icon: FileText },

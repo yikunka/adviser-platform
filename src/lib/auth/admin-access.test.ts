@@ -46,6 +46,7 @@ describe('SFS Diamond access', () => {
 
   it('maps SFS Diamond routes to permission keys', () => {
     expect(pathnameToAdminMenuKey('/zh/admin/sfs-orders')).toBe('sfsOrders')
+    expect(pathnameToAdminMenuKey('/zh/admin/sfs-order-tracker')).toBe('sfsOrders')
     expect(pathnameToAdminMenuKey('/zh/admin/sfs-customers')).toBe('sfsCustomers')
     expect(pathnameToAdminMenuKey('/zh/admin/sfs-factory')).toBe('sfsFactory')
   })

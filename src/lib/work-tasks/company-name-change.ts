@@ -56,10 +56,24 @@ function paragraphStart(xml: string, indexInside: number): number {
   return Math.max(xml.lastIndexOf('<w:p ', indexInside), xml.lastIndexOf('<w:p>', indexInside))
 }
 
+function removeParagraphContaining(xml: string, token: string): string {
+  const at = xml.indexOf(token)
+  if (at < 0) return xml
+  const start = paragraphStart(xml, at)
+  const end = xml.indexOf('</w:p>', at)
+  if (start < 0 || end < 0) return xml
+  return xml.slice(0, start) + xml.slice(end + '</w:p>'.length)
+}
+
 function signatureParagraph(text: string, spacing: { before?: string; after: string }): string {
   const rPr = '<w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/></w:rPr>'
   const before = spacing.before ? ` w:before="${spacing.before}"` : ''
   return `<w:p><w:pPr><w:spacing${before} w:after="${spacing.after}" w:line="240" w:lineRule="auto"/>${rPr}</w:pPr><w:r>${rPr}<w:t>${escapeXml(text)}</w:t></w:r></w:p>`
+}
+
+/** Three blank lines so the signature block sits below the resolution text. */
+function signatureSpacer(): string {
+  return '<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr></w:p>'.repeat(3)
 }
 
 function signatureCell(name: string, before?: string): string {
@@ -101,7 +115,8 @@ export function applyShareholderSignatures(xml: string, names: string[]): string
     throw new Error('公司名称变更模板的股东签名位置无法读取。')
   }
   const after = labelEnd + '</w:p>'.length
-  return xml.slice(0, blockStart) + (shareholders.length > 0 ? signatureTable(shareholders) : '') + xml.slice(after)
+  const signatures = shareholders.length > 0 ? signatureSpacer() + signatureTable(shareholders) : ''
+  return xml.slice(0, blockStart) + signatures + xml.slice(after)
 }
 
 async function resolveTemplate(): Promise<string> {
@@ -131,7 +146,11 @@ export async function renderCompanyNameChangeDocument(input: CompanyNameChangeIn
     const entry = zip.file(name)
     if (!entry) continue
     let xml = entry.asText()
-    if (name === 'word/document.xml') xml = applyShareholderSignatures(xml, shareholders)
+    if (name === 'word/document.xml') {
+      xml = applyShareholderSignatures(xml, shareholders)
+      if (!input.companyNameZh.trim()) xml = removeParagraphContaining(xml, '[Company Name (Chinese)]')
+      if (!input.newCompanyNameZh.trim()) xml = removeParagraphContaining(xml, '[New Company Name (Chinese)]')
+    }
     if (!xml.includes('[')) {
       if (xml !== entry.asText()) zip.file(name, xml)
       continue

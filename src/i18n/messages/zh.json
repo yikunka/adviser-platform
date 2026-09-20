@@ -33,6 +33,7 @@
     "users": "客戶帳號管理",
     "sfsCustomers": "SFS 客戶",
     "sfsOrders": "SFS 訂單",
+    "sfsOrderTracker": "訂單跟踪",
     "sfsInvoices": "SFS 發票",
     "sfsDiamondSpecs": "鑽石規格",
     "sfsFactory": "價格管理",
@@ -772,6 +773,7 @@
         "links": {
           "customers": "客戶",
           "orders": "訂單",
+          "tracker": "訂單跟踪",
           "pricing": "價格管理",
           "specs": "鑽石規格",
           "invoices": "發票"

@@ -41,6 +41,33 @@ describe('company name change signatures', () => {
     expect(text.match(/\(Shareholder\)/g)).toHaveLength(1)
     expect(text).toContain('6AM Technology Limited')
     expect(text).not.toContain('[Shareholder Name')
+    expect(text).not.toContain('""')
+    const xml = new PizZip(buffer).file('word/document.xml')?.asText() ?? ''
+    const beforeTable = xml.slice(0, xml.indexOf('<w:tbl>'))
+    expect(beforeTable.match(/<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"\/><\/w:pPr><\/w:p>/g)).toHaveLength(3)
+  })
+
+  it('prints a Chinese name and omits the quoted line when that name is blank', async () => {
+    const named = documentText((await renderCompanyNameChangeDocument({
+      ...input,
+      companyNameZh: '六时有限公司',
+      newCompanyNameZh: '六时技术有限公司',
+      shareholderNames: ['6AM Technology Limited'],
+    })).buffer)
+    expect(named).toContain('六时有限公司')
+    expect(named).toContain('"六时技术有限公司"')
+
+    const blank = documentText((await renderCompanyNameChangeDocument({
+      ...input,
+      companyNameZh: '',
+      newCompanyNameZh: '',
+      newCompanyNameEn: '6AM Technical (HK) Limited',
+      shareholderNames: ['6AM Technology Limited'],
+    })).buffer)
+    expect(blank).toContain('"6AM Technical (HK) Limited"')
+    expect(blank).not.toContain('""')
+    expect(blank).not.toContain('[Company Name (Chinese)]')
+    expect(blank).not.toContain('[New Company Name (Chinese)]')
   })
 
   it('omits the signature block when no shareholder is named', async () => {
@@ -94,15 +121,15 @@ describe('form NNC2', () => {
       presentorNameEn: '6AM Advisory Limited',
     })
     const { PDFDocument } = await import('pdf-lib')
-    const form = (await PDFDocument.load(buffer)).getForm()
-    expect(form.getTextField('fill_1_P.1').getText()).toBe('75549235')
-    expect(form.getTextField('fill_3_P.1').getText()).toBe('六时有限公司')
-    expect(form.getTextField('fill_7_P.1').getText()).toBe('6AM Technical (HK) Limited')
-    expect(form.getTextField('fill_8_P.1').getText()).toBe('六时有限公司')
-    expect(form.getTextField('fill_4_P.1').getText()).toBe('20')
-    expect(form.getTextField('fill_5_P.1').getText()).toBe('09')
-    expect(form.getTextField('fill_6_P.1').getText()).toBe('2026')
-    expect(form.getDropdown('Dropdown_2_P.1').getSelected()).toContain('—')
-    expect(form.getTextField('fill_12_P.1').getText()).toBe('6AM Advisory Limited')
+    const { inflateSync } = await import('node:zlib')
+    const doc = await PDFDocument.load(buffer)
+    expect(doc.getForm().getFields()).toHaveLength(0)
+    const streams = buffer.toString('latin1').split('stream')
+    const text = streams.map(part => {
+      const body = part.split('endstream')[0]?.replace(/^\r?\n/, '')
+      if (!body) return ''
+      try { return inflateSync(Buffer.from(body, 'latin1')).toString('latin1') } catch { return '' }
+    }).join('\n')
+    expect(text).toContain('0 0 0 rg')
   })
 })

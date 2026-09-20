@@ -170,6 +170,8 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
       return 'sfsCustomers'
     case 'sfs-orders':
       return 'sfsOrders'
+    case 'sfs-order-tracker':
+      return 'sfsOrders'
     case 'sfs-invoices':
       return 'sfsInvoices'
     case 'sfs-diamond-specs':

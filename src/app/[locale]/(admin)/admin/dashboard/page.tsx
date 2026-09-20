@@ -333,6 +333,7 @@ export default async function AdminDashboardPage() {
 
     if (canSee('sfsCustomers')) sfsQuickLinks.push({ href: '/admin/sfs-customers', label: t('sfs.links.customers') })
     if (canOrders) sfsQuickLinks.push({ href: '/admin/sfs-orders', label: t('sfs.links.orders') })
+    if (canOrders) sfsQuickLinks.push({ href: '/admin/sfs-order-tracker', label: t('sfs.links.tracker') })
     if (canSee('sfsFactory')) sfsQuickLinks.push({ href: '/admin/sfs-factory', label: t('sfs.links.pricing') })
     if (canSee('sfsDiamondSpecs')) sfsQuickLinks.push({ href: '/admin/sfs-diamond-specs', label: t('sfs.links.specs') })
     if (canInvoices) sfsQuickLinks.push({ href: '/admin/sfs-invoices', label: t('sfs.links.invoices') })

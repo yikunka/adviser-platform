@@ -33,6 +33,7 @@
     "users": "Customer Account Management",
     "sfsCustomers": "SFS Customers",
     "sfsOrders": "SFS Orders",
+    "sfsOrderTracker": "Order tracking",
     "sfsInvoices": "SFS Invoices",
     "sfsDiamondSpecs": "Diamond Specs",
     "sfsFactory": "Price Management",
@@ -772,6 +773,7 @@
         "links": {
           "customers": "Customers",
           "orders": "Orders",
+          "tracker": "Order tracking",
           "pricing": "Price management",
           "specs": "Diamond specs",
           "invoices": "Invoices"

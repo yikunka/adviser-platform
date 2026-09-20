@@ -11,7 +11,6 @@ export async function GET() {
   const orders = await prisma.sfsOrder.findMany({
     where: { status: { not: 'CANCELLED' } },
     orderBy: { createdAt: 'asc' },
-    take: 120,
     select: {
       id: true,
       sampleCode: true,
