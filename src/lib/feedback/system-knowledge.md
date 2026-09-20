@@ -297,7 +297,7 @@ Order lifecycle management for memorial diamond commissions.
 - Production phase tracking with milestone dates. The order detail and the client's order page show a seven-stage tracker (order received, package arrived HK, chemical factory, gas bottle to the diamond factory, diamond crafting and IGI, jewelling, delivery). A stage is complete when its milestone date is set or the matching production step is recorded. Package arrived HK is stored on the order. The tracker also rolls up linked SFS invoices the same way as adviser projects: not invoiced / partly invoiced / invoiced, and unpaid / partly paid / paid. Staff can mark a sent invoice paid from the order, or open a new invoice for that order. Delivery shows a warning when issued invoices are not fully paid, but production steps stay editable
 
 ### SFS Order tracking (`/admin/sfs-order-tracker`)
-Separate admin page in the SFS Diamond menu, using the same permission as SFS orders. Lists every non-cancelled order with its current production stage, invoicing status, and payment status. Staff can filter by stage or search by sample code, memorial name, or client. Opening a row goes to that order. Cancelled orders are omitted.
+Separate admin page in the SFS Diamond menu, using the same permission as SFS orders. Lists every non-cancelled order as the same seven-stage production tracker used on the order (numbered steps, dates, invoicing and payment badges). Staff can filter by the current stage or search by sample code, memorial name, or client. Opening a tracker goes to that order. Cancelled orders are omitted.
   1. Sample received
   2. Chemical transformation start / end
   3. CVD growth start / end

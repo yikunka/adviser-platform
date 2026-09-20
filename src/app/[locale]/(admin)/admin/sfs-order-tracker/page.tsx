@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from '@/i18n/navigation'
+import { Link } from '@/i18n/navigation'
 import { ListChecks, Search } from 'lucide-react'
+import { SfsProductionTracker } from '@/components/sfs/SfsProductionTracker'
 import type { ProjectCollectionStatus, ProjectInvoicingStatus } from '@/lib/adviser/project-labels'
-import { SFS_TRACKER_STAGES } from '@/lib/sfs/order-tracker'
+import { SFS_TRACKER_STAGES, type SfsTrackerStage } from '@/lib/sfs/order-tracker'
 
 type TrackingRow = {
   id: string
@@ -12,6 +13,7 @@ type TrackingRow = {
   memorialName: string
   clientName: string
   status: string
+  stages: SfsTrackerStage[]
   stageKey: string
   stageLabel: string
   stageNumber: number
@@ -20,38 +22,7 @@ type TrackingRow = {
   collectionStatus: ProjectCollectionStatus
 }
 
-const INVOICING: Record<ProjectInvoicingStatus, string> = {
-  NOT_INVOICED: 'Not invoiced',
-  PARTIAL: 'Partly invoiced',
-  INVOICED: 'Invoiced',
-}
-
-const COLLECTION: Record<ProjectCollectionStatus, string> = {
-  UNPAID: 'Unpaid',
-  PARTIAL: 'Partly paid',
-  PAID: 'Paid',
-}
-
-const th: React.CSSProperties = {
-  textAlign: 'left',
-  padding: '0.75rem 1rem',
-  fontWeight: 500,
-  fontSize: '0.8125rem',
-  color: 'var(--muted-foreground)',
-  background: 'rgba(201,169,110,0.04)',
-  borderBottom: '1px solid var(--border)',
-  whiteSpace: 'nowrap',
-}
-
-const td: React.CSSProperties = {
-  padding: '0.75rem 1rem',
-  fontSize: '0.875rem',
-  color: 'var(--muted-foreground)',
-  whiteSpace: 'nowrap',
-}
-
 export default function AdminSfsOrderTrackerPage() {
-  const router = useRouter()
   const [orders, setOrders] = useState<TrackingRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -149,74 +120,48 @@ export default function AdminSfsOrderTrackerPage() {
         </div>
       </div>
 
-      <div className="rounded-xl overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
-        {loading ? (
-          <div className="py-16 text-center text-sm" style={{ color: 'var(--muted-foreground)' }}>Loading…</div>
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <ListChecks size={32} style={{ color: '#C9A96E', opacity: 0.4 }} />
-            <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-              {orders.length === 0 ? 'No open orders.' : 'No orders match your filters.'}
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr>
-                  {['Sample Code', 'Memorial', 'Client', 'Stage', 'Invoicing', 'Collection', ''].map(h => (
-                    <th key={h || 'action'} style={th}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((order, i) => {
-                  const paid = order.collectionStatus === 'PAID'
-                  const stageDone = order.stageState === 'done'
-                  return (
-                    <tr
-                      key={order.id}
-                      className="cursor-pointer transition-colors hover:bg-[var(--surface-modal)]"
-                      style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--border)' : 'none' }}
-                      tabIndex={0}
-                      onClick={() => router.push(`/admin/sfs-orders/${order.id}`)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter' || e.key === ' ') router.push(`/admin/sfs-orders/${order.id}`)
-                      }}
-                    >
-                      <td style={{ ...td, color: '#C9A96E', fontFamily: 'monospace' }}>
-                        {order.sampleCode ?? '—'}
-                      </td>
-                      <td style={{ ...td, color: 'var(--foreground)', fontWeight: 500 }}>{order.memorialName}</td>
-                      <td style={td}>{order.clientName}</td>
-                      <td style={td}>
-                        <span
-                          className="px-2.5 py-1 rounded-full text-xs font-semibold"
-                          style={{
-                            background: stageDone ? 'rgba(16,185,129,0.12)' : 'rgba(201,169,110,0.12)',
-                            color: stageDone ? '#10b981' : '#C9A96E',
-                          }}
-                        >
-                          {order.stageNumber}. {order.stageLabel}
-                        </span>
-                      </td>
-                      <td style={td}>{INVOICING[order.invoicingStatus]}</td>
-                      <td style={{ ...td, color: paid ? '#10b981' : '#ef4444', fontWeight: 500 }}>
-                        {COLLECTION[order.collectionStatus]}
-                      </td>
-                      <td style={{ ...td, paddingRight: '1rem' }}>
-                        <span className="text-xs font-medium px-3 py-1.5 rounded-lg" style={{ background: 'rgba(201,169,110,0.1)', color: '#C9A96E', border: '1px solid rgba(201,169,110,0.2)' }}>
-                          Open →
-                        </span>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      {loading || filtered.length === 0 ? (
+        <div className="rounded-xl overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+          {loading ? (
+            <div className="py-16 text-center text-sm" style={{ color: 'var(--muted-foreground)' }}>Loading…</div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <ListChecks size={32} style={{ color: '#C9A96E', opacity: 0.4 }} />
+              <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                {orders.length === 0 ? 'No open orders.' : 'No orders match your filters.'}
+              </p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filtered.map(order => {
+            const delivery = order.stages?.find(stage => stage.key === 'delivery')
+            const deliveryWarning = delivery && delivery.state !== 'upcoming' && order.collectionStatus !== 'PAID'
+              ? 'Delivery is not blocked, but payment has not been received in full.'
+              : null
+            return (
+              <Link key={order.id} href={`/admin/sfs-orders/${order.id}`} className="block space-y-2">
+                <div className="flex flex-wrap items-baseline justify-between gap-2 px-1">
+                  <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
+                    {order.sampleCode ? (
+                      <span className="mr-2 font-mono text-xs" style={{ color: '#C9A96E' }}>{order.sampleCode}</span>
+                    ) : null}
+                    {order.memorialName}
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{order.clientName}</p>
+                </div>
+                <SfsProductionTracker
+                  stages={order.stages ?? []}
+                  invoicingStatus={order.invoicingStatus}
+                  collectionStatus={order.collectionStatus}
+                  deliveryWarning={deliveryWarning}
+                />
+              </Link>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

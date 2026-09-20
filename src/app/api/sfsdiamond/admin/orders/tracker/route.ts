@@ -45,6 +45,7 @@ export async function GET() {
       memorialName: order.memorialName,
       clientName: order.clientName,
       status: order.status,
+      stages,
       stageKey: current.key,
       stageLabel: current.label,
       stageNumber: stages.findIndex(stage => stage.key === current.key) + 1,
