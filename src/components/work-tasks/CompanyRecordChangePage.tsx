@@ -7,7 +7,7 @@ import { Link, useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
-import { REGISTER_ITEMS, type RegisterItemKey } from '@/lib/work-tasks/company-record-change'
+import { REGISTER_ITEMS, type RegisterItemKey } from '@/lib/work-tasks/register-items'
 
 export type CompanyRecordKind = 'REGISTERED_OFFICE_ADDRESS' | 'REGISTER_LOCATION' | 'ACCOUNTING_REFERENCE_DATE'
 
