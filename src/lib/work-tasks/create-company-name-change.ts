@@ -3,11 +3,23 @@ import { prisma } from '@/lib/db/prisma'
 import { contentDispositionHeader } from '@/lib/http/content-disposition'
 import { deleteFromR2, uploadToR2 } from '@/lib/storage/r2'
 import { renderCompanyNameChangeDocument, type CompanyNameChangeInput } from '@/lib/work-tasks/company-name-change'
+import { nnc2FileName, renderNnc2 } from '@/lib/work-tasks/nnc2'
 
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+const PDF_MIME = 'application/pdf'
 
 export async function createCompanyNameChangeTask(companyId: string, input: CompanyNameChangeInput, userId: string) {
-  const file = await renderCompanyNameChangeDocument(input)
+  const resolution = await renderCompanyNameChangeDocument(input)
+  const nnc2 = await renderNnc2(input)
+  const files = [
+    { ...resolution, mimeType: DOCX_MIME },
+    {
+      templateKey: 'nnc2',
+      fileName: nnc2FileName(input.companyNameEn),
+      buffer: nnc2,
+      mimeType: PDF_MIME,
+    },
+  ]
   const year = new Date().getFullYear()
   const prefix = `WT-${year}-`
   const task = await prisma.$transaction(async tx => {
@@ -30,23 +42,27 @@ export async function createCompanyNameChangeTask(companyId: string, input: Comp
     })
   })
 
-  const storageKey = `adviser/work-tasks/${task.id}/${crypto.randomUUID()}.docx`
+  const uploaded: string[] = []
   try {
-    await uploadToR2(storageKey, file.buffer, DOCX_MIME, {
-      contentDisposition: contentDispositionHeader('attachment', file.fileName),
-    })
-    await prisma.advWorkTaskFile.create({
-      data: {
-        taskId: task.id,
-        templateKey: file.templateKey,
-        fileName: file.fileName,
-        storageKey,
-        mimeType: DOCX_MIME,
-        fileSize: file.buffer.byteLength,
-      },
-    })
+    for (const file of files) {
+      const storageKey = `adviser/work-tasks/${task.id}/${crypto.randomUUID()}${file.mimeType === PDF_MIME ? '.pdf' : '.docx'}`
+      await uploadToR2(storageKey, file.buffer, file.mimeType, {
+        contentDisposition: contentDispositionHeader('attachment', file.fileName),
+      })
+      uploaded.push(storageKey)
+      await prisma.advWorkTaskFile.create({
+        data: {
+          taskId: task.id,
+          templateKey: file.templateKey,
+          fileName: file.fileName,
+          storageKey,
+          mimeType: file.mimeType,
+          fileSize: file.buffer.byteLength,
+        },
+      })
+    }
   } catch (error) {
-    await deleteFromR2(storageKey).catch(() => undefined)
+    await Promise.all(uploaded.map(key => deleteFromR2(key).catch(() => undefined)))
     await prisma.advWorkTask.delete({ where: { id: task.id } }).catch(() => undefined)
     throw error
   }

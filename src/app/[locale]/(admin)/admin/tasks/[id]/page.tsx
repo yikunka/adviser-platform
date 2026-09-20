@@ -41,6 +41,10 @@ type TaskDetail = {
     newCompanyNameZh?: string
     changeDate?: string
     shareholderNames?: string[]
+    brn?: string
+    signatoryName?: string
+    signatoryCapacity?: 'DIRECTOR' | 'COMPANY_SECRETARY'
+    signatoryDate?: string
   }
   company: { nameEn: string; nameZh: string | null }
   createdBy: { nameEn: string }
@@ -101,7 +105,7 @@ export default function WorkTaskDetailPage() {
         </h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>
           {task?.kind === 'COMPANY_NAME_CHANGE'
-            ? '下载特别决议后交给公司注册处。这项任务没有改公司管理里的名称。'
+            ? '下载特别决议和表格 NNC2 后交给公司注册处。这项任务没有改公司管理里的名称。'
             : '下载后交税务局盖印。这项任务没有改股东纪录，也不会向公司注册处交表。'}
         </p>
       </div>
@@ -116,6 +120,7 @@ export default function WorkTaskDetailPage() {
           <p>新中文名称：{payload.newCompanyNameZh || '—'}</p>
           <p>决议日期：{payload.changeDate}</p>
           <p>股东：{(payload.shareholderNames ?? []).filter(Boolean).join('、') || '—'}</p>
+          <p>NNC2 签署：{payload.signatoryName || '—'}（{payload.signatoryCapacity === 'COMPANY_SECRETARY' ? '公司秘书' : '董事'}）{payload.signatoryDate}</p>
           <p style={{ color: 'var(--muted-foreground)' }}>由 {task.createdBy.nameEn} 生成</p>
         </section>
       ) : null}
@@ -137,7 +142,11 @@ export default function WorkTaskDetailPage() {
         <ul className="mt-3 flex flex-col gap-2">
           {(task?.files ?? []).map(file => {
             const doc = shareTransferDocument(file.templateKey)
-            const label = file.templateKey === 'special-resolution' ? '特别决议（更改公司名称）' : (doc?.label ?? file.fileName)
+            const label = file.templateKey === 'special-resolution'
+              ? '特别决议（更改公司名称）'
+              : file.templateKey === 'nnc2'
+                ? 'NNC2 更改公司名称通知书'
+                : (doc?.label ?? file.fileName)
             return (
               <li key={file.id} className="flex items-center justify-between gap-3 text-sm">
                 <span>

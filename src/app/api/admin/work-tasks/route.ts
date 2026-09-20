@@ -14,10 +14,21 @@ const nameChangeSchema = z.object({
   companyNameEn: z.string().trim().min(1).max(300),
   companyNameZh: z.string().trim().max(300).default(''),
   companyNo: z.string().trim().max(40).default(''),
+  brn: z.string().trim().max(40).default(''),
   newCompanyNameEn: z.string().trim().max(300).default(''),
   newCompanyNameZh: z.string().trim().max(300).default(''),
   changeDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   shareholderNames: z.array(z.string().trim().max(300)).max(4).default([]),
+  signatoryName: z.string().trim().min(1).max(200),
+  signatoryCapacity: z.enum(['DIRECTOR', 'COMPANY_SECRETARY']),
+  signatoryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  presentorNameZh: z.string().trim().max(200).default(''),
+  presentorNameEn: z.string().trim().max(200).default(''),
+  presentorAddress: z.string().trim().max(500).default(''),
+  presentorTel: z.string().trim().max(40).default(''),
+  presentorFax: z.string().trim().max(40).default(''),
+  presentorEmail: z.string().trim().max(200).default(''),
+  presentorReference: z.string().trim().max(80).default(''),
 })
 
 const partySchema = z.object({
@@ -123,6 +134,11 @@ export async function POST(req: NextRequest) {
     if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
       return NextResponse.json({ error: '决议日期不正确。' }, { status: 400 })
     }
+    const signDate = parsed.data.signatoryDate.split('-').map(Number)
+    const signed = new Date(signDate[0], signDate[1] - 1, signDate[2])
+    if (signed.getFullYear() !== signDate[0] || signed.getMonth() !== signDate[1] - 1 || signed.getDate() !== signDate[2]) {
+      return NextResponse.json({ error: '签署日期不正确。' }, { status: 400 })
+    }
     const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
     if (!(await assertCompanyAccessible(access, parsed.data.companyId))) {
       return NextResponse.json({ error: '找不到这家公司。' }, { status: 404 })
@@ -137,10 +153,21 @@ export async function POST(req: NextRequest) {
         companyNameEn: parsed.data.companyNameEn,
         companyNameZh: parsed.data.companyNameZh,
         companyNo: parsed.data.companyNo,
+        brn: parsed.data.brn,
         newCompanyNameEn: parsed.data.newCompanyNameEn,
         newCompanyNameZh: parsed.data.newCompanyNameZh,
         changeDate: parsed.data.changeDate,
         shareholderNames: parsed.data.shareholderNames,
+        signatoryName: parsed.data.signatoryName,
+        signatoryCapacity: parsed.data.signatoryCapacity,
+        signatoryDate: parsed.data.signatoryDate,
+        presentorNameZh: parsed.data.presentorNameZh,
+        presentorNameEn: parsed.data.presentorNameEn,
+        presentorAddress: parsed.data.presentorAddress,
+        presentorTel: parsed.data.presentorTel,
+        presentorFax: parsed.data.presentorFax,
+        presentorEmail: parsed.data.presentorEmail,
+        presentorReference: parsed.data.presentorReference,
       }, session!.user.id)
       return NextResponse.json({ id: task.id, taskNumber: task.taskNumber })
     } catch (cause) {
