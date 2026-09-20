@@ -24,7 +24,7 @@ const TASK_NOTE: Record<TaskKind, string> = {
   COMPANY_NAME_CHANGE: '下载特别决议和表格 NNC2 后交给公司注册处。这项任务没有改公司管理里的名称。',
   REGISTERED_OFFICE_ADDRESS: '下载表格 NR1 后交给公司注册处。这项任务没有改公司管理里的注册地址。',
   REGISTER_LOCATION: '下载董事会会议纪录和表格 NR2。NR2 交给公司注册处。这项任务没有改公司纪录的存放地点。',
-  ACCOUNTING_REFERENCE_DATE: '下载董事会会议纪录和表格 NAC4。NAC4 交给公司注册处。这项任务没有改公司的会计参照月。',
+  ACCOUNTING_REFERENCE_DATE: '下载成员会议纪录和表格 NAC4。NAC4 交给公司注册处。这项任务没有改公司的会计参照月。',
 }
 
 const FILE_LABEL: Record<string, string> = {
@@ -33,7 +33,7 @@ const FILE_LABEL: Record<string, string> = {
   nr1: 'NR1 注册办事处地址更改通知书',
   nr2: 'NR2 登记册及公司纪录备存地点通知书',
   'board-minutes': '董事会会议纪录（登记册备存地点）',
-  'board-minutes-ard': '董事会会议纪录（会计参照日）',
+  'board-minutes-ard': '成员会议纪录（会计参照日）',
   nac4: 'NAC4 更改会计参照日通知书',
 }
 
@@ -85,6 +85,7 @@ type TaskDetail = {
     change?: string
     newPeriodEnd?: string
     resolutionDate?: string
+    memberNames?: string[]
   }
   company: { nameEn: string; nameZh: string | null }
   createdBy: { nameEn: string }
@@ -185,7 +186,8 @@ export default function WorkTaskDetailPage() {
             <>
               <p>现行会计期终结：{payload.currentPeriodEnd || '—'}</p>
               <p>{payload.change === 'EXTEND' ? '延长' : '缩短'}至：{payload.newPeriodEnd || '—'}</p>
-              <p>董事决议日期：{payload.resolutionDate || '—'}</p>
+              <p>成员决议日期：{payload.resolutionDate || '—'}</p>
+              <p>成员：{(payload.memberNames ?? []).filter(Boolean).join('、') || '—'}</p>
             </>
           ) : (
             <>

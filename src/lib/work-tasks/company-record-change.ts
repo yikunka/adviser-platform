@@ -59,6 +59,7 @@ export type AccountingReferenceInput = CrPresentor & {
   newPeriodEnd: string
   extensionReason: AccountingExtensionReason | ''
   resolutionDate: string
+  memberNames: string[]
   signatoryName: string
   signatoryCapacity: 'DIRECTOR' | 'COMPANY_SECRETARY'
   signatoryDate: string

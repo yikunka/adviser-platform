@@ -17,13 +17,18 @@ function insertSpacerBefore(xml: string, token: string): string {
   if (at < 0) return xml
   const paragraph = paragraphStart(xml, at)
   if (paragraph < 0) return xml
-  return xml.slice(0, paragraph) + signatureSpacer() + xml.slice(paragraph)
+  const before = xml.slice(0, paragraph)
+  if (before.lastIndexOf('<w:tbl') > before.lastIndexOf('</w:tbl>')) return xml
+  return before + signatureSpacer() + xml.slice(paragraph)
 }
 
 function giveSignatureRoom(xml: string): string {
   const closing = '_______________________________'
-  const present = '[Director Name]                                              _________________  (signature)'
-  return insertSpacerBefore(insertSpacerBefore(xml, closing), present)
+  const presents = [
+    '[Director Name]                                              _________________  (signature)',
+    '[Member Name]                                              _________________  (signature)',
+  ]
+  return presents.reduce((next, token) => insertSpacerBefore(next, token), insertSpacerBefore(xml, closing))
 }
 
 function removeParagraphContaining(xml: string, token: string): string {
@@ -57,6 +62,7 @@ export async function renderBoardMinutes(options: {
   missingMessage: string
   values: Record<string, PlaceholderValue>
   omitChineseName: boolean
+  prepare?: (xml: string) => string
 }): Promise<Buffer> {
   const zip = new PizZip(await readFile(await resolveTemplate(options.folder, options.templateFile, options.missingMessage)))
   for (const name of Object.keys(zip.files)) {
@@ -66,6 +72,7 @@ export async function renderBoardMinutes(options: {
     let xml = entry.asText()
     if (name === 'word/document.xml') {
       if (options.omitChineseName) xml = removeParagraphContaining(xml, '[Company Name (Chinese)]')
+      if (options.prepare) xml = options.prepare(xml)
       xml = giveSignatureRoom(xml)
     }
     if (!xml.includes('[')) {

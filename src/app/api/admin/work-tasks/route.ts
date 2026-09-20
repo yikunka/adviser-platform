@@ -105,6 +105,7 @@ const accountingReferenceSchema = z.object({
   newPeriodEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   extensionReason: z.enum(['NONE_IN_FIVE_YEARS', 'HOLDING_COMPANY', 'MEMBERS_RESOLUTION', '']).default(''),
   resolutionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  memberNames: z.array(z.string().trim().max(300)).max(4).default([]),
   signatoryName: z.string().trim().min(1).max(200),
   signatoryCapacity: z.enum(['DIRECTOR', 'COMPANY_SECRETARY']),
   signatoryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -289,9 +290,10 @@ export async function POST(req: NextRequest) {
       }
     }
     const parsed = accountingReferenceSchema.safeParse(body)
+    const members = parsed.success ? parsed.data.memberNames.filter(Boolean) : []
     const extensionOk = parsed.success && (parsed.data.change === 'SHORTEN' || parsed.data.extensionReason !== '')
-    if (!parsed.success || !extensionOk || parsed.data.currentPeriodEnd === parsed.data.newPeriodEnd || !dates([parsed.data.currentPeriodEnd, parsed.data.newPeriodEnd, parsed.data.resolutionDate, parsed.data.signatoryDate])) {
-      return NextResponse.json({ error: '请填完整会计参照日。延长会计期时要选择原因。' }, { status: 400 })
+    if (!parsed.success || members.length === 0 || !extensionOk || parsed.data.currentPeriodEnd === parsed.data.newPeriodEnd || !dates([parsed.data.currentPeriodEnd, parsed.data.newPeriodEnd, parsed.data.resolutionDate, parsed.data.signatoryDate])) {
+      return NextResponse.json({ error: '请填完整会计参照日，并填写至少一名成员。延长会计期时要选择原因。' }, { status: 400 })
     }
     const company = await loadWorkTaskCompany(session!.user.id, session!.user.role, parsed.data.companyId)
     if (!company) return NextResponse.json({ error: '找不到这家公司。' }, { status: 404 })
@@ -299,6 +301,7 @@ export async function POST(req: NextRequest) {
       const task = await createAccountingReferenceTask(parsed.data.companyId, {
         ...parsed.data,
         extensionReason: parsed.data.change === 'EXTEND' ? parsed.data.extensionReason : '',
+        memberNames: members,
       } as AccountingReferenceInput, session!.user.id)
       return NextResponse.json({ id: task.id, taskNumber: task.taskNumber })
     } catch (cause) {

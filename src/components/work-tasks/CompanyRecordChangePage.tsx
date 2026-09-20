@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 import { REGISTER_ITEMS, type RegisterItemKey } from '@/lib/work-tasks/register-items'
+import { naturalPersonNameSurnameFirst } from '@/lib/work-tasks/person-name'
 import { WorkTaskPlaybook } from '@/components/work-tasks/WorkTaskPlaybook'
 
 export type CompanyRecordKind = 'REGISTERED_OFFICE_ADDRESS' | 'REGISTER_LOCATION' | 'ACCOUNTING_REFERENCE_DATE'
@@ -25,7 +26,7 @@ const COPY: Record<CompanyRecordKind, { title: string; hint: string; button: str
   },
   ACCOUNTING_REFERENCE_DATE: {
     title: '会计参照日',
-    hint: '填写现行会计期终结日和新的会计参照日，生成董事会会议纪录和表格 NAC4。不会改公司的会计参照月。',
+    hint: '填写现行会计期终结日和新的会计参照日，生成成员会议纪录和表格 NAC4。不会改公司的会计参照月。',
     button: '生成会议纪录和 NAC4',
   },
 }
@@ -61,6 +62,25 @@ function suggestedPeriodEnd(month: number | null | undefined) {
 
 type CompanyHit = { id: string; nameEn: string; nameZh: string | null; companyNumber: string | null }
 
+type MemberOption = {
+  nameEn: string
+  nameZh: string
+  status: string
+  sharesHeld: number | null
+  keyPersonId: string | null
+  linkedCompanyId: string | null
+  firstName?: string
+  lastName?: string
+  otherName?: string
+}
+
+function memberName(member: MemberOption) {
+  if (member.keyPersonId && !member.linkedCompanyId) {
+    return naturalPersonNameSurnameFirst(member) || member.nameEn
+  }
+  return member.nameZh || member.nameEn
+}
+
 export function CompanyRecordChangePage({ kind }: { kind: CompanyRecordKind }) {
   const router = useRouter()
   const canCreate = useAdminPermission('workTasks.create')
@@ -87,6 +107,7 @@ export function CompanyRecordChangePage({ kind }: { kind: CompanyRecordKind }) {
   const [newPeriodEnd, setNewPeriodEnd] = useState('')
   const [extensionReason, setExtensionReason] = useState<'NONE_IN_FIVE_YEARS' | 'HOLDING_COMPANY' | 'MEMBERS_RESOLUTION'>('NONE_IN_FIVE_YEARS')
   const [resolutionDate, setResolutionDate] = useState(todayIso)
+  const [memberNames, setMemberNames] = useState(['', '', '', ''])
   const [signatoryName, setSignatoryName] = useState('')
   const [signatoryCapacity, setSignatoryCapacity] = useState<'DIRECTOR' | 'COMPANY_SECRETARY' | 'MANAGER' | 'AUTHORIZED_REPRESENTATIVE'>('DIRECTOR')
   const [signatoryDate, setSignatoryDate] = useState(todayIso)
@@ -135,6 +156,9 @@ export function CompanyRecordChangePage({ kind }: { kind: CompanyRecordKind }) {
         const director = directors[0]
         setSignatoryName(director ? (director.nameZh || director.nameEn) : '')
         setSignatoryCapacity('DIRECTOR')
+        const members = Array.isArray(json.members) ? json.members as MemberOption[] : []
+        const current = members.filter(member => member.status !== 'TRANSFERRED_OUT' && member.sharesHeld !== 0)
+        setMemberNames([0, 1, 2, 3].map(index => current[index] ? memberName(current[index]) : ''))
       })
       .catch(cause => {
         toast.error(cause instanceof Error ? cause.message : '载入公司失败。')
@@ -176,7 +200,7 @@ export function CompanyRecordChangePage({ kind }: { kind: CompanyRecordKind }) {
       ? { ...common, flat, building, street, district, effectiveDate, newEmail, newPhone }
       : kind === 'REGISTER_LOCATION'
         ? { ...common, registers, location, flat, building, street, district, effectiveDate, remarks }
-        : { ...common, currentPeriodEnd, change, newPeriodEnd, extensionReason: change === 'EXTEND' ? extensionReason : '', resolutionDate }
+        : { ...common, currentPeriodEnd, change, newPeriodEnd, extensionReason: change === 'EXTEND' ? extensionReason : '', resolutionDate, memberNames: memberNames.map(name => name.trim()).filter(Boolean) }
     setSaving(true)
     try {
       const res = await fetch('/api/admin/work-tasks', {
@@ -306,8 +330,26 @@ export function CompanyRecordChangePage({ kind }: { kind: CompanyRecordKind }) {
               </select>
             </label>
           ) : null}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {memberNames.map((name, index) => (
+              <label key={index} className="text-sm">
+                <span className={label} style={{ color: 'var(--muted-foreground)' }}>成员 {index + 1}</span>
+                <input
+                  className={inputClass}
+                  style={inputStyle()}
+                  value={name}
+                  onChange={event => {
+                    const next = [...memberNames]
+                    next[index] = event.target.value
+                    setMemberNames(next)
+                  }}
+                />
+              </label>
+            ))}
+          </div>
+          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>会议纪录由这些成员签署。表格 NAC4 仍由下方的董事或公司秘书签署。</p>
           <label className="text-sm">
-            <span className={label} style={{ color: 'var(--muted-foreground)' }}>董事决议日期</span>
+            <span className={label} style={{ color: 'var(--muted-foreground)' }}>成员决议日期</span>
             <input type="date" className={inputClass} style={inputStyle()} value={resolutionDate} onChange={event => setResolutionDate(event.target.value)} />
           </label>
         </section>
@@ -316,7 +358,7 @@ export function CompanyRecordChangePage({ kind }: { kind: CompanyRecordKind }) {
       <section className="grid gap-3 p-5" style={card}>
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="text-sm sm:col-span-1">
-            <span className={label} style={{ color: 'var(--muted-foreground)' }}>签署人</span>
+            <span className={label} style={{ color: 'var(--muted-foreground)' }}>{kind === 'ACCOUNTING_REFERENCE_DATE' ? 'NAC4 签署人' : '签署人'}</span>
             <input className={inputClass} style={inputStyle()} value={signatoryName} onChange={event => setSignatoryName(event.target.value)} />
           </label>
           <label className="text-sm">
