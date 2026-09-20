@@ -6,8 +6,10 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Link } from '@/i18n/navigation'
 import { shareTransferDocument } from '@/lib/work-tasks/share-transfer-docs'
+import { WorkTaskPlaybook } from '@/components/work-tasks/WorkTaskPlaybook'
+import type { WorkTaskKind } from '@/lib/work-tasks/playbook-steps'
 
-type TaskKind = 'SHARE_TRANSFER' | 'COMPANY_NAME_CHANGE' | 'REGISTERED_OFFICE_ADDRESS' | 'REGISTER_LOCATION' | 'ACCOUNTING_REFERENCE_DATE'
+type TaskKind = WorkTaskKind
 
 const TASK_TITLE: Record<TaskKind, string> = {
   SHARE_TRANSFER: '股份转让',
@@ -144,6 +146,8 @@ export default function WorkTaskDetailPage() {
           {task ? TASK_NOTE[task.kind] : ''}
         </p>
       </div>
+
+      {task ? <WorkTaskPlaybook kind={task.kind} /> : null}
 
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
 

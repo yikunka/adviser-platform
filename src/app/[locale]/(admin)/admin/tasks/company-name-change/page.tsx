@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 import { naturalPersonNameSurnameFirst } from '@/lib/work-tasks/person-name'
+import { WorkTaskPlaybook } from '@/components/work-tasks/WorkTaskPlaybook'
 
 type CompanyHit = {
   id: string
@@ -184,6 +185,8 @@ export default function CompanyNameChangePage() {
           生成更改公司名称的特别决议，以及公司注册处表格 NNC2。只存在这项任务里，不会改公司管理里的名称。有几位股东就留几个签名位，没有股东就不留。某一语言没有名称时，NNC2 会填 NIL；只改一种语言时，另一种名称会原样保留。
         </p>
       </div>
+
+      <WorkTaskPlaybook kind="COMPANY_NAME_CHANGE" />
 
       <section className="flex flex-col gap-3 p-5" style={card}>
         <label className="flex flex-col gap-1 text-sm">

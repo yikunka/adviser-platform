@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 import { naturalPersonNameSurnameFirst } from '@/lib/work-tasks/person-name'
 import { SHARE_TRANSFER_DOCUMENTS, type ShareTransferDocumentKey } from '@/lib/work-tasks/share-transfer-docs'
+import { WorkTaskPlaybook } from '@/components/work-tasks/WorkTaskPlaybook'
 
 type CompanyHit = {
   id: string
@@ -294,6 +295,8 @@ export default function ShareTransferPage() {
           生成转让文书、买卖票据、董事决议和新股票，下载后交税务局盖印。不会改股东纪录，也不写入公司文件库。近三个月账目、审计报告和章程仍要向客户收取。
         </p>
       </div>
+
+      <WorkTaskPlaybook kind="SHARE_TRANSFER" />
 
       <section className="grid gap-3 p-5" style={card}>
         <Field label="公司">

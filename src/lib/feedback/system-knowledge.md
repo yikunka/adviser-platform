@@ -167,6 +167,7 @@ Independent secretarial task files. Not stored in company documents, not produce
 - Registered office / business address, register location, and accounting reference date each select a company and prefill its name, company number, business registration number, current registered address, and (for the accounting date) the financial year-end month. Staff enter the new address or dates and the signatory. The presentor defaults to the same 6AM Advisory details as Form NNC2. Generating fills Companies Registry Form NR1, NR2, or NAC4 in black and flattens it. Register location also fills a board minutes document noting which registers move and where they are kept. Submit does **not** change the company address, register location, or financial year-end month in company management
 - Submit does **not** append a share transaction, change member holdings, or update the register of members
 - Accounts, audit report, and articles are still collected from the client; they are not generated
+- Each task page and its generated-task page show the Company Action Playbook handling order at the top: share transfer is card B6, company name change is B2, registered office is B4, and register location is B5. Accounting reference date has no playbook card; that page shows the directors' resolution, then Form NAC4 within 15 days
 - Access: `workTasks`. Generating files requires `workTasks.create`
 
 ### 7. Team Management (`/admin/team`)

@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 import { REGISTER_ITEMS, type RegisterItemKey } from '@/lib/work-tasks/register-items'
+import { WorkTaskPlaybook } from '@/components/work-tasks/WorkTaskPlaybook'
 
 export type CompanyRecordKind = 'REGISTERED_OFFICE_ADDRESS' | 'REGISTER_LOCATION' | 'ACCOUNTING_REFERENCE_DATE'
 
@@ -201,6 +202,8 @@ export function CompanyRecordChangePage({ kind }: { kind: CompanyRecordKind }) {
         <h1 className="mt-2 text-xl font-semibold" style={{ color: 'var(--foreground)' }}>{copy.title}</h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>{copy.hint}</p>
       </div>
+
+      <WorkTaskPlaybook kind={kind} />
 
       <section className="grid gap-4 p-5" style={card}>
         <label className="text-sm">
