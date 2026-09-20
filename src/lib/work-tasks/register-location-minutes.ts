@@ -36,6 +36,30 @@ function paragraphStart(xml: string, indexInside: number): number {
   return Math.max(xml.lastIndexOf('<w:p ', indexInside), xml.lastIndexOf('<w:p>', indexInside))
 }
 
+/** Three blank lines so there is room to sign above the line. */
+function signatureSpacer(): string {
+  return '<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr></w:p>'.repeat(3)
+}
+
+function insertSpacerBefore(xml: string, token: string): string {
+  const at = xml.indexOf(token)
+  if (at < 0) return xml
+  const paragraph = paragraphStart(xml, at)
+  if (paragraph < 0) return xml
+  return xml.slice(0, paragraph) + signatureSpacer() + xml.slice(paragraph)
+}
+
+function giveSignatureRoom(xml: string): string {
+  const closing = '_______________________________'
+  const closingWide = '_'.repeat(60)
+  const present = '[Director Name]                                              _________________  (signature)'
+  const presentWide = `[Director Name]${' '.repeat(12)}${'_'.repeat(40)}  (signature)`
+  let next = xml.replace(closing, closingWide)
+  next = insertSpacerBefore(next, closingWide)
+  next = next.replace(present, presentWide)
+  return insertSpacerBefore(next, presentWide)
+}
+
 function removeParagraphContaining(xml: string, token: string): string {
   const at = xml.indexOf(token)
   if (at < 0) return xml
@@ -79,8 +103,9 @@ export async function renderRegisterLocationMinutes(input: RegisterLocationInput
     const entry = zip.file(name)
     if (!entry) continue
     let xml = entry.asText()
-    if (name === 'word/document.xml' && !input.companyNameZh.trim()) {
-      xml = removeParagraphContaining(xml, '[Company Name (Chinese)]')
+    if (name === 'word/document.xml') {
+      if (!input.companyNameZh.trim()) xml = removeParagraphContaining(xml, '[Company Name (Chinese)]')
+      xml = giveSignatureRoom(xml)
     }
     if (!xml.includes('[')) {
       zip.file(name, xml)
