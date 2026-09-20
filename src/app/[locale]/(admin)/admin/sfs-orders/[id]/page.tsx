@@ -26,6 +26,7 @@ import {
 } from '@/lib/sfs/order-step-plan'
 import { buildSfsOrderTracker } from '@/lib/sfs/order-tracker'
 import { SfsOrderTrackerPanel, type SfsTrackerInvoice } from '@/components/sfs/SfsOrderTrackerPanel'
+import { SfsOrderTrackingList } from '@/components/sfs/SfsOrderTrackingList'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -984,7 +985,12 @@ export default function AdminSfsOrderDetailPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+      <SfsOrderTrackingList
+        activeId={order.id}
+        refreshKey={`${order.status}:${order.steps.length}:${form.packageArrivedHkAt ?? ''}:${order.deliveryAt ?? ''}`}
+      />
+      <div className="min-w-0 flex-1 max-w-4xl space-y-6">
 
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-4">
@@ -1252,6 +1258,7 @@ export default function AdminSfsOrderDetailPage() {
           canManageSteps={canManageSteps}
         />
       ))}
+      </div>
     </div>
   )
 }

@@ -73,11 +73,11 @@ export default function CompanyNameChangePage() {
   const [signatoryCapacity, setSignatoryCapacity] = useState<'DIRECTOR' | 'COMPANY_SECRETARY'>('DIRECTOR')
   const [signatoryDate, setSignatoryDate] = useState(todayIso)
   const [presentorNameZh, setPresentorNameZh] = useState('')
-  const [presentorNameEn, setPresentorNameEn] = useState('')
-  const [presentorAddress, setPresentorAddress] = useState('')
-  const [presentorTel, setPresentorTel] = useState('')
+  const [presentorNameEn, setPresentorNameEn] = useState('6AM Advisory Limited')
+  const [presentorAddress, setPresentorAddress] = useState('RM7 20F Boss Commercial Centre 28 Ferry Street Yau Ma Tei KLN HK')
+  const [presentorTel, setPresentorTel] = useState('65600073')
   const [presentorFax, setPresentorFax] = useState('')
-  const [presentorEmail, setPresentorEmail] = useState('')
+  const [presentorEmail, setPresentorEmail] = useState('kennywong@6amadvise.com')
   const [presentorReference, setPresentorReference] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -278,7 +278,7 @@ export default function CompanyNameChangePage() {
           </label>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
-          <p className="md:col-span-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>提交人资料（公司注册处用来通知领取更改名称证明书，可留空）</p>
+          <p className="md:col-span-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>提交人资料（公司注册处用来通知领取更改名称证明书，已填默认，可改）</p>
           <label className="flex flex-col gap-1 text-sm">
             <span style={{ color: 'var(--muted-foreground)' }}>提交人中文名称</span>
             <input className={inputClass} style={inputStyle()} value={presentorNameZh} onChange={event => setPresentorNameZh(event.target.value)} />
