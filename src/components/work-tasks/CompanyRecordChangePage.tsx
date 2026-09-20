@@ -25,8 +25,8 @@ const COPY: Record<CompanyRecordKind, { title: string; hint: string; button: str
   },
   ACCOUNTING_REFERENCE_DATE: {
     title: '会计参照日',
-    hint: '填写现行会计期终结日和新的会计参照日，生成表格 NAC4。不会改公司的会计参照月。',
-    button: '生成 NAC4',
+    hint: '填写现行会计期终结日和新的会计参照日，生成董事会会议纪录和表格 NAC4。不会改公司的会计参照月。',
+    button: '生成会议纪录和 NAC4',
   },
 }
 

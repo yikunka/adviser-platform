@@ -12,6 +12,7 @@ import {
   type RegisterLocationInput,
 } from '@/lib/work-tasks/company-record-change'
 import { renderRegisterLocationMinutes } from '@/lib/work-tasks/register-location-minutes'
+import { renderAccountingReferenceMinutes } from '@/lib/work-tasks/accounting-reference-minutes'
 
 const PDF_MIME = 'application/pdf'
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
@@ -88,6 +89,13 @@ export async function createRegisterLocationTask(companyId: string, input: Regis
   ])
 }
 
-export function createAccountingReferenceTask(companyId: string, input: AccountingReferenceInput, userId: string) {
-  return renderAccountingReference(input).then(file => storeTask(companyId, 'ACCOUNTING_REFERENCE_DATE', input, userId, [pdfFile(file)]))
+export async function createAccountingReferenceTask(companyId: string, input: AccountingReferenceInput, userId: string) {
+  const [minutes, nac4] = await Promise.all([
+    renderAccountingReferenceMinutes(input),
+    renderAccountingReference(input),
+  ])
+  return storeTask(companyId, 'ACCOUNTING_REFERENCE_DATE', input, userId, [
+    { ...minutes, mimeType: DOCX_MIME },
+    pdfFile(nac4),
+  ])
 }
