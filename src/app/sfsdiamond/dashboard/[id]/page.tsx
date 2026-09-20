@@ -13,6 +13,9 @@ import {
 } from '@/lib/sfs/order-step-display'
 import { SFS_PHASE_LABELS, SFS_PHASE_ORDER } from '@/lib/sfs/order-predefined-steps'
 import { matchCompletedStep, resolveOrderStepPlan } from '@/lib/sfs/order-step-plan'
+import { summarizeProjectBilling } from '@/lib/adviser/project-labels'
+import { buildSfsOrderTracker } from '@/lib/sfs/order-tracker'
+import { SfsProductionTracker } from '@/components/sfs/SfsProductionTracker'
 
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   PENDING:   { bg: 'rgba(201,169,110,0.12)', color: '#C9A96E'  },
@@ -92,6 +95,7 @@ export default async function SFSOrderDetailPage({
         orderBy: [{ phase: 'asc' }, { stepNumber: 'asc' }],
         include: { attachments: { orderBy: { createdAt: 'asc' } } },
       },
+      invoices: { select: { status: true } },
     },
   })
 
@@ -104,6 +108,9 @@ export default async function SFSOrderDetailPage({
   const CARD   = '#FFFFFF'
   const BORDER = '#EDE7D8'
 
+  const issuedInvoices = order.invoices.filter(invoice => invoice.status === 'SENT' || invoice.status === 'PAID')
+  const billing = summarizeProjectBilling(issuedInvoices.map(invoice => invoice.status))
+  const tracker = buildSfsOrderTracker(order)
   const badge = STATUS_STYLE[order.status] ?? STATUS_STYLE.PENDING
   const diamonds = order.diamonds as { code?: string; carat?: string; shape?: string; type?: string; design?: string; metal?: string; ringSize?: string }[]
 
@@ -185,6 +192,13 @@ export default async function SFSOrderDetailPage({
             initialValue={order.customerInternalOrderCode}
           />
         </div>
+
+        <SfsProductionTracker
+          stages={tracker}
+          invoicingStatus={billing.invoicingStatus}
+          collectionStatus={billing.collectionStatus}
+          tone="client"
+        />
 
         {/* Admin remark to customer */}
         {order.customerRemark && (

@@ -160,9 +160,10 @@ Central price-list management for TCSP service quotes.
 
 ### 6e. Work tasks (`/admin/tasks`)
 Independent secretarial task files. Not stored in company documents, not produced by company docgen, and not the shared form-download library.
-- Hub lists task categories. The first category is **成员/股东的变更**, with one task: **股份转让**
+- Hub lists task categories. The first category is **成员/股东的变更**, with one task: **股份转让**. The next category is **公司资料的变更**, with one task: **公司/营业名称**
 - Share transfer selects the company from company management, and the transferor and transferee from natural-person (KYC) management. A natural person's name is prefilled surname first; a company name is left as registered. Names and addresses can still be typed by hand on the task only. The form does not show the business registration number, and the new share certificate does not print it. It does not write those records back
 - Generating the task fills the Word templates (instrument of transfer, bought and sold note, directors' resolution, new share certificate, and optional IRD confirmations) and stores the downloads on the task. Values filled into the instrument of transfer and bought and sold note are underlined. The IRD confirmation prints the subject as Re: Transfer of [shares] Ordinary Shares of [company] (BRN No. [company number]), and states that the company has not commenced business and no audited accounts have been prepared. The separate no-business letter, transferor no-SPA letter, and no-SPA-and-no-property letter are not offered, because they repeat the IRD confirmation. Staff download them and submit the stamp-duty pack to the Inland Revenue Department. A normal share transfer has no Companies Registry form
+- Company name change selects the company from company management and prefills the current English name, Chinese name, company number, and up to four current shareholders. Staff enter the new English and/or Chinese name and the resolution date. Generating the task fills the special resolution Word template and stores the download on the task. Submit does **not** change the company name stored in company management
 - Submit does **not** append a share transaction, change member holdings, or update the register of members
 - Accounts, audit report, and articles are still collected from the client; they are not generated
 - Access: `workTasks`. Generating files requires `workTasks.create`
@@ -293,7 +294,7 @@ Order lifecycle management for memorial diamond commissions.
 - Order detail shows the customer's self-entered internal order reference (read-only) when set
 - Order statuses: `PENDING` → `QUOTED` → `CONFIRMED` → `COMPLETED` / `CANCELLED`
 - Custom design panel: view client-uploaded design files (images/PDF) and design notes per diamond; staff enter **Quoted amount (HKD)** and optional **Quote notes** (both visible to the client), then set status to `QUOTED`
-- Production phase tracking with milestone dates:
+- Production phase tracking with milestone dates. The order detail and the client's order page show a seven-stage tracker (order received, package arrived HK, chemical factory, gas bottle to the diamond factory, diamond crafting and IGI, jewelling, delivery). A stage is complete when its milestone date is set or the matching production step is recorded. Package arrived HK is stored on the order. The tracker also rolls up linked SFS invoices the same way as adviser projects: not invoiced / partly invoiced / invoiced, and unpaid / partly paid / paid. Staff can mark a sent invoice paid from the order, or open a new invoice for that order. Delivery shows a warning when issued invoices are not fully paid, but production steps stay editable
   1. Sample received
   2. Chemical transformation start / end
   3. CVD growth start / end

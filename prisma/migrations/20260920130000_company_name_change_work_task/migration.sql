@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "AdvWorkTaskKind" ADD VALUE 'COMPANY_NAME_CHANGE';

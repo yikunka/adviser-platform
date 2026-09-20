@@ -32,7 +32,7 @@ export async function GET(
       },
     },
   })
-  if (!task || task.kind !== 'SHARE_TRANSFER') {
+  if (!task || (task.kind !== 'SHARE_TRANSFER' && task.kind !== 'COMPANY_NAME_CHANGE')) {
     return NextResponse.json({ error: '找不到这项任务。' }, { status: 404 })
   }
 

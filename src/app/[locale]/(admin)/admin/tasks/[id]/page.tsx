@@ -24,6 +24,7 @@ type TaskFile = {
 type TaskDetail = {
   id: string
   taskNumber: string
+  kind: 'SHARE_TRANSFER' | 'COMPANY_NAME_CHANGE'
   createdAt: string
   payload: {
     companyNameEn?: string
@@ -36,6 +37,10 @@ type TaskDetail = {
     transferor?: Party
     transferee?: Party
     directorName?: string
+    newCompanyNameEn?: string
+    newCompanyNameZh?: string
+    changeDate?: string
+    shareholderNames?: string[]
   }
   company: { nameEn: string; nameZh: string | null }
   createdBy: { nameEn: string }
@@ -92,16 +97,30 @@ export default function WorkTaskDetailPage() {
       <div>
         <Link href="/admin/tasks" className="text-sm" style={{ color: 'var(--muted-foreground)' }}>工作任务</Link>
         <h1 className="mt-2 text-xl font-semibold" style={{ color: 'var(--foreground)' }}>
-          股份转让 {task?.taskNumber ?? ''}
+          {task?.kind === 'COMPANY_NAME_CHANGE' ? '公司/营业名称' : '股份转让'} {task?.taskNumber ?? ''}
         </h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-          下载后交税务局盖印。这项任务没有改股东纪录，也不会向公司注册处交表。
+          {task?.kind === 'COMPANY_NAME_CHANGE'
+            ? '下载特别决议后交给公司注册处。这项任务没有改公司管理里的名称。'
+            : '下载后交税务局盖印。这项任务没有改股东纪录，也不会向公司注册处交表。'}
         </p>
       </div>
 
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
 
-      {payload ? (
+      {payload && task?.kind === 'COMPANY_NAME_CHANGE' ? (
+        <section className="grid gap-2 p-5 text-sm" style={card}>
+          <p>现有公司：{payload.companyNameZh || payload.companyNameEn || task.company.nameEn}</p>
+          <p>公司编号：{payload.companyNo || '—'}</p>
+          <p>新英文名称：{payload.newCompanyNameEn || '—'}</p>
+          <p>新中文名称：{payload.newCompanyNameZh || '—'}</p>
+          <p>决议日期：{payload.changeDate}</p>
+          <p>股东：{(payload.shareholderNames ?? []).filter(Boolean).join('、') || '—'}</p>
+          <p style={{ color: 'var(--muted-foreground)' }}>由 {task.createdBy.nameEn} 生成</p>
+        </section>
+      ) : null}
+
+      {payload && task?.kind !== 'COMPANY_NAME_CHANGE' ? (
         <section className="grid gap-2 p-5 text-sm" style={card}>
           <p>公司：{payload.companyNameZh || payload.companyNameEn || task?.company.nameEn}</p>
           <p>公司编号：{payload.companyNo || '—'}</p>
@@ -118,10 +137,11 @@ export default function WorkTaskDetailPage() {
         <ul className="mt-3 flex flex-col gap-2">
           {(task?.files ?? []).map(file => {
             const doc = shareTransferDocument(file.templateKey)
+            const label = file.templateKey === 'special-resolution' ? '特别决议（更改公司名称）' : (doc?.label ?? file.fileName)
             return (
               <li key={file.id} className="flex items-center justify-between gap-3 text-sm">
                 <span>
-                  {doc?.label ?? file.fileName}
+                  {label}
                   <span className="ml-2" style={{ color: 'var(--muted-foreground)' }}>{fileSizeLabel(file.fileSize)}</span>
                 </span>
                 <a href={fileUrl(file.storageKey, file.fileName)} className="shrink-0" style={{ color: '#3b82f6' }}>

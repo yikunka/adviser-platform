@@ -334,6 +334,7 @@ export async function renderSfsOrderReportPdf(order: SfsOrderReportPayload): Pro
   })
 
   const milestones: [string, Date | string | null | undefined][] = [
+    ['Package arrived HK',    order.packageArrivedHkAt],
     ['Sample Received',       order.sampleReceivedAt],
     ['Chem. Transform Start', order.chemTransformStartAt],
     ['Chem. Transform End',   order.chemTransformEndAt],

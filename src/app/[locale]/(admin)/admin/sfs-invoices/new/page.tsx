@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { Link, useRouter } from '@/i18n/navigation'
@@ -25,9 +26,10 @@ const emptyLine = (): LineRow => ({ description: '', quantity: '1', weight: '', 
 export default function NewSfsInvoicePage() {
   const t = useTranslations('admin.sfsInvoices')
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [orders, setOrders] = useState<OrderOption[]>([])
   const [orderSearch, setOrderSearch] = useState('')
-  const [orderId, setOrderId] = useState('')
+  const [orderId, setOrderId] = useState(() => searchParams.get('orderId') ?? '')
   const [billToName, setBillToName] = useState('')
   const [billToAddress, setBillToAddress] = useState('')
   const [billToEmail, setBillToEmail] = useState('')
@@ -192,6 +194,9 @@ export default function NewSfsInvoicePage() {
               style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--text-cream)' }}
             >
               <option value="">{t('selectOrder')}</option>
+              {orderId && !orders.some(o => o.id === orderId) ? (
+                <option value={orderId}>Selected order</option>
+              ) : null}
               {orders.map(o => (
                 <option key={o.id} value={o.id}>
                   {o.sampleCode ? `${o.sampleCode} — ` : ''}{o.memorialName} ({o.clientName})

@@ -13,6 +13,7 @@ const updateSchema = z.object({
   quotedAmount:         z.union([z.number().nonnegative(), z.null()]).optional(),
   quoteNotes:           z.string().nullable().optional(),
   sampleReceivedAt:     z.string().datetime().nullable().optional(),
+  packageArrivedHkAt:   z.string().datetime().nullable().optional(),
   chemTransformStartAt: z.string().datetime().nullable().optional(),
   chemTransformEndAt:   z.string().datetime().nullable().optional(),
   cvdStartAt:           z.string().datetime().nullable().optional(),
@@ -49,13 +50,15 @@ export async function GET(
         include: { attachments: { orderBy: { createdAt: 'asc' } } },
       },
       designAttachments: { orderBy: [{ diamondIndex: 'asc' }, { uploadedAt: 'asc' }] },
+      invoices: { orderBy: { createdAt: 'desc' }, select: { id: true, invoiceNumber: true, status: true, total: true, currency: true } },
       user: { select: { nameEn: true, email: true } },
     },
   })
 
   if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const { invoices, ...rest } = order
   return NextResponse.json({
-    ...order,
+    ...rest,
     designAttachments: order.designAttachments.map(attachment => ({
       id: attachment.id,
       orderId: attachment.orderId,
@@ -66,6 +69,13 @@ export async function GET(
       uploadedAt: attachment.uploadedAt,
     })),
     quotedAmount: order.quotedAmount == null ? null : Number(order.quotedAmount),
+    invoices: invoices.map(invoice => ({
+      id: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      status: invoice.status,
+      currency: invoice.currency,
+      total: Number(invoice.total),
+    })),
     resolvedStepPlan: resolveOrderStepPlan(order.stepPlan),
   })
 }
@@ -116,6 +126,7 @@ export async function PATCH(
       }),
       ...(quoteNotes !== undefined && { quoteNotes }),
       sampleReceivedAt:      toDate(dates.sampleReceivedAt),
+      packageArrivedHkAt:    toDate(dates.packageArrivedHkAt),
       chemTransformStartAt:  toDate(dates.chemTransformStartAt),
       chemTransformEndAt:    toDate(dates.chemTransformEndAt),
       cvdStartAt:            toDate(dates.cvdStartAt),

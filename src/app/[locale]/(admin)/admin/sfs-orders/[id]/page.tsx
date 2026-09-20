@@ -24,6 +24,8 @@ import {
   type SfsPlanStep,
   type SfsStepPlan,
 } from '@/lib/sfs/order-step-plan'
+import { buildSfsOrderTracker } from '@/lib/sfs/order-tracker'
+import { SfsOrderTrackerPanel, type SfsTrackerInvoice } from '@/components/sfs/SfsOrderTrackerPanel'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -93,6 +95,7 @@ type Order = {
   customerRemark?: string | null
   customerInternalOrderCode?: string | null
   sampleReceivedAt?: string | null
+  packageArrivedHkAt?: string | null
   chemTransformStartAt?: string | null
   chemTransformEndAt?: string | null
   cvdStartAt?: string | null
@@ -108,6 +111,7 @@ type Order = {
   deliveryDetails?: string | null
   createdAt: string
   steps: Step[]
+  invoices?: SfsTrackerInvoice[]
   stepPlan?: unknown
   resolvedStepPlan?: SfsStepPlan
 }
@@ -840,6 +844,7 @@ export default function AdminSfsOrderDetailPage() {
         quotedAmount:         data.quotedAmount == null ? '' : String(data.quotedAmount),
         quoteNotes:           data.quoteNotes ?? '',
         sampleReceivedAt:     toDatetimeLocal(data.sampleReceivedAt),
+        packageArrivedHkAt:   toDatetimeLocal(data.packageArrivedHkAt),
         chemTransformStartAt: toDatetimeLocal(data.chemTransformStartAt),
         chemTransformEndAt:   toDatetimeLocal(data.chemTransformEndAt),
         cvdStartAt:           toDatetimeLocal(data.cvdStartAt),
@@ -890,6 +895,7 @@ export default function AdminSfsOrderDetailPage() {
           quotedAmount,
           quoteNotes:           form.quoteNotes || null,
           sampleReceivedAt:     toIsoOrNull(form.sampleReceivedAt),
+          packageArrivedHkAt:   toIsoOrNull(form.packageArrivedHkAt),
           chemTransformStartAt: toIsoOrNull(form.chemTransformStartAt),
           chemTransformEndAt:   toIsoOrNull(form.chemTransformEndAt),
           cvdStartAt:           toIsoOrNull(form.cvdStartAt),
@@ -1032,6 +1038,29 @@ export default function AdminSfsOrderDetailPage() {
           )}
         </div>
       </div>
+
+      <SfsOrderTrackerPanel
+        orderId={order.id}
+        stages={buildSfsOrderTracker({
+          status: order.status,
+          createdAt: order.createdAt,
+          packageArrivedHkAt: form.packageArrivedHkAt ? new Date(form.packageArrivedHkAt).toISOString() : null,
+          sampleReceivedAt: form.sampleReceivedAt ? new Date(form.sampleReceivedAt).toISOString() : order.sampleReceivedAt,
+          chemTransformStartAt: form.chemTransformStartAt ? new Date(form.chemTransformStartAt).toISOString() : order.chemTransformStartAt,
+          chemTransformEndAt: form.chemTransformEndAt ? new Date(form.chemTransformEndAt).toISOString() : order.chemTransformEndAt,
+          cvdStartAt: form.cvdStartAt ? new Date(form.cvdStartAt).toISOString() : order.cvdStartAt,
+          craftingEndAt: form.craftingEndAt ? new Date(form.craftingEndAt).toISOString() : order.craftingEndAt,
+          igiCertificationAt: form.igiCertificationAt ? new Date(form.igiCertificationAt).toISOString() : order.igiCertificationAt,
+          jewelrySettingEndAt: form.jewelrySettingEndAt ? new Date(form.jewelrySettingEndAt).toISOString() : order.jewelrySettingEndAt,
+          deliveryAt: form.deliveryAt ? new Date(form.deliveryAt).toISOString() : order.deliveryAt,
+          stepPlan: resolvedPlan,
+          steps: order.steps,
+        })}
+        packageArrivedHkAt={form.packageArrivedHkAt ?? ''}
+        invoices={order.invoices ?? []}
+        onHkChange={value => set('packageArrivedHkAt', value)}
+        onInvoicesChange={invoices => setOrder(prev => prev ? { ...prev, invoices } : prev)}
+      />
 
       {/* ── Client + Diamonds ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

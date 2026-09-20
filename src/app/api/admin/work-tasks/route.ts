@@ -4,8 +4,21 @@ import { requirePermission, requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
 import { createShareTransferTask } from '@/lib/work-tasks/create-share-transfer'
+import { createCompanyNameChangeTask } from '@/lib/work-tasks/create-company-name-change'
 import { SHARE_TRANSFER_DOCUMENT_KEYS, SHARE_TRANSFER_DOCUMENTS } from '@/lib/work-tasks/share-transfer-docs'
 import type { ShareTransferInput } from '@/lib/work-tasks/share-transfer'
+
+const nameChangeSchema = z.object({
+  kind: z.literal('COMPANY_NAME_CHANGE'),
+  companyId: z.string().cuid(),
+  companyNameEn: z.string().trim().min(1).max(300),
+  companyNameZh: z.string().trim().max(300).default(''),
+  companyNo: z.string().trim().max(40).default(''),
+  newCompanyNameEn: z.string().trim().max(300).default(''),
+  newCompanyNameZh: z.string().trim().max(300).default(''),
+  changeDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  shareholderNames: z.array(z.string().trim().max(300)).max(4).default([]),
+})
 
 const partySchema = z.object({
   name: z.string().trim().min(1).max(300),
@@ -39,6 +52,15 @@ const createSchema = z.object({
   documents: z.array(z.enum(SHARE_TRANSFER_DOCUMENT_KEYS)).min(1),
 })
 
+function nameChangeSummary(payload: unknown) {
+  const record = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {}
+  return {
+    changeDate: typeof record.changeDate === 'string' ? record.changeDate : '',
+    newCompanyNameEn: typeof record.newCompanyNameEn === 'string' ? record.newCompanyNameEn : '',
+    newCompanyNameZh: typeof record.newCompanyNameZh === 'string' ? record.newCompanyNameZh : '',
+  }
+}
+
 function taskSummary(payload: unknown) {
   const record = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {}
   const partyName = (value: unknown) => {
@@ -54,12 +76,13 @@ function taskSummary(payload: unknown) {
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const { error } = await requireRole('STAFF', { adminMenu: 'workTasks' })
   if (error) return error
 
+  const kind = req.nextUrl.searchParams.get('kind')
   const tasks = await prisma.advWorkTask.findMany({
-    where: { kind: 'SHARE_TRANSFER' },
+    where: { kind: kind === 'COMPANY_NAME_CHANGE' ? 'COMPANY_NAME_CHANGE' : 'SHARE_TRANSFER' },
     orderBy: { createdAt: 'desc' },
     take: 50,
     select: {
@@ -72,6 +95,7 @@ export async function GET() {
     },
   })
 
+  const nameChange = kind === 'COMPANY_NAME_CHANGE'
   return NextResponse.json({
     tasks: tasks.map(task => ({
       id: task.id,
@@ -79,7 +103,7 @@ export async function GET() {
       createdAt: task.createdAt,
       company: task.company,
       fileCount: task._count.files,
-      ...taskSummary(task.payload),
+      ...(nameChange ? nameChangeSummary(task.payload) : taskSummary(task.payload)),
     })),
   })
 }
@@ -88,7 +112,44 @@ export async function POST(req: NextRequest) {
   const { session, error } = await requirePermission('workTasks.create')
   if (error) return error
 
-  const parsed = createSchema.safeParse(await req.json().catch(() => null))
+  const body = await req.json().catch(() => null)
+  if (body && typeof body === 'object' && (body as { kind?: string }).kind === 'COMPANY_NAME_CHANGE') {
+    const parsed = nameChangeSchema.safeParse(body)
+    if (!parsed.success || (!parsed.data.newCompanyNameEn && !parsed.data.newCompanyNameZh)) {
+      return NextResponse.json({ error: '请填完整公司名称变更资料。' }, { status: 400 })
+    }
+    const [year, month, day] = parsed.data.changeDate.split('-').map(Number)
+    const date = new Date(year, month - 1, day)
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+      return NextResponse.json({ error: '决议日期不正确。' }, { status: 400 })
+    }
+    const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
+    if (!(await assertCompanyAccessible(access, parsed.data.companyId))) {
+      return NextResponse.json({ error: '找不到这家公司。' }, { status: 404 })
+    }
+    const company = await prisma.company.findFirst({
+      where: { id: parsed.data.companyId, deletedAt: null },
+      select: { id: true },
+    })
+    if (!company) return NextResponse.json({ error: '找不到这家公司。' }, { status: 404 })
+    try {
+      const task = await createCompanyNameChangeTask(parsed.data.companyId, {
+        companyNameEn: parsed.data.companyNameEn,
+        companyNameZh: parsed.data.companyNameZh,
+        companyNo: parsed.data.companyNo,
+        newCompanyNameEn: parsed.data.newCompanyNameEn,
+        newCompanyNameZh: parsed.data.newCompanyNameZh,
+        changeDate: parsed.data.changeDate,
+        shareholderNames: parsed.data.shareholderNames,
+      }, session!.user.id)
+      return NextResponse.json({ id: task.id, taskNumber: task.taskNumber })
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : '生成文件失败。'
+      return NextResponse.json({ error: message }, { status: 500 })
+    }
+  }
+
+  const parsed = createSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: '请填完整股份转让资料。' }, { status: 400 })
   }

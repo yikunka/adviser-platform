@@ -1202,6 +1202,7 @@ model AdviserForm {
 
 enum AdvWorkTaskKind {
   SHARE_TRANSFER
+  COMPANY_NAME_CHANGE
 }
 
 /// Secretarial work-task pack. Files live here only — not in company documents,
@@ -1532,6 +1533,7 @@ model SfsOrder {
   diamonds Json
 
   // Milestone dates (set by admin)
+  packageArrivedHkAt    DateTime?
   sampleReceivedAt      DateTime?
   chemTransformStartAt  DateTime?
   chemTransformEndAt    DateTime?
