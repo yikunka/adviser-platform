@@ -19,8 +19,8 @@ const COPY: Record<CompanyRecordKind, { title: string; hint: string; button: str
   },
   REGISTER_LOCATION: {
     title: '登记册备存地点',
-    hint: '选择要申报的登记册和备存地点，生成表格 NR2。不会改公司纪录。',
-    button: '生成 NR2',
+    hint: '选择要申报的登记册和备存地点，生成董事会会议纪录和表格 NR2。不会改公司纪录。',
+    button: '生成会议纪录和 NR2',
   },
   ACCOUNTING_REFERENCE_DATE: {
     title: '会计参照日',
