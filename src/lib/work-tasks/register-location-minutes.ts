@@ -51,13 +51,8 @@ function insertSpacerBefore(xml: string, token: string): string {
 
 function giveSignatureRoom(xml: string): string {
   const closing = '_______________________________'
-  const closingWide = '_'.repeat(60)
   const present = '[Director Name]                                              _________________  (signature)'
-  const presentWide = `[Director Name]${' '.repeat(12)}${'_'.repeat(40)}  (signature)`
-  let next = xml.replace(closing, closingWide)
-  next = insertSpacerBefore(next, closingWide)
-  next = next.replace(present, presentWide)
-  return insertSpacerBefore(next, presentWide)
+  return insertSpacerBefore(insertSpacerBefore(xml, closing), present)
 }
 
 function removeParagraphContaining(xml: string, token: string): string {
