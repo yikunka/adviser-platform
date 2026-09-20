@@ -160,8 +160,9 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
   for (const c of cols) {
     page.drawText(c.label, { x: c.x, y, size: 8, font: bold, color: GREY })
   }
-  y -= 14
-  page.drawLine({ start: { x: ML, y: y + 4 }, end: { x: W - MR, y: y + 4 }, thickness: 0.3, color: GREY })
+  y -= 8
+  page.drawLine({ start: { x: ML, y }, end: { x: W - MR, y }, thickness: 0.3, color: GREY })
+  y -= 16
 
   const sorted = [...invoice.lineItems].sort((a, b) => a.sortOrder - b.sortOrder)
   for (const line of sorted) {
@@ -183,7 +184,6 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
 
   const totals: [string, string][] = [
     ['Subtotal', fmtMoney(invoice.subtotal, invoice.currency)],
-    [`Tax (${(Number(invoice.taxRate.toString()) * 100).toFixed(1)}%)`, fmtMoney(invoice.taxAmount, invoice.currency)],
     ['Total', fmtMoney(invoice.total, invoice.currency)],
   ]
   for (const [label, value] of totals) {

@@ -315,7 +315,7 @@ Order lifecycle management for memorial diamond commissions.
 - Auto-generated invoice numbers: 8-digit pure numeric format `YY######` (e.g. `26000001`, `26000002`), sequential within each calendar year; shown in the list table column and in the page header (top-right) on new and detail pages
 - Create from order; edit DRAFT; generate and download PDF
 - When creating an invoice from an order, each diamond line item's **unit price is auto-suggested by the pricing engine** (diamond carat/color/shape/source base with multi-diamond diamond-portion discount allocated per line + design × (1 + metal%) + the order customer's overrides); suggested prices remain fully editable before saving
-- Admin invoice screens keep line-item display focused on description, quantity, weight, unit price, and amount; due date and tax-rate display are hidden from the SFS invoice UI
+- Admin invoice screens keep line-item display focused on description, quantity, weight, unit price, and amount; due date and tax-rate display are hidden from the SFS invoice UI. The PDF shows subtotal and total only, with no tax line
 - PDF issuer header: **SFS Technical Group Co., Limited / 瑞福生科技集團有限公司**, with fixed address **RM7 20F BOSS COMMERCIAL CENTRE 28 FERRY STREET YAU MA TEI KOWLOON** below the company name
 - PDF payment block (footer): DBS BANK (HONG KONG), SWIFT DHBKHKHH, Bank Code 016, Account Number 478002236556, A/C Name SFS TECHNOLOGY GROUP CO., LIMITED
 
