@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 import { JmmTradeDocuments } from './JmmTradeDocuments'
 import { JmmPurchaseFile } from './JmmPurchaseFile'
-import { JMM_PACKING_OPTIONS } from '@/lib/jmm/orders'
+import { JMM_PACKING_OPTIONS } from '@/lib/jmm/constants'
 
 const STATUSES = ['DRAFT', 'CONFIRMED', 'SHIPPED', 'COMPLETED', 'CANCELLED'] as const
 const CURRENCIES = ['USD', 'HKD', 'CNY', 'EUR'] as const

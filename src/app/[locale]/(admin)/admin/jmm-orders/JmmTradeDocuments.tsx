@@ -5,7 +5,7 @@ import { FileDown, Plus, Printer, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 import { JMM_DOCUMENT_TITLES, JMM_LETTERHEAD } from '@/lib/jmm/letterhead'
-import { JMM_PACKING_OPTIONS } from '@/lib/jmm/orders'
+import { JMM_PACKING_OPTIONS } from '@/lib/jmm/constants'
 
 const CURRENCIES = ['USD', 'HKD', 'CNY', 'EUR'] as const
 type Kind = keyof typeof JMM_DOCUMENT_TITLES
