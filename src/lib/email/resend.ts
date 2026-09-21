@@ -39,3 +39,36 @@ export async function sendPasswordResetEmail(to: string, link: string, locale: s
 
   return getResend().emails.send({ from: FROM, to, subject, html: body })
 }
+
+export async function sendSfsPartnerApprovalEmail(
+  to: string,
+  status: 'APPROVED' | 'REJECTED',
+  partnerName?: string | null,
+) {
+  const name = partnerName?.trim() || 'Partner'
+  if (DEV_NO_EMAIL) {
+    console.log(`[DEV] SFS partner ${status} email skipped for ${to} (${name})`)
+    return { data: null, error: null }
+  }
+
+  if (status === 'APPROVED') {
+    return getResend().emails.send({
+      from: FROM,
+      to,
+      subject: 'SFS Diamond — partner account approved',
+      html: `<p>Hello ${name},</p>
+<p>Your SFS Diamond distributor account is approved. You can sign in and place orders here:</p>
+<p><a href="https://sfsdiamond.com/sfsdiamond/login">Partner login</a></p>
+<p>Sales contact: +86 19129444364 (phone / WhatsApp) · patricklau@sfsdiamonds.com</p>`,
+    })
+  }
+
+  return getResend().emails.send({
+    from: FROM,
+    to,
+    subject: 'SFS Diamond — partner application update',
+    html: `<p>Hello ${name},</p>
+<p>Your SFS Diamond partner application was not approved. If you believe this is a mistake, contact our sales manager:</p>
+<p>+86 19129444364 (phone / WhatsApp) · patricklau@sfsdiamonds.com</p>`,
+  })
+}

@@ -138,6 +138,15 @@ export default function QAPage() {
               +86 19129444364 (phone / WhatsApp)
             </a>
             <a
+              href="https://wa.me/8619129444364"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-8 py-3.5 rounded-full font-medium text-sm border transition-all hover:bg-black/5"
+              style={{ border: '1px solid #C9A96E', color: '#1A1A1A' }}
+            >
+              WhatsApp
+            </a>
+            <a
               href="mailto:patricklau@sfsdiamonds.com"
               className="px-8 py-3.5 rounded-full font-medium text-sm border transition-all hover:bg-black/5"
               style={{ border: '1px solid #C9A96E', color: '#1A1A1A' }}

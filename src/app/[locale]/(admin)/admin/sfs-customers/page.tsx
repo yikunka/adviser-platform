@@ -18,6 +18,11 @@ type CustomerRow = {
   email: string | null
   phone: string | null
   mailingAddress: string | null
+  company: string | null
+  market: string | null
+  expectedVolume: string | null
+  territoryNote: string | null
+  moqNote: string | null
   notes: string | null
   isActive: boolean | null
   emailVerified: string | null
@@ -43,6 +48,11 @@ type CustomerFormValues = {
   email: string
   phone: string
   mailingAddress: string
+  company: string
+  market: string
+  expectedVolume: string
+  territoryNote: string
+  moqNote: string
   notes: string
 }
 
@@ -293,6 +303,11 @@ function CustomerModal({
     email: customer?.email ?? '',
     phone: customer?.phone ?? '',
     mailingAddress: customer?.mailingAddress ?? '',
+    company: customer?.company ?? '',
+    market: customer?.market ?? '',
+    expectedVolume: customer?.expectedVolume ?? '',
+    territoryNote: customer?.territoryNote ?? '',
+    moqNote: customer?.moqNote ?? '',
     notes: customer?.notes ?? '',
   })
   const [saving, setSaving] = useState(false)
@@ -390,6 +405,30 @@ function CustomerModal({
             />
           </label>
 
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="space-y-1.5">
+              <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Company</span>
+              <Input value={form.company} onChange={e => updateField('company', e.target.value)} maxLength={200} />
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Market</span>
+              <Input value={form.market} onChange={e => updateField('market', e.target.value)} maxLength={120} placeholder="Country or region" />
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Expected volume</span>
+              <Input value={form.expectedVolume} onChange={e => updateField('expectedVolume', e.target.value)} maxLength={200} />
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Territory note</span>
+              <Input value={form.territoryNote} onChange={e => updateField('territoryNote', e.target.value)} maxLength={500} />
+            </label>
+          </div>
+
+          <label className="space-y-1.5 block">
+            <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Minimum-order note</span>
+            <Input value={form.moqNote} onChange={e => updateField('moqNote', e.target.value)} maxLength={500} placeholder="Regional quantity requirement" />
+          </label>
+
           <label className="space-y-1.5 block">
             <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Notes</span>
             <textarea
@@ -427,6 +466,7 @@ export default function SfsCustomersPage() {
   const [total, setTotal] = useState(0)
   const [pageSize, setPageSize] = useState(20)
   const [search, setSearch] = useState('')
+  const [approvalFilter, setApprovalFilter] = useState<'ALL' | 'PENDING'>('ALL')
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
@@ -442,6 +482,7 @@ export default function SfsCustomersPage() {
     try {
       const params = new URLSearchParams({ page: String(page) })
       if (search.trim()) params.set('q', search.trim())
+      if (approvalFilter === 'PENDING') params.set('approval', 'PENDING')
       const res = await fetch(`/api/admin/sfs-customers?${params}`)
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json.error ?? 'Failed to load customers')
@@ -453,7 +494,7 @@ export default function SfsCustomersPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search])
+  }, [page, search, approvalFilter])
 
   useEffect(() => {
     const t = setTimeout(fetchCustomers, search ? 250 : 0)
@@ -559,7 +600,13 @@ export default function SfsCustomersPage() {
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json.error ?? 'Failed to update 權限')
-      toast.success(`權限已更新為「${APPROVAL_STYLE[status].label}」`)
+      toast.success(
+        status === 'APPROVED'
+          ? `權限已更新為「${APPROVAL_STYLE[status].label}」。Approval email sent when mail is configured.`
+          : status === 'REJECTED'
+            ? `權限已更新為「${APPROVAL_STYLE[status].label}」。Rejection email sent when mail is configured.`
+            : `權限已更新為「${APPROVAL_STYLE[status].label}」`,
+      )
       fetchCustomers()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to update 權限.')
@@ -589,9 +636,31 @@ export default function SfsCustomersPage() {
           <Input
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1) }}
-            placeholder="Search name, email, phone, address, order..."
+            placeholder="Search name, email, phone, company, market, order..."
             className="pl-8"
           />
+        </div>
+        <div className="flex items-center gap-1 rounded-lg p-1" style={{ border: '1px solid var(--border-subtle)', background: 'var(--surface)' }}>
+          {([
+            ['ALL', 'All'],
+            ['PENDING', '待審批 partners'],
+          ] as const).map(([value, label]) => {
+            const active = approvalFilter === value
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => { setApprovalFilter(value); setPage(1) }}
+                className="px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
+                style={{
+                  background: active ? 'rgba(201,169,110,0.18)' : 'transparent',
+                  color: active ? '#C9A96E' : 'var(--muted-foreground)',
+                }}
+              >
+                {label}
+              </button>
+            )
+          })}
         </div>
         {selectedIds.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
@@ -677,6 +746,13 @@ export default function SfsCustomersPage() {
                         <div className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
                           {customer.userId ? 'Registered platform account' : customer.customerId ? 'Manual profile' : 'From order data'}
                         </div>
+                        {(customer.company || customer.market || customer.expectedVolume) && (
+                          <div className="mt-2 space-y-0.5 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                            {customer.company ? <div>Company: {customer.company}</div> : null}
+                            {customer.market ? <div>Market: {customer.market}</div> : null}
+                            {customer.expectedVolume ? <div>Volume: {customer.expectedVolume}</div> : null}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 min-w-[240px]">
                         <div className="space-y-1.5">

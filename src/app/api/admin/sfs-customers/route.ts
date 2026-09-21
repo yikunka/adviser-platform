@@ -11,6 +11,11 @@ const createSchema = z.object({
   email: z.union([z.string().trim().email().max(320), z.literal('')]).optional().nullable(),
   phone: z.string().trim().max(50).optional().nullable(),
   mailingAddress: z.string().trim().max(500).optional().nullable(),
+  company: z.string().trim().max(200).optional().nullable(),
+  market: z.string().trim().max(120).optional().nullable(),
+  expectedVolume: z.string().trim().max(200).optional().nullable(),
+  territoryNote: z.string().trim().max(500).optional().nullable(),
+  moqNote: z.string().trim().max(500).optional().nullable(),
   notes: z.string().trim().max(2000).optional().nullable(),
 })
 
@@ -23,6 +28,11 @@ type SfsCustomerRow = {
   email: string | null
   phone: string | null
   mailingAddress: string | null
+  company: string | null
+  market: string | null
+  expectedVolume: string | null
+  territoryNote: string | null
+  moqNote: string | null
   notes: string | null
   isActive: boolean | null
   emailVerified: string | null
@@ -79,6 +89,11 @@ function rowMatches(row: SfsCustomerRow, q: string) {
     row.email,
     row.phone,
     row.mailingAddress,
+    row.company,
+    row.market,
+    row.expectedVolume,
+    row.territoryNote,
+    row.moqNote,
     row.notes,
     latest?.sampleCode,
     latest?.memorialName,
@@ -96,6 +111,10 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const q = norm(searchParams.get('q'))
   const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10))
+  const approval = searchParams.get('approval')
+  const approvalFilter = approval === 'PENDING' || approval === 'APPROVED' || approval === 'REJECTED'
+    ? approval
+    : null
 
   const [customers, users, orders] = await Promise.all([
     prisma.sfsCustomer.findMany({
@@ -164,6 +183,11 @@ export async function GET(req: NextRequest) {
       email: profile?.email ?? latest?.email ?? user.email,
       phone: profile?.phone ?? latest?.contactNumber ?? user.phone,
       mailingAddress: profile?.mailingAddress ?? latest?.mailingAddress ?? user.mailingAddress,
+      company: profile?.company ?? null,
+      market: profile?.market ?? null,
+      expectedVolume: profile?.expectedVolume ?? null,
+      territoryNote: profile?.territoryNote ?? null,
+      moqNote: profile?.moqNote ?? null,
       notes: profile?.notes ?? null,
       isActive: user.isActive,
       emailVerified: user.emailVerified?.toISOString() ?? null,
@@ -187,6 +211,11 @@ export async function GET(req: NextRequest) {
       email: customer.email,
       phone: customer.phone,
       mailingAddress: customer.mailingAddress,
+      company: customer.company,
+      market: customer.market,
+      expectedVolume: customer.expectedVolume,
+      territoryNote: customer.territoryNote,
+      moqNote: customer.moqNote,
       notes: customer.notes,
       isActive: null,
       emailVerified: null,
@@ -218,6 +247,11 @@ export async function GET(req: NextRequest) {
       email: latest.email,
       phone: latest.contactNumber,
       mailingAddress: latest.mailingAddress,
+      company: null,
+      market: null,
+      expectedVolume: null,
+      territoryNote: null,
+      moqNote: null,
       notes: null,
       isActive: null,
       emailVerified: null,
@@ -231,7 +265,11 @@ export async function GET(req: NextRequest) {
 
   const filtered = rows
     .filter(row => rowMatches(row, q))
+    .filter(row => !approvalFilter || row.accountApprovalStatus === approvalFilter)
     .sort((a, b) => {
+      if (approvalFilter === 'PENDING') {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      }
       const aTime = new Date(a.latestOrderAt ?? a.createdAt).getTime()
       const bTime = new Date(b.latestOrderAt ?? b.createdAt).getTime()
       return bTime - aTime
@@ -259,6 +297,11 @@ export async function POST(req: NextRequest) {
       email: parsed.data.email || null,
       phone: parsed.data.phone || null,
       mailingAddress: parsed.data.mailingAddress || null,
+      company: parsed.data.company || null,
+      market: parsed.data.market || null,
+      expectedVolume: parsed.data.expectedVolume || null,
+      territoryNote: parsed.data.territoryNote || null,
+      moqNote: parsed.data.moqNote || null,
       notes: parsed.data.notes || null,
       createdById: session!.user.id,
     },

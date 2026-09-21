@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   const { password, nameEn, phone, locale, platform, company, market, expectedVolume } = parsed.data
   const email = normalizeSignupEmail(parsed.data.email)
 
-  if (platform === 'SFS_DIAMOND' && (!company || !market || !expectedVolume)) {
+  if (platform === 'SFS_DIAMOND' && (!company?.trim() || !market?.trim() || !expectedVolume?.trim())) {
     return NextResponse.json({ error: 'Company, market, and expected volume are required.' }, { status: 400 })
   }
 
@@ -61,18 +61,15 @@ export async function POST(req: NextRequest) {
     })
 
     if (platform === 'SFS_DIAMOND') {
-      const notes = [
-        company ? `Company: ${company}` : '',
-        market ? `Market: ${market}` : '',
-        expectedVolume ? `Expected volume: ${expectedVolume}` : '',
-      ].filter(Boolean).join('\n')
       await prisma.sfsCustomer.create({
         data: {
           userId: user.id,
           name: nameEn,
           email,
           phone: phone ?? null,
-          notes: notes || null,
+          company: company!.trim(),
+          market: market!.trim(),
+          expectedVolume: expectedVolume!.trim(),
         },
       })
     }

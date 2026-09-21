@@ -1624,6 +1624,16 @@ model SfsCustomer {
   email          String?
   phone          String?
   mailingAddress String?
+  /// Partner / distributor company name (from the application form).
+  company        String?
+  /// Market or region the partner covers.
+  market         String?
+  /// Expected order volume, free text from the application.
+  expectedVolume String?
+  /// Assigned territory note set by staff (optional).
+  territoryNote  String?
+  /// Minimum-order note for this partner's region (optional).
+  moqNote        String?
   notes          String?
   createdById    String?
   createdAt      DateTime @default(now())
@@ -1638,6 +1648,7 @@ model SfsCustomer {
 
   @@index([email])
   @@index([createdAt])
+  @@index([market])
   @@map("sfs_customers")
 }
 

@@ -10,6 +10,11 @@ const updateSchema = z.object({
   email: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
   mailingAddress: z.string().optional().nullable(),
+  company: z.string().optional().nullable(),
+  market: z.string().optional().nullable(),
+  expectedVolume: z.string().optional().nullable(),
+  territoryNote: z.string().optional().nullable(),
+  moqNote: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
 })
 
@@ -18,6 +23,11 @@ type CustomerUpdateData = {
   email?: string | null
   phone?: string | null
   mailingAddress?: string | null
+  company?: string | null
+  market?: string | null
+  expectedVolume?: string | null
+  territoryNote?: string | null
+  moqNote?: string | null
   notes?: string | null
 }
 
@@ -36,6 +46,11 @@ function buildUpdateData(input: z.infer<typeof updateSchema>): CustomerUpdateDat
     ...(input.email !== undefined ? { email: nullableText(input.email) } : {}),
     ...(input.phone !== undefined ? { phone: nullableText(input.phone) } : {}),
     ...(input.mailingAddress !== undefined ? { mailingAddress: nullableText(input.mailingAddress) } : {}),
+    ...(input.company !== undefined ? { company: nullableText(input.company) } : {}),
+    ...(input.market !== undefined ? { market: nullableText(input.market) } : {}),
+    ...(input.expectedVolume !== undefined ? { expectedVolume: nullableText(input.expectedVolume) } : {}),
+    ...(input.territoryNote !== undefined ? { territoryNote: nullableText(input.territoryNote) } : {}),
+    ...(input.moqNote !== undefined ? { moqNote: nullableText(input.moqNote) } : {}),
     ...(input.notes !== undefined ? { notes: nullableText(input.notes) } : {}),
   }
 }
@@ -46,6 +61,11 @@ function buildCreateData(input: z.infer<typeof updateSchema>, createdById: strin
     email: nullableText(input.email),
     phone: nullableText(input.phone),
     mailingAddress: nullableText(input.mailingAddress),
+    company: nullableText(input.company),
+    market: nullableText(input.market),
+    expectedVolume: nullableText(input.expectedVolume),
+    territoryNote: nullableText(input.territoryNote),
+    moqNote: nullableText(input.moqNote),
     notes: nullableText(input.notes),
     createdById,
   }

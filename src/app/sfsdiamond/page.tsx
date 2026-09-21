@@ -89,9 +89,9 @@ function CtaPrimary({ href, children }: { href: string; children: ReactNode }) {
   const className =
     'inline-flex items-center justify-center px-7 py-3.5 text-sm font-semibold tracking-wide transition-opacity hover:opacity-90'
   const style = { background: GOLD, color: INK }
-  if (href.startsWith('mailto:') || href.startsWith('tel:')) {
+  if (href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('http')) {
     return (
-      <a href={href} className={className} style={style}>
+      <a href={href} className={className} style={style} {...(href.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
         {children}
       </a>
     )
@@ -109,9 +109,14 @@ function CtaGhost({ href, children, dark = false }: { href: string; children: Re
   const style = dark
     ? { border: '1px solid rgba(245,240,232,0.35)', color: '#F5F0E8' }
     : { border: `1px solid ${GOLD}`, color: INK }
-  if (href.startsWith('mailto:') || href.startsWith('tel:')) {
+  if (href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('http')) {
     return (
-      <a href={href} className={`${className} hover:bg-white/5`} style={style}>
+      <a
+        href={href}
+        className={`${className} hover:bg-white/5`}
+        style={style}
+        {...(href.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+      >
         {children}
       </a>
     )
@@ -425,6 +430,9 @@ export default function SFSHomePage() {
                 <CtaGhost href="tel:+8619129444364" dark>
                   +86 19129444364 (phone / WhatsApp)
                 </CtaGhost>
+                <CtaGhost href="https://wa.me/8619129444364" dark>
+                  WhatsApp
+                </CtaGhost>
               </div>
               <dl className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 max-w-xl">
                 {[
@@ -591,6 +599,9 @@ export default function SFSHomePage() {
             </CtaPrimary>
             <CtaGhost href="tel:+8619129444364">
               +86 19129444364 (phone / WhatsApp)
+            </CtaGhost>
+            <CtaGhost href="https://wa.me/8619129444364">
+              WhatsApp
             </CtaGhost>
             <CtaGhost href="/sfsdiamond/order">
               Partner order portal

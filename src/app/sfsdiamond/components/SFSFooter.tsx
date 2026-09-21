@@ -1,6 +1,12 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import SfsProductImageDisclaimer from './SfsProductImageDisclaimer'
+import {
+  SFS_SALES_EMAIL,
+  SFS_SALES_PHONE_DISPLAY,
+  SFS_SALES_TEL_HREF,
+  SFS_SALES_WHATSAPP_HREF,
+} from '@/lib/sfs/sales-contact'
 
 export default function SFSFooter() {
   return (
@@ -67,11 +73,20 @@ export default function SFSFooter() {
             28 Ferry St, Yau Ma Tei<br />
             Kowloon, Hong Kong
           </p>
-          <a href="tel:+8619129444364" className="text-sm hover:opacity-80" style={{ color: '#A89880' }}>
-            +86 19129444364 (phone / WhatsApp)
+          <a href={SFS_SALES_TEL_HREF} className="text-sm hover:opacity-80" style={{ color: '#A89880' }}>
+            {SFS_SALES_PHONE_DISPLAY}
           </a>
-          <a href="mailto:patricklau@sfsdiamonds.com" className="text-sm hover:opacity-80" style={{ color: '#A89880' }}>
-            patricklau@sfsdiamonds.com
+          <a
+            href={SFS_SALES_WHATSAPP_HREF}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm hover:opacity-80"
+            style={{ color: '#A89880' }}
+          >
+            WhatsApp
+          </a>
+          <a href={`mailto:${SFS_SALES_EMAIL}`} className="text-sm hover:opacity-80" style={{ color: '#A89880' }}>
+            {SFS_SALES_EMAIL}
           </a>
         </div>
       </div>

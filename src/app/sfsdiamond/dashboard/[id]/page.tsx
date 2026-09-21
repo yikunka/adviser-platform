@@ -16,6 +16,7 @@ import { matchCompletedStep, resolveOrderStepPlan } from '@/lib/sfs/order-step-p
 import { summarizeProjectBilling } from '@/lib/adviser/project-labels'
 import { buildSfsOrderTracker } from '@/lib/sfs/order-tracker'
 import { SfsProductionTracker } from '@/components/sfs/SfsProductionTracker'
+import QuoteResponseActions from '@/app/sfsdiamond/components/QuoteResponseActions'
 
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   PENDING:   { bg: 'rgba(201,169,110,0.12)', color: '#C9A96E'  },
@@ -239,6 +240,11 @@ export default async function SFSOrderDetailPage({
                 {order.quoteNotes}
               </p>
             )}
+            <QuoteResponseActions
+              orderId={order.id}
+              status={order.status}
+              quotedAmount={order.quotedAmount == null ? null : Number(order.quotedAmount)}
+            />
           </div>
         )}
 

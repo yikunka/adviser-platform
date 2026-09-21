@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
+import { sendSfsPartnerApprovalEmail } from '@/lib/email/resend'
 
 const schema = z.object({
   status: z.enum(['APPROVED', 'REJECTED', 'PENDING']),
@@ -43,6 +44,7 @@ export async function POST(
     select: {
       id: true,
       email: true,
+      nameEn: true,
       platform: true,
       accountApprovalStatus: true,
       accountApprovedAt: true,
@@ -63,6 +65,7 @@ export async function POST(
     select: {
       id: true,
       email: true,
+      nameEn: true,
       accountApprovalStatus: true,
       accountApprovedAt: true,
     },
@@ -82,6 +85,15 @@ export async function POST(
       accountApprovedAt: user.accountApprovedAt,
     },
   )
+
+  if (
+    (nextStatus === 'APPROVED' || nextStatus === 'REJECTED')
+    && before.accountApprovalStatus !== nextStatus
+  ) {
+    await sendSfsPartnerApprovalEmail(user.email, nextStatus, user.nameEn).catch(err => {
+      console.error('[sfs-approval] email failed', err)
+    })
+  }
 
   return NextResponse.json({
     userId: user.id,

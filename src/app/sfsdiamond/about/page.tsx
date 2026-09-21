@@ -147,6 +147,15 @@ export default function AboutPage() {
                 <a href="tel:+8619129444364" className="text-sm hover:opacity-70 transition-opacity" style={{ color: '#1A1A1A' }}>
                   +86 19129444364 (phone / WhatsApp)
                 </a>
+                <a
+                  href="https://wa.me/8619129444364"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block text-sm mt-1 hover:opacity-70 transition-opacity"
+                  style={{ color: '#1A1A1A' }}
+                >
+                  WhatsApp
+                </a>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wider mb-1.5" style={{ color: '#C9A96E' }}>Email</p>

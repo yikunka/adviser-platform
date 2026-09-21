@@ -79,6 +79,24 @@ export default function TechnologyPage() {
         </div>
       </section>
 
+      <section className="py-12" style={{ background: '#FAFAF8', borderBottom: '1px solid #EDE7D8' }}>
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="rounded-2xl p-6 md:p-8" style={{ background: '#111111' }}>
+            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#C9A96E' }}>What you can promise your client</p>
+            <h2 className="text-2xl md:text-3xl font-bold mb-4" style={{ fontFamily: 'Georgia, serif', color: '#F5F0E8' }}>
+              In-house CVD, official IGI, and a 2–3 month lead time
+            </h2>
+            <p className="text-sm leading-relaxed max-w-3xl" style={{ color: 'rgba(245,240,232,0.7)' }}>
+              You sell the memorial story. We manufacture the stone. Tell clients the diamond is grown
+              from their carbon in our own CVD factory, finished in the Eternity Cut, and documented
+              to official IGI specifications — typically ready in two to three months after we receive
+              the sample. Website photos are illustrative; the certificate and the delivered stone are
+              what count.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* ── Intro: Carbon ── */}
       <section className="py-24" style={{ background: '#FAFAF8' }}>
         <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-14 items-center">

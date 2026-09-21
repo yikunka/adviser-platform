@@ -37,10 +37,10 @@ export default async function SFSDashboardPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold" style={{ fontFamily: 'Georgia, serif', color: DARK }}>
-              My Dashboard
+              Partner dashboard
             </h1>
             <p className="text-sm mt-1" style={{ color: MUTED }}>
-              Welcome back, {session!.user.name ?? 'valued client'}
+              Welcome back, {session!.user.name ?? 'partner'}
             </p>
           </div>
           <Link
@@ -48,9 +48,15 @@ export default async function SFSDashboardPage() {
             className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm transition-all hover:opacity-90 self-start sm:self-auto"
             style={{ background: GOLD, color: '#0A0805' }}
           >
-            ✦ Place New Order
+            Place new order
           </Link>
         </div>
+
+        {orders.some(o => o.status === 'QUOTED') && (
+          <div className="rounded-2xl px-5 py-4 text-sm" style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', color: DARK }}>
+            You have {orders.filter(o => o.status === 'QUOTED').length} quote{orders.filter(o => o.status === 'QUOTED').length === 1 ? '' : 's'} waiting for your accept or change request. Open the order to respond.
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

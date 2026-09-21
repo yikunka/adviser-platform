@@ -355,21 +355,24 @@ function Step1({ data, update }: { data: WizardFormData; update: (p: Partial<Wiz
         className="rounded-2xl p-5 space-y-5"
         style={{ background: '#F9F6EF', border: `1px solid ${BORDER}` }}
       >
-        <GroupLabel>Your Contact Details</GroupLabel>
+        <GroupLabel>Partner contact</GroupLabel>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <Field label="Your Name" required>
+          <Field label="Contact person" required>
             <Input value={data.clientName} onChange={e => update({ clientName: e.target.value })} placeholder="Full name" />
           </Field>
           <Field label="Contact Number" required>
-            <Input type="tel" value={data.contactNumber} onChange={e => update({ contactNumber: e.target.value })} placeholder="+852 XXXX XXXX" />
+            <Input type="tel" value={data.contactNumber} onChange={e => update({ contactNumber: e.target.value })} placeholder="+86 / +852 …" />
           </Field>
           <Field label="Email" required>
             <Input type="email" value={data.email} onChange={e => update({ email: e.target.value })} placeholder="your@email.com" />
           </Field>
         </div>
         <Field label="Mailing Address" required>
-          <Textarea value={data.mailingAddress} onChange={e => update({ mailingAddress: e.target.value })} placeholder="Full mailing address" />
+          <Textarea value={data.mailingAddress} onChange={e => update({ mailingAddress: e.target.value })} placeholder="Partner or end-client shipping address" />
         </Field>
+        <p className="text-xs" style={{ color: MUTED }}>
+          Use the memorial block for the end client. This contact block is your distributor desk details.
+        </p>
         <SfsProductImageDisclaimer className="text-xs leading-relaxed space-y-2 pt-4 border-t" style={{ borderColor: BORDER, color: MUTED }} />
       </div>
     </div>
