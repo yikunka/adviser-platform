@@ -45,6 +45,102 @@ function blankLine(): Line {
   return { description: '', quantity: '1', unit: '', unitPrice: '' }
 }
 
+const inputStyle: React.CSSProperties = {
+  background: 'var(--surface-input)',
+  border: '1px solid var(--border-subtle)',
+  color: 'var(--foreground)',
+}
+
+function printQuotation(input: {
+  documentNumber: string
+  status: string
+  date: string
+  currency: string
+  customerName: string
+  company: string
+  vatNumber: string
+  deliveryAddress: string
+  notes: string
+  lines: Line[]
+}) {
+  const popup = window.open('', '_blank', 'noopener,noreferrer')
+  if (!popup) {
+    toast.error('Allow pop-ups to print this document')
+    return
+  }
+  const rows = input.lines.map((line, index) => {
+    const amount = money(line.quantity, line.unitPrice)
+    return `<tr>
+      <td>${index + 1}</td>
+      <td>${escapeHtml(line.description)}</td>
+      <td>${escapeHtml(line.unit)}</td>
+      <td>${escapeHtml(line.quantity)}</td>
+      <td class="num">${escapeHtml(line.unitPrice)}</td>
+      <td class="num">${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+    </tr>`
+  }).join('')
+  const total = input.lines.reduce((sum, line) => sum + money(line.quantity, line.unitPrice), 0)
+  const logo = `${window.location.origin}/jmm/logo.jpg`
+  popup.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>${escapeHtml(input.documentNumber)}</title>
+  <style>
+    body { margin: 0; font-family: Georgia, "Times New Roman", serif; color: #111; }
+    .sheet { max-width: 800px; margin: 0 auto; padding: 32px; }
+    header { display: flex; justify-content: space-between; align-items: center; gap: 24px; background: #000; color: #fff; padding: 20px 24px; }
+    header img { height: 72px; width: auto; display: block; }
+    .issuer { margin: 12px 0 0; font-size: 12px; line-height: 1.5; color: #333; }
+    .kind { margin: 0; letter-spacing: 0.08em; text-transform: uppercase; font-size: 12px; color: #C9A96E; }
+    .number { margin: 4px 0 0; font-size: 20px; }
+    .meta { margin-top: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 14px; }
+    .label { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #666; margin: 0 0 4px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 24px; font-size: 14px; }
+    th { text-align: left; border-bottom: 1px solid #111; padding: 8px 6px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+    td { border-bottom: 1px solid #ddd; padding: 8px 6px; vertical-align: top; }
+    .num, th.num { text-align: right; }
+    .total { margin-top: 16px; text-align: right; font-size: 16px; }
+    .notes { margin-top: 24px; white-space: pre-wrap; font-size: 14px; }
+    @media print { .sheet { padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <header>
+      <img src="${logo}" alt="JMM" />
+      <div>
+        <p class="kind">Quotation</p>
+        <p class="number">${escapeHtml(input.documentNumber)}</p>
+      </div>
+    </header>
+    <p class="issuer">Address: ${escapeHtml(JMM_LETTERHEAD.address)}<br>Email: ${escapeHtml(JMM_LETTERHEAD.email)}<br>Website: ${escapeHtml(JMM_LETTERHEAD.website)}</p>
+    <div class="meta">
+      <div><p class="label">Date</p><p>${escapeHtml(input.date)}</p></div>
+      <div><p class="label">Status</p><p>${escapeHtml(input.status)}</p></div>
+      <div><p class="label">Customer</p><p>${escapeHtml(input.customerName)}${input.company ? `<br>${escapeHtml(input.company)}` : ''}</p></div>
+      <div><p class="label">VAT number</p><p>${escapeHtml(input.vatNumber || '—')}</p></div>
+      <div><p class="label">Delivery address</p><p>${escapeHtml(input.deliveryAddress || '—')}</p></div>
+    </div>
+    <table>
+      <thead><tr><th>Item</th><th>Description</th><th>Packing</th><th>Quantity</th><th class="num">Unit price</th><th class="num">Amount</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p class="total">Total price ${escapeHtml(input.currency)} ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+    ${input.notes ? `<div class="notes"><p class="label">Notes</p><p>${escapeHtml(input.notes)}</p></div>` : ''}
+  </div>
+</body>
+</html>`)
+  popup.document.close()
+  const image = popup.document.querySelector('img')
+  const startPrint = () => {
+    popup.focus()
+    popup.print()
+  }
+  if (image && !image.complete) image.addEventListener('load', startPrint, { once: true })
+  else startPrint()
+}
+
 function printTradeDocument(input: {
   kind: Kind
   documentNumber: string
@@ -394,6 +490,129 @@ function DocumentCard({
     }
     toast.success('Document cancelled')
     await onChanged()
+  }
+
+  if (doc.kind === 'QUOTATION') {
+    return (
+      <article className="rounded-xl overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)', opacity: muted ? 0.6 : 1 }}>
+        <div className="flex items-center justify-between gap-4 px-4 py-3" style={{ background: '#000' }}>
+          <img src="/jmm/logo.jpg" alt="JMM" width={220} height={89} className="h-14 w-auto" />
+          <div className="text-right">
+            <p className="text-xs font-semibold tracking-wide" style={{ color: '#C9A96E' }}>{JMM_DOCUMENT_TITLES[doc.kind]}</p>
+            <h3 className="text-base font-semibold text-white">{doc.documentNumber}</h3>
+          </div>
+        </div>
+        <div className="px-4 py-3 text-xs leading-5" style={{ color: 'var(--muted-foreground)', borderBottom: '1px solid var(--border)' }}>
+          <p>Address: {JMM_LETTERHEAD.address}</p>
+          <p>Email: {JMM_LETTERHEAD.email}</p>
+          <p>Website: {JMM_LETTERHEAD.website}</p>
+        </div>
+        <div className="p-4 space-y-3">
+          <div className="flex justify-end">
+            <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ background: 'rgba(201,169,110,0.12)', color: '#C9A96E' }}>{doc.status}</span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+              Date
+              <input type="date" value={date} disabled={!editable} onChange={e => setDate(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+            </label>
+            <label className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+              Currency
+              <select value={currency} disabled={!editable} onChange={e => setCurrency(e.target.value as Document['currency'])} className="mt-1 w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+                {CURRENCIES.map(item => <option key={item} value={item}>{item}</option>)}
+              </select>
+            </label>
+            <label className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+              Customer
+              <input value={customerName} disabled={!editable} onChange={e => setCustomerName(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+            </label>
+            <label className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+              Company
+              <input value={company} disabled={!editable} onChange={e => setCompany(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+            </label>
+            <label className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+              VAT number
+              <input value={vatNumber} disabled={!editable} onChange={e => setVatNumber(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+            </label>
+            <label className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+              Delivery address
+              <textarea value={deliveryAddress} disabled={!editable} onChange={e => setDeliveryAddress(e.target.value)} rows={2} className="mt-1 w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+            </label>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ color: 'var(--muted-foreground)' }}>
+                  <th className="text-left py-2 font-medium">Item</th>
+                  <th className="text-left py-2 font-medium">Description</th>
+                  <th className="text-left py-2 font-medium">Packing</th>
+                  <th className="text-left py-2 font-medium">Quantity</th>
+                  <th className="text-left py-2 font-medium">Unit price</th>
+                  <th className="text-right py-2 font-medium">Amount</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {lines.map((line, index) => (
+                  <tr key={index} style={{ borderTop: '1px solid var(--border)' }}>
+                    <td className="py-2 pr-2 font-medium" style={{ color: 'var(--foreground)' }}>{index + 1}</td>
+                    <td className="py-2 pr-2"><input value={line.description} disabled={!editable} onChange={e => setLines(current => current.map((row, i) => i === index ? { ...row, description: e.target.value } : row))} className="w-full min-w-40 px-2 py-1.5 rounded text-sm outline-none" style={inputStyle} /></td>
+                    <td className="py-2 pr-2">
+                      <select value={line.unit} disabled={!editable} onChange={e => setLines(current => current.map((row, i) => i === index ? { ...row, unit: e.target.value } : row))} className="w-28 px-2 py-1.5 rounded text-sm outline-none" style={inputStyle}>
+                        <option value="">—</option>
+                        {JMM_PACKING_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+                        {line.unit && !(JMM_PACKING_OPTIONS as readonly string[]).includes(line.unit) && <option value={line.unit}>{line.unit}</option>}
+                      </select>
+                    </td>
+                    <td className="py-2 pr-2"><input value={line.quantity} disabled={!editable} onChange={e => setLines(current => current.map((row, i) => i === index ? { ...row, quantity: e.target.value } : row))} className="w-20 px-2 py-1.5 rounded text-sm outline-none" style={inputStyle} /></td>
+                    <td className="py-2 pr-2"><input value={line.unitPrice} disabled={!editable} onChange={e => setLines(current => current.map((row, i) => i === index ? { ...row, unitPrice: e.target.value } : row))} className="w-24 px-2 py-1.5 rounded text-sm outline-none" style={inputStyle} /></td>
+                    <td className="py-2 text-right whitespace-nowrap" style={{ color: 'var(--foreground)' }}>{money(line.quantity, line.unitPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="py-2 pl-2">
+                      {editable && lines.length > 1 && (
+                        <button type="button" onClick={() => setLines(current => current.filter((_, i) => i !== index))} style={{ color: '#ef4444' }} aria-label="Remove line"><Trash2 size={14} /></button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {editable && (
+            <button type="button" onClick={() => setLines(current => [...current, blankLine()])} className="text-xs" style={{ color: '#C9A96E' }}>Add line</button>
+          )}
+          <p className="text-sm font-semibold text-right" style={{ color: 'var(--foreground)' }}>
+            Total price {currency} {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
+          <label className="block text-xs" style={{ color: 'var(--muted-foreground)' }}>
+            Notes
+            <textarea value={notes} disabled={!editable} onChange={e => setNotes(e.target.value)} rows={2} className="mt-1 w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => printQuotation({ documentNumber: doc.documentNumber, status: doc.status, date, currency, customerName, company, vatNumber, deliveryAddress, notes, lines })} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm" style={{ color: 'var(--foreground)', border: '1px solid var(--border)' }}>
+              <Printer size={14} /> Print
+            </button>
+            <button type="button" onClick={() => void downloadWord()} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm" style={{ color: 'var(--foreground)', border: '1px solid var(--border)' }}>
+              <FileDown size={14} /> Download Word
+            </button>
+            {canEdit && doc.status !== 'CANCELLED' && (
+              <>
+                {editable && (
+                  <button type="button" disabled={saving} onClick={() => void save()} className="px-3 py-2 rounded-lg text-sm font-semibold disabled:opacity-60" style={{ background: '#C9A96E', color: '#1a1408' }}>
+                    {saving ? 'Saving…' : 'Save document'}
+                  </button>
+                )}
+                {showProforma && (
+                  <button type="button" disabled={busy} onClick={() => void onCreate('PROFORMA')} className="px-3 py-2 rounded-lg text-sm font-semibold disabled:opacity-60" style={{ background: '#1a1408', color: '#C9A96E', border: '1px solid #C9A96E' }}>
+                    Customer agreed — create proforma
+                  </button>
+                )}
+                <button type="button" onClick={() => void cancel()} className="px-3 py-2 rounded-lg text-sm" style={{ color: '#ef4444' }}>Cancel document</button>
+              </>
+            )}
+          </div>
+        </div>
+      </article>
+    )
   }
 
   const paperInput: React.CSSProperties = {

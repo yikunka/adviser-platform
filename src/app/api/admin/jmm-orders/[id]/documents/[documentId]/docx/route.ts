@@ -22,6 +22,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     kind: doc.kind,
     documentNumber: doc.documentNumber,
     documentDate: doc.documentDate.toISOString().slice(0, 10),
+    status: doc.status,
     currency: doc.currency,
     customerName: doc.customerName,
     company: doc.company,

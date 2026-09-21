@@ -7,6 +7,7 @@ import {
   ImageRun,
   Packer,
   Paragraph,
+  ShadingType,
   Table,
   TableCell,
   TableRow,
@@ -38,6 +39,7 @@ export type JmmTradeDocxInput = {
   vatNumber: string
   deliveryAddress: string
   notes: string
+  status?: string
   lines: { description: string; packing: string; quantity: number; unitPrice: number; amount: number }[]
 }
 
@@ -80,7 +82,113 @@ function cell(
   })
 }
 
+async function buildQuotationDocx(input: JmmTradeDocxInput): Promise<Buffer> {
+  const logo = await readFile(path.join(/*turbopackIgnore: true*/ process.cwd(), 'public/jmm/logo.jpg')).catch(() => null)
+  const total = input.lines.reduce((sum, line) => sum + line.amount, 0)
+  const widths = [700, 2800, 1200, 1100, 1400, 1560]
+  const tableWidth = widths.reduce((sum, width) => sum + width, 0)
+  const headers = ['Item', 'Description', 'Packing', 'Quantity', 'Unit price', 'Amount']
+  const lineBorder = { style: BorderStyle.SINGLE, size: 4, color: '111111' }
+  const grid = { top: lineBorder, bottom: lineBorder, left: lineBorder, right: lineBorder }
+  const plain = (value: string, options?: { bold?: boolean; size?: number; color?: string }) => new Paragraph({
+    spacing: { before: 0, after: 0 },
+    children: [new TextRun({ text: value, font: 'Calibri', size: options?.size ?? 20, bold: options?.bold, color: options?.color })],
+  })
+  const boxed = (children: Paragraph[], width: number, fill?: string) => new TableCell({
+    borders: fill === '000000' ? NO_BORDERS : grid,
+    width: { size: width, type: WidthType.DXA },
+    verticalAlign: VerticalAlign.CENTER,
+    margins: { top: 60, bottom: 60, left: 80, right: 80 },
+    ...(fill ? { shading: { type: ShadingType.CLEAR, fill } } : {}),
+    children,
+  })
+
+  const doc = new Document({
+    sections: [{
+      properties: { page: { margin: { top: 720, bottom: 720, left: 720, right: 720 } } },
+      children: [
+        new Table({
+          width: { size: tableWidth, type: WidthType.DXA },
+          rows: [new TableRow({
+            children: [
+              new TableCell({
+                borders: NO_BORDERS,
+                width: { size: 5200, type: WidthType.DXA },
+                shading: { type: ShadingType.CLEAR, fill: '000000' },
+                margins: { top: 120, bottom: 120, left: 160, right: 80 },
+                verticalAlign: VerticalAlign.CENTER,
+                children: logo
+                  ? [new Paragraph({
+                      children: [new ImageRun({
+                        type: 'jpg',
+                        data: logo,
+                        transformation: { width: 200, height: 81 },
+                        altText: { title: 'JMM', description: 'JMM', name: 'JMM' },
+                      })],
+                    })]
+                  : [plain('JMM', { bold: true, color: 'FFFFFF', size: 32 })],
+              }),
+              new TableCell({
+                borders: NO_BORDERS,
+                width: { size: tableWidth - 5200, type: WidthType.DXA },
+                shading: { type: ShadingType.CLEAR, fill: '000000' },
+                margins: { top: 120, bottom: 120, left: 80, right: 160 },
+                verticalAlign: VerticalAlign.CENTER,
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    children: [new TextRun({ text: 'QUOTATION', font: 'Calibri', size: 18, color: 'C9A96E', bold: true })],
+                  }),
+                  new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    children: [new TextRun({ text: input.documentNumber, font: 'Calibri', size: 28, color: 'FFFFFF', bold: true })],
+                  }),
+                ],
+              }),
+            ],
+          })],
+        }),
+        new Paragraph({ spacing: { before: 160, after: 0 }, children: [new TextRun({ text: `Address: ${JMM_LETTERHEAD.address}`, font: 'Calibri', size: 18 })] }),
+        new Paragraph({ spacing: { before: 40, after: 0 }, children: [new TextRun({ text: `Email: ${JMM_LETTERHEAD.email}`, font: 'Calibri', size: 18 })] }),
+        new Paragraph({ spacing: { before: 40, after: 200 }, children: [new TextRun({ text: `Website: ${JMM_LETTERHEAD.website}`, font: 'Calibri', size: 18 })] }),
+        plain(`Date: ${input.documentDate}`),
+        plain(`Status: ${input.status ?? ''}`),
+        plain(`Customer: ${input.customerName}${input.company ? ` · ${input.company}` : ''}`),
+        plain(`VAT number: ${input.vatNumber || '—'}`),
+        new Paragraph({ spacing: { before: 40, after: 200 }, children: [new TextRun({ text: `Delivery address: ${input.deliveryAddress || '—'}`, font: 'Calibri', size: 20 })] }),
+        new Table({
+          width: { size: tableWidth, type: WidthType.DXA },
+          rows: [
+            new TableRow({
+              children: headers.map((label, index) => boxed([plain(label, { bold: true, size: 16 })], widths[index] ?? 1000, 'F4E8D0')),
+            }),
+            ...input.lines.map((line, index) => new TableRow({
+              children: [
+                boxed([plain(String(index + 1))], widths[0] ?? 700),
+                boxed([plain(line.description)], widths[1] ?? 2800),
+                boxed([plain(line.packing || '—')], widths[2] ?? 1200),
+                boxed([plain(String(line.quantity))], widths[3] ?? 1100),
+                boxed([plain(money(line.unitPrice))], widths[4] ?? 1400),
+                boxed([plain(money(line.amount))], widths[5] ?? 1560),
+              ],
+            })),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.RIGHT,
+          spacing: { before: 200, after: 120 },
+          children: [new TextRun({ text: `Total price ${input.currency} ${money(total)}`, font: 'Calibri', size: 22, bold: true })],
+        }),
+        ...(input.notes ? [plain('Notes', { bold: true }), plain(input.notes)] : []),
+      ],
+    }],
+  })
+
+  return Packer.toBuffer(doc)
+}
+
 export async function buildJmmTradeDocx(input: JmmTradeDocxInput): Promise<Buffer> {
+  if (input.kind === 'QUOTATION') return buildQuotationDocx(input)
   const logo = await readFile(path.join(/*turbopackIgnore: true*/ process.cwd(), 'public/jmm/logo.jpg')).catch(() => null)
   const signature = await readFile(path.join(/*turbopackIgnore: true*/ process.cwd(), 'public/jmm/signature.png')).catch(() => null)
   const total = input.lines.reduce((sum, line) => sum + line.amount, 0)
