@@ -74,6 +74,7 @@ export const PERMISSION_GROUPS: PermGroup[] = [
     platform: 'JMM_TRADING',
     pages: [
       { menuKey: 'jmmCustomers', label: '客户', actions: ['create', 'edit', 'delete'] },
+      { menuKey: 'jmmSuppliers', label: '供应商', actions: ['create', 'edit', 'delete'] },
       { menuKey: 'jmmOrders',    label: '订单', actions: ['create', 'edit', 'delete'] },
     ],
   },

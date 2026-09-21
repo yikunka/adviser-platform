@@ -6,6 +6,8 @@ export type JmmCurrency = (typeof JMM_CURRENCIES)[number]
 
 export const JMM_ORDER_STATUSES = ['DRAFT', 'CONFIRMED', 'SHIPPED', 'COMPLETED', 'CANCELLED'] as const
 
+export const JMM_PACKING_OPTIONS = ['pcs', 'bags', 'IBC', 'drum', 'cans'] as const
+
 export function decimalToNumber(value: Prisma.Decimal | number | string): number {
   return Number(value.toString())
 }

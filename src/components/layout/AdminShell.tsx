@@ -40,6 +40,7 @@ import {
   ClipboardList,
   ListChecks,
   Package,
+  Truck,
 } from 'lucide-react'
 import type { AdminMenuKey } from '@/lib/auth/admin-access'
 import { pathnameToAdminMenuKey, adminMenusAllow } from '@/lib/auth/admin-access'
@@ -105,6 +106,7 @@ const NAV_GROUPS: NavGroup[] = [
     labelKey: 'jmmTrading',
     items: [
       { href: '/admin/jmm-customers', key: 'jmmCustomers', Icon: ContactRound },
+      { href: '/admin/jmm-suppliers', key: 'jmmSuppliers', Icon: Truck },
       { href: '/admin/jmm-orders', key: 'jmmOrders', Icon: Package },
     ],
   },

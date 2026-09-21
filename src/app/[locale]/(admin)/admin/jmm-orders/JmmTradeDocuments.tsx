@@ -1,24 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Plus, Printer, Trash2 } from 'lucide-react'
+import { FileDown, Plus, Printer, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
+import { JMM_DOCUMENT_TITLES, JMM_LETTERHEAD } from '@/lib/jmm/letterhead'
+import { JMM_PACKING_OPTIONS } from '@/lib/jmm/orders'
 
 const CURRENCIES = ['USD', 'HKD', 'CNY', 'EUR'] as const
-const KIND_LABEL = {
-  QUOTATION: 'Quotation',
-  PROFORMA: 'Proforma invoice',
-  COMMERCIAL_INVOICE: 'Commercial invoice',
-} as const
-
-const JMM_LETTERHEAD = {
-  address: 'RM7 20F Boss Commercial Centre, 28 Ferry Street, Yau Ma Tei, Kowloon, Hong Kong',
-  email: 'kennywong@jmmtrading.net',
-  website: 'jmmtrading.net',
-} as const
-
-type Kind = keyof typeof KIND_LABEL
+type Kind = keyof typeof JMM_DOCUMENT_TITLES
 type Line = { description: string; quantity: string; unit: string; unitPrice: string }
 type Document = {
   id: string
@@ -79,13 +69,14 @@ function printTradeDocument(input: {
     toast.error('Allow pop-ups to print this document')
     return
   }
-  const rows = input.lines.map(line => {
+  const rows = input.lines.map((line, index) => {
     const amount = money(line.quantity, line.unitPrice)
     return `<tr>
+      <td>${index + 1}</td>
       <td>${escapeHtml(line.description)}</td>
-      <td>${escapeHtml(line.quantity)}</td>
       <td>${escapeHtml(line.unit)}</td>
-      <td>${escapeHtml(line.unitPrice)}</td>
+      <td>${escapeHtml(line.quantity)}</td>
+      <td class="num">${escapeHtml(line.unitPrice)}</td>
       <td class="num">${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
     </tr>`
   }).join('')
@@ -120,7 +111,7 @@ function printTradeDocument(input: {
     <header>
       <img src="${logo}" alt="JMM" />
       <div>
-        <p class="kind">${escapeHtml(KIND_LABEL[input.kind])}</p>
+        <p class="kind">${escapeHtml(JMM_DOCUMENT_TITLES[input.kind])}</p>
         <p class="number">${escapeHtml(input.documentNumber)}</p>
       </div>
     </header>
@@ -133,10 +124,10 @@ function printTradeDocument(input: {
       <div><p class="label">Delivery address</p><p>${escapeHtml(input.deliveryAddress || '—')}</p></div>
     </div>
     <table>
-      <thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th class="num">Unit price</th><th class="num">Amount</th></tr></thead>
+      <thead><tr><th>Item</th><th>Description</th><th>Packing</th><th>Quantity</th><th class="num">Unit price</th><th class="num">Amount</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
-    <p class="total">Total ${escapeHtml(input.currency)} ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+    <p class="total">Total price ${escapeHtml(input.currency)} ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
     ${input.notes ? `<div class="notes"><p class="label">Notes</p><p>${escapeHtml(input.notes)}</p></div>` : ''}
   </div>
 </body>
@@ -322,6 +313,21 @@ function DocumentCard({
     }
   }
 
+  async function downloadWord() {
+    const res = await fetch(`/api/admin/jmm-orders/${orderId}/documents/${doc.id}/docx`)
+    if (!res.ok) {
+      toast.error('Could not download the Word file. Save the document first.')
+      return
+    }
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${doc.documentNumber}.docx`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   async function cancel() {
     if (!window.confirm(`Cancel ${doc.documentNumber}?`)) return
     const res = await fetch(`/api/admin/jmm-orders/${orderId}/documents/${doc.id}`, {
@@ -343,7 +349,7 @@ function DocumentCard({
       <div className="flex items-center justify-between gap-4 px-4 py-3" style={{ background: '#000' }}>
         <img src="/jmm/logo.jpg" alt="JMM" width={220} height={89} className="h-14 w-auto" />
         <div className="text-right">
-          <p className="text-xs font-semibold tracking-wide" style={{ color: '#C9A96E' }}>{KIND_LABEL[doc.kind]}</p>
+          <p className="text-xs font-semibold tracking-wide" style={{ color: '#C9A96E' }}>{JMM_DOCUMENT_TITLES[doc.kind]}</p>
           <h3 className="text-base font-semibold text-white">{doc.documentNumber}</h3>
         </div>
       </div>
@@ -390,9 +396,10 @@ function DocumentCard({
         <table className="w-full text-sm">
           <thead>
             <tr style={{ color: 'var(--muted-foreground)' }}>
+              <th className="text-left py-2 font-medium">Item</th>
               <th className="text-left py-2 font-medium">Description</th>
-              <th className="text-left py-2 font-medium">Qty</th>
-              <th className="text-left py-2 font-medium">Unit</th>
+              <th className="text-left py-2 font-medium">Packing</th>
+              <th className="text-left py-2 font-medium">Quantity</th>
               <th className="text-left py-2 font-medium">Unit price</th>
               <th className="text-right py-2 font-medium">Amount</th>
               <th />
@@ -401,9 +408,16 @@ function DocumentCard({
           <tbody>
             {lines.map((line, index) => (
               <tr key={index} style={{ borderTop: '1px solid var(--border)' }}>
+                <td className="py-2 pr-2 font-medium" style={{ color: 'var(--foreground)' }}>{index + 1}</td>
                 <td className="py-2 pr-2"><input value={line.description} disabled={!editable} onChange={e => setLines(current => current.map((row, i) => i === index ? { ...row, description: e.target.value } : row))} className="w-full min-w-40 px-2 py-1.5 rounded text-sm outline-none" style={inputStyle} /></td>
+                <td className="py-2 pr-2">
+                  <select value={line.unit} disabled={!editable} onChange={e => setLines(current => current.map((row, i) => i === index ? { ...row, unit: e.target.value } : row))} className="w-28 px-2 py-1.5 rounded text-sm outline-none" style={inputStyle}>
+                    <option value="">—</option>
+                    {JMM_PACKING_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+                    {line.unit && !(JMM_PACKING_OPTIONS as readonly string[]).includes(line.unit) && <option value={line.unit}>{line.unit}</option>}
+                  </select>
+                </td>
                 <td className="py-2 pr-2"><input value={line.quantity} disabled={!editable} onChange={e => setLines(current => current.map((row, i) => i === index ? { ...row, quantity: e.target.value } : row))} className="w-20 px-2 py-1.5 rounded text-sm outline-none" style={inputStyle} /></td>
-                <td className="py-2 pr-2"><input value={line.unit} disabled={!editable} onChange={e => setLines(current => current.map((row, i) => i === index ? { ...row, unit: e.target.value } : row))} className="w-20 px-2 py-1.5 rounded text-sm outline-none" style={inputStyle} /></td>
                 <td className="py-2 pr-2"><input value={line.unitPrice} disabled={!editable} onChange={e => setLines(current => current.map((row, i) => i === index ? { ...row, unitPrice: e.target.value } : row))} className="w-24 px-2 py-1.5 rounded text-sm outline-none" style={inputStyle} /></td>
                 <td className="py-2 text-right whitespace-nowrap" style={{ color: 'var(--foreground)' }}>{money(line.quantity, line.unitPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td className="py-2 pl-2">
@@ -420,7 +434,7 @@ function DocumentCard({
         <button type="button" onClick={() => setLines(current => [...current, blankLine()])} className="text-xs" style={{ color: '#C9A96E' }}>Add line</button>
       )}
       <p className="text-sm font-semibold text-right" style={{ color: 'var(--foreground)' }}>
-        Total {currency} {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        Total price {currency} {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
       </p>
       <label className="block text-xs" style={{ color: 'var(--muted-foreground)' }}>
         Notes
@@ -430,6 +444,9 @@ function DocumentCard({
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={() => printTradeDocument({ kind: doc.kind, documentNumber: doc.documentNumber, status: doc.status, date, currency, customerName, company, vatNumber, deliveryAddress, notes, lines })} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm" style={{ color: 'var(--foreground)', border: '1px solid var(--border)' }}>
           <Printer size={14} /> Print
+        </button>
+        <button type="button" onClick={() => void downloadWord()} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm" style={{ color: 'var(--foreground)', border: '1px solid var(--border)' }}>
+          <FileDown size={14} /> Download Word
         </button>
         {canEdit && doc.status !== 'CANCELLED' && (
           <>

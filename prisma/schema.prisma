@@ -50,6 +50,24 @@ enum JmmDocumentStatus {
   CANCELLED
 }
 
+enum JmmSupplierInvoiceStatus {
+  EXPECTED
+  RECEIVED
+  CHECKED
+  PAID
+}
+
+enum JmmShipmentDocKind {
+  BILL_OF_LADING
+  AIRWAY_BILL
+  PACKING_LIST
+  SUPPLIER_INVOICE
+  CERTIFICATE_OF_ORIGIN
+  INSURANCE
+  INSPECTION
+  OTHER
+}
+
 enum JmmOrderStatus {
   DRAFT
   CONFIRMED
@@ -2667,6 +2685,7 @@ model JmmOrder {
   createdBy User?            @relation("JmmOrderCreatedBy", fields: [createdById], references: [id])
   lines     JmmOrderLine[]
   documents JmmDocument[]
+  supplierInvoices JmmSupplierInvoice[]
 
   @@index([customerId])
   @@index([status])
@@ -2731,4 +2750,87 @@ model JmmDocumentLine {
 
   @@index([documentId])
   @@map("jmm_document_lines")
+}
+
+model JmmSupplier {
+  id        String   @id @default(cuid())
+  name      String
+  company   String   @default("")
+  phone     String   @default("")
+  email     String   @default("")
+  address   String   @default("")
+  vatNumber String   @default("")
+  notes     String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invoices JmmSupplierInvoice[]
+
+  @@index([name])
+  @@index([company])
+  @@map("jmm_suppliers")
+}
+
+model JmmSupplierInvoice {
+  id            String                   @id @default(cuid())
+  orderId       String
+  supplierId    String
+  invoiceNumber String
+  invoiceDate   DateTime                 @default(now())
+  currency      String                   @default("USD")
+  amount        Decimal                  @db.Decimal(18, 2)
+  status        JmmSupplierInvoiceStatus @default(EXPECTED)
+  notes         String                   @default("")
+  fileName      String                   @default("")
+  storageKey    String                   @default("")
+  contentType   String                   @default("")
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+
+  order     JmmOrder      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  supplier  JmmSupplier   @relation(fields: [supplierId], references: [id])
+  shipments JmmShipment[]
+
+  @@index([orderId])
+  @@index([supplierId])
+  @@index([status])
+  @@map("jmm_supplier_invoices")
+}
+
+model JmmShipment {
+  id               String    @id @default(cuid())
+  invoiceId        String
+  reference        String    @default("")
+  shipper          String    @default("")
+  consignee        String    @default("")
+  carrier          String    @default("")
+  incoterm         String    @default("")
+  portOfLoading    String    @default("")
+  portOfDischarge  String    @default("")
+  etd              DateTime?
+  eta              DateTime?
+  notes            String    @default("")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  invoice JmmSupplierInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  files   JmmShipmentFile[]
+
+  @@index([invoiceId])
+  @@map("jmm_shipments")
+}
+
+model JmmShipmentFile {
+  id          String             @id @default(cuid())
+  shipmentId  String
+  kind        JmmShipmentDocKind
+  fileName    String
+  storageKey  String
+  contentType String
+  createdAt   DateTime           @default(now())
+
+  shipment JmmShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+  @@map("jmm_shipment_files")
 }

@@ -6,6 +6,8 @@ import { Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 import { JmmTradeDocuments } from './JmmTradeDocuments'
+import { JmmPurchaseFile } from './JmmPurchaseFile'
+import { JMM_PACKING_OPTIONS } from '@/lib/jmm/orders'
 
 const STATUSES = ['DRAFT', 'CONFIRMED', 'SHIPPED', 'COMPLETED', 'CANCELLED'] as const
 const CURRENCIES = ['USD', 'HKD', 'CNY', 'EUR'] as const
@@ -275,9 +277,10 @@ export function JmmOrderForm({ orderId }: { orderId?: string }) {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ color: 'var(--muted-foreground)' }}>
+                <th className="text-left px-4 py-2 font-medium">Item</th>
                 <th className="text-left px-4 py-2 font-medium">Description</th>
-                <th className="text-left px-4 py-2 font-medium">Qty</th>
-                <th className="text-left px-4 py-2 font-medium">Unit</th>
+                <th className="text-left px-4 py-2 font-medium">Packing</th>
+                <th className="text-left px-4 py-2 font-medium">Quantity</th>
                 <th className="text-left px-4 py-2 font-medium">Unit price</th>
                 <th className="text-right px-4 py-2 font-medium">Amount</th>
                 <th />
@@ -286,14 +289,19 @@ export function JmmOrderForm({ orderId }: { orderId?: string }) {
             <tbody>
               {lines.map((line, index) => (
                 <tr key={index} style={{ borderTop: '1px solid var(--border)' }}>
+                  <td className="px-4 py-2 font-medium" style={{ color: 'var(--foreground)' }}>{index + 1}</td>
                   <td className="px-4 py-2">
                     <input value={line.description} disabled={!canEdit} onChange={e => updateLine(index, { description: e.target.value })} className="w-full min-w-48 px-2 py-1.5 rounded text-sm outline-none" style={inputStyle} />
                   </td>
                   <td className="px-4 py-2">
-                    <input value={line.quantity} disabled={!canEdit} onChange={e => updateLine(index, { quantity: e.target.value })} className="w-24 px-2 py-1.5 rounded text-sm outline-none" style={inputStyle} />
+                    <select value={line.unit} disabled={!canEdit} onChange={e => updateLine(index, { unit: e.target.value })} className="w-28 px-2 py-1.5 rounded text-sm outline-none" style={inputStyle}>
+                      <option value="">—</option>
+                      {JMM_PACKING_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+                      {line.unit && !(JMM_PACKING_OPTIONS as readonly string[]).includes(line.unit) && <option value={line.unit}>{line.unit}</option>}
+                    </select>
                   </td>
                   <td className="px-4 py-2">
-                    <input value={line.unit} disabled={!canEdit} onChange={e => updateLine(index, { unit: e.target.value })} placeholder="pcs" className="w-24 px-2 py-1.5 rounded text-sm outline-none" style={inputStyle} />
+                    <input value={line.quantity} disabled={!canEdit} onChange={e => updateLine(index, { quantity: e.target.value })} className="w-24 px-2 py-1.5 rounded text-sm outline-none" style={inputStyle} />
                   </td>
                   <td className="px-4 py-2">
                     <input value={line.unitPrice} disabled={!canEdit} onChange={e => updateLine(index, { unitPrice: e.target.value })} className="w-28 px-2 py-1.5 rounded text-sm outline-none" style={inputStyle} />
@@ -314,7 +322,7 @@ export function JmmOrderForm({ orderId }: { orderId?: string }) {
           </table>
         </div>
         <div className="px-4 py-3 text-right text-sm font-semibold" style={{ borderTop: '1px solid var(--border)', color: 'var(--foreground)' }}>
-          Total {currency} {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          Total price {currency} {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </div>
       </div>
 
@@ -325,6 +333,7 @@ export function JmmOrderForm({ orderId }: { orderId?: string }) {
       )}
 
       {orderId && <JmmTradeDocuments orderId={orderId} />}
+      {orderId && <JmmPurchaseFile orderId={orderId} orderStatus={status} />}
     </div>
   )
 }
