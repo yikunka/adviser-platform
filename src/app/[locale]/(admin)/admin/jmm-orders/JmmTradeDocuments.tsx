@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { FileDown, Plus, Printer, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
-import { JMM_DOCUMENT_TITLES, JMM_LETTERHEAD } from '@/lib/jmm/letterhead'
+import { JMM_BANK, JMM_COMPANY_NAME, JMM_DOCUMENT_TITLES, JMM_LETTERHEAD, formatJmmDocDate, jmmNumberLabel } from '@/lib/jmm/letterhead'
 import { JMM_PACKING_OPTIONS } from '@/lib/jmm/constants'
 
 const CURRENCIES = ['USD', 'HKD', 'CNY', 'EUR'] as const
@@ -24,12 +24,6 @@ type Document = {
   notes: string
   total: number
   lines: { description: string; quantity: number; unit: string; unitPrice: number }[]
-}
-
-const inputStyle: React.CSSProperties = {
-  background: 'var(--surface-input)',
-  border: '1px solid var(--border-subtle)',
-  color: 'var(--foreground)',
 }
 
 function money(quantity: string, unitPrice: string): number {
@@ -54,7 +48,6 @@ function blankLine(): Line {
 function printTradeDocument(input: {
   kind: Kind
   documentNumber: string
-  status: string
   date: string
   currency: string
   customerName: string
@@ -69,77 +62,136 @@ function printTradeDocument(input: {
     toast.error('Allow pop-ups to print this document')
     return
   }
+  const client = input.company || input.customerName
+  const attention = input.company ? input.customerName : ''
   const rows = input.lines.map((line, index) => {
     const amount = money(line.quantity, line.unitPrice)
     return `<tr>
-      <td>${index + 1}</td>
+      <td class="num">${index + 1}</td>
       <td>${escapeHtml(line.description)}</td>
-      <td>${escapeHtml(line.unit)}</td>
-      <td>${escapeHtml(line.quantity)}</td>
+      <td class="num">${escapeHtml(line.unit)}</td>
+      <td class="num">${escapeHtml(line.quantity)}</td>
       <td class="num">${escapeHtml(line.unitPrice)}</td>
-      <td class="num">${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+      <td class="num">${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
     </tr>`
   }).join('')
   const total = input.lines.reduce((sum, line) => sum + money(line.quantity, line.unitPrice), 0)
   const logo = `${window.location.origin}/jmm/logo.jpg`
+  const signature = `${window.location.origin}/jmm/signature.png`
+  const bankAddress = JMM_BANK.lines.map(line => `<div>${escapeHtml(line)}</div>`).join('')
   popup.document.write(`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
   <title>${escapeHtml(input.documentNumber)}</title>
   <style>
-    body { margin: 0; font-family: Georgia, "Times New Roman", serif; color: #111; }
-    .sheet { max-width: 800px; margin: 0 auto; padding: 32px; }
-    header { display: flex; justify-content: space-between; align-items: center; gap: 24px; background: #000; color: #fff; padding: 20px 24px; }
-    header img { height: 72px; width: auto; display: block; }
-    .issuer { margin: 12px 0 0; font-size: 12px; line-height: 1.5; color: #333; }
-    .kind { margin: 0; letter-spacing: 0.08em; text-transform: uppercase; font-size: 12px; color: #C9A96E; }
-    .number { margin: 4px 0 0; font-size: 20px; }
-    .meta { margin-top: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 14px; }
-    .label { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #666; margin: 0 0 4px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 24px; font-size: 14px; }
-    th { text-align: left; border-bottom: 1px solid #111; padding: 8px 6px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
-    td { border-bottom: 1px solid #ddd; padding: 8px 6px; vertical-align: top; }
-    .num, th.num { text-align: right; }
-    .total { margin-top: 16px; text-align: right; font-size: 16px; }
-    .notes { margin-top: 24px; white-space: pre-wrap; font-size: 14px; }
+    body { margin: 0; color: #111; font-family: "Times New Roman", Times, serif; }
+    .sheet { max-width: 820px; margin: 0 auto; padding: 28px 32px 40px; }
+    .head { display: grid; grid-template-columns: 150px 1fr; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .head img { width: 140px; height: auto; display: block; }
+    .company { text-align: center; }
+    .company h1 { margin: 0 0 4px; font-size: 22px; }
+    .company p { margin: 0; font-size: 12px; line-height: 1.35; }
+    .meta { font-size: 13px; line-height: 1.5; margin: 0 0 12px; }
+    table.lines, table.confirm { width: 100%; border-collapse: collapse; font-size: 12px; }
+    table.lines th, table.lines td, table.confirm th, table.confirm td { border: 1px solid #000; padding: 4px 6px; vertical-align: middle; }
+    table.lines th { font-weight: 700; text-align: center; }
+    td.num { text-align: center; }
+    td.total { text-align: right; font-weight: 700; }
+    .notes { margin: 10px 0 12px; white-space: pre-wrap; font-size: 12px; }
+    h2 { margin: 10px 0 4px; font-size: 13px; }
+    .bank { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 12px; line-height: 1.45; margin-bottom: 12px; }
+    .sign { height: 78px; text-align: center; }
+    .sign img { height: 68px; width: auto; }
     @media print { .sheet { padding: 0; } }
   </style>
 </head>
 <body>
   <div class="sheet">
-    <header>
+    <div class="head">
       <img src="${logo}" alt="JMM" />
-      <div>
-        <p class="kind">${escapeHtml(JMM_DOCUMENT_TITLES[input.kind])}</p>
-        <p class="number">${escapeHtml(input.documentNumber)}</p>
+      <div class="company">
+        <h1>${escapeHtml(JMM_COMPANY_NAME)}</h1>
+        <p>${escapeHtml(JMM_LETTERHEAD.address)}</p>
+        <p>Tel: ${escapeHtml(JMM_LETTERHEAD.phone)}</p>
+        <p>E-mail: ${escapeHtml(JMM_LETTERHEAD.email)}</p>
+        <p>Website: ${escapeHtml(JMM_LETTERHEAD.website)}</p>
       </div>
-    </header>
-    <p class="issuer">Address: ${escapeHtml(JMM_LETTERHEAD.address)}<br>Email: ${escapeHtml(JMM_LETTERHEAD.email)}<br>Website: ${escapeHtml(JMM_LETTERHEAD.website)}</p>
-    <div class="meta">
-      <div><p class="label">Date</p><p>${escapeHtml(input.date)}</p></div>
-      <div><p class="label">Status</p><p>${escapeHtml(input.status)}</p></div>
-      <div><p class="label">Customer</p><p>${escapeHtml(input.customerName)}${input.company ? `<br>${escapeHtml(input.company)}` : ''}</p></div>
-      <div><p class="label">VAT number</p><p>${escapeHtml(input.vatNumber || '—')}</p></div>
-      <div><p class="label">Delivery address</p><p>${escapeHtml(input.deliveryAddress || '—')}</p></div>
     </div>
-    <table>
-      <thead><tr><th>Item</th><th>Description</th><th>Packing</th><th>Quantity</th><th class="num">Unit price</th><th class="num">Amount</th></tr></thead>
-      <tbody>${rows}</tbody>
+    <div class="meta">
+      <div>Date: ${escapeHtml(formatJmmDocDate(input.date))}</div>
+      <div>${escapeHtml(jmmNumberLabel(input.kind))}${escapeHtml(input.documentNumber)}</div>
+      <div>Client: ${escapeHtml(client)}</div>
+      <div>VAT: ${escapeHtml(input.vatNumber)}</div>
+      <div>Delivery Address: ${escapeHtml(input.deliveryAddress)}</div>
+      ${attention ? `<div>Attn: ${escapeHtml(attention)}</div>` : ''}
+    </div>
+    <table class="lines">
+      <thead>
+        <tr>
+          <th rowspan="2">Item</th>
+          <th rowspan="2">Description</th>
+          <th>Packing</th>
+          <th>Quantity</th>
+          <th>Unit Price</th>
+          <th>Amount</th>
+        </tr>
+        <tr>
+          <th></th>
+          <th></th>
+          <th>(${escapeHtml(input.currency)})</th>
+          <th>(${escapeHtml(input.currency)})</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+        <tr>
+          <td colspan="4"></td>
+          <td class="total">TOTAL ${escapeHtml(input.currency)}</td>
+          <td class="num"><strong>${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td>
+        </tr>
+      </tbody>
     </table>
-    <p class="total">Total price ${escapeHtml(input.currency)} ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-    ${input.notes ? `<div class="notes"><p class="label">Notes</p><p>${escapeHtml(input.notes)}</p></div>` : ''}
+    ${`<h2>TERMS</h2><div class="notes">${escapeHtml(input.notes)}</div>`}
+    <h2>BANK INFORMATION</h2>
+    <div class="bank">
+      <div>
+        <div>${escapeHtml(JMM_BANK.name)}</div>
+        <div>${escapeHtml(JMM_BANK.branch)}</div>
+        ${bankAddress}
+      </div>
+      <div>
+        <div>Acct Name: ${escapeHtml(JMM_BANK.accountName)}</div>
+        <div>Acct #: ${escapeHtml(JMM_BANK.accountNumber)}</div>
+        <div>SWIFT CODE: ${escapeHtml(JMM_BANK.swift)}</div>
+      </div>
+    </div>
+    <table class="confirm">
+      <tr><th colspan="2">CONFIRMATION</th></tr>
+      <tr><th>${escapeHtml(JMM_COMPANY_NAME.toUpperCase())}</th><th>CLIENT</th></tr>
+      <tr>
+        <td class="sign"><img src="${signature}" alt="" /></td>
+        <td class="sign"></td>
+      </tr>
+    </table>
   </div>
 </body>
 </html>`)
   popup.document.close()
-  const image = popup.document.querySelector('img')
+  const images = [...popup.document.querySelectorAll('img')]
+  const pending = images.filter(image => !image.complete)
   const startPrint = () => {
     popup.focus()
     popup.print()
   }
-  if (image && !image.complete) image.addEventListener('load', startPrint, { once: true })
-  else startPrint()
+  if (pending.length === 0) startPrint()
+  else {
+    let left = pending.length
+    for (const image of pending) {
+      image.addEventListener('load', () => { left -= 1; if (left === 0) startPrint() }, { once: true })
+      image.addEventListener('error', () => { left -= 1; if (left === 0) startPrint() }, { once: true })
+    }
+  }
 }
 
 export function JmmTradeDocuments({ orderId }: { orderId: string }) {
@@ -344,105 +396,173 @@ function DocumentCard({
     await onChanged()
   }
 
+  const paperInput: React.CSSProperties = {
+    width: '100%',
+    border: 'none',
+    background: 'transparent',
+    color: '#111',
+    font: 'inherit',
+    outline: 'none',
+    padding: 0,
+  }
+  const gridCell: React.CSSProperties = { border: '1px solid #000', padding: '4px 6px', verticalAlign: 'middle' }
+
   return (
-    <article className="rounded-xl overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)', opacity: muted ? 0.6 : 1 }}>
-      <div className="flex items-center justify-between gap-4 px-4 py-3" style={{ background: '#000' }}>
-        <img src="/jmm/logo.jpg" alt="JMM" width={220} height={89} className="h-14 w-auto" />
-        <div className="text-right">
-          <p className="text-xs font-semibold tracking-wide" style={{ color: '#C9A96E' }}>{JMM_DOCUMENT_TITLES[doc.kind]}</p>
-          <h3 className="text-base font-semibold text-white">{doc.documentNumber}</h3>
-        </div>
-      </div>
-      <div className="px-4 py-3 text-xs leading-5" style={{ color: 'var(--muted-foreground)', borderBottom: '1px solid var(--border)' }}>
-        <p>Address: {JMM_LETTERHEAD.address}</p>
-        <p>Email: {JMM_LETTERHEAD.email}</p>
-        <p>Website: {JMM_LETTERHEAD.website}</p>
-      </div>
-      <div className="p-4 space-y-3">
-      <div className="flex justify-end">
+    <article style={{ opacity: muted ? 0.6 : 1 }}>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <p className="text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>{JMM_DOCUMENT_TITLES[doc.kind]}</p>
         <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ background: 'rgba(201,169,110,0.12)', color: '#C9A96E' }}>{doc.status}</span>
       </div>
+      <div style={{ background: '#fff', color: '#111', fontFamily: '"Times New Roman", Times, serif', padding: '28px 24px 32px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+          <img src="/jmm/logo.jpg" alt="JMM" width={140} height={57} style={{ width: 140, height: 'auto' }} />
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 700 }}>{JMM_COMPANY_NAME}</p>
+            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.35 }}>{JMM_LETTERHEAD.address}</p>
+            <p style={{ margin: 0, fontSize: 12 }}>Tel: {JMM_LETTERHEAD.phone}</p>
+            <p style={{ margin: 0, fontSize: 12 }}>E-mail: {JMM_LETTERHEAD.email}</p>
+            <p style={{ margin: 0, fontSize: 12 }}>Website: {JMM_LETTERHEAD.website}</p>
+          </div>
+        </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        <label className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-          Date
-          <input type="date" value={date} disabled={!editable} onChange={e => setDate(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-        </label>
-        <label className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-          Currency
-          <select value={currency} disabled={!editable} onChange={e => setCurrency(e.target.value as Document['currency'])} className="mt-1 w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
-            {CURRENCIES.map(item => <option key={item} value={item}>{item}</option>)}
-          </select>
-        </label>
-        <label className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-          Customer
-          <input value={customerName} disabled={!editable} onChange={e => setCustomerName(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-        </label>
-        <label className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-          Company
-          <input value={company} disabled={!editable} onChange={e => setCompany(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-        </label>
-        <label className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-          VAT number
-          <input value={vatNumber} disabled={!editable} onChange={e => setVatNumber(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-        </label>
-        <label className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-          Delivery address
-          <textarea value={deliveryAddress} disabled={!editable} onChange={e => setDeliveryAddress(e.target.value)} rows={2} className="mt-1 w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-        </label>
-      </div>
+        <div style={{ fontSize: 13, lineHeight: 1.7, marginBottom: 12 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span>Date:</span>
+            {editable
+              ? <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ ...paperInput, width: 160 }} />
+              : <span>{formatJmmDocDate(date)}</span>}
+          </div>
+          <div>{jmmNumberLabel(doc.kind)}{doc.documentNumber}</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span>Client:</span>
+            {editable
+              ? <input value={company} onChange={e => setCompany(e.target.value)} placeholder={customerName || 'Company'} style={paperInput} />
+              : <span>{company || customerName}</span>}
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span>VAT:</span>
+            <input value={vatNumber} disabled={!editable} onChange={e => setVatNumber(e.target.value)} style={paperInput} />
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+            <span style={{ whiteSpace: 'nowrap' }}>Delivery Address:</span>
+            <textarea value={deliveryAddress} disabled={!editable} onChange={e => setDeliveryAddress(e.target.value)} rows={2} style={{ ...paperInput, resize: 'vertical' }} />
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span>Attn:</span>
+            <input value={customerName} disabled={!editable} onChange={e => setCustomerName(e.target.value)} style={paperInput} />
+          </div>
+        </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr>
+                <th rowSpan={2} style={gridCell}>Item</th>
+                <th rowSpan={2} style={gridCell}>Description</th>
+                <th style={gridCell}>Packing</th>
+                <th style={gridCell}>Quantity</th>
+                <th style={gridCell}>Unit Price</th>
+                <th style={gridCell}>Amount</th>
+                <th rowSpan={2} style={{ ...gridCell, width: 28, border: 'none' }} />
+              </tr>
+              <tr>
+                <th style={gridCell} />
+                <th style={gridCell} />
+                <th style={gridCell}>
+                  {editable ? (
+                    <select value={currency} onChange={e => setCurrency(e.target.value as Document['currency'])} style={{ ...paperInput, textAlign: 'center' }}>
+                      {CURRENCIES.map(item => <option key={item} value={item}>{item}</option>)}
+                    </select>
+                  ) : `(${currency})`}
+                </th>
+                <th style={gridCell}>({currency})</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((line, index) => (
+                <tr key={index}>
+                  <td style={{ ...gridCell, textAlign: 'center' }}>{index + 1}</td>
+                  <td style={gridCell}>
+                    <input value={line.description} disabled={!editable} onChange={e => setLines(current => current.map((row, i) => i === index ? { ...row, description: e.target.value } : row))} style={paperInput} />
+                  </td>
+                  <td style={gridCell}>
+                    <select value={line.unit} disabled={!editable} onChange={e => setLines(current => current.map((row, i) => i === index ? { ...row, unit: e.target.value } : row))} style={{ ...paperInput, textAlign: 'center' }}>
+                      <option value="">—</option>
+                      {JMM_PACKING_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+                      {line.unit && !(JMM_PACKING_OPTIONS as readonly string[]).includes(line.unit) && <option value={line.unit}>{line.unit}</option>}
+                    </select>
+                  </td>
+                  <td style={gridCell}>
+                    <input value={line.quantity} disabled={!editable} onChange={e => setLines(current => current.map((row, i) => i === index ? { ...row, quantity: e.target.value } : row))} style={{ ...paperInput, textAlign: 'center' }} />
+                  </td>
+                  <td style={gridCell}>
+                    <input value={line.unitPrice} disabled={!editable} onChange={e => setLines(current => current.map((row, i) => i === index ? { ...row, unitPrice: e.target.value } : row))} style={{ ...paperInput, textAlign: 'center' }} />
+                  </td>
+                  <td style={{ ...gridCell, textAlign: 'center' }}>{money(line.quantity, line.unitPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td style={{ ...gridCell, border: 'none', background: 'transparent' }}>
+                    {editable && lines.length > 1 && (
+                      <button type="button" onClick={() => setLines(current => current.filter((_, i) => i !== index))} style={{ color: '#ef4444' }} aria-label="Remove line"><Trash2 size={14} /></button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              <tr>
+                <td colSpan={4} style={gridCell} />
+                <td style={{ ...gridCell, textAlign: 'right', fontWeight: 700 }}>TOTAL {currency}</td>
+                <td style={{ ...gridCell, textAlign: 'center', fontWeight: 700 }}>{total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style={{ border: 'none' }} />
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        {editable && (
+          <button type="button" onClick={() => setLines(current => [...current, blankLine()])} className="text-xs mt-2" style={{ color: '#8a6a32' }}>Add line</button>
+        )}
+        <p style={{ margin: '12px 0 4px', fontSize: 13, fontWeight: 700 }}>TERMS</p>
+        <textarea
+          value={notes}
+          disabled={!editable}
+          onChange={e => setNotes(e.target.value)}
+          rows={3}
+          placeholder="Exchange rate, payment terms, shipping terms"
+          style={{ ...paperInput, fontSize: 12, minHeight: 48 }}
+        />
+
+        <p style={{ margin: '12px 0 4px', fontSize: 13, fontWeight: 700 }}>BANK INFORMATION</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, fontSize: 12, lineHeight: 1.45 }}>
+          <div>
+            <div>{JMM_BANK.name}</div>
+            <div>{JMM_BANK.branch}</div>
+            {JMM_BANK.lines.map(line => <div key={line}>{line}</div>)}
+          </div>
+          <div>
+            <div>Acct Name: {JMM_BANK.accountName}</div>
+            <div>Acct #: {JMM_BANK.accountNumber}</div>
+            <div>SWIFT CODE: {JMM_BANK.swift}</div>
+          </div>
+        </div>
+
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginTop: 12 }}>
           <thead>
-            <tr style={{ color: 'var(--muted-foreground)' }}>
-              <th className="text-left py-2 font-medium">Item</th>
-              <th className="text-left py-2 font-medium">Description</th>
-              <th className="text-left py-2 font-medium">Packing</th>
-              <th className="text-left py-2 font-medium">Quantity</th>
-              <th className="text-left py-2 font-medium">Unit price</th>
-              <th className="text-right py-2 font-medium">Amount</th>
-              <th />
+            <tr><th colSpan={2} style={gridCell}>CONFIRMATION</th></tr>
+            <tr>
+              <th style={gridCell}>{JMM_COMPANY_NAME.toUpperCase()}</th>
+              <th style={gridCell}>CLIENT</th>
             </tr>
           </thead>
           <tbody>
-            {lines.map((line, index) => (
-              <tr key={index} style={{ borderTop: '1px solid var(--border)' }}>
-                <td className="py-2 pr-2 font-medium" style={{ color: 'var(--foreground)' }}>{index + 1}</td>
-                <td className="py-2 pr-2"><input value={line.description} disabled={!editable} onChange={e => setLines(current => current.map((row, i) => i === index ? { ...row, description: e.target.value } : row))} className="w-full min-w-40 px-2 py-1.5 rounded text-sm outline-none" style={inputStyle} /></td>
-                <td className="py-2 pr-2">
-                  <select value={line.unit} disabled={!editable} onChange={e => setLines(current => current.map((row, i) => i === index ? { ...row, unit: e.target.value } : row))} className="w-28 px-2 py-1.5 rounded text-sm outline-none" style={inputStyle}>
-                    <option value="">—</option>
-                    {JMM_PACKING_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
-                    {line.unit && !(JMM_PACKING_OPTIONS as readonly string[]).includes(line.unit) && <option value={line.unit}>{line.unit}</option>}
-                  </select>
-                </td>
-                <td className="py-2 pr-2"><input value={line.quantity} disabled={!editable} onChange={e => setLines(current => current.map((row, i) => i === index ? { ...row, quantity: e.target.value } : row))} className="w-20 px-2 py-1.5 rounded text-sm outline-none" style={inputStyle} /></td>
-                <td className="py-2 pr-2"><input value={line.unitPrice} disabled={!editable} onChange={e => setLines(current => current.map((row, i) => i === index ? { ...row, unitPrice: e.target.value } : row))} className="w-24 px-2 py-1.5 rounded text-sm outline-none" style={inputStyle} /></td>
-                <td className="py-2 text-right whitespace-nowrap" style={{ color: 'var(--foreground)' }}>{money(line.quantity, line.unitPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td className="py-2 pl-2">
-                  {editable && lines.length > 1 && (
-                    <button type="button" onClick={() => setLines(current => current.filter((_, i) => i !== index))} style={{ color: '#ef4444' }} aria-label="Remove line"><Trash2 size={14} /></button>
-                  )}
-                </td>
-              </tr>
-            ))}
+            <tr>
+              <td style={{ ...gridCell, height: 78, textAlign: 'center' }}>
+                <img src="/jmm/signature.png" alt="" style={{ height: 68, width: 'auto', margin: '0 auto' }} />
+              </td>
+              <td style={{ ...gridCell, height: 78 }} />
+            </tr>
           </tbody>
         </table>
       </div>
-      {editable && (
-        <button type="button" onClick={() => setLines(current => [...current, blankLine()])} className="text-xs" style={{ color: '#C9A96E' }}>Add line</button>
-      )}
-      <p className="text-sm font-semibold text-right" style={{ color: 'var(--foreground)' }}>
-        Total price {currency} {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-      </p>
-      <label className="block text-xs" style={{ color: 'var(--muted-foreground)' }}>
-        Notes
-        <textarea value={notes} disabled={!editable} onChange={e => setNotes(e.target.value)} rows={2} className="mt-1 w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-      </label>
 
-      <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => printTradeDocument({ kind: doc.kind, documentNumber: doc.documentNumber, status: doc.status, date, currency, customerName, company, vatNumber, deliveryAddress, notes, lines })} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm" style={{ color: 'var(--foreground)', border: '1px solid var(--border)' }}>
+      <div className="flex flex-wrap gap-2 py-3">
+        <button type="button" onClick={() => printTradeDocument({ kind: doc.kind, documentNumber: doc.documentNumber, date, currency, customerName, company, vatNumber, deliveryAddress, notes, lines })} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm" style={{ color: 'var(--foreground)', border: '1px solid var(--border)' }}>
           <Printer size={14} /> Print
         </button>
         <button type="button" onClick={() => void downloadWord()} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm" style={{ color: 'var(--foreground)', border: '1px solid var(--border)' }}>
@@ -468,7 +588,6 @@ function DocumentCard({
           <button type="button" onClick={() => void cancel()} className="px-3 py-2 rounded-lg text-sm" style={{ color: '#ef4444' }}>Cancel document</button>
           </>
         )}
-      </div>
       </div>
     </article>
   )

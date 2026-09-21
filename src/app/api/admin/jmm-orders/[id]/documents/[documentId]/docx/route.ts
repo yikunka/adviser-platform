@@ -21,7 +21,6 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   const buffer = await buildJmmTradeDocx({
     kind: doc.kind,
     documentNumber: doc.documentNumber,
-    status: doc.status,
     documentDate: doc.documentDate.toISOString().slice(0, 10),
     currency: doc.currency,
     customerName: doc.customerName,
