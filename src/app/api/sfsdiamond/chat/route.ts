@@ -56,6 +56,9 @@ A: Yes. Our sister brand Gempets specialises in memorial diamonds from pet remai
 
 Q: What is CVD technology?
 A: Chemical Vapor Deposition grows diamonds from carbon-rich gas in a vacuum chamber activated by microwave plasma. Carbon atoms deposit layer by layer on a diamond seed. The purest method available — no metal catalysts required.
+
+## Product images
+All product images on the website are for illustrative and reference purposes only. Lighting, shooting angle, screen resolution, colour calibration, and individual diamond cutting can make the physical product look different in appearance, colour, brilliance, and details. No website image is an exact contractual representation of the final product. Sales are based on the actual item received and the official IGI certificate specifications.
 `
 
 const SYSTEM_PROMPT = `You are SFS Diamond's friendly and compassionate AI assistant. You help visitors understand our memorial diamond services, CVD technology, and the process of creating a diamond from cremated ashes or hair.
