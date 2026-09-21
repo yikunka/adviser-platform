@@ -8,11 +8,11 @@ import { useSession } from 'next-auth/react'
 import SignOutButton from './SignOutButton'
 
 const NAV = [
-  { label: 'Home',              href: '/sfsdiamond' },
-  { label: 'Memorial Diamonds', href: '/sfsdiamond/memorial-diamonds' },
-  { label: 'Technology',        href: '/sfsdiamond/technology' },
-  { label: 'Q&A',               href: '/sfsdiamond/qa' },
-  { label: 'About SFS',         href: '/sfsdiamond/about' },
+  { label: 'Home',     href: '/sfsdiamond' },
+  { label: 'Products', href: '/sfsdiamond/memorial-diamonds' },
+  { label: 'Factory',  href: '/sfsdiamond/technology' },
+  { label: 'Partners', href: '/sfsdiamond/qa' },
+  { label: 'Company',  href: '/sfsdiamond/about' },
 ]
 
 export default function SFSHeader() {
@@ -89,14 +89,14 @@ export default function SFSHeader() {
                 className="text-sm font-medium px-4 py-1.5 rounded-full border transition-all duration-150 hover:opacity-80"
                 style={{ border: '1px solid rgba(201,169,110,0.60)', color: '#C9A96E' }}
               >
-                Login
+                Partner login
               </Link>
               <a
-                href="mailto:patricklau@sfsdiamonds.com"
+                href="mailto:patricklau@sfsdiamonds.com?subject=SFS%20Distributor%20Partnership"
                 className="text-sm font-semibold px-5 py-1.5 rounded-full transition-opacity duration-150 hover:opacity-90"
                 style={{ background: '#C9A96E', color: '#0A0805' }}
               >
-                Contact Us
+                Become a distributor
               </a>
             </>
           )}
@@ -156,14 +156,14 @@ export default function SFSHeader() {
                   style={{ border: '1px solid rgba(201,169,110,0.60)', color: '#C9A96E' }}
                   onClick={() => setOpen(false)}
                 >
-                  Login
+                  Partner login
                 </Link>
                 <a
-                  href="mailto:patricklau@sfsdiamonds.com"
+                  href="mailto:patricklau@sfsdiamonds.com?subject=SFS%20Distributor%20Partnership"
                   className="text-sm font-semibold px-4 py-2 rounded-full text-center"
                   style={{ background: '#C9A96E', color: '#0A0805' }}
                 >
-                  Contact Us
+                  Become a distributor
                 </a>
               </>
             )}

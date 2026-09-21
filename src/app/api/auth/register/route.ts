@@ -13,6 +13,9 @@ const schema = z.object({
   password: z.string().min(8).max(100),
   nameEn: z.string().min(1).max(100),
   phone: z.string().max(20).optional(),
+  company: z.string().trim().max(200).optional(),
+  market: z.string().trim().max(120).optional(),
+  expectedVolume: z.string().trim().max(200).optional(),
   locale: z.enum(['zh', 'en']).default('zh'),
   platform: z.enum(['ADVISER', 'SFS_DIAMOND']).default('ADVISER'),
 })
@@ -27,8 +30,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
   }
 
-  const { password, nameEn, phone, locale, platform } = parsed.data
+  const { password, nameEn, phone, locale, platform, company, market, expectedVolume } = parsed.data
   const email = normalizeSignupEmail(parsed.data.email)
+
+  if (platform === 'SFS_DIAMOND' && (!company || !market || !expectedVolume)) {
+    return NextResponse.json({ error: 'Company, market, and expected volume are required.' }, { status: 400 })
+  }
 
   try {
     const existing = await prisma.user.findFirst({
@@ -54,12 +61,18 @@ export async function POST(req: NextRequest) {
     })
 
     if (platform === 'SFS_DIAMOND') {
+      const notes = [
+        company ? `Company: ${company}` : '',
+        market ? `Market: ${market}` : '',
+        expectedVolume ? `Expected volume: ${expectedVolume}` : '',
+      ].filter(Boolean).join('\n')
       await prisma.sfsCustomer.create({
         data: {
           userId: user.id,
           name: nameEn,
           email,
           phone: phone ?? null,
+          notes: notes || null,
         },
       })
     }

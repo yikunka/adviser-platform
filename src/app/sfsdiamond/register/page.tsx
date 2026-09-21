@@ -11,6 +11,9 @@ import { Loader2 } from 'lucide-react'
 
 const registerSchema = z.object({
   nameEn:          z.string().min(1, 'Name is required').max(100),
+  company:         z.string().trim().min(1, 'Company is required').max(200),
+  market:          z.string().trim().min(1, 'Market is required').max(120),
+  expectedVolume:  z.string().trim().min(1, 'Expected volume is required').max(200),
   email:           z.string().email('Invalid email').max(255),
   password:        z.string().min(8, 'Minimum 8 characters').max(100),
   confirmPassword: z.string(),
@@ -55,7 +58,15 @@ export default function SFSRegisterPage() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nameEn: data.nameEn, email: data.email, password: data.password, platform: 'SFS_DIAMOND' }),
+        body: JSON.stringify({
+          nameEn: data.nameEn,
+          email: data.email,
+          password: data.password,
+          company: data.company,
+          market: data.market,
+          expectedVolume: data.expectedVolume,
+          platform: 'SFS_DIAMOND',
+        }),
       })
       const json = await res.json().catch(() => ({})) as Record<string, unknown>
       if (!res.ok) { setServerError(typeof json.error === 'string' ? json.error : 'Registration failed'); return }
@@ -103,11 +114,11 @@ export default function SFSRegisterPage() {
 
         <div className="px-8 pt-8 pb-2">
           <h1 className="text-2xl font-bold" style={{ fontFamily: 'Georgia, serif', color: '#1A1A1A' }}>
-            {step === 'register' ? 'Create Account' : 'Verify Email'}
+            {step === 'register' ? 'Apply for a partner account' : 'Verify Email'}
           </h1>
           <p className="text-sm mt-1" style={{ color: '#6B5E4A' }}>
             {step === 'register'
-              ? 'Create a distributor account. Staff approval is required before you can view order details.'
+              ? 'Tell us your company, market, and expected volume. Staff approval is required before you can place orders.'
               : 'Enter the 6-digit code sent to your email.'}
           </p>
         </div>
@@ -119,6 +130,21 @@ export default function SFSRegisterPage() {
                 <label className="text-xs font-medium uppercase tracking-wider" style={{ color: '#9A8060' }}>Full Name</label>
                 <SFSInput {...regForm.register('nameEn')} autoComplete="name" />
                 {regForm.formState.errors.nameEn && <p className="text-xs" style={{ color: '#ef4444' }}>{regForm.formState.errors.nameEn.message}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium uppercase tracking-wider" style={{ color: '#9A8060' }}>Company</label>
+                <SFSInput {...regForm.register('company')} autoComplete="organization" />
+                {regForm.formState.errors.company && <p className="text-xs" style={{ color: '#ef4444' }}>{regForm.formState.errors.company.message}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium uppercase tracking-wider" style={{ color: '#9A8060' }}>Market</label>
+                <SFSInput {...regForm.register('market')} placeholder="Country or region" />
+                {regForm.formState.errors.market && <p className="text-xs" style={{ color: '#ef4444' }}>{regForm.formState.errors.market.message}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium uppercase tracking-wider" style={{ color: '#9A8060' }}>Expected volume</label>
+                <SFSInput {...regForm.register('expectedVolume')} placeholder="e.g. a few commissions a month" />
+                {regForm.formState.errors.expectedVolume && <p className="text-xs" style={{ color: '#ef4444' }}>{regForm.formState.errors.expectedVolume.message}</p>}
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium uppercase tracking-wider" style={{ color: '#9A8060' }}>Email</label>
@@ -147,7 +173,7 @@ export default function SFSRegisterPage() {
                 style={{ background: loading ? '#8A6E42' : '#C9A96E', color: '#0A0805' }}
               >
                 {loading && <Loader2 size={14} className="animate-spin" />}
-                {loading ? 'Creating account…' : 'Create Account'}
+                {loading ? 'Sending application…' : 'Apply'}
               </button>
 
               <div className="flex items-center gap-3">

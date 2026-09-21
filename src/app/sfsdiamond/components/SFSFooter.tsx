@@ -23,8 +23,8 @@ export default function SFSFooter() {
             </span>
           </div>
           <p className="text-sm leading-relaxed" style={{ color: '#7A6A58' }}>
-            Turning love into everlasting brilliance. Memorial diamonds crafted from cremated ashes
-            using advanced CVD technology.
+            Factory-backed memorial diamonds for professional distributors. CVD production,
+            certification, and partner systems under one roof.
           </p>
           <a
             href="https://www.facebook.com/profile.php?id=61575282825230"
@@ -42,11 +42,11 @@ export default function SFSFooter() {
         <div className="flex flex-col gap-3">
           <p className="text-xs uppercase tracking-widest mb-1" style={{ color: '#C9A96E' }}>Pages</p>
           {[
-            ['Home',              '/sfsdiamond'],
-            ['Memorial Diamonds', '/sfsdiamond/memorial-diamonds'],
-            ['Technology',        '/sfsdiamond/technology'],
-            ['Q&A',               '/sfsdiamond/qa'],
-            ['About SFS',         '/sfsdiamond/about'],
+            ['Home',     '/sfsdiamond'],
+            ['Products', '/sfsdiamond/memorial-diamonds'],
+            ['Factory',  '/sfsdiamond/technology'],
+            ['Partners', '/sfsdiamond/qa'],
+            ['Company',  '/sfsdiamond/about'],
           ].map(([label, href]) => (
             <Link
               key={href}

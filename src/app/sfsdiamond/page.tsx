@@ -128,23 +128,18 @@ export default function SFSHomePage() {
     <>
       {/* ── Hero ── */}
       <section className="relative min-h-screen flex items-center overflow-hidden" style={{ background: '#050305' }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={ossImg('/sfsdiamond/hero-love.svg')} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
-        <EternityRing />
-        <div
-          className="absolute inset-0 hidden md:block pointer-events-none"
-          style={{ background: 'linear-gradient(90deg, rgba(2,1,3,0.88) 0%, rgba(2,1,3,0.62) 30%, rgba(2,1,3,0.18) 55%, transparent 70%)' }}
-        />
-        <div
-          className="absolute inset-0 md:hidden pointer-events-none"
-          style={{
-            background:
-              'linear-gradient(165deg, rgba(2,1,3,0.95) 0%, rgba(2,1,3,0.72) min(72vw, 18rem), rgba(2,1,3,0.28) max(82vw, 20rem), transparent 100%)',
-          }}
+        <Image
+          src="/sfsdiamond/chemical.jpg"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover opacity-35"
+          aria-hidden
         />
         <div
           className="absolute inset-0 pointer-events-none"
-          style={{ background: 'linear-gradient(180deg, rgba(2,1,3,0.55) 0%, transparent 16%, transparent 82%, rgba(2,1,3,0.7) 100%)' }}
+          style={{ background: 'linear-gradient(90deg, rgba(2,1,3,0.92) 0%, rgba(2,1,3,0.72) 46%, rgba(2,1,3,0.45) 100%)' }}
         />
 
         <div
@@ -162,13 +157,12 @@ export default function SFSHomePage() {
             </p>
           </div>
           <h1
-            className="mb-6 max-w-3xl font-bold leading-[1.05] text-[clamp(2.25rem,6.5vw+0.85rem,4rem)] md:text-[4.25rem] md:leading-[1.05]"
+            className="mb-6 max-w-3xl font-bold leading-[1.08] text-[clamp(2.1rem,4.6vw+0.6rem,3.6rem)] md:text-[3.75rem] md:leading-[1.08]"
             style={{ color: '#FFFFFF', fontFamily: 'Georgia, "Times New Roman", serif' }}
           >
-            For{' '}
-            <span data-sfs-hero-eternity-anchor>Forever</span>
+            Memorial diamonds
             <br />
-            <span style={{ color: GOLD }}>Love</span>
+            <span style={{ color: GOLD }}>for professional distributors.</span>
           </h1>
           <p
             className="mb-10 max-w-lg text-base leading-relaxed sm:text-lg"
@@ -203,6 +197,35 @@ export default function SFSHomePage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── Product story partners sell ── */}
+      <section className="relative min-h-[70vh] flex items-center overflow-hidden" style={{ background: '#050305' }}>
+        <EternityRing />
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: 'linear-gradient(90deg, rgba(2,1,3,0.88) 0%, rgba(2,1,3,0.55) 42%, rgba(2,1,3,0.2) 100%)' }}
+        />
+        <div className="relative z-10 max-w-6xl mx-auto px-6 py-24 w-full">
+          <p className="text-[11px] uppercase tracking-[0.28em] mb-5" style={{ color: GOLD }}>
+            The product your clients receive
+          </p>
+          <h2
+            className="mb-6 max-w-xl text-4xl md:text-6xl font-bold leading-[1.05]"
+            style={{ color: '#FFFFFF', fontFamily: 'Georgia, serif' }}
+          >
+            For <span data-sfs-hero-eternity-anchor>Forever</span>
+            <br />
+            <span style={{ color: GOLD }}>Love</span>
+          </h2>
+          <p className="max-w-lg text-sm md:text-base leading-relaxed mb-8" style={{ color: 'rgba(245,240,232,0.78)' }}>
+            The Eternity Cut is the memorial diamond your market sells. We grow it, certify it,
+            and hand it over so your client hears a story of love — backed by a factory.
+          </p>
+          <CtaGhost href="/sfsdiamond/memorial-diamonds" dark>
+            View the product programme
+          </CtaGhost>
         </div>
       </section>
 
@@ -403,6 +426,20 @@ export default function SFSHomePage() {
                   (852) 6560 0073
                 </CtaGhost>
               </div>
+              <dl className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 max-w-xl">
+                {[
+                  ['Territory', 'Discussed per market'],
+                  ['Minimum order', 'Priced per commission'],
+                  ['Lead time', '2–3 months'],
+                  ['Certificate', 'Official IGI specifications'],
+                  ['Packaging', 'Partner handover programme'],
+                ].map(([label, value]) => (
+                  <div key={label}>
+                    <dt className="text-[10px] uppercase tracking-[0.18em] mb-1" style={{ color: GOLD }}>{label}</dt>
+                    <dd className="text-sm" style={{ color: 'rgba(245,240,232,0.82)' }}>{value}</dd>
+                  </div>
+                ))}
+              </dl>
             </div>
             <div className="lg:col-span-5 lg:pt-2">
               <div className="p-7 md:p-8" style={{ border: '1px solid rgba(201,169,110,0.28)', background: 'rgba(245,240,232,0.03)' }}>

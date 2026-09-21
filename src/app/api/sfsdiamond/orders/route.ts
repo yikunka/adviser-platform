@@ -24,7 +24,12 @@ async function generateSampleCode(): Promise<string> {
 
 export async function POST(req: NextRequest) {
   const session = await auth()
-  const linkedUserId = session?.user?.platform === 'SFS_DIAMOND' ? session.user.id : null
+  if (!session || session.user.platform !== 'SFS_DIAMOND') {
+    return NextResponse.json({ error: 'Partner login is required to place an order.' }, { status: 401 })
+  }
+  const access = await getSfsAccountAccess(session.user.id, session.user.platform)
+  if (!access.approved) return sfsApprovalForbiddenResponse(access.status)
+  const linkedUserId = session.user.id
 
   const body = await req.json().catch(() => null)
   const parsed = sfsOrderInputSchema.safeParse(body)

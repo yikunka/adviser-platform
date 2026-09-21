@@ -2,10 +2,11 @@ import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 import CollectionShowcase from '../components/CollectionShowcase'
+import SfsProductImageDisclaimer from '../components/SfsProductImageDisclaimer'
 
 export const metadata: Metadata = {
   title: 'Memorial Diamonds',
-  description: 'Discover our Eternity Cut memorial diamonds and bespoke jewellery crafted from cremated ashes.',
+  description: 'Eternity Cut memorial diamonds for professional distributors — CVD, certification, and jewellery settings.',
   alternates: { canonical: '/sfsdiamond/memorial-diamonds' },
 }
 
@@ -42,9 +43,9 @@ export default function MemorialDiamondsPage() {
           <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(10,8,5,0.85) 0%, rgba(10,8,5,0.3) 60%, transparent 100%)' }} />
         </div>
         <div className="relative z-10 max-w-6xl mx-auto px-6 pb-16 w-full">
-          <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#C9A96E' }}>SFS Diamond</p>
+          <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#C9A96E' }}>Product programme</p>
           <h1 className="text-4xl md:text-6xl font-bold" style={{ color: '#FFFFFF', fontFamily: 'Georgia, serif' }}>
-            Memorial Diamonds
+            What your market sells
           </h1>
         </div>
       </section>
@@ -56,27 +57,28 @@ export default function MemorialDiamondsPage() {
             <Image src="/sfsdiamond/eternity-symbol.png" alt="Eternity Cut" fill sizes="(max-width: 768px) 100vw, 480px" className="object-cover" />
           </div>
           <div>
-            <p className="text-xs uppercase tracking-widest mb-4" style={{ color: '#C9A96E' }}>Our Signature</p>
+            <p className="text-xs uppercase tracking-widest mb-4" style={{ color: '#C9A96E' }}>Signature cut</p>
             <h2 className="text-3xl md:text-4xl font-bold mb-6" style={{ fontFamily: 'Georgia, serif', color: '#1A1A1A' }}>
               The Eternity Cut
             </h2>
             <div className="space-y-4 text-sm leading-relaxed" style={{ color: '#4A3E30' }}>
               <p>
-                Every SFS memorial diamond is shaped into our signature Eternity Cut — modelled on the
-                infinity symbol (∞). This timeless form embodies eternal love, an unbreakable bond,
-                and the continuity of memory across generations.
+                Every SFS memorial diamond is finished in the Eternity Cut, modelled on the infinity
+                symbol. It is the form your client sees. The factory grows, cuts, and certifies it.
               </p>
               <p>
-                Each diamond is then hand-polished by master craftsmen to maximise brilliance and fire,
-                ensuring that the light it carries reflects the life it honours.
+                Settings available to partners are ring, necklace, earring, bracelet, and loose stone.
+                A custom jewellery design can be uploaded for quotation.
               </p>
             </div>
             <div className="mt-8 rounded-2xl p-6 grid grid-cols-2 gap-4" style={{ background: '#F2EDE3' }}>
               {[
-                ['Technology',  'CVD'],
-                ['Size',        '1.0 ± 0.1 ct'],
-                ['Timeline',    '2 – 3 months'],
-                ['Ashes',       '≥ 60 g required'],
+                ['Technology',  'CVD, in-house'],
+                ['Size',        'About 1.0 ct'],
+                ['Lead time',   '2–3 months'],
+                ['Material',    '60 g ash or 1 g hair'],
+                ['Certificate', 'Official IGI'],
+                ['Settings',    'Ring to loose stone'],
               ].map(([k, v]) => (
                 <div key={k}>
                   <p className="text-xs uppercase tracking-wider mb-1" style={{ color: '#C9A96E' }}>{k}</p>
@@ -92,9 +94,9 @@ export default function MemorialDiamondsPage() {
       <section className="py-24" style={{ background: '#111111' }}>
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-16">
-            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#C9A96E' }}>Meaning Behind the Cut</p>
+            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#C9A96E' }}>Language for your client</p>
             <h2 className="text-3xl md:text-4xl font-bold" style={{ fontFamily: 'Georgia, serif', color: '#F5F0E8' }}>
-              Four Eternal Truths
+              What the cut means
             </h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -122,15 +124,16 @@ export default function MemorialDiamondsPage() {
       <section className="py-24" style={{ background: '#FAFAF8' }}>
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-12">
-            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#C9A96E' }}>Our Collection</p>
+            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#C9A96E' }}>Partner catalogue</p>
             <h2 className="text-3xl md:text-4xl font-bold" style={{ fontFamily: 'Georgia, serif', color: '#1A1A1A' }}>
-              Forever with Your Loved One
+              Settings you can offer
             </h2>
             <p className="mt-4 text-sm max-w-xl mx-auto" style={{ color: '#6B5E4A' }}>
-              Browse our jewellery settings — rings, necklaces, earrings, and bracelets — and find
-              the design that will carry your memorial diamond.
+              Rings, necklaces, earrings, and bracelets from the current programme. Prices stay off
+              this public page. Approved partners see live prices when they place an order.
             </p>
           </div>
+          <SfsProductImageDisclaimer className="mb-10 text-xs leading-relaxed space-y-2 max-w-3xl mx-auto text-center" style={{ color: '#6B5E4A' }} />
           <CollectionShowcase />
         </div>
       </section>
@@ -139,26 +142,25 @@ export default function MemorialDiamondsPage() {
       <section className="py-20 text-center" style={{ background: '#F2EDE3' }}>
         <div className="max-w-xl mx-auto px-6">
           <h2 className="text-2xl md:text-3xl font-bold mb-4" style={{ fontFamily: 'Georgia, serif', color: '#1A1A1A' }}>
-            Ready to Begin?
+            Offer this programme in your market
           </h2>
           <p className="text-sm leading-relaxed mb-8" style={{ color: '#4A3E30' }}>
-            Contact our team to discuss your memorial diamond. We&apos;ll answer every question and
-            guide you with warmth throughout the entire journey.
+            Ask for distributor terms. Approved partners place orders in the portal after staff approval.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <a
-              href="tel:+85265600073"
+              href="mailto:patricklau@sfsdiamonds.com?subject=SFS%20Distributor%20Partnership"
               className="px-8 py-3.5 rounded-full font-medium text-sm transition-all hover:opacity-90"
               style={{ background: '#1A1A1A', color: '#F5F0E8' }}
             >
-              Call (852) 6560 0073
+              Become a distributor
             </a>
             <Link
-              href="/sfsdiamond/qa"
+              href="/sfsdiamond/login"
               className="px-8 py-3.5 rounded-full font-medium text-sm border transition-all hover:bg-black/5"
               style={{ border: '1px solid #C9A96E', color: '#1A1A1A' }}
             >
-              Read FAQ
+              Partner login
             </Link>
           </div>
         </div>

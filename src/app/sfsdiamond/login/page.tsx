@@ -86,10 +86,10 @@ export default function SFSLoginPage() {
 
         <div className="px-8 pt-8 pb-2">
           <h1 className="text-2xl font-bold" style={{ fontFamily: 'Georgia, serif', color: '#1A1A1A' }}>
-            Welcome Back
+            Partner login
           </h1>
           <p className="text-sm mt-1" style={{ color: '#6B5E4A' }}>
-            Sign in to your SFS Diamond account
+            Sign in to the partner order portal.
           </p>
           {justRegistered && (
             <p
@@ -164,7 +164,7 @@ export default function SFSLoginPage() {
           <p className="text-center text-sm" style={{ color: '#6B5E4A' }}>
             Don&apos;t have an account?{' '}
             <Link href="/sfsdiamond/register" className="font-semibold" style={{ color: '#C9A96E' }}>
-              Register
+              Apply for access
             </Link>
           </p>
         </form>

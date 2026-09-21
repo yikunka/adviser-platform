@@ -4,7 +4,7 @@ import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'About SFS',
-  description: 'SFS Technology Group — a global leader in memorial diamond creation headquartered in Hong Kong.',
+  description: 'SFS Technology Group — a Hong Kong memorial-diamond manufacturer for professional distributors.',
   alternates: { canonical: '/sfsdiamond/about' },
 }
 
@@ -18,9 +18,9 @@ export default function AboutPage() {
           <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(10,8,5,0.9) 0%, rgba(10,8,5,0.35) 60%, transparent 100%)' }} />
         </div>
         <div className="relative z-10 max-w-6xl mx-auto px-6 pb-16 w-full">
-          <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#C9A96E' }}>Hong Kong · Global Reach</p>
+          <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#C9A96E' }}>Hong Kong · Manufacturer</p>
           <h1 className="text-4xl md:text-6xl font-bold" style={{ color: '#FFFFFF', fontFamily: 'Georgia, serif' }}>
-            About S.F.S.
+            The company behind the factory
           </h1>
         </div>
       </section>
@@ -29,25 +29,28 @@ export default function AboutPage() {
       <section className="py-24" style={{ background: '#FAFAF8' }}>
         <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-14 items-center">
           <div>
-            <p className="text-xs uppercase tracking-widest mb-4" style={{ color: '#C9A96E' }}>Who We Are</p>
+            <p className="text-xs uppercase tracking-widest mb-4" style={{ color: '#C9A96E' }}>Who we supply</p>
             <h2 className="text-3xl md:text-4xl font-bold mb-6" style={{ fontFamily: 'Georgia, serif', color: '#1A1A1A' }}>
-              SFS Technology Group
+              A factory partners can put their name beside
             </h2>
             <div className="space-y-4 text-sm leading-relaxed" style={{ color: '#4A3E30' }}>
               <p>
-                SFS Technology Group is a global leader in memorial diamond creation. Headquartered
-                in Hong Kong, we specialise in transforming the carbon from human or pet remains
-                into certified lab-grown diamonds using Chemical Vapor Deposition (CVD) technology.
+                SFS Technology Group manufactures memorial diamonds in Hong Kong for professional
+                distributors. We extract carbon from human or pet remains and grow certified
+                lab-grown diamonds with Chemical Vapor Deposition (CVD).
               </p>
               <p>
-                Unlike other providers, we are a <strong>heavy-asset company</strong>: we own and
-                operate our own laboratory and CVD factory. This gives us complete, end-to-end
-                quality control at every stage of production — from carbon extraction to final
-                quality certification.
+                We are a <strong>heavy-asset company</strong>: we own and operate the laboratory
+                and the CVD factory. Carbon extraction, growth, cutting, and certification stay
+                inside one production system, so a partner is not buying from a trading desk.
               </p>
               <p>
-                We believe that <em>love never fades — it takes on a new form.</em> Through our
-                innovative process, we offer families a way to keep their loved ones close, forever.
+                A partner receives the stone, the official certificate, packaging for client
+                handover, and live production status. You keep the client relationship.
+              </p>
+              <p>
+                <em>The story your client hears:</em> love never fades — it takes a new form.
+                That line belongs in your sales conversation. The company behind it is a factory.
               </p>
             </div>
           </div>
@@ -76,7 +79,7 @@ export default function AboutPage() {
             {[
               { icon: '◈', title: 'Precision',     desc: 'Every diamond is grown with scientific rigour. Each atom is placed with purpose, producing a stone of exceptional purity.' },
               { icon: '◎', title: 'Transparency',  desc: 'We provide a unique traceability code for every diamond, linking the final gemstone to the original remains with full accountability.' },
-              { icon: '✦', title: 'Compassion',    desc: 'We treat every commission as a sacred commitment. Our team approaches each family\'s grief with patience, warmth, and respect.' },
+              { icon: '✦', title: 'Compassion',    desc: 'Every commission is handled with care. Your client should feel that respect; you should be able to explain the process without guessing.' },
             ].map(v => (
               <div
                 key={v.title}
@@ -106,16 +109,16 @@ export default function AboutPage() {
               <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#C9A96E' }}>Human Memorial</p>
               <h3 className="text-xl font-bold mb-3" style={{ fontFamily: 'Georgia, serif', color: '#1A1A1A' }}>SFS Diamond</h3>
               <p className="text-sm leading-relaxed" style={{ color: '#4A3E30' }}>
-                Our flagship brand creates memorial diamonds from the cremated ashes or hair of
-                deceased loved ones, using CVD technology and our signature Eternity Cut.
+                The human memorial line. Partners sell diamonds grown from cremated ashes or hair,
+                cut in the Eternity form and delivered with certification.
               </p>
             </div>
             <div className="rounded-2xl p-8" style={{ background: '#FFFFFF', border: '1px solid #EDE7D8', boxShadow: '0 1px 12px rgba(0,0,0,0.04)' }}>
               <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#C9A96E' }}>Pet Memorial</p>
               <h3 className="text-xl font-bold mb-3" style={{ fontFamily: 'Georgia, serif', color: '#1A1A1A' }}>Gempets</h3>
               <p className="text-sm leading-relaxed" style={{ color: '#4A3E30' }}>
-                Gempets extends our technology to pet companions. Families can honour the memory of
-                beloved animals with the same certified CVD diamond process.
+                The pet memorial line, on the same CVD process and quality standard, for partners
+                whose market includes companion animals.
               </p>
             </div>
           </div>
@@ -126,9 +129,9 @@ export default function AboutPage() {
       <section className="py-24" style={{ background: '#FAFAF8' }}>
         <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-14 items-start">
           <div>
-            <p className="text-xs uppercase tracking-widest mb-4" style={{ color: '#C9A96E' }}>Get in Touch</p>
+            <p className="text-xs uppercase tracking-widest mb-4" style={{ color: '#C9A96E' }}>Partner desk</p>
             <h2 className="text-3xl md:text-4xl font-bold mb-8" style={{ fontFamily: 'Georgia, serif', color: '#1A1A1A' }}>
-              Visit Us or<br />Send a Message
+              Talk to the factory
             </h2>
             <div className="space-y-6">
               <div>
@@ -189,24 +192,25 @@ export default function AboutPage() {
               </a>
             </div>
             <div className="rounded-2xl p-8" style={{ background: '#F2EDE3' }}>
-              <h3 className="font-semibold text-base mb-3" style={{ color: '#1A1A1A' }}>Start Your Memorial Diamond</h3>
+              <h3 className="font-semibold text-base mb-3" style={{ color: '#1A1A1A' }}>Apply for a market</h3>
               <p className="text-sm leading-relaxed mb-5" style={{ color: '#4A3E30' }}>
-                Ready to begin? Our team will walk you through every step at your own pace.
+                Tell us your company, the market you cover, and the volume you expect. We manufacture;
+                you own the client relationship.
               </p>
               <div className="flex flex-col gap-3">
-                <Link
-                  href="/sfsdiamond/memorial-diamonds"
+                <a
+                  href="mailto:patricklau@sfsdiamonds.com?subject=SFS%20Distributor%20Partnership"
                   className="px-6 py-3 rounded-full font-medium text-sm text-center transition-all hover:opacity-90"
                   style={{ background: '#1A1A1A', color: '#F5F0E8' }}
                 >
-                  View Our Diamonds
-                </Link>
+                  Become a distributor
+                </a>
                 <Link
-                  href="/sfsdiamond/qa"
+                  href="/sfsdiamond/memorial-diamonds"
                   className="px-6 py-3 rounded-full font-medium text-sm text-center border transition-all hover:bg-black/5"
                   style={{ border: '1px solid #C9A96E', color: '#1A1A1A' }}
                 >
-                  Read FAQ
+                  View the product programme
                 </Link>
               </div>
             </div>
