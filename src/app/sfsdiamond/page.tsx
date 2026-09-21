@@ -429,7 +429,7 @@ export default function SFSHomePage() {
               <dl className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 max-w-xl">
                 {[
                   ['Territory', 'Discussed per market'],
-                  ['Minimum order', 'Priced per commission'],
+                  ['Minimum order', 'Quantity requirements differ by region. Contact our sales manager for details.'],
                   ['Lead time', '2–3 months'],
                   ['Certificate', 'Official IGI specifications'],
                   ['Packaging', 'Partner handover programme'],
