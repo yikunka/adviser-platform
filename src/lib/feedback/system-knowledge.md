@@ -241,7 +241,7 @@ Routes under `/[locale]/(client)/`. Accessible by `CLIENT` role users only.
 
 ## SFS Diamond Platform
 
-Memorial diamond jewellery service (lab-grown diamonds from cremation remains). Public site at `sfsdiamond.com`; admin under Adviser console.
+Memorial diamond jewellery service (lab-grown diamonds from cremation remains). Public site at `sfsdiamond.com`; public contact is +86 19129444364 (phone / WhatsApp); admin under Adviser console.
 
 ### Public Pages (`/sfsdiamond/`)
 - **Floating AI Chat Widget**: gold (#C9A96E) circular button fixed at bottom-right of all SFS Diamond pages; opens a 340×480 chat panel; answers visitor questions about company info, the CVD process, FAQ content, ordering, and memorial diamond details; powered by `claude-haiku-4-5-20251001` via `/api/sfsdiamond/chat`; knowledge is embedded statically in the server-side system prompt (no DB query); no authentication required

@@ -131,11 +131,11 @@ export default function QAPage() {
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <a
-              href="tel:+85265600073"
+              href="tel:+8619129444364"
               className="px-8 py-3.5 rounded-full font-medium text-sm transition-all hover:opacity-90"
               style={{ background: '#1A1A1A', color: '#F5F0E8' }}
             >
-              Call (852) 6560 0073
+              +86 19129444364 (phone / WhatsApp)
             </a>
             <a
               href="mailto:patricklau@sfsdiamonds.com"

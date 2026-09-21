@@ -96,7 +96,7 @@ export default function SFSChatWidget() {
           const next = [...prev]
           next[next.length - 1] = {
             role: 'assistant',
-            content: "I'm sorry, I couldn't reach our servers. Please try again or contact us directly at (852) 6560 0073.",
+            content: "I'm sorry, I couldn't reach our servers. Please try again or contact us directly at +86 19129444364 (phone / WhatsApp).",
           }
           return next
         })

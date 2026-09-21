@@ -67,8 +67,8 @@ export default function SFSFooter() {
             28 Ferry St, Yau Ma Tei<br />
             Kowloon, Hong Kong
           </p>
-          <a href="tel:+85265600073" className="text-sm hover:opacity-80" style={{ color: '#A89880' }}>
-            (852) 6560 0073
+          <a href="tel:+8619129444364" className="text-sm hover:opacity-80" style={{ color: '#A89880' }}>
+            +86 19129444364 (phone / WhatsApp)
           </a>
           <a href="mailto:patricklau@sfsdiamonds.com" className="text-sm hover:opacity-80" style={{ color: '#A89880' }}>
             patricklau@sfsdiamonds.com

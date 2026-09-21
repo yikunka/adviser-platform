@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 
 const SFS_KNOWLEDGE = `
 ## About SFS Technology Group
-SFS Technology Group manufactures memorial diamonds in Hong Kong for professional distributors. The public website is for those partners. Families are served through a distributor, not by ordering on this site. We own and operate our laboratory and CVD factory. Contact: (852) 6560 0073 | patricklau@sfsdiamonds.com | Address: Yau Ma Tei, Hong Kong.
+SFS Technology Group manufactures memorial diamonds in Hong Kong for professional distributors. The public website is for those partners. Families are served through a distributor, not by ordering on this site. We own and operate our laboratory and CVD factory. Contact: +86 19129444364 (phone / WhatsApp) | patricklau@sfsdiamonds.com | Address: Yau Ma Tei, Hong Kong.
 
 ## Memorial Diamond Services
 - Transform cremated ashes or hair into a real certified diamond
@@ -67,7 +67,7 @@ Guidelines:
 - Be warm and precise. Visitors are usually prospective distributors, not the bereaved family
 - If a family member writes, explain that orders go through an approved distributor and offer the phone number and email
 - Answer questions accurately based on the knowledge below
-- For specific pricing, recommend contacting us directly: (852) 6560 0073 or patricklau@sfsdiamonds.com
+- For specific pricing, recommend contacting us directly: +86 19129444364 (phone / WhatsApp) or patricklau@sfsdiamonds.com
 - If asked something outside your knowledge, gracefully suggest they contact us
 - Keep responses concise (2–4 sentences) unless a detailed explanation is needed
 - You can respond in the language the user writes in (English or Chinese)

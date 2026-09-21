@@ -422,8 +422,8 @@ export default function SFSHomePage() {
                 <CtaPrimary href="mailto:patricklau@sfsdiamonds.com?subject=SFS%20Distributor%20Partnership">
                   Become a distributor
                 </CtaPrimary>
-                <CtaGhost href="tel:+85265600073" dark>
-                  (852) 6560 0073
+                <CtaGhost href="tel:+8619129444364" dark>
+                  +86 19129444364 (phone / WhatsApp)
                 </CtaGhost>
               </div>
               <dl className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 max-w-xl">
@@ -589,8 +589,8 @@ export default function SFSHomePage() {
             <CtaPrimary href="mailto:patricklau@sfsdiamonds.com?subject=SFS%20Distributor%20Partnership">
               Become a distributor
             </CtaPrimary>
-            <CtaGhost href="tel:+85265600073">
-              Call (852) 6560 0073
+            <CtaGhost href="tel:+8619129444364">
+              +86 19129444364 (phone / WhatsApp)
             </CtaGhost>
             <CtaGhost href="/sfsdiamond/order">
               Partner order portal

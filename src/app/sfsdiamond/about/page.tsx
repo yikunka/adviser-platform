@@ -144,8 +144,8 @@ export default function AboutPage() {
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wider mb-1.5" style={{ color: '#C9A96E' }}>Phone</p>
-                <a href="tel:+85265600073" className="text-sm hover:opacity-70 transition-opacity" style={{ color: '#1A1A1A' }}>
-                  (852) 6560 0073
+                <a href="tel:+8619129444364" className="text-sm hover:opacity-70 transition-opacity" style={{ color: '#1A1A1A' }}>
+                  +86 19129444364 (phone / WhatsApp)
                 </a>
               </div>
               <div>
