@@ -2,12 +2,13 @@
 
 ## Overview
 
-A multi-platform back-office system operated by a licensed TCSP (Trust and Company Services Provider) firm. Two independent platforms share one Next.js codebase and one PostgreSQL database:
+A multi-platform back-office system operated by a licensed TCSP (Trust and Company Services Provider) firm. Three independent platforms share one Next.js codebase and one PostgreSQL database:
 
 | Platform | URL prefix | DB prefix | Purpose |
 |---|---|---|---|
 | **Adviser** | `/[locale]/` | `adv_` | TCSP back-office (main platform) |
 | **SFS Diamond** | `/sfsdiamond/` | `sfs_` | Memorial diamond jewellery e-commerce |
+| **JMM Trading** | `/[locale]/admin/jmm-orders` | `jmm_` | Staff-only offline trading order desk. No public website and no customer login. |
 
 Admin console is at `/[locale]/admin/`. Roles: `SUPER_ADMIN`, `COMPLIANCE`, `STAFF`, `CLIENT`. Staff access is further restricted by per-menu permission keys and per-platform flags.
 
@@ -173,7 +174,7 @@ Independent secretarial task files. Not stored in company documents, not produce
 ### 7. Team Management (`/admin/team`)
 Staff access control.
 - System roles: `SUPER_ADMIN`, `COMPLIANCE`, `STAFF`
-- Per-staff platform access flags (Adviser / SFS Diamond)
+- Per-staff platform access flags (Adviser / SFS Diamond / JMM Trading)
 - Granular admin-menu permission keys (companies, kyc, aml, financial, invoices, projects, contracts, forms, tcspPricing, team, feedback, sfs-customers, sfs-orders, sfs-invoices)
 - Dynamic role assignment: each staff member can be assigned multiple dynamic `AdminRole` records (from Role Management); effective access is the union of all selected roles' page + button-level permissions
 - Legacy mode: no restrictions; new mode: explicit per-menu grants
@@ -183,7 +184,7 @@ Staff access control.
 ### 7b. Role Management (`/admin/admin-roles`)
 Dynamic permission roles. **SUPER_ADMIN only.**
 - Create, edit, delete custom roles with name, color, and description
-- Each role has a permission matrix covering all admin pages across all modules (Adviser, SFS Diamond, System); every newly added admin page or feature entry must be added to Role Management in the same change
+- Each role has a permission matrix covering all admin pages across all modules (Adviser, SFS Diamond, JMM Trading, System); every newly added admin page or feature entry must be added to Role Management in the same change
 - Permissions are per-page (list/menu view access) and per-action (view detail, create, edit, delete, approve, export, import)
 - System roles cannot be deleted
 - Assigned to staff via Team Management; effective permissions = role permissions + direct menu key grants
@@ -331,6 +332,23 @@ Separate admin page in the SFS Diamond menu, using the same permission as SFS or
 - PDF payment block (footer): DBS BANK (HONG KONG), SWIFT DHBKHKHH, Bank Code 016, Account Number 478002236556, A/C Name SFS TECHNOLOGY GROUP CO., LIMITED
 
 ---
+
+## JMM Trading
+
+Staff-only order desk for an offline trading company. There is no public JMM website and no customer login. Access is `jmmCustomers` and `jmmOrders` under platform `JMM_TRADING` (Role Management group JMM Trading; Team Management platform flag JMM Trading).
+
+### Customers (`/admin/jmm-customers`)
+- Counterparties with name, company, phone, email, address, and notes
+- Search by name, company, phone, or email
+- A customer with orders cannot be deleted
+
+### Orders (`/admin/jmm-orders`)
+- Order numbers are `JMM-YYYY-NNNN` from the order year
+- Each order has a customer, order date, currency (`USD`, `HKD`, `CNY`, `EUR`), notes, and at least one line
+- A line is description, quantity, unit, and unit price; the amount is quantity × unit price
+- Statuses: `DRAFT`, `CONFIRMED`, `SHIPPED`, `COMPLETED`, `CANCELLED`
+- List can be filtered by status and searched by order number, customer, or line description
+- Creating or editing an order can also add a customer if the user has `jmmCustomers.create`
 
 ## Shared Infrastructure
 

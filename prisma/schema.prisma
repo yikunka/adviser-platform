@@ -35,6 +35,15 @@ enum UserRole {
 enum Platform {
   ADVISER
   SFS_DIAMOND
+  JMM_TRADING
+}
+
+enum JmmOrderStatus {
+  DRAFT
+  CONFIRMED
+  SHIPPED
+  COMPLETED
+  CANCELLED
 }
 
 /// Online SFS self-registration must be approved before the client can view order/dashboard details.
@@ -329,6 +338,7 @@ model User {
   financialJournalEntries             JournalEntry[]                @relation("FinancialJournalCreatedBy")
   invoicesCreated                     Invoice[]                     @relation("InvoiceCreatedBy")
   sfsInvoicesCreated                  SfsInvoice[]                  @relation("SfsInvoiceCreatedBy")
+  jmmOrdersCreated                    JmmOrder[]                    @relation("JmmOrderCreatedBy")
   sfsStepAttachmentsReviewed          SfsOrderStepAttachment[]      @relation("SfsStepAttachmentReviewer")
 
   fiscalPeriodsClosed    FiscalPeriod[]       @relation("FiscalPeriodClosedBy")
@@ -2602,4 +2612,64 @@ model FeatureRequest {
   @@index([status, createdAt])
   @@index([userId])
   @@map("adv_feature_requests")
+}
+
+// ─────────────────────────────────────────────
+// JMM TRADING — offline order desk (staff only)
+// ─────────────────────────────────────────────
+
+model JmmCustomer {
+  id        String   @id @default(cuid())
+  name      String
+  company   String   @default("")
+  phone     String   @default("")
+  email     String   @default("")
+  address   String   @default("")
+  notes     String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders JmmOrder[]
+
+  @@index([name])
+  @@index([company])
+  @@map("jmm_customers")
+}
+
+model JmmOrder {
+  id          String         @id @default(cuid())
+  orderNumber String         @unique
+  customerId  String
+  orderDate   DateTime       @default(now())
+  status      JmmOrderStatus @default(DRAFT)
+  currency    String         @default("USD")
+  notes       String         @default("")
+  createdById String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  customer  JmmCustomer    @relation(fields: [customerId], references: [id])
+  createdBy User?          @relation("JmmOrderCreatedBy", fields: [createdById], references: [id])
+  lines     JmmOrderLine[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([orderDate])
+  @@map("jmm_orders")
+}
+
+model JmmOrderLine {
+  id          String  @id @default(cuid())
+  orderId     String
+  sortOrder   Int     @default(0)
+  description String
+  quantity    Decimal @db.Decimal(18, 3)
+  unit        String  @default("")
+  unitPrice   Decimal @db.Decimal(18, 2)
+  amount      Decimal @db.Decimal(18, 2)
+
+  order JmmOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("jmm_order_lines")
 }

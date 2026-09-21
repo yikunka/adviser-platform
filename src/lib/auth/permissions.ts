@@ -70,6 +70,14 @@ export const PERMISSION_GROUPS: PermGroup[] = [
     ],
   },
   {
+    group: 'JMM Trading',
+    platform: 'JMM_TRADING',
+    pages: [
+      { menuKey: 'jmmCustomers', label: '客户', actions: ['create', 'edit', 'delete'] },
+      { menuKey: 'jmmOrders',    label: '订单', actions: ['create', 'edit', 'delete'] },
+    ],
+  },
+  {
     group: 'System',
     platform: 'GLOBAL',
     pages: [

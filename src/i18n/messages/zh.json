@@ -37,6 +37,8 @@
     "sfsInvoices": "SFS 發票",
     "sfsDiamondSpecs": "鑽石規格",
     "sfsFactory": "價格管理",
+    "jmmCustomers": "JMM 客戶",
+    "jmmOrders": "JMM 訂單",
     "adminTeam": "後台帳號與權限",
     "adminRoles": "角色管理"
   },
@@ -669,6 +671,7 @@
       "invoice": "發票",
       "sfsDiamond": "SFS Diamond",
       "sfsInvoices": "SFS 發票",
+      "jmmTrading": "JMM Trading",
       "system": "系統"
     },
     "users": {

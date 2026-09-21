@@ -12,7 +12,7 @@ const patchSchema = z.object({
   role: z.enum(['STAFF', 'COMPLIANCE', 'SUPER_ADMIN']).optional(),
   isActive: z.boolean().optional(),
   password: z.string().min(8).max(100).optional(),
-  adminPlatforms: z.array(z.enum(['ADVISER', 'SFS_DIAMOND'])).optional(),
+  adminPlatforms: z.array(z.enum(['ADVISER', 'SFS_DIAMOND', 'JMM_TRADING'])).optional(),
   adminMenuKeys: z.array(z.string()).optional(),
   adminRoleIds: z.array(z.string()).optional(),
 })

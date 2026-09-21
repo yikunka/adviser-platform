@@ -37,6 +37,8 @@
     "sfsInvoices": "SFS Invoices",
     "sfsDiamondSpecs": "Diamond Specs",
     "sfsFactory": "Price Management",
+    "jmmCustomers": "JMM Customers",
+    "jmmOrders": "JMM Orders",
     "adminTeam": "Admin users & access",
     "adminRoles": "Role Management"
   },
@@ -669,6 +671,7 @@
       "invoice": "Invoice",
       "sfsDiamond": "SFS Diamond",
       "sfsInvoices": "SFS Invoices",
+      "jmmTrading": "JMM Trading",
       "system": "System"
     },
     "users": {

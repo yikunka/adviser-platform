@@ -39,6 +39,7 @@ import {
   FolderKanban,
   ClipboardList,
   ListChecks,
+  Package,
 } from 'lucide-react'
 import type { AdminMenuKey } from '@/lib/auth/admin-access'
 import { pathnameToAdminMenuKey, adminMenusAllow } from '@/lib/auth/admin-access'
@@ -98,6 +99,13 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/sfs-diamond-specs', key: 'sfsDiamondSpecs', Icon: SlidersHorizontal },
       { href: '/admin/sfs-factory', key: 'sfsFactory', Icon: Factory },
       { href: '/admin/sfs-invoices', key: 'sfsInvoices', Icon: FileText },
+    ],
+  },
+  {
+    labelKey: 'jmmTrading',
+    items: [
+      { href: '/admin/jmm-customers', key: 'jmmCustomers', Icon: ContactRound },
+      { href: '/admin/jmm-orders', key: 'jmmOrders', Icon: Package },
     ],
   },
   {

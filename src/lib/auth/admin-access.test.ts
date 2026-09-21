@@ -51,3 +51,22 @@ describe('SFS Diamond access', () => {
     expect(pathnameToAdminMenuKey('/zh/admin/sfs-factory')).toBe('sfsFactory')
   })
 })
+
+describe('JMM Trading access', () => {
+  it('registers JMM order desk modules in Role Management permissions', () => {
+    expect(ADMIN_MENU_KEYS).toContain('jmmCustomers')
+    expect(ADMIN_MENU_KEYS).toContain('jmmOrders')
+    expect(MENU_PLATFORM.jmmCustomers).toBe('JMM_TRADING')
+    expect(MENU_PLATFORM.jmmOrders).toBe('JMM_TRADING')
+    expect(isValidPermission('jmmCustomers.create')).toBe(true)
+    expect(isValidPermission('jmmOrders.create')).toBe(true)
+    expect(isValidPermission('jmmOrders.edit')).toBe(true)
+    expect(isValidPermission('jmmOrders.delete')).toBe(true)
+  })
+
+  it('maps JMM routes to permission keys', () => {
+    expect(pathnameToAdminMenuKey('/zh/admin/jmm-customers')).toBe('jmmCustomers')
+    expect(pathnameToAdminMenuKey('/zh/admin/jmm-orders')).toBe('jmmOrders')
+    expect(pathnameToAdminMenuKey('/zh/admin/jmm-orders/new')).toBe('jmmOrders')
+  })
+})

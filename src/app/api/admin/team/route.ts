@@ -11,7 +11,7 @@ const createSchema = z.object({
   nameEn: z.string().min(1).max(100),
   password: z.string().min(8).max(100),
   role: z.enum(['STAFF', 'COMPLIANCE', 'SUPER_ADMIN']),
-  adminPlatforms: z.array(z.enum(['ADVISER', 'SFS_DIAMOND'])).default([]),
+  adminPlatforms: z.array(z.enum(['ADVISER', 'SFS_DIAMOND', 'JMM_TRADING'])).default([]),
   adminMenuKeys: z.array(z.string()).default([]),
   adminRoleIds: z.array(z.string()).default([]),
 })

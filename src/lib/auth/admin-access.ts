@@ -24,6 +24,8 @@ export const ADMIN_MENU_KEYS = [
   'sfsInvoices',
   'sfsDiamondSpecs',
   'sfsFactory',
+  'jmmCustomers',
+  'jmmOrders',
   'settings',
   'adminTeam',
   'adminRoles',
@@ -58,6 +60,8 @@ export const MENU_PLATFORM: Record<AdminMenuKey, Platform | 'GLOBAL'> = {
   sfsInvoices: 'SFS_DIAMOND',
   sfsDiamondSpecs: 'SFS_DIAMOND',
   sfsFactory: 'SFS_DIAMOND',
+  jmmCustomers: 'JMM_TRADING',
+  jmmOrders: 'JMM_TRADING',
 }
 
 export type AdminAccessUser = {
@@ -178,6 +182,10 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
       return 'sfsDiamondSpecs'
     case 'sfs-factory':
       return 'sfsFactory'
+    case 'jmm-customers':
+      return 'jmmCustomers'
+    case 'jmm-orders':
+      return 'jmmOrders'
     case 'settings':
       return 'settings'
     case 'team':
@@ -193,6 +201,7 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
 export const ADMIN_PLATFORM_OPTIONS: { value: Platform; label: string }[] = [
   { value: 'ADVISER', label: '6M Advise' },
   { value: 'SFS_DIAMOND', label: 'SFS Diamond' },
+  { value: 'JMM_TRADING', label: 'JMM Trading' },
 ]
 
 export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: string }[] = [
@@ -219,6 +228,8 @@ export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: stri
   { key: 'sfsInvoices', label: 'SFS invoices', group: 'SFS Invoices' },
   { key: 'sfsDiamondSpecs', label: 'Diamond specs', group: 'SFS Diamond' },
   { key: 'sfsFactory', label: 'Price management', group: 'SFS Diamond' },
+  { key: 'jmmCustomers', label: 'JMM customers', group: 'JMM Trading' },
+  { key: 'jmmOrders', label: 'JMM orders', group: 'JMM Trading' },
   { key: 'settings', label: 'Settings', group: 'System' },
   { key: 'adminTeam', label: 'Admin users & access', group: 'System' },
   { key: 'adminRoles', label: 'Role management', group: 'System' },
