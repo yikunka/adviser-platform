@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import SfsProductImageDisclaimer from './SfsProductImageDisclaimer'
 
 export default function SFSFooter() {
   return (
@@ -76,11 +77,7 @@ export default function SFSFooter() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 pb-10">
-        <div className="border-t pt-8 text-xs leading-relaxed space-y-3" style={{ borderColor: '#2A2418', color: '#A89880' }}>
-          <p>Disclaimer：All product images displayed on this website are for illustrative and reference purposes only.</p>
-          <p>Due to differences in lighting, shooting angles, screen resolution, colour calibration, and individual diamond cutting characteristics, the actual physical product may vary in appearance, colour, brilliance and details from the online images.</p>
-          <p>No image displayed on this website constitutes an exact contractual representation of the final product. All sales are based on the actual item received and official IGI certificate specifications.</p>
-        </div>
+        <SfsProductImageDisclaimer className="border-t pt-8 text-xs leading-relaxed space-y-3" style={{ borderColor: '#2A2418', color: '#A89880' }} />
       </div>
 
       <div className="border-t px-6 py-5 text-center text-xs" style={{ borderColor: '#2A2418', color: '#4A3E30' }}>

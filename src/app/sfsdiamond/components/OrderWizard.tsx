@@ -9,6 +9,7 @@ import { getCaratPreviewDiameter } from '@/lib/sfs/carat-preview'
 import { formatSfsMetalPercentLabel, formatSfsPriceLabel } from '@/lib/sfs/effective-pricing'
 import { computeSfsOrderPricing, type SfsMultiDiamondDiscountTier } from '@/lib/sfs/pricing'
 import { isSfsCustomDesign, SFS_CUSTOM_DESIGN_VALUE } from '@/lib/sfs/design-upload-shared'
+import SfsProductImageDisclaimer from './SfsProductImageDisclaimer'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -369,6 +370,7 @@ function Step1({ data, update }: { data: WizardFormData; update: (p: Partial<Wiz
         <Field label="Mailing Address" required>
           <Textarea value={data.mailingAddress} onChange={e => update({ mailingAddress: e.target.value })} placeholder="Full mailing address" />
         </Field>
+        <SfsProductImageDisclaimer className="text-xs leading-relaxed space-y-2 pt-4 border-t" style={{ borderColor: BORDER, color: MUTED }} />
       </div>
     </div>
   )
