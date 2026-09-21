@@ -5,6 +5,7 @@ import { useRouter } from '@/i18n/navigation'
 import { Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
+import { JmmTradeDocuments } from './JmmTradeDocuments'
 
 const STATUSES = ['DRAFT', 'CONFIRMED', 'SHIPPED', 'COMPLETED', 'CANCELLED'] as const
 const CURRENCIES = ['USD', 'HKD', 'CNY', 'EUR'] as const
@@ -322,6 +323,8 @@ export function JmmOrderForm({ orderId }: { orderId?: string }) {
           {saving ? 'Saving…' : 'Save order'}
         </button>
       )}
+
+      {orderId && <JmmTradeDocuments orderId={orderId} />}
     </div>
   )
 }

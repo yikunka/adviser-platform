@@ -349,6 +349,7 @@ Staff-only order desk for an offline trading company. There is no public JMM web
 - Statuses: `DRAFT`, `CONFIRMED`, `SHIPPED`, `COMPLETED`, `CANCELLED`
 - List can be filtered by status and searched by order number, customer, or line description
 - Creating or editing an order can also add a customer if the user has `jmmCustomers.create`
+- On a saved order, staff can issue trade documents in order: quotation (`JMM-QT-YYYY-NNNN`), proforma invoice (`JMM-PI-YYYY-NNNN`), then commercial invoice (`JMM-CI-YYYY-NNNN`). The quotation copies the saved order, including delivery address and VAT number. **Customer agreed — create proforma** accepts the quotation and copies it into a draft proforma. **Proforma accepted — create commercial invoice** accepts the proforma and copies it into a draft commercial invoice. The earlier document stays. A second copy is blocked while the next document is still open; cancel that document first. Only a draft document can be edited. Cancelling is blocked while a later document is still open. Order status is not changed by these documents.
 
 ## Shared Infrastructure
 

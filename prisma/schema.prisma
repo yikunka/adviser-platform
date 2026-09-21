@@ -38,6 +38,18 @@ enum Platform {
   JMM_TRADING
 }
 
+enum JmmDocumentKind {
+  QUOTATION
+  PROFORMA
+  COMMERCIAL_INVOICE
+}
+
+enum JmmDocumentStatus {
+  DRAFT
+  ACCEPTED
+  CANCELLED
+}
+
 enum JmmOrderStatus {
   DRAFT
   CONFIRMED
@@ -2651,9 +2663,10 @@ model JmmOrder {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
-  customer  JmmCustomer    @relation(fields: [customerId], references: [id])
-  createdBy User?          @relation("JmmOrderCreatedBy", fields: [createdById], references: [id])
+  customer  JmmCustomer      @relation(fields: [customerId], references: [id])
+  createdBy User?            @relation("JmmOrderCreatedBy", fields: [createdById], references: [id])
   lines     JmmOrderLine[]
+  documents JmmDocument[]
 
   @@index([customerId])
   @@index([status])
@@ -2675,4 +2688,47 @@ model JmmOrderLine {
 
   @@index([orderId])
   @@map("jmm_order_lines")
+}
+
+model JmmDocument {
+  id               String             @id @default(cuid())
+  orderId          String
+  kind             JmmDocumentKind
+  status           JmmDocumentStatus  @default(DRAFT)
+  documentNumber   String             @unique
+  sourceDocumentId String?
+  documentDate     DateTime           @default(now())
+  currency         String
+  customerName     String
+  company          String             @default("")
+  vatNumber        String             @default("")
+  deliveryAddress  String             @default("")
+  notes            String             @default("")
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  order   JmmOrder          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  source  JmmDocument?      @relation("JmmDocumentChain", fields: [sourceDocumentId], references: [id], onDelete: SetNull)
+  derived JmmDocument[]     @relation("JmmDocumentChain")
+  lines   JmmDocumentLine[]
+
+  @@index([orderId, kind, status])
+  @@index([sourceDocumentId])
+  @@map("jmm_documents")
+}
+
+model JmmDocumentLine {
+  id          String  @id @default(cuid())
+  documentId  String
+  sortOrder   Int     @default(0)
+  description String
+  quantity    Decimal @db.Decimal(18, 3)
+  unit        String  @default("")
+  unitPrice   Decimal @db.Decimal(18, 2)
+  amount      Decimal @db.Decimal(18, 2)
+
+  document JmmDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@map("jmm_document_lines")
 }
