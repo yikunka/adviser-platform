@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Printer, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 
@@ -10,6 +10,12 @@ const KIND_LABEL = {
   QUOTATION: 'Quotation',
   PROFORMA: 'Proforma invoice',
   COMMERCIAL_INVOICE: 'Commercial invoice',
+} as const
+
+const JMM_LETTERHEAD = {
+  address: 'RM7 20F Boss Commercial Centre, 28 Ferry Street, Yau Ma Tei, Kowloon, Hong Kong',
+  email: 'kennywong@jmmtrading.net',
+  website: 'jmmtrading.net',
 } as const
 
 type Kind = keyof typeof KIND_LABEL
@@ -43,8 +49,106 @@ function money(quantity: string, unitPrice: string): number {
   return Math.round(qty * price * 100) / 100
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+}
+
 function blankLine(): Line {
   return { description: '', quantity: '1', unit: '', unitPrice: '' }
+}
+
+function printTradeDocument(input: {
+  kind: Kind
+  documentNumber: string
+  status: string
+  date: string
+  currency: string
+  customerName: string
+  company: string
+  vatNumber: string
+  deliveryAddress: string
+  notes: string
+  lines: Line[]
+}) {
+  const popup = window.open('', '_blank', 'noopener,noreferrer')
+  if (!popup) {
+    toast.error('Allow pop-ups to print this document')
+    return
+  }
+  const rows = input.lines.map(line => {
+    const amount = money(line.quantity, line.unitPrice)
+    return `<tr>
+      <td>${escapeHtml(line.description)}</td>
+      <td>${escapeHtml(line.quantity)}</td>
+      <td>${escapeHtml(line.unit)}</td>
+      <td>${escapeHtml(line.unitPrice)}</td>
+      <td class="num">${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+    </tr>`
+  }).join('')
+  const total = input.lines.reduce((sum, line) => sum + money(line.quantity, line.unitPrice), 0)
+  const logo = `${window.location.origin}/jmm/logo.jpg`
+  popup.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>${escapeHtml(input.documentNumber)}</title>
+  <style>
+    body { margin: 0; font-family: Georgia, "Times New Roman", serif; color: #111; }
+    .sheet { max-width: 800px; margin: 0 auto; padding: 32px; }
+    header { display: flex; justify-content: space-between; align-items: center; gap: 24px; background: #000; color: #fff; padding: 20px 24px; }
+    header img { height: 72px; width: auto; display: block; }
+    .issuer { margin: 12px 0 0; font-size: 12px; line-height: 1.5; color: #333; }
+    .kind { margin: 0; letter-spacing: 0.08em; text-transform: uppercase; font-size: 12px; color: #C9A96E; }
+    .number { margin: 4px 0 0; font-size: 20px; }
+    .meta { margin-top: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 14px; }
+    .label { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #666; margin: 0 0 4px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 24px; font-size: 14px; }
+    th { text-align: left; border-bottom: 1px solid #111; padding: 8px 6px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+    td { border-bottom: 1px solid #ddd; padding: 8px 6px; vertical-align: top; }
+    .num, th.num { text-align: right; }
+    .total { margin-top: 16px; text-align: right; font-size: 16px; }
+    .notes { margin-top: 24px; white-space: pre-wrap; font-size: 14px; }
+    @media print { .sheet { padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <header>
+      <img src="${logo}" alt="JMM" />
+      <div>
+        <p class="kind">${escapeHtml(KIND_LABEL[input.kind])}</p>
+        <p class="number">${escapeHtml(input.documentNumber)}</p>
+      </div>
+    </header>
+    <p class="issuer">Address: ${escapeHtml(JMM_LETTERHEAD.address)}<br>Email: ${escapeHtml(JMM_LETTERHEAD.email)}<br>Website: ${escapeHtml(JMM_LETTERHEAD.website)}</p>
+    <div class="meta">
+      <div><p class="label">Date</p><p>${escapeHtml(input.date)}</p></div>
+      <div><p class="label">Status</p><p>${escapeHtml(input.status)}</p></div>
+      <div><p class="label">Customer</p><p>${escapeHtml(input.customerName)}${input.company ? `<br>${escapeHtml(input.company)}` : ''}</p></div>
+      <div><p class="label">VAT number</p><p>${escapeHtml(input.vatNumber || '—')}</p></div>
+      <div><p class="label">Delivery address</p><p>${escapeHtml(input.deliveryAddress || '—')}</p></div>
+    </div>
+    <table>
+      <thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th class="num">Unit price</th><th class="num">Amount</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p class="total">Total ${escapeHtml(input.currency)} ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+    ${input.notes ? `<div class="notes"><p class="label">Notes</p><p>${escapeHtml(input.notes)}</p></div>` : ''}
+  </div>
+</body>
+</html>`)
+  popup.document.close()
+  const image = popup.document.querySelector('img')
+  const startPrint = () => {
+    popup.focus()
+    popup.print()
+  }
+  if (image && !image.complete) image.addEventListener('load', startPrint, { once: true })
+  else startPrint()
 }
 
 export function JmmTradeDocuments({ orderId }: { orderId: string }) {
@@ -235,12 +339,21 @@ function DocumentCard({
   }
 
   return (
-    <article className="rounded-xl p-4 space-y-3" style={{ background: 'var(--card)', border: '1px solid var(--border)', opacity: muted ? 0.6 : 1 }}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold" style={{ color: '#C9A96E' }}>{KIND_LABEL[doc.kind]}</p>
-          <h3 className="text-base font-semibold" style={{ color: 'var(--foreground)' }}>{doc.documentNumber}</h3>
+    <article className="rounded-xl overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)', opacity: muted ? 0.6 : 1 }}>
+      <div className="flex items-center justify-between gap-4 px-4 py-3" style={{ background: '#000' }}>
+        <img src="/jmm/logo.jpg" alt="JMM" width={220} height={89} className="h-14 w-auto" />
+        <div className="text-right">
+          <p className="text-xs font-semibold tracking-wide" style={{ color: '#C9A96E' }}>{KIND_LABEL[doc.kind]}</p>
+          <h3 className="text-base font-semibold text-white">{doc.documentNumber}</h3>
         </div>
+      </div>
+      <div className="px-4 py-3 text-xs leading-5" style={{ color: 'var(--muted-foreground)', borderBottom: '1px solid var(--border)' }}>
+        <p>Address: {JMM_LETTERHEAD.address}</p>
+        <p>Email: {JMM_LETTERHEAD.email}</p>
+        <p>Website: {JMM_LETTERHEAD.website}</p>
+      </div>
+      <div className="p-4 space-y-3">
+      <div className="flex justify-end">
         <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ background: 'rgba(201,169,110,0.12)', color: '#C9A96E' }}>{doc.status}</span>
       </div>
 
@@ -314,8 +427,12 @@ function DocumentCard({
         <textarea value={notes} disabled={!editable} onChange={e => setNotes(e.target.value)} rows={2} className="mt-1 w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
       </label>
 
-      {canEdit && doc.status !== 'CANCELLED' && (
-        <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => printTradeDocument({ kind: doc.kind, documentNumber: doc.documentNumber, status: doc.status, date, currency, customerName, company, vatNumber, deliveryAddress, notes, lines })} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm" style={{ color: 'var(--foreground)', border: '1px solid var(--border)' }}>
+          <Printer size={14} /> Print
+        </button>
+        {canEdit && doc.status !== 'CANCELLED' && (
+          <>
           {editable && (
             <button type="button" disabled={saving} onClick={() => void save()} className="px-3 py-2 rounded-lg text-sm font-semibold disabled:opacity-60" style={{ background: '#C9A96E', color: '#1a1408' }}>
               {saving ? 'Saving…' : 'Save document'}
@@ -332,8 +449,10 @@ function DocumentCard({
             </button>
           )}
           <button type="button" onClick={() => void cancel()} className="px-3 py-2 rounded-lg text-sm" style={{ color: '#ef4444' }}>Cancel document</button>
-        </div>
-      )}
+          </>
+        )}
+      </div>
+      </div>
     </article>
   )
 }
