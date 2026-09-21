@@ -10,6 +10,8 @@ const updateSchema = z.object({
   phone: z.string().trim().max(50).optional().default(''),
   email: z.union([z.string().trim().email().max(320), z.literal('')]).optional().default(''),
   address: z.string().trim().max(500).optional().default(''),
+  deliveryAddress: z.string().trim().max(500).optional().default(''),
+  vatNumber: z.string().trim().max(80).optional().default(''),
   notes: z.string().trim().max(2000).optional().default(''),
 })
 
@@ -33,6 +35,8 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     phone: customer.phone,
     email: customer.email,
     address: customer.address,
+    deliveryAddress: customer.deliveryAddress,
+    vatNumber: customer.vatNumber,
     notes: customer.notes,
     orderCount: customer._count.orders,
   })

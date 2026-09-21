@@ -10,6 +10,8 @@ const createSchema = z.object({
   phone: z.string().trim().max(50).optional().default(''),
   email: z.union([z.string().trim().email().max(320), z.literal('')]).optional().default(''),
   address: z.string().trim().max(500).optional().default(''),
+  deliveryAddress: z.string().trim().max(500).optional().default(''),
+  vatNumber: z.string().trim().max(80).optional().default(''),
   notes: z.string().trim().max(2000).optional().default(''),
 })
 
@@ -29,6 +31,8 @@ export async function GET(req: NextRequest) {
           { company: { contains: q, mode: 'insensitive' as const } },
           { phone: { contains: q, mode: 'insensitive' as const } },
           { email: { contains: q, mode: 'insensitive' as const } },
+          { vatNumber: { contains: q, mode: 'insensitive' as const } },
+          { deliveryAddress: { contains: q, mode: 'insensitive' as const } },
         ],
       }
     : {}
@@ -55,6 +59,8 @@ export async function GET(req: NextRequest) {
       phone: row.phone,
       email: row.email,
       address: row.address,
+      deliveryAddress: row.deliveryAddress,
+      vatNumber: row.vatNumber,
       notes: row.notes,
       orderCount: row._count.orders,
       createdAt: row.createdAt.toISOString(),

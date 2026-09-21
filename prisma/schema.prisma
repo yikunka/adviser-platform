@@ -2619,20 +2619,23 @@ model FeatureRequest {
 // ─────────────────────────────────────────────
 
 model JmmCustomer {
-  id        String   @id @default(cuid())
-  name      String
-  company   String   @default("")
-  phone     String   @default("")
-  email     String   @default("")
-  address   String   @default("")
-  notes     String   @default("")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  company         String   @default("")
+  phone           String   @default("")
+  email           String   @default("")
+  address         String   @default("")
+  deliveryAddress String   @default("")
+  vatNumber       String   @default("")
+  notes           String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   orders JmmOrder[]
 
   @@index([name])
   @@index([company])
+  @@index([vatNumber])
   @@map("jmm_customers")
 }
 

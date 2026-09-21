@@ -338,8 +338,8 @@ Separate admin page in the SFS Diamond menu, using the same permission as SFS or
 Staff-only order desk for an offline trading company. There is no public JMM website and no customer login. Access is `jmmCustomers` and `jmmOrders` under platform `JMM_TRADING` (Role Management group JMM Trading; Team Management platform flag JMM Trading).
 
 ### Customers (`/admin/jmm-customers`)
-- Counterparties with name, company, phone, email, address, and notes
-- Search by name, company, phone, or email
+- Counterparties with name, company, phone, email, address, delivery address, VAT number, and notes
+- Search by name, company, phone, email, VAT number, or delivery address
 - A customer with orders cannot be deleted
 
 ### Orders (`/admin/jmm-orders`)

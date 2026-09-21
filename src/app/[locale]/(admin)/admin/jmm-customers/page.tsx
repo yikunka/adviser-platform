@@ -13,6 +13,8 @@ type Customer = {
   phone: string
   email: string
   address: string
+  deliveryAddress: string
+  vatNumber: string
   notes: string
   orderCount: number
 }
@@ -23,6 +25,8 @@ const emptyForm = {
   phone: '',
   email: '',
   address: '',
+  deliveryAddress: '',
+  vatNumber: '',
   notes: '',
 }
 
@@ -86,6 +90,8 @@ export default function AdminJmmCustomersPage() {
       phone: customer.phone,
       email: customer.email,
       address: customer.address,
+      deliveryAddress: customer.deliveryAddress,
+      vatNumber: customer.vatNumber,
       notes: customer.notes,
     })
     setFormOpen(true)
@@ -146,10 +152,10 @@ export default function AdminJmmCustomersPage() {
 
       <div className="relative max-w-sm">
         <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
-        <input
+          <input
           value={search}
           onChange={e => { setSearch(e.target.value); setPage(1) }}
-          placeholder="Search name, company, phone, email"
+          placeholder="Search name, company, phone, email, VAT"
           className="w-full pl-8 pr-3 py-2 rounded-lg text-sm outline-none"
           style={inputStyle}
         />
@@ -159,20 +165,21 @@ export default function AdminJmmCustomersPage() {
         <table className="w-full text-sm">
           <thead>
             <tr style={{ background: 'rgba(201,169,110,0.04)' }}>
-              {['Name', 'Company', 'Phone', 'Email', 'Orders', ''].map(label => (
+              {['Name', 'Company', 'VAT', 'Phone', 'Email', 'Orders', ''].map(label => (
                 <th key={label} className="text-left px-4 py-3 font-medium" style={{ color: 'var(--muted-foreground)' }}>{label}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="px-4 py-8" style={{ color: 'var(--muted-foreground)' }}>Loading…</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8" style={{ color: 'var(--muted-foreground)' }}>Loading…</td></tr>
             ) : customers.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8" style={{ color: 'var(--muted-foreground)' }}>No customers yet.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8" style={{ color: 'var(--muted-foreground)' }}>No customers yet.</td></tr>
             ) : customers.map(customer => (
               <tr key={customer.id} style={{ borderTop: '1px solid var(--border)' }}>
                 <td className="px-4 py-3 font-medium" style={{ color: 'var(--foreground)' }}>{customer.name}</td>
                 <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>{customer.company || '—'}</td>
+                <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>{customer.vatNumber || '—'}</td>
                 <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>{customer.phone || '—'}</td>
                 <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>{customer.email || '—'}</td>
                 <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>{customer.orderCount}</td>
@@ -218,18 +225,31 @@ export default function AdminJmmCustomersPage() {
               ['company', 'Company', false],
               ['phone', 'Phone', false],
               ['email', 'Email', false],
+              ['vatNumber', 'VAT number', false],
               ['address', 'Address', false],
+              ['deliveryAddress', 'Delivery address', false],
             ] as const).map(([key, label, required]) => (
               <label key={key} className="block text-xs" style={{ color: 'var(--muted-foreground)' }}>
                 {label}
-                <input
-                  required={required}
-                  type={key === 'email' ? 'email' : 'text'}
-                  value={form[key]}
-                  onChange={e => setForm(current => ({ ...current, [key]: e.target.value }))}
-                  className="mt-1 w-full px-3 py-2 rounded-lg text-sm outline-none"
-                  style={inputStyle}
-                />
+                {key === 'deliveryAddress' || key === 'address' ? (
+                  <textarea
+                    required={required}
+                    value={form[key]}
+                    onChange={e => setForm(current => ({ ...current, [key]: e.target.value }))}
+                    rows={2}
+                    className="mt-1 w-full px-3 py-2 rounded-lg text-sm outline-none"
+                    style={inputStyle}
+                  />
+                ) : (
+                  <input
+                    required={required}
+                    type={key === 'email' ? 'email' : 'text'}
+                    value={form[key]}
+                    onChange={e => setForm(current => ({ ...current, [key]: e.target.value }))}
+                    className="mt-1 w-full px-3 py-2 rounded-lg text-sm outline-none"
+                    style={inputStyle}
+                  />
+                )}
               </label>
             ))}
             <label className="block text-xs" style={{ color: 'var(--muted-foreground)' }}>
