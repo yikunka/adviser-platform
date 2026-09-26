@@ -9,19 +9,19 @@ const txSchema = z.object({
   id: z.string().cuid().optional(),
   transactionType: z.enum(['ALLOTMENT', 'TRANSFER_IN', 'TRANSFER_OUT']),
   transactionDate: z.string().min(1),
-  allotmentTransferNo: z.string().max(50).optional(),
-  certificateNo: z.string().max(50).optional(),
-  sharesAcquired: z.number().int().nonnegative().optional(),
-  distinctiveNosFrom: z.number().int().nonnegative().optional(),
-  distinctiveNosTo: z.number().int().nonnegative().optional(),
-  amountPaid: z.string().optional(),
-  sharesTransferred: z.number().int().nonnegative().optional(),
-  certificateSurrendered: z.string().max(50).optional(),
-  certificateSurrenderedShares: z.number().int().nonnegative().optional(),
-  balanceCertificateNo: z.string().max(50).optional(),
-  balanceCertificateShares: z.number().int().nonnegative().optional(),
-  balanceDistinctiveNosFrom: z.number().int().nonnegative().optional(),
-  balanceDistinctiveNosTo: z.number().int().nonnegative().optional(),
+  allotmentTransferNo: z.string().max(50).nullable().optional(),
+  certificateNo: z.string().max(50).nullable().optional(),
+  sharesAcquired: z.number().int().nonnegative().nullable().optional(),
+  distinctiveNosFrom: z.number().int().nonnegative().nullable().optional(),
+  distinctiveNosTo: z.number().int().nonnegative().nullable().optional(),
+  amountPaid: z.string().nullable().optional(),
+  sharesTransferred: z.number().int().nonnegative().nullable().optional(),
+  certificateSurrendered: z.string().max(50).nullable().optional(),
+  certificateSurrenderedShares: z.number().int().nonnegative().nullable().optional(),
+  balanceCertificateNo: z.string().max(50).nullable().optional(),
+  balanceCertificateShares: z.number().int().nonnegative().nullable().optional(),
+  balanceDistinctiveNosFrom: z.number().int().nonnegative().nullable().optional(),
+  balanceDistinctiveNosTo: z.number().int().nonnegative().nullable().optional(),
   sharesHeld: z.number().int().nonnegative(),
 })
 
@@ -49,7 +49,10 @@ function buildShareTransactionData(transaction: z.infer<typeof txSchema>) {
   return {
     ...rest,
     transactionDate: new Date(transaction.transactionDate),
-    amountPaid: transaction.amountPaid ? parseFloat(transaction.amountPaid) : undefined,
+    amountPaid:
+      transaction.amountPaid == null || transaction.amountPaid === ''
+        ? null
+        : parseFloat(transaction.amountPaid),
   }
 }
 

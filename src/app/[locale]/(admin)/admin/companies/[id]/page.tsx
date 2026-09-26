@@ -1340,20 +1340,56 @@ function buildMemberTransactionBody(tx: typeof TX_EMPTY) {
     transactionDate: tx.transactionDate,
     sharesHeld: Number(tx.sharesHeld),
   }
+  if (tx.id) body.id = tx.id
   if (tx.allotmentTransferNo) body.allotmentTransferNo = tx.allotmentTransferNo
+  else if (tx.id) body.allotmentTransferNo = null
   if (tx.certificateNo) body.certificateNo = tx.certificateNo
+  else if (tx.id) body.certificateNo = null
   if (tx.sharesAcquired !== '') body.sharesAcquired = Number(tx.sharesAcquired)
+  else if (tx.id) body.sharesAcquired = null
   if (tx.distinctiveNosFrom !== '') body.distinctiveNosFrom = Number(tx.distinctiveNosFrom)
+  else if (tx.id) body.distinctiveNosFrom = null
   if (tx.distinctiveNosTo !== '') body.distinctiveNosTo = Number(tx.distinctiveNosTo)
+  else if (tx.id) body.distinctiveNosTo = null
   if (tx.amountPaid) body.amountPaid = tx.amountPaid
+  else if (tx.id) body.amountPaid = null
   if (tx.sharesTransferred !== '') body.sharesTransferred = Number(tx.sharesTransferred)
+  else if (tx.id) body.sharesTransferred = null
   if (tx.certificateSurrendered) body.certificateSurrendered = tx.certificateSurrendered
+  else if (tx.id) body.certificateSurrendered = null
   if (tx.certificateSurrenderedShares !== '') body.certificateSurrenderedShares = Number(tx.certificateSurrenderedShares)
+  else if (tx.id) body.certificateSurrenderedShares = null
   if (tx.balanceCertificateNo) body.balanceCertificateNo = tx.balanceCertificateNo
+  else if (tx.id) body.balanceCertificateNo = null
   if (tx.balanceCertificateShares !== '') body.balanceCertificateShares = Number(tx.balanceCertificateShares)
+  else if (tx.id) body.balanceCertificateShares = null
   if (tx.balanceDistinctiveNosFrom !== '') body.balanceDistinctiveNosFrom = Number(tx.balanceDistinctiveNosFrom)
+  else if (tx.id) body.balanceDistinctiveNosFrom = null
   if (tx.balanceDistinctiveNosTo !== '') body.balanceDistinctiveNosTo = Number(tx.balanceDistinctiveNosTo)
+  else if (tx.id) body.balanceDistinctiveNosTo = null
   return body
+}
+
+function shareTransactionToForm(row: ShareTransaction): typeof TX_EMPTY {
+  return {
+    id: row.id,
+    transactionType: row.transactionType || 'ALLOTMENT',
+    transactionDate: row.transactionDate.slice(0, 10),
+    allotmentTransferNo: row.allotmentTransferNo ?? '',
+    certificateNo: row.certificateNo ?? '',
+    sharesAcquired: row.sharesAcquired != null ? String(row.sharesAcquired) : '',
+    distinctiveNosFrom: row.distinctiveNosFrom != null ? String(row.distinctiveNosFrom) : '',
+    distinctiveNosTo: row.distinctiveNosTo != null ? String(row.distinctiveNosTo) : '',
+    amountPaid: row.amountPaid != null && row.amountPaid !== '' ? String(row.amountPaid) : '',
+    sharesTransferred: row.sharesTransferred != null ? String(row.sharesTransferred) : '',
+    certificateSurrendered: row.certificateSurrendered ?? '',
+    certificateSurrenderedShares: row.certificateSurrenderedShares != null ? String(row.certificateSurrenderedShares) : '',
+    balanceCertificateNo: row.balanceCertificateNo ?? '',
+    balanceCertificateShares: row.balanceCertificateShares != null ? String(row.balanceCertificateShares) : '',
+    balanceDistinctiveNosFrom: row.balanceDistinctiveNosFrom != null ? String(row.balanceDistinctiveNosFrom) : '',
+    balanceDistinctiveNosTo: row.balanceDistinctiveNosTo != null ? String(row.balanceDistinctiveNosTo) : '',
+    sharesHeld: String(row.sharesHeld),
+  }
 }
 
 function MemberForm({ companyId, initial, kycPersons, onDone }: {
@@ -1370,8 +1406,9 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
   })
   const latestTx = getLatestShareTransaction(initial?.shareTransactions)
   const [saving, setSaving] = useState(false)
-  // Create: add first transaction by default. Edit: off until staff chooses to append.
+  // Create: add first transaction by default. Edit: off until staff chooses to append/edit.
   const [addTx, setAddTx] = useState(!isEdit)
+  const [editingTxId, setEditingTxId] = useState<string | null>(null)
   const [companyOptions, setCompanyOptions] = useState<CompanyPickerOption[]>([])
   const [companySearch, setCompanySearch] = useState('')
   const [form, setForm] = useState({
@@ -1392,6 +1429,60 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
 
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })) }
   function setT(k: string, v: string) { setTx(t => ({ ...t, [k]: v })) }
+
+  function beginEditTransaction(row: ShareTransaction) {
+    setTx(shareTransactionToForm(row))
+    setEditingTxId(row.id)
+    setAddTx(true)
+  }
+
+  function cancelTransactionEditor() {
+    setEditingTxId(null)
+    setAddTx(false)
+    setTx({
+      ...TX_EMPTY,
+      transactionType: 'TRANSFER_OUT',
+      sharesHeld: latestTx?.sharesHeld === 0 ? '0' : '',
+    })
+  }
+
+  function startNewTransaction() {
+    setEditingTxId(null)
+    setTx({
+      ...TX_EMPTY,
+      transactionType: 'TRANSFER_OUT',
+      sharesHeld: latestTx?.sharesHeld === 0 ? '0' : '',
+    })
+    setAddTx(true)
+  }
+
+  async function deleteTransaction(row: ShareTransaction) {
+    if (!initial) return
+    if (!window.confirm(`Delete this ${shareTransactionTypeLabel(row.transactionType)} on ${fmt(row.transactionDate)}?`)) return
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/admin/companies/${companyId}/members/${initial.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ removeTransactionId: row.id }),
+      })
+      const json = await res.json().catch(() => null)
+      if (!res.ok) {
+        toast.error(json?.error ?? 'Could not delete the share transaction')
+        return
+      }
+      toast.success('Share transaction deleted')
+      const sync = json?.controllerSync as { created?: number; updated?: number; ceased?: number } | undefined
+      if (sync && ((sync.created ?? 0) > 0 || (sync.updated ?? 0) > 0 || (sync.ceased ?? 0) > 0)) {
+        toast.message(
+          `Significant Controllers: ${sync.created ?? 0} added, ${sync.updated ?? 0} updated, ${sync.ceased ?? 0} ceased`,
+        )
+      }
+      onDone()
+    } finally {
+      setSaving(false)
+    }
+  }
 
   useEffect(() => {
     const q = companySearch.trim()
@@ -1501,7 +1592,13 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
         toast.error(json?.error ?? 'Failed to save member')
         return
       }
-      toast.success(isEdit ? 'Member updated' : 'Member added')
+      toast.success(
+        editingTxId
+          ? 'Share transaction updated'
+          : isEdit
+            ? 'Member updated'
+            : 'Member added',
+      )
       const sync = json?.controllerSync as { created?: number; updated?: number; ceased?: number } | undefined
       if (sync && ((sync.created ?? 0) > 0 || (sync.updated ?? 0) > 0 || (sync.ceased ?? 0) > 0)) {
         toast.message(
@@ -1696,11 +1793,12 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
                   <th style={thStyle}>Type</th>
                   <th style={thStyle}>Shares held</th>
                   <th style={thStyle}>Acquired / Transferred</th>
+                  <th style={{ ...thStyle, width: '6rem' }} />
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border-subtle)]">
                 {history.map(row => (
-                  <tr key={row.id}>
+                  <tr key={row.id} style={editingTxId === row.id ? { background: 'rgba(201,169,110,0.08)' } : undefined}>
                     <td style={tdStyle}>{fmt(row.transactionDate)}</td>
                     <td style={tdStyle}>{shareTransactionTypeLabel(row.transactionType)}</td>
                     <td style={tdPrimaryStyle}>{row.sharesHeld.toLocaleString()}</td>
@@ -1708,6 +1806,28 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
                       {row.sharesAcquired != null ? `+${row.sharesAcquired.toLocaleString()}` : '—'}
                       {' / '}
                       {row.sharesTransferred != null ? `−${row.sharesTransferred.toLocaleString()}` : '—'}
+                    </td>
+                    <td style={tdStyle}>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          disabled={saving}
+                          onClick={() => beginEditTransaction(row)}
+                          className="text-xs hover:underline"
+                          style={{ color: 'var(--gold)' }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          disabled={saving}
+                          onClick={() => void deleteTransaction(row)}
+                          className="text-xs hover:underline"
+                          style={{ color: '#ef4444' }}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1725,18 +1845,37 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
       )}
 
       <div className="flex items-center gap-3">
-        <input type="checkbox" id="addTx" checked={addTx} onChange={e => setAddTx(e.target.checked)}
-          style={{ accentColor: '#C9A96E', width: 14, height: 14 }} />
+        <input
+          type="checkbox"
+          id="addTx"
+          checked={addTx}
+          onChange={e => {
+            if (e.target.checked) startNewTransaction()
+            else cancelTransactionEditor()
+          }}
+          style={{ accentColor: '#C9A96E', width: 14, height: 14 }}
+        />
         <label htmlFor="addTx" style={{ ...labelStyle, marginBottom: 0, cursor: 'pointer' }}>
-          {isEdit ? 'Add new share transaction (Allotment / Transfer in / Transfer out)' : 'Add initial share transaction'}
+          {editingTxId
+            ? 'Editing share transaction (save with Update below)'
+            : isEdit
+              ? 'Add new share transaction (Allotment / Transfer in / Transfer out)'
+              : 'Add initial share transaction'}
         </label>
+        {editingTxId && (
+          <button type="button" className="text-xs hover:underline" style={{ color: 'var(--muted-foreground)' }} onClick={cancelTransactionEditor}>
+            Cancel edit
+          </button>
+        )}
       </div>
 
       {addTx && (
         <div className="rounded-lg p-4 space-y-3" style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-subtle)' }}>
           {isEdit && (
             <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-              This creates a new history row. It does not overwrite earlier allotments. For a full transfer out, set Type to Transfer out and Shares Held (Net Balance) to 0.
+              {editingTxId
+                ? 'Saving updates this history row only. ROM / ownership / ROSC use the latest balance after save.'
+                : 'This creates a new history row. It does not overwrite earlier allotments. For a full transfer out, set Type to Transfer out and Shares Held (Net Balance) to 0.'}
             </p>
           )}
           {sectionLabel('Transaction details')}
@@ -1839,7 +1978,9 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
 
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="outline" size="sm" onClick={onDone} disabled={saving}>Cancel</Button>
-        <Button type="submit" size="sm" disabled={saving}>{saving ? 'Saving…' : isEdit ? 'Update' : 'Add Member'}</Button>
+        <Button type="submit" size="sm" disabled={saving}>
+          {saving ? 'Saving…' : editingTxId ? 'Update transaction' : isEdit ? 'Update' : 'Add Member'}
+        </Button>
       </div>
     </form>
   )
