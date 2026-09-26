@@ -1850,9 +1850,225 @@ function memberCurrentHolding(member: Member): number {
   return latest?.sharesHeld ?? 0
 }
 
-function MemberAllotmentForm({ companyId, members, onDone }: {
+type NewShareholderState = {
+  keyPersonId: string
+  linkedCompanyId: string
+  nameEn: string
+  nameZh: string
+  shareClass: string
+  registeredAddress: string
+  occupation: string
+}
+
+const NEW_SHAREHOLDER_EMPTY: NewShareholderState = {
+  keyPersonId: '',
+  linkedCompanyId: '',
+  nameEn: '',
+  nameZh: '',
+  shareClass: 'ORDINARY',
+  registeredAddress: '',
+  occupation: '',
+}
+
+function buildNewMemberPayload(form: NewShareholderState) {
+  const linkedCompanyId = form.linkedCompanyId || null
+  const keyPersonId = linkedCompanyId ? null : (form.keyPersonId || null)
+  return {
+    nameEn: form.nameEn.trim(),
+    shareClass: form.shareClass,
+    registeredAddress: form.registeredAddress.trim(),
+    ...(form.nameZh.trim() ? { nameZh: form.nameZh.trim() } : {}),
+    ...(form.occupation.trim() ? { occupation: form.occupation.trim() } : {}),
+    ...(keyPersonId ? { keyPersonId } : {}),
+    ...(linkedCompanyId ? { linkedCompanyId } : {}),
+  }
+}
+
+/** KYC link, corporate link, or manual name/address — same options as Add Member. */
+function NewShareholderPanel({
+  companyId,
+  kycPersons,
+  form,
+  setForm,
+}: {
+  companyId: string
+  kycPersons: KycPerson[]
+  form: NewShareholderState
+  setForm: React.Dispatch<React.SetStateAction<NewShareholderState>>
+}) {
+  const [companyOptions, setCompanyOptions] = useState<CompanyPickerOption[]>([])
+  const [companySearch, setCompanySearch] = useState('')
+  const isCorporate = !!form.linkedCompanyId
+  const linkedCompany = companyOptions.find(c => c.id === form.linkedCompanyId) ?? null
+
+  useEffect(() => {
+    const q = companySearch.trim()
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams({ picker: '1', limit: '200', page: '1' })
+      if (q) params.set('q', q)
+      fetch(`/api/admin/companies?${params}`)
+        .then(r => r.ok ? r.json() : { companies: [] })
+        .then(data => {
+          const rows = Array.isArray(data.companies) ? data.companies as CompanyPickerOption[] : []
+          setCompanyOptions(rows.filter(c => c.id !== companyId))
+        })
+        .catch(() => setCompanyOptions([]))
+    }, q ? 250 : 0)
+    return () => clearTimeout(timer)
+  }, [companySearch, companyId])
+
+  function linkKycOnly(p: KycPerson | null) {
+    if (!p) {
+      setForm(f => ({ ...f, keyPersonId: '' }))
+      return
+    }
+    setForm(f => ({ ...f, keyPersonId: p.id, linkedCompanyId: '' }))
+  }
+
+  function prefillFromKyc(p: KycPerson) {
+    setForm(f => ({
+      ...f,
+      keyPersonId: p.id,
+      linkedCompanyId: '',
+      nameEn: p.nameEn,
+      nameZh: p.nameZh ?? f.nameZh,
+      registeredAddress: p.homeAddress ?? p.contactAddress ?? f.registeredAddress,
+    }))
+  }
+
+  function linkCompany(c: CompanyPickerOption | null) {
+    if (!c) {
+      setForm(f => ({ ...f, linkedCompanyId: '' }))
+      return
+    }
+    setForm(f => ({
+      ...f,
+      linkedCompanyId: c.id,
+      keyPersonId: '',
+      nameEn: c.nameEn,
+      nameZh: c.nameZh ?? '',
+      registeredAddress: c.registeredAddress ?? f.registeredAddress,
+      occupation: f.occupation || 'Corporate',
+    }))
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+        Link an existing KYC person or portfolio company, or type the shareholder details by hand.
+      </p>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <KycLinkWithConfirm
+          persons={kycPersons}
+          value={form.keyPersonId}
+          confirmWhenLinking={false}
+          onLinkOnly={linkKycOnly}
+          onPrefill={prefillFromKyc}
+          disabled={isCorporate}
+        />
+        <div
+          className="rounded-lg p-3 mb-1"
+          style={{
+            background: 'var(--surface-panel)',
+            border: linkedCompany
+              ? '1px solid rgba(56,189,248,0.45)'
+              : '1px solid var(--border-subtle)',
+            opacity: form.keyPersonId ? 0.55 : 1,
+            pointerEvents: form.keyPersonId ? 'none' : undefined,
+          }}
+        >
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <label style={{ ...labelStyle, color: 'var(--gold)', marginBottom: 0 }}>Linked company</label>
+            {linkedCompany && (
+              <span
+                className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                style={{ background: 'rgba(56,189,248,0.14)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.35)' }}
+              >
+                Linked
+              </span>
+            )}
+          </div>
+          {linkedCompany && (
+            <div
+              className="mb-2 rounded-md px-2.5 py-2 flex items-start justify-between gap-2"
+              style={{ background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.28)' }}
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate" style={{ color: 'var(--foreground)' }}>
+                  {linkedCompany.companyCode ? `${linkedCompany.companyCode} · ` : ''}
+                  {linkedCompany.nameEn}
+                  {linkedCompany.nameZh ? ` (${linkedCompany.nameZh})` : ''}
+                </p>
+                <p className="text-[11px]" style={{ color: 'var(--muted-foreground)' }}>Corporate shareholder</p>
+              </div>
+              <button type="button" className="text-xs shrink-0 hover:underline" style={{ color: '#ef4444' }} onClick={() => linkCompany(null)}>
+                Unlink
+              </button>
+            </div>
+          )}
+          <Input
+            value={companySearch}
+            onChange={e => setCompanySearch(e.target.value)}
+            placeholder="Search company code / name…"
+            style={{ ...fieldStyle, marginBottom: 8 }}
+          />
+          <select
+            value={form.linkedCompanyId}
+            onChange={e => {
+              const id = e.target.value
+              if (!id) {
+                linkCompany(null)
+                return
+              }
+              linkCompany(companyOptions.find(row => row.id === id) ?? null)
+            }}
+            style={fieldStyle}
+          >
+            <option value="" style={{ background: 'var(--surface-raised)' }}>
+              {linkedCompany ? '— Change linked company —' : '— Not a corporate member —'}
+            </option>
+            {companyOptions.map(c => (
+              <option key={c.id} value={c.id} style={{ background: 'var(--surface-raised)' }}>
+                {c.companyCode ? `${c.companyCode} · ` : ''}{c.nameEn}{c.nameZh ? ` (${c.nameZh})` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div>
+          <label style={labelStyle}>Name (EN) *</label>
+          <Input style={fieldStyle} value={form.nameEn} onChange={e => setForm(f => ({ ...f, nameEn: e.target.value }))} required />
+        </div>
+        <div>
+          <label style={labelStyle}>Name (ZH)</label>
+          <Input style={fieldStyle} value={form.nameZh} onChange={e => setForm(f => ({ ...f, nameZh: e.target.value }))} />
+        </div>
+        <div>
+          <label style={labelStyle}>Share class *</label>
+          <select value={form.shareClass} onChange={e => setForm(f => ({ ...f, shareClass: e.target.value }))} style={fieldStyle}>
+            <option value="ORDINARY" style={{ background: 'var(--surface-raised)' }}>Ordinary</option>
+            <option value="PREFERENCE" style={{ background: 'var(--surface-raised)' }}>Preference</option>
+            <option value="OTHER" style={{ background: 'var(--surface-raised)' }}>Other</option>
+          </select>
+        </div>
+        <div>
+          <label style={labelStyle}>Occupation</label>
+          <Input style={fieldStyle} value={form.occupation} onChange={e => setForm(f => ({ ...f, occupation: e.target.value }))} />
+        </div>
+        <div className="sm:col-span-2">
+          <label style={labelStyle}>Registered address *</label>
+          <Input style={fieldStyle} value={form.registeredAddress} onChange={e => setForm(f => ({ ...f, registeredAddress: e.target.value }))} required />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MemberAllotmentForm({ companyId, members, kycPersons, onDone }: {
   companyId: string
   members: Member[]
+  kycPersons: KycPerson[]
   onDone: () => void
 }) {
   const [saving, setSaving] = useState(false)
@@ -1864,13 +2080,7 @@ function MemberAllotmentForm({ companyId, members, onDone }: {
   const [allotmentTransferNo, setAllotmentTransferNo] = useState('')
   const [certificateNo, setCertificateNo] = useState('')
   const [amountPaid, setAmountPaid] = useState('')
-  const [newMember, setNewMember] = useState({
-    nameEn: '',
-    nameZh: '',
-    shareClass: 'ORDINARY',
-    registeredAddress: '',
-    occupation: '',
-  })
+  const [newMember, setNewMember] = useState<NewShareholderState>(NEW_SHAREHOLDER_EMPTY)
 
   const selected = members.find(m => m.id === memberId)
   const previous = selected ? memberCurrentHolding(selected) : 0
@@ -1904,13 +2114,7 @@ function MemberAllotmentForm({ companyId, members, onDone }: {
       if (mode === 'existing') {
         body.memberId = memberId
       } else {
-        body.newMember = {
-          nameEn: newMember.nameEn.trim(),
-          shareClass: newMember.shareClass,
-          registeredAddress: newMember.registeredAddress.trim(),
-          ...(newMember.nameZh.trim() ? { nameZh: newMember.nameZh.trim() } : {}),
-          ...(newMember.occupation.trim() ? { occupation: newMember.occupation.trim() } : {}),
-        }
+        body.newMember = buildNewMemberPayload(newMember)
       }
 
       const res = await fetch(`/api/admin/companies/${companyId}/share-allotments`, {
@@ -1969,32 +2173,7 @@ function MemberAllotmentForm({ companyId, members, onDone }: {
           )}
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 gap-3">
-          <div>
-            <label style={labelStyle}>Name (EN) *</label>
-            <Input style={fieldStyle} value={newMember.nameEn} onChange={e => setNewMember(f => ({ ...f, nameEn: e.target.value }))} required />
-          </div>
-          <div>
-            <label style={labelStyle}>Name (ZH)</label>
-            <Input style={fieldStyle} value={newMember.nameZh} onChange={e => setNewMember(f => ({ ...f, nameZh: e.target.value }))} />
-          </div>
-          <div>
-            <label style={labelStyle}>Share class *</label>
-            <select value={newMember.shareClass} onChange={e => setNewMember(f => ({ ...f, shareClass: e.target.value }))} style={fieldStyle}>
-              <option value="ORDINARY" style={{ background: 'var(--surface-raised)' }}>Ordinary</option>
-              <option value="PREFERENCE" style={{ background: 'var(--surface-raised)' }}>Preference</option>
-              <option value="OTHER" style={{ background: 'var(--surface-raised)' }}>Other</option>
-            </select>
-          </div>
-          <div>
-            <label style={labelStyle}>Occupation</label>
-            <Input style={fieldStyle} value={newMember.occupation} onChange={e => setNewMember(f => ({ ...f, occupation: e.target.value }))} />
-          </div>
-          <div className="sm:col-span-2">
-            <label style={labelStyle}>Registered address *</label>
-            <Input style={fieldStyle} value={newMember.registeredAddress} onChange={e => setNewMember(f => ({ ...f, registeredAddress: e.target.value }))} required />
-          </div>
-        </div>
+        <NewShareholderPanel companyId={companyId} kycPersons={kycPersons} form={newMember} setForm={setNewMember} />
       )}
 
       <div className="grid sm:grid-cols-3 gap-3">
@@ -2028,9 +2207,10 @@ function MemberAllotmentForm({ companyId, members, onDone }: {
   )
 }
 
-function MemberTransferForm({ companyId, members, onDone }: {
+function MemberTransferForm({ companyId, members, kycPersons, onDone }: {
   companyId: string
   members: Member[]
+  kycPersons: KycPerson[]
   onDone: () => void
 }) {
   const holders = members.filter(m => memberCurrentHolding(m) > 0)
@@ -2042,13 +2222,7 @@ function MemberTransferForm({ companyId, members, onDone }: {
   const [transactionDate, setTransactionDate] = useState(new Date().toISOString().slice(0, 10))
   const [allotmentTransferNo, setAllotmentTransferNo] = useState('')
   const [certificateNo, setCertificateNo] = useState('')
-  const [newMember, setNewMember] = useState({
-    nameEn: '',
-    nameZh: '',
-    shareClass: 'ORDINARY',
-    registeredAddress: '',
-    occupation: '',
-  })
+  const [newMember, setNewMember] = useState<NewShareholderState>(NEW_SHAREHOLDER_EMPTY)
 
   const from = members.find(m => m.id === fromMemberId)
   const to = members.find(m => m.id === toMemberId)
@@ -2097,13 +2271,7 @@ function MemberTransferForm({ companyId, members, onDone }: {
       if (toMode === 'existing') {
         body.toMemberId = toMemberId
       } else {
-        body.newMember = {
-          nameEn: newMember.nameEn.trim(),
-          shareClass: newMember.shareClass,
-          registeredAddress: newMember.registeredAddress.trim(),
-          ...(newMember.nameZh.trim() ? { nameZh: newMember.nameZh.trim() } : {}),
-          ...(newMember.occupation.trim() ? { occupation: newMember.occupation.trim() } : {}),
-        }
+        body.newMember = buildNewMemberPayload(newMember)
       }
 
       const res = await fetch(`/api/admin/companies/${companyId}/share-transfers`, {
@@ -2180,37 +2348,14 @@ function MemberTransferForm({ companyId, members, onDone }: {
           )}
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 gap-3">
-          <div>
-            <label style={labelStyle}>Name (EN) *</label>
-            <Input style={fieldStyle} value={newMember.nameEn} onChange={e => setNewMember(f => ({ ...f, nameEn: e.target.value }))} required />
-          </div>
-          <div>
-            <label style={labelStyle}>Name (ZH)</label>
-            <Input style={fieldStyle} value={newMember.nameZh} onChange={e => setNewMember(f => ({ ...f, nameZh: e.target.value }))} />
-          </div>
-          <div>
-            <label style={labelStyle}>Share class *</label>
-            <select value={newMember.shareClass} onChange={e => setNewMember(f => ({ ...f, shareClass: e.target.value }))} style={fieldStyle}>
-              <option value="ORDINARY" style={{ background: 'var(--surface-raised)' }}>Ordinary</option>
-              <option value="PREFERENCE" style={{ background: 'var(--surface-raised)' }}>Preference</option>
-              <option value="OTHER" style={{ background: 'var(--surface-raised)' }}>Other</option>
-            </select>
-          </div>
-          <div>
-            <label style={labelStyle}>Occupation</label>
-            <Input style={fieldStyle} value={newMember.occupation} onChange={e => setNewMember(f => ({ ...f, occupation: e.target.value }))} />
-          </div>
-          <div className="sm:col-span-2">
-            <label style={labelStyle}>Registered address *</label>
-            <Input style={fieldStyle} value={newMember.registeredAddress} onChange={e => setNewMember(f => ({ ...f, registeredAddress: e.target.value }))} required />
-          </div>
+        <>
+          <NewShareholderPanel companyId={companyId} kycPersons={kycPersons} form={newMember} setForm={setNewMember} />
           {toNext != null && (
-            <p className="sm:col-span-2 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+            <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
               New member will hold <span style={{ color: 'var(--gold)' }}>{toNext.toLocaleString()}</span> shares after transfer.
             </p>
           )}
-        </div>
+        </>
       )}
 
       <div className="grid sm:grid-cols-3 gap-3">
@@ -4488,10 +4633,10 @@ export default function CompanyDetailPage() {
             />
           )}
           {modal.type === 'allotment' && (
-            <MemberAllotmentForm companyId={id} members={company.members} onDone={closeModal} />
+            <MemberAllotmentForm companyId={id} members={company.members} kycPersons={kycPersons} onDone={closeModal} />
           )}
           {modal.type === 'transfer' && (
-            <MemberTransferForm companyId={id} members={company.members} onDone={closeModal} />
+            <MemberTransferForm companyId={id} members={company.members} kycPersons={kycPersons} onDone={closeModal} />
           )}
           {modal.type === 'controller' && (
             <ControllerForm
