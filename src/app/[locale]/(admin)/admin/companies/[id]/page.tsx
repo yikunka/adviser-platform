@@ -1502,10 +1502,10 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
         return
       }
       toast.success(isEdit ? 'Member updated' : 'Member added')
-      const sync = json?.controllerSync as { created?: number; updated?: number } | undefined
-      if (sync && ((sync.created ?? 0) > 0 || (sync.updated ?? 0) > 0)) {
+      const sync = json?.controllerSync as { created?: number; updated?: number; ceased?: number } | undefined
+      if (sync && ((sync.created ?? 0) > 0 || (sync.updated ?? 0) > 0 || (sync.ceased ?? 0) > 0)) {
         toast.message(
-          `Significant Controllers: ${sync.created ?? 0} added, ${sync.updated ?? 0} updated from members >25%`,
+          `Significant Controllers: ${sync.created ?? 0} added, ${sync.updated ?? 0} updated, ${sync.ceased ?? 0} ceased from members >25%`,
         )
       }
       onDone()
@@ -2132,6 +2132,12 @@ function MemberAllotmentForm({ companyId, members, kycPersons, onDone }: {
           ? `Allotment recorded · new member holds ${json?.sharesHeld?.toLocaleString?.() ?? sharesNum} shares`
           : `Allotment recorded · balance now ${json?.sharesHeld?.toLocaleString?.() ?? nextBalance} shares`,
       )
+      const sync = json?.controllerSync as { created?: number; updated?: number; ceased?: number } | undefined
+      if (sync && ((sync.created ?? 0) > 0 || (sync.updated ?? 0) > 0 || (sync.ceased ?? 0) > 0)) {
+        toast.message(
+          `Significant Controllers: ${sync.created ?? 0} added, ${sync.updated ?? 0} updated, ${sync.ceased ?? 0} ceased`,
+        )
+      }
       onDone()
     } finally {
       setSaving(false)
@@ -2288,6 +2294,12 @@ function MemberTransferForm({ companyId, members, kycPersons, onDone }: {
         `Transfer recorded · ${from?.nameEn ?? 'From'} now ${json?.fromHeld?.toLocaleString?.() ?? fromNext} · ` +
         `to now ${json?.toHeld?.toLocaleString?.() ?? toNext}`,
       )
+      const sync = json?.controllerSync as { created?: number; updated?: number; ceased?: number } | undefined
+      if (sync && ((sync.created ?? 0) > 0 || (sync.updated ?? 0) > 0 || (sync.ceased ?? 0) > 0)) {
+        toast.message(
+          `Significant Controllers: ${sync.created ?? 0} added, ${sync.updated ?? 0} updated, ${sync.ceased ?? 0} ceased`,
+        )
+      }
       onDone()
     } finally {
       setSaving(false)
@@ -3279,10 +3291,11 @@ export default function CompanyDetailPage() {
       }
       const created = json?.created ?? 0
       const updated = json?.updated ?? 0
-      if (created === 0 && updated === 0) {
+      const ceased = json?.ceased ?? 0
+      if (created === 0 && updated === 0 && ceased === 0) {
         toast.message('No active members with shareholding >25% need syncing')
       } else {
-        toast.success(`Synced Significant Controllers: ${created} added, ${updated} updated`)
+        toast.success(`Synced Significant Controllers: ${created} added, ${updated} updated, ${ceased} ceased`)
       }
       reload()
     } finally {

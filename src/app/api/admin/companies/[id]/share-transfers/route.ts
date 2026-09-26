@@ -130,7 +130,9 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       transactionDate: data.transactionDate,
     })
 
-    const controllerSync = await syncControllersFromMembers(companyId)
+    const controllerSync = await syncControllersFromMembers(companyId, {
+      asOfDate: new Date(data.transactionDate),
+    })
     return NextResponse.json({ ...result, controllerSync }, { status: 201 })
   } catch (err) {
     if (err instanceof Error) {
