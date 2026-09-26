@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { logAudit } from '@/lib/audit/logger'
-import { syncControllersFromMembers } from '@/lib/company/sync-controllers-from-members'
+import { syncControllersFromMembers, parseShareCalendarDate } from '@/lib/company/sync-controllers-from-members'
 import {
   appendAllotment,
   createMemberForCompany,
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     })
 
     const controllerSync = await syncControllersFromMembers(companyId, {
-      asOfDate: new Date(data.transactionDate),
+      asOfDate: parseShareCalendarDate(data.transactionDate),
     })
     return NextResponse.json({ ...result, controllerSync }, { status: 201 })
   } catch (err) {

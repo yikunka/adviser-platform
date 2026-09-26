@@ -16,7 +16,10 @@ export type SyncControllersFromMembersResult = {
 }
 
 export type SyncControllersOptions = {
-  /** Date to use for becoming / cessation when auto-syncing (e.g. transfer date). Defaults to today. */
+  /**
+   * Explicit event date (e.g. the share transfer / allotment date just recorded).
+   * When omitted, each create/cease uses that member's latest share transaction date.
+   */
   asOfDate?: Date
 }
 
@@ -48,15 +51,45 @@ type ControllerRow = {
   cessationDate: Date | null
 }
 
-function latestSharesHeld(
+function latestShareTransaction(
   transactions: Array<{ sharesHeld: number; transactionDate: Date; createdAt?: Date }>,
-): number | null {
+) {
   if (transactions.length === 0) return null
   return [...transactions].sort((a, b) => {
     const byDate = b.transactionDate.getTime() - a.transactionDate.getTime()
     if (byDate !== 0) return byDate
     return (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0)
-  })[0]?.sharesHeld ?? null
+  })[0] ?? null
+}
+
+function latestSharesHeld(
+  transactions: Array<{ sharesHeld: number; transactionDate: Date; createdAt?: Date }>,
+): number | null {
+  return latestShareTransaction(transactions)?.sharesHeld ?? null
+}
+
+/** Prefer explicit asOfDate; otherwise the member's latest share movement date; else today. */
+function controllerEventDate(
+  member: MemberRow,
+  asOfDate: Date | undefined,
+): Date {
+  if (asOfDate) return asOfDate
+  const latest = latestShareTransaction(member.shareTransactions)
+  if (latest?.transactionDate) return latest.transactionDate
+  return new Date()
+}
+
+/**
+ * Parse a share-document calendar date (YYYY-MM-DD) without UTC day-shift.
+ * Used so becoming / cessation match the transfer/allotment date on screen.
+ */
+export function parseShareCalendarDate(value: string | Date): Date {
+  if (value instanceof Date) return value
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim())
+  if (m) {
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0)
+  }
+  return new Date(value)
 }
 
 function natureOfControlFromShares(pct: number): string {
@@ -101,7 +134,7 @@ export async function syncControllersFromMembers(
   companyId: string,
   options?: SyncControllersOptions,
 ): Promise<SyncControllersFromMembersResult> {
-  const asOfDate = options?.asOfDate ?? new Date()
+  const explicitAsOf = options?.asOfDate
 
   const [memberRows, controllerRows] = await Promise.all([
     prisma.member.findMany({
@@ -162,6 +195,7 @@ export async function syncControllersFromMembers(
       const isLegal = !!member.linkedCompanyId
       // Only match an open (not ceased) controller — a prior ceased row stays on file
       const existing = findOpenControllerForMember(controllers, member)
+      const eventDate = controllerEventDate(member, explicitAsOf)
 
       const natureOfControl = natureOfControlFromShares(ownershipPercent)
       const payload = {
@@ -210,8 +244,8 @@ export async function syncControllersFromMembers(
         data: {
           companyId,
           ...payload,
-          entryDate: asOfDate,
-          becomingDate: asOfDate,
+          entryDate: eventDate,
+          becomingDate: eventDate,
           remarks: 'Auto-synced from Member (>25% shares)',
         },
       })
@@ -246,10 +280,11 @@ export async function syncControllersFromMembers(
     const ownershipPercent = totalShares > 0
       ? Number(((sharesHeld / totalShares) * 100).toFixed(4))
       : 0
+    const eventDate = controllerEventDate(matched, explicitAsOf)
 
     await prisma.significantController.update({
       where: { id: controller.id },
-      data: { cessationDate: asOfDate },
+      data: { cessationDate: eventDate },
     })
     result.ceased++
     result.candidates.push({
