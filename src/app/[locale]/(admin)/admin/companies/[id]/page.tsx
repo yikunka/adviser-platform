@@ -276,6 +276,8 @@ type ModalState =
   | { type: 'director'; mode: 'edit'; data: Director }
   | { type: 'member'; mode: 'add' }
   | { type: 'member'; mode: 'edit'; data: Member }
+  | { type: 'allotment' }
+  | { type: 'transfer' }
   | { type: 'controller'; mode: 'add' }
   | { type: 'controller'; mode: 'edit'; data: Controller }
   | { type: 'designatedRep'; mode: 'add' }
@@ -1843,6 +1845,401 @@ function MemberForm({ companyId, initial, kycPersons, onDone }: {
   )
 }
 
+function memberCurrentHolding(member: Member): number {
+  const latest = getLatestShareTransaction(member.shareTransactions)
+  return latest?.sharesHeld ?? 0
+}
+
+function MemberAllotmentForm({ companyId, members, onDone }: {
+  companyId: string
+  members: Member[]
+  onDone: () => void
+}) {
+  const [saving, setSaving] = useState(false)
+  const [mode, setMode] = useState<'existing' | 'new'>('existing')
+  const activeMembers = members.filter(m => memberCurrentHolding(m) >= 0)
+  const [memberId, setMemberId] = useState(activeMembers[0]?.id ?? '')
+  const [shares, setShares] = useState('')
+  const [transactionDate, setTransactionDate] = useState(new Date().toISOString().slice(0, 10))
+  const [allotmentTransferNo, setAllotmentTransferNo] = useState('')
+  const [certificateNo, setCertificateNo] = useState('')
+  const [amountPaid, setAmountPaid] = useState('')
+  const [newMember, setNewMember] = useState({
+    nameEn: '',
+    nameZh: '',
+    shareClass: 'ORDINARY',
+    registeredAddress: '',
+    occupation: '',
+  })
+
+  const selected = members.find(m => m.id === memberId)
+  const previous = selected ? memberCurrentHolding(selected) : 0
+  const sharesNum = Number(shares)
+  const nextBalance = Number.isFinite(sharesNum) && sharesNum > 0 ? previous + sharesNum : null
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!(sharesNum > 0)) {
+      toast.error('Enter the number of shares allotted')
+      return
+    }
+    if (mode === 'existing' && !memberId) {
+      toast.error('Select a member')
+      return
+    }
+    if (mode === 'new' && (!newMember.nameEn.trim() || !newMember.registeredAddress.trim())) {
+      toast.error('New member needs a name and registered address')
+      return
+    }
+    setSaving(true)
+    try {
+      const body: Record<string, unknown> = {
+        transactionDate,
+        shares: sharesNum,
+      }
+      if (allotmentTransferNo.trim()) body.allotmentTransferNo = allotmentTransferNo.trim()
+      if (certificateNo.trim()) body.certificateNo = certificateNo.trim()
+      if (amountPaid.trim()) body.amountPaid = amountPaid.trim()
+
+      if (mode === 'existing') {
+        body.memberId = memberId
+      } else {
+        body.newMember = {
+          nameEn: newMember.nameEn.trim(),
+          shareClass: newMember.shareClass,
+          registeredAddress: newMember.registeredAddress.trim(),
+          ...(newMember.nameZh.trim() ? { nameZh: newMember.nameZh.trim() } : {}),
+          ...(newMember.occupation.trim() ? { occupation: newMember.occupation.trim() } : {}),
+        }
+      }
+
+      const res = await fetch(`/api/admin/companies/${companyId}/share-allotments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const json = await res.json().catch(() => null)
+      if (!res.ok) {
+        toast.error(json?.error ?? 'Could not record allotment')
+        return
+      }
+      toast.success(
+        mode === 'new'
+          ? `Allotment recorded · new member holds ${json?.sharesHeld?.toLocaleString?.() ?? sharesNum} shares`
+          : `Allotment recorded · balance now ${json?.sharesHeld?.toLocaleString?.() ?? nextBalance} shares`,
+      )
+      onDone()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+        Records an allotment and updates the member&apos;s balance automatically (previous holding + shares allotted).
+      </p>
+      <div className="flex gap-2">
+        <button type="button" onClick={() => setMode('existing')} className="px-3 py-1.5 rounded text-xs font-semibold"
+          style={{ background: mode === 'existing' ? 'rgba(201,169,110,0.18)' : 'var(--surface-panel)', color: mode === 'existing' ? 'var(--gold)' : 'var(--muted-foreground)', border: '1px solid var(--border-subtle)' }}>
+          Existing member
+        </button>
+        <button type="button" onClick={() => setMode('new')} className="px-3 py-1.5 rounded text-xs font-semibold"
+          style={{ background: mode === 'new' ? 'rgba(201,169,110,0.18)' : 'var(--surface-panel)', color: mode === 'new' ? 'var(--gold)' : 'var(--muted-foreground)', border: '1px solid var(--border-subtle)' }}>
+          New member
+        </button>
+      </div>
+
+      {mode === 'existing' ? (
+        <div>
+          <label style={labelStyle}>Member *</label>
+          <select value={memberId} onChange={e => setMemberId(e.target.value)} style={fieldStyle} required>
+            {members.length === 0 && <option value="">No members yet</option>}
+            {members.map(m => (
+              <option key={m.id} value={m.id} style={{ background: 'var(--surface-raised)' }}>
+                {m.nameEn}{m.nameZh ? ` (${m.nameZh})` : ''} · {memberCurrentHolding(m).toLocaleString()} shares · {m.status}
+              </option>
+            ))}
+          </select>
+          {selected && (
+            <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+              Current balance: <span style={{ color: 'var(--gold)' }}>{previous.toLocaleString()}</span>
+              {nextBalance != null && <> → after allotment: <span style={{ color: 'var(--gold)' }}>{nextBalance.toLocaleString()}</span></>}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label style={labelStyle}>Name (EN) *</label>
+            <Input style={fieldStyle} value={newMember.nameEn} onChange={e => setNewMember(f => ({ ...f, nameEn: e.target.value }))} required />
+          </div>
+          <div>
+            <label style={labelStyle}>Name (ZH)</label>
+            <Input style={fieldStyle} value={newMember.nameZh} onChange={e => setNewMember(f => ({ ...f, nameZh: e.target.value }))} />
+          </div>
+          <div>
+            <label style={labelStyle}>Share class *</label>
+            <select value={newMember.shareClass} onChange={e => setNewMember(f => ({ ...f, shareClass: e.target.value }))} style={fieldStyle}>
+              <option value="ORDINARY" style={{ background: 'var(--surface-raised)' }}>Ordinary</option>
+              <option value="PREFERENCE" style={{ background: 'var(--surface-raised)' }}>Preference</option>
+              <option value="OTHER" style={{ background: 'var(--surface-raised)' }}>Other</option>
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Occupation</label>
+            <Input style={fieldStyle} value={newMember.occupation} onChange={e => setNewMember(f => ({ ...f, occupation: e.target.value }))} />
+          </div>
+          <div className="sm:col-span-2">
+            <label style={labelStyle}>Registered address *</label>
+            <Input style={fieldStyle} value={newMember.registeredAddress} onChange={e => setNewMember(f => ({ ...f, registeredAddress: e.target.value }))} required />
+          </div>
+        </div>
+      )}
+
+      <div className="grid sm:grid-cols-3 gap-3">
+        <div>
+          <label style={labelStyle}>Date *</label>
+          <DateInput value={transactionDate} onChange={setTransactionDate} required />
+        </div>
+        <div>
+          <label style={{ ...labelStyle, color: 'var(--gold)' }}>Shares allotted *</label>
+          <Input type="number" min="1" required style={{ ...fieldStyle, borderColor: 'var(--gold)' }} value={shares} onChange={e => setShares(e.target.value)} />
+        </div>
+        <div>
+          <label style={labelStyle}>Allotment no.</label>
+          <Input style={fieldStyle} value={allotmentTransferNo} onChange={e => setAllotmentTransferNo(e.target.value)} placeholder="e.g. 2" />
+        </div>
+        <div>
+          <label style={labelStyle}>Certificate no.</label>
+          <Input style={fieldStyle} value={certificateNo} onChange={e => setCertificateNo(e.target.value)} />
+        </div>
+        <div>
+          <label style={labelStyle}>Amount paid (HK$)</label>
+          <Input type="number" min="0" step="0.01" style={fieldStyle} value={amountPaid} onChange={e => setAmountPaid(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2 pt-1">
+        <Button type="button" variant="outline" size="sm" onClick={onDone} disabled={saving}>Cancel</Button>
+        <Button type="submit" size="sm" disabled={saving}>{saving ? 'Saving…' : 'Record allotment'}</Button>
+      </div>
+    </form>
+  )
+}
+
+function MemberTransferForm({ companyId, members, onDone }: {
+  companyId: string
+  members: Member[]
+  onDone: () => void
+}) {
+  const holders = members.filter(m => memberCurrentHolding(m) > 0)
+  const [saving, setSaving] = useState(false)
+  const [toMode, setToMode] = useState<'existing' | 'new'>('existing')
+  const [fromMemberId, setFromMemberId] = useState(holders[0]?.id ?? '')
+  const [toMemberId, setToMemberId] = useState('')
+  const [shares, setShares] = useState('')
+  const [transactionDate, setTransactionDate] = useState(new Date().toISOString().slice(0, 10))
+  const [allotmentTransferNo, setAllotmentTransferNo] = useState('')
+  const [certificateNo, setCertificateNo] = useState('')
+  const [newMember, setNewMember] = useState({
+    nameEn: '',
+    nameZh: '',
+    shareClass: 'ORDINARY',
+    registeredAddress: '',
+    occupation: '',
+  })
+
+  const from = members.find(m => m.id === fromMemberId)
+  const to = members.find(m => m.id === toMemberId)
+  const fromHolding = from ? memberCurrentHolding(from) : 0
+  const toHolding = to ? memberCurrentHolding(to) : 0
+  const sharesNum = Number(shares)
+  const fromNext = Number.isFinite(sharesNum) && sharesNum > 0 ? fromHolding - sharesNum : null
+  const toNext = Number.isFinite(sharesNum) && sharesNum > 0
+    ? (toMode === 'new' ? sharesNum : toHolding + sharesNum)
+    : null
+
+  const toCandidates = members.filter(m => m.id !== fromMemberId)
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!fromMemberId) {
+      toast.error('Select the transferor')
+      return
+    }
+    if (!(sharesNum > 0)) {
+      toast.error('Enter the number of shares to transfer')
+      return
+    }
+    if (sharesNum > fromHolding) {
+      toast.error(`${from?.nameEn ?? 'Transferor'} only holds ${fromHolding.toLocaleString()} shares`)
+      return
+    }
+    if (toMode === 'existing' && !toMemberId) {
+      toast.error('Select the transferee')
+      return
+    }
+    if (toMode === 'new' && (!newMember.nameEn.trim() || !newMember.registeredAddress.trim())) {
+      toast.error('New member needs a name and registered address')
+      return
+    }
+    setSaving(true)
+    try {
+      const body: Record<string, unknown> = {
+        fromMemberId,
+        transactionDate,
+        shares: sharesNum,
+      }
+      if (allotmentTransferNo.trim()) body.allotmentTransferNo = allotmentTransferNo.trim()
+      if (certificateNo.trim()) body.certificateNo = certificateNo.trim()
+
+      if (toMode === 'existing') {
+        body.toMemberId = toMemberId
+      } else {
+        body.newMember = {
+          nameEn: newMember.nameEn.trim(),
+          shareClass: newMember.shareClass,
+          registeredAddress: newMember.registeredAddress.trim(),
+          ...(newMember.nameZh.trim() ? { nameZh: newMember.nameZh.trim() } : {}),
+          ...(newMember.occupation.trim() ? { occupation: newMember.occupation.trim() } : {}),
+        }
+      }
+
+      const res = await fetch(`/api/admin/companies/${companyId}/share-transfers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const json = await res.json().catch(() => null)
+      if (!res.ok) {
+        toast.error(json?.error ?? 'Could not record transfer')
+        return
+      }
+      toast.success(
+        `Transfer recorded · ${from?.nameEn ?? 'From'} now ${json?.fromHeld?.toLocaleString?.() ?? fromNext} · ` +
+        `to now ${json?.toHeld?.toLocaleString?.() ?? toNext}`,
+      )
+      onDone()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+        One save updates both sides: transferor balance decreases, transferee balance increases. A full transfer leaves the transferor at 0 (Transferred out).
+      </p>
+
+      <div>
+        <label style={labelStyle}>From (transferor) *</label>
+        <select value={fromMemberId} onChange={e => { setFromMemberId(e.target.value); if (e.target.value === toMemberId) setToMemberId('') }} style={fieldStyle} required>
+          {holders.length === 0 && <option value="">No members with shares</option>}
+          {holders.map(m => (
+            <option key={m.id} value={m.id} style={{ background: 'var(--surface-raised)' }}>
+              {m.nameEn}{m.nameZh ? ` (${m.nameZh})` : ''} · {memberCurrentHolding(m).toLocaleString()} shares
+            </option>
+          ))}
+        </select>
+        {from && (
+          <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+            Current: <span style={{ color: 'var(--gold)' }}>{fromHolding.toLocaleString()}</span>
+            {fromNext != null && <> → after: <span style={{ color: fromNext === 0 ? '#ef4444' : 'var(--gold)' }}>{fromNext.toLocaleString()}</span></>}
+          </p>
+        )}
+      </div>
+
+      <div className="flex gap-2">
+        <button type="button" onClick={() => setToMode('existing')} className="px-3 py-1.5 rounded text-xs font-semibold"
+          style={{ background: toMode === 'existing' ? 'rgba(201,169,110,0.18)' : 'var(--surface-panel)', color: toMode === 'existing' ? 'var(--gold)' : 'var(--muted-foreground)', border: '1px solid var(--border-subtle)' }}>
+          To existing member
+        </button>
+        <button type="button" onClick={() => setToMode('new')} className="px-3 py-1.5 rounded text-xs font-semibold"
+          style={{ background: toMode === 'new' ? 'rgba(201,169,110,0.18)' : 'var(--surface-panel)', color: toMode === 'new' ? 'var(--gold)' : 'var(--muted-foreground)', border: '1px solid var(--border-subtle)' }}>
+          To new member
+        </button>
+      </div>
+
+      {toMode === 'existing' ? (
+        <div>
+          <label style={labelStyle}>To (transferee) *</label>
+          <select value={toMemberId} onChange={e => setToMemberId(e.target.value)} style={fieldStyle} required>
+            <option value="">Select member…</option>
+            {toCandidates.map(m => (
+              <option key={m.id} value={m.id} style={{ background: 'var(--surface-raised)' }}>
+                {m.nameEn}{m.nameZh ? ` (${m.nameZh})` : ''} · {memberCurrentHolding(m).toLocaleString()} shares · {m.status}
+              </option>
+            ))}
+          </select>
+          {to && (
+            <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+              Current: <span style={{ color: 'var(--gold)' }}>{toHolding.toLocaleString()}</span>
+              {toNext != null && <> → after: <span style={{ color: 'var(--gold)' }}>{toNext.toLocaleString()}</span></>}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label style={labelStyle}>Name (EN) *</label>
+            <Input style={fieldStyle} value={newMember.nameEn} onChange={e => setNewMember(f => ({ ...f, nameEn: e.target.value }))} required />
+          </div>
+          <div>
+            <label style={labelStyle}>Name (ZH)</label>
+            <Input style={fieldStyle} value={newMember.nameZh} onChange={e => setNewMember(f => ({ ...f, nameZh: e.target.value }))} />
+          </div>
+          <div>
+            <label style={labelStyle}>Share class *</label>
+            <select value={newMember.shareClass} onChange={e => setNewMember(f => ({ ...f, shareClass: e.target.value }))} style={fieldStyle}>
+              <option value="ORDINARY" style={{ background: 'var(--surface-raised)' }}>Ordinary</option>
+              <option value="PREFERENCE" style={{ background: 'var(--surface-raised)' }}>Preference</option>
+              <option value="OTHER" style={{ background: 'var(--surface-raised)' }}>Other</option>
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Occupation</label>
+            <Input style={fieldStyle} value={newMember.occupation} onChange={e => setNewMember(f => ({ ...f, occupation: e.target.value }))} />
+          </div>
+          <div className="sm:col-span-2">
+            <label style={labelStyle}>Registered address *</label>
+            <Input style={fieldStyle} value={newMember.registeredAddress} onChange={e => setNewMember(f => ({ ...f, registeredAddress: e.target.value }))} required />
+          </div>
+          {toNext != null && (
+            <p className="sm:col-span-2 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+              New member will hold <span style={{ color: 'var(--gold)' }}>{toNext.toLocaleString()}</span> shares after transfer.
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="grid sm:grid-cols-3 gap-3">
+        <div>
+          <label style={labelStyle}>Date *</label>
+          <DateInput value={transactionDate} onChange={setTransactionDate} required />
+        </div>
+        <div>
+          <label style={{ ...labelStyle, color: 'var(--gold)' }}>Shares transferred *</label>
+          <Input type="number" min="1" max={fromHolding || undefined} required style={{ ...fieldStyle, borderColor: 'var(--gold)' }} value={shares} onChange={e => setShares(e.target.value)} />
+        </div>
+        <div>
+          <label style={labelStyle}>Transfer no.</label>
+          <Input style={fieldStyle} value={allotmentTransferNo} onChange={e => setAllotmentTransferNo(e.target.value)} placeholder="e.g. T-1" />
+        </div>
+        <div>
+          <label style={labelStyle}>New certificate no. (transferee)</label>
+          <Input style={fieldStyle} value={certificateNo} onChange={e => setCertificateNo(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2 pt-1">
+        <Button type="button" variant="outline" size="sm" onClick={onDone} disabled={saving}>Cancel</Button>
+        <Button type="submit" size="sm" disabled={saving || holders.length === 0}>{saving ? 'Saving…' : 'Record transfer'}</Button>
+      </div>
+    </form>
+  )
+}
+
 // ── Controller Form ───────────────────────────────────────────────────────────
 
 function ControllerForm({ companyId, initial, kycPersons, onDone }: {
@@ -2884,6 +3281,8 @@ export default function CompanyDetailPage() {
 
   const modalTitle = modal
     ? modal.type === 'company' ? 'Edit Company'
+    : modal.type === 'allotment' ? 'Record allotment'
+    : modal.type === 'transfer' ? 'Record share transfer'
     : modal.type === 'designatedRep' ? `${modal.mode === 'add' ? 'Add' : 'Edit'} Designated Representative`
     : `${modal.mode === 'add' ? 'Add' : 'Edit'} ${modal.type === 'director' ? 'Director' : modal.type === 'member' ? 'Member' : 'Controller'}`
     : ''
@@ -3852,8 +4251,15 @@ export default function CompanyDetailPage() {
                   {generatingRegister === 'ROM' ? 'Generating…' : latestDoc('ROM') ? 'Regenerate ROM' : 'Generate ROM'}
                 </Button>
               </div>
-              <Button size="sm" onClick={() => setModal({ type: 'member', mode: 'add' })}>+ Add Member</Button>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => setModal({ type: 'allotment' })}>Record allotment</Button>
+                <Button size="sm" variant="outline" onClick={() => setModal({ type: 'transfer' })}>Record transfer</Button>
+                <Button size="sm" onClick={() => setModal({ type: 'member', mode: 'add' })}>+ Add Member</Button>
+              </div>
             </div>
+            <p className="text-[11px]" style={{ color: 'var(--muted-foreground)' }}>
+              After the first allotment, use Record allotment or Record transfer so each member&apos;s share balance updates automatically. Add Member is for creating a shareholder without a movement.
+            </p>
             <div style={cardStyle}>
               <table className="w-full text-sm">
                 <thead>
@@ -3892,7 +4298,7 @@ export default function CompanyDetailPage() {
                       <td style={tdStyle}>{m.shareClass}</td>
                       <td style={tdStyle}>{fmt(latestTx?.transactionDate)}</td>
                       <td style={tdStyle}>{shareTransactionTypeLabel(latestTx?.transactionType)}</td>
-                      <td style={tdStyle}>{sharesHeld != null ? sharesHeld.toLocaleString() : '—'}</td>
+                      <td style={{ ...tdStyle, fontWeight: 600, color: 'var(--foreground)' }}>{sharesHeld != null ? sharesHeld.toLocaleString() : '—'}</td>
                       <td style={tdStyle}>{m.occupation ?? '—'}</td>
                       <td style={tdStyle}><Badge variant={m.status === 'ACTIVE' ? 'default' : 'secondary'}>{m.status}</Badge></td>
                       <td style={tdStyle}>
@@ -4080,6 +4486,12 @@ export default function CompanyDetailPage() {
               kycPersons={kycPersons}
               onDone={closeModal}
             />
+          )}
+          {modal.type === 'allotment' && (
+            <MemberAllotmentForm companyId={id} members={company.members} onDone={closeModal} />
+          )}
+          {modal.type === 'transfer' && (
+            <MemberTransferForm companyId={id} members={company.members} onDone={closeModal} />
           )}
           {modal.type === 'controller' && (
             <ControllerForm
