@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/rbac'
-import { buildAnnualPlComparison } from '@/lib/financial/annual-pl-comparison'
+import { buildAnnualPlComparison } from '@/lib/financial/annual-pl-comparison-build'
 import { financialAnnualComparisonFilterSchema } from '@/lib/financial/schemas'
 import { resolveCompanyAccess } from '@/lib/company-access'
 import { resolveFinancialReportScope } from '@/lib/financial/report-scope'
