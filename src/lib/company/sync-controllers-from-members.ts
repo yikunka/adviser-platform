@@ -40,6 +40,11 @@ export type MemberControllerDates = {
   /** Date ownership most recently fell to the threshold or below; null if still above. */
   cessationDate: Date | null
   currentlyAbove: boolean
+  /**
+   * Ownership % at end of the becoming action day (frozen for the spell).
+   * Used for ROSC nature of control — not recomputed from later movements.
+   */
+  ownershipPercentAtBecoming: number | null
 }
 
 type MemberRow = {
@@ -129,6 +134,7 @@ function totalIssuedShares(holdings: Map<string, number>): number {
  *
  * Becoming = date ownership first crossed above the threshold in the current spell.
  * Ceased = date ownership first fell to the threshold or below in that spell.
+ * ownershipPercentAtBecoming = % at end of the becoming action day (frozen).
  * Dilution (another member's allotment) is included because totals are recomputed
  * after every company event.
  */
@@ -137,9 +143,15 @@ export function computeMemberControllerDates(
   memberIds: string[],
   thresholdPct: number = UBO_EFFECTIVE_THRESHOLD_PCT,
 ): Map<string, MemberControllerDates> {
+  const empty = (): MemberControllerDates => ({
+    becomingDate: null,
+    cessationDate: null,
+    currentlyAbove: false,
+    ownershipPercentAtBecoming: null,
+  })
   const result = new Map<string, MemberControllerDates>()
   for (const id of memberIds) {
-    result.set(id, { becomingDate: null, cessationDate: null, currentlyAbove: false })
+    result.set(id, empty())
   }
   if (events.length === 0) return result
 
@@ -148,9 +160,11 @@ export function computeMemberControllerDates(
 
   const above = new Map<string, boolean>()
   const spellStart = new Map<string, Date | null>()
+  const spellPct = new Map<string, number | null>()
   for (const id of memberIds) {
     above.set(id, false)
     spellStart.set(id, null)
+    spellPct.set(id, null)
   }
 
   const sorted = [...events].sort(compareLedgerEventsAsc)
@@ -166,18 +180,23 @@ export function computeMemberControllerDates(
 
       if (isAbove && !wasAbove) {
         spellStart.set(id, eventDate)
+        spellPct.set(id, pct)
         row.becomingDate = eventDate
         row.cessationDate = null
         row.currentlyAbove = true
+        row.ownershipPercentAtBecoming = pct
       } else if (!isAbove && wasAbove) {
         row.becomingDate = spellStart.get(id) ?? row.becomingDate
+        row.ownershipPercentAtBecoming = spellPct.get(id) ?? row.ownershipPercentAtBecoming
         row.cessationDate = eventDate
         row.currentlyAbove = false
         spellStart.set(id, null)
+        spellPct.set(id, null)
       } else {
         row.currentlyAbove = isAbove
         if (isAbove) {
           row.becomingDate = spellStart.get(id) ?? row.becomingDate
+          row.ownershipPercentAtBecoming = spellPct.get(id) ?? row.ownershipPercentAtBecoming
           row.cessationDate = null
         }
       }
@@ -239,6 +258,7 @@ function spellForMember(
     becomingDate: null,
     cessationDate: null,
     currentlyAbove: false,
+    ownershipPercentAtBecoming: null,
   }
 }
 
@@ -431,7 +451,9 @@ export async function syncControllersFromMembers(
         member.shareTransactions,
       )
 
-      const natureOfControl = natureOfControlFromShares(ownershipPercentValue)
+      // Nature % is frozen at the becoming action day — not today's live %.
+      const naturePercent = spell.ownershipPercentAtBecoming ?? ownershipPercentValue
+      const natureOfControl = natureOfControlFromShares(naturePercent)
       const payload = {
         nameEn: member.nameEn,
         nameZh: member.nameZh,
@@ -470,7 +492,7 @@ export async function syncControllersFromMembers(
         result.candidates.push({
           memberId: member.id,
           nameEn: member.nameEn,
-          ownershipPercent: ownershipPercentValue,
+          ownershipPercent: naturePercent,
           action: 'updated',
         })
         continue
@@ -499,7 +521,7 @@ export async function syncControllersFromMembers(
       result.candidates.push({
         memberId: member.id,
         nameEn: member.nameEn,
-        ownershipPercent: ownershipPercentValue,
+        ownershipPercent: naturePercent,
         action: 'created',
       })
     }

@@ -23,6 +23,25 @@ describe('computeMemberControllerDates', () => {
     expect(a.currentlyAbove).toBe(true)
     expect(a.becomingDate && sameCalendarDay(a.becomingDate, d('2024-06-01'))).toBe(true)
     expect(a.cessationDate).toBeNull()
+    expect(a.ownershipPercentAtBecoming).toBe(40)
+  })
+
+  it('freezes nature % at becoming day even if holding changes later while still above 25%', () => {
+    const dates = computeMemberControllerDates(
+      [
+        { memberId: 'a', sharesHeld: 10000, transactionDate: d('2020-01-01'), transactionType: 'ALLOTMENT' },
+        // A was 100%; after B allotted, A is 50% but still above 25%
+        { memberId: 'b', sharesHeld: 10000, transactionDate: d('2024-06-01'), transactionType: 'ALLOTMENT' },
+      ],
+      ['a', 'b'],
+    )
+    const a = dates.get('a')!
+    expect(a.currentlyAbove).toBe(true)
+    expect(a.becomingDate && sameCalendarDay(a.becomingDate, d('2020-01-01'))).toBe(true)
+    expect(a.ownershipPercentAtBecoming).toBe(100)
+    const b = dates.get('b')!
+    expect(b.currentlyAbove).toBe(true)
+    expect(b.ownershipPercentAtBecoming).toBe(50)
   })
 
   it('sets cessation to the date ownership first fell to 25% or below', () => {
@@ -56,6 +75,7 @@ describe('computeMemberControllerDates', () => {
     const b = dates.get('b')!
     expect(b.currentlyAbove).toBe(true)
     expect(b.becomingDate && sameCalendarDay(b.becomingDate, d('2026-09-14'))).toBe(true)
+    expect(b.ownershipPercentAtBecoming).toBe(100)
   })
 
   it('ceases on dilution when another member is allotted shares', () => {
