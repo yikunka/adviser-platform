@@ -34,43 +34,11 @@ describe('trialBalanceColumns', () => {
 })
 
 describe('shouldIncludeProfitAndLossExpenseLine', () => {
-  it('excludes top-level expense and cost-of-sales accounts when they have second-level accounts', () => {
+  it('includes level-1 expense and cost-of-sales accounts with movement', () => {
     expect(shouldIncludeProfitAndLossExpenseLine({
       type: 'EXPENSE',
       level: 1,
       topLevelHasChildren: true,
-      periodNet: 125,
-    })).toBe(false)
-
-    expect(shouldIncludeProfitAndLossExpenseLine({
-      type: 'CGS',
-      level: 1,
-      topLevelHasChildren: true,
-      periodNet: 125,
-    })).toBe(false)
-  })
-
-  it('includes second-level expense and cost-of-sales accounts when top-level accounts have children', () => {
-    expect(shouldIncludeProfitAndLossExpenseLine({
-      type: 'EXPENSE',
-      level: 2,
-      topLevelHasChildren: true,
-      periodNet: 125,
-    })).toBe(true)
-
-    expect(shouldIncludeProfitAndLossExpenseLine({
-      type: 'CGS',
-      level: 2,
-      topLevelHasChildren: true,
-      periodNet: 125,
-    })).toBe(true)
-  })
-
-  it('includes top-level expense and cost-of-sales accounts when they have no second-level accounts', () => {
-    expect(shouldIncludeProfitAndLossExpenseLine({
-      type: 'EXPENSE',
-      level: 1,
-      topLevelHasChildren: false,
       periodNet: 125,
     })).toBe(true)
 
@@ -80,6 +48,22 @@ describe('shouldIncludeProfitAndLossExpenseLine', () => {
       topLevelHasChildren: false,
       periodNet: 125,
     })).toBe(true)
+  })
+
+  it('excludes level-2+ expense and cost-of-sales detail rows', () => {
+    expect(shouldIncludeProfitAndLossExpenseLine({
+      type: 'EXPENSE',
+      level: 2,
+      topLevelHasChildren: true,
+      periodNet: 125,
+    })).toBe(false)
+
+    expect(shouldIncludeProfitAndLossExpenseLine({
+      type: 'CGS',
+      level: 2,
+      topLevelHasChildren: true,
+      periodNet: 125,
+    })).toBe(false)
   })
 
   it('excludes third-level details, non-expense accounts, and zero movement accounts', () => {

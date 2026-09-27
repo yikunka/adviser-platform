@@ -71,6 +71,17 @@ function hasExpenseName(account: { name: string }) {
   return /费用|費用|expense|bankfee|bankcharge|interest|administrative|admin|selling|marketing|promotion|distribution/.test(text)
 }
 
+/** Asset-side deferred/prepaid names that contain「费用」but are not P&L expenses. */
+function isBalanceSheetDeferredOrPrepaidName(account: { name: string }) {
+  const text = normalize(account.name)
+  return (
+    /长期待摊|長期待攤/.test(text)
+    || /待摊费用|待攤費用/.test(text)
+    || /预付账款|預付帳款|预付帐款|预付款|預付款|prepaid/.test(text)
+    || /递延费用|遞延費用|递延资产|遞延資產|deferredexpense|deferredcharge/.test(text)
+  )
+}
+
 function isBalanceSheetType(type: AccountType) {
   return type === 'ASSET'
     || type === 'NON_CURRENT_ASSET'
@@ -87,6 +98,8 @@ export function inferProfitAndLossStatementType(account: {
 }): ProfitAndLossStatementType | null {
   if (isProfitAndLossStatementType(account.type)) return account.type
   if (isBalanceSheetType(account.type)) {
+    // e.g. 长期待摊费用 is an asset; do not treat the「费用」in the name as P&L.
+    if (isBalanceSheetDeferredOrPrepaidName(account)) return null
     if (hasExpenseName(account)) return 'EXPENSE'
     if (hasCostOfSalesName(account)) return 'CGS'
     if (hasRevenueName(account)) return 'REVENUE'
@@ -104,9 +117,10 @@ export function shouldIncludeIncomeStatementLine(input: {
   topLevelHasChildren: boolean
   periodNet: number
 }) {
+  void input.topLevelHasChildren
+  // Income statement shows level-1 lines only; child movement rolls into the parent.
   if (!PL_STATEMENT_TYPES.has(input.type) || input.periodNet === 0) return false
-  if (input.level === 1) return !input.topLevelHasChildren
-  return input.level === 2 && input.topLevelHasChildren
+  return input.level === 1
 }
 
 function normalize(value: string) {

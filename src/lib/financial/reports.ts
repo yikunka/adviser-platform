@@ -918,7 +918,7 @@ export async function buildFinancialReports(
         expenseCategory: mappedExpenseCategory,
       })
     }
-    if (profitAndLossType && ownPeriodNet !== 0) {
+    if (profitAndLossType && ownPeriodNet !== 0 && account.level === 1) {
       uncoveredProfitAndLossCandidates.push({
         account,
         statementType: profitAndLossType,

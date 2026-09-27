@@ -136,9 +136,9 @@ describe('buildFinancialReports journal-line source', () => {
 
     expect(reports.incomeStatement.revenue).toEqual([
       expect.objectContaining({
-        accountId: 'rev-child',
-        code: '4001',
-        name: '主营业务收入',
+        accountId: 'rev-parent',
+        code: '4000',
+        name: '收入',
         periodDebit: 0,
         periodCredit: 1000,
         amount: 1000,
@@ -228,9 +228,9 @@ describe('buildFinancialReports journal-line source', () => {
     ]))
     expect(reports.incomeStatement.revenue).toEqual([
       expect.objectContaining({
-        accountId: 'rev-direct-level3',
-        code: '400101',
-        name: '服務收入',
+        accountId: 'rev-parent',
+        code: '4000',
+        name: '收入',
         amount: 888,
       }),
     ])
@@ -294,8 +294,8 @@ describe('buildFinancialReports journal-line source', () => {
     ]))
     expect(reports.incomeStatement.revenue).toEqual([
       expect.objectContaining({
-        accountId: 'legacy-rev-child',
-        code: '0501',
+        accountId: 'legacy-rev-parent',
+        code: '05',
         type: 'REVENUE',
         periodDebit: 0,
         periodCredit: 700,
@@ -377,7 +377,7 @@ describe('buildFinancialReports journal-line source', () => {
     ]))
     expect(reports.incomeStatement.revenue).toEqual([
       expect.objectContaining({
-        accountId: 'rev-child',
+        accountId: 'rev-parent',
         periodDebit: 0,
         periodCredit: 640,
         amount: 640,
@@ -396,7 +396,7 @@ describe('buildFinancialReports journal-line source', () => {
 
     expect(reports.incomeStatement.revenue).toEqual([
       expect.objectContaining({
-        accountId: 'rev-child',
+        accountId: 'rev-parent',
         periodDebit: 200,
         periodCredit: 0,
         amount: -200,
@@ -641,7 +641,7 @@ describe('buildFinancialReports journal-line source', () => {
     expect(reports.incomeStatement.netProfitYtd).toBe(6200)
     expect(reports.incomeStatement.revenue).toEqual([
       expect.objectContaining({
-        accountId: 'rev-child',
+        accountId: 'rev-parent',
         periodDebit: 0,
         periodCredit: 1200,
         amount: 1200,

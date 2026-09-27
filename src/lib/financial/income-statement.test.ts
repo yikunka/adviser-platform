@@ -22,32 +22,60 @@ describe('inferProfitAndLossStatementType', () => {
       name: 'Service Revenue',
     })).toBe('REVENUE')
   })
+
+  it('does not treat long-term deferred expense assets as P&L expenses', () => {
+    expect(inferProfitAndLossStatementType({
+      type: 'ASSET',
+      code: '1801',
+      name: '长期待摊费用',
+    })).toBeNull()
+    expect(inferProfitAndLossStatementType({
+      type: 'ASSET',
+      code: '180101',
+      name: '长期待摊费-  环保费',
+    })).toBeNull()
+  })
+
+  it('still treats typed expense accounts that mention 待摊 as expenses', () => {
+    expect(inferProfitAndLossStatementType({
+      type: 'EXPENSE',
+      code: '560208',
+      name: '管理费用-  待摊费',
+    })).toBe('EXPENSE')
+  })
 })
 
 describe('shouldIncludeIncomeStatementLine', () => {
-  it('includes top-level revenue when it has no child accounts', () => {
+  it('includes level-1 revenue when it has period movement', () => {
     expect(shouldIncludeIncomeStatementLine({
       type: 'REVENUE',
       level: 1,
       topLevelHasChildren: false,
       periodNet: 1000,
     })).toBe(true)
-  })
 
-  it('uses second-level revenue details when the top-level account has children', () => {
     expect(shouldIncludeIncomeStatementLine({
       type: 'REVENUE',
       level: 1,
       topLevelHasChildren: true,
       periodNet: 1000,
-    })).toBe(false)
+    })).toBe(true)
+  })
 
+  it('excludes level-2+ detail rows even when the parent has children', () => {
     expect(shouldIncludeIncomeStatementLine({
       type: 'REVENUE',
       level: 2,
       topLevelHasChildren: true,
       periodNet: 1000,
-    })).toBe(true)
+    })).toBe(false)
+
+    expect(shouldIncludeIncomeStatementLine({
+      type: 'CGS',
+      level: 2,
+      topLevelHasChildren: true,
+      periodNet: 500,
+    })).toBe(false)
   })
 
   it('excludes third-level and zero-movement rows', () => {

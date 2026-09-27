@@ -54,9 +54,10 @@ export function shouldIncludeProfitAndLossExpenseLine(input: {
   topLevelHasChildren: boolean
   periodNet: number
 }) {
+  void input.topLevelHasChildren
+  // Keep aligned with income-statement display: level-1 only; children roll up.
   if (!isProfitAndLossExpenseType(input.type) || input.periodNet === 0) return false
-  if (input.level === 1) return !input.topLevelHasChildren
-  return input.level === 2 && input.topLevelHasChildren
+  return input.level === 1
 }
 
 export function isCreditNormalAccountType(type: AccountType, code?: string) {
