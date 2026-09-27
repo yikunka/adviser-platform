@@ -74,7 +74,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         previousHolding = row.holding
       }
 
-      const transactionDate = new Date(data.transactionDate)
+      const transactionDate = parseShareCalendarDate(data.transactionDate)
       const shareTx = await appendAllotment(tx, memberId!, {
         transactionDate,
         shares: data.shares,

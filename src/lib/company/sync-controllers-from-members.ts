@@ -17,10 +17,8 @@ export type SyncControllersFromMembersResult = {
 
 export type SyncControllersOptions = {
   /**
-   * Fallback event date when a member has no share movements yet.
-   * Becoming uses the member's first share movement; Ceased uses the movement
-   * that took them to 25% or below (or to zero). This date is not applied to
-   * every member on a company-wide sync.
+   * Company-event date (allotment / transfer / edit) used when the ledger walk
+   * cannot derive a threshold-crossing date (e.g. empty history).
    */
   asOfDate?: Date
 }
@@ -29,6 +27,19 @@ export type ShareMovement = {
   sharesHeld: number
   transactionDate: Date
   createdAt?: Date
+  transactionType?: string
+}
+
+export type ShareLedgerEvent = ShareMovement & {
+  memberId: string
+}
+
+export type MemberControllerDates = {
+  /** Start of the current (or most recently ended) spell above the threshold. */
+  becomingDate: Date | null
+  /** Date ownership most recently fell to the threshold or below; null if still above. */
+  cessationDate: Date | null
+  currentlyAbove: boolean
 }
 
 type MemberRow = {
@@ -39,7 +50,12 @@ type MemberRow = {
   keyPersonId: string | null
   linkedCompanyId: string | null
   registeredAddress: string
-  shareTransactions: Array<{ sharesHeld: number; transactionDate: Date; createdAt?: Date }>
+  shareTransactions: Array<{
+    sharesHeld: number
+    transactionDate: Date
+    createdAt?: Date
+    transactionType?: string
+  }>
   linkedCompany: {
     id: string
     nameEn: string
@@ -76,16 +92,122 @@ function compareShareMovementsDesc(a: ShareMovement, b: ShareMovement) {
   return (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0)
 }
 
-/** Member in date: the first allotment or transfer in. */
+function calendarDayKey(date: Date): string {
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+}
+
+function transferSortRank(type: string | undefined): number {
+  // Apply outs before ins/allotments so a same-day transfer does not leave a
+  // zero-total intermediate when evaluating ownership.
+  return type === 'TRANSFER_OUT' ? 0 : 1
+}
+
+function compareLedgerEventsAsc(a: ShareLedgerEvent, b: ShareLedgerEvent) {
+  const byDate = a.transactionDate.getTime() - b.transactionDate.getTime()
+  if (byDate !== 0) return byDate
+  const byType = transferSortRank(a.transactionType) - transferSortRank(b.transactionType)
+  if (byType !== 0) return byType
+  return (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0)
+}
+
+function ownershipPercent(sharesHeld: number, totalShares: number): number {
+  if (totalShares <= 0 || sharesHeld <= 0) return 0
+  return Number(((sharesHeld / totalShares) * 100).toFixed(4))
+}
+
+function totalIssuedShares(holdings: Map<string, number>): number {
+  let total = 0
+  for (const shares of holdings.values()) {
+    if (shares > 0) total += shares
+  }
+  return total
+}
+
+/**
+ * Walk the company share ledger and compute, per member, the current (or last)
+ * spell above the significant-controller threshold.
+ *
+ * Becoming = date ownership first crossed above the threshold in the current spell.
+ * Ceased = date ownership first fell to the threshold or below in that spell.
+ * Dilution (another member's allotment) is included because totals are recomputed
+ * after every company event.
+ */
+export function computeMemberControllerDates(
+  events: ShareLedgerEvent[],
+  memberIds: string[],
+  thresholdPct: number = UBO_EFFECTIVE_THRESHOLD_PCT,
+): Map<string, MemberControllerDates> {
+  const result = new Map<string, MemberControllerDates>()
+  for (const id of memberIds) {
+    result.set(id, { becomingDate: null, cessationDate: null, currentlyAbove: false })
+  }
+  if (events.length === 0) return result
+
+  const holdings = new Map<string, number>()
+  for (const id of memberIds) holdings.set(id, 0)
+
+  const above = new Map<string, boolean>()
+  const spellStart = new Map<string, Date | null>()
+  for (const id of memberIds) {
+    above.set(id, false)
+    spellStart.set(id, null)
+  }
+
+  const sorted = [...events].sort(compareLedgerEventsAsc)
+
+  const applySnapshots = (eventDate: Date) => {
+    const total = totalIssuedShares(holdings)
+    for (const id of memberIds) {
+      const shares = holdings.get(id) ?? 0
+      const pct = ownershipPercent(shares, total)
+      const isAbove = pct > thresholdPct
+      const wasAbove = above.get(id) ?? false
+      const row = result.get(id)!
+
+      if (isAbove && !wasAbove) {
+        spellStart.set(id, eventDate)
+        row.becomingDate = eventDate
+        row.cessationDate = null
+        row.currentlyAbove = true
+      } else if (!isAbove && wasAbove) {
+        row.becomingDate = spellStart.get(id) ?? row.becomingDate
+        row.cessationDate = eventDate
+        row.currentlyAbove = false
+        spellStart.set(id, null)
+      } else {
+        row.currentlyAbove = isAbove
+        if (isAbove) {
+          row.becomingDate = spellStart.get(id) ?? row.becomingDate
+          row.cessationDate = null
+        }
+      }
+      above.set(id, isAbove)
+    }
+  }
+
+  let i = 0
+  while (i < sorted.length) {
+    const day = calendarDayKey(sorted[i].transactionDate)
+    const dayDate = sorted[i].transactionDate
+    while (i < sorted.length && calendarDayKey(sorted[i].transactionDate) === day) {
+      holdings.set(sorted[i].memberId, sorted[i].sharesHeld)
+      i++
+    }
+    // Evaluate ownership once per calendar day after all that day's movements.
+    applySnapshots(dayDate)
+  }
+
+  return result
+}
+
+/** @deprecated Prefer computeMemberControllerDates — kept for single-ledger callers. */
 export function memberShareInDate(transactions: ShareMovement[]): Date | null {
   return earliestShareTransaction(transactions)?.transactionDate ?? null
 }
 
 /**
- * Date the controller should cease.
- * Zero shares: the movement that took the holding to 0.
- * Still holding, but no longer above 25%: the latest movement, when there is
- * more than one (a single allotment is an in date, not an out date).
+ * @deprecated Prefer computeMemberControllerDates.
+ * Zero shares → latest zero movement; otherwise latest movement when below threshold.
  */
 export function controllerCeaseDateFromMovements(
   transactions: ShareMovement[],
@@ -109,15 +231,43 @@ function latestSharesHeld(transactions: ShareMovement[]): number | null {
   return latestShareTransaction(transactions)?.sharesHeld ?? null
 }
 
-function memberInDateOrFallback(member: MemberRow, asOfDate: Date | undefined): Date {
-  return memberShareInDate(member.shareTransactions) ?? asOfDate ?? new Date()
+function spellForMember(
+  datesByMember: Map<string, MemberControllerDates>,
+  memberId: string,
+): MemberControllerDates {
+  return datesByMember.get(memberId) ?? {
+    becomingDate: null,
+    cessationDate: null,
+    currentlyAbove: false,
+  }
 }
 
-function memberCeaseDateOrFallback(member: MemberRow, asOfDate: Date | undefined): Date {
-  return controllerCeaseDateFromMovements(member.shareTransactions, false)
-    ?? latestShareTransaction(member.shareTransactions)?.transactionDate
+/** Becoming for a member currently (or newly) above 25%. */
+function becomingDateForAboveMember(
+  spell: MemberControllerDates,
+  asOfDate: Date | undefined,
+  ownTransactions: ShareMovement[],
+): Date {
+  return (
+    spell.becomingDate
     ?? asOfDate
+    ?? earliestShareTransaction(ownTransactions)?.transactionDate
     ?? new Date()
+  )
+}
+
+/** Ceased date when the member is no longer above 25%. */
+function cessationDateForBelowMember(
+  spell: MemberControllerDates,
+  asOfDate: Date | undefined,
+  ownTransactions: ShareMovement[],
+): Date {
+  return (
+    spell.cessationDate
+    ?? asOfDate
+    ?? latestShareTransaction(ownTransactions)?.transactionDate
+    ?? new Date()
+  )
 }
 
 /**
@@ -125,7 +275,19 @@ function memberCeaseDateOrFallback(member: MemberRow, asOfDate: Date | undefined
  * Used so becoming / cessation match the transfer/allotment date on screen.
  */
 export function parseShareCalendarDate(value: string | Date): Date {
-  if (value instanceof Date) return value
+  if (value instanceof Date) {
+    // Re-normalise midnight-UTC ISO strings that came from `new Date('YYYY-MM-DD')`
+    // so local calendar day matches the document date in HK.
+    if (
+      value.getUTCHours() === 0
+      && value.getUTCMinutes() === 0
+      && value.getUTCSeconds() === 0
+      && value.getUTCMilliseconds() === 0
+    ) {
+      return new Date(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate(), 12, 0, 0)
+    }
+    return value
+  }
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim())
   if (m) {
     return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0)
@@ -170,6 +332,9 @@ function findMemberForController(members: MemberRow[], controller: ControllerRow
  * cessationDate on that open controller (does not delete the row).
  * If the same person later rises above 25% again, a new ROSC entry is created;
  * earlier ceased rows are left unchanged.
+ *
+ * Becoming / Ceased dates follow threshold crossings on the company share ledger
+ * (including dilution), not merely the member's first/last share movement.
  */
 export async function syncControllersFromMembers(
   companyId: string,
@@ -183,7 +348,12 @@ export async function syncControllersFromMembers(
       include: {
         shareTransactions: {
           orderBy: [{ transactionDate: 'desc' }, { createdAt: 'desc' }],
-          select: { sharesHeld: true, transactionDate: true, createdAt: true },
+          select: {
+            sharesHeld: true,
+            transactionDate: true,
+            createdAt: true,
+            transactionType: true,
+          },
         },
         linkedCompany: {
           select: { id: true, nameEn: true, nameZh: true, companyNumber: true, registeredAddress: true },
@@ -204,6 +374,23 @@ export async function syncControllersFromMembers(
     becomingDate: c.becomingDate,
     cessationDate: c.cessationDate,
   }))
+
+  const ledgerEvents: ShareLedgerEvent[] = []
+  for (const member of members) {
+    for (const tx of member.shareTransactions) {
+      ledgerEvents.push({
+        memberId: member.id,
+        sharesHeld: tx.sharesHeld,
+        transactionDate: tx.transactionDate,
+        createdAt: tx.createdAt,
+        transactionType: tx.transactionType,
+      })
+    }
+  }
+  const datesByMember = computeMemberControllerDates(
+    ledgerEvents,
+    members.map(m => m.id),
+  )
 
   const withShares = members.map(m => ({
     member: m,
@@ -229,17 +416,22 @@ export async function syncControllersFromMembers(
   if (totalShares > 0) {
     for (const { member, sharesHeld } of withShares) {
       if (sharesHeld <= 0) continue
-      const ownershipPercent = Number(((sharesHeld / totalShares) * 100).toFixed(4))
-      if (ownershipPercent <= UBO_EFFECTIVE_THRESHOLD_PCT) continue
+      const ownershipPercentValue = ownershipPercent(sharesHeld, totalShares)
+      if (ownershipPercentValue <= UBO_EFFECTIVE_THRESHOLD_PCT) continue
 
       stillAboveIds.add(member.id)
 
       const isLegal = !!member.linkedCompanyId
       // Only match an open (not ceased) controller — a prior ceased row stays on file
       const existing = findOpenControllerForMember(controllers, member)
-      const inDate = memberInDateOrFallback(member, explicitAsOf)
+      const spell = spellForMember(datesByMember, member.id)
+      const inDate = becomingDateForAboveMember(
+        spell,
+        explicitAsOf,
+        member.shareTransactions,
+      )
 
-      const natureOfControl = natureOfControlFromShares(ownershipPercent)
+      const natureOfControl = natureOfControlFromShares(ownershipPercentValue)
       const payload = {
         nameEn: member.nameEn,
         nameZh: member.nameZh,
@@ -278,7 +470,7 @@ export async function syncControllersFromMembers(
         result.candidates.push({
           memberId: member.id,
           nameEn: member.nameEn,
-          ownershipPercent,
+          ownershipPercent: ownershipPercentValue,
           action: 'updated',
         })
         continue
@@ -307,7 +499,7 @@ export async function syncControllersFromMembers(
       result.candidates.push({
         memberId: member.id,
         nameEn: member.nameEn,
-        ownershipPercent,
+        ownershipPercent: ownershipPercentValue,
         action: 'created',
       })
     }
@@ -323,11 +515,16 @@ export async function syncControllersFromMembers(
     if (stillAboveIds.has(matched.id)) continue
 
     const sharesHeld = latestSharesHeld(matched.shareTransactions) ?? 0
-    const ownershipPercent = totalShares > 0
-      ? Number(((sharesHeld / totalShares) * 100).toFixed(4))
-      : 0
-    const inDate = memberShareInDate(matched.shareTransactions)
-    const outDate = memberCeaseDateOrFallback(matched, explicitAsOf)
+    const ownershipPercentValue = ownershipPercent(sharesHeld, totalShares)
+    const spell = spellForMember(datesByMember, matched.id)
+    const outDate = cessationDateForBelowMember(
+      spell,
+      explicitAsOf,
+      matched.shareTransactions,
+    )
+    // Only rewrite Becoming when the ledger knows the spell start (do not
+    // clobber a manual ROSC becoming with asOfDate / first share).
+    const inDate = spell.becomingDate
     const alignBecoming = !!inDate && (
       !controller.becomingDate || !sameCalendarDay(controller.becomingDate, inDate)
     )
@@ -344,7 +541,7 @@ export async function syncControllersFromMembers(
     result.candidates.push({
       memberId: matched.id,
       nameEn: matched.nameEn,
-      ownershipPercent,
+      ownershipPercent: ownershipPercentValue,
       action: 'ceased',
     })
   }
@@ -361,10 +558,11 @@ export async function syncControllersFromMembers(
     const controller = ceased[0]
     if (!controller?.cessationDate || repairedIds.has(controller.id)) continue
 
-    const inDate = memberShareInDate(member.shareTransactions)
-    const outDate = controllerCeaseDateFromMovements(member.shareTransactions, false)
-    if (!inDate && !outDate) continue
+    const spell = datesByMember.get(member.id)
+    if (!spell?.becomingDate && !spell?.cessationDate) continue
 
+    const inDate = spell.becomingDate
+    const outDate = spell.cessationDate
     const alignBecoming = !!inDate && (
       !controller.becomingDate || !sameCalendarDay(controller.becomingDate, inDate)
     )
@@ -381,13 +579,11 @@ export async function syncControllersFromMembers(
     repairedIds.add(controller.id)
     result.updated++
     const sharesHeld = latestSharesHeld(member.shareTransactions) ?? 0
-    const ownershipPercent = totalShares > 0
-      ? Number(((sharesHeld / totalShares) * 100).toFixed(4))
-      : 0
+    const ownershipPercentValue = ownershipPercent(sharesHeld, totalShares)
     result.candidates.push({
       memberId: member.id,
       nameEn: member.nameEn,
-      ownershipPercent,
+      ownershipPercent: ownershipPercentValue,
       action: 'updated',
     })
   }

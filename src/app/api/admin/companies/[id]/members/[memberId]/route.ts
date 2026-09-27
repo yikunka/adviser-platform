@@ -48,7 +48,7 @@ function buildShareTransactionData(transaction: z.infer<typeof txSchema>) {
   const { id: _id, ...rest } = transaction
   return {
     ...rest,
-    transactionDate: new Date(transaction.transactionDate),
+    transactionDate: parseShareCalendarDate(transaction.transactionDate),
     amountPaid:
       transaction.amountPaid == null || transaction.amountPaid === ''
         ? null

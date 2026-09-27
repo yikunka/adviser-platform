@@ -84,7 +84,7 @@ export async function POST(
             shareTransactions: {
               create: {
                 ...transaction,
-                transactionDate: new Date(transaction.transactionDate),
+                transactionDate: parseShareCalendarDate(transaction.transactionDate),
                 amountPaid: transaction.amountPaid ? parseFloat(transaction.amountPaid) : undefined,
               },
             },

@@ -89,7 +89,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         toPreviousHolding = to.holding
       }
 
-      const transactionDate = new Date(data.transactionDate)
+      const transactionDate = parseShareCalendarDate(data.transactionDate)
       const pair = await appendTransferPair(tx, {
         fromMemberId: data.fromMemberId,
         toMemberId: toMemberId!,
