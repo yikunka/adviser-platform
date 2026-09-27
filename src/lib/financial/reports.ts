@@ -866,9 +866,19 @@ export async function buildFinancialReports(
 
     const hasChildren = accountHasChildren(account)
     const topLevelHasChildren = topLevelAccountHasChildren(account, level1GroupId)
-    // 本年利润 must match the trial-balance closing (includes period-end CLOSING transfers).
+    // Assets / liabilities / current accounts must match the trial-balance closing,
+    // including vouchers tagged CLOSING that are really cost transfers (e.g. 结转产成品成本).
+    // Equity keeps the exclude-CLOSING path except 本年利润, which includes CLOSING
+    // so it stays aligned with the ledger after 结转本年利润.
+    const isBalanceSheetPositionAccount =
+      account.type === 'ASSET'
+      || account.type === 'NON_CURRENT_ASSET'
+      || account.type === 'LIABILITY'
+      || account.type === 'NON_CURRENT_LIABILITY'
+      || account.type === 'CURRENT_ACCOUNT'
     const balanceSheetClosingBalance = (
-      account.type === 'EQUITY' && isCurrentYearProfitAccountName(account.name)
+      isBalanceSheetPositionAccount
+      || (account.type === 'EQUITY' && isCurrentYearProfitAccountName(account.name))
     )
       ? closingBalance
       : bsClosingBalance
