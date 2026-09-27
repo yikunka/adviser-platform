@@ -13,12 +13,7 @@ const schema = z.object({
   period: z.string().regex(/^\d{4}-\d{2}$/),
   accountId: z.string().min(1).max(120),
   mode: z.enum(['period', 'ytd']).default('period'),
-  companyId: z.string().cuid().optional(),
-  reportGroupId: z.string().cuid().optional(),
-}).refine(data => !(data.companyId && data.reportGroupId), {
-  message: 'Use either companyId or reportGroupId, not both.',
-}).refine(data => Boolean(data.companyId || data.reportGroupId), {
-  message: 'companyId or reportGroupId is required.',
+  companyId: z.string().cuid(),
 })
 
 export async function GET(req: NextRequest) {
@@ -30,7 +25,6 @@ export async function GET(req: NextRequest) {
     accountId: req.nextUrl.searchParams.get('accountId') || undefined,
     mode: req.nextUrl.searchParams.get('mode') || 'period',
     companyId: req.nextUrl.searchParams.get('companyId') || undefined,
-    reportGroupId: req.nextUrl.searchParams.get('reportGroupId') || undefined,
   })
   if (!parsed.success) {
     return apiError(parsed.error.issues[0]?.message ?? 'Invalid drill-down filters.')
@@ -40,10 +34,8 @@ export async function GET(req: NextRequest) {
     const access = await resolveCompanyAccess(session!.user.id, session!.user.role)
     const scope = await resolveFinancialReportScope(access, {
       companyId: parsed.data.companyId,
-      reportGroupId: parsed.data.reportGroupId,
     })
-    const companyIds = scope.companyIds
-      ?? (scope.companyId ? [scope.companyId] : [])
+    const companyIds = scope.companyId ? [scope.companyId] : []
     if (companyIds.length === 0) {
       return apiError('Financial company not found', 404)
     }

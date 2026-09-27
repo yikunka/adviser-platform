@@ -17,8 +17,7 @@ export async function GET(req: NextRequest) {
 
   const period = req.nextUrl.searchParams.get('period')
   const companyId = req.nextUrl.searchParams.get('companyId') ?? undefined
-  const reportGroupId = req.nextUrl.searchParams.get('reportGroupId') ?? undefined
-  const parsed = financialReportFilterSchema.safeParse({ period, companyId, reportGroupId })
+  const parsed = financialReportFilterSchema.safeParse({ period, companyId })
   if (!parsed.success) {
     return apiError('Period is required in YYYY-MM format.')
   }
@@ -28,7 +27,6 @@ export async function GET(req: NextRequest) {
     const scope = await resolveFinancialReportScope(access, parsed.data)
     const reports = await buildFinancialReports(parsed.data.period, {
       companyId: scope.companyId,
-      companyIds: scope.companyIds,
     })
     return NextResponse.json({ reports })
   } catch (err) {

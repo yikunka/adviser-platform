@@ -1,16 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db/prisma'
 import { resolveFinancialReportScope } from './report-scope'
-import { resolveReportGroupCompanyIds } from './report-groups'
 
 vi.mock('@/lib/db/prisma', () => ({
   prisma: {
     company: { findUnique: vi.fn() },
   },
-}))
-
-vi.mock('./report-groups', () => ({
-  resolveReportGroupCompanyIds: vi.fn(),
 }))
 
 describe('resolveFinancialReportScope', () => {
@@ -52,13 +47,5 @@ describe('resolveFinancialReportScope', () => {
         { companyId: 'company-2' },
       ),
     ).rejects.toThrow('Forbidden')
-  })
-
-  it('delegates report groups to the group resolver', async () => {
-    vi.mocked(resolveReportGroupCompanyIds).mockResolvedValue(['company-1', 'company-2'])
-
-    await expect(
-      resolveFinancialReportScope({ kind: 'all' }, { reportGroupId: 'group-1' }),
-    ).resolves.toEqual({ companyIds: ['company-1', 'company-2'] })
   })
 })

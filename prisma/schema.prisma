@@ -338,7 +338,6 @@ model User {
   createdCompanyStaffAssignments      CompanyStaffAssignment[]      @relation("CompanyStaffAssignmentCreator")
   createdCompanyFileManagementRecords CompanyFileManagementRecord[] @relation("CompanyFileManagementRecordCreator")
   financialManagedCompanies           Company[]                     @relation("FinancialManager")
-  createdFinancialReportGroups        FinancialReportGroup[]        @relation("FinancialReportGroupCreator")
   uploadedFinancialHistoryBooks       FinancialHistoryLedgerBook[]  @relation("FinancialHistoryLedgerBookUploader")
   uploadedHistoricalInvoices          HistoricalInvoiceFile[]       @relation("HistoricalInvoiceFileUploader")
   uploadedAdviserContracts            AdviserContract[]             @relation("AdviserContractUploader")
@@ -493,7 +492,6 @@ model Company {
   ledgerEntries          Ledger[]
   invoices               Invoice[]
   staffAssignments       CompanyStaffAssignment[]
-  reportGroupMemberships FinancialReportGroupCompany[]
   parties                Party[]
   fiscalPeriods          FiscalPeriod[]
   accountMappings        AccountMapping[]
@@ -547,39 +545,6 @@ model CompanyStaffAssignment {
   @@index([userId])
   @@index([createdById])
   @@map("company_staff_assignments")
-}
-
-/// Optional reporting-only portfolio for consolidated multi-company reports.
-model FinancialReportGroup {
-  id          String   @id @default(cuid())
-  name        String
-  notes       String?
-  createdById String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  createdBy User?                         @relation("FinancialReportGroupCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  companies FinancialReportGroupCompany[]
-
-  @@index([name])
-  @@index([createdById])
-  @@map("financial_report_groups")
-}
-
-model FinancialReportGroupCompany {
-  id        String   @id @default(cuid())
-  groupId   String
-  companyId String
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-
-  group   FinancialReportGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  company Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  @@unique([groupId, companyId])
-  @@index([companyId])
-  @@index([groupId, sortOrder])
-  @@map("financial_report_group_companies")
 }
 
 // ─────────────────────────────────────────────

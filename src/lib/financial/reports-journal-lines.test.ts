@@ -162,7 +162,7 @@ describe('buildFinancialReports journal-line source', () => {
       expect.objectContaining({
         accountId: '__current_period_profit__',
         name: '本期利润',
-        note: '包含截至期末从损益类科目基础数据计算的累计未结转损益；如基础数据不平衡，资产负债表仍会显示差异。',
+        note: '损益类科目期末尚未结转到本年利润的余额。余额表「本年利润」不含本行；如基础数据不平衡，资产负债表仍会显示差异。',
         amount: 1000,
       }),
     ]))
@@ -451,8 +451,9 @@ describe('buildFinancialReports journal-line source', () => {
 
     expect(reports.balanceSheet.equitySection.lines).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        accountId: 'current-year-profit',
-        note: '包含截至期末从损益类科目基础数据计算的累计未结转损益；如基础数据不平衡，资产负债表仍会显示差异。',
+        accountId: '__unclosed_profit_and_loss__',
+        name: '未结转损益',
+        note: '损益类科目期末尚未结转到本年利润的余额。余额表「本年利润」不含本行；如基础数据不平衡，资产负债表仍会显示差异。',
         amount: 1000,
       }),
     ]))
@@ -500,7 +501,8 @@ describe('buildFinancialReports journal-line source', () => {
     expect(reports.incomeStatement.netProfit).toBe(700)
     expect(reports.balanceSheet.equitySection.lines).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        accountId: 'current-year-profit',
+        accountId: '__unclosed_profit_and_loss__',
+        name: '未结转损益',
         amount: 700,
         noteAmount: 700,
       }),
@@ -531,7 +533,7 @@ describe('buildFinancialReports journal-line source', () => {
     expect(reports.balanceSheet.equation.difference).toBe(-500)
   })
 
-  it('keeps the current-year-profit explanation when the account already has a balance', async () => {
+  it('keeps trial-balance 本年利润 and shows residual unclosed P&L on a separate line', async () => {
     reportAccounts = [
       ...baseReportAccounts,
       {
@@ -567,15 +569,19 @@ describe('buildFinancialReports journal-line source', () => {
     expect(reports.balanceSheet.equitySection.lines).toEqual(expect.arrayContaining([
       expect.objectContaining({
         accountId: 'current-year-profit',
-        amount: 800,
-        note: '包含截至期末从损益类科目基础数据计算的累计未结转损益；如基础数据不平衡，资产负债表仍会显示差异。',
+        amount: -200,
+      }),
+      expect.objectContaining({
+        accountId: '__unclosed_profit_and_loss__',
+        name: '未结转损益',
+        amount: 1000,
         noteAmount: 1000,
       }),
     ]))
     expect(reports.balanceSheet.equation.balanced).toBe(false)
   })
 
-  it('rolls current-period profit into a nested current-year-profit equity account and parent summary', async () => {
+  it('does not rewrite nested current-year-profit when residual P&L is unclosed', async () => {
     reportAccounts = [
       ...baseReportAccounts,
       {
@@ -608,18 +614,13 @@ describe('buildFinancialReports journal-line source', () => {
 
     const reports = await buildFinancialReports('2026-05', { companyId })
 
-    expect(reports.balanceSheet.equitySection.lines).toEqual([
+    expect(reports.balanceSheet.equitySection.lines).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        accountId: 'equity-parent',
+        accountId: '__unclosed_profit_and_loss__',
+        name: '未结转损益',
         amount: 1000,
-        children: [
-          expect.objectContaining({
-            accountId: 'current-year-profit',
-            amount: 1000,
-          }),
-        ],
       }),
-    ])
+    ]))
     expect(reports.balanceSheet.equitySection.total).toBe(1000)
   })
 

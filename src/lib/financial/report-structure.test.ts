@@ -4,7 +4,10 @@ import {
   BS_REPORT_SECTIONS,
   REPORT_SECTION_LABELS,
 } from './report-structure-shared'
-import { suggestReportSectionMappings } from './report-structure'
+import {
+  resolvePlClassificationForAccount,
+  suggestReportSectionMappings,
+} from './report-structure'
 
 describe('financial report structure', () => {
   it('exposes labelled P&L and balance-sheet sections', () => {
@@ -26,5 +29,33 @@ describe('financial report structure', () => {
     expect(suggestions.some(row => row.section === 'PL_COST_OF_SALES' && row.accountId === 'a2')).toBe(true)
     expect(suggestions.some(row => row.section === 'BS_CURRENT_ASSETS' && row.accountId === 'a3')).toBe(true)
     expect(suggestions.some(row => row.section === 'BS_EQUITY' && row.accountId === 'a4')).toBe(true)
+  })
+
+  it('does not apply P&L structure mappings to balance-sheet account types', () => {
+    const index = {
+      plConfigured: true,
+      bsConfigured: false,
+      plByAccountId: new Map([
+        ['a1801', { statementType: 'EXPENSE' as const, expenseCategory: 'administrative' as const }],
+        ['a5602', { statementType: 'EXPENSE' as const, expenseCategory: 'administrative' as const }],
+      ]),
+      bsByAccountId: new Map(),
+    }
+
+    expect(resolvePlClassificationForAccount(index, {
+      accountId: 'a1801',
+      sourceAccountIds: ['a1801'],
+      code: '1801',
+      name: '长期待摊费用',
+      type: 'ASSET',
+    })).toBeNull()
+
+    expect(resolvePlClassificationForAccount(index, {
+      accountId: 'a5602',
+      sourceAccountIds: ['a5602'],
+      code: '5602',
+      name: '管理费用',
+      type: 'EXPENSE',
+    })).toEqual({ statementType: 'EXPENSE', expenseCategory: 'administrative' })
   })
 })

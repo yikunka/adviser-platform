@@ -134,7 +134,8 @@ export type FinancialReportsBundle = {
 }
 
 const EQUATION_TOLERANCE = 0.01
-const CURRENT_PERIOD_PROFIT_NOTE = '包含截至期末从损益类科目基础数据计算的累计未结转损益；如基础数据不平衡，资产负债表仍会显示差异。'
+const CURRENT_PERIOD_PROFIT_NOTE = '损益类科目期末尚未结转到本年利润的余额。余额表「本年利润」不含本行；如基础数据不平衡，资产负债表仍会显示差异。'
+const UNCLOSED_PROFIT_AND_LOSS_ACCOUNT_ID = '__unclosed_profit_and_loss__'
 
 function buildAccountingEquationCheck(
   totalAssets: number,
@@ -355,12 +356,15 @@ function addCurrentPeriodProfitToEquity(input: {
     account => account.type === 'EQUITY' && isCurrentYearProfitAccountName(account.name),
   )
 
-  if (!currentYearProfitAccount) {
+  // Keep 本年利润 on the balance sheet equal to the trial-balance closing balance.
+  // Any P&L still sitting in income/expense accounts is shown on a separate computed line
+  // so the equation can close without rewriting the ledger 本年利润 figure.
+  if (currentYearProfitAccount) {
     addOrUpdateStatementLine(input.equityLines, {
-      accountId: '__current_period_profit__',
+      accountId: UNCLOSED_PROFIT_AND_LOSS_ACCOUNT_ID,
       parentId: null,
       code: 'P&L',
-      name: '本期利润',
+      name: '未结转损益',
       type: 'EQUITY',
       level: 1,
       amount: input.profitAmount,
@@ -371,30 +375,12 @@ function addCurrentPeriodProfitToEquity(input: {
   }
 
   addOrUpdateStatementLine(input.equityLines, {
-    accountId: currentYearProfitAccount.accountId,
-    parentId: currentYearProfitAccount.parentId ?? null,
-    code: currentYearProfitAccount.code,
-    name: currentYearProfitAccount.name,
-    type: currentYearProfitAccount.type,
-    level: currentYearProfitAccount.level,
-    amount: input.profitAmount,
-    note: CURRENT_PERIOD_PROFIT_NOTE,
-    noteAmount: input.profitAmount,
-  })
-
-  const level1GroupId = input.level1AccountIdByReportAccountId.get(currentYearProfitAccount.accountId)
-  if (!level1GroupId || level1GroupId === currentYearProfitAccount.accountId) return
-
-  const parentAccount = input.accounts.find(account => account.accountId === level1GroupId)
-  if (!parentAccount) return
-
-  addOrUpdateStatementLine(input.equityLines, {
-    accountId: parentAccount.accountId,
-    parentId: parentAccount.parentId ?? null,
-    code: parentAccount.code,
-    name: parentAccount.name,
-    type: parentAccount.type,
-    level: parentAccount.level,
+    accountId: '__current_period_profit__',
+    parentId: null,
+    code: 'P&L',
+    name: '本期利润',
+    type: 'EQUITY',
+    level: 1,
     amount: input.profitAmount,
     note: CURRENT_PERIOD_PROFIT_NOTE,
     noteAmount: input.profitAmount,
@@ -785,8 +771,10 @@ export async function buildFinancialReports(
     const ownAccountIds = ownSourceAccountIds(account)
     const statementPeriodTotals = sumMovements(plPeriodMovements, statementAccountIds)
     const ownPeriodTotals = sumMovements(plPeriodMovements, ownAccountIds)
-    const cumulativeStatementTotals = sumMovements(plClosingMovements, statementAccountIds)
-    const cumulativeOwnTotals = sumMovements(plClosingMovements, ownAccountIds)
+    // Residual unclosed P&L must use full closing (including CLOSING transfers), so only
+    // amounts still sitting in income/expense accounts are folded into equity.
+    const cumulativeStatementTotals = sumMovements(closingMovements, statementAccountIds)
+    const cumulativeOwnTotals = sumMovements(closingMovements, ownAccountIds)
     const statementYearToDateTotals = sumMovements(plYearToDateMovements, statementAccountIds)
     const ownYearToDateTotals = sumMovements(plYearToDateMovements, ownAccountIds)
     const level1GroupIdForPl = level1AccountIdByReportAccountId.get(account.accountId) ?? account.accountId
@@ -878,7 +866,12 @@ export async function buildFinancialReports(
 
     const hasChildren = accountHasChildren(account)
     const topLevelHasChildren = topLevelAccountHasChildren(account, level1GroupId)
-    const balanceSheetClosingBalance = bsClosingBalance
+    // 本年利润 must match the trial-balance closing (includes period-end CLOSING transfers).
+    const balanceSheetClosingBalance = (
+      account.type === 'EQUITY' && isCurrentYearProfitAccountName(account.name)
+    )
+      ? closingBalance
+      : bsClosingBalance
     const statementRow: StatementLineRow = {
       ...reportRow,
       ...(profitAndLossType ? { type: profitAndLossType } : {}),
@@ -1029,7 +1022,7 @@ export async function buildFinancialReports(
     )
     if (uncoveredSourceAccountIds.length === 0) continue
 
-    const uncoveredTotals = sumMovements(plClosingMovements, uncoveredSourceAccountIds)
+    const uncoveredTotals = sumMovements(closingMovements, uncoveredSourceAccountIds)
     const amount = profitAndLossMovementAmount(uncoveredTotals, candidate.statementType)
     addCumulativeProfitAndLossSource({
       amount,

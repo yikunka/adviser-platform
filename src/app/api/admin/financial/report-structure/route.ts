@@ -100,11 +100,21 @@ export async function PUT(req: NextRequest) {
 
   const accountIds = [...new Set(parsed.data.mappings.map(row => row.accountId))]
   if (accountIds.length > 0) {
-    const ownedCount = await prisma.finAccount.count({
+    const accounts = await prisma.finAccount.findMany({
       where: { companyId: parsed.data.companyId, id: { in: accountIds } },
+      select: { id: true, code: true, name: true, type: true },
     })
-    if (ownedCount !== accountIds.length) {
+    if (accounts.length !== accountIds.length) {
       return apiError('部分科目不属于该公司。')
+    }
+    if (parsed.data.statement === 'INCOME_STATEMENT') {
+      const invalid = accounts.filter(account => (
+        account.type !== 'REVENUE' && account.type !== 'EXPENSE' && account.type !== 'CGS'
+      ))
+      if (invalid.length > 0) {
+        const sample = invalid.slice(0, 3).map(a => `${a.code} ${a.name}`).join('、')
+        return apiError(`利润表结构只能选择损益类科目（收入/成本/费用），不能加入资产负债表科目：${sample}`)
+      }
     }
   }
 

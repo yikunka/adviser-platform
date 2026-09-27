@@ -114,28 +114,6 @@ export function FinancialReportsPanel() {
   )
 }
 
-export function FinancialReportGroupReportsPanel({
-  group,
-}: {
-  group: { id: string; name: string; companies: { company: { nameEn: string; companyCode: string | null } }[] }
-}) {
-  const companyLabel = group.companies
-    .map(member => member.company.companyCode ? `${member.company.companyCode} ${member.company.nameEn}` : member.company.nameEn)
-    .join(', ')
-
-  return (
-    <FinancialReportsContent
-      scope={{
-        title: '合并财务报表',
-        subtitle: `${group.name} · ${companyLabel || '暂无公司'} · 仅用于报表合并。`,
-        exportKey: group.name.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || group.id,
-        params: { reportGroupId: group.id },
-        breadcrumbSection: '合并报表',
-      }}
-    />
-  )
-}
-
 function FinancialReportsContent({ scope }: { scope: ReportScope }) {
   const [period, setPeriod] = useState(currentPeriod)
   const [reports, setReports] = useState<FinancialReportsBundle | null>(null)
@@ -149,7 +127,12 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
     row: { accountId: string; code: string; name: string; isComputed?: boolean },
     mode: ReportDrillDownMode = 'period',
   ) {
-    if (row.isComputed || row.accountId === 'computed' || row.code === '——') {
+    if (
+      row.isComputed
+      || row.accountId === 'computed'
+      || row.accountId.startsWith('__')
+      || row.code === '——'
+    ) {
       toast.message('系统计算行无法穿透到凭证')
       return
     }

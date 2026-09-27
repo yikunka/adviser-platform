@@ -171,6 +171,12 @@ export async function loadReportStructureIndex(
   return { plConfigured, bsConfigured, plByAccountId, bsByAccountId }
 }
 
+const PL_ACCOUNT_TYPES: ReadonlySet<AccountType> = new Set(['REVENUE', 'EXPENSE', 'CGS'])
+
+function isProfitAndLossAccountType(type: AccountType) {
+  return PL_ACCOUNT_TYPES.has(type)
+}
+
 export function resolvePlClassificationForAccount(
   index: ReportStructureIndex,
   account: { accountId: string; sourceAccountIds: string[]; code: string; name: string; type: AccountType },
@@ -179,7 +185,10 @@ export function resolvePlClassificationForAccount(
   if (index.plConfigured) {
     for (const id of [account.accountId, ...account.sourceAccountIds]) {
       const mapped = index.plByAccountId.get(id)
-      if (mapped) return mapped
+      if (!mapped) continue
+      // Ignore invalid structure rows that put balance-sheet accounts (e.g. 长期待摊费用) into P&L.
+      if (!isProfitAndLossAccountType(account.type)) continue
+      return mapped
     }
     return null
   }
