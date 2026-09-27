@@ -23,6 +23,10 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FinancialBreadcrumbs } from '@/components/admin/financial/FinancialBreadcrumbs'
 import { useFinancialCompany } from '@/components/admin/financial/FinancialCompanyContext'
+import { ReportDrillDownDialog, type ReportDrillTarget } from '@/components/admin/financial/ReportDrillDownDialog'
+import { IncomeStatementView } from '@/components/admin/financial/IncomeStatementView'
+import type { ReportDrillDownMode } from '@/lib/financial/report-drill-down'
+import { buildIncomeStatementExcelRows } from '@/lib/financial/income-statement-display'
 
 type ReportScope = {
   title: string
@@ -39,10 +43,6 @@ function currentPeriod() {
 
 function money(value: number) {
   return formatReportAmount(value)
-}
-
-function lineYearToDate(row: { yearToDateAmount?: number }) {
-  return row.yearToDateAmount ?? 0
 }
 
 function exportCsv(filename: string, headers: string[], rows: (string | number)[][]) {
@@ -143,6 +143,23 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
   const [trialBalanceLevel, setTrialBalanceLevel] = useState<TrialBalanceLevelFilter>('all')
   const [expandedTrialBalanceAccounts, setExpandedTrialBalanceAccounts] = useState<Set<string>>(new Set())
   const [expandedBalanceSheetAccounts, setExpandedBalanceSheetAccounts] = useState<Set<string>>(new Set())
+  const [drillTarget, setDrillTarget] = useState<ReportDrillTarget | null>(null)
+
+  function openDrillDown(
+    row: { accountId: string; code: string; name: string; isComputed?: boolean },
+    mode: ReportDrillDownMode = 'period',
+  ) {
+    if (row.isComputed || row.accountId === 'computed' || row.code === '——') {
+      toast.message('系统计算行无法穿透到凭证')
+      return
+    }
+    setDrillTarget({
+      accountId: row.accountId,
+      code: row.code,
+      name: row.name,
+      mode,
+    })
+  }
 
   const filteredTrialBalanceRows = useMemo(
     () => (reports ? filterTrialBalanceRowsByLevel(reports.trialBalance.rows, trialBalanceLevel) : []),
@@ -253,41 +270,7 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
 
       XLSX.utils.book_append_sheet(
         workbook,
-        XLSX.utils.aoa_to_sheet(sheetRows('损益表', period, [
-          ['分类', '科目编码', '科目名称', '本期金额', '本年度总金额'],
-          ...reports.incomeStatement.revenue.map(row => [
-            '收入',
-            row.code,
-            row.name,
-            row.amount,
-            lineYearToDate(row),
-          ]),
-          ['收入合计', '', '', reports.incomeStatement.totalRevenue, reports.incomeStatement.totalRevenueYtd],
-          [],
-          ...reports.incomeStatement.costOfSales.map(row => [
-            '主营业务成本',
-            row.code,
-            row.name,
-            row.amount,
-            lineYearToDate(row),
-          ]),
-          ['主营业务成本合计', '', '', reports.incomeStatement.totalCostOfSales, reports.incomeStatement.totalCostOfSalesYtd],
-          ['毛利', '', '', reports.incomeStatement.grossProfit, reports.incomeStatement.grossProfitYtd],
-          [],
-          ...reports.incomeStatement.expenseCategories.flatMap(category => [
-            ...category.lines.map(row => [
-              category.label,
-              row.code,
-              row.name,
-              row.amount,
-              lineYearToDate(row),
-            ]),
-            [`${category.label}合计`, '', '', category.total, category.totalYtd],
-            [],
-          ]),
-          ['费用合计', '', '', reports.incomeStatement.totalExpenses, reports.incomeStatement.totalExpensesYtd],
-          ['本期利润', '', '', reports.incomeStatement.netProfit, reports.incomeStatement.netProfitYtd],
-        ])),
+        XLSX.utils.aoa_to_sheet(sheetRows('损益表', period, buildIncomeStatementExcelRows(reports.incomeStatement))),
         '损益表',
       )
 
@@ -448,13 +431,14 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                   rows={filteredTrialBalanceRows}
                   expandedAccountIds={expandedTrialBalanceAccounts}
                   onToggleExpand={toggleTrialBalanceExpand}
+                  onDrillDown={row => openDrillDown(row, 'period')}
                 />
                 <TotalsFooter
                   left={`借方合计：${money(reports.trialBalance.totalDebit)}`}
                   right={`贷方合计：${money(reports.trialBalance.totalCredit)}`}
                 />
                 <p className="text-xs" style={{ color: '#7A7060' }}>
-                  ＊ 点击有下级科目的行可展开或收起明细；「科目层级」可限制可展开范围；借贷合计始终只基于一级科目计算。
+                  ＊ 点击有下级科目的行可展开或收起明细；点击科目名称可穿透查看本期已过账凭证；「科目层级」可限制可展开范围；借贷合计始终只基于一级科目计算。
                   仅显示有余额或本期发生额的科目。零余额科目在过账分录后自动出现。
                   带「一级汇总」标注的行为一级科目汇总（含下级明细合计），计入借贷合计。
                 </p>
@@ -468,114 +452,9 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
 
               <TabsContent value="income" className="space-y-4">
                 <ReportHeader title="损益表" period={period} />
-                <Section title="收入">
-                  <StatementTable
-                    headers={PL_STATEMENT_HEADERS}
-                    columnLayout="pl"
-                    rows={reports.incomeStatement.revenue.map(row => [
-                      row.code,
-                      row.name,
-                      money(row.amount),
-                      money(lineYearToDate(row)),
-                    ])}
-                    emptyLabel="本期间暂无收入"
-                    footerRows={[
-                      {
-                        label: '收入合计',
-                        period: money(reports.incomeStatement.totalRevenue),
-                        ytd: money(reports.incomeStatement.totalRevenueYtd),
-                      },
-                    ]}
-                  />
-                </Section>
-                <Section title="主营业务成本">
-                  <StatementTable
-                    headers={PL_STATEMENT_HEADERS}
-                    columnLayout="pl"
-                    rows={reports.incomeStatement.costOfSales.map(row => [
-                      row.code,
-                      row.name,
-                      money(row.amount),
-                      money(lineYearToDate(row)),
-                    ])}
-                    emptyLabel="本期间暂无主营业务成本"
-                    footerRows={[
-                      {
-                        label: '主营业务成本合计',
-                        period: money(reports.incomeStatement.totalCostOfSales),
-                        ytd: money(reports.incomeStatement.totalCostOfSalesYtd),
-                      },
-                    ]}
-                  />
-                </Section>
-                <StatementTable
-                  headers={PL_STATEMENT_HEADERS}
-                  columnLayout="pl"
-                  hideHeader
-                  rows={[]}
-                  footerRows={[
-                    {
-                      label: '毛利',
-                      period: money(reports.incomeStatement.grossProfit),
-                      ytd: money(reports.incomeStatement.grossProfitYtd),
-                    },
-                  ]}
-                />
-                <Section title="费用明细">
-                  <div className="space-y-4">
-                    {reports.incomeStatement.expenseCategories.map(category => (
-                      <div key={category.key} className="space-y-2">
-                        <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          {category.label}
-                        </h4>
-                        <StatementTable
-                          headers={PL_STATEMENT_HEADERS}
-                          columnLayout="pl"
-                          rows={category.lines.map(row => [
-                            row.code,
-                            row.name,
-                            money(row.amount),
-                            money(lineYearToDate(row)),
-                          ])}
-                          emptyLabel={`本期间暂无${category.label}`}
-                          footerRows={[
-                            {
-                              label: `${category.label}合计`,
-                              period: money(category.total),
-                              ytd: money(category.totalYtd),
-                            },
-                          ]}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  <StatementTable
-                    headers={PL_STATEMENT_HEADERS}
-                    columnLayout="pl"
-                    hideHeader
-                    rows={[]}
-                    footerRows={[
-                      {
-                        label: '费用合计',
-                        period: money(reports.incomeStatement.totalExpenses),
-                        ytd: money(reports.incomeStatement.totalExpensesYtd),
-                      },
-                    ]}
-                  />
-                </Section>
-                <StatementTable
-                  headers={PL_STATEMENT_HEADERS}
-                  columnLayout="pl"
-                  hideHeader
-                  rows={[]}
-                  footerRows={[
-                    {
-                      label: '本期利润',
-                      period: money(reports.incomeStatement.netProfit),
-                      ytd: money(reports.incomeStatement.netProfitYtd),
-                      highlight: true,
-                    },
-                  ]}
+                <IncomeStatementView
+                  statement={reports.incomeStatement}
+                  onDrillDown={openDrillDown}
                 />
               </TabsContent>
 
@@ -588,7 +467,7 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                 />
                 <AccountingEquationAlert equation={reports.balanceSheet.equation} />
                 <p className="text-xs text-muted-foreground">
-                  默认仅展示一级科目汇总；点击有下级明细的一级科目可展开查看二、三、四级明细。
+                  默认仅展示一级科目汇总；点击有下级明细的一级科目可展开查看二、三、四级明细；点击科目名称可穿透到已过账凭证。
                 </p>
                 <Section title="资产">
                   {reports.balanceSheet.assetSections.map(section => (
@@ -597,6 +476,7 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                       section={section}
                       expandedAccountIds={expandedBalanceSheetAccounts}
                       onToggleExpand={toggleBalanceSheetExpand}
+                      onDrillDown={row => openDrillDown(row, 'period')}
                     />
                   ))}
                   <TotalsFooter left="资产合计" right={money(reports.balanceSheet.totalAssets)} highlight />
@@ -606,6 +486,7 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                     section={reports.balanceSheet.equitySection}
                     expandedAccountIds={expandedBalanceSheetAccounts}
                     onToggleExpand={toggleBalanceSheetExpand}
+                    onDrillDown={row => openDrillDown(row, 'period')}
                   />
                   {reports.balanceSheet.liabilitySections.map(section => (
                     <BalanceSheetSectionBlock
@@ -613,6 +494,7 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                       section={section}
                       expandedAccountIds={expandedBalanceSheetAccounts}
                       onToggleExpand={toggleBalanceSheetExpand}
+                      onDrillDown={row => openDrillDown(row, 'period')}
                     />
                   ))}
                   <TotalsFooter left="负债合计" right={money(reports.balanceSheet.totalLiabilities)} />
@@ -638,6 +520,16 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
           )}
         </CardContent>
       </Card>
+
+      <ReportDrillDownDialog
+        open={!!drillTarget}
+        onOpenChange={open => {
+          if (!open) setDrillTarget(null)
+        }}
+        period={period}
+        scopeParams={scope.params}
+        target={drillTarget}
+      />
     </div>
   )
 }
@@ -646,10 +538,12 @@ function BalanceSheetSectionBlock({
   section,
   expandedAccountIds,
   onToggleExpand,
+  onDrillDown,
 }: {
   section: BalanceSheetSection
   expandedAccountIds: Set<string>
   onToggleExpand: (accountId: string) => void
+  onDrillDown: (row: { accountId: string; code: string; name: string }) => void
 }) {
   return (
     <div className="space-y-2">
@@ -658,6 +552,7 @@ function BalanceSheetSectionBlock({
         lines={section.lines}
         expandedAccountIds={expandedAccountIds}
         onToggleExpand={onToggleExpand}
+        onDrillDown={onDrillDown}
         emptyLabel={`暂无${section.label}余额`}
       />
       {section.lines.length > 0 ? (
@@ -671,11 +566,13 @@ function ExpandableBalanceSheetTable({
   lines,
   expandedAccountIds,
   onToggleExpand,
+  onDrillDown,
   emptyLabel,
 }: {
   lines: BalanceSheetLineRow[]
   expandedAccountIds: Set<string>
   onToggleExpand: (accountId: string) => void
+  onDrillDown: (row: { accountId: string; code: string; name: string }) => void
   emptyLabel: string
 }) {
   if (lines.length === 0) {
@@ -708,6 +605,7 @@ function ExpandableBalanceSheetTable({
             const hasChildren = (line.children?.length ?? 0) > 0
             const expanded = expandedAccountIds.has(line.accountId)
             const indent = depth > 0 ? `${depth * 1.25}rem` : undefined
+            const canDrill = Boolean(line.code && line.code !== '——')
 
             return (
               <TableRow key={`${line.accountId}-${depth}`}>
@@ -727,7 +625,17 @@ function ExpandableBalanceSheetTable({
                       <span className="inline-block w-[22px] shrink-0" />
                     )}
                     <span className="flex min-w-0 flex-col">
-                      <span>{reportLineLabel(line.name)}</span>
+                      {canDrill ? (
+                        <button
+                          type="button"
+                          className="text-left hover:underline hover:text-[#C9A96E]"
+                          onClick={() => onDrillDown({ accountId: line.accountId, code: line.code, name: line.name })}
+                        >
+                          {reportLineLabel(line.name)}
+                        </button>
+                      ) : (
+                        <span>{reportLineLabel(line.name)}</span>
+                      )}
                       {line.note ? (
                         <span className="mt-1 text-xs leading-relaxed text-muted-foreground">{line.note}</span>
                       ) : null}
@@ -842,106 +750,6 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
-const PL_STATEMENT_HEADERS = ['编码', '科目', '本期金额', '本年度总金额'] as const
-
-type StatementFooterRow = {
-  label: string
-  period: string
-  ytd: string
-  highlight?: boolean
-}
-
-function StatementTable({
-  headers,
-  rows,
-  emptyLabel = '暂无数据',
-  footerRows,
-  columnLayout,
-  hideHeader = false,
-}: {
-  headers: readonly string[]
-  rows: string[][]
-  emptyLabel?: string
-  footerRows?: StatementFooterRow[]
-  /** Fixed P&L columns so detail amounts and totals share the same vertical alignment. */
-  columnLayout?: 'pl'
-  hideHeader?: boolean
-}) {
-  const hasBody = rows.length > 0
-  const hasFooter = (footerRows?.length ?? 0) > 0
-  if (!hasBody && !hasFooter) {
-    return <p className="text-sm text-muted-foreground py-2">{emptyLabel}</p>
-  }
-
-  const isAmountHeader = (header: string) =>
-    header.includes('金额') || header.includes('借方') || header.includes('贷方')
-
-  return (
-    <div className="overflow-x-auto rounded-lg border border-[var(--border-subtle)]">
-      <Table className={columnLayout === 'pl' ? 'table-fixed w-full' : undefined}>
-        {columnLayout === 'pl' ? (
-          <colgroup>
-            <col className="w-[6.5rem]" />
-            <col />
-            <col className="w-[9rem]" />
-            <col className="w-[9rem]" />
-          </colgroup>
-        ) : null}
-        {!hideHeader ? (
-          <TableHeader>
-            <TableRow>
-              {headers.map(header => (
-                <TableHead
-                  key={header}
-                  className={isAmountHeader(header) ? 'text-right' : undefined}
-                >
-                  {header}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-        ) : null}
-        <TableBody>
-          {hasBody ? (
-            rows.map((row, index) => (
-              <TableRow key={index}>
-                {row.map((cell, cellIndex) => (
-                  <TableCell
-                    key={cellIndex}
-                    className={cellIndex >= 2 ? 'text-right font-mono' : cellIndex === 0 ? 'font-mono' : undefined}
-                  >
-                    {cell}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))
-          ) : emptyLabel && !hideHeader ? (
-            <TableRow>
-              <TableCell colSpan={headers.length} className="text-sm text-muted-foreground">
-                {emptyLabel}
-              </TableCell>
-            </TableRow>
-          ) : null}
-          {footerRows?.map(footer => (
-            <TableRow
-              key={footer.label}
-              className={
-                footer.highlight
-                  ? 'border-[#C9A96E66] bg-[#C9A96E14] font-semibold'
-                  : 'bg-[var(--surface-input)] font-semibold'
-              }
-            >
-              <TableCell colSpan={2}>{footer.label}</TableCell>
-              <TableCell className="text-right font-mono">{footer.period}</TableCell>
-              <TableCell className="text-right font-mono">{footer.ytd}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  )
-}
-
 function TotalsFooter({ left, right, highlight }: { left: string; right: string; highlight?: boolean }) {
   return (
     <div
@@ -972,10 +780,12 @@ function TrialBalanceTable({
   rows,
   expandedAccountIds,
   onToggleExpand,
+  onDrillDown,
 }: {
   rows: TrialBalanceRow[]
   expandedAccountIds: Set<string>
   onToggleExpand: (accountId: string) => void
+  onDrillDown: (row: TrialBalanceRow) => void
 }) {
   if (rows.length === 0) {
     return <p className="text-sm text-muted-foreground py-2">本期间暂无科目余额</p>
@@ -1057,7 +867,14 @@ function TrialBalanceTable({
                   ) : (
                     <span className="inline-block w-[22px] shrink-0" />
                   )}
-                  <span>{row.name}</span>
+                  <button
+                    type="button"
+                    className="text-left hover:underline hover:text-[#C9A96E]"
+                    title="穿透本期已过账凭证"
+                    onClick={() => onDrillDown(row)}
+                  >
+                    {row.name}
+                  </button>
                 </div>
                 {row.isSummary && (
                   <span
