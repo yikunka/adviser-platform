@@ -27,6 +27,10 @@ import { ReportDrillDownDialog, type ReportDrillTarget } from '@/components/admi
 import { IncomeStatementView } from '@/components/admin/financial/IncomeStatementView'
 import type { ReportDrillDownMode } from '@/lib/financial/report-drill-down'
 import { buildIncomeStatementExcelRows } from '@/lib/financial/income-statement-display'
+import {
+  buildAnnualPlComparisonExcelRows,
+  type AnnualPlComparisonReport,
+} from '@/lib/financial/annual-pl-comparison'
 
 type ReportScope = {
   title: string
@@ -116,12 +120,16 @@ export function FinancialReportsPanel() {
 
 function FinancialReportsContent({ scope }: { scope: ReportScope }) {
   const [period, setPeriod] = useState(currentPeriod)
+  const [activeTab, setActiveTab] = useState('trial-balance')
   const [reports, setReports] = useState<FinancialReportsBundle | null>(null)
+  const [annualComparison, setAnnualComparison] = useState<AnnualPlComparisonReport | null>(null)
   const [loading, setLoading] = useState(false)
+  const [annualLoading, setAnnualLoading] = useState(false)
   const [trialBalanceLevel, setTrialBalanceLevel] = useState<TrialBalanceLevelFilter>('all')
   const [expandedTrialBalanceAccounts, setExpandedTrialBalanceAccounts] = useState<Set<string>>(new Set())
   const [expandedBalanceSheetAccounts, setExpandedBalanceSheetAccounts] = useState<Set<string>>(new Set())
   const [drillTarget, setDrillTarget] = useState<ReportDrillTarget | null>(null)
+  const reportYear = period.slice(0, 4)
 
   function openDrillDown(
     row: { accountId: string; code: string; name: string; isComputed?: boolean },
@@ -183,9 +191,34 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
     }
   }, [period, scope])
 
+  const fetchAnnualComparison = useCallback(async () => {
+    setAnnualLoading(true)
+    try {
+      const params = new URLSearchParams({ year: reportYear, ...scope.params })
+      const res = await fetch(`/api/admin/financial/reports/annual-comparison?${params}`)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '生成年度财务比较表失败')
+      setAnnualComparison(data.report)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '载入年度财务比较表失败')
+      setAnnualComparison(null)
+    } finally {
+      setAnnualLoading(false)
+    }
+  }, [reportYear, scope])
+
   useEffect(() => {
     fetchReports()
   }, [fetchReports])
+
+  useEffect(() => {
+    setAnnualComparison(null)
+  }, [reportYear])
+
+  useEffect(() => {
+    if (activeTab !== 'annual') return
+    fetchAnnualComparison()
+  }, [activeTab, fetchAnnualComparison])
 
   useEffect(() => {
     setExpandedTrialBalanceAccounts(new Set())
@@ -197,8 +230,9 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
     return subscribeFinancialAccountsChanged(detail => {
       if (scopedCompanyId && detail.companyId !== scopedCompanyId) return
       fetchReports()
+      if (activeTab === 'annual') fetchAnnualComparison()
     })
-  }, [fetchReports, scope.params.companyId])
+  }, [activeTab, fetchAnnualComparison, fetchReports, scope.params.companyId])
 
   function exportTrialBalance() {
     if (!reports) return
@@ -317,6 +351,28 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
     }
   }
 
+  async function exportAnnualComparison() {
+    if (!annualComparison) return
+
+    try {
+      const XLSX = await import('xlsx')
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(
+        workbook,
+        XLSX.utils.aoa_to_sheet([
+          ['年度财务比较表'],
+          ['年份', String(annualComparison.year)],
+          [],
+          ...buildAnnualPlComparisonExcelRows(annualComparison),
+        ]),
+        '年度财务比较表',
+      )
+      XLSX.writeFile(workbook, `annual_pl_comparison_${scope.exportKey}_${annualComparison.year}.xlsx`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '导出年度财务比较表失败。')
+    }
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="space-y-2">
@@ -365,6 +421,11 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                 </Button>
               </>
             ) : null}
+            {activeTab === 'annual' && annualComparison ? (
+              <Button variant="outline" size="sm" onClick={exportAnnualComparison} style={{ borderColor: 'var(--border-subtle)' }}>
+                <Download size={15} className="mr-2" /> 导出年度比较
+              </Button>
+            ) : null}
           </div>
         </CardHeader>
         <CardContent>
@@ -377,10 +438,11 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
               请选择期间并生成报表。
             </div>
           ) : (
-            <Tabs defaultValue="trial-balance">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="mb-4 flex flex-wrap h-auto gap-1 bg-[var(--surface-input)] border border-[var(--border-subtle)] p-1">
                 <TabsTrigger value="trial-balance">试算平衡表</TabsTrigger>
                 <TabsTrigger value="income">损益表</TabsTrigger>
+                <TabsTrigger value="annual">年度比较</TabsTrigger>
                 <TabsTrigger value="balance">资产负债表</TabsTrigger>
                 <TabsTrigger value="cashflow">现金流量表</TabsTrigger>
               </TabsList>
@@ -439,6 +501,31 @@ function FinancialReportsContent({ scope }: { scope: ReportScope }) {
                   statement={reports.incomeStatement}
                   onDrillDown={openDrillDown}
                 />
+              </TabsContent>
+
+              <TabsContent value="annual" className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <ReportHeader title="年度财务比较表" period={reportYear} />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={fetchAnnualComparison}
+                    disabled={annualLoading}
+                    style={{ borderColor: 'var(--border-subtle)' }}
+                  >
+                    {annualLoading ? '生成中...' : '刷新年度比较'}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  按所选期间年份列出 1–12 月损益摘要；全年合计为各月本期金额之和。导出为单一 Excel sheet。
+                </p>
+                {annualLoading && !annualComparison ? (
+                  <div className="p-8 text-center text-sm text-muted-foreground">正在生成年度财务比较表...</div>
+                ) : annualComparison ? (
+                  <AnnualPlComparisonTable report={annualComparison} />
+                ) : (
+                  <div className="p-8 text-center text-sm text-muted-foreground">暂无年度比较数据。</div>
+                )}
               </TabsContent>
 
               <TabsContent value="balance" className="space-y-4">
@@ -688,6 +775,39 @@ function BalanceWarning({ title, message }: { title: string; message: string }) 
         <p className="font-medium text-[#ef4444]">{title}</p>
         <p className="mt-1 text-muted-foreground">{message}</p>
       </div>
+    </div>
+  )
+}
+
+function AnnualPlComparisonTable({ report }: { report: AnnualPlComparisonReport }) {
+  return (
+    <div className="overflow-x-auto rounded-lg border border-[var(--border-subtle)]">
+      <Table>
+        <TableHeader>
+          <TableRow className="border-[var(--border-subtle)] hover:bg-transparent">
+            <TableHead className="sticky left-0 z-10 min-w-[110px] bg-card">项目</TableHead>
+            {report.periods.map(period => (
+              <TableHead key={period} className="min-w-[96px] text-right">
+                {Number(period.slice(5, 7))}月
+              </TableHead>
+            ))}
+            <TableHead className="min-w-[110px] text-right font-semibold">全年合计</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {report.rows.map(row => (
+            <TableRow key={row.key} className="border-[var(--border-subtle)]">
+              <TableCell className="sticky left-0 z-10 bg-card font-medium">{row.label}</TableCell>
+              {row.months.map((amount, index) => (
+                <TableCell key={`${row.key}-${index}`} className="text-right tabular-nums">
+                  {money(amount)}
+                </TableCell>
+              ))}
+              <TableCell className="text-right tabular-nums font-semibold">{money(row.yearTotal)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   )
 }

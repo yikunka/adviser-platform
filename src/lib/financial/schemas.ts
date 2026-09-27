@@ -97,6 +97,11 @@ export const financialReportFilterSchema = z.object({
   companyId: z.string().cuid().optional(),
 })
 
+export const financialAnnualComparisonFilterSchema = z.object({
+  year: z.coerce.number().int().min(2000).max(2100),
+  companyId: z.string().cuid().optional(),
+})
+
 // ─────────────────────────────────────────────
 // 子分类账：往来单位 / AR / AP / 银行
 // ─────────────────────────────────────────────
