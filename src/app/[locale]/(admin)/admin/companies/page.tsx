@@ -9,6 +9,7 @@ import {
   COMPANY_JURISDICTION_LABELS,
   companyJurisdictionLabel,
 } from '@/lib/company/jurisdiction'
+import { annualReturnDeadlineMonthDay } from '@/lib/company/annual-return-deadline'
 import { Link, useRouter } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,11 +40,7 @@ const STATUS_COLOR: Record<string, string> = {
 }
 
 function annualReturnDeadline(dateOfIncorporation: string | null | undefined) {
-  if (!dateOfIncorporation) return '—'
-  const date = new Date(dateOfIncorporation)
-  if (Number.isNaN(date.getTime())) return '—'
-  const deadline = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 42))
-  return `${String(deadline.getUTCMonth() + 1).padStart(2, '0')}-${String(deadline.getUTCDate()).padStart(2, '0')}`
+  return annualReturnDeadlineMonthDay(dateOfIncorporation) ?? '—'
 }
 
 export default function CompaniesPage() {

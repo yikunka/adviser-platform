@@ -20,6 +20,11 @@ import {
   previousCalendarMonth,
   type BookingProgressRow,
 } from '@/lib/financial/booking-progress'
+import { ANNUAL_RETURN_SOFT_REMINDER_DAYS } from '@/lib/company/annual-return-deadline'
+import {
+  listAnnualReturnSoftReminders,
+  type AnnualReturnReminderItem,
+} from '@/lib/company/annual-return-reminders'
 
 const moduleStyles = {
   adviser: {
@@ -73,7 +78,6 @@ export default async function AdminDashboardPage() {
   const session = await auth()
   const t = await getTranslations('admin.dashboard')
   const today = new Date()
-  const thirtyDaysFromNow = addDays(today, 30)
   const sevenDaysFromNow = addDays(today, 7)
   const threeDaysFromNow = addDays(today, 3)
   const monthStart = startOfMonth(today)
@@ -102,28 +106,23 @@ export default async function AdminDashboardPage() {
   const canOrders = canSee('sfsOrders')
   const canInvoices = canSee('sfsInvoices')
   const showDdrTodos = canSee('companies') || canSee('kyc')
+  const showArReminders = canSee('companies')
   const showBookingProgress = canSee('financial')
   const quarter = calendarQuarterRange(today)
 
-  const [totalCompanies, pendingKyc, amlAlerts, upcomingAR, ddrTodosRaw, bookingRows] = await Promise.all([
+  const [totalCompanies, pendingKyc, amlAlerts, arReminders, ddrTodosRaw, bookingRows] = await Promise.all([
     prisma.company.count({ where: { status: 'ACTIVE' } }),
     prisma.keyPerson.count({ where: { kycStatus: 'DRAFT' } }),
     prisma.aMLAlert.count({ where: { resolution: 'PENDING' } }),
-    prisma.annualFiling.count({
-      where: {
-        status: { in: ['NOT_STARTED', 'IN_PREPARATION', 'OVERDUE'] },
-        filingDeadline: {
-          gte: today,
-          lte: thirtyDaysFromNow,
-        },
-        company: { status: 'ACTIVE' },
-      },
-    }),
+    showArReminders
+      ? listAnnualReturnSoftReminders(today, ANNUAL_RETURN_SOFT_REMINDER_DAYS)
+      : Promise.resolve([] as AnnualReturnReminderItem[]),
     showDdrTodos ? listDdrComplianceTodos(today, 30) : Promise.resolve([] as DdrTodoItem[]),
     showBookingProgress && session?.user?.id
       ? listFinancialBookingProgress(session.user.id, session.user.role)
       : Promise.resolve([] as BookingProgressRow[]),
   ])
+  const upcomingAR = arReminders.length
 
   const ddrTodos = ddrTodosRaw.filter(item => {
     if (item.subjectType === 'COMPANY') return canSee('companies')
@@ -375,6 +374,52 @@ export default async function AdminDashboardPage() {
               </Link>
             ))}
           </div>
+
+          {showArReminders && (
+            <div>
+              <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--foreground)' }}>
+                {t('arReminderTitle')}
+              </h3>
+              <p className="text-xs mb-3" style={{ color: 'var(--muted-foreground)' }}>
+                {t('arReminderHint')}
+              </p>
+              {arReminders.length === 0 ? (
+                <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>{t('arReminderEmpty')}</p>
+              ) : (
+                <ul className="divide-y divide-[#1E3A4C] rounded-lg overflow-hidden" style={{ border: '1px solid #1E3A4C' }}>
+                  {arReminders.map(item => (
+                    <li key={item.id}>
+                      <Link
+                        href={item.href}
+                        className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 px-4 py-3 text-sm transition-colors hover:bg-[var(--accent)]"
+                      >
+                        <span
+                          className="inline-flex w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                          style={{
+                            background: item.daysRemaining <= 3 ? 'rgba(239,68,68,0.14)' : 'rgba(16,185,129,0.14)',
+                            color: item.daysRemaining <= 3 ? '#ef4444' : '#10b981',
+                          }}
+                        >
+                          {item.daysRemaining === 0
+                            ? t('arBadgeDueToday')
+                            : t('arBadgeDaysLeft', { days: item.daysRemaining })}
+                        </span>
+                        <span className="font-medium tabular-nums" style={{ color: '#5A7A8A' }}>
+                          {item.companyCode ?? '—'}
+                        </span>
+                        <span className="font-medium" style={{ color: 'var(--foreground)' }}>{item.nameEn}</span>
+                        <span className="sm:flex-1" style={{ color: 'var(--muted-foreground)' }}>
+                          {t('arReminderDeadline', {
+                            date: item.deadline.toLocaleDateString('zh-HK', { timeZone: 'UTC' }),
+                          })}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           {showDdrTodos && (
             <div>

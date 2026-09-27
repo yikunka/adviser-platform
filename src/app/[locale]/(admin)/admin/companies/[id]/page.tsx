@@ -17,6 +17,7 @@ import {
   COMPANY_JURISDICTION_LABELS,
   type CompanyJurisdiction,
 } from '@/lib/company/jurisdiction'
+import { annualReturnDeadlineMonthDay } from '@/lib/company/annual-return-deadline'
 import {
   COMPANY_SERVICE_OPTIONS,
   COMPANY_SERVICE_OPTION_LABELS,
@@ -321,11 +322,7 @@ function fmt(d: string | null | undefined) {
 }
 
 function annualReturnDeadline(dateOfIncorporation: string | null | undefined) {
-  if (!dateOfIncorporation) return '—'
-  const date = new Date(dateOfIncorporation)
-  if (Number.isNaN(date.getTime())) return '—'
-  const deadline = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 42))
-  return `${String(deadline.getUTCMonth() + 1).padStart(2, '0')}-${String(deadline.getUTCDate()).padStart(2, '0')}`
+  return annualReturnDeadlineMonthDay(dateOfIncorporation) ?? '—'
 }
 
 function DateInput({ value, onChange, required, disabled }: {

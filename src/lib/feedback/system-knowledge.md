@@ -20,7 +20,7 @@ Admin left navigation is grouped by module. Menu groups can be collapsed/expande
 
 ### 1. Dashboard (`/admin/dashboard`)
 Key metrics at a glance, grouped by platform module:
-- **Adviser**: active companies, pending KYC submissions, open AML alerts, annual filings due within 30 days; **做帐进度** for financial-enabled companies (last posted journal month, 未做帐 / months behind); each metric links to the relevant module
+- **Adviser**: active companies, pending KYC submissions, open AML alerts, **周年申报 soft reminders** (Hong Kong companies whose next incorporation-anniversary + 42 days deadline falls within **14 days**; KPI count + list; skips years already marked FILED on `AnnualFiling`); quarterly DDR to-dos; **做帐进度** for financial-enabled companies (last posted journal month, 未做帐 / months behind); each metric links to the relevant module
 - **SFS Diamond** (shown when the staff user has any SFS admin menu): actionable KPIs for pending quote, confirmed in-production, step images awaiting review, CVD expected-end within 7 days, orders awaiting invoice, and new orders this month; a merged to-do list (oldest/urgent first) for quote / image review / CVD due; quick links to Customers, Orders, Price management, Diamond specs, and Invoices (permission-filtered)
 
 ### 2. Companies (`/admin/companies`)
