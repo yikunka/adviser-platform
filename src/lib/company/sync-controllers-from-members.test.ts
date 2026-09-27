@@ -78,6 +78,24 @@ describe('computeMemberControllerDates', () => {
     expect(b.ownershipPercentAtBecoming).toBe(100)
   })
 
+  it('keeps becoming-day ownership % after a full transfer out (AA0002-style)', () => {
+    const dates = computeMemberControllerDates(
+      [
+        { memberId: 'sze', sharesHeld: 10000, transactionDate: d('2023-07-25'), transactionType: 'ALLOTMENT' },
+        { memberId: 'sze', sharesHeld: 0, transactionDate: d('2025-07-22'), transactionType: 'TRANSFER_OUT' },
+        { memberId: 'sixam', sharesHeld: 10000, transactionDate: d('2025-07-22'), transactionType: 'TRANSFER_IN' },
+      ],
+      ['sze', 'sixam'],
+    )
+    const sze = dates.get('sze')!
+    expect(sze.currentlyAbove).toBe(false)
+    expect(sze.becomingDate && sameCalendarDay(sze.becomingDate, d('2023-07-25'))).toBe(true)
+    expect(sze.cessationDate && sameCalendarDay(sze.cessationDate, d('2025-07-22'))).toBe(true)
+    expect(sze.ownershipPercentAtBecoming).toBe(100)
+    const sixam = dates.get('sixam')!
+    expect(sixam.ownershipPercentAtBecoming).toBe(100)
+  })
+
   it('ceases on dilution when another member is allotted shares', () => {
     const dates = computeMemberControllerDates(
       [

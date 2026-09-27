@@ -319,6 +319,11 @@ function natureOfControlFromShares(pct: number): string {
   return `Holds more than ${UBO_EFFECTIVE_THRESHOLD_PCT}% of the issued shares (${pct.toFixed(2)}%)`
 }
 
+/** Auto-synced nature lines may be rewritten; free-text nature is left alone. */
+function shouldRewriteAutoNature(existing: string | null | undefined): boolean {
+  return !existing || existing.startsWith('Holds more than ')
+}
+
 function findOpenControllerForMember(controllers: ControllerRow[], member: MemberRow) {
   const open = controllers.filter(c => !c.cessationDate)
   return (
@@ -355,6 +360,8 @@ function findMemberForController(members: MemberRow[], controller: ControllerRow
  *
  * Becoming / Ceased dates follow threshold crossings on the company share ledger
  * (including dilution), not merely the member's first/last share movement.
+ * Nature of control % is frozen at the becoming-day ownership for open and
+ * ceased auto-synced rows (manual free-text nature is left alone).
  */
 export async function syncControllersFromMembers(
   companyId: string,
@@ -471,9 +478,7 @@ export async function syncControllersFromMembers(
       }
 
       if (existing) {
-        const shouldUpdateNature =
-          !existing.natureOfControl
-          || existing.natureOfControl.startsWith('Holds more than ')
+        const shouldUpdateNature = shouldRewriteAutoNature(existing.natureOfControl)
         const alignBecoming = !existing.becomingDate || !sameCalendarDay(existing.becomingDate, inDate)
         await prisma.significantController.update({
           where: { id: existing.id },
@@ -550,12 +555,20 @@ export async function syncControllersFromMembers(
     const alignBecoming = !!inDate && (
       !controller.becomingDate || !sameCalendarDay(controller.becomingDate, inDate)
     )
+    const naturePercent = spell.ownershipPercentAtBecoming
+    const natureOfControl = naturePercent != null
+      ? natureOfControlFromShares(naturePercent)
+      : null
+    const alignNature = !!natureOfControl
+      && shouldRewriteAutoNature(controller.natureOfControl)
+      && controller.natureOfControl !== natureOfControl
 
     await prisma.significantController.update({
       where: { id: controller.id },
       data: {
         cessationDate: outDate,
         ...(alignBecoming && inDate ? { becomingDate: inDate } : {}),
+        ...(alignNature && natureOfControl ? { natureOfControl } : {}),
       },
     })
     ceasedThisRun.add(matched.id)
@@ -563,13 +576,13 @@ export async function syncControllersFromMembers(
     result.candidates.push({
       memberId: matched.id,
       nameEn: matched.nameEn,
-      ownershipPercent: ownershipPercentValue,
+      ownershipPercent: naturePercent ?? ownershipPercentValue,
       action: 'ceased',
     })
   }
 
-  // Already-ceased rows keep a stale Becoming/Ceased when NAR1 stored those
-  // dates separately from the share ledger. Rewrite only the latest ceased
+  // Already-ceased rows keep a stale Becoming/Ceased/nature when NAR1 stored those
+  // separately from the share ledger. Rewrite only the latest ceased
   // row for a member who is not currently above 25%.
   const repairedIds = new Set<string>()
   for (const member of members) {
@@ -581,21 +594,29 @@ export async function syncControllersFromMembers(
     if (!controller?.cessationDate || repairedIds.has(controller.id)) continue
 
     const spell = datesByMember.get(member.id)
-    if (!spell?.becomingDate && !spell?.cessationDate) continue
+    if (!spell?.becomingDate && !spell?.cessationDate && spell?.ownershipPercentAtBecoming == null) continue
 
-    const inDate = spell.becomingDate
-    const outDate = spell.cessationDate
+    const inDate = spell?.becomingDate ?? null
+    const outDate = spell?.cessationDate ?? null
     const alignBecoming = !!inDate && (
       !controller.becomingDate || !sameCalendarDay(controller.becomingDate, inDate)
     )
     const alignCease = !!outDate && !sameCalendarDay(controller.cessationDate, outDate)
-    if (!alignBecoming && !alignCease) continue
+    const naturePercent = spell?.ownershipPercentAtBecoming ?? null
+    const natureOfControl = naturePercent != null
+      ? natureOfControlFromShares(naturePercent)
+      : null
+    const alignNature = !!natureOfControl
+      && shouldRewriteAutoNature(controller.natureOfControl)
+      && controller.natureOfControl !== natureOfControl
+    if (!alignBecoming && !alignCease && !alignNature) continue
 
     await prisma.significantController.update({
       where: { id: controller.id },
       data: {
         ...(alignBecoming && inDate ? { becomingDate: inDate } : {}),
         ...(alignCease && outDate ? { cessationDate: outDate } : {}),
+        ...(alignNature && natureOfControl ? { natureOfControl } : {}),
       },
     })
     repairedIds.add(controller.id)
@@ -605,7 +626,7 @@ export async function syncControllersFromMembers(
     result.candidates.push({
       memberId: member.id,
       nameEn: member.nameEn,
-      ownershipPercent: ownershipPercentValue,
+      ownershipPercent: naturePercent ?? ownershipPercentValue,
       action: 'updated',
     })
   }
