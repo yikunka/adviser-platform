@@ -33,12 +33,33 @@ export function isoSlashDate(iso: string): string {
   return `${day}/${month}/${year}`
 }
 
-function forceBlackText(field: { getDefaultAppearance(): string | undefined; setDefaultAppearance(appearance: string): void }) {
-  const appearance = field.getDefaultAppearance() ?? ''
-  const sizeMatch = appearance.match(/(\d+(?:\.\d+)?)\s+Tf/)
-  const parsed = sizeMatch ? Number(sizeMatch[1]) : 12
-  const size = parsed > 0 ? parsed : 12
-  field.setDefaultAppearance(`0 0 0 rg /F ${size} Tf`)
+function forceBlackText(field: { getDefaultAppearance(): string | undefined; setDefaultAppearance(appearance: string): void }, size = 12) {
+  const safe = size > 0 ? size : 12
+  field.setDefaultAppearance(`0 0 0 rg /F ${safe} Tf`)
+}
+
+function readDaFontSize(appearance: string | undefined): number {
+  const sizeMatch = (appearance ?? '').match(/(\d+(?:\.\d+)?)\s+Tf/)
+  if (!sizeMatch) return 0
+  const parsed = Number(sizeMatch[1])
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
+}
+
+/** Size 0 in CR templates means autosize; that compresses Latin glyphs and looks blurry. */
+function resolveTextFontSize(field: ReturnType<ReturnType<PDFDocument['getForm']>['getTextField']>): number {
+  const fromDa = readDaFontSize(field.acroField.getDefaultAppearance())
+  let size = fromDa > 0 ? fromDa : 10
+  try {
+    const rect = field.acroField.getWidgets()[0]?.getRectangle()
+    if (rect && rect.height > 0) {
+      const maxByHeight = Math.max(7, rect.height * 0.7)
+      if (fromDa <= 0) size = Math.min(10, maxByHeight)
+      else if (size > maxByHeight) size = maxByHeight
+    }
+  } catch {
+    // keep DA / default size
+  }
+  return Math.round(size * 10) / 10
 }
 
 function setText(form: ReturnType<PDFDocument['getForm']>, name: string, value: string) {
@@ -49,7 +70,13 @@ function setText(form: ReturnType<PDFDocument['getForm']>, name: string, value: 
     field.setMaxLength(text.length)
   }
   field.setText(text)
-  forceBlackText(field.acroField)
+  const size = resolveTextFontSize(field)
+  try {
+    field.setFontSize(size)
+  } catch {
+    // some widgets reject setFontSize; DA below still helps
+  }
+  forceBlackText(field.acroField, size)
 }
 
 function setDate(form: ReturnType<PDFDocument['getForm']>, dayName: string, monthName: string, yearName: string, iso: string) {
@@ -68,7 +95,8 @@ function strikeDropdown(form: ReturnType<PDFDocument['getForm']>, name: string) 
   const strike = field.getOptions().find(option => option.trim().length > 1)
   if (!strike) return
   field.select(strike)
-  forceBlackText(field.acroField)
+  const size = readDaFontSize(field.acroField.getDefaultAppearance()) || 12
+  forceBlackText(field.acroField, size)
 }
 
 export async function renderCrPdf(fileName: string, fill: (form: ReturnType<PDFDocument['getForm']>) => void): Promise<Buffer> {
