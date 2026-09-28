@@ -128,7 +128,7 @@ const officerBase = {
   companyNameZh: z.string().trim().max(300).default(''),
   companyNo: z.string().trim().max(40).default(''),
   brn: z.string().trim().max(40).default(''),
-  office: z.enum(['DIRECTOR', 'COMPANY_SECRETARY']),
+  office: z.enum(['DIRECTOR', 'COMPANY_SECRETARY', 'ALTERNATE_DIRECTOR']),
   personKind: z.enum(['NATURAL', 'CORPORATE']),
   nameEn: z.string().trim().min(1).max(300),
   nameZh: z.string().trim().max(300).default(''),
@@ -306,7 +306,13 @@ function taskSummary(payload: unknown) {
 function officerSummary(payload: unknown) {
   const record = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {}
   const text = (key: string) => typeof record[key] === 'string' ? record[key] : ''
-  const office = text('office') === 'COMPANY_SECRETARY' ? '公司秘书' : text('office') === 'DIRECTOR' ? '董事' : ''
+  const office = text('office') === 'COMPANY_SECRETARY'
+    ? '公司秘书'
+    : text('office') === 'ALTERNATE_DIRECTOR'
+      ? '候補董事'
+      : text('office') === 'DIRECTOR'
+        ? '董事'
+        : ''
   const action = text('action') === 'APPOINT' ? '委任核数师' : text('action') === 'REMOVE' ? '免任核数师' : text('action') === 'RESIGN' ? '核数师辞任' : ''
   return {
     summary: action || [office, text('nameEn') || text('auditorName')].filter(Boolean).join(' · '),

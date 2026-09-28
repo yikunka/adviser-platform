@@ -14,7 +14,7 @@ import { fillDocxTemplate, type PlaceholderValue } from '@/lib/work-tasks/fill-d
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 const PDF_MIME = 'application/pdf'
 
-export type OfficerOffice = 'DIRECTOR' | 'COMPANY_SECRETARY'
+export type OfficerOffice = 'DIRECTOR' | 'COMPANY_SECRETARY' | 'ALTERNATE_DIRECTOR'
 export type OfficerPersonKind = 'NATURAL' | 'CORPORATE'
 
 export type OfficerChangeInput = CrPresentor & {
@@ -82,11 +82,26 @@ export function officerEnglishParts(input: { nameEn: string; surname: string; ot
 }
 
 function officeLabel(office: OfficerOffice) {
-  return office === 'DIRECTOR' ? 'Director' : 'Company Secretary'
+  if (office === 'COMPANY_SECRETARY') return 'Company Secretary'
+  if (office === 'ALTERNATE_DIRECTOR') return 'Alternate Director'
+  return 'Director'
 }
 
 function officeLabelZh(office: OfficerOffice) {
-  return office === 'DIRECTOR' ? '董事' : '公司秘书'
+  if (office === 'COMPANY_SECRETARY') return '公司秘书'
+  if (office === 'ALTERNATE_DIRECTOR') return '候補董事'
+  return '董事'
+}
+
+/** CR partial HKID: letter(s) + first 3 digits; last 4 chars stay as printed asterisks. */
+export function partialHkidNumber(hkid: string): string {
+  const raw = hkid.trim().toUpperCase().replace(/\s+/g, '')
+  if (!raw) return ''
+  const match = raw.match(/^([A-Z]{1,2})(\d{6})(?:\([A-Z0-9]\))?$/)
+  if (match) return `${match[1]}${match[2].slice(0, 3)}`
+  const alnum = raw.replace(/[^A-Z0-9]/g, '')
+  if (alnum.length <= 4) return alnum
+  return alnum.slice(0, -4)
 }
 
 function presentorName(input: CrPresentor) {
@@ -106,8 +121,17 @@ function fillPresentor(
   crPdf.setText(form, fields[5], input.presentorReference)
 }
 
-function tickOffice(form: ReturnType<PDFDocument['getForm']>, office: OfficerOffice, cs: string, director: string) {
-  crPdf.checkBox(form, office === 'COMPANY_SECRETARY' ? cs : director)
+/** Capacity checkboxes left→right: Company Secretary, Director, Alternate Director. */
+function tickOffice(
+  form: ReturnType<PDFDocument['getForm']>,
+  office: OfficerOffice,
+  cs: string,
+  director: string,
+  alternate?: string,
+) {
+  if (office === 'COMPANY_SECRETARY') crPdf.checkBox(form, cs)
+  else if (office === 'ALTERNATE_DIRECTOR') crPdf.checkBox(form, alternate || director)
+  else crPdf.checkBox(form, director)
 }
 
 async function renderDocx(fileName: string, templateKey: string, label: string, companyName: string, values: Record<string, PlaceholderValue>) {
@@ -160,7 +184,7 @@ export async function renderNd4(input: OfficerChangeInput) {
     crPdf.setText(form, 'fill_1_P.1', brn)
     crPdf.setText(form, 'fill_1_P.2', brn)
     crPdf.setText(form, 'fill_2_P.1', crCompanyName(input.companyNameEn, input.companyNameZh))
-    tickOffice(form, input.office, 'cb_2_P.1', 'cb_1_P.1')
+    tickOffice(form, input.office, 'cb_1_P.1', 'cb_2_P.1', 'cb_3_P.1')
     if (input.personKind === 'CORPORATE') {
       crPdf.setText(form, 'fill_9_P.1', input.nameZh)
       crPdf.setText(form, 'fill_10_P.1', input.nameEn)
@@ -168,15 +192,15 @@ export async function renderNd4(input: OfficerChangeInput) {
       crPdf.setText(form, 'fill_4_P.1', input.nameZh)
       crPdf.setText(form, 'fill_5_P.1', surname)
       crPdf.setText(form, 'fill_6_P.1', otherNames)
-      crPdf.setText(form, 'fill_7_P.1', input.hkid)
+      crPdf.setText(form, 'fill_7_P.1', partialHkidNumber(input.hkid))
       crPdf.setText(form, 'fill_8_P.1', input.passport)
     }
     crPdf.setDate(form, 'fill_11_P.1', 'fill_12_P.1', 'fill_13_P.1', input.effectiveDate)
     fillPresentor(form, input, ['fill_14_P.1', 'fill_15_P.1', 'fill_16_P.1', 'fill_17_P.1', 'fill_18_P.1', 'fill_19_P.1'])
     crPdf.setText(form, 'fill_2_P.2', input.signatoryName || officerEnglishParts(input).surname || input.nameEn)
     crPdf.setText(form, 'fill_3_P.2', isoSlashDate(input.signatoryDate))
-    if (input.office === 'DIRECTOR') crPdf.strikeDropdown(form, 'Dropdown2_P.2')
-    else crPdf.strikeDropdown(form, 'Dropdown1_P.2')
+    if (input.office === 'COMPANY_SECRETARY') crPdf.strikeDropdown(form, 'Dropdown1_P.2')
+    else crPdf.strikeDropdown(form, 'Dropdown2_P.2')
   })
   return {
     templateKey: 'nd4',
@@ -194,7 +218,7 @@ export async function renderNd2aCessation(input: OfficerChangeInput) {
     crPdf.setText(form, 'fill_1_P.2', brn)
     crPdf.setText(form, 'fill_1_P.3', brn)
     crPdf.setText(form, 'fill_2_P.1', crCompanyName(input.companyNameEn, input.companyNameZh))
-    tickOffice(form, input.office, 'cb_1_P.1', 'cb_2_P.1')
+    tickOffice(form, input.office, 'cb_1_P.1', 'cb_2_P.1', 'cb_3_P.1')
     if (input.personKind === 'CORPORATE') {
       crPdf.setText(form, 'fill_9_P.1', input.nameZh)
       crPdf.setText(form, 'fill_10_P.1', input.nameEn)
@@ -202,7 +226,7 @@ export async function renderNd2aCessation(input: OfficerChangeInput) {
       crPdf.setText(form, 'fill_4_P.1', input.nameZh)
       crPdf.setText(form, 'fill_5_P.1', surname)
       crPdf.setText(form, 'fill_6_P.1', otherNames)
-      crPdf.setText(form, 'fill_7_P.1', input.hkid)
+      crPdf.setText(form, 'fill_7_P.1', partialHkidNumber(input.hkid))
       crPdf.setText(form, 'fill_8_P.1', input.passport)
     }
     crPdf.checkBox(form, 'cb_4_P.1')
@@ -231,7 +255,7 @@ export async function renderNd2aAppointment(input: OfficerChangeInput) {
     crPdf.setText(form, 'fill_2_P.1', crCompanyName(input.companyNameEn, input.companyNameZh))
     fillPresentor(form, input, ['fill_14_P.1', 'fill_15_P.1', 'fill_16_P.1', 'fill_17_P.1', 'fill_18_P.1', 'fill_19_P.1'])
     if (input.personKind === 'NATURAL') {
-      tickOffice(form, input.office, 'cb_1_P.2', 'cb_2_P.2')
+      tickOffice(form, input.office, 'cb_1_P.2', 'cb_2_P.2', 'cb_3_P.2')
       crPdf.setText(form, 'fill_3_P.2', input.nameZh)
       crPdf.setText(form, 'fill_4_P.2', surname)
       crPdf.setText(form, 'fill_5_P.2', otherNames)
@@ -241,15 +265,15 @@ export async function renderNd2aAppointment(input: OfficerChangeInput) {
       crPdf.setText(form, 'fill_13_P.2', input.district)
       crPdf.setText(form, 'fill_14_P.2', input.country || 'Hong Kong')
       crPdf.setText(form, 'fill_15_P.2', input.email)
-      crPdf.setText(form, 'fill_16_P.2', input.hkid)
+      crPdf.setText(form, 'fill_16_P.2', partialHkidNumber(input.hkid))
       crPdf.setText(form, 'fill_17_P.2', input.passportPlace)
       crPdf.setText(form, 'fill_18_P.2', input.passport)
       crPdf.setText(form, 'fill_19_P.2', input.tcspLicence)
       crPdf.setDate(form, 'fill_21_P.2', 'fill_22_P.2', 'fill_23_P.2', input.effectiveDate)
       crPdf.checkBox(form, 'cb_6_P.2')
-      if (input.office === 'DIRECTOR') crPdf.strikeDropdown(form, 'Dropdown_2_P.2')
+      if (input.office !== 'COMPANY_SECRETARY') crPdf.strikeDropdown(form, 'Dropdown_2_P.2')
     } else {
-      tickOffice(form, input.office, 'cb_1_P.3', 'cb_2_P.3')
+      tickOffice(form, input.office, 'cb_1_P.3', 'cb_2_P.3', 'cb_3_P.3')
       crPdf.setText(form, 'fill_3_P.3', input.nameZh)
       crPdf.setText(form, 'fill_4_P.3', input.nameEn)
       crPdf.setText(form, 'fill_5_P.3', input.flat)
@@ -287,7 +311,7 @@ export async function renderNd2b(input: OfficerChangeInput) {
     crPdf.setText(form, 'fill_1_P.2', brn)
     crPdf.setText(form, 'fill_1_P.3', brn)
     crPdf.setText(form, 'fill_2_P.1', crCompanyName(input.companyNameEn, input.companyNameZh))
-    tickOffice(form, input.office, 'cb_1_P.1', 'cb_2_P.1')
+    tickOffice(form, input.office, 'cb_1_P.1', 'cb_2_P.1', 'cb_3_P.1')
     if (input.personKind === 'CORPORATE') {
       crPdf.setText(form, 'fill_3_P.1', input.nameZh)
       crPdf.setText(form, 'fill_4_P.1', input.nameEn)
@@ -295,7 +319,7 @@ export async function renderNd2b(input: OfficerChangeInput) {
       crPdf.setText(form, 'fill_3_P.1', input.nameZh)
       crPdf.setText(form, 'fill_4_P.1', surname)
       crPdf.setText(form, 'fill_5_P.1', otherNames)
-      crPdf.setText(form, 'fill_6_P.1', input.hkid)
+      crPdf.setText(form, 'fill_6_P.1', partialHkidNumber(input.hkid))
       crPdf.setText(form, 'fill_7_P.1', input.passport)
     }
     fillPresentor(form, input, ['fill_8_P.1', 'fill_9_P.1', 'fill_10_P.1', 'fill_11_P.1', 'fill_12_P.1', 'fill_13_P.1'])

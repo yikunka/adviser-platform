@@ -90,7 +90,7 @@ export function OfficerChangePage({ kind }: { kind: OfficerKind }) {
   const [companyNo, setCompanyNo] = useState('')
   const [brn, setBrn] = useState('')
   const [directors, setDirectors] = useState<DirectorOption[]>([])
-  const [office, setOffice] = useState<'DIRECTOR' | 'COMPANY_SECRETARY'>('DIRECTOR')
+  const [office, setOffice] = useState<'DIRECTOR' | 'COMPANY_SECRETARY' | 'ALTERNATE_DIRECTOR'>('DIRECTOR')
   const [personKind, setPersonKind] = useState<'NATURAL' | 'CORPORATE'>('NATURAL')
   const [nameEn, setNameEn] = useState('')
   const [nameZh, setNameZh] = useState('')
@@ -302,10 +302,16 @@ export function OfficerChangePage({ kind }: { kind: OfficerKind }) {
           </select>
         </label>
         <label className="text-sm">
-          <span className={label} style={{ color: 'var(--muted-foreground)' }}>职位</span>
-          <select className={inputClass} style={inputStyle()} value={office} onChange={event => setOffice(event.target.value as 'DIRECTOR' | 'COMPANY_SECRETARY')}>
-            <option value="DIRECTOR">董事</option>
-            <option value="COMPANY_SECRETARY">公司秘书</option>
+          <span className={label} style={{ color: 'var(--muted-foreground)' }}>身分 Capacity</span>
+          <select
+            className={inputClass}
+            style={inputStyle()}
+            value={office}
+            onChange={event => setOffice(event.target.value as 'DIRECTOR' | 'COMPANY_SECRETARY' | 'ALTERNATE_DIRECTOR')}
+          >
+            <option value="COMPANY_SECRETARY">公司秘书 Company Secretary</option>
+            <option value="DIRECTOR">董事 Director</option>
+            <option value="ALTERNATE_DIRECTOR">候補董事 Alternate Director</option>
           </select>
         </label>
         <label className="text-sm">
