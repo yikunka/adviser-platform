@@ -40,7 +40,16 @@ export async function GET(req: NextRequest) {
         directors: {
           where: { status: 'ACTIVE' },
           orderBy: { dateOfAppointment: 'asc' },
-          select: { id: true, nameEn: true, nameZh: true },
+          select: {
+            id: true,
+            nameEn: true,
+            nameZh: true,
+            isCorporation: true,
+            addressForService: true,
+            idNumber: true,
+            nationality: true,
+            keyPerson: { select: { firstName: true, lastName: true, otherName: true, idNumber: true, nationality: true, homeAddress: true, contactAddress: true, email: true } },
+          },
         },
         members: {
           orderBy: { nameEn: 'asc' },
@@ -78,7 +87,19 @@ export async function GET(req: NextRequest) {
         financialYearEndMonth: company.financialYearEndMonth,
         hasCompanyRoundSeal: company.hasCompanyRoundSeal,
       },
-      directors: company.directors,
+      directors: company.directors.map(director => ({
+        id: director.id,
+        nameEn: director.nameEn,
+        nameZh: director.nameZh ?? '',
+        isCorporation: director.isCorporation,
+        address: director.addressForService || director.keyPerson?.contactAddress || director.keyPerson?.homeAddress || '',
+        idNumber: director.idNumber || director.keyPerson?.idNumber || '',
+        nationality: director.nationality || director.keyPerson?.nationality || '',
+        email: director.keyPerson?.email || '',
+        firstName: director.keyPerson?.firstName ?? '',
+        lastName: director.keyPerson?.lastName ?? '',
+        otherName: director.keyPerson?.otherName ?? '',
+      })),
       members: company.members.map(member => {
         const latest = member.shareTransactions[0]
         return {
@@ -150,6 +171,9 @@ export async function GET(req: NextRequest) {
           homeAddress: true,
           contactAddress: true,
           position: true,
+          idNumber: true,
+          nationality: true,
+          email: true,
         },
       }),
     ])

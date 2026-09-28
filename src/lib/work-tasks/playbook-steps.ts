@@ -5,6 +5,10 @@ export const WORK_TASK_KINDS = [
   'REGISTERED_OFFICE_ADDRESS',
   'REGISTER_LOCATION',
   'ACCOUNTING_REFERENCE_DATE',
+  'OFFICER_RESIGNATION',
+  'OFFICER_APPOINTMENT',
+  'OFFICER_PARTICULARS',
+  'AUDITOR_CHANGE',
 ] as const
 
 export type WorkTaskKind = (typeof WORK_TASK_KINDS)[number]
@@ -80,6 +84,47 @@ export const WORK_TASK_PLAYBOOK: Record<WorkTaskKind, WorkTaskPlaybook> = {
       '决议后 15 日内向公司注册处递交表格 NAC4。',
       '如属延长，须符合近五年的限制：近五年未曾指定新日期、与控股公司的会计参照日相同，或经成员决议批准。',
       '把确认书存入公司档案，并记下新的会计参照日。',
+    ],
+  },
+  OFFICER_RESIGNATION: {
+    card: 'B8',
+    deadline: '辞任人可递交表格 ND4。公司须在停任后 15 日内递交表格 ND2A。',
+    steps: [
+      '收妥辞任信，确认生效日期。',
+      '更新董事或公司秘书登记册。',
+      '辞任人签署表格 ND4（如由其本人申报）。',
+      '公司在 15 日内递交表格 ND2A 申报停任。',
+      '如只余一名董事，须先委任另一名董事。私人公司的唯一董事不可同时任公司秘书。',
+    ],
+  },
+  OFFICER_APPOINTMENT: {
+    card: 'B8',
+    deadline: '委任后 15 日内递交表格 ND2A。',
+    steps: [
+      '收妥出任同意书及身分证明。',
+      '董事会决议批准委任。',
+      '15 日内递交表格 ND2A。自然人董事的通常住址和完整身分号码填在 PI-ND2A（不供公众查阅），本任务未生成该页。',
+      '更新董事或公司秘书登记册。',
+    ],
+  },
+  OFFICER_PARTICULARS: {
+    card: 'B9',
+    deadline: '更改后 15 日内递交表格 ND2B。',
+    steps: [
+      '核对现时在公司注册处登记的姓名和身分。',
+      '记下更改日期和新的姓名、地址或联络资料。',
+      '15 日内递交表格 ND2B。',
+      '更新内部登记册。',
+    ],
+  },
+  AUDITOR_CHANGE: {
+    card: 'B10',
+    deadline: '免任核数师须在决议后向公司注册处递交表格 NA1。核数师辞任递交表格 NA2。委任核数师一般无须即时向注册处交表。',
+    steps: [
+      '委任：通过董事或成员决议委任核数师。',
+      '免任：向核数师和成员发出拟免任通知，通过普通决议，递交表格 NA1。',
+      '辞任：核数师辞任后递交表格 NA2。',
+      '更新公司档案，并记下下次财务报表的核数师。',
     ],
   },
 }

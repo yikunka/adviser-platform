@@ -5,6 +5,12 @@ import { prisma } from '@/lib/db/prisma'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
 import { createShareTransferTask } from '@/lib/work-tasks/create-share-transfer'
 import { createShareAllotmentTask } from '@/lib/work-tasks/create-share-allotment'
+import {
+  createAuditorChangeTask,
+  createOfficerAppointmentTask,
+  createOfficerParticularsTask,
+  createOfficerResignationTask,
+} from '@/lib/work-tasks/create-officer-tasks'
 import { createCompanyNameChangeTask } from '@/lib/work-tasks/create-company-name-change'
 import {
   createAccountingReferenceTask,
@@ -19,6 +25,8 @@ import {
 import { SHARE_TRANSFER_DOCUMENT_KEYS, SHARE_TRANSFER_DOCUMENTS } from '@/lib/work-tasks/share-transfer-docs'
 import type { ShareTransferInput } from '@/lib/work-tasks/share-transfer'
 import type { ShareAllotmentInput } from '@/lib/work-tasks/share-allotment'
+import type { OfficerChangeInput } from '@/lib/work-tasks/officer-forms'
+import type { AuditorChangeInput } from '@/lib/work-tasks/auditor-change'
 
 const nameChangeSchema = z.object({
   kind: z.literal('COMPANY_NAME_CHANGE'),
@@ -114,7 +122,69 @@ const accountingReferenceSchema = z.object({
   ...presentorSchema,
 })
 
+const officerBase = {
+  companyId: z.string().cuid(),
+  companyNameEn: z.string().trim().min(1).max(300),
+  companyNameZh: z.string().trim().max(300).default(''),
+  companyNo: z.string().trim().max(40).default(''),
+  brn: z.string().trim().max(40).default(''),
+  office: z.enum(['DIRECTOR', 'COMPANY_SECRETARY']),
+  personKind: z.enum(['NATURAL', 'CORPORATE']),
+  nameEn: z.string().trim().min(1).max(300),
+  nameZh: z.string().trim().max(300).default(''),
+  surname: z.string().trim().max(120).default(''),
+  otherNames: z.string().trim().max(200).default(''),
+  hkid: z.string().trim().max(40).default(''),
+  passport: z.string().trim().max(40).default(''),
+  passportPlace: z.string().trim().max(80).default(''),
+  idNumber: z.string().trim().max(40).default(''),
+  nationality: z.string().trim().max(80).default(''),
+  email: z.string().trim().max(200).default(''),
+  flat: z.string().trim().max(120).default(''),
+  building: z.string().trim().max(120).default(''),
+  street: z.string().trim().max(200).default(''),
+  district: z.string().trim().max(80).default(''),
+  country: z.string().trim().max(80).default('Hong Kong'),
+  effectiveDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  signatoryName: z.string().trim().min(1).max(200),
+  signatoryCapacity: z.enum(['DIRECTOR', 'COMPANY_SECRETARY']),
+  signatoryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  directorName1: z.string().trim().max(200).default(''),
+  directorName2: z.string().trim().max(200).default(''),
+  tcspLicence: z.string().trim().max(80).default(''),
+  ...presentorSchema,
+}
+
+const officerResignationSchema = z.object({ kind: z.literal('OFFICER_RESIGNATION'), ...officerBase })
+const officerAppointmentSchema = z.object({ kind: z.literal('OFFICER_APPOINTMENT'), ...officerBase })
+const officerParticularsSchema = z.object({ kind: z.literal('OFFICER_PARTICULARS'), ...officerBase })
+
+const auditorSchema = z.object({
+  kind: z.literal('AUDITOR_CHANGE'),
+  companyId: z.string().cuid(),
+  companyNameEn: z.string().trim().min(1).max(300),
+  companyNameZh: z.string().trim().max(300).default(''),
+  companyNo: z.string().trim().max(40).default(''),
+  brn: z.string().trim().max(40).default(''),
+  action: z.enum(['APPOINT', 'REMOVE', 'RESIGN']),
+  auditorName: z.string().trim().min(1).max(300),
+  auditorAddress: z.string().trim().max(500).default(''),
+  effectiveDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  meetingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal('')).default(''),
+  meetingTime: z.string().trim().max(80).default(''),
+  meetingPlace: z.string().trim().max(300).default(''),
+  directorName1: z.string().trim().max(200).default(''),
+  directorName2: z.string().trim().max(200).default(''),
+  shareholderName1: z.string().trim().max(200).default(''),
+  shareholderName2: z.string().trim().max(200).default(''),
+  signatoryName: z.string().trim().min(1).max(200),
+  signatoryCapacity: z.enum(['DIRECTOR', 'COMPANY_SECRETARY']),
+  signatoryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  ...presentorSchema,
+})
+
 const RECORD_KINDS = ['REGISTERED_OFFICE_ADDRESS', 'REGISTER_LOCATION', 'ACCOUNTING_REFERENCE_DATE'] as const
+const OFFICER_KINDS = ['OFFICER_RESIGNATION', 'OFFICER_APPOINTMENT', 'OFFICER_PARTICULARS', 'AUDITOR_CHANGE'] as const
 
 function isRealIsoDate(iso: string) {
   const [year, month, day] = iso.split('-').map(Number)
@@ -233,6 +303,17 @@ function taskSummary(payload: unknown) {
   }
 }
 
+function officerSummary(payload: unknown) {
+  const record = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {}
+  const text = (key: string) => typeof record[key] === 'string' ? record[key] : ''
+  const office = text('office') === 'COMPANY_SECRETARY' ? '公司秘书' : text('office') === 'DIRECTOR' ? '董事' : ''
+  const action = text('action') === 'APPOINT' ? '委任核数师' : text('action') === 'REMOVE' ? '免任核数师' : text('action') === 'RESIGN' ? '核数师辞任' : ''
+  return {
+    summary: action || [office, text('nameEn') || text('auditorName')].filter(Boolean).join(' · '),
+    effectiveDate: text('effectiveDate'),
+  }
+}
+
 function allotmentSummary(payload: unknown) {
   const record = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {}
   return {
@@ -258,8 +339,9 @@ export async function GET(req: NextRequest) {
 
   const kind = req.nextUrl.searchParams.get('kind')
   const recordList = kind === 'COMPANY_RECORD'
+  const officerList = kind === 'OFFICERS'
   const listKind =
-    recordList
+    recordList || officerList
       ? null
       : kind === 'COMPANY_NAME_CHANGE'
         ? 'COMPANY_NAME_CHANGE'
@@ -268,7 +350,11 @@ export async function GET(req: NextRequest) {
           : 'SHARE_TRANSFER'
   const tasks = await prisma.advWorkTask.findMany({
     where: {
-      kind: recordList ? { in: [...RECORD_KINDS] } : listKind!,
+      kind: recordList
+        ? { in: [...RECORD_KINDS] }
+        : officerList
+          ? { in: [...OFFICER_KINDS] }
+          : listKind!,
     },
     orderBy: { createdAt: 'desc' },
     take: 50,
@@ -293,11 +379,13 @@ export async function GET(req: NextRequest) {
       fileCount: task._count.files,
       ...(recordList
         ? recordSummary(task.kind, task.payload)
-        : listKind === 'COMPANY_NAME_CHANGE'
-          ? nameChangeSummary(task.payload)
-          : listKind === 'SHARE_ALLOTMENT'
-            ? allotmentSummary(task.payload)
-            : taskSummary(task.payload)),
+        : officerList
+          ? officerSummary(task.payload)
+          : listKind === 'COMPANY_NAME_CHANGE'
+            ? nameChangeSummary(task.payload)
+            : listKind === 'SHARE_ALLOTMENT'
+              ? allotmentSummary(task.payload)
+              : taskSummary(task.payload)),
     })),
   })
 }
@@ -356,6 +444,104 @@ export async function POST(req: NextRequest) {
         extensionReason: parsed.data.change === 'EXTEND' ? parsed.data.extensionReason : '',
         memberNames: members,
       } as AccountingReferenceInput, session!.user.id)
+      return NextResponse.json({ id: task.id, taskNumber: task.taskNumber })
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : '生成文件失败。'
+      return NextResponse.json({ error: message }, { status: 500 })
+    }
+  }
+  if (requestedKind && (OFFICER_KINDS as readonly string[]).includes(requestedKind)) {
+    const schema = requestedKind === 'OFFICER_RESIGNATION'
+      ? officerResignationSchema
+      : requestedKind === 'OFFICER_APPOINTMENT'
+        ? officerAppointmentSchema
+        : requestedKind === 'OFFICER_PARTICULARS'
+          ? officerParticularsSchema
+          : auditorSchema
+    const parsed = schema.safeParse(body)
+    if (!parsed.success || !isRealIsoDate(parsed.data.effectiveDate) || !isRealIsoDate(parsed.data.signatoryDate)) {
+      return NextResponse.json({ error: '请填完整任免资料，以及生效日期和签署人。' }, { status: 400 })
+    }
+    if (parsed.data.kind === 'AUDITOR_CHANGE' && parsed.data.meetingDate && !isRealIsoDate(parsed.data.meetingDate)) {
+      return NextResponse.json({ error: '会议日期不正确。' }, { status: 400 })
+    }
+    const company = await loadWorkTaskCompany(session!.user.id, session!.user.role, parsed.data.companyId)
+    if (!company) return NextResponse.json({ error: '找不到这家公司。' }, { status: 404 })
+    try {
+      if (parsed.data.kind === 'AUDITOR_CHANGE') {
+        const input: AuditorChangeInput = {
+          companyNameEn: parsed.data.companyNameEn,
+          companyNameZh: parsed.data.companyNameZh,
+          companyNo: parsed.data.companyNo,
+          brn: parsed.data.brn,
+          action: parsed.data.action,
+          auditorName: parsed.data.auditorName,
+          auditorAddress: parsed.data.auditorAddress,
+          effectiveDate: parsed.data.effectiveDate,
+          meetingDate: parsed.data.meetingDate,
+          meetingTime: parsed.data.meetingTime,
+          meetingPlace: parsed.data.meetingPlace,
+          directorName1: parsed.data.directorName1,
+          directorName2: parsed.data.directorName2,
+          shareholderName1: parsed.data.shareholderName1,
+          shareholderName2: parsed.data.shareholderName2,
+          signatoryName: parsed.data.signatoryName,
+          signatoryCapacity: parsed.data.signatoryCapacity,
+          signatoryDate: parsed.data.signatoryDate,
+          presentorNameZh: parsed.data.presentorNameZh,
+          presentorNameEn: parsed.data.presentorNameEn,
+          presentorAddress: parsed.data.presentorAddress,
+          presentorTel: parsed.data.presentorTel,
+          presentorFax: parsed.data.presentorFax,
+          presentorEmail: parsed.data.presentorEmail,
+          presentorReference: parsed.data.presentorReference,
+        }
+        const task = await createAuditorChangeTask(parsed.data.companyId, input, session!.user.id)
+        return NextResponse.json({ id: task.id, taskNumber: task.taskNumber })
+      }
+      const input: OfficerChangeInput = {
+        companyNameEn: parsed.data.companyNameEn,
+        companyNameZh: parsed.data.companyNameZh,
+        companyNo: parsed.data.companyNo,
+        brn: parsed.data.brn,
+        office: parsed.data.office,
+        personKind: parsed.data.personKind,
+        nameEn: parsed.data.nameEn,
+        nameZh: parsed.data.nameZh,
+        surname: parsed.data.surname,
+        otherNames: parsed.data.otherNames,
+        hkid: parsed.data.hkid,
+        passport: parsed.data.passport,
+        passportPlace: parsed.data.passportPlace,
+        idNumber: parsed.data.idNumber,
+        nationality: parsed.data.nationality,
+        email: parsed.data.email,
+        flat: parsed.data.flat,
+        building: parsed.data.building,
+        street: parsed.data.street,
+        district: parsed.data.district,
+        country: parsed.data.country,
+        effectiveDate: parsed.data.effectiveDate,
+        signatoryName: parsed.data.signatoryName,
+        signatoryCapacity: parsed.data.signatoryCapacity,
+        signatoryDate: parsed.data.signatoryDate,
+        directorName1: parsed.data.directorName1,
+        directorName2: parsed.data.directorName2,
+        tcspLicence: parsed.data.tcspLicence,
+        presentorNameZh: parsed.data.presentorNameZh,
+        presentorNameEn: parsed.data.presentorNameEn,
+        presentorAddress: parsed.data.presentorAddress,
+        presentorTel: parsed.data.presentorTel,
+        presentorFax: parsed.data.presentorFax,
+        presentorEmail: parsed.data.presentorEmail,
+        presentorReference: parsed.data.presentorReference,
+      }
+      const create = parsed.data.kind === 'OFFICER_RESIGNATION'
+        ? createOfficerResignationTask
+        : parsed.data.kind === 'OFFICER_APPOINTMENT'
+          ? createOfficerAppointmentTask
+          : createOfficerParticularsTask
+      const task = await create(parsed.data.companyId, input, session!.user.id)
       return NextResponse.json({ id: task.id, taskNumber: task.taskNumber })
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : '生成文件失败。'

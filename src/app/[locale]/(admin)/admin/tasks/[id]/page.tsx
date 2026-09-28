@@ -18,6 +18,10 @@ const TASK_TITLE: Record<TaskKind, string> = {
   REGISTERED_OFFICE_ADDRESS: '公司注册/营业地址',
   REGISTER_LOCATION: '登记册备存地点',
   ACCOUNTING_REFERENCE_DATE: '会计参照日',
+  OFFICER_RESIGNATION: '秘书及董事辞任',
+  OFFICER_APPOINTMENT: '委派公司秘书及董事',
+  OFFICER_PARTICULARS: '更改公司秘书及董事详情',
+  AUDITOR_CHANGE: '任免核数师',
 }
 
 const TASK_NOTE: Record<TaskKind, string> = {
@@ -27,6 +31,10 @@ const TASK_NOTE: Record<TaskKind, string> = {
   REGISTERED_OFFICE_ADDRESS: '下载表格 NR1 后交给公司注册处。这项任务没有改公司管理里的注册地址。',
   REGISTER_LOCATION: '下载董事会会议纪录和表格 NR2。NR2 交给公司注册处。这项任务没有改公司纪录的存放地点。',
   ACCOUNTING_REFERENCE_DATE: '下载成员会议纪录和表格 NAC4。NAC4 交给公司注册处。这项任务没有改公司的会计参照月。',
+  OFFICER_RESIGNATION: '下载辞任信、表格 ND4 和 ND2A。ND4 可由辞任人递交，ND2A 由公司在 15 日内递交。这项任务没有改董事或秘书纪录。',
+  OFFICER_APPOINTMENT: '下载出任同意书、董事书面决议和表格 ND2A。ND2A 交给公司注册处。这项任务没有改董事或秘书纪录。',
+  OFFICER_PARTICULARS: '下载表格 ND2B 后交给公司注册处。这项任务没有改已登记的详情。',
+  AUDITOR_CHANGE: '委任下载书面决议。免任下载拟免任通知、普通决议和表格 NA1。辞任下载表格 NA2。这项任务没有改核数师纪录。',
 }
 
 const FILE_LABEL: Record<string, string> = {
@@ -41,6 +49,17 @@ const FILE_LABEL: Record<string, string> = {
   certificate: '新股票',
   application: '股份申请表',
   nsc1: 'NSC1 股份配发申报书',
+  'resignation-letter': '辞任信',
+  nd4: 'ND4 公司秘书及董事辞任通知书',
+  nd2a: 'ND2A 更改公司秘书及董事通知书',
+  nd2b: 'ND2B 更改公司秘书及董事详情通知书',
+  consent: '出任同意书',
+  'directors-resolutions': '董事书面决议',
+  'appointment-resolutions': '书面决议（委任核数师）',
+  'removal-notice': '拟将核数师免任通知',
+  'removal-resolution': '普通决议（将核数师免任）',
+  na1: 'NA1 将核数师免任通知书',
+  na2: 'NA2 核数师辞任通知书',
 }
 
 type Party = {
@@ -69,6 +88,11 @@ type TaskDetail = {
     transferDate?: string
     allotmentDate?: string
     allotteeName?: string
+    auditorName?: string
+    office?: string
+    nameEn?: string
+    nameZh?: string
+    action?: string
     numberOfShares?: number
     shareClass?: string
     consideration?: string
@@ -200,7 +224,28 @@ export default function WorkTaskDetailPage() {
         </section>
       ) : null}
 
-      {payload && task && task.kind !== 'SHARE_TRANSFER' && task.kind !== 'SHARE_ALLOTMENT' && task.kind !== 'COMPANY_NAME_CHANGE' ? (
+      {payload && (task?.kind === 'OFFICER_RESIGNATION' || task?.kind === 'OFFICER_APPOINTMENT' || task?.kind === 'OFFICER_PARTICULARS' || task?.kind === 'AUDITOR_CHANGE') ? (
+        <section className="grid gap-2 p-5 text-sm" style={card}>
+          <p>公司：{payload.companyNameZh || payload.companyNameEn || task.company.nameEn}</p>
+          <p>公司编号：{payload.companyNo || '—'}</p>
+          {task.kind === 'AUDITOR_CHANGE' ? (
+            <>
+              <p>事项：{payload.action === 'APPOINT' ? '委任' : payload.action === 'REMOVE' ? '免任' : payload.action === 'RESIGN' ? '辞任' : payload.action}</p>
+              <p>核数师：{payload.auditorName || '—'}</p>
+            </>
+          ) : (
+            <>
+              <p>职位：{payload.office === 'COMPANY_SECRETARY' ? '公司秘书' : '董事'}</p>
+              <p>当事人：{payload.nameZh || payload.nameEn || '—'}</p>
+            </>
+          )}
+          <p>生效日期：{payload.effectiveDate || '—'}</p>
+          <p>签署：{payload.signatoryName || '—'} {payload.signatoryDate || ''}</p>
+          <p style={{ color: 'var(--muted-foreground)' }}>由 {task.createdBy.nameEn} 生成</p>
+        </section>
+      ) : null}
+
+      {payload && task && task.kind !== 'SHARE_TRANSFER' && task.kind !== 'SHARE_ALLOTMENT' && task.kind !== 'COMPANY_NAME_CHANGE' && task.kind !== 'OFFICER_RESIGNATION' && task.kind !== 'OFFICER_APPOINTMENT' && task.kind !== 'OFFICER_PARTICULARS' && task.kind !== 'AUDITOR_CHANGE' ? (
         <section className="grid gap-2 p-5 text-sm" style={card}>
           <p>公司：{payload.companyNameZh || payload.companyNameEn || task.company.nameEn}</p>
           <p>公司编号：{payload.companyNo || '—'}</p>
