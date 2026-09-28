@@ -17,6 +17,16 @@ type TaskRow = {
   numberOfShares: number | null
 }
 
+type AllotmentRow = {
+  id: string
+  taskNumber: string
+  company: { id: string; nameEn: string; nameZh: string | null }
+  allotmentDate: string
+  allotteeName: string
+  numberOfShares: number | null
+  shareClass: string
+}
+
 type RecordRow = {
   id: string
   taskNumber: string
@@ -49,6 +59,7 @@ const card: React.CSSProperties = {
 
 export default function WorkTasksPage() {
   const [tasks, setTasks] = useState<TaskRow[]>([])
+  const [allotments, setAllotments] = useState<AllotmentRow[]>([])
   const [nameChanges, setNameChanges] = useState<NameChangeRow[]>([])
   const [records, setRecords] = useState<RecordRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -70,6 +81,18 @@ export default function WorkTasksPage() {
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
+      })
+    fetch('/api/admin/work-tasks?kind=SHARE_ALLOTMENT')
+      .then(async res => {
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(json.error || '载入任务失败。')
+        return json
+      })
+      .then(json => {
+        if (!cancelled) setAllotments(Array.isArray(json.tasks) ? json.tasks : [])
+      })
+      .catch(cause => {
+        if (!cancelled) setError(cause instanceof Error ? cause.message : '载入任务失败。')
       })
     fetch('/api/admin/work-tasks?kind=COMPANY_NAME_CHANGE')
       .then(async res => {
@@ -113,10 +136,17 @@ export default function WorkTasksPage() {
         <h2 className="text-base font-semibold" style={{ color: 'var(--foreground)' }}>成员/股东的变更</h2>
         <Link
           href="/admin/tasks/share-transfer"
-          className="mt-3 inline-block text-sm font-medium"
+          className="mt-3 block text-sm font-medium"
           style={{ color: '#3b82f6' }}
         >
           股份转让
+        </Link>
+        <Link
+          href="/admin/tasks/share-allotment"
+          className="mt-2 block text-sm font-medium"
+          style={{ color: '#3b82f6' }}
+        >
+          配售新股
         </Link>
       </section>
 
@@ -168,6 +198,43 @@ export default function WorkTasksPage() {
                     <td className="py-2 pr-3">{task.transferorName}</td>
                     <td className="py-2 pr-3">{task.transfereeName}</td>
                     <td className="py-2 pr-3 whitespace-nowrap">{task.transferDate}</td>
+                    <td className="py-2 text-right">
+                      <Link href={`/admin/tasks/${task.id}`} className="text-sm" style={{ color: '#3b82f6' }}>查看</Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="p-5" style={card}>
+        <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>已生成的配售新股</h2>
+        {!loading && !error && allotments.length === 0 ? (
+          <p className="mt-3 text-sm" style={{ color: 'var(--muted-foreground)' }}>还没有生成过。</p>
+        ) : null}
+        {allotments.length > 0 ? (
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr style={{ color: 'var(--muted-foreground)' }}>
+                  <th className="py-2 pr-3 font-medium">编号</th>
+                  <th className="py-2 pr-3 font-medium">公司</th>
+                  <th className="py-2 pr-3 font-medium">获配发者</th>
+                  <th className="py-2 pr-3 font-medium">股数</th>
+                  <th className="py-2 pr-3 font-medium">日期</th>
+                  <th className="py-2 font-medium"> </th>
+                </tr>
+              </thead>
+              <tbody>
+                {allotments.map(task => (
+                  <tr key={task.id} style={{ borderTop: '1px solid var(--border)' }}>
+                    <td className="py-2 pr-3 font-mono text-xs" style={{ color: 'var(--muted-foreground)' }}>{task.taskNumber}</td>
+                    <td className="py-2 pr-3">{task.company.nameZh || task.company.nameEn}</td>
+                    <td className="py-2 pr-3">{task.allotteeName}</td>
+                    <td className="py-2 pr-3">{task.numberOfShares != null ? `${task.numberOfShares} ${task.shareClass}` : '—'}</td>
+                    <td className="py-2 pr-3 whitespace-nowrap">{task.allotmentDate}</td>
                     <td className="py-2 text-right">
                       <Link href={`/admin/tasks/${task.id}`} className="text-sm" style={{ color: '#3b82f6' }}>查看</Link>
                     </td>

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db/prisma'
 
 const WORK_TASK_KINDS = new Set([
   'SHARE_TRANSFER',
+  'SHARE_ALLOTMENT',
   'COMPANY_NAME_CHANGE',
   'REGISTERED_OFFICE_ADDRESS',
   'REGISTER_LOCATION',

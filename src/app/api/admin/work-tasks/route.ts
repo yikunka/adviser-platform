@@ -4,6 +4,7 @@ import { requirePermission, requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { assertCompanyAccessible, resolveCompanyAccess } from '@/lib/company-access'
 import { createShareTransferTask } from '@/lib/work-tasks/create-share-transfer'
+import { createShareAllotmentTask } from '@/lib/work-tasks/create-share-allotment'
 import { createCompanyNameChangeTask } from '@/lib/work-tasks/create-company-name-change'
 import {
   createAccountingReferenceTask,
@@ -17,6 +18,7 @@ import {
 } from '@/lib/work-tasks/company-record-change'
 import { SHARE_TRANSFER_DOCUMENT_KEYS, SHARE_TRANSFER_DOCUMENTS } from '@/lib/work-tasks/share-transfer-docs'
 import type { ShareTransferInput } from '@/lib/work-tasks/share-transfer'
+import type { ShareAllotmentInput } from '@/lib/work-tasks/share-allotment'
 
 const nameChangeSchema = z.object({
   kind: z.literal('COMPANY_NAME_CHANGE'),
@@ -152,6 +154,42 @@ const createSchema = z.object({
   documents: z.array(z.enum(SHARE_TRANSFER_DOCUMENT_KEYS)).min(1),
 })
 
+const allotmentSchema = z.object({
+  kind: z.literal('SHARE_ALLOTMENT'),
+  companyId: z.string().cuid(),
+  companyNameEn: z.string().trim().min(1).max(300),
+  companyNameZh: z.string().trim().max(300).default(''),
+  companyNo: z.string().trim().max(40).default(''),
+  brn: z.string().trim().max(40).default(''),
+  allotmentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  allotteeName: z.string().trim().min(1).max(300),
+  allotteeNameZh: z.string().trim().max(300).default(''),
+  allotteeAddress: z.string().trim().max(500).default(''),
+  numberOfShares: z.number().int().positive().max(999_999_999),
+  shareClass: z.string().trim().min(1).max(40),
+  currency: z.string().trim().min(1).max(10).default('HKD'),
+  amountPaidPerShare: z.string().trim().min(1).max(40),
+  amountUnpaidPerShare: z.string().trim().max(40).default('0'),
+  consideration: z.string().trim().min(1).max(40),
+  paidStatus: z.enum(['Fully paid', 'Partly paid']),
+  certNo: z.string().trim().max(40).default(''),
+  directorName1: z.string().trim().min(1).max(200),
+  directorName2: z.string().trim().max(200).default(''),
+  meetingTime: z.string().trim().max(80).default(''),
+  meetingPlace: z.string().trim().max(300).default(''),
+  companySecretary: z.string().trim().max(200).default('6AM Advisory Limited'),
+  useCommonSeal: z.boolean().default(false),
+  capitalIncreaseAmount: z.string().trim().max(40).default(''),
+  issuedTotalNumber: z.string().trim().max(40).default(''),
+  issuedTotalAmount: z.string().trim().max(40).default(''),
+  issuedPaidUp: z.string().trim().max(40).default(''),
+  issuedUnpaid: z.string().trim().max(40).default('0'),
+  signatoryName: z.string().trim().min(1).max(200),
+  signatoryCapacity: z.enum(['DIRECTOR', 'COMPANY_SECRETARY']),
+  signatoryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  ...presentorSchema,
+})
+
 function nameChangeSummary(payload: unknown) {
   const record = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {}
   return {
@@ -195,6 +233,16 @@ function taskSummary(payload: unknown) {
   }
 }
 
+function allotmentSummary(payload: unknown) {
+  const record = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {}
+  return {
+    allotmentDate: typeof record.allotmentDate === 'string' ? record.allotmentDate : '',
+    allotteeName: typeof record.allotteeName === 'string' ? record.allotteeName : '',
+    numberOfShares: typeof record.numberOfShares === 'number' ? record.numberOfShares : null,
+    shareClass: typeof record.shareClass === 'string' ? record.shareClass : '',
+  }
+}
+
 async function loadWorkTaskCompany(userId: string, role: Parameters<typeof resolveCompanyAccess>[1], companyId: string) {
   const access = await resolveCompanyAccess(userId, role)
   if (!(await assertCompanyAccessible(access, companyId))) return null
@@ -210,13 +258,17 @@ export async function GET(req: NextRequest) {
 
   const kind = req.nextUrl.searchParams.get('kind')
   const recordList = kind === 'COMPANY_RECORD'
+  const listKind =
+    recordList
+      ? null
+      : kind === 'COMPANY_NAME_CHANGE'
+        ? 'COMPANY_NAME_CHANGE'
+        : kind === 'SHARE_ALLOTMENT'
+          ? 'SHARE_ALLOTMENT'
+          : 'SHARE_TRANSFER'
   const tasks = await prisma.advWorkTask.findMany({
     where: {
-      kind: recordList
-        ? { in: [...RECORD_KINDS] }
-        : kind === 'COMPANY_NAME_CHANGE'
-          ? 'COMPANY_NAME_CHANGE'
-          : 'SHARE_TRANSFER',
+      kind: recordList ? { in: [...RECORD_KINDS] } : listKind!,
     },
     orderBy: { createdAt: 'desc' },
     take: 50,
@@ -231,7 +283,6 @@ export async function GET(req: NextRequest) {
     },
   })
 
-  const nameChange = kind === 'COMPANY_NAME_CHANGE'
   return NextResponse.json({
     tasks: tasks.map(task => ({
       id: task.id,
@@ -242,9 +293,11 @@ export async function GET(req: NextRequest) {
       fileCount: task._count.files,
       ...(recordList
         ? recordSummary(task.kind, task.payload)
-        : nameChange
+        : listKind === 'COMPANY_NAME_CHANGE'
           ? nameChangeSummary(task.payload)
-          : taskSummary(task.payload)),
+          : listKind === 'SHARE_ALLOTMENT'
+            ? allotmentSummary(task.payload)
+            : taskSummary(task.payload)),
     })),
   })
 }
@@ -303,6 +356,64 @@ export async function POST(req: NextRequest) {
         extensionReason: parsed.data.change === 'EXTEND' ? parsed.data.extensionReason : '',
         memberNames: members,
       } as AccountingReferenceInput, session!.user.id)
+      return NextResponse.json({ id: task.id, taskNumber: task.taskNumber })
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : '生成文件失败。'
+      return NextResponse.json({ error: message }, { status: 500 })
+    }
+  }
+  if (body && typeof body === 'object' && (body as { kind?: string }).kind === 'SHARE_ALLOTMENT') {
+    const parsed = allotmentSchema.safeParse(body)
+    if (
+      !parsed.success
+      || !isRealIsoDate(parsed.data.allotmentDate)
+      || !isRealIsoDate(parsed.data.signatoryDate)
+    ) {
+      return NextResponse.json({ error: '请填完整配售新股资料，以及配发日期和签署人。' }, { status: 400 })
+    }
+    const company = await loadWorkTaskCompany(session!.user.id, session!.user.role, parsed.data.companyId)
+    if (!company) return NextResponse.json({ error: '找不到这家公司。' }, { status: 404 })
+    const input: ShareAllotmentInput = {
+      companyNameEn: parsed.data.companyNameEn,
+      companyNameZh: parsed.data.companyNameZh,
+      companyNo: parsed.data.companyNo,
+      brn: parsed.data.brn,
+      allotmentDate: parsed.data.allotmentDate,
+      allotteeName: parsed.data.allotteeName,
+      allotteeNameZh: parsed.data.allotteeNameZh,
+      allotteeAddress: parsed.data.allotteeAddress,
+      numberOfShares: parsed.data.numberOfShares,
+      shareClass: parsed.data.shareClass,
+      currency: parsed.data.currency,
+      amountPaidPerShare: parsed.data.amountPaidPerShare,
+      amountUnpaidPerShare: parsed.data.amountUnpaidPerShare,
+      consideration: parsed.data.consideration,
+      paidStatus: parsed.data.paidStatus,
+      certNo: parsed.data.certNo,
+      directorName1: parsed.data.directorName1,
+      directorName2: parsed.data.directorName2,
+      meetingTime: parsed.data.meetingTime,
+      meetingPlace: parsed.data.meetingPlace,
+      companySecretary: parsed.data.companySecretary,
+      useCommonSeal: parsed.data.useCommonSeal,
+      capitalIncreaseAmount: parsed.data.capitalIncreaseAmount || parsed.data.consideration,
+      issuedTotalNumber: parsed.data.issuedTotalNumber,
+      issuedTotalAmount: parsed.data.issuedTotalAmount,
+      issuedPaidUp: parsed.data.issuedPaidUp,
+      issuedUnpaid: parsed.data.issuedUnpaid,
+      signatoryName: parsed.data.signatoryName,
+      signatoryCapacity: parsed.data.signatoryCapacity,
+      signatoryDate: parsed.data.signatoryDate,
+      presentorNameZh: parsed.data.presentorNameZh,
+      presentorNameEn: parsed.data.presentorNameEn,
+      presentorAddress: parsed.data.presentorAddress,
+      presentorTel: parsed.data.presentorTel,
+      presentorFax: parsed.data.presentorFax,
+      presentorEmail: parsed.data.presentorEmail,
+      presentorReference: parsed.data.presentorReference,
+    }
+    try {
+      const task = await createShareAllotmentTask(parsed.data.companyId, input, session!.user.id)
       return NextResponse.json({ id: task.id, taskNumber: task.taskNumber })
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : '生成文件失败。'

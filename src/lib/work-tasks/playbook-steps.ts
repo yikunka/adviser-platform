@@ -1,5 +1,6 @@
 export const WORK_TASK_KINDS = [
   'SHARE_TRANSFER',
+  'SHARE_ALLOTMENT',
   'COMPANY_NAME_CHANGE',
   'REGISTERED_OFFICE_ADDRESS',
   'REGISTER_LOCATION',
@@ -25,6 +26,18 @@ export const WORK_TASK_PLAYBOOK: Record<WorkTaskKind, WorkTaskPlaybook> = {
       '把转让文书交税务局盖印。',
       '注销旧股票，发出新股票。',
       '更新成员登记册和股份转让登记册。',
+      '记下下次周年申报表附表 1。',
+    ],
+  },
+  SHARE_ALLOTMENT: {
+    card: 'B7',
+    deadline: '首次配发日起 1 个月内向公司注册处递交表格 NSC1（及附表二获配发股份者详情）。',
+    steps: [
+      '查章程有关新股发行、先买权和董事会权力。',
+      '收妥股份申请书（或认购文件）及代价。',
+      '董事会决议批准配发、更新成员登记册并发出股票。',
+      '首次配发日起 1 个月内递交表格 NSC1；金钱代价配发填第 4A 项及附表二。',
+      '更新成员登记册和股票纪录。',
       '记下下次周年申报表附表 1。',
     ],
   },

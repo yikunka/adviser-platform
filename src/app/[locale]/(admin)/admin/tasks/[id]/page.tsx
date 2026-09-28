@@ -13,6 +13,7 @@ type TaskKind = WorkTaskKind
 
 const TASK_TITLE: Record<TaskKind, string> = {
   SHARE_TRANSFER: '股份转让',
+  SHARE_ALLOTMENT: '配售新股',
   COMPANY_NAME_CHANGE: '公司/营业名称',
   REGISTERED_OFFICE_ADDRESS: '公司注册/营业地址',
   REGISTER_LOCATION: '登记册备存地点',
@@ -21,6 +22,7 @@ const TASK_TITLE: Record<TaskKind, string> = {
 
 const TASK_NOTE: Record<TaskKind, string> = {
   SHARE_TRANSFER: '下载后交税务局盖印。这项任务没有改股东纪录，也不会向公司注册处交表。',
+  SHARE_ALLOTMENT: '下载董事会会议纪录、股份申请表、新股票和表格 NSC1。NSC1 交给公司注册处。这项任务没有改股东纪录。',
   COMPANY_NAME_CHANGE: '下载特别决议和表格 NNC2 后交给公司注册处。这项任务没有改公司管理里的名称。',
   REGISTERED_OFFICE_ADDRESS: '下载表格 NR1 后交给公司注册处。这项任务没有改公司管理里的注册地址。',
   REGISTER_LOCATION: '下载董事会会议纪录和表格 NR2。NR2 交给公司注册处。这项任务没有改公司纪录的存放地点。',
@@ -35,6 +37,10 @@ const FILE_LABEL: Record<string, string> = {
   'board-minutes': '董事会会议纪录（登记册备存地点）',
   'board-minutes-ard': '成员会议纪录（会计参照日）',
   nac4: 'NAC4 更改会计参照日通知书',
+  'board-minutes-allotment': '董事会会议纪录（配售新股）',
+  certificate: '新股票',
+  application: '股份申请表',
+  nsc1: 'NSC1 股份配发申报书',
 }
 
 type Party = {
@@ -61,12 +67,15 @@ type TaskDetail = {
     companyNameZh?: string
     companyNo?: string
     transferDate?: string
+    allotmentDate?: string
+    allotteeName?: string
     numberOfShares?: number
     shareClass?: string
     consideration?: string
     transferor?: Party
     transferee?: Party
     directorName?: string
+    directorName1?: string
     newCompanyNameEn?: string
     newCompanyNameZh?: string
     changeDate?: string
@@ -178,7 +187,20 @@ export default function WorkTaskDetailPage() {
         </section>
       ) : null}
 
-      {payload && task && task.kind !== 'SHARE_TRANSFER' && task.kind !== 'COMPANY_NAME_CHANGE' ? (
+      {payload && task?.kind === 'SHARE_ALLOTMENT' ? (
+        <section className="grid gap-2 p-5 text-sm" style={card}>
+          <p>公司：{payload.companyNameZh || payload.companyNameEn || task.company.nameEn}</p>
+          <p>公司编号：{payload.companyNo || '—'}</p>
+          <p>配发日期：{payload.allotmentDate}</p>
+          <p>获配发者：{payload.allotteeName || '—'}</p>
+          <p>股份：{payload.numberOfShares} {payload.shareClass}　代价：{payload.consideration}</p>
+          <p>董事：{payload.directorName1 || '—'}</p>
+          <p>NSC1 签署：{payload.signatoryName || '—'}（{payload.signatoryCapacity === 'COMPANY_SECRETARY' ? '公司秘书' : '董事'}）{payload.signatoryDate}</p>
+          <p style={{ color: 'var(--muted-foreground)' }}>由 {task.createdBy.nameEn} 生成</p>
+        </section>
+      ) : null}
+
+      {payload && task && task.kind !== 'SHARE_TRANSFER' && task.kind !== 'SHARE_ALLOTMENT' && task.kind !== 'COMPANY_NAME_CHANGE' ? (
         <section className="grid gap-2 p-5 text-sm" style={card}>
           <p>公司：{payload.companyNameZh || payload.companyNameEn || task.company.nameEn}</p>
           <p>公司编号：{payload.companyNo || '—'}</p>
