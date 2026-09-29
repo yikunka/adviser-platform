@@ -210,18 +210,10 @@ export async function renderNd4(input: OfficerChangeInput) {
     crPdf.setText(form, 'fill_2_P.2', input.signatoryName || officerEnglishParts(input).surname || input.nameEn)
     crPdf.setText(form, 'fill_3_P.2', isoSlashDate(input.signatoryDate))
 
-    // s.3 Notice of Resignation — tick one statement
+    // s.3 Notice of Resignation — tick one statement; leave 本人／我們 unstruck
     const noticeBox =
       notice === 'GIVEN' ? 'cb_1_P.2' : notice === 'SENT_ALTERNATIVE' ? 'cb_2_P.2' : 'cb_3_P.2'
     crPdf.checkBox(form, noticeBox)
-    // 本人／我們* — strike the one that does not apply on the chosen statement
-    const iWeStrike =
-      notice === 'GIVEN'
-        ? (input.personKind === 'CORPORATE' ? 'Dropdown1_P.2' : 'Dropdown2_P.2')
-        : notice === 'SENT_ALTERNATIVE'
-          ? (input.personKind === 'CORPORATE' ? 'Dropdown3_P.2' : 'Dropdown4_P.2')
-          : (input.personKind === 'CORPORATE' ? 'Dropdown5_P.2' : 'Dropdown6_P.2')
-    crPdf.strikeDropdown(form, iWeStrike)
     // 辞职的公司秘书／董事* — strike unused capacity at signature
     crPdf.strikeDropdown(form, input.office === 'COMPANY_SECRETARY' ? 'Dropdown8_P.2' : 'Dropdown7_P.2')
   })
