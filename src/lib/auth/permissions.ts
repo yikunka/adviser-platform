@@ -1,5 +1,5 @@
 import type { Platform, UserRole } from '@prisma/client'
-import { MENU_PLATFORM } from './admin-access'
+import { MENU_PLATFORM, isAdminMenuEnabled, isAdminPlatformEnabled, ADMIN_MENU_KEYS, type AdminMenuKey } from './admin-access'
 
 // ── Permission action types ────────────────────────────────────────
 export type PermAction = 'view' | 'create' | 'edit' | 'delete' | 'import' | 'export' | 'approve' | 'complete' | 'manageSteps'
@@ -29,7 +29,7 @@ export interface PermGroup {
   pages: PagePermDef[]
 }
 
-export const PERMISSION_GROUPS: PermGroup[] = [
+const ALL_PERMISSION_GROUPS: PermGroup[] = [
   {
     group: 'Adviser',
     platform: 'ADVISER',
@@ -89,6 +89,14 @@ export const PERMISSION_GROUPS: PermGroup[] = [
     ],
   },
 ]
+
+export const PERMISSION_GROUPS: PermGroup[] = ALL_PERMISSION_GROUPS
+  .filter(group => isAdminPlatformEnabled(group.platform))
+  .map(group => ({
+    ...group,
+    pages: group.pages.filter(page => isAdminMenuEnabled(page.menuKey as AdminMenuKey)),
+  }))
+  .filter(group => group.pages.length > 0)
 
 // Flat lookup: menuKey → PagePermDef
 export const PAGE_PERM_MAP = new Map<string, PagePermDef>(
@@ -161,6 +169,8 @@ export function computeEffectivePermissions(user: UserPermissionInput): Set<stri
 
 /** Checks a single permission against the resolved set. */
 export function hasPermission(perms: Set<string> | 'all', perm: string): boolean {
+  const menuKey = (perm.includes('.') ? perm.slice(0, perm.indexOf('.')) : perm) as AdminMenuKey
+  if (ADMIN_MENU_KEYS.includes(menuKey) && !isAdminMenuEnabled(menuKey)) return false
   if (perms === 'all') return true
   return perms.has(perm)
 }

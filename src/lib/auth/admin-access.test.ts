@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { ADMIN_MENU_KEYS, MENU_PLATFORM, pathnameToAdminMenuKey } from '@/lib/auth/admin-access'
-import { isValidPermission } from '@/lib/auth/permissions'
+import { ADMIN_MENU_KEYS, MENU_PLATFORM, pathnameToAdminMenuKey, isAdminMenuEnabled, isAdminPlatformEnabled, ADMIN_PLATFORM_OPTIONS } from '@/lib/auth/admin-access'
+import { isValidPermission, hasPermission, PERMISSION_GROUPS } from '@/lib/auth/permissions'
 
 describe('Adviser contract, projects and TCSP pricing access', () => {
   it('registers new Adviser modules in Role Management permissions', () => {
@@ -54,18 +54,20 @@ describe('SFS Diamond access', () => {
 })
 
 describe('JMM Trading access', () => {
-  it('registers JMM order desk modules in Role Management permissions', () => {
+  it('keeps JMM modules mapped but disables the whole platform', () => {
     expect(ADMIN_MENU_KEYS).toContain('jmmCustomers')
     expect(ADMIN_MENU_KEYS).toContain('jmmSuppliers')
     expect(ADMIN_MENU_KEYS).toContain('jmmOrders')
     expect(MENU_PLATFORM.jmmCustomers).toBe('JMM_TRADING')
     expect(MENU_PLATFORM.jmmSuppliers).toBe('JMM_TRADING')
     expect(MENU_PLATFORM.jmmOrders).toBe('JMM_TRADING')
-    expect(isValidPermission('jmmCustomers.create')).toBe(true)
-    expect(isValidPermission('jmmSuppliers.create')).toBe(true)
-    expect(isValidPermission('jmmOrders.create')).toBe(true)
-    expect(isValidPermission('jmmOrders.edit')).toBe(true)
-    expect(isValidPermission('jmmOrders.delete')).toBe(true)
+    expect(isAdminPlatformEnabled('JMM_TRADING')).toBe(false)
+    expect(isAdminMenuEnabled('jmmOrders')).toBe(false)
+    expect(ADMIN_PLATFORM_OPTIONS.some(option => option.value === 'JMM_TRADING')).toBe(false)
+    expect(PERMISSION_GROUPS.some(group => group.platform === 'JMM_TRADING')).toBe(false)
+    expect(isValidPermission('jmmOrders.create')).toBe(false)
+    expect(hasPermission('all', 'jmmOrders')).toBe(false)
+    expect(hasPermission('all', 'jmmOrders.create')).toBe(false)
   })
 
   it('maps JMM routes to permission keys', () => {

@@ -8,7 +8,7 @@ A multi-platform back-office system operated by a licensed TCSP (Trust and Compa
 |---|---|---|---|
 | **Adviser** | `/[locale]/` | `adv_` | TCSP back-office (main platform) |
 | **SFS Diamond** | `/sfsdiamond/` | `sfs_` | Memorial diamond jewellery e-commerce |
-| **JMM Trading** | `/[locale]/admin/jmm-orders` | `jmm_` | Staff-only offline trading order desk. No public website and no customer login. |
+| **JMM Trading** | `/[locale]/admin/jmm-orders` | `jmm_` | Staff-only offline trading order desk. **Currently disabled** in this admin console (code retained; re-enable by removing `JMM_TRADING` from `DISABLED_ADMIN_PLATFORMS`). |
 
 Admin console is at `/[locale]/admin/`. Roles: `SUPER_ADMIN`, `COMPLIANCE`, `STAFF`, `CLIENT`. Staff access is further restricted by per-menu permission keys and per-platform flags.
 
@@ -337,7 +337,9 @@ Separate admin page in the SFS Diamond menu, using the same permission as SFS or
 
 ## JMM Trading
 
-Staff-only order desk for an offline trading company. There is no public JMM website and no customer login. Access is `jmmCustomers` and `jmmOrders` under platform `JMM_TRADING` (Role Management group JMM Trading; Team Management platform flag JMM Trading).
+**Status: disabled** in this admin console while the product is built elsewhere. Menus, Role Management, Team platform flags, and JMM APIs are gated off via `DISABLED_ADMIN_PLATFORMS` (`JMM_TRADING`). Code and DB tables remain.
+
+Staff-only order desk for an offline trading company. There is no public JMM website and no customer login. When re-enabled, access is `jmmCustomers` / `jmmSuppliers` / `jmmOrders` under platform `JMM_TRADING`.
 
 ### Customers (`/admin/jmm-customers`)
 - Counterparties with name, company, phone, email, address, delivery address, VAT number, and notes

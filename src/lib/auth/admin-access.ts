@@ -1,5 +1,16 @@
 import type { Platform, UserRole } from '@prisma/client'
 
+/**
+ * Platforms temporarily unavailable in this admin console.
+ * Keep code in place; flip entries here to re-enable.
+ */
+export const DISABLED_ADMIN_PLATFORMS = new Set<Platform>(['JMM_TRADING'])
+
+export function isAdminPlatformEnabled(platform: Platform | 'GLOBAL'): boolean {
+  if (platform === 'GLOBAL') return true
+  return !DISABLED_ADMIN_PLATFORMS.has(platform)
+}
+
 export const ADMIN_MENU_KEYS = [
   'dashboard',
   'companies',
@@ -66,6 +77,10 @@ export const MENU_PLATFORM: Record<AdminMenuKey, Platform | 'GLOBAL'> = {
   jmmOrders: 'JMM_TRADING',
 }
 
+export function isAdminMenuEnabled(key: AdminMenuKey): boolean {
+  return isAdminPlatformEnabled(MENU_PLATFORM[key])
+}
+
 export type AdminAccessUser = {
   role: UserRole
   adminMenuKeys: string[]
@@ -117,6 +132,7 @@ export function adminMenusAllow(
   menus: ReadonlySet<AdminMenuKey> | 'all',
   required: AdminMenuKey,
 ): boolean {
+  if (!isAdminMenuEnabled(required)) return false
   if (menus === 'all') return true
   if (menus.has(required)) return true
   // Legacy: 'financial' access grants all financial sub-page API routes
@@ -202,13 +218,17 @@ export function pathnameToAdminMenuKey(pathname: string): AdminMenuKey | null {
 }
 
 /** Labels for team management UI */
-export const ADMIN_PLATFORM_OPTIONS: { value: Platform; label: string }[] = [
+const ALL_ADMIN_PLATFORM_OPTIONS: { value: Platform; label: string }[] = [
   { value: 'ADVISER', label: '6M Advise' },
   { value: 'SFS_DIAMOND', label: 'SFS Diamond' },
   { value: 'JMM_TRADING', label: 'JMM Trading' },
 ]
 
-export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: string }[] = [
+export const ADMIN_PLATFORM_OPTIONS = ALL_ADMIN_PLATFORM_OPTIONS.filter(option =>
+  isAdminPlatformEnabled(option.value),
+)
+
+const ALL_ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: string }[] = [
   { key: 'dashboard', label: 'Dashboard', group: 'main' },
   { key: 'companies', label: 'Companies', group: 'Adviser' },
   { key: 'kyc', label: 'KYC queue', group: 'Adviser' },
@@ -239,3 +259,5 @@ export const ADMIN_MENU_OPTIONS: { key: AdminMenuKey; label: string; group: stri
   { key: 'adminTeam', label: 'Admin users & access', group: 'System' },
   { key: 'adminRoles', label: 'Role management', group: 'System' },
 ]
+
+export const ADMIN_MENU_OPTIONS = ALL_ADMIN_MENU_OPTIONS.filter(option => isAdminMenuEnabled(option.key))

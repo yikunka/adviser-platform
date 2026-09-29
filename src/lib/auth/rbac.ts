@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import type { Session } from 'next-auth'
 import type { UserRole } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
-import { adminMenusAllow, computeEffectiveAdminMenus, type AdminMenuKey } from '@/lib/auth/admin-access'
+import { adminMenusAllow, computeEffectiveAdminMenus, isAdminMenuEnabled, type AdminMenuKey } from '@/lib/auth/admin-access'
 import { computeEffectivePermissions, hasPermission } from '@/lib/auth/permissions'
 
 const ROLE_RANK: Record<UserRole, number> = {
@@ -41,6 +41,13 @@ export async function requireRole(minRole: UserRole, opts?: RequireRoleOptions):
   }
 
   if ((opts?.adminMenu || opts?.adminMenus?.length) && ROLE_RANK[session.user.role] >= ROLE_RANK.STAFF) {
+    const required = [
+      ...(opts.adminMenu ? [opts.adminMenu] : []),
+      ...(opts.adminMenus ?? []),
+    ]
+    if (!required.some(key => isAdminMenuEnabled(key))) {
+      return { session: null, error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
+    }
     if (session.user.role !== 'SUPER_ADMIN') {
       const row = await prisma.user.findUnique({
         where: { id: session.user.id },
@@ -53,10 +60,6 @@ export async function requireRole(minRole: UserRole, opts?: RequireRoleOptions):
         ...row,
         adminRolesPermissions: row.adminRoles.map(r => r.role.permissions),
       })
-      const required = [
-        ...(opts.adminMenu ? [opts.adminMenu] : []),
-        ...(opts.adminMenus ?? []),
-      ]
       const allowed = required.some(key => adminMenusAllow(menus, key))
       if (!allowed) {
         return { session: null, error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
@@ -77,6 +80,10 @@ export async function requirePermission(perm: string, minRole: UserRole = 'STAFF
     return { session: null, error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   }
   if (ROLE_RANK[session.user.role] < ROLE_RANK[minRole]) {
+    return { session: null, error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
+  }
+  // Disabled platforms stay forbidden even for SUPER_ADMIN.
+  if (!hasPermission('all', perm)) {
     return { session: null, error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
   }
   if (session.user.role === 'SUPER_ADMIN') {
