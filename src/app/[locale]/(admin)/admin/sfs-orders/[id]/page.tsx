@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { useRouter } from '@/i18n/navigation'
-import { useSession } from 'next-auth/react'
 import { ArrowLeft, CheckCircle, RotateCcw, Trash2, Upload, X, Download } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -812,8 +811,7 @@ export default function AdminSfsOrderDetailPage() {
   const params = useParams()
   const router = useRouter()
   const id = params.id as string
-  const { data: session } = useSession()
-  const canReviewAttachments = session?.user?.role === 'SUPER_ADMIN'
+  const canReviewAttachments = useAdminPermission('sfsOrders.approve')
   const canManageSteps = useAdminPermission('sfsOrders.manageSteps')
   const canDelete = useAdminPermission('sfsOrders.delete')
 

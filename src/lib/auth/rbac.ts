@@ -101,3 +101,18 @@ export async function requirePermission(perm: string, minRole: UserRole = 'STAFF
 
   return { session: session as Session, error: null }
 }
+
+/** Soft permission check (no 403). SUPER_ADMIN always true. */
+export async function sessionHasPermission(session: Session, perm: string): Promise<boolean> {
+  if (session.user.role === 'SUPER_ADMIN') return true
+  const row = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: userPermSelect,
+  })
+  if (!row) return false
+  const perms = computeEffectivePermissions({
+    ...row,
+    adminRoles: row.adminRoles.map(r => r.role),
+  })
+  return hasPermission(perms, perm)
+}

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireRole } from '@/lib/auth/rbac'
+import { requireRole, sessionHasPermission } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { uploadToR2 } from '@/lib/storage/r2'
 import { sfsStepImageRequiresApproval } from '@/lib/sfs/order-step-display'
@@ -38,6 +38,7 @@ export async function POST(
     return NextResponse.json({ error: 'recordedAt and particular are required' }, { status: 400 })
   }
 
+  const canApproveUploads = await sessionHasPermission(session, 'sfsOrders.approve')
   const attachments: {
     fileKey: string
     fileName: string
@@ -59,7 +60,7 @@ export async function POST(
     await uploadToR2(key, buf, file.type)
     const needsReview = sfsStepImageRequiresApproval(phase, key, file.type)
     const reviewStatus =
-      !needsReview || session.user.role === 'SUPER_ADMIN' ? 'APPROVED' : 'PENDING'
+      !needsReview || canApproveUploads ? 'APPROVED' : 'PENDING'
     attachments.push({
       fileKey: key,
       fileName: file.name || key.split('/').pop() || key,

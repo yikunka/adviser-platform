@@ -321,7 +321,7 @@ Separate admin page in the SFS Diamond menu, using the same permission as SFS or
 - Chemical Transformation phase defaults begin with **Package Received**, then **Package arrived production site**, Check Sample & Labeling, and the remaining NL00001 workflow steps (including a weight-capture step)
 - CVD Growth phase defaults: Gas bottle to connect with CVD machine → Diamond Seed Status → Diamond Growth in CVD Machine → Diamond Grown → Check Finished Diamond Status and Labeling (per-diamond images)
 - Completed step attachments: uploaded images display at 224×224px (4× the previous thumbnail size) for easier admin review
-- Production step images uploaded in Chemical Transformation, CVD Growth, Crafting, and Jewelry Setting require manual review (`PENDING` / `APPROVED` / `REJECTED`); staff uploads are auto-marked `PENDING` and await `SUPER_ADMIN` approval; only `APPROVED` images are visible to SFS clients and included in customer production reports; `PENDING` and `REJECTED` images are hidden from clients; approval creates a customer notification
+- Production step images uploaded in Chemical Transformation, CVD Growth, Crafting, and Jewelry Setting require manual review (`PENDING` / `APPROVED` / `REJECTED`); staff without `sfsOrders.approve` upload as `PENDING`; staff with `sfsOrders.approve` (角色管理 → 订单 → 审批) can approve/reject and their uploads are auto-marked `APPROVED`; only `APPROVED` images are visible to SFS clients and included in customer production reports; `PENDING` and `REJECTED` images are hidden from clients; approval creates a customer notification
 
 ### SFS Invoices Admin (`/admin/sfs-invoices`)
 - Invoices linked to SFS orders

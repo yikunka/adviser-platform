@@ -41,6 +41,7 @@ describe('SFS Diamond access', () => {
     expect(isValidPermission('sfsOrders.create')).toBe(true)
     expect(isValidPermission('sfsOrders.delete')).toBe(true)
     expect(isValidPermission('sfsOrders.manageSteps')).toBe(true)
+    expect(isValidPermission('sfsOrders.approve')).toBe(true)
     expect(isValidPermission('sfsFactory.edit')).toBe(true)
   })
 

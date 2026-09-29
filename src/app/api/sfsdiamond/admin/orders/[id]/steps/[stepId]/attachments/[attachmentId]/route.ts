@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireRole } from '@/lib/auth/rbac'
+import { requirePermission } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { createNotification } from '@/lib/notifications'
 
@@ -12,7 +12,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; stepId: string; attachmentId: string }> },
 ) {
-  const { session, error } = await requireRole('SUPER_ADMIN')
+  const { session, error } = await requirePermission('sfsOrders.approve')
   if (error) return error
 
   const { id, stepId, attachmentId } = await params
