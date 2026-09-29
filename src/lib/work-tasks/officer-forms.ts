@@ -144,6 +144,7 @@ function commonPlaceholders(input: OfficerChangeInput): Record<string, Placehold
   const { surname, otherNames } = officerEnglishParts(input)
   const fullEn = [surname, otherNames].filter(Boolean).join(' ') || input.nameEn
   const officeEn = officeLabel(input.office)
+  const idNo = input.idNumber || input.hkid || input.passport
   return {
     '[Company Name (English)]': input.companyNameEn,
     '[Company Name (Chinese)]': input.companyNameZh,
@@ -158,8 +159,12 @@ function commonPlaceholders(input: OfficerChangeInput): Record<string, Placehold
     '[Director Name]': fullEn,
     '[Chinese Name]': input.nameZh,
     '[Former Name / N/A]': 'N/A',
-    '[ID/Passport No.]': input.idNumber || input.hkid || input.passport,
-    '[ID No.]': input.idNumber || input.hkid || input.passport,
+    '[ID/Passport No.]': idNo,
+    '[ID No.]': idNo,
+    '[Signature ID Line]':
+      input.office === 'COMPANY_SECRETARY'
+        ? ''
+        : `(Holder of HKID / Passport No.: ${idNo})`,
     '[Nationality]': input.nationality,
     '[Residential Address]': [input.flat, input.building, input.street, input.district, input.country].filter(Boolean).join(', '),
     '[Correspondence Address / Same as above]': 'Same as above',
