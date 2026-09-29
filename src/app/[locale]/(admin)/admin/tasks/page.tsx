@@ -43,7 +43,8 @@ const RECORD_LABEL: Record<string, string> = {
 }
 
 const OFFICER_LABEL: Record<string, string> = {
-  OFFICER_RESIGNATION: '秘书及董事辞任',
+  OFFICER_RESIGNATION: '秘书及董事辞任（ND4）',
+  OFFICER_CESSATION: '秘书及董事停任（ND2A）',
   OFFICER_APPOINTMENT: '委派公司秘书及董事',
   OFFICER_PARTICULARS: '更改公司秘书及董事详情',
   AUDITOR_CHANGE: '任免核数师',
@@ -173,7 +174,10 @@ export default function WorkTasksPage() {
       <section className="p-5" style={card}>
         <h2 className="text-base font-semibold" style={{ color: 'var(--foreground)' }}>任免高级职员</h2>
         <Link href="/admin/tasks/officer-resignation" className="mt-3 block text-sm font-medium" style={{ color: '#3b82f6' }}>
-          秘书及董事辞任
+          秘书及董事辞任（ND4）
+        </Link>
+        <Link href="/admin/tasks/officer-cessation" className="mt-2 block text-sm font-medium" style={{ color: '#3b82f6' }}>
+          秘书及董事停任（ND2A）
         </Link>
         <Link href="/admin/tasks/officer-appointment" className="mt-2 block text-sm font-medium" style={{ color: '#3b82f6' }}>
           委派公司秘书及董事

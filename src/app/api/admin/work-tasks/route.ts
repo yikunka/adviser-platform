@@ -8,6 +8,7 @@ import { createShareAllotmentTask } from '@/lib/work-tasks/create-share-allotmen
 import {
   createAuditorChangeTask,
   createOfficerAppointmentTask,
+  createOfficerCessationTask,
   createOfficerParticularsTask,
   createOfficerResignationTask,
 } from '@/lib/work-tasks/create-officer-tasks'
@@ -156,6 +157,7 @@ const officerBase = {
 }
 
 const officerResignationSchema = z.object({ kind: z.literal('OFFICER_RESIGNATION'), ...officerBase })
+const officerCessationSchema = z.object({ kind: z.literal('OFFICER_CESSATION'), ...officerBase })
 const officerAppointmentSchema = z.object({ kind: z.literal('OFFICER_APPOINTMENT'), ...officerBase })
 const officerParticularsSchema = z.object({ kind: z.literal('OFFICER_PARTICULARS'), ...officerBase })
 
@@ -184,7 +186,7 @@ const auditorSchema = z.object({
 })
 
 const RECORD_KINDS = ['REGISTERED_OFFICE_ADDRESS', 'REGISTER_LOCATION', 'ACCOUNTING_REFERENCE_DATE'] as const
-const OFFICER_KINDS = ['OFFICER_RESIGNATION', 'OFFICER_APPOINTMENT', 'OFFICER_PARTICULARS', 'AUDITOR_CHANGE'] as const
+const OFFICER_KINDS = ['OFFICER_RESIGNATION', 'OFFICER_CESSATION', 'OFFICER_APPOINTMENT', 'OFFICER_PARTICULARS', 'AUDITOR_CHANGE'] as const
 
 function isRealIsoDate(iso: string) {
   const [year, month, day] = iso.split('-').map(Number)
@@ -459,11 +461,13 @@ export async function POST(req: NextRequest) {
   if (requestedKind && (OFFICER_KINDS as readonly string[]).includes(requestedKind)) {
     const schema = requestedKind === 'OFFICER_RESIGNATION'
       ? officerResignationSchema
-      : requestedKind === 'OFFICER_APPOINTMENT'
-        ? officerAppointmentSchema
-        : requestedKind === 'OFFICER_PARTICULARS'
-          ? officerParticularsSchema
-          : auditorSchema
+      : requestedKind === 'OFFICER_CESSATION'
+        ? officerCessationSchema
+        : requestedKind === 'OFFICER_APPOINTMENT'
+          ? officerAppointmentSchema
+          : requestedKind === 'OFFICER_PARTICULARS'
+            ? officerParticularsSchema
+            : auditorSchema
     const parsed = schema.safeParse(body)
     if (!parsed.success || !isRealIsoDate(parsed.data.effectiveDate) || !isRealIsoDate(parsed.data.signatoryDate)) {
       return NextResponse.json({ error: '请填完整任免资料，以及生效日期和签署人。' }, { status: 400 })
@@ -544,9 +548,11 @@ export async function POST(req: NextRequest) {
       }
       const create = parsed.data.kind === 'OFFICER_RESIGNATION'
         ? createOfficerResignationTask
-        : parsed.data.kind === 'OFFICER_APPOINTMENT'
-          ? createOfficerAppointmentTask
-          : createOfficerParticularsTask
+        : parsed.data.kind === 'OFFICER_CESSATION'
+          ? createOfficerCessationTask
+          : parsed.data.kind === 'OFFICER_APPOINTMENT'
+            ? createOfficerAppointmentTask
+            : createOfficerParticularsTask
       const task = await create(parsed.data.companyId, input, session!.user.id)
       return NextResponse.json({ id: task.id, taskNumber: task.taskNumber })
     } catch (cause) {

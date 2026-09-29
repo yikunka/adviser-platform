@@ -374,7 +374,7 @@ export async function renderNd2b(input: OfficerChangeInput) {
 }
 
 export async function renderOfficerResignationPack(input: OfficerChangeInput) {
-  const [letter, nd4, nd2a] = await Promise.all([
+  const [letter, nd4] = await Promise.all([
     renderDocx(
       'Resignation Letter - CS or Director.docx',
       'resignation-letter',
@@ -383,9 +383,22 @@ export async function renderOfficerResignationPack(input: OfficerChangeInput) {
       commonPlaceholders(input),
     ),
     renderNd4(input),
+  ])
+  return [letter, nd4]
+}
+
+export async function renderOfficerCessationPack(input: OfficerChangeInput) {
+  const [letter, nd2a] = await Promise.all([
+    renderDocx(
+      'Resignation Letter - CS or Director.docx',
+      'resignation-letter',
+      `${officeLabelZh(input.office)}辞任信`,
+      input.companyNameEn,
+      commonPlaceholders(input),
+    ),
     renderNd2aCessation(input),
   ])
-  return [letter, nd4, nd2a]
+  return [letter, nd2a]
 }
 
 export async function renderOfficerAppointmentPack(input: OfficerChangeInput) {

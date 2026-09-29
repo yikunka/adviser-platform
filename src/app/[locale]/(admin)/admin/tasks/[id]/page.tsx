@@ -18,7 +18,8 @@ const TASK_TITLE: Record<TaskKind, string> = {
   REGISTERED_OFFICE_ADDRESS: '公司注册/营业地址',
   REGISTER_LOCATION: '登记册备存地点',
   ACCOUNTING_REFERENCE_DATE: '会计参照日',
-  OFFICER_RESIGNATION: '秘书及董事辞任',
+  OFFICER_RESIGNATION: '秘书及董事辞任（ND4）',
+  OFFICER_CESSATION: '秘书及董事停任（ND2A）',
   OFFICER_APPOINTMENT: '委派公司秘书及董事',
   OFFICER_PARTICULARS: '更改公司秘书及董事详情',
   AUDITOR_CHANGE: '任免核数师',
@@ -31,7 +32,8 @@ const TASK_NOTE: Record<TaskKind, string> = {
   REGISTERED_OFFICE_ADDRESS: '下载表格 NR1 后交给公司注册处。这项任务没有改公司管理里的注册地址。',
   REGISTER_LOCATION: '下载董事会会议纪录和表格 NR2。NR2 交给公司注册处。这项任务没有改公司纪录的存放地点。',
   ACCOUNTING_REFERENCE_DATE: '下载成员会议纪录和表格 NAC4。NAC4 交给公司注册处。这项任务没有改公司的会计参照月。',
-  OFFICER_RESIGNATION: '下载辞任信、表格 ND4 和 ND2A。ND4 可由辞任人递交，ND2A 由公司在 15 日内递交。这项任务没有改董事或秘书纪录。',
+  OFFICER_RESIGNATION: '下载辞任信和表格 ND4。ND4 可由辞任人递交。这项任务没有改董事或秘书纪录。',
+  OFFICER_CESSATION: '下载辞任信和表格 ND2A。公司须在停任后 15 日内递交 ND2A。这项任务没有改董事或秘书纪录。',
   OFFICER_APPOINTMENT: '下载出任同意书、董事书面决议和表格 ND2A。ND2A 交给公司注册处。这项任务没有改董事或秘书纪录。',
   OFFICER_PARTICULARS: '下载表格 ND2B 后交给公司注册处。这项任务没有改已登记的详情。',
   AUDITOR_CHANGE: '委任下载书面决议。免任下载拟免任通知、普通决议和表格 NA1。辞任下载表格 NA2。这项任务没有改核数师纪录。',
@@ -224,7 +226,7 @@ export default function WorkTaskDetailPage() {
         </section>
       ) : null}
 
-      {payload && (task?.kind === 'OFFICER_RESIGNATION' || task?.kind === 'OFFICER_APPOINTMENT' || task?.kind === 'OFFICER_PARTICULARS' || task?.kind === 'AUDITOR_CHANGE') ? (
+      {payload && (task?.kind === 'OFFICER_RESIGNATION' || task?.kind === 'OFFICER_CESSATION' || task?.kind === 'OFFICER_APPOINTMENT' || task?.kind === 'OFFICER_PARTICULARS' || task?.kind === 'AUDITOR_CHANGE') ? (
         <section className="grid gap-2 p-5 text-sm" style={card}>
           <p>公司：{payload.companyNameZh || payload.companyNameEn || task.company.nameEn}</p>
           <p>公司编号：{payload.companyNo || '—'}</p>
@@ -245,7 +247,7 @@ export default function WorkTaskDetailPage() {
         </section>
       ) : null}
 
-      {payload && task && task.kind !== 'SHARE_TRANSFER' && task.kind !== 'SHARE_ALLOTMENT' && task.kind !== 'COMPANY_NAME_CHANGE' && task.kind !== 'OFFICER_RESIGNATION' && task.kind !== 'OFFICER_APPOINTMENT' && task.kind !== 'OFFICER_PARTICULARS' && task.kind !== 'AUDITOR_CHANGE' ? (
+      {payload && task && task.kind !== 'SHARE_TRANSFER' && task.kind !== 'SHARE_ALLOTMENT' && task.kind !== 'COMPANY_NAME_CHANGE' && task.kind !== 'OFFICER_RESIGNATION' && task.kind !== 'OFFICER_CESSATION' && task.kind !== 'OFFICER_APPOINTMENT' && task.kind !== 'OFFICER_PARTICULARS' && task.kind !== 'AUDITOR_CHANGE' ? (
         <section className="grid gap-2 p-5 text-sm" style={card}>
           <p>公司：{payload.companyNameZh || payload.companyNameEn || task.company.nameEn}</p>
           <p>公司编号：{payload.companyNo || '—'}</p>

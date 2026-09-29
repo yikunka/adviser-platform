@@ -6,6 +6,7 @@ export const WORK_TASK_KINDS = [
   'REGISTER_LOCATION',
   'ACCOUNTING_REFERENCE_DATE',
   'OFFICER_RESIGNATION',
+  'OFFICER_CESSATION',
   'OFFICER_APPOINTMENT',
   'OFFICER_PARTICULARS',
   'AUDITOR_CHANGE',
@@ -88,12 +89,21 @@ export const WORK_TASK_PLAYBOOK: Record<WorkTaskKind, WorkTaskPlaybook> = {
   },
   OFFICER_RESIGNATION: {
     card: 'B8',
-    deadline: '辞任人可递交表格 ND4。公司须在停任后 15 日内递交表格 ND2A。',
+    deadline: '辞任人可递交表格 ND4。',
+    steps: [
+      '收妥辞任信，确认生效日期。',
+      '辞任人签署表格 ND4（如由其本人申报）。',
+      '公司另须在停任后 15 日内递交表格 ND2A（用工作任务「秘书及董事停任（ND2A）」生成）。',
+      '如只余一名董事，须先委任另一名董事。私人公司的唯一董事不可同时任公司秘书。',
+    ],
+  },
+  OFFICER_CESSATION: {
+    card: 'B8',
+    deadline: '公司须在停任后 15 日内递交表格 ND2A。',
     steps: [
       '收妥辞任信，确认生效日期。',
       '更新董事或公司秘书登记册。',
-      '辞任人签署表格 ND4（如由其本人申报）。',
-      '公司在 15 日内递交表格 ND2A 申报停任。',
+      '15 日内递交表格 ND2A 申报停任。',
       '如只余一名董事，须先委任另一名董事。私人公司的唯一董事不可同时任公司秘书。',
     ],
   },

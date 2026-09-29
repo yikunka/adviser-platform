@@ -1,6 +1,7 @@
 import { storeWorkTask } from '@/lib/work-tasks/store-work-task'
 import {
   renderOfficerAppointmentPack,
+  renderOfficerCessationPack,
   renderOfficerParticularsPack,
   renderOfficerResignationPack,
   type OfficerChangeInput,
@@ -9,6 +10,10 @@ import { renderAuditorChangeDocuments, type AuditorChangeInput } from '@/lib/wor
 
 export function createOfficerResignationTask(companyId: string, input: OfficerChangeInput, userId: string) {
   return renderOfficerResignationPack(input).then(files => storeWorkTask(companyId, 'OFFICER_RESIGNATION', input, userId, files))
+}
+
+export function createOfficerCessationTask(companyId: string, input: OfficerChangeInput, userId: string) {
+  return renderOfficerCessationPack(input).then(files => storeWorkTask(companyId, 'OFFICER_CESSATION', input, userId, files))
 }
 
 export function createOfficerAppointmentTask(companyId: string, input: OfficerChangeInput, userId: string) {

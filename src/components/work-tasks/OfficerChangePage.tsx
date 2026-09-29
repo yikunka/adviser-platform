@@ -11,13 +11,18 @@ import { naturalPersonNameSurnameFirst } from '@/lib/work-tasks/person-name'
 import { WorkTaskPlaybook } from '@/components/work-tasks/WorkTaskPlaybook'
 import type { WorkTaskKind } from '@/lib/work-tasks/playbook-steps'
 
-type OfficerKind = 'OFFICER_RESIGNATION' | 'OFFICER_APPOINTMENT' | 'OFFICER_PARTICULARS'
+type OfficerKind = 'OFFICER_RESIGNATION' | 'OFFICER_CESSATION' | 'OFFICER_APPOINTMENT' | 'OFFICER_PARTICULARS'
 
 const COPY: Record<OfficerKind, { title: string; hint: string; button: string }> = {
   OFFICER_RESIGNATION: {
-    title: '秘书及董事辞任',
-    hint: '生成辞任信、表格 ND4 和公司申报停任的表格 ND2A。不会改公司管理里的董事或秘书纪录。',
-    button: '生成辞任信、ND4 和 ND2A',
+    title: '秘书及董事辞任（ND4）',
+    hint: '生成辞任信和表格 ND4（可由辞任人递交）。公司停任申报请另用「秘书及董事停任（ND2A）」。不会改公司管理里的董事或秘书纪录。',
+    button: '生成辞任信和 ND4',
+  },
+  OFFICER_CESSATION: {
+    title: '秘书及董事停任（ND2A）',
+    hint: '生成辞任信和公司申报停任的表格 ND2A（停任后 15 日内递交）。不会改公司管理里的董事或秘书纪录。',
+    button: '生成辞任信和 ND2A',
   },
   OFFICER_APPOINTMENT: {
     title: '委派公司秘书及董事',
