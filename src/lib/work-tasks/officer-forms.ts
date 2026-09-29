@@ -16,6 +16,8 @@ const PDF_MIME = 'application/pdf'
 
 export type OfficerOffice = 'DIRECTOR' | 'COMPANY_SECRETARY' | 'ALTERNATE_DIRECTOR'
 export type OfficerPersonKind = 'NATURAL' | 'CORPORATE'
+/** ND4 s.3 Notice of Resignation — which statement to tick. */
+export type Nd4ResignationNotice = 'GIVEN' | 'SENT_ALTERNATIVE' | 'NOT_REQUIRED'
 
 export type OfficerChangeInput = CrPresentor & {
   companyNameEn: string
@@ -40,6 +42,8 @@ export type OfficerChangeInput = CrPresentor & {
   district: string
   country: string
   effectiveDate: string
+  /** Required for ND4 pack; ignored by other officer packs. */
+  resignationNotice?: Nd4ResignationNotice
   signatoryName: string
   signatoryCapacity: 'DIRECTOR' | 'COMPANY_SECRETARY'
   signatoryDate: string
@@ -185,6 +189,7 @@ function commonPlaceholders(input: OfficerChangeInput): Record<string, Placehold
 export async function renderNd4(input: OfficerChangeInput) {
   const brn = crBrn(input.brn || input.companyNo)
   const { surname, otherNames } = officerEnglishParts(input)
+  const notice = input.resignationNotice ?? 'NOT_REQUIRED'
   const buffer = await renderCrPdf('ND4_Resignation_CS_Director.pdf', form => {
     crPdf.setText(form, 'fill_1_P.1', brn)
     crPdf.setText(form, 'fill_1_P.2', brn)
@@ -204,8 +209,21 @@ export async function renderNd4(input: OfficerChangeInput) {
     fillPresentor(form, input, ['fill_14_P.1', 'fill_15_P.1', 'fill_16_P.1', 'fill_17_P.1', 'fill_18_P.1', 'fill_19_P.1'])
     crPdf.setText(form, 'fill_2_P.2', input.signatoryName || officerEnglishParts(input).surname || input.nameEn)
     crPdf.setText(form, 'fill_3_P.2', isoSlashDate(input.signatoryDate))
-    if (input.office === 'COMPANY_SECRETARY') crPdf.strikeDropdown(form, 'Dropdown1_P.2')
-    else crPdf.strikeDropdown(form, 'Dropdown2_P.2')
+
+    // s.3 Notice of Resignation — tick one statement
+    const noticeBox =
+      notice === 'GIVEN' ? 'cb_1_P.2' : notice === 'SENT_ALTERNATIVE' ? 'cb_2_P.2' : 'cb_3_P.2'
+    crPdf.checkBox(form, noticeBox)
+    // 本人／我們* — strike the one that does not apply on the chosen statement
+    const iWeStrike =
+      notice === 'GIVEN'
+        ? (input.personKind === 'CORPORATE' ? 'Dropdown1_P.2' : 'Dropdown2_P.2')
+        : notice === 'SENT_ALTERNATIVE'
+          ? (input.personKind === 'CORPORATE' ? 'Dropdown3_P.2' : 'Dropdown4_P.2')
+          : (input.personKind === 'CORPORATE' ? 'Dropdown5_P.2' : 'Dropdown6_P.2')
+    crPdf.strikeDropdown(form, iWeStrike)
+    // 辞职的公司秘书／董事* — strike unused capacity at signature
+    crPdf.strikeDropdown(form, input.office === 'COMPANY_SECRETARY' ? 'Dropdown8_P.2' : 'Dropdown7_P.2')
   })
   return {
     templateKey: 'nd4',

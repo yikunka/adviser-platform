@@ -156,7 +156,11 @@ const officerBase = {
   ...presentorSchema,
 }
 
-const officerResignationSchema = z.object({ kind: z.literal('OFFICER_RESIGNATION'), ...officerBase })
+const officerResignationSchema = z.object({
+  kind: z.literal('OFFICER_RESIGNATION'),
+  ...officerBase,
+  resignationNotice: z.enum(['GIVEN', 'SENT_ALTERNATIVE', 'NOT_REQUIRED']),
+})
 const officerCessationSchema = z.object({ kind: z.literal('OFFICER_CESSATION'), ...officerBase })
 const officerAppointmentSchema = z.object({ kind: z.literal('OFFICER_APPOINTMENT'), ...officerBase })
 const officerParticularsSchema = z.object({ kind: z.literal('OFFICER_PARTICULARS'), ...officerBase })
@@ -532,6 +536,7 @@ export async function POST(req: NextRequest) {
         district: parsed.data.district,
         country: parsed.data.country,
         effectiveDate: parsed.data.effectiveDate,
+        resignationNotice: parsed.data.kind === 'OFFICER_RESIGNATION' ? parsed.data.resignationNotice : undefined,
         signatoryName: parsed.data.signatoryName,
         signatoryCapacity: parsed.data.signatoryCapacity,
         signatoryDate: parsed.data.signatoryDate,

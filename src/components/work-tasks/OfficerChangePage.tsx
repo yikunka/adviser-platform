@@ -113,6 +113,7 @@ export function OfficerChangePage({ kind }: { kind: OfficerKind }) {
   const [district, setDistrict] = useState('')
   const [country, setCountry] = useState('Hong Kong')
   const [effectiveDate, setEffectiveDate] = useState(todayIso)
+  const [resignationNotice, setResignationNotice] = useState<'GIVEN' | 'SENT_ALTERNATIVE' | 'NOT_REQUIRED'>('NOT_REQUIRED')
   const [directorName1, setDirectorName1] = useState('')
   const [directorName2, setDirectorName2] = useState('')
   const [tcspLicence, setTcspLicence] = useState('')
@@ -258,6 +259,7 @@ export function OfficerChangePage({ kind }: { kind: OfficerKind }) {
           district,
           country,
           effectiveDate,
+          ...(kind === 'OFFICER_RESIGNATION' ? { resignationNotice } : {}),
           signatoryName,
           signatoryCapacity,
           signatoryDate,
@@ -330,6 +332,21 @@ export function OfficerChangePage({ kind }: { kind: OfficerKind }) {
           <span className={label} style={{ color: 'var(--muted-foreground)' }}>生效日期</span>
           <input type="date" className={inputClass} style={inputStyle()} value={effectiveDate} onChange={event => setEffectiveDate(event.target.value)} />
         </label>
+        {kind === 'OFFICER_RESIGNATION' ? (
+          <label className="text-sm sm:col-span-2">
+            <span className={label} style={{ color: 'var(--muted-foreground)' }}>ND4 第3项 辞职通知 Notice of Resignation</span>
+            <select
+              className={inputClass}
+              style={inputStyle()}
+              value={resignationNotice}
+              onChange={event => setResignationNotice(event.target.value as 'GIVEN' | 'SENT_ALTERNATIVE' | 'NOT_REQUIRED')}
+            >
+              <option value="GIVEN">须发通知，并已按规定发出</option>
+              <option value="SENT_ALTERNATIVE">须发通知，但未按规定发出（已送交／电邮／留在注册办事处）</option>
+              <option value="NOT_REQUIRED">无须向公司发出辞职通知</option>
+            </select>
+          </label>
+        ) : null}
         {kind === 'OFFICER_APPOINTMENT' ? (
           <button type="button" className="text-left text-sm self-end pb-2" style={{ color: '#3b82f6' }} onClick={applySixAmSecretary}>
             填入 6AM Advisory Limited 为公司秘书
