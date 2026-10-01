@@ -54,6 +54,13 @@ export type SfsPricedLine = {
   unitPriceGross: number
   /** After allocating diamond-portion discount. */
   unitPrice: number
+  /** Component breakdown (frozen into order pricing snapshots). */
+  caratBase: number
+  sourceAdj: number
+  colorAdj: number
+  shapeAdj: number
+  designPrice: number
+  metalPct: number
 }
 
 export type SfsPricingResult = {
@@ -143,12 +150,12 @@ export function computeSfsOrderPricing(input: ComputeSfsOrderPricingInput): SfsP
     return 0
   }
 
-  const jewelleryPart = (diamond: SfsPricingDiamond): number => {
+  const jewelleryPart = (diamond: SfsPricingDiamond): { designPrice: number; metalPct: number; jewellery: number } => {
     const design = designPrice(diamond)
     // No design / Diamond only → metal contributes 0
-    if (design <= 0) return 0
+    if (design <= 0) return { designPrice: 0, metalPct: 0, jewellery: 0 }
     const metalPct = priced('METAL', diamond.metal, specOptions.metals)
-    return round2(design * (1 + metalPct / 100))
+    return { designPrice: design, metalPct, jewellery: round2(design * (1 + metalPct / 100)) }
   }
 
   const count = diamonds.length
@@ -160,8 +167,18 @@ export function computeSfsOrderPricing(input: ComputeSfsOrderPricingInput): SfsP
     const shapeAdj = priced('SHAPE', diamond.shape, specOptions.shapes)
     const diamondPart = round2(caratBase + sourceAdj + colorAdj + shapeAdj)
     const jewellery = jewelleryPart(diamond)
-    const unitPriceGross = round2(diamondPart + jewellery)
-    return { diamondPart, jewelleryPart: jewellery, unitPriceGross }
+    const unitPriceGross = round2(diamondPart + jewellery.jewellery)
+    return {
+      caratBase,
+      sourceAdj,
+      colorAdj,
+      shapeAdj,
+      diamondPart,
+      designPrice: jewellery.designPrice,
+      metalPct: jewellery.metalPct,
+      jewelleryPart: jewellery.jewellery,
+      unitPriceGross,
+    }
   })
 
   const diamondGross = round2(grossLines.reduce((sum, line) => sum + line.diamondPart, 0))
@@ -182,6 +199,12 @@ export function computeSfsOrderPricing(input: ComputeSfsOrderPricingInput): SfsP
       jewelleryPart: line.jewelleryPart,
       unitPriceGross: line.unitPriceGross,
       unitPrice: round2(discountedDiamond + line.jewelleryPart),
+      caratBase: line.caratBase,
+      sourceAdj: line.sourceAdj,
+      colorAdj: line.colorAdj,
+      shapeAdj: line.shapeAdj,
+      designPrice: line.designPrice,
+      metalPct: line.metalPct,
     }
   })
 

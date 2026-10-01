@@ -9,19 +9,34 @@ import {
   type SfsPricingResult,
 } from '@/lib/sfs/pricing'
 
+/** Per-diamond line frozen at order submit / partner edit. */
+export type SfsOrderPricingSnapshotLine = {
+  carat?: string | null
+  shape?: string | null
+  type?: string | null
+  design?: string | null
+  metal?: string | null
+  diamondPart: number
+  jewelleryPart: number
+  unitPriceGross: number
+  unitPrice: number
+  customJewellery: boolean
+  /** Present on snapshots captured after breakdown support was added. */
+  caratBase?: number
+  sourceAdj?: number
+  colorAdj?: number
+  shapeAdj?: number
+  designPrice?: number
+  metalPct?: number
+}
+
 /** Frozen catalog estimate at order submit / partner edit — matches what the client saw. */
 export type SfsOrderPricingSnapshot = {
   currency: 'HKD'
   capturedAt: string
   personalized: boolean
   hasCustomJewellery: boolean
-  lines: Array<{
-    diamondPart: number
-    jewelleryPart: number
-    unitPriceGross: number
-    unitPrice: number
-    customJewellery: boolean
-  }>
+  lines: SfsOrderPricingSnapshotLine[]
   diamondGross: number
   diamondNet: number
   jewelleryTotal: number
@@ -47,13 +62,27 @@ function toSnapshot(
     capturedAt: new Date().toISOString(),
     personalized,
     hasCustomJewellery: diamonds.some(d => isSfsCustomDesign(d.design)),
-    lines: result.lines.map((line, index) => ({
-      diamondPart: line.diamondPart,
-      jewelleryPart: line.jewelleryPart,
-      unitPriceGross: line.unitPriceGross,
-      unitPrice: line.unitPrice,
-      customJewellery: isSfsCustomDesign(diamonds[index]?.design),
-    })),
+    lines: result.lines.map((line, index) => {
+      const diamond = diamonds[index]
+      return {
+        carat: diamond?.carat ?? null,
+        shape: diamond?.shape ?? null,
+        type: diamond?.type ?? null,
+        design: diamond?.design ?? null,
+        metal: diamond?.metal ?? null,
+        diamondPart: line.diamondPart,
+        jewelleryPart: line.jewelleryPart,
+        unitPriceGross: line.unitPriceGross,
+        unitPrice: line.unitPrice,
+        customJewellery: isSfsCustomDesign(diamond?.design),
+        caratBase: line.caratBase,
+        sourceAdj: line.sourceAdj,
+        colorAdj: line.colorAdj,
+        shapeAdj: line.shapeAdj,
+        designPrice: line.designPrice,
+        metalPct: line.metalPct,
+      }
+    }),
     diamondGross: result.diamondGross,
     diamondNet: result.diamondNet,
     jewelleryTotal: result.jewelleryTotal,
@@ -101,10 +130,19 @@ export async function captureSfsOrderPricingSnapshot(
   return toSnapshot(result, input.diamonds, personalized || usingCustomerTiers)
 }
 
+function isSnapshotLine(value: unknown): value is SfsOrderPricingSnapshotLine {
+  if (!value || typeof value !== 'object') return false
+  const line = value as Record<string, unknown>
+  return typeof line.diamondPart === 'number'
+    && typeof line.jewelleryPart === 'number'
+    && typeof line.unitPrice === 'number'
+}
+
 export function parseSfsOrderPricingSnapshot(value: unknown): SfsOrderPricingSnapshot | null {
   if (!value || typeof value !== 'object') return null
   const record = value as Record<string, unknown>
   if (typeof record.subtotal !== 'number' || !Array.isArray(record.lines)) return null
+  if (!record.lines.every(isSnapshotLine)) return null
   return value as SfsOrderPricingSnapshot
 }
 

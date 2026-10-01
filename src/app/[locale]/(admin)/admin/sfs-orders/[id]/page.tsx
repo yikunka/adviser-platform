@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { useRouter } from '@/i18n/navigation'
-import { ArrowLeft, CheckCircle, RotateCcw, Trash2, Upload, X, Download } from 'lucide-react'
+import { ArrowLeft, CheckCircle, ChevronDown, ChevronUp, RotateCcw, Trash2, Upload, X, Download } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import DiamondCards from '@/app/sfsdiamond/components/DiamondCards'
@@ -95,6 +95,24 @@ type Order = {
     capturedAt: string
     personalized: boolean
     hasCustomJewellery: boolean
+    lines: Array<{
+      carat?: string | null
+      shape?: string | null
+      type?: string | null
+      design?: string | null
+      metal?: string | null
+      diamondPart: number
+      jewelleryPart: number
+      unitPriceGross: number
+      unitPrice: number
+      customJewellery: boolean
+      caratBase?: number
+      sourceAdj?: number
+      colorAdj?: number
+      shapeAdj?: number
+      designPrice?: number
+      metalPct?: number
+    }>
     diamondGross: number
     diamondNet: number
     jewelleryTotal: number
@@ -160,6 +178,36 @@ function fileName(key: string) {
 
 function formatHkd(amount: number) {
   return `HK$${amount.toLocaleString('en-HK', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+}
+
+function formatSignedHkd(amount: number) {
+  if (amount === 0) return formatHkd(0)
+  const abs = formatHkd(Math.abs(amount))
+  return amount > 0 ? `+${abs}` : `−${abs}`
+}
+
+function roundMoney(amount: number) {
+  return Math.round((amount + Number.EPSILON) * 100) / 100
+}
+
+function pricingLineLabel(
+  line: NonNullable<Order['pricingEstimate']>['lines'][number],
+  diamond: DiamondItem | undefined,
+  index: number,
+) {
+  const carat = line.carat ?? diamond?.carat
+  const shape = line.shape ?? diamond?.shape
+  const type = line.type ?? diamond?.type
+  const design = line.design ?? diamond?.design
+  const metal = line.metal ?? diamond?.metal
+  const bits = [
+    carat ? `${carat} ct` : null,
+    shape || null,
+    type || null,
+    design || null,
+    metal || null,
+  ].filter(Boolean)
+  return bits.length ? `Diamond #${index + 1} · ${bits.join(' · ')}` : `Diamond #${index + 1}`
 }
 
 function diamondLabel(diamond: DiamondItem, index: number) {
@@ -839,6 +887,7 @@ export default function AdminSfsOrderDetailPage() {
   const [saveError, setSaveError] = useState('')
   const [loadError, setLoadError] = useState('')
   const [form, setForm] = useState<Record<string, string>>({})
+  const [pricingExpanded, setPricingExpanded] = useState(false)
 
   // keepForm=true when called from a step refresh — preserves unsaved edits to
   // status/notes/remark while still updating the order's step list.
@@ -1135,6 +1184,7 @@ export default function AdminSfsOrderDetailPage() {
               {formatHkd(order.pricingEstimate.subtotal)}
             </p>
           </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
             <div className="flex justify-between gap-3">
               <span style={{ color: 'var(--muted-foreground)' }}>Diamond portion</span>
@@ -1169,6 +1219,138 @@ export default function AdminSfsOrderDetailPage() {
               </div>
             )}
           </div>
+
+          {order.pricingEstimate.lines.length > 0 && (
+            <div className="pt-1" style={{ borderTop: '1px solid var(--border)' }}>
+              <button
+                type="button"
+                onClick={() => setPricingExpanded(v => !v)}
+                className="flex items-center gap-1.5 text-xs font-medium mt-2 transition-opacity hover:opacity-80"
+                style={{ color: '#C9A96E' }}
+              >
+                {pricingExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                {pricingExpanded ? 'Hide diamond breakdown' : 'Show diamond breakdown'}
+              </button>
+
+              {pricingExpanded && (
+                <div className="mt-3 space-y-3">
+                  {order.pricingEstimate.lines.map((line, index) => {
+                    const diamond = diamonds[index]
+                    const hasBreakdown = line.caratBase != null
+                    return (
+                      <div
+                        key={index}
+                        className="rounded-lg p-3 space-y-2"
+                        style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
+                            {pricingLineLabel(line, diamond, index)}
+                          </p>
+                          <p className="text-sm font-semibold tabular-nums shrink-0" style={{ color: 'var(--foreground)' }}>
+                            {line.customJewellery
+                              ? `${formatHkd(line.unitPrice)} + jewellery quote`
+                              : formatHkd(line.unitPrice)}
+                          </p>
+                        </div>
+
+                        <div className="space-y-1 text-xs">
+                          {hasBreakdown ? (
+                            <>
+                              <p className="font-medium" style={{ color: 'var(--muted-foreground)' }}>Diamond</p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5 pl-1">
+                                <div className="flex justify-between gap-2">
+                                  <span style={{ color: 'var(--muted-foreground)' }}>
+                                    Carat{line.carat ? ` (${line.carat} ct)` : ''}
+                                  </span>
+                                  <span className="tabular-nums">{formatHkd(line.caratBase ?? 0)}</span>
+                                </div>
+                                {(line.sourceAdj ?? 0) !== 0 && (
+                                  <div className="flex justify-between gap-2">
+                                    <span style={{ color: 'var(--muted-foreground)' }}>
+                                      Source{order.sourceType ? ` (${order.sourceType})` : ''}
+                                    </span>
+                                    <span className="tabular-nums">{formatSignedHkd(line.sourceAdj ?? 0)}</span>
+                                  </div>
+                                )}
+                                {(line.colorAdj ?? 0) !== 0 && (
+                                  <div className="flex justify-between gap-2">
+                                    <span style={{ color: 'var(--muted-foreground)' }}>
+                                      Color{order.color ? ` (${order.color})` : ''}
+                                    </span>
+                                    <span className="tabular-nums">{formatSignedHkd(line.colorAdj ?? 0)}</span>
+                                  </div>
+                                )}
+                                {(line.shapeAdj ?? 0) !== 0 && (
+                                  <div className="flex justify-between gap-2">
+                                    <span style={{ color: 'var(--muted-foreground)' }}>
+                                      Shape{line.shape ? ` (${line.shape})` : ''}
+                                    </span>
+                                    <span className="tabular-nums">{formatSignedHkd(line.shapeAdj ?? 0)}</span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between gap-2 sm:col-span-2 font-medium">
+                                  <span style={{ color: 'var(--muted-foreground)' }}>Diamond subtotal</span>
+                                  <span className="tabular-nums">{formatHkd(line.diamondPart)}</span>
+                                </div>
+                              </div>
+
+                              <p className="font-medium pt-1" style={{ color: 'var(--muted-foreground)' }}>Jewellery</p>
+                              {line.customJewellery ? (
+                                <p className="pl-1" style={{ color: 'var(--muted-foreground)' }}>
+                                  Custom design — pending staff quotation
+                                </p>
+                              ) : (line.designPrice ?? 0) > 0 ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5 pl-1">
+                                  <div className="flex justify-between gap-2">
+                                    <span style={{ color: 'var(--muted-foreground)' }}>
+                                      Design{line.design ? ` (${line.design})` : ''}
+                                    </span>
+                                    <span className="tabular-nums">{formatHkd(line.designPrice ?? 0)}</span>
+                                  </div>
+                                  {(line.metalPct ?? 0) !== 0 && (
+                                    <div className="flex justify-between gap-2">
+                                      <span style={{ color: 'var(--muted-foreground)' }}>
+                                        Metal{line.metal ? ` (${line.metal})` : ''} (+{line.metalPct}%)
+                                      </span>
+                                      <span className="tabular-nums">
+                                        {formatHkd(roundMoney((line.designPrice ?? 0) * ((line.metalPct ?? 0) / 100)))}
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div className="flex justify-between gap-2 sm:col-span-2 font-medium">
+                                    <span style={{ color: 'var(--muted-foreground)' }}>Jewellery subtotal</span>
+                                    <span className="tabular-nums">{formatHkd(line.jewelleryPart)}</span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="pl-1" style={{ color: 'var(--muted-foreground)' }}>
+                                  No jewellery / diamond only
+                                </p>
+                              )}
+                            </>
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5 pl-1">
+                              <div className="flex justify-between gap-2">
+                                <span style={{ color: 'var(--muted-foreground)' }}>Diamond</span>
+                                <span className="tabular-nums">{formatHkd(line.diamondPart)}</span>
+                              </div>
+                              <div className="flex justify-between gap-2">
+                                <span style={{ color: 'var(--muted-foreground)' }}>Jewellery</span>
+                                <span className="tabular-nums">
+                                  {line.customJewellery ? 'Pending quote' : formatHkd(line.jewelleryPart)}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
