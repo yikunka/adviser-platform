@@ -50,6 +50,8 @@ type Order = {
   status: string
   createdAt: string
   diamonds: { carat?: string; design?: string }[]
+  quotedAmount?: number | null
+  estimatedSubtotal?: number | null
   _count: { steps: number }
 }
 
@@ -210,7 +212,7 @@ export default function AdminSfsOrdersPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr>
-                  {['Sample Code', 'Memorial', 'Client', 'Source', 'Color', 'Diamonds', 'Steps', 'Status', 'Date', ''].map(h => (
+                  {['Sample Code', 'Memorial', 'Client', 'Source', 'Color', 'Diamonds', 'Est. / Quoted', 'Steps', 'Status', 'Date', ''].map(h => (
                     <th key={h} style={th}>{h}</th>
                   ))}
                 </tr>
@@ -252,6 +254,20 @@ export default function AdminSfsOrdersPage() {
                           : <span style={{ color: 'var(--muted-foreground)' }}>—</span>}
                       </td>
                       <td style={{ ...td, textAlign: 'center' }}>{order.diamonds.length}</td>
+                      <td style={td}>
+                        {order.estimatedSubtotal != null ? (
+                          <div className="tabular-nums" style={{ color: 'var(--foreground)' }}>
+                            Est. HK${order.estimatedSubtotal.toLocaleString('en-HK', { maximumFractionDigits: 0 })}
+                          </div>
+                        ) : (
+                          <div style={{ color: 'var(--muted-foreground)' }}>—</div>
+                        )}
+                        {order.quotedAmount != null && (
+                          <div className="text-xs tabular-nums mt-0.5" style={{ color: '#C9A96E' }}>
+                            Quoted HK${Number(order.quotedAmount).toLocaleString('en-HK', { maximumFractionDigits: 0 })}
+                          </div>
+                        )}
+                      </td>
                       <td style={{ ...td, textAlign: 'center' }}>{order._count.steps}</td>
                       <td style={td}>
                         <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: s.bg, color: s.color }}>

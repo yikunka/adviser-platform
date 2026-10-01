@@ -10,6 +10,7 @@ import {
 import { deleteSfsDesignFile } from '@/lib/storage/r2'
 import { claimPendingDesignUploads, hashSfsDesignDraftToken, SFS_DESIGN_DRAFT_COOKIE } from '@/lib/sfs/pending-design-uploads'
 import { getSfsAccountAccess, sfsApprovalForbiddenResponse } from '@/lib/sfs/account-approval'
+import { captureSfsOrderPricingSnapshot } from '@/lib/sfs/order-pricing-snapshot'
 
 const EDITABLE_STATUSES = ['PENDING', 'QUOTED', 'CANCELLED'] as const
 
@@ -103,6 +104,13 @@ export async function PATCH(
     const orphanedKeys = previousKeys.filter(key => !nextKeys.has(key))
     await tx.sfsOrderDesignAttachment.deleteMany({ where: { orderId: id } })
 
+    const pricingSnapshot = await captureSfsOrderPricingSnapshot({
+      diamonds,
+      sourceType,
+      color,
+      customerId: order.customerId,
+    })
+
     const next = await tx.sfsOrder.update({
       where: { id },
       data: {
@@ -120,6 +128,7 @@ export async function PATCH(
         mailTrackingCode: mailTrackingCode?.trim() || null,
         color,
         diamonds,
+        pricingSnapshot,
         ...(order.status === 'CANCELLED' && { status: 'PENDING' }),
         // Re-edit clears staff quote until they re-quote
         quotedAmount: null,

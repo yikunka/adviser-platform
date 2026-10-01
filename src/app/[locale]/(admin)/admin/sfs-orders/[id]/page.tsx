@@ -90,6 +90,18 @@ type Order = {
   quotedAmount?: number | null
   quotedAt?: string | null
   quoteNotes?: string | null
+  pricingEstimate?: {
+    currency: 'HKD'
+    capturedAt: string
+    personalized: boolean
+    hasCustomJewellery: boolean
+    diamondGross: number
+    diamondNet: number
+    jewelleryTotal: number
+    discountPct: number
+    discountAmount: number
+    subtotal: number
+  } | null
   adminNotes?: string | null
   customerRemark?: string | null
   customerInternalOrderCode?: string | null
@@ -144,6 +156,10 @@ function fileUrl(key: string) {
 
 function fileName(key: string) {
   return key.split('/').pop() ?? key
+}
+
+function formatHkd(amount: number) {
+  return `HK$${amount.toLocaleString('en-HK', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
 }
 
 function diamondLabel(diamond: DiamondItem, index: number) {
@@ -1098,6 +1114,63 @@ export default function AdminSfsOrderDetailPage() {
           />
         </div>
       </div>
+
+      {/* ── Catalog estimate (what the client saw) ── */}
+      {order.pricingEstimate && (
+        <div className="rounded-xl p-5 space-y-3" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#C9A96E' }}>
+                Estimated pricing
+              </h2>
+              <p className="text-[11px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
+                Catalog estimate frozen at submit
+                {order.pricingEstimate.personalized ? ' · personalised rates' : ''}
+                {order.pricingEstimate.hasCustomJewellery
+                  ? ' · custom jewellery excluded (staff quote)'
+                  : ''}
+              </p>
+            </div>
+            <p className="text-lg font-semibold tabular-nums" style={{ color: 'var(--foreground)' }}>
+              {formatHkd(order.pricingEstimate.subtotal)}
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+            <div className="flex justify-between gap-3">
+              <span style={{ color: 'var(--muted-foreground)' }}>Diamond portion</span>
+              <span className="tabular-nums" style={{ color: 'var(--foreground)' }}>
+                {formatHkd(order.pricingEstimate.diamondGross)}
+              </span>
+            </div>
+            {order.pricingEstimate.discountPct > 0 && (
+              <div className="flex justify-between gap-3">
+                <span style={{ color: 'var(--muted-foreground)' }}>
+                  Multi-diamond discount (−{order.pricingEstimate.discountPct}%)
+                </span>
+                <span className="tabular-nums" style={{ color: 'var(--foreground)' }}>
+                  −HK${order.pricingEstimate.discountAmount.toLocaleString('en-HK', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            )}
+            {order.pricingEstimate.jewelleryTotal > 0 && (
+              <div className="flex justify-between gap-3">
+                <span style={{ color: 'var(--muted-foreground)' }}>Jewellery</span>
+                <span className="tabular-nums" style={{ color: 'var(--foreground)' }}>
+                  {formatHkd(order.pricingEstimate.jewelleryTotal)}
+                </span>
+              </div>
+            )}
+            {order.quotedAmount != null && (
+              <div className="flex justify-between gap-3 sm:col-span-2 pt-1" style={{ borderTop: '1px solid var(--border)' }}>
+                <span style={{ color: 'var(--muted-foreground)' }}>Staff quoted amount</span>
+                <span className="tabular-nums font-medium" style={{ color: '#C9A96E' }}>
+                  {formatHkd(order.quotedAmount)}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {hasCustomDesign && (
         <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>

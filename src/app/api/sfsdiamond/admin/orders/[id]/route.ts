@@ -5,6 +5,8 @@ import { logAudit } from '@/lib/audit/logger'
 import { deleteFromR2, deleteSfsDesignFile } from '@/lib/storage/r2'
 import { z } from 'zod'
 import { resolveOrderStepPlan } from '@/lib/sfs/order-step-plan'
+import { resolveSfsOrderPricingEstimate } from '@/lib/sfs/order-pricing-snapshot'
+import type { SfsPricingDiamond } from '@/lib/sfs/pricing'
 
 const updateSchema = z.object({
   status:               z.enum(['PENDING', 'QUOTED', 'CONFIRMED', 'COMPLETED', 'CANCELLED']).optional(),
@@ -57,6 +59,14 @@ export async function GET(
 
   if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const { invoices, ...rest } = order
+  const diamonds = Array.isArray(order.diamonds) ? (order.diamonds as SfsPricingDiamond[]) : []
+  const pricingEstimate = await resolveSfsOrderPricingEstimate({
+    pricingSnapshot: order.pricingSnapshot,
+    diamonds,
+    sourceType: order.sourceType,
+    color: order.color,
+    customerId: order.customerId,
+  })
   return NextResponse.json({
     ...rest,
     designAttachments: order.designAttachments.map(attachment => ({
@@ -69,6 +79,7 @@ export async function GET(
       uploadedAt: attachment.uploadedAt,
     })),
     quotedAmount: order.quotedAmount == null ? null : Number(order.quotedAmount),
+    pricingEstimate,
     invoices: invoices.map(invoice => ({
       id: invoice.id,
       invoiceNumber: invoice.invoiceNumber,

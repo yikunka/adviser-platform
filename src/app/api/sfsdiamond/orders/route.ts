@@ -9,6 +9,7 @@ import {
 } from '@/lib/sfs/order-input'
 import { claimPendingDesignUploads, hashSfsDesignDraftToken, SFS_DESIGN_DRAFT_COOKIE } from '@/lib/sfs/pending-design-uploads'
 import { getSfsAccountAccess, sfsApprovalForbiddenResponse } from '@/lib/sfs/account-approval'
+import { captureSfsOrderPricingSnapshot } from '@/lib/sfs/order-pricing-snapshot'
 
 // Generate next sequential sample code: SFSB000001, SFSB000002, …
 async function generateSampleCode(): Promise<string> {
@@ -109,6 +110,13 @@ export async function POST(req: NextRequest) {
           },
         })
 
+    const pricingSnapshot = await captureSfsOrderPricingSnapshot({
+      diamonds,
+      sourceType,
+      color,
+      customerId: customer.id,
+    })
+
     const created = await tx.sfsOrder.create({
       data: {
         memorialName,
@@ -127,6 +135,7 @@ export async function POST(req: NextRequest) {
         date: new Date().toISOString().slice(0, 10),
         sampleCode,
         diamonds,
+        pricingSnapshot,
         userId: linkedUser?.id ?? null,
         customerId: customer.id,
         designAttachments: attachmentRows.length

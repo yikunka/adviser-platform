@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import type { SfsOrderStatus } from '@prisma/client'
+import { parseSfsOrderPricingSnapshot } from '@/lib/sfs/order-pricing-snapshot'
 
 const PAGE_SIZE = 10
 
@@ -49,5 +50,17 @@ export async function GET(req: NextRequest) {
     prisma.sfsOrder.count({ where }),
   ])
 
-  return NextResponse.json({ orders, total, page, pageSize: PAGE_SIZE })
+  return NextResponse.json({
+    orders: orders.map(order => {
+      const snapshot = parseSfsOrderPricingSnapshot(order.pricingSnapshot)
+      return {
+        ...order,
+        quotedAmount: order.quotedAmount == null ? null : Number(order.quotedAmount),
+        estimatedSubtotal: snapshot?.subtotal ?? null,
+      }
+    }),
+    total,
+    page,
+    pageSize: PAGE_SIZE,
+  })
 }

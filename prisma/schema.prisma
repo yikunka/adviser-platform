@@ -1572,6 +1572,10 @@ model SfsOrder {
   quotedAt     DateTime?
   quoteNotes   String?
 
+  /// Catalog estimate at partner submit/edit (matches client-visible pricing).
+  /// Shape: SfsOrderPricingSnapshot in src/lib/sfs/order-pricing-snapshot.ts
+  pricingSnapshot Json?
+
   // Customer-entered internal reference (editable by the client at any time)
   customerInternalOrderCode String?
 
