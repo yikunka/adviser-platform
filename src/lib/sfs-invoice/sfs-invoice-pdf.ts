@@ -448,20 +448,10 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
     y -= rowH
   })
 
-  // ── Totals ───────────────────────────────────────────────────────────────
+  // ── Total ────────────────────────────────────────────────────────────────
   y -= 8
-  ensureSpace(56)
+  ensureSpace(40)
   const totalLabelX = colUnit.right - 80
-
-  page.drawText('Subtotal', {
-    x: totalLabelX,
-    y,
-    size: 10,
-    font: body,
-    color: WARM_GREY,
-  })
-  drawRight(fmtMoney(invoice.subtotal, invoice.currency), colAmt.right, y, 10, body, WARM_GREY)
-  y -= 14
 
   drawGoldRule(y, totalLabelX - 10, W - MR)
   y -= 18

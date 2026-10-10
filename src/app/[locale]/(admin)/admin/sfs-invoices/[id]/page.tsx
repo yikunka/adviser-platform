@@ -417,7 +417,6 @@ export default function SfsInvoiceDetailPage() {
                 </div>
               ))}
               <div className="pt-4 border-t text-sm space-y-1" style={{ borderColor: 'var(--border-subtle)' }}>
-                <div className="flex justify-between"><span>{t('subtotal')}</span><span>{invoice.currency} {totals.subtotal.toFixed(2)}</span></div>
                 <div className="flex justify-between font-semibold"><span>{t('total')}</span><span>{invoice.currency} {totals.total.toFixed(2)}</span></div>
               </div>
             </>
@@ -448,7 +447,6 @@ export default function SfsInvoiceDetailPage() {
                 </tbody>
               </table>
               <div className="px-4 py-4 text-sm space-y-1 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
-                <div className="flex justify-between"><span>{t('subtotal')}</span><span>{invoice.currency} {Number(invoice.subtotal).toFixed(2)}</span></div>
                 <div className="flex justify-between font-semibold text-base">
                   <span>{t('total')}</span>
                   <span>{invoice.currency} {Number(invoice.total).toFixed(2)}</span>

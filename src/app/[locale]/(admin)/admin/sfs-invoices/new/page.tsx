@@ -293,8 +293,6 @@ export default function NewSfsInvoicePage() {
             </div>
           ))}
           <div className="pt-4 border-t text-sm space-y-1" style={{ borderColor: 'var(--border-subtle)' }}>
-            <div className="flex justify-between"><span>{t('subtotal')}</span><span>HKD {totals.subtotal.toFixed(2)}</span></div>
-            <div className="flex justify-between"><span>{t('tax')}</span><span>HKD {totals.taxAmount.toFixed(2)}</span></div>
             <div className="flex justify-between font-semibold"><span>{t('total')}</span><span>HKD {totals.total.toFixed(2)}</span></div>
           </div>
         </CardContent>
