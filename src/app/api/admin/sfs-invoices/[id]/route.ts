@@ -70,6 +70,23 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
   }
 
+  const contentKeys = [
+    'issueDate',
+    'dueDate',
+    'currency',
+    'taxRate',
+    'billToName',
+    'billToAddress',
+    'billToEmail',
+    'billToPhone',
+    'notes',
+    'lineItems',
+  ] as const
+  const wantsContentEdit = contentKeys.some(key => parsed.data[key] !== undefined)
+  if (wantsContentEdit && before.status !== 'DRAFT') {
+    return NextResponse.json({ error: 'Only draft invoices can be edited' }, { status: 400 })
+  }
+
   const taxRate = parsed.data.taxRate ?? Number(before.taxRate.toString())
   let subtotal = Number(before.subtotal.toString())
   let taxAmount = Number(before.taxAmount.toString())

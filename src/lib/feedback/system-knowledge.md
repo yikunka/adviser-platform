@@ -328,7 +328,7 @@ Separate admin page in the SFS Diamond menu, using the same permission as SFS or
 - Invoices linked to SFS orders
 - Statuses: `DRAFT` → `SENT` → `PAID` / `CANCELLED`
 - Auto-generated invoice numbers: 8-digit pure numeric format `YY######` (e.g. `26000001`, `26000002`), sequential within each calendar year; shown in the list table column and in the page header (top-right) on new and detail pages
-- Create from order; edit DRAFT; generate and download PDF
+- Create from order; **DRAFT invoices are fully editable** on the detail page (bill-to, issue date, notes, line items add/remove/edit); Save changes keeps DRAFT, Mark as sent / Save & mark sent persist edits then set `SENT`; DRAFT can also be deleted; non-DRAFT invoices are read-only except status transitions; generate and download PDF
 - When creating an invoice from an order, each diamond line item's **unit price is auto-suggested by the pricing engine** (diamond carat/color/shape/source base with multi-diamond diamond-portion discount allocated per line + design × (1 + metal%) + the order customer's overrides); suggested prices remain fully editable before saving
 - Admin invoice screens keep line-item display focused on description, quantity, weight, unit price, and amount; due date and tax-rate display are hidden from the SFS invoice UI. The PDF shows subtotal and total only, with no tax line
 - PDF issuer header: **SFS Technical Group Co., Limited / 瑞福生科技集團有限公司**, with fixed address **RM7 20F BOSS COMMERCIAL CENTRE 28 FERRY STREET YAU MA TEI KOWLOON** below the company name
