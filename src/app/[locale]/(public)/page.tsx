@@ -33,15 +33,14 @@ const PILLAR_NUMS = { secretarial: '01', accounting: '02', advisory: '03' } as c
 export default function HomePage() {
   const t = useTranslations('home')
   const tNav = useTranslations('nav')
-  const tS = useTranslations('services')
 
   const marqueeItems = [
     t('trustStrip.licensed.title'),
     t('heroTrustBadge'),
     t('trustStrip.aml.title'),
     t('trustStrip.hk.title'),
-    '500+ ' + t('stat.companies'),
-    '15+ ' + t('stat.years'),
+    t('stat.discretion'),
+    t('stat.continuity'),
   ]
 
   return (
@@ -200,25 +199,25 @@ export default function HomePage() {
                     }}
                   />
                   <div
-                    className="absolute -top-16 -right-12 w-56 h-56 rounded-full blur-3xl public-console-live"
-                    style={{ background: 'rgba(240,208,144,0.22)' }}
+                    className="absolute -top-16 -right-12 w-48 h-48 rounded-full blur-3xl"
+                    style={{ background: 'rgba(201,169,110,0.12)' }}
                     aria-hidden
                   />
 
-                  <div className="absolute inset-x-0 bottom-0 p-5 md:p-6 space-y-3.5">
+                  <div className="absolute inset-x-0 bottom-0 p-5 md:p-6 space-y-3">
                     <div className="flex items-center justify-between">
-                      <p className="font-mono-public text-[10px] uppercase tracking-[0.28em]" style={{ color: '#C9B896' }}>
-                        Private Compliance Desk
+                      <p className="font-mono-public text-[10px] uppercase tracking-[0.22em]" style={{ color: '#C9B896' }}>
+                        Private Desk
                       </p>
-                      <span className="font-mono-public text-[10px]" style={{ color: '#E8D5B0' }}>
+                      <span className="font-mono-public text-[10px]" style={{ color: '#D0C0A8' }}>
                         TC010556
                       </span>
                     </div>
 
-                    <ConsoleRow label="TCSP Licence" value="TC010556" ok />
-                    <ConsoleRow label="AMLO Cap. 615" value="COMPLIANT" ok />
-                    <ConsoleRow label="Private KYC / AML" value="DISCREET" ok />
-                    <ConsoleRow label="Ongoing Stewardship" value="ACTIVE" ok />
+                    <ConsoleRow label="TCSP Licence" value="TC010556" />
+                    <ConsoleRow label="AMLO Cap. 615" value="Licensed" />
+                    <ConsoleRow label="KYC / AML" value="Confidential" />
+                    <ConsoleRow label="Stewardship" value="Ongoing" />
                   </div>
                 </div>
               </div>
@@ -234,14 +233,14 @@ export default function HomePage() {
             background: 'linear-gradient(90deg, rgba(8,8,8,0.92), rgba(20,16,10,0.9), rgba(8,8,8,0.92))',
           }}
         >
-          <div className="public-marquee-track py-4 gap-12">
+          <div className="public-marquee-track py-3.5 gap-14">
             {[...marqueeItems, ...marqueeItems].map((item, i) => (
               <span
                 key={`${item}-${i}`}
-                className="flex items-center gap-12 shrink-0 font-mono-public text-xs uppercase tracking-[0.24em]"
-                style={{ color: '#D0C0A8' }}
+                className="flex items-center gap-14 shrink-0 font-mono-public text-[11px] uppercase tracking-[0.2em]"
+                style={{ color: '#B8A890' }}
               >
-                <span style={{ color: '#F0D090' }}>◆</span>
+                <span style={{ color: '#8A7A60' }}>·</span>
                 {item}
               </span>
             ))}
@@ -249,27 +248,34 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Impact stats band ── */}
+      {/* ── Quiet trust band ── */}
       <section className="public-impact-band relative">
         <Image
           src="/marketing/hero-city-night.png"
           alt=""
           fill
           sizes="100vw"
-          className="object-cover object-[center_55%] opacity-70"
+          className="object-cover object-[center_55%] opacity-55"
         />
-        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 md:py-20">
-          <div className="grid grid-cols-3 gap-4 md:gap-10 text-center">
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-14 md:py-16">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 md:gap-10 text-center">
             {[
-              { v: '500+', l: t('stat.companies') },
-              { v: '15+', l: t('stat.years') },
-              { v: 'TC010556', l: t('stat.license') },
+              { v: t('stat.discretion'), l: t('trustStrip.aml.desc') },
+              { v: t('stat.licence'), l: t('trustStrip.licensed.desc') },
+              { v: t('stat.continuity'), l: t('trustStrip.hk.desc') },
             ].map((s) => (
-              <div key={s.v} className="space-y-2">
-                <p className="public-stat-blast font-display font-semibold leading-none" style={{ fontSize: 'clamp(2.5rem, 8vw, 5.5rem)' }}>
+              <div key={s.v} className="space-y-2.5 px-2">
+                <p
+                  className="font-display font-light leading-snug"
+                  style={{
+                    fontSize: 'clamp(1.35rem, 2.8vw, 1.85rem)',
+                    color: '#E8D5B0',
+                    letterSpacing: '0.02em',
+                  }}
+                >
                   {s.v}
                 </p>
-                <p className="font-mono-public text-[10px] md:text-xs uppercase tracking-[0.28em]" style={{ color: '#D0C0A8' }}>
+                <p className="text-xs md:text-sm leading-relaxed max-w-xs mx-auto" style={{ color: '#A89880' }}>
                   {s.l}
                 </p>
               </div>
@@ -506,77 +512,54 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Packages ── */}
+      {/* ── Typical engagements ── */}
       <section style={{ background: '#0A0A0A' }}>
         <div className="public-section-rule" />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 md:py-28">
-          <div className="mb-12 space-y-3 max-w-xl">
+          <div className="mb-12 space-y-3 max-w-2xl">
             <p className="font-mono-public text-[11px] uppercase tracking-[0.3em]" style={{ color: '#C9A96E' }}>
-              {tS('tiers.eyebrow')}
+              {t('engagement.eyebrow')}
             </p>
             <h2
               className="font-display font-light leading-snug"
               style={{ color: '#F5F0E6', fontSize: 'clamp(2rem, 4vw, 3rem)' }}
             >
-              {t('ctaTitle')}
+              {t('engagement.title')}
             </h2>
             <p className="text-sm leading-relaxed" style={{ color: '#A89880' }}>
-              {t('ctaDesc')}
+              {t('engagement.desc')}
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-3 gap-4 mb-6">
-            {(['basic', 'professional', 'premium'] as const).map((tier, idx) => (
+          <div className="grid sm:grid-cols-3 gap-px mb-10" style={{ background: '#2A2418' }}>
+            {(['holding', 'succession', 'governance'] as const).map((key) => (
               <div
-                key={tier}
-                className="public-card-hover rounded-sm p-7 flex flex-col gap-5"
-                style={
-                  idx === 1
-                    ? {
-                        background: 'linear-gradient(165deg, #1E1810 0%, #120F0A 100%)',
-                        border: '1px solid #C9A96E',
-                        boxShadow: '0 0 40px rgba(201,169,110,0.1)',
-                      }
-                    : {
-                        background: '#0E0C0A',
-                        border: '1px solid #2A2418',
-                      }
-                }
+                key={key}
+                className="p-7 md:p-8 flex flex-col gap-4 transition-colors hover:bg-[rgba(201,169,110,0.04)]"
+                style={{ background: '#0C0C0C' }}
               >
-                {idx === 1 && (
-                  <p className="font-mono-public text-[10px] uppercase tracking-[0.28em]" style={{ color: '#C9A96E' }}>
-                    {tS('tiers.popular')}
-                  </p>
-                )}
-                <div>
-                  <h3 className="font-display text-2xl font-semibold" style={{ color: '#F5F0E6' }}>
-                    {tS(`tiers.${tier}`)}
-                  </h3>
-                  <p className="text-xs mt-1.5 leading-relaxed" style={{ color: '#A89880' }}>
-                    {tS(`tiers.${tier}Desc`)}
-                  </p>
-                </div>
-                <ul className="space-y-2.5 flex-1">
-                  {(tS.raw(`tiers.${tier}Items`) as string[]).map((item: string, i: number) => (
-                    <li key={i} className="flex gap-2.5 text-sm" style={{ color: '#C9B896' }}>
-                      <Check size={14} className="shrink-0 mt-0.5" style={{ color: '#C9A96E' }} />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href="/register"
-                  className="flex items-center justify-center py-2.5 rounded-sm text-sm font-semibold transition-opacity hover:opacity-90"
-                  style={
-                    idx === 1
-                      ? { background: '#C9A96E', color: '#0C0C0C' }
-                      : { border: '1px solid #3A3020', color: '#C9B896' }
-                  }
-                >
-                  {tS('getStarted')}
-                </Link>
+                <h3 className="font-display text-xl md:text-2xl font-light" style={{ color: '#F5F0E6' }}>
+                  {t(`engagement.${key}.title`)}
+                </h3>
+                <p className="text-sm leading-relaxed flex-1" style={{ color: '#A89880' }}>
+                  {t(`engagement.${key}.desc`)}
+                </p>
               </div>
             ))}
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+            <p className="text-xs md:text-sm leading-relaxed max-w-xl" style={{ color: '#8A7A60' }}>
+              {t('engagement.confidentiality')}
+            </p>
+            <Link
+              href="/contact"
+              className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-sm text-sm font-semibold shrink-0 transition-opacity hover:opacity-90"
+              style={{ background: '#C9A96E', color: '#0C0C0C' }}
+            >
+              {t('engagement.cta')}
+              <ArrowRight size={14} />
+            </Link>
           </div>
         </div>
       </section>
@@ -621,23 +604,20 @@ export default function HomePage() {
   )
 }
 
-function ConsoleRow({ label, value, ok }: { label: string; value: string; ok?: boolean }) {
+function ConsoleRow({ label, value }: { label: string; value: string }) {
   return (
     <div
-      className="flex items-center justify-between gap-4 py-2.5 px-3 rounded-sm"
+      className="flex items-center justify-between gap-4 py-2 px-3 rounded-sm"
       style={{
-        background: 'rgba(0,0,0,0.45)',
-        border: '1px solid rgba(201,169,110,0.28)',
+        background: 'rgba(0,0,0,0.35)',
+        border: '1px solid rgba(201,169,110,0.18)',
         backdropFilter: 'blur(6px)',
       }}
     >
-      <span className="font-mono-public text-[11px]" style={{ color: '#A89880' }}>
+      <span className="font-mono-public text-[11px]" style={{ color: '#9A8A70' }}>
         {label}
       </span>
-      <span
-        className="font-mono-public text-[11px] tracking-wider font-semibold"
-        style={{ color: ok ? '#F0D090' : '#E8C87A' }}
-      >
+      <span className="font-mono-public text-[11px] tracking-wide" style={{ color: '#D0C0A8' }}>
         {value}
       </span>
     </div>

@@ -6,7 +6,7 @@
     "contact": "Contact",
     "faq": "FAQ",
     "login": "Login",
-    "getStarted": "Get Started",
+    "getStarted": "Private Consultation",
     "dashboard": "Dashboard",
     "kyc": "KYC",
     "documents": "Documents",
@@ -45,33 +45,33 @@
   },
   "home": {
     "heroTitleHighlight": "6AM Advisory",
-    "heroTitleSub": "Private counsel for discerning families",
-    "heroTitle": "Private counsel for discerning families",
-    "heroSubtitle": "A licensed Hong Kong TCSP dedicated to high-net-worth individuals, family offices and principals — discreet company, trust and wealth-structure services with institutional-grade compliance.",
+    "heroTitleSub": "Quiet counsel for families and principals",
+    "heroTitle": "Quiet counsel for families and principals",
+    "heroSubtitle": "A licensed Hong Kong TCSP for private holding companies, family offices and cross-border principals — company, trust and structuring work handled with discretion and institutional compliance.",
     "heroTrustBadge": "Licensed TCSP · TC010556 · AMLO Cap. 615",
     "heroCtaStart": "Private Consultation",
     "heroCtaLearn": "Our Services",
     "trustStrip": {
       "eyebrow": "Trust & Discretion",
       "licensed": {
-        "title": "Licensed TCSP TC010556",
+        "title": "Licence TC010556",
         "desc": "Authorised under Hong Kong AMLO Cap. 615"
       },
       "aml": {
-        "title": "Confidential AML & KYC",
-        "desc": "Private screening, risk assessment and audit trail"
+        "title": "Confidential diligence",
+        "desc": "Screening and risk assessment kept within a closed file"
       },
       "hk": {
-        "title": "Hong Kong Private Desk",
+        "title": "Hong Kong private desk",
         "desc": "Local execution for families and cross-border principals"
       }
     },
     "stat": {
-      "companies": "Structures Advised",
-      "years": "Years of Experience",
-      "license": "Licence TC010556"
+      "discretion": "Confidential by design",
+      "licence": "TCSP TC010556",
+      "continuity": "Long-term stewardship"
     },
-    "pillarsEyebrow": "Private Client Services",
+    "pillarsEyebrow": "How we support you",
     "pillars": {
       "secretarial": {
         "title": "Company Secretarial",
@@ -92,8 +92,8 @@
         ]
       },
       "advisory": {
-        "title": "Wealth & Business Advisory",
-        "desc": "Cross-border structuring, succession planning and corporate restructuring for family offices.",
+        "title": "Structuring & Advisory",
+        "desc": "Cross-border holding design, succession planning and corporate restructuring.",
         "bullets": [
           "Holding & succession design",
           "Restructuring support",
@@ -101,31 +101,50 @@
         ]
       }
     },
-    "journeyEyebrow": "Private Engagement",
+    "journeyEyebrow": "How engagement works",
     "journeyTitle": "From confidential onboarding to ongoing stewardship",
-    "journeyDesc": "A regulated TCSP pathway designed for high-net-worth clients — private, thorough, and built for long-term oversight.",
+    "journeyDesc": "A regulated TCSP pathway — private, thorough, and built for long-term oversight rather than a one-off filing.",
     "journey": {
       "onboard": {
-        "title": "Private Onboarding",
-        "desc": "Open a confidential client portal, share company and personal details, and begin a tailored engagement."
+        "title": "Private onboarding",
+        "desc": "A confidential portal, company and personal details, and a tailored scope of work."
       },
       "kyc": {
         "title": "KYC & AML",
-        "desc": "Identity verification, sanctions screening and risk assessment before any engagement proceeds."
+        "desc": "Identity verification, sanctions screening and risk assessment before engagement proceeds."
       },
       "ongoing": {
         "title": "Ongoing DDR",
-        "desc": "Quarterly due diligence keeps files current for active companies and approved persons."
+        "desc": "Periodic due diligence keeps files current for active companies and approved persons."
       }
     },
     "whyEyebrow": "Why 6AM Advisory",
-    "whyTitle": "A discreet partner for private wealth",
-    "whyDesc": "As licensed TCSP TC010556, we serve high-net-worth clients and family enterprises with rigorous compliance, bilingual counsel and the discretion expected of a private desk.",
+    "whyTitle": "A discreet Hong Kong partner",
+    "whyDesc": "As licensed TCSP TC010556, we combine regulated compliance with bilingual counsel and the quiet access expected of a private desk.",
     "why": {
       "compliance": "Regulated discretion",
       "responsive": "Principal-level access",
       "team": "Senior specialists",
       "bilingual": "Bilingual private desk"
+    },
+    "engagement": {
+      "eyebrow": "Typical mandates",
+      "title": "Where families usually begin",
+      "desc": "Every engagement is scoped privately. These are the situations we are most often asked to support.",
+      "confidentiality": "Matters are handled under professional confidentiality. Engagement details are not published or used for marketing.",
+      "cta": "Arrange a private consultation",
+      "holding": {
+        "title": "Private holding companies",
+        "desc": "Hong Kong or offshore holding vehicles for investment, succession or operating groups — formation through ongoing secretarial care."
+      },
+      "succession": {
+        "title": "Family succession structures",
+        "desc": "Shareholding, governance and documentation for next-generation transfer, coordinated with your legal and tax advisers."
+      },
+      "governance": {
+        "title": "Ongoing private governance",
+        "desc": "Annual filings, board papers, registered office and compliance calendars maintained without noise."
+      }
     },
     "processEyebrow": "How It Works",
     "processTitle": "Setting Up in 6 Steps",
@@ -160,12 +179,12 @@
     "newsTitle": "Latest News",
     "pillarsTitle": "What We Do",
     "ctaTitle": "Arrange a private consultation",
-    "ctaDesc": "Speak with our principals for confidential Hong Kong structuring, secretarial and advisory support."
+    "ctaDesc": "Speak with our team about Hong Kong structuring, secretarial and advisory support — by appointment."
   },
   "services": {
     "title": "Our Services",
-    "subtitle": "A private desk for high-net-worth clients and family offices — rigorous compliance with strategic corporate counsel.",
-    "getStarted": "Enquire Privately",
+    "subtitle": "Company secretarial, accounting and structuring support for private companies, family offices and principals — rigorous compliance, discreet execution.",
+    "getStarted": "Private Consultation",
     "secretarial": {
       "title": "Company Formation & Secretarial",
       "intro": "The cornerstone of effective corporate governance and sustainable growth. We offer customised solutions for businesses at every stage, combining rigorous compliance management with efficient execution.",
@@ -179,10 +198,10 @@
         "Share allotment, buyback and equity adjustments",
         "Company name and business nature changes"
       ],
-      "tiersEyebrow": "Solutions by Company Size",
+      "tiersEyebrow": "Typical engagement scope",
       "startup": {
-        "label": "Startup",
-        "size": "Under 10 employees",
+        "label": "Holding vehicle",
+        "size": "Single entity",
         "items": [
           "Company secretary appointment and annual filings",
           "Registered address and address change management",
@@ -192,8 +211,8 @@
         ]
       },
       "sme": {
-        "label": "SME",
-        "size": "10–20 employees",
+        "label": "Operating company",
+        "size": "Ongoing compliance",
         "items": [
           "Full compliance reminders and deadline tracking",
           "Annual filings and legal document submissions",
@@ -204,8 +223,8 @@
         ]
       },
       "large": {
-        "label": "Enterprise",
-        "size": "Over 20 employees",
+        "label": "Group structures",
+        "size": "Multi-entity",
         "items": [
           "Full secretarial and daily compliance management",
           "Board and shareholder meeting support",
@@ -271,43 +290,43 @@
       }
     },
     "tiers": {
-      "eyebrow": "Service Packages",
-      "title": "Choose Your Package",
-      "popular": "Most Popular",
-      "basic": "Basic",
-      "professional": "Professional",
-      "premium": "Premium",
-      "basicDesc": "Hong Kong company incorporation only",
+      "eyebrow": "Typical mandates",
+      "title": "Where families usually begin",
+      "popular": "",
+      "basic": "Private holding companies",
+      "professional": "Family succession structures",
+      "premium": "Ongoing private governance",
+      "basicDesc": "Hong Kong or offshore holding vehicles for investment or operating groups.",
       "basicItems": [
-        "Company name search",
-        "Articles of association",
-        "Certificate of Incorporation",
-        "Business Registration Certificate"
+        "Bespoke incorporation",
+        "Shareholding & board setup",
+        "Statutory registers",
+        "Ongoing secretarial care"
       ],
-      "professionalDesc": "Incorporation + 1-year secretarial support",
+      "professionalDesc": "Shareholding and governance for next-generation transfer.",
       "professionalItems": [
-        "Everything in Basic",
-        "1-year company secretary service",
-        "Compliance reminders & deadline tracking",
-        "Board resolutions & meeting minutes"
+        "Succession documentation",
+        "Board & member resolutions",
+        "Coordination with your counsel",
+        "Confidential filing support"
       ],
-      "premiumDesc": "Professional + virtual office & privacy protection",
+      "premiumDesc": "Annual filings, board papers and compliance calendars without noise.",
       "premiumItems": [
-        "Everything in Professional",
-        "1-year registered office address",
-        "Mail handling & forwarding",
-        "Director privacy protection filing"
+        "Registered office & mail handling",
+        "Annual return calendar",
+        "Director privacy filings",
+        "Principal-level reporting"
       ],
-      "customNote": "Need a tailored solution? Contact us and we'll prepare a bespoke quote for your business."
+      "customNote": "Fees and scope are confirmed privately after a confidential discussion — never published as a price list."
     }
   },
   "about": {
     "title": "About 6AM Advisory",
-    "subtitle": "A private Hong Kong TCSP for high-net-worth clients and family enterprises.",
-    "intro": "6AM Advisory Limited is a licensed Trust and Company Service Provider (TCSP Licence TC010556) in Hong Kong, dedicated to discreet corporate, trust and structuring services for high-net-worth individuals and family offices.",
+    "subtitle": "A private Hong Kong TCSP for families, principals and closely held enterprises.",
+    "intro": "6AM Advisory Limited is a licensed Trust and Company Service Provider (TCSP Licence TC010556) in Hong Kong, focused on discreet corporate, trust and structuring services for private clients and family offices.",
     "tcspLicence": "Licensed TCSP TC010556 under AMLO Cap. 615, Hong Kong",
     "positioningEyebrow": "Who We Are",
-    "positioningDesc": "6AM Advisory is a private desk for high-net-worth clients and family enterprises across Hong Kong and international markets. Our advisors, chartered secretaries and accountants bring cross-border experience — combining strategic insight with discreet execution for lasting structures.",
+    "positioningDesc": "6AM Advisory is a private desk for families and closely held enterprises across Hong Kong and international markets. Our advisors, chartered secretaries and accountants bring cross-border experience — combining strategic insight with discreet execution for lasting structures.",
     "teamPhone2": "+86 1554 686 8835",
     "valuesTitle": "Our Core Values",
     "values": {
@@ -1355,7 +1374,7 @@
     "usd": "USD"
   },
   "footer": {
-    "tagline": "Private counsel for discerning families — licensed Hong Kong TCSP for secretarial, accounting and advisory services.",
+    "tagline": "Quiet counsel for families and principals — licensed Hong Kong TCSP for secretarial, accounting and structuring services.",
     "tcspNote": "Licensed TCSP TC010556 under AMLO Cap. 615 — Trust or Company Service Provider",
     "quickLinks": "Quick Links",
     "home": "Home",

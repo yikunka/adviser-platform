@@ -333,11 +333,11 @@ export default async function ServicesPage() {
       <SectionDivider />
 
       {/* ══════════════════════════════════
-          06 — Service Packages
+          06 — Typical mandates
       ══════════════════════════════════ */}
       <section style={{ background: '#0C0C0C' }}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 md:py-28">
-          <div className="text-center mb-14 space-y-3">
+          <div className="mb-12 space-y-3 max-w-2xl mx-auto text-center">
             <p className="text-xs uppercase tracking-widest" style={{ color: '#C9A96E' }}>
               {t('tiers.eyebrow')}
             </p>
@@ -345,30 +345,18 @@ export default async function ServicesPage() {
               {t('tiers.title')}
             </h2>
           </div>
-          <div className="grid sm:grid-cols-3 gap-6 mb-12">
-            {(['basic', 'professional', 'premium'] as const).map((tier, idx) => (
+          <div className="grid sm:grid-cols-3 gap-px mb-12" style={{ background: '#2A2418' }}>
+            {(['basic', 'professional', 'premium'] as const).map((tier) => (
               <div
                 key={tier}
-                className={`public-card-hover rounded-xl p-7 flex flex-col gap-5 ${idx === 1 ? '' : 'public-panel'}`}
-                style={
-                  idx === 1
-                    ? {
-                        background: 'linear-gradient(165deg, #1C1710 0%, #14110C 100%)',
-                        border: '1px solid #C9A96E',
-                      }
-                    : undefined
-                }
+                className="p-7 flex flex-col gap-5"
+                style={{ background: '#0E0C0A' }}
               >
-                {idx === 1 && (
-                  <p className="text-xs uppercase tracking-widest" style={{ color: '#C9A96E' }}>
-                    {t('tiers.popular')}
-                  </p>
-                )}
                 <div>
-                  <h3 className="font-display text-2xl font-semibold" style={{ color: '#F5F0E6' }}>
+                  <h3 className="font-display text-xl md:text-2xl font-light" style={{ color: '#F5F0E6' }}>
                     {t(`tiers.${tier}`)}
                   </h3>
-                  <p className="text-xs mt-1 leading-relaxed" style={{ color: '#A89880' }}>
+                  <p className="text-xs mt-2 leading-relaxed" style={{ color: '#A89880' }}>
                     {t(`tiers.${tier}Desc`)}
                   </p>
                 </div>
@@ -380,29 +368,17 @@ export default async function ServicesPage() {
                     </li>
                   ))}
                 </ul>
-                <Link
-                  href="/register"
-                  className="flex items-center justify-center py-2.5 rounded-md text-sm font-semibold transition-opacity hover:opacity-90"
-                  style={
-                    idx === 1
-                      ? { background: '#C9A96E', color: '#0C0C0C' }
-                      : { border: '1px solid #3A3020', color: '#9A8060' }
-                  }
-                >
-                  {t('getStarted')}
-                </Link>
               </div>
             ))}
           </div>
 
-          {/* Bottom CTA */}
           <div className="text-center">
-            <p className="text-sm mb-5" style={{ color: '#A89880' }}>
+            <p className="text-sm mb-5 max-w-xl mx-auto" style={{ color: '#A89880' }}>
               {t('tiers.customNote')}
             </p>
             <Link
               href="/contact"
-              className="inline-flex items-center gap-2 px-8 py-3 rounded-md text-sm font-semibold transition-all"
+              className="inline-flex items-center gap-2 px-8 py-3 rounded-sm text-sm font-semibold transition-all hover:opacity-90"
               style={{ background: '#C9A96E', color: '#0C0C0C' }}
             >
               {t('getStarted')} <ArrowRight size={14} />

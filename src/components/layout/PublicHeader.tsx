@@ -88,7 +88,7 @@ export default function PublicHeader() {
                 >
                   {t('login')}
                 </Link>
-                <GetStartedButton href="/register" label={t('getStarted')} />
+                <GetStartedButton href="/contact" label={t('getStarted')} />
               </>
             )}
           </div>
@@ -145,7 +145,7 @@ export default function PublicHeader() {
                     {t('login')}
                   </Link>
                   <GetStartedButton
-                    href="/register"
+                    href="/contact"
                     label={t('getStarted')}
                     onClick={() => setMenuOpen(false)}
                   />

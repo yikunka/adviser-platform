@@ -863,7 +863,7 @@ html {
 .public-marquee-track {
   display: flex;
   width: max-content;
-  animation: public-marquee 28s linear infinite;
+  animation: public-marquee 48s linear infinite;
 }
 .public-marquee-track:hover {
   animation-play-state: paused;
@@ -879,17 +879,15 @@ html {
 
 .public-console {
   background:
-    linear-gradient(160deg, rgba(28, 24, 16, 0.55) 0%, rgba(12, 11, 9, 0.85) 100%);
-  border: 1px solid rgba(201, 169, 110, 0.45);
+    linear-gradient(160deg, rgba(22, 20, 16, 0.45) 0%, rgba(10, 10, 9, 0.8) 100%);
+  border: 1px solid rgba(201, 169, 110, 0.28);
   box-shadow:
-    0 0 0 1px rgba(201, 169, 110, 0.12) inset,
-    0 28px 90px rgba(0, 0, 0, 0.65),
-    0 0 80px rgba(201, 169, 110, 0.22);
+    0 0 0 1px rgba(201, 169, 110, 0.06) inset,
+    0 24px 70px rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(8px);
-  animation: public-float 7s ease-in-out infinite;
 }
 .public-console-live {
-  animation: public-console-glow 3.2s ease-in-out infinite;
+  animation: public-console-glow 5.5s ease-in-out infinite;
 }
 
 .public-cta-glow {
