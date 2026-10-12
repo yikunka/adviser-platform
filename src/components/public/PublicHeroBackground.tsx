@@ -1,7 +1,8 @@
 import Image from 'next/image'
 
 /**
- * Shared animated backdrop — vivid HK nightscape + cinematic gold layers.
+ * Shared animated backdrop — restrained HK nightscape + matte champagne layers
+ * for a private-bank / high-net-worth feel.
  */
 export default function PublicHeroBackground({ intensity = 'full' }: { intensity?: 'full' | 'soft' }) {
   const soft = intensity === 'soft'
@@ -16,16 +17,16 @@ export default function PublicHeroBackground({ intensity = 'full' }: { intensity
           priority={intensity === 'full'}
           sizes="100vw"
           className="object-cover object-[center_40%] scale-110"
-          style={{ opacity: soft ? 0.5 : 0.88 }}
+          style={{ opacity: soft ? 0.42 : 0.62 }}
         />
       </div>
 
-      {/* Color grade: warm gold lift */}
+      {/* Color grade: muted champagne lift */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            'linear-gradient(180deg, rgba(201,169,110,0.12) 0%, transparent 35%, rgba(201,169,110,0.08) 100%)',
+            'linear-gradient(180deg, rgba(180,148,92,0.08) 0%, transparent 40%, rgba(180,148,92,0.06) 100%)',
           mixBlendMode: 'soft-light',
         }}
       />
@@ -36,18 +37,18 @@ export default function PublicHeroBackground({ intensity = 'full' }: { intensity
           backgroundImage: 'url(/hero-bg.svg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center top',
-          opacity: soft ? 0.2 : 0.32,
+          opacity: soft ? 0.12 : 0.18,
           mixBlendMode: 'screen',
         }}
       />
 
-      {/* Lighter wash so city remains the visual star; darker only under copy */}
+      {/* Deeper wash — quieter, more private-desk atmosphere */}
       <div
         className="absolute inset-0"
         style={{
           background: soft
-            ? 'linear-gradient(90deg, rgba(4,4,4,0.78) 0%, rgba(4,4,4,0.4) 55%, rgba(4,4,4,0.65) 100%), linear-gradient(180deg, rgba(4,4,4,0.35) 0%, transparent 40%, rgba(4,4,4,0.9) 100%)'
-            : 'linear-gradient(100deg, rgba(4,4,4,0.82) 0%, rgba(4,4,4,0.45) 38%, rgba(4,4,4,0.15) 58%, rgba(4,4,4,0.55) 100%), linear-gradient(180deg, rgba(4,4,4,0.25) 0%, transparent 32%, rgba(4,4,4,0.55) 72%, #040404 100%)',
+            ? 'linear-gradient(90deg, rgba(4,4,4,0.86) 0%, rgba(4,4,4,0.5) 55%, rgba(4,4,4,0.72) 100%), linear-gradient(180deg, rgba(4,4,4,0.45) 0%, transparent 40%, rgba(4,4,4,0.92) 100%)'
+            : 'linear-gradient(100deg, rgba(4,4,4,0.9) 0%, rgba(4,4,4,0.55) 38%, rgba(4,4,4,0.28) 58%, rgba(4,4,4,0.7) 100%), linear-gradient(180deg, rgba(4,4,4,0.4) 0%, transparent 32%, rgba(4,4,4,0.65) 72%, #040404 100%)',
         }}
       />
 

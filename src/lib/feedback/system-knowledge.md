@@ -12,6 +12,8 @@ A multi-platform back-office system operated by a licensed TCSP (Trust and Compa
 
 Admin console is at `/[locale]/admin/`. Roles: `SUPER_ADMIN`, `COMPLIANCE`, `STAFF`, `CLIENT`. Staff access is further restricted by per-menu permission keys and per-platform flags.
 
+Public Adviser site (`6amadvise.com`) positions as a **private desk for high-net-worth clients and family offices**, and displays licensed TCSP number **TC010556** (AMLO Cap. 615) in hero, about, footer and SEO metadata.
+
 Admin left navigation is grouped by module. Menu groups can be collapsed/expanded, and only one group stays expanded at a time; the current route's group opens automatically, including company-scoped financial sub-routes under Finance Management. The bottom utility area, including Requirements / Feedback and Logout, stays fixed within the browser viewport while admin content scrolls independently. Top-right **Day / Night** toggle switches between night (black × gold) and day (cool light gray × gold accent) UI; preference is stored in the browser.
 
 ---

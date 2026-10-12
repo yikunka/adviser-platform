@@ -45,69 +45,69 @@
   },
   "home": {
     "heroTitleHighlight": "6AM Advisory",
-    "heroTitleSub": "筑香港之基，成世界之业",
-    "heroTitle": "筑香港之基，成世界之业",
-    "heroSubtitle": "您信賴的香港持牌信託及公司服務提供商——公司成立、秘書、會計及商業顧問一站式支援。",
-    "heroTrustBadge": "持牌 TCSP · 《打擊洗錢條例》第 615 章",
-    "heroCtaStart": "立即開始",
+    "heroTitleSub": "為高淨值客戶與家族提供私密顧問",
+    "heroTitle": "為高淨值客戶與家族提供私密顧問",
+    "heroSubtitle": "香港持牌信託及公司服務提供商，專注服務高淨值人士、家族辦公室與跨境主事人——以嚴謹合規與私密執行，守護公司、信託與財富架構。",
+    "heroTrustBadge": "持牌 TCSP · TC010556 · 《打擊洗錢條例》第 615 章",
+    "heroCtaStart": "預約私密諮詢",
     "heroCtaLearn": "了解服務",
     "trustStrip": {
-      "eyebrow": "信任與合規",
+      "eyebrow": "信任與私密",
       "licensed": {
-        "title": "持牌 TCSP",
+        "title": "持牌 TCSP TC010556",
         "desc": "根據香港《打擊洗錢條例》第 615 章獲授權"
       },
       "aml": {
-        "title": "AML / KYC 就緒",
-        "desc": "篩查、風險評估與可審計紀錄"
+        "title": "私密 AML / KYC",
+        "desc": "篩查、風險評估與可審計紀錄，全程保密"
       },
       "hk": {
-        "title": "立足香港",
-        "desc": "本地執行，服務本地與跨境客戶"
+        "title": "香港私人服務台",
+        "desc": "本地執行，服務家族與跨境主事人"
       }
     },
     "stat": {
-      "companies": "企業服務",
+      "companies": "架構顧問個案",
       "years": "年行業經驗",
-      "license": "持牌機構"
+      "license": "牌照 TC010556"
     },
-    "pillarsEyebrow": "核心服務",
+    "pillarsEyebrow": "私人客戶服務",
     "pillars": {
       "secretarial": {
         "title": "公司秘書",
-        "desc": "公司成立、法定申報、周年申報及法定冊維護。",
+        "desc": "為私人公司與控股架構提供成立、法定申報與管治支援。",
         "bullets": [
-          "可選同日成立",
+          "度身成立方案",
           "周年申報與法定冊",
           "註冊辦事處支援"
         ]
       },
       "accounting": {
         "title": "會計及稅務",
-        "desc": "簿記、財務報告、報稅及策略性稅務規劃。",
+        "desc": "為主事人與家族實體提供私密簿記、報告與策略性稅務規劃。",
         "bullets": [
-          "簿記與財務報告",
+          "私人財務報告",
           "利得稅及申報",
           "審計協調"
         ]
       },
       "advisory": {
-        "title": "商業顧問",
-        "desc": "跨境市場進入、併購支援及企業重組。",
+        "title": "財富與商業顧問",
+        "desc": "為家族辦公室提供跨境架構、傳承規劃與企業重組。",
         "bullets": [
-          "市場進入規劃",
+          "控股與傳承設計",
           "重組支援",
           "跨境協調"
         ]
       }
     },
-    "journeyEyebrow": "合規旅程",
-    "journeyTitle": "從開戶到持續監察",
-    "journeyDesc": "對齊持牌 TCSP 實際工作方式——不只是一次性開設公司。",
+    "journeyEyebrow": "私人委託流程",
+    "journeyTitle": "從保密入駐到持續守護",
+    "journeyDesc": "專為高淨值客戶設計的持牌 TCSP 路徑——私密、嚴謹，並着眼長期監察。",
     "journey": {
       "onboard": {
-        "title": "開戶入駐",
-        "desc": "開通客戶門戶，提交公司與自然人資料，啟動服務委託。"
+        "title": "私密入駐",
+        "desc": "開通保密客戶門戶，提交公司與自然人資料，啟動度身委託。"
       },
       "kyc": {
         "title": "KYC 與 AML",
@@ -119,13 +119,13 @@
       }
     },
     "whyEyebrow": "為何選擇我們",
-    "whyTitle": "專業、可信賴的夥伴",
-    "whyDesc": "作為香港持牌TCSP，我們結合深厚的法律合規知識與高效的客戶服務，為企業提供全面支援。",
+    "whyTitle": "高淨值客戶的私密夥伴",
+    "whyDesc": "作為持牌 TCSP（牌照編號 TC010556），我們以嚴謹合規、雙語顧問與私人服務台應有的保密標準，服務高淨值客戶與家族企業。",
     "why": {
-      "compliance": "合規專注",
-      "responsive": "快速回應",
-      "team": "專業團隊",
-      "bilingual": "中英雙語服務"
+      "compliance": "受規管的私密",
+      "responsive": "主事人級別對接",
+      "team": "資深專才",
+      "bilingual": "中英私人服務台"
     },
     "processEyebrow": "辦理流程",
     "processTitle": "六步完成公司成立",
@@ -159,13 +159,13 @@
     "testimonialsTitle": "客戶評價",
     "newsTitle": "最新消息",
     "pillarsTitle": "我們的服務",
-    "ctaTitle": "準備好開始了嗎？",
-    "ctaDesc": "立即聯絡我們的團隊，最快一個工作日完成香港公司設立。"
+    "ctaTitle": "預約私密諮詢",
+    "ctaDesc": "與我們的主事人私下交流，探討香港架構、秘書及顧問安排。"
   },
   "services": {
     "title": "我們的服務",
-    "subtitle": "專為高淨值客戶打造的一站式專業機構——嚴謹的合規管理與策略性商業顧問的完美結合。",
-    "getStarted": "立即開始",
+    "subtitle": "專為高淨值客戶與家族辦公室打造的私人服務台——嚴謹合規與策略性企業顧問並重。",
+    "getStarted": "私下查詢",
     "secretarial": {
       "title": "公司成立及秘書服務",
       "intro": "有效企業管治與可持續增長的基石。我們提供針對不同業務規模及發展階段的客製化方案，結合嚴謹的合規管理與高效執行。",
@@ -303,11 +303,11 @@
   },
   "about": {
     "title": "關於6AM Advisory",
-    "subtitle": "專為高淨值客戶及家族企業打造的一站式專業機構。",
-    "intro": "6AM Advisory Limited 是香港持牌信託及公司服務提供商（TCSP），致力為企業及高淨值人士提供全面的企業服務。",
-    "tcspLicence": "持牌TCSP，根據香港《打擊洗錢及恐怖分子資金籌集條例》（第615章）",
+    "subtitle": "專為高淨值客戶及家族企業服務的香港持牌 TCSP。",
+    "intro": "6AM Advisory Limited 是香港持牌信託及公司服務提供商（TCSP 牌照編號 TC010556），致力為高淨值人士與家族辦公室提供私密的公司、信託及架構服務。",
+    "tcspLicence": "持牌 TCSP TC010556，根據香港《打擊洗錢及恐怖分子資金籌集條例》（第615章）",
     "positioningEyebrow": "我們是誰",
-    "positioningDesc": "6AM Advisory 是專為高淨值客戶及家族企業打造的一站式專業機構，服務範圍覆蓋香港及國際市場。我們的企業顧問、特許秘書及會計師團隊擁有豐富的跨行業、跨地區經驗——以策略洞察與執行能力相結合，助客戶實現可持續增長。",
+    "positioningDesc": "6AM Advisory 是專為高淨值客戶及家族企業打造的私人服務台，服務覆蓋香港及國際市場。我們的顧問、特許秘書及會計師團隊具備跨境經驗——以策略洞察與私密執行，守護長遠架構。",
     "teamPhone2": "+86 1554 686 8835",
     "valuesTitle": "我們的核心價值",
     "values": {
@@ -353,7 +353,7 @@
   },
   "contact": {
     "title": "聯絡我們",
-    "subtitle": "如有任何查詢或服務需求，歡迎聯絡我們的團隊。",
+    "subtitle": "歡迎透過私人服務台提出保密查詢或委託討論。",
     "formTitle": "發送訊息",
     "name": "全名",
     "email": "電郵地址",
@@ -1355,8 +1355,8 @@
     "usd": "美元"
   },
   "footer": {
-    "tagline": "筑香港之基，成世界之业 — 持牌TCSP，專業提供公司秘書、會計及商業顧問服務。",
-    "tcspNote": "根據《打擊洗錢及恐怖分子資金籌集條例》（第615章）持牌",
+    "tagline": "為高淨值客戶與家族提供私密顧問 — 香港持牌 TCSP，專業提供公司秘書、會計及顧問服務。",
+    "tcspNote": "持牌 TCSP TC010556，根據《打擊洗錢及恐怖分子資金籌集條例》（第615章）",
     "quickLinks": "快速連結",
     "home": "首頁",
     "services": "服務",

@@ -70,15 +70,14 @@ export default function HomePage() {
                   />
                 </div>
                 <span
-                  className="font-mono-public text-[11px] uppercase tracking-[0.35em] px-2.5 py-1 rounded-sm"
+                  className="font-mono-public text-[11px] uppercase tracking-[0.28em] px-2.5 py-1 rounded-sm"
                   style={{
-                    color: '#F0D090',
-                    border: '1px solid rgba(201,169,110,0.4)',
-                    background: 'rgba(201,169,110,0.1)',
-                    boxShadow: '0 0 20px rgba(201,169,110,0.15)',
+                    color: '#E8D5B0',
+                    border: '1px solid rgba(180,148,92,0.45)',
+                    background: 'rgba(180,148,92,0.08)',
                   }}
                 >
-                  Hong Kong · Licensed TCSP
+                  Hong Kong · TCSP TC010556
                 </span>
               </div>
 
@@ -105,25 +104,30 @@ export default function HomePage() {
               </div>
 
               <h1
-                className="public-fade-up public-fade-up-delay-2 font-display font-light leading-[1.15] gold-shimmer max-w-xl"
-                style={{ fontStyle: 'italic', fontSize: 'clamp(1.55rem, 3.4vw, 2.55rem)' }}
+                className="public-fade-up public-fade-up-delay-2 font-display font-light leading-[1.2] max-w-xl"
+                style={{
+                  fontStyle: 'italic',
+                  fontSize: 'clamp(1.45rem, 3.2vw, 2.35rem)',
+                  color: '#F2E8D5',
+                  letterSpacing: '0.01em',
+                }}
               >
                 {t('heroTitleSub')}
               </h1>
 
               <p
                 className="public-fade-up public-fade-up-delay-3 text-base md:text-lg max-w-lg leading-relaxed"
-                style={{ color: '#D0C0A8' }}
+                style={{ color: '#B8A890' }}
               >
                 {t('heroSubtitle')}
               </p>
 
               <div className="public-fade-up public-fade-up-delay-4 flex flex-wrap items-center gap-3 pt-1">
                 <Link
-                  href="/register"
-                  className="public-cta-glow group flex items-center gap-2 px-9 py-4 rounded-sm text-sm font-bold transition-all"
+                  href="/contact"
+                  className="group flex items-center gap-2 px-9 py-4 rounded-sm text-sm font-semibold tracking-wide transition-all hover:opacity-95"
                   style={{
-                    background: 'linear-gradient(135deg, #F0D090 0%, #C9A96E 42%, #B8924E 100%)',
+                    background: 'linear-gradient(135deg, #C8A971 0%, #B4945C 55%, #9A7A48 100%)',
                     color: '#0C0C0C',
                   }}
                 >
@@ -132,11 +136,11 @@ export default function HomePage() {
                 </Link>
                 <Link
                   href="/services"
-                  className="px-7 py-4 rounded-sm text-sm font-semibold transition-all hover:bg-[rgba(201,169,110,0.1)]"
+                  className="px-7 py-4 rounded-sm text-sm font-medium tracking-wide transition-all hover:bg-[rgba(180,148,92,0.1)]"
                   style={{
-                    border: '1px solid rgba(240,208,144,0.5)',
-                    color: '#F0D090',
-                    background: 'rgba(201,169,110,0.06)',
+                    border: '1px solid rgba(180,148,92,0.45)',
+                    color: '#E8D5B0',
+                    background: 'rgba(180,148,92,0.05)',
                     backdropFilter: 'blur(8px)',
                   }}
                 >
@@ -166,12 +170,11 @@ export default function HomePage() {
                   }}
                 />
                 <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-                  <span className="font-mono-public text-[10px] uppercase tracking-[0.22em]" style={{ color: '#F0D090' }}>
-                    TCSP · AML · DDR
+                  <span className="font-mono-public text-[10px] uppercase tracking-[0.22em]" style={{ color: '#E8D5B0' }}>
+                    TC010556 · Private Desk
                   </span>
-                  <span className="flex items-center gap-2 font-mono-public text-[10px]" style={{ color: '#C9A96E' }}>
-                    <span className="public-pulse-dot" />
-                    LIVE
+                  <span className="font-mono-public text-[10px]" style={{ color: '#C9A96E' }}>
+                    CONFIDENTIAL
                   </span>
                 </div>
               </div>
@@ -205,18 +208,17 @@ export default function HomePage() {
                   <div className="absolute inset-x-0 bottom-0 p-5 md:p-6 space-y-3.5">
                     <div className="flex items-center justify-between">
                       <p className="font-mono-public text-[10px] uppercase tracking-[0.28em]" style={{ color: '#C9B896' }}>
-                        Compliance Console
+                        Private Compliance Desk
                       </p>
-                      <span className="flex items-center gap-2 font-mono-public text-[10px]" style={{ color: '#F0D090' }}>
-                        <span className="public-pulse-dot" />
-                        LIVE
+                      <span className="font-mono-public text-[10px]" style={{ color: '#E8D5B0' }}>
+                        TC010556
                       </span>
                     </div>
 
-                    <ConsoleRow label="TCSP Licence" value="ACTIVE" ok />
+                    <ConsoleRow label="TCSP Licence" value="TC010556" ok />
                     <ConsoleRow label="AMLO Cap. 615" value="COMPLIANT" ok />
-                    <ConsoleRow label="KYC / AML Gate" value="SCREENING" />
-                    <ConsoleRow label="Quarterly DDR" value="ON TRACK" ok />
+                    <ConsoleRow label="Private KYC / AML" value="DISCREET" ok />
+                    <ConsoleRow label="Ongoing Stewardship" value="ACTIVE" ok />
                   </div>
                 </div>
               </div>
@@ -261,7 +263,7 @@ export default function HomePage() {
             {[
               { v: '500+', l: t('stat.companies') },
               { v: '15+', l: t('stat.years') },
-              { v: 'TCSP', l: t('stat.license') },
+              { v: 'TC010556', l: t('stat.license') },
             ].map((s) => (
               <div key={s.v} className="space-y-2">
                 <p className="public-stat-blast font-display font-semibold leading-none" style={{ fontSize: 'clamp(2.5rem, 8vw, 5.5rem)' }}>
@@ -605,9 +607,9 @@ export default function HomePage() {
           </h2>
           <Link
             href="/contact"
-            className="public-cta-glow relative inline-flex items-center gap-2 px-10 py-4 rounded-sm text-sm font-bold"
+            className="relative inline-flex items-center gap-2 px-10 py-4 rounded-sm text-sm font-semibold tracking-wide hover:opacity-95"
             style={{
-              background: 'linear-gradient(135deg, #F0D090, #C9A96E)',
+              background: 'linear-gradient(135deg, #C8A971, #B4945C)',
               color: '#0C0C0C',
             }}
           >

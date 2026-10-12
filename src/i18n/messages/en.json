@@ -45,87 +45,87 @@
   },
   "home": {
     "heroTitleHighlight": "6AM Advisory",
-    "heroTitleSub": "Build on HK, Grow to the World",
-    "heroTitle": "Build on HK, Grow to the World",
-    "heroSubtitle": "Your trusted Hong Kong TCSP partner for company formation, secretarial, accounting and business advisory services.",
-    "heroTrustBadge": "Licensed TCSP · AMLO Cap. 615",
-    "heroCtaStart": "Get Started",
+    "heroTitleSub": "Private counsel for discerning families",
+    "heroTitle": "Private counsel for discerning families",
+    "heroSubtitle": "A licensed Hong Kong TCSP dedicated to high-net-worth individuals, family offices and principals — discreet company, trust and wealth-structure services with institutional-grade compliance.",
+    "heroTrustBadge": "Licensed TCSP · TC010556 · AMLO Cap. 615",
+    "heroCtaStart": "Private Consultation",
     "heroCtaLearn": "Our Services",
     "trustStrip": {
-      "eyebrow": "Trust & Compliance",
+      "eyebrow": "Trust & Discretion",
       "licensed": {
-        "title": "Licensed TCSP",
+        "title": "Licensed TCSP TC010556",
         "desc": "Authorised under Hong Kong AMLO Cap. 615"
       },
       "aml": {
-        "title": "AML & KYC Ready",
-        "desc": "Screening, risk assessment and audit trail"
+        "title": "Confidential AML & KYC",
+        "desc": "Private screening, risk assessment and audit trail"
       },
       "hk": {
-        "title": "Hong Kong Based",
-        "desc": "Local execution for local and cross-border clients"
+        "title": "Hong Kong Private Desk",
+        "desc": "Local execution for families and cross-border principals"
       }
     },
     "stat": {
-      "companies": "Client Companies",
+      "companies": "Structures Advised",
       "years": "Years of Experience",
-      "license": "Licensed TCSP"
+      "license": "Licence TC010556"
     },
-    "pillarsEyebrow": "Our Services",
+    "pillarsEyebrow": "Private Client Services",
     "pillars": {
       "secretarial": {
         "title": "Company Secretarial",
-        "desc": "Company incorporation, statutory filings, annual returns and register maintenance.",
+        "desc": "Incorporation, statutory filings and governance for private companies and holding structures.",
         "bullets": [
-          "Same-day incorporation options",
+          "Bespoke incorporation",
           "Annual returns & registers",
           "Registered office support"
         ]
       },
       "accounting": {
         "title": "Accounting & Tax",
-        "desc": "Bookkeeping, financial reporting, tax filing and strategic tax planning.",
+        "desc": "Discreet bookkeeping, reporting and strategic tax planning for principals and family entities.",
         "bullets": [
-          "Bookkeeping & reporting",
+          "Private reporting",
           "Profits tax & filings",
           "Audit coordination"
         ]
       },
       "advisory": {
-        "title": "Business Advisory",
-        "desc": "Cross-border market entry, M&A support and corporate restructuring.",
+        "title": "Wealth & Business Advisory",
+        "desc": "Cross-border structuring, succession planning and corporate restructuring for family offices.",
         "bullets": [
-          "Market entry planning",
+          "Holding & succession design",
           "Restructuring support",
           "Cross-border coordination"
         ]
       }
     },
-    "journeyEyebrow": "Compliance Journey",
-    "journeyTitle": "From onboarding to ongoing oversight",
-    "journeyDesc": "A clear path that mirrors how regulated TCSP work actually runs — not just a one-off setup.",
+    "journeyEyebrow": "Private Engagement",
+    "journeyTitle": "From confidential onboarding to ongoing stewardship",
+    "journeyDesc": "A regulated TCSP pathway designed for high-net-worth clients — private, thorough, and built for long-term oversight.",
     "journey": {
       "onboard": {
-        "title": "Onboard",
-        "desc": "Open your client portal, submit company and person details, and start the service engagement."
+        "title": "Private Onboarding",
+        "desc": "Open a confidential client portal, share company and personal details, and begin a tailored engagement."
       },
       "kyc": {
         "title": "KYC & AML",
-        "desc": "Identity verification, sanctions screening and risk assessment before engagement proceeds."
+        "desc": "Identity verification, sanctions screening and risk assessment before any engagement proceeds."
       },
       "ongoing": {
         "title": "Ongoing DDR",
-        "desc": "Quarterly due diligence reviews keep files current for active companies and approved persons."
+        "desc": "Quarterly due diligence keeps files current for active companies and approved persons."
       }
     },
     "whyEyebrow": "Why 6AM Advisory",
-    "whyTitle": "A Professional, Trusted Partner",
-    "whyDesc": "As a licensed Hong Kong TCSP, we combine deep legal and compliance expertise with responsive client service to support your business end to end.",
+    "whyTitle": "A discreet partner for private wealth",
+    "whyDesc": "As licensed TCSP TC010556, we serve high-net-worth clients and family enterprises with rigorous compliance, bilingual counsel and the discretion expected of a private desk.",
     "why": {
-      "compliance": "Compliance focus",
-      "responsive": "Fast turnaround",
-      "team": "Expert team",
-      "bilingual": "Bilingual service"
+      "compliance": "Regulated discretion",
+      "responsive": "Principal-level access",
+      "team": "Senior specialists",
+      "bilingual": "Bilingual private desk"
     },
     "processEyebrow": "How It Works",
     "processTitle": "Setting Up in 6 Steps",
@@ -159,13 +159,13 @@
     "testimonialsTitle": "What Our Clients Say",
     "newsTitle": "Latest News",
     "pillarsTitle": "What We Do",
-    "ctaTitle": "Ready to Get Started?",
-    "ctaDesc": "Talk to our team today and get your Hong Kong company set up in as little as one business day."
+    "ctaTitle": "Arrange a private consultation",
+    "ctaDesc": "Speak with our principals for confidential Hong Kong structuring, secretarial and advisory support."
   },
   "services": {
     "title": "Our Services",
-    "subtitle": "A one-stop professional firm tailored for high-net-worth clients — combining rigorous compliance management with strategic business advisory.",
-    "getStarted": "Get Started",
+    "subtitle": "A private desk for high-net-worth clients and family offices — rigorous compliance with strategic corporate counsel.",
+    "getStarted": "Enquire Privately",
     "secretarial": {
       "title": "Company Formation & Secretarial",
       "intro": "The cornerstone of effective corporate governance and sustainable growth. We offer customised solutions for businesses at every stage, combining rigorous compliance management with efficient execution.",
@@ -303,11 +303,11 @@
   },
   "about": {
     "title": "About 6AM Advisory",
-    "subtitle": "A one-stop professional firm for high-net-worth clients and family enterprises.",
-    "intro": "6AM Advisory Limited is a licensed Trust and Company Service Provider (TCSP) in Hong Kong, dedicated to providing comprehensive corporate services to businesses and high-net-worth individuals.",
-    "tcspLicence": "Licensed TCSP under AMLO Cap. 615, Hong Kong",
+    "subtitle": "A private Hong Kong TCSP for high-net-worth clients and family enterprises.",
+    "intro": "6AM Advisory Limited is a licensed Trust and Company Service Provider (TCSP Licence TC010556) in Hong Kong, dedicated to discreet corporate, trust and structuring services for high-net-worth individuals and family offices.",
+    "tcspLicence": "Licensed TCSP TC010556 under AMLO Cap. 615, Hong Kong",
     "positioningEyebrow": "Who We Are",
-    "positioningDesc": "6AM Advisory is a one-stop professional firm tailored for high-net-worth clients and family enterprises across Hong Kong and international markets. Our team of enterprise advisors, chartered secretaries and accountants brings extensive cross-industry and cross-regional experience — combining strategic insight with execution capability to achieve sustainable growth for our clients.",
+    "positioningDesc": "6AM Advisory is a private desk for high-net-worth clients and family enterprises across Hong Kong and international markets. Our advisors, chartered secretaries and accountants bring cross-border experience — combining strategic insight with discreet execution for lasting structures.",
     "teamPhone2": "+86 1554 686 8835",
     "valuesTitle": "Our Core Values",
     "values": {
@@ -353,7 +353,7 @@
   },
   "contact": {
     "title": "Contact Us",
-    "subtitle": "Get in touch with our team for any enquiry or service request.",
+    "subtitle": "Reach our private desk for a confidential enquiry or engagement discussion.",
     "formTitle": "Send Us a Message",
     "name": "Full Name",
     "email": "Email Address",
@@ -1355,8 +1355,8 @@
     "usd": "USD"
   },
   "footer": {
-    "tagline": "Build on HK, Grow to the World — licensed TCSP for company secretarial, accounting and advisory services.",
-    "tcspNote": "Licensed under AMLO Cap. 615 — Trust or Company Service Provider",
+    "tagline": "Private counsel for discerning families — licensed Hong Kong TCSP for secretarial, accounting and advisory services.",
+    "tcspNote": "Licensed TCSP TC010556 under AMLO Cap. 615 — Trust or Company Service Provider",
     "quickLinks": "Quick Links",
     "home": "Home",
     "services": "Services",

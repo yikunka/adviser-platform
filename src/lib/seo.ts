@@ -68,17 +68,17 @@ export function brandMetadata({
 }
 
 export const sixAmSeo = {
-  title: '6AM Advisory | Hong Kong Company Formation, TCSP & Corporate Services',
+  title: '6AM Advisory | Private Hong Kong TCSP for High-Net-Worth Clients',
   description:
-    '6AM Advisory provides Hong Kong company formation, company secretarial, accounting, compliance and business advisory services for founders and international businesses.',
+    'Licensed Hong Kong TCSP TC010556 — private company secretarial, accounting, compliance and advisory services for high-net-worth individuals and family offices.',
   keywords: [
     '6AM Advisory',
     '6amadvise',
+    'Hong Kong TCSP TC010556',
+    'high net worth TCSP Hong Kong',
+    'family office company secretary Hong Kong',
+    'private wealth corporate services Hong Kong',
     'Hong Kong company formation',
-    'Hong Kong TCSP',
-    'company secretary Hong Kong',
-    'accounting services Hong Kong',
-    'business advisory Hong Kong',
   ],
   image: '/logo.png',
 }
