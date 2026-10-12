@@ -537,9 +537,8 @@ function part4Conclusion(opts: {
   incompleteBannerEn: string
   riskLevel: string | null
   riskRemark: string | null
-  approverName: string
-  approvalDate: Date | string | null
-  approvalNote: string | null
+  /** Report generation date — used as Approval Date in 4.2 */
+  reportDate?: Date | string | null
   checklist?: Array<{ label: string; ok: boolean; detail: string }>
 }) {
   const out: Array<Paragraph | Table> = [sectionTitle('4. 結論  Conclusion')]
@@ -577,13 +576,8 @@ function part4Conclusion(opts: {
   out.push(kvTable([
     { label: '整體風險等級\nOverall Risk Level', value: riskText },
     { label: '風險備註\nRisk Remark', value: opts.riskRemark?.trim() || '無備註  No Remark' },
-    { label: '批准人員\nApprover', value: opts.approverName || '—' },
-    { label: '批准日期\nApproval Date', value: opts.approvalDate ? fmt(opts.approvalDate) : '—' },
-    {
-      label: '批准人員簽署\nApprover Signature',
-      value: '',
-      signature: true,
-    },
+    { label: '批准人員\nApprover', value: 'Wong Sze Kai' },
+    { label: '批准日期\nApproval Date', value: fmt(opts.reportDate ?? new Date()) },
   ]))
   return out
 }
@@ -754,10 +748,6 @@ export async function generateCompanyDdrDocx(companyId: string, ddrId?: string):
     orderBy: { seqNo: 'asc' },
     select: { seqNo: true, nameEn: true, nameZh: true, sourceUrl: true, lastFetched: true },
   })
-
-  const approvedByUser = ddr?.approvedById
-    ? await prisma.user.findUnique({ where: { id: ddr.approvedById }, select: { nameEn: true, nameZh: true } })
-    : null
 
   const scopedByKp = new Map<string, Awaited<ReturnType<typeof loadPersonScopedChecks>>>()
   const alertsByKp = new Map<string, AlertDispositionRow[]>()
@@ -981,10 +971,6 @@ export async function generateCompanyDdrDocx(companyId: string, ddrId?: string):
   }
   if (subjects.length === 0) allPersonsClear = false
 
-  const appName = approvedByUser
-    ? [approvedByUser.nameEn, approvedByUser.nameZh].filter(Boolean).join(' / ')
-    : '—'
-
   children.push(...part4Conclusion({
     subjectLabel: coDisplay,
     allClear: companyOk && allPersonsClear,
@@ -994,9 +980,7 @@ export async function generateCompanyDdrDocx(companyId: string, ddrId?: string):
     incompleteBannerEn: 'Screening incomplete or hits present — complete four-step screening and disposition before final conclusion',
     riskLevel: ddr?.overallRiskLevel ?? null,
     riskRemark: null,
-    approverName: appName,
-    approvalDate: ddr?.approvedAt ?? null,
-    approvalNote: ddr?.approvalNote ?? null,
+    reportDate: new Date(),
     checklist,
   }))
 
@@ -1083,10 +1067,6 @@ export async function generatePersonDdrDocx(keyPersonId: string): Promise<Buffer
     orderBy: { seqNo: 'asc' },
     select: { seqNo: true, nameEn: true, nameZh: true, sourceUrl: true, lastFetched: true },
   })
-
-  const approvedByUser = companyDdr?.approvedById
-    ? await prisma.user.findUnique({ where: { id: companyDdr.approvedById }, select: { nameEn: true, nameZh: true } })
-    : null
 
   const today = fmt(new Date())
   const displayName = [person.titlePrefix, person.nameEn].filter(Boolean).join(' ')
@@ -1213,10 +1193,6 @@ export async function generatePersonDdrDocx(keyPersonId: string): Promise<Buffer
   }
   children.push(...part3Risk(buildRiskRows(riskAnswers)))
 
-  const appName = approvedByUser
-    ? [approvedByUser.nameEn, approvedByUser.nameZh].filter(Boolean).join(' / ')
-    : '—'
-
   children.push(...part4Conclusion({
     subjectLabel: [person.nameEn, person.nameZh].filter(Boolean).join(' / ') || displayName,
     allClear: allFourClear,
@@ -1226,9 +1202,7 @@ export async function generatePersonDdrDocx(keyPersonId: string): Promise<Buffer
     incompleteBannerEn: 'Screening not fully CLEAR — complete four steps and disposition before final conclusion',
     riskLevel: companyDdr?.overallRiskLevel ?? null,
     riskRemark: null,
-    approverName: appName,
-    approvalDate: companyDdr?.approvedAt ?? null,
-    approvalNote: companyDdr?.approvalNote ?? null,
+    reportDate: new Date(),
     checklist: [
       { label: '1. AML / Sanctions', ok: scoped.SANCTIONS?.result === 'CLEAR', detail: screeningResultLabel(scoped.SANCTIONS?.result) },
       { label: '2. FATF jurisdictions', ok: scoped.FATF?.result === 'CLEAR', detail: screeningResultLabel(scoped.FATF?.result) },

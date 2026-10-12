@@ -845,9 +845,7 @@ async function drawPart4Conclusion(
     incompleteBannerEn: string
     riskLevel: string | null | undefined
     riskRemark?: string | null
-    approverName: string
-    approvalDate?: Date | string | null
-    approvalNote?: string | null
+    reportDate?: Date | string | null
     checklist?: Array<{ label: string; ok: boolean; detail: string }>
   },
 ) {
@@ -904,17 +902,12 @@ async function drawPart4Conclusion(
     { label: '風險備註\nRisk Remark', value: remark },
     {
       label: 'Approver\n批准人員',
-      value: opts.approverName || '—',
+      value: 'Wong Sze Kai',
     },
     {
       label: '批准日期\nApproval Date',
-      value: opts.approvalDate ? new Date(opts.approvalDate).toLocaleDateString('en-HK') : '—',
+      value: new Date(opts.reportDate ?? new Date()).toLocaleDateString('en-HK'),
     },
-    {
-      label: '批准備註\nApproval Remark',
-      value: opts.approvalNote?.trim() || '—',
-    },
-    { label: '批准人員簽署\nApprover Signature', value: '', tall: true },
   ])
 }
 
