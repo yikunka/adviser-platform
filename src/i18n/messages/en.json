@@ -6,7 +6,7 @@
     "contact": "Contact",
     "faq": "FAQ",
     "login": "Login",
-    "getStarted": "Private Consultation",
+    "getStarted": "Write to us",
     "dashboard": "Dashboard",
     "kyc": "KYC",
     "documents": "Documents",
@@ -45,12 +45,14 @@
   },
   "home": {
     "heroTitleHighlight": "6AM Advisory",
-    "heroTitleSub": "Quiet counsel for families and principals",
-    "heroTitle": "Quiet counsel for families and principals",
-    "heroSubtitle": "A licensed Hong Kong TCSP for private holding companies, family offices and cross-border principals — company, trust and structuring work handled with discretion and institutional compliance.",
+    "heroTitleSub": "Hong Kong company, trust and structuring work — handled quietly.",
+    "heroTitle": "Hong Kong company, trust and structuring work — handled quietly.",
+    "heroSubtitle": "We are a licensed TCSP in Yau Ma Tei. Families and principals come to us for holding companies, succession papers and day-to-day secretarial care — not for a product brochure.",
+    "heroMeet": "Tell us what you need. We reply within one business day, and meet by appointment.",
+    "heroLicenceLine": "Licensed TCSP TC010556 · AMLO Cap. 615 · Hong Kong",
     "heroTrustBadge": "Licensed TCSP · TC010556 · AMLO Cap. 615",
-    "heroCtaStart": "Private Consultation",
-    "heroCtaLearn": "Our Services",
+    "heroCtaStart": "Write to us",
+    "heroCtaLearn": "See what we do",
     "trustStrip": {
       "eyebrow": "Trust & Discretion",
       "licensed": {
@@ -71,11 +73,11 @@
       "licence": "TCSP TC010556",
       "continuity": "Long-term stewardship"
     },
-    "pillarsEyebrow": "How we support you",
+    "pillarsEyebrow": "What we do",
     "pillars": {
       "secretarial": {
         "title": "Company Secretarial",
-        "desc": "Incorporation, statutory filings and governance for private companies and holding structures.",
+        "desc": "Incorporation, statutory filings and board papers for private companies and holding structures.",
         "bullets": [
           "Bespoke incorporation",
           "Annual returns & registers",
@@ -84,7 +86,7 @@
       },
       "accounting": {
         "title": "Accounting & Tax",
-        "desc": "Discreet bookkeeping, reporting and strategic tax planning for principals and family entities.",
+        "desc": "Bookkeeping, reports and tax filings for principals and family entities, kept within a closed file.",
         "bullets": [
           "Private reporting",
           "Profits tax & filings",
@@ -93,7 +95,7 @@
       },
       "advisory": {
         "title": "Structuring & Advisory",
-        "desc": "Cross-border holding design, succession planning and corporate restructuring.",
+        "desc": "Holding design, succession planning and restructuring — coordinated with your legal and tax advisers.",
         "bullets": [
           "Holding & succession design",
           "Restructuring support",
@@ -101,49 +103,49 @@
         ]
       }
     },
-    "journeyEyebrow": "How engagement works",
-    "journeyTitle": "From confidential onboarding to ongoing stewardship",
-    "journeyDesc": "A regulated TCSP pathway — private, thorough, and built for long-term oversight rather than a one-off filing.",
+    "journeyEyebrow": "How we work together",
+    "journeyTitle": "A clear path, without noise",
+    "journeyDesc": "We start with a private conversation, complete the required checks, then stay with the file for the long term.",
     "journey": {
       "onboard": {
-        "title": "Private onboarding",
-        "desc": "A confidential portal, company and personal details, and a tailored scope of work."
+        "title": "We listen first",
+        "desc": "You tell us the situation. We agree scope, timeline and who will handle the work."
       },
       "kyc": {
-        "title": "KYC & AML",
-        "desc": "Identity verification, sanctions screening and risk assessment before engagement proceeds."
+        "title": "Required checks",
+        "desc": "Identity and sanctions screening are completed before we proceed — as required for a licensed TCSP."
       },
       "ongoing": {
-        "title": "Ongoing DDR",
-        "desc": "Periodic due diligence keeps files current for active companies and approved persons."
+        "title": "We stay with the file",
+        "desc": "Annual returns, board papers and periodic reviews, so the structure does not drift."
       }
     },
     "whyEyebrow": "Why 6AM Advisory",
-    "whyTitle": "A discreet Hong Kong partner",
-    "whyDesc": "As licensed TCSP TC010556, we combine regulated compliance with bilingual counsel and the quiet access expected of a private desk.",
+    "whyTitle": "A small Hong Kong desk",
+    "whyDesc": "Licensed TCSP TC010556. You speak with people who know the file — in English or Chinese.",
     "why": {
       "compliance": "Regulated discretion",
-      "responsive": "Principal-level access",
+      "responsive": "Direct access",
       "team": "Senior specialists",
-      "bilingual": "Bilingual private desk"
+      "bilingual": "English & Chinese"
     },
     "engagement": {
-      "eyebrow": "Typical mandates",
-      "title": "Where families usually begin",
-      "desc": "Every engagement is scoped privately. These are the situations we are most often asked to support.",
-      "confidentiality": "Matters are handled under professional confidentiality. Engagement details are not published or used for marketing.",
-      "cta": "Arrange a private consultation",
+      "eyebrow": "Common situations",
+      "title": "Where people usually begin",
+      "desc": "Scope is agreed privately. These are the matters we are most often asked to handle.",
+      "confidentiality": "We treat your affairs as confidential. We do not publish client names or use engagement details for marketing.",
+      "cta": "Arrange a conversation",
       "holding": {
-        "title": "Private holding companies",
-        "desc": "Hong Kong or offshore holding vehicles for investment, succession or operating groups — formation through ongoing secretarial care."
+        "title": "A private holding company",
+        "desc": "Form or tidy a Hong Kong or offshore holding vehicle — from incorporation through ongoing secretarial care."
       },
       "succession": {
-        "title": "Family succession structures",
-        "desc": "Shareholding, governance and documentation for next-generation transfer, coordinated with your legal and tax advisers."
+        "title": "Family succession papers",
+        "desc": "Shareholding and governance documents for the next generation, worked alongside your existing counsel."
       },
       "governance": {
-        "title": "Ongoing private governance",
-        "desc": "Annual filings, board papers, registered office and compliance calendars maintained without noise."
+        "title": "Quiet year-round care",
+        "desc": "Annual returns, board papers, registered office and deadlines — handled without fuss."
       }
     },
     "processEyebrow": "How It Works",
@@ -177,14 +179,14 @@
     },
     "testimonialsTitle": "What Our Clients Say",
     "newsTitle": "Latest News",
-    "pillarsTitle": "What We Do",
-    "ctaTitle": "Arrange a private consultation",
-    "ctaDesc": "Speak with our team about Hong Kong structuring, secretarial and advisory support — by appointment."
+    "pillarsTitle": "Our work",
+    "ctaTitle": "If this sounds like what you need",
+    "ctaDesc": "Write to us, call, or book a meeting. Office hours Mon–Fri 09:30–17:00 — or by appointment."
   },
   "services": {
     "title": "Our Services",
     "subtitle": "Company secretarial, accounting and structuring support for private companies, family offices and principals — rigorous compliance, discreet execution.",
-    "getStarted": "Private Consultation",
+    "getStarted": "Write to us",
     "secretarial": {
       "title": "Company Formation & Secretarial",
       "intro": "The cornerstone of effective corporate governance and sustainable growth. We offer customised solutions for businesses at every stage, combining rigorous compliance management with efficient execution.",
@@ -322,11 +324,11 @@
   },
   "about": {
     "title": "About 6AM Advisory",
-    "subtitle": "A private Hong Kong TCSP for families, principals and closely held enterprises.",
-    "intro": "6AM Advisory Limited is a licensed Trust and Company Service Provider (TCSP Licence TC010556) in Hong Kong, focused on discreet corporate, trust and structuring services for private clients and family offices.",
+    "subtitle": "A small licensed TCSP desk in Hong Kong — company, trust and structuring work for families and closely held enterprises.",
+    "intro": "6AM Advisory Limited is a licensed Trust and Company Service Provider (TCSP Licence TC010556) in Hong Kong. We handle company, trust and structuring work for private clients and family offices — carefully, and without unnecessary ceremony.",
     "tcspLicence": "Licensed TCSP TC010556 under AMLO Cap. 615, Hong Kong",
-    "positioningEyebrow": "Who We Are",
-    "positioningDesc": "6AM Advisory is a private desk for families and closely held enterprises across Hong Kong and international markets. Our advisors, chartered secretaries and accountants bring cross-border experience — combining strategic insight with discreet execution for lasting structures.",
+    "positioningEyebrow": "Who we are",
+    "positioningDesc": "We work from Yau Ma Tei with advisors, chartered secretaries and accountants who know Hong Kong filings and cross-border coordination. You deal with people who stay with the file — in English or Chinese.",
     "teamPhone2": "+86 1554 686 8835",
     "valuesTitle": "Our Core Values",
     "values": {
@@ -367,31 +369,31 @@
     "email": "Email",
     "emailValue": "kennywong@6amadvise.com",
     "hours": "Business Hours",
-    "hoursValue": "Mon–Fri 09:00–18:00 | Sat by appointment",
+    "hoursValue": "Mon–Fri 09:30–17:00 | or by appointment",
     "contactUs": "Contact Us"
   },
   "contact": {
     "title": "Contact Us",
-    "subtitle": "Reach our private desk for a confidential enquiry or engagement discussion.",
-    "formTitle": "Send Us a Message",
+    "subtitle": "Write to us about your situation. We reply within one business day, and meet by appointment.",
+    "formTitle": "Write to us",
     "name": "Full Name",
     "email": "Email Address",
     "phone": "Phone (optional)",
     "subject": "Subject",
     "message": "Message",
-    "send": "Send Message",
+    "send": "Send message",
     "sending": "Sending...",
-    "sentSuccess": "Message sent! We'll get back to you within 1 business day.",
-    "sentDesc": "Thank you for reaching out. Our team will respond shortly.",
+    "sentSuccess": "Received — we will reply within one business day.",
+    "sentDesc": "If your matter is urgent, call or email us directly.",
     "sentError": "Failed to send. Please try again or email us directly.",
-    "officeTitle": "Office Details",
+    "officeTitle": "Office",
     "address": "Address",
     "addressValue": "Unit 7, 20/F, Boss Commercial Centre, 28 Ferry Street, Yau Ma Tei, Kowloon, Hong Kong",
     "phoneValue": "+852 6560 0073",
     "emailLabel": "Email",
     "emailValue": "kennywong@6amadvise.com",
-    "hours": "Business Hours",
-    "hoursValue": "Mon–Fri 09:00–18:00 | Sat by appointment"
+    "hours": "Hours",
+    "hoursValue": "Mon–Fri 09:30–17:00 | or by appointment"
   },
   "faq": {
     "title": "Frequently Asked Questions",
@@ -1374,7 +1376,7 @@
     "usd": "USD"
   },
   "footer": {
-    "tagline": "Quiet counsel for families and principals — licensed Hong Kong TCSP for secretarial, accounting and structuring services.",
+    "tagline": "Hong Kong company, trust and structuring work — handled quietly. Licensed TCSP in Yau Ma Tei.",
     "tcspNote": "Licensed TCSP TC010556 under AMLO Cap. 615 — Trust or Company Service Provider",
     "quickLinks": "Quick Links",
     "home": "Home",
@@ -1385,7 +1387,7 @@
     "address": "Unit 7, 20/F, Boss Commercial Centre, 28 Ferry Street, Yau Ma Tei, Kowloon, HK",
     "phone": "+852 6560 0073",
     "email": "kennywong@6amadvise.com",
-    "hours": "Mon–Fri 09:00–18:00",
+    "hours": "Mon–Fri 09:30–17:00 | or by appointment",
     "copyright": "© 2025 6AM Advisory Limited. All rights reserved.",
     "privacy": "Privacy Policy",
     "terms": "Terms of Service"

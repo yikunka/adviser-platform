@@ -6,7 +6,7 @@
     "contact": "聯絡我們",
     "faq": "常見問題",
     "login": "登入",
-    "getStarted": "預約私密諮詢",
+    "getStarted": "寫信給我們",
     "dashboard": "工作台",
     "kyc": "自然人管理",
     "documents": "文件",
@@ -45,12 +45,14 @@
   },
   "home": {
     "heroTitleHighlight": "6AM Advisory",
-    "heroTitleSub": "為家族與主事人提供沉穩顧問",
-    "heroTitle": "為家族與主事人提供沉穩顧問",
-    "heroSubtitle": "香港持牌信託及公司服務提供商，服務私人控股公司、家族辦公室與跨境主事人——以嚴謹合規與私密執行，處理公司、信託與架構事宜。",
+    "heroTitleSub": "香港的公司、信託與架構事務——低調處理。",
+    "heroTitle": "香港的公司、信託與架構事務——低調處理。",
+    "heroSubtitle": "我們是油麻地的持牌 TCSP。家族與主事人找我們處理控股公司、傳承文件與日常秘書事務——不是來翻產品目錄。",
+    "heroMeet": "告訴我們您的需要。我們於一個工作日內回覆，並可預約會面。",
+    "heroLicenceLine": "持牌 TCSP TC010556 · 《打擊洗錢條例》第 615 章 · 香港",
     "heroTrustBadge": "持牌 TCSP · TC010556 · 《打擊洗錢條例》第 615 章",
-    "heroCtaStart": "預約私密諮詢",
-    "heroCtaLearn": "了解服務",
+    "heroCtaStart": "寫信給我們",
+    "heroCtaLearn": "了解我們做什麼",
     "trustStrip": {
       "eyebrow": "信任與私密",
       "licensed": {
@@ -71,11 +73,11 @@
       "licence": "TCSP TC010556",
       "continuity": "長期守護"
     },
-    "pillarsEyebrow": "我們如何協助",
+    "pillarsEyebrow": "我們做什麼",
     "pillars": {
       "secretarial": {
         "title": "公司秘書",
-        "desc": "為私人公司與控股架構提供成立、法定申報與管治支援。",
+        "desc": "為私人公司與控股架構處理成立、法定申報與董事會文件。",
         "bullets": [
           "度身成立方案",
           "周年申報與法定冊",
@@ -84,7 +86,7 @@
       },
       "accounting": {
         "title": "會計及稅務",
-        "desc": "為主事人與家族實體提供私密簿記、報告與策略性稅務規劃。",
+        "desc": "為主事人與家族實體處理簿記、報告與稅務申報，檔案保持封閉。",
         "bullets": [
           "私人財務報告",
           "利得稅及申報",
@@ -93,7 +95,7 @@
       },
       "advisory": {
         "title": "架構與顧問",
-        "desc": "跨境控股設計、傳承規劃與企業重組。",
+        "desc": "控股設計、傳承規劃與重組——並與您既有的法律及稅務顧問協調。",
         "bullets": [
           "控股與傳承設計",
           "重組支援",
@@ -101,49 +103,49 @@
         ]
       }
     },
-    "journeyEyebrow": "委託如何進行",
-    "journeyTitle": "從保密入駐到持續守護",
-    "journeyDesc": "持牌 TCSP 路徑——私密、嚴謹，着眼長期監察，而非一次性成立。",
+    "journeyEyebrow": "我們如何共事",
+    "journeyTitle": "路徑清楚，不多餘聲響",
+    "journeyDesc": "先私下溝通，完成必要核實，再長期跟進檔案。",
     "journey": {
       "onboard": {
-        "title": "私密入駐",
-        "desc": "保密客戶門戶、公司與自然人資料，以及度身工作範圍。"
+        "title": "先聽清楚",
+        "desc": "您說明情況。我們約定範圍、時間表與負責人。"
       },
       "kyc": {
-        "title": "KYC 與 AML",
-        "desc": "身份核實、制裁篩查與風險評估，合規後方可推進業務。"
+        "title": "必要核實",
+        "desc": "推進事務前完成身份與制裁篩查——持牌 TCSP 的法定要求。"
       },
       "ongoing": {
-        "title": "持續 DDR",
-        "desc": "定期盡職審查，保持活躍公司與已批核自然人檔案最新。"
+        "title": "跟進檔案",
+        "desc": "周年申報、董事會文件與定期覆核，避免架構失管。"
       }
     },
     "whyEyebrow": "為何選擇我們",
-    "whyTitle": "沉穩的香港夥伴",
-    "whyDesc": "作為持牌 TCSP（牌照編號 TC010556），我們以受規管的合規標準、雙語顧問與私人服務台應有的保密，服務家族與緊密持股企業。",
+    "whyTitle": "一間小型香港服務台",
+    "whyDesc": "持牌 TCSP TC010556。您對接的是熟悉檔案的人——中英皆可。",
     "why": {
       "compliance": "受規管的私密",
-      "responsive": "主事人級別對接",
+      "responsive": "直接對接",
       "team": "資深專才",
-      "bilingual": "中英私人服務台"
+      "bilingual": "中英服務"
     },
     "engagement": {
-      "eyebrow": "常見委託",
-      "title": "家族通常從這裡開始",
-      "desc": "每項委託均私下釐定範圍。以下是我們最常被諮詢的情境。",
-      "confidentiality": "事務按專業保密處理。委託細節不會公開，亦不作市場推廣用途。",
-      "cta": "預約私密諮詢",
+      "eyebrow": "常見情況",
+      "title": "人們通常從這裡開始",
+      "desc": "範圍私下約定。以下是我們最常處理的事務。",
+      "confidentiality": "我們按專業保密處理您的事務。不會公開客戶名稱，亦不把委託細節用作推廣。",
+      "cta": "安排對話",
       "holding": {
         "title": "私人控股公司",
-        "desc": "為投資、傳承或營運集團設立香港或離岸控股主體——從成立到持續秘書服務。"
+        "desc": "成立或整理香港或離岸控股主體——從成立到持續秘書服務。"
       },
       "succession": {
-        "title": "家族傳承架構",
-        "desc": "為下一代安排股權、管治與文件，並與您的法律及稅務顧問協調。"
+        "title": "家族傳承文件",
+        "desc": "為下一代安排股權與管治文件，並與您既有顧問配合。"
       },
       "governance": {
-        "title": "持續私人管治",
-        "desc": "周年申報、董事會文件、註冊辦事處與合規日程，低調妥善處理。"
+        "title": "全年低調照顧",
+        "desc": "周年申報、董事會文件、註冊辦事處與期限——妥當處理，不多事。"
       }
     },
     "processEyebrow": "辦理流程",
@@ -177,14 +179,14 @@
     },
     "testimonialsTitle": "客戶評價",
     "newsTitle": "最新消息",
-    "pillarsTitle": "我們的服務",
-    "ctaTitle": "預約私密諮詢",
-    "ctaDesc": "與我們的主事人私下交流，探討香港架構、秘書及顧問安排。"
+    "pillarsTitle": "我們的工作",
+    "ctaTitle": "若這正是您需要的",
+    "ctaDesc": "寫信、致電或預約會面。辦公時間星期一至五 09:30–17:00——或另行預約。"
   },
   "services": {
     "title": "我們的服務",
     "subtitle": "為私人公司、家族辦公室與主事人提供公司秘書、會計及架構支援——嚴謹合規，低調執行。",
-    "getStarted": "預約私密諮詢",
+    "getStarted": "寫信給我們",
     "secretarial": {
       "title": "公司成立及秘書服務",
       "intro": "有效企業管治的基石。我們按實體性質與管治需要度身安排，結合嚴謹合規與高效執行。",
@@ -322,11 +324,11 @@
   },
   "about": {
     "title": "關於6AM Advisory",
-    "subtitle": "為家族、主事人與緊密持股企業服務的香港持牌 TCSP。",
-    "intro": "6AM Advisory Limited 是香港持牌信託及公司服務提供商（TCSP 牌照編號 TC010556），專注為私人客戶與家族辦公室提供私密的公司、信託及架構服務。",
+    "subtitle": "香港一間小型持牌 TCSP 服務台——為家族與緊密持股企業處理公司、信託與架構事務。",
+    "intro": "6AM Advisory Limited 是香港持牌信託及公司服務提供商（TCSP 牌照編號 TC010556）。我們為私人客戶與家族辦公室處理公司、信託及架構事務——認真、低調，不多餘儀式。",
     "tcspLicence": "持牌 TCSP TC010556，根據香港《打擊洗錢及恐怖分子資金籌集條例》（第615章）",
     "positioningEyebrow": "我們是誰",
-    "positioningDesc": "6AM Advisory 是服務家族與緊密持股企業的私人服務台，覆蓋香港及國際市場。我們的顧問、特許秘書及會計師團隊具備跨境經驗——以策略洞察與私密執行，守護長遠架構。",
+    "positioningDesc": "我們在油麻地工作，顧問、特許秘書與會計師熟悉香港申報及跨境協調。您對接的是跟進檔案的人——中英皆可。",
     "teamPhone2": "+86 1554 686 8835",
     "valuesTitle": "我們的核心價值",
     "values": {
@@ -367,31 +369,31 @@
     "email": "電郵",
     "emailValue": "kennywong@6amadvise.com",
     "hours": "辦公時間",
-    "hoursValue": "星期一至五 09:00–18:00 | 星期六 預約",
+    "hoursValue": "星期一至五 09:30–17:00 | 或預約",
     "contactUs": "聯絡我們"
   },
   "contact": {
     "title": "聯絡我們",
-    "subtitle": "歡迎透過私人服務台提出保密查詢或委託討論。",
-    "formTitle": "發送訊息",
+    "subtitle": "寫信告訴我們您的情況。我們於一個工作日內回覆，並可預約會面。",
+    "formTitle": "寫信給我們",
     "name": "全名",
     "email": "電郵地址",
     "phone": "電話（可選）",
     "subject": "主題",
     "message": "訊息內容",
-    "send": "發送訊息",
+    "send": "發送",
     "sending": "發送中...",
-    "sentSuccess": "訊息已發送！我們將於1個工作日內回覆您。",
-    "sentDesc": "感謝您的查詢，我們的團隊將盡快回覆。",
+    "sentSuccess": "已收到——我們將於一個工作日內回覆。",
+    "sentDesc": "若事情緊急，請直接致電或電郵。",
     "sentError": "發送失敗，請重試或直接發送電郵。",
-    "officeTitle": "辦公室詳情",
+    "officeTitle": "辦公室",
     "address": "地址",
     "addressValue": "香港九龍油麻地渡船街28號寶時商業中心20樓7室",
     "phoneValue": "+852 6560 0073",
     "emailLabel": "電郵",
     "emailValue": "kennywong@6amadvise.com",
     "hours": "辦公時間",
-    "hoursValue": "星期一至五 09:00–18:00 | 星期六 預約"
+    "hoursValue": "星期一至五 09:30–17:00 | 或預約"
   },
   "faq": {
     "title": "常見問題",
@@ -1374,7 +1376,7 @@
     "usd": "美元"
   },
   "footer": {
-    "tagline": "為家族與主事人提供沉穩顧問 — 香港持牌 TCSP，專業提供公司秘書、會計及架構服務。",
+    "tagline": "香港的公司、信託與架構事務——低調處理。油麻地持牌 TCSP。",
     "tcspNote": "持牌 TCSP TC010556，根據《打擊洗錢及恐怖分子資金籌集條例》（第615章）",
     "quickLinks": "快速連結",
     "home": "首頁",
@@ -1385,7 +1387,7 @@
     "address": "香港九龍油麻地渡船街28號寶時商業中心20樓7室",
     "phone": "+852 6560 0073",
     "email": "kennywong@6amadvise.com",
-    "hours": "星期一至五 09:00–18:00",
+    "hours": "星期一至五 09:30–17:00 | 或預約",
     "copyright": "© 2025 6AM Advisory Limited。版權所有。",
     "privacy": "私隱政策",
     "terms": "服務條款"
