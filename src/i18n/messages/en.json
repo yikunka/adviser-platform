@@ -47,9 +47,22 @@
     "heroTitleHighlight": "6AM Advisory",
     "heroTitleSub": "Hong Kong company, trust and structuring work — handled quietly.",
     "heroTitle": "Hong Kong company, trust and structuring work — handled quietly.",
-    "heroSubtitle": "We are a licensed TCSP in Yau Ma Tei. Families and principals come to us for holding companies, succession papers and day-to-day secretarial care — not for a product brochure.",
+    "heroSubtitle": "A licensed TCSP beside the high-speed rail station. Families and principals come to us for holding companies, succession papers and day-to-day secretarial care — one-to-one, tailored to each engagement.",
     "heroMeet": "Tell us what you need. We reply within one business day, and meet by appointment.",
     "heroLicenceLine": "Licensed TCSP TC010556 · AMLO Cap. 615 · Hong Kong",
+    "meeting": {
+      "eyebrow": "Meet with us",
+      "title": "One-to-one, face to face",
+      "desc": "Come to the office by appointment. Holding companies, succession papers and day-to-day secretarial care — scoped to your situation.",
+      "cta": "Book a meeting",
+      "imageAlt": "6AM Advisory meeting room overlooking the city and harbour"
+    },
+    "place": {
+      "eyebrow": "Where we are",
+      "title": "Beside the high-speed rail",
+      "desc": "Our office is in Yau Ma Tei, next to West Kowloon Station — practical for principals and families travelling across the boundary.",
+      "imageAlt": "Neighbourhood and harbour view near our office by the high-speed rail station"
+    },
     "heroTrustBadge": "Licensed TCSP · TC010556 · AMLO Cap. 615",
     "heroCtaStart": "Write to us",
     "heroCtaLearn": "See what we do",
@@ -328,7 +341,7 @@
     "intro": "6AM Advisory Limited is a licensed Trust and Company Service Provider (TCSP Licence TC010556) in Hong Kong. We handle company, trust and structuring work for private clients and family offices — carefully, and without unnecessary ceremony.",
     "tcspLicence": "Licensed TCSP TC010556 under AMLO Cap. 615, Hong Kong",
     "positioningEyebrow": "Who we are",
-    "positioningDesc": "We work from Yau Ma Tei with advisors, chartered secretaries and accountants who know Hong Kong filings and cross-border coordination. You deal with people who stay with the file — in English or Chinese.",
+    "positioningDesc": "Our office sits beside the high-speed rail station. Advisors, chartered secretaries and accountants handle Hong Kong filings and cross-border coordination. Holding companies, succession papers and ongoing secretarial care are delivered one-to-one — in English or Chinese.",
     "teamPhone2": "+86 1554 686 8835",
     "valuesTitle": "Our Core Values",
     "values": {
@@ -362,6 +375,7 @@
       }
     },
     "officeTitle": "Our Office",
+    "doorImageAlt": "Front door of 6AM Advisory Limited",
     "address": "Address",
     "addressValue": "Unit 7, 20/F, Boss Commercial Centre, 28 Ferry Street, Yau Ma Tei, Kowloon, Hong Kong",
     "phone": "Phone",
@@ -387,6 +401,7 @@
     "sentDesc": "If your matter is urgent, call or email us directly.",
     "sentError": "Failed to send. Please try again or email us directly.",
     "officeTitle": "Office",
+    "doorImageAlt": "Front door of 6AM Advisory Limited",
     "address": "Address",
     "addressValue": "Unit 7, 20/F, Boss Commercial Centre, 28 Ferry Street, Yau Ma Tei, Kowloon, Hong Kong",
     "phoneValue": "+852 6560 0073",
@@ -1376,7 +1391,7 @@
     "usd": "USD"
   },
   "footer": {
-    "tagline": "Hong Kong company, trust and structuring work — handled quietly. Licensed TCSP in Yau Ma Tei.",
+    "tagline": "Licensed TCSP beside the high-speed rail. Holding companies, succession and secretarial care — one-to-one.",
     "tcspNote": "Licensed TCSP TC010556 under AMLO Cap. 615 — Trust or Company Service Provider",
     "quickLinks": "Quick Links",
     "home": "Home",

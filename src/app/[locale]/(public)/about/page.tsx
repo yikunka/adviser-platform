@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Image from 'next/image'
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { Scale, Target, Handshake, Building, PieChart, FileText, Phone, Mail, MapPin, Clock } from 'lucide-react'
@@ -157,67 +158,72 @@ export default async function AboutPage() {
           <h2 className="font-display text-2xl md:text-3xl font-light mb-10" style={{ color: '#F5F0E6' }}>
             {t('officeTitle')}
           </h2>
-          <div className="public-panel public-card-hover rounded-xl p-7 md:p-10">
-            <div className="grid sm:grid-cols-2 gap-8">
-              <div className="space-y-5">
-                <div className="flex gap-3 items-start">
-                  <MapPin size={16} style={{ color: '#C9A96E', marginTop: 2, flexShrink: 0 }} />
-                  <div>
-                    <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: '#8A7A68' }}>
-                      {t('address')}
-                    </p>
-                    <p className="text-sm leading-relaxed" style={{ color: '#C9B896' }}>
-                      {t('addressValue')}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-3 items-start">
-                  <Clock size={16} style={{ color: '#C9A96E', marginTop: 2, flexShrink: 0 }} />
-                  <div>
-                    <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: '#8A7A68' }}>
-                      {t('hours')}
-                    </p>
-                    <p className="text-sm" style={{ color: '#C9B896' }}>{t('hoursValue')}</p>
-                  </div>
+          <div className="grid md:grid-cols-2 gap-8 md:gap-10 items-start mb-10">
+            <div className="relative w-full aspect-[4/3] overflow-hidden rounded-sm">
+              <Image
+                src="/marketing/office-front-door.jpg"
+                alt={t('doorImageAlt')}
+                fill
+                sizes="(max-width: 768px) 100vw, 40vw"
+                className="object-cover object-center"
+              />
+            </div>
+            <div className="space-y-5">
+              <div className="flex gap-3 items-start">
+                <MapPin size={16} style={{ color: '#C9A96E', marginTop: 2, flexShrink: 0 }} />
+                <div>
+                  <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: '#8A7A68' }}>
+                    {t('address')}
+                  </p>
+                  <p className="text-sm leading-relaxed" style={{ color: '#C9B896' }}>
+                    {t('addressValue')}
+                  </p>
                 </div>
               </div>
-              <div className="space-y-5">
-                <div className="flex gap-3 items-start">
-                  <Phone size={16} style={{ color: '#C9A96E', marginTop: 2, flexShrink: 0 }} />
-                  <div>
-                    <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: '#8A7A68' }}>
-                      {t('phone')}
-                    </p>
-                    <a
-                      href={`tel:${t('phoneValue')}`}
-                      className="public-link-hover text-sm block"
-                      style={{ color: '#C9A96E' }}
-                    >
-                      {t('phoneValue')}
-                    </a>
-                    <a
-                      href={`tel:${t('teamPhone2')}`}
-                      className="public-link-hover text-sm block mt-0.5"
-                      style={{ color: '#C9B896' }}
-                    >
-                      {t('teamPhone2')}
-                    </a>
-                  </div>
+              <div className="flex gap-3 items-start">
+                <Clock size={16} style={{ color: '#C9A96E', marginTop: 2, flexShrink: 0 }} />
+                <div>
+                  <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: '#8A7A68' }}>
+                    {t('hours')}
+                  </p>
+                  <p className="text-sm" style={{ color: '#C9B896' }}>{t('hoursValue')}</p>
                 </div>
-                <div className="flex gap-3 items-start">
-                  <Mail size={16} style={{ color: '#C9A96E', marginTop: 2, flexShrink: 0 }} />
-                  <div>
-                    <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: '#8A7A68' }}>
-                      {t('email')}
-                    </p>
-                    <a
-                      href={`mailto:${t('emailValue')}`}
-                      className="public-link-hover text-sm"
-                      style={{ color: '#C9A96E' }}
-                    >
-                      {t('emailValue')}
-                    </a>
-                  </div>
+              </div>
+              <div className="flex gap-3 items-start">
+                <Phone size={16} style={{ color: '#C9A96E', marginTop: 2, flexShrink: 0 }} />
+                <div>
+                  <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: '#8A7A68' }}>
+                    {t('phone')}
+                  </p>
+                  <a
+                    href={`tel:${t('phoneValue')}`}
+                    className="public-link-hover text-sm block"
+                    style={{ color: '#C9A96E' }}
+                  >
+                    {t('phoneValue')}
+                  </a>
+                  <a
+                    href={`tel:${t('teamPhone2')}`}
+                    className="public-link-hover text-sm block mt-0.5"
+                    style={{ color: '#C9B896' }}
+                  >
+                    {t('teamPhone2')}
+                  </a>
+                </div>
+              </div>
+              <div className="flex gap-3 items-start">
+                <Mail size={16} style={{ color: '#C9A96E', marginTop: 2, flexShrink: 0 }} />
+                <div>
+                  <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: '#8A7A68' }}>
+                    {t('email')}
+                  </p>
+                  <a
+                    href={`mailto:${t('emailValue')}`}
+                    className="public-link-hover text-sm"
+                    style={{ color: '#C9A96E' }}
+                  >
+                    {t('emailValue')}
+                  </a>
                 </div>
               </div>
             </div>

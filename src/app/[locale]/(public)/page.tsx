@@ -133,6 +133,80 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ── Meeting room: one-to-one ── */}
+      <section style={{ background: '#0A0A0A' }}>
+        <div className="grid md:grid-cols-2 min-h-[22rem] md:min-h-[28rem]">
+          <div className="flex flex-col justify-center px-4 sm:px-8 lg:px-12 py-14 md:py-16 order-2 md:order-1">
+            <p className="text-xs uppercase tracking-[0.22em] mb-4" style={{ color: '#C9A96E' }}>
+              {t('meeting.eyebrow')}
+            </p>
+            <h2
+              className="font-display font-light leading-snug mb-4"
+              style={{ color: '#F5F0E6', fontSize: 'clamp(1.5rem, 3vw, 2.15rem)' }}
+            >
+              {t('meeting.title')}
+            </h2>
+            <p className="text-sm leading-relaxed max-w-md mb-8" style={{ color: '#A89880' }}>
+              {t('meeting.desc')}
+            </p>
+            <Link
+              href="/contact"
+              className="inline-flex items-center gap-2 text-sm w-fit transition-opacity hover:opacity-80"
+              style={{ color: '#C9A96E' }}
+            >
+              {t('meeting.cta')}
+              <ArrowRight size={14} />
+            </Link>
+          </div>
+          <div className="relative min-h-[16rem] md:min-h-full order-1 md:order-2">
+            <Image
+              src="/marketing/office-meeting-room.jpg"
+              alt={t('meeting.imageAlt')}
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-cover object-center"
+              priority
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ── Place: beside the high-speed rail ── */}
+      <section className="relative overflow-hidden" style={{ background: '#080808' }}>
+        <div className="relative w-full aspect-[16/9] md:aspect-[21/9] max-h-[28rem]">
+          <Image
+            src="/marketing/office-neighbourhood-hsr.jpg"
+            alt={t('place.imageAlt')}
+            fill
+            sizes="100vw"
+            className="object-cover object-[center_35%]"
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(180deg, rgba(8,8,8,0.12) 0%, rgba(8,8,8,0.2) 50%, rgba(8,8,8,0.88) 100%)',
+            }}
+          />
+          <div className="absolute inset-x-0 bottom-0 px-4 sm:px-6 lg:px-8 pb-8 md:pb-10">
+            <div className="mx-auto max-w-7xl space-y-1.5">
+              <p className="text-xs uppercase tracking-[0.22em]" style={{ color: '#C9A96E' }}>
+                {t('place.eyebrow')}
+              </p>
+              <p
+                className="font-display font-light max-w-xl leading-snug"
+                style={{ color: '#F5F0E6', fontSize: 'clamp(1.25rem, 2.5vw, 1.75rem)' }}
+              >
+                {t('place.title')}
+              </p>
+              <p className="text-sm max-w-lg leading-relaxed" style={{ color: '#B8A890' }}>
+                {t('place.desc')}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── Situations we handle ── */}
       <section style={{ background: '#0A0A0A' }}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 md:py-24">

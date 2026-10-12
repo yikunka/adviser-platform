@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -149,6 +150,15 @@ export default function ContactForm() {
           className="h-px w-10 mb-2"
           style={{ background: 'linear-gradient(90deg, #C9A96E, transparent)' }}
         />
+        <div className="relative w-full aspect-[4/3] overflow-hidden rounded-sm">
+          <Image
+            src="/marketing/office-front-door.jpg"
+            alt={t('doorImageAlt')}
+            fill
+            sizes="(max-width: 768px) 100vw, 40vw"
+            className="object-cover object-center"
+          />
+        </div>
         <dl className="space-y-5 text-sm">
           <div>
             <dt className="text-xs uppercase tracking-wider mb-1" style={{ color: '#8A7A68' }}>

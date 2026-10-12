@@ -49,3 +49,6 @@ next-env.d.ts
 
 /src/generated/prisma
 .venv-fonts/
+
+# local unedited photo backups (enhanced versions live in public/marketing/)
+/public/marketing/originals/

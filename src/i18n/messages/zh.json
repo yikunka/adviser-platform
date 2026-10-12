@@ -47,9 +47,22 @@
     "heroTitleHighlight": "6AM Advisory",
     "heroTitleSub": "香港的公司、信託與架構事務——低調處理。",
     "heroTitle": "香港的公司、信託與架構事務——低調處理。",
-    "heroSubtitle": "我們是油麻地的持牌 TCSP。家族與主事人找我們處理控股公司、傳承文件與日常秘書事務——不是來翻產品目錄。",
+    "heroSubtitle": "我們位於高鐵站旁的持牌 TCSP 公司。家族與主事人找我們處理控股公司、傳承文件與日常秘書事務——一對一定製化服務。",
     "heroMeet": "告訴我們您的需要。我們於一個工作日內回覆，並可預約會面。",
     "heroLicenceLine": "持牌 TCSP TC010556 · 《打擊洗錢條例》第 615 章 · 香港",
+    "meeting": {
+      "eyebrow": "會面",
+      "title": "一對一，坐下來談",
+      "desc": "預約到辦公室會面。控股公司、傳承文件與日常秘書事務，按您的情況度身處理。",
+      "cta": "預約會面",
+      "imageAlt": "6AM Advisory 辦公室會面空間，窗外可見市區與海港"
+    },
+    "place": {
+      "eyebrow": "我們的位置",
+      "title": "高鐵站旁",
+      "desc": "辦公室在油麻地，鄰近西九龍高鐵站——方便跨境往來的主事人與家族約見。",
+      "imageAlt": "辦公室附近市區與海港景色，鄰近高鐵站"
+    },
     "heroTrustBadge": "持牌 TCSP · TC010556 · 《打擊洗錢條例》第 615 章",
     "heroCtaStart": "寫信給我們",
     "heroCtaLearn": "了解我們做什麼",
@@ -328,7 +341,7 @@
     "intro": "6AM Advisory Limited 是香港持牌信託及公司服務提供商（TCSP 牌照編號 TC010556）。我們為私人客戶與家族辦公室處理公司、信託及架構事務——認真、低調，不多餘儀式。",
     "tcspLicence": "持牌 TCSP TC010556，根據香港《打擊洗錢及恐怖分子資金籌集條例》（第615章）",
     "positioningEyebrow": "我們是誰",
-    "positioningDesc": "我們在油麻地工作，顧問、特許秘書與會計師熟悉香港申報及跨境協調。您對接的是跟進檔案的人——中英皆可。",
+    "positioningDesc": "辦公室位於高鐵站旁。顧問、特許秘書與會計師熟悉香港申報及跨境協調；家族與主事人的控股公司、傳承文件與日常秘書事務，皆以一對一定製化方式處理——中英皆可。",
     "teamPhone2": "+86 1554 686 8835",
     "valuesTitle": "我們的核心價值",
     "values": {
@@ -362,6 +375,7 @@
       }
     },
     "officeTitle": "辦公室",
+    "doorImageAlt": "6AM Advisory Limited 辦公室正門",
     "address": "地址",
     "addressValue": "香港九龍油麻地渡船街28號寶時商業中心20樓7室",
     "phone": "電話",
@@ -387,6 +401,7 @@
     "sentDesc": "若事情緊急，請直接致電或電郵。",
     "sentError": "發送失敗，請重試或直接發送電郵。",
     "officeTitle": "辦公室",
+    "doorImageAlt": "6AM Advisory Limited 辦公室正門",
     "address": "地址",
     "addressValue": "香港九龍油麻地渡船街28號寶時商業中心20樓7室",
     "phoneValue": "+852 6560 0073",
@@ -1376,7 +1391,7 @@
     "usd": "美元"
   },
   "footer": {
-    "tagline": "香港的公司、信託與架構事務——低調處理。油麻地持牌 TCSP。",
+    "tagline": "高鐵站旁的持牌 TCSP。控股公司、傳承文件與日常秘書——一對一定製化服務。",
     "tcspNote": "持牌 TCSP TC010556，根據《打擊洗錢及恐怖分子資金籌集條例》（第615章）",
     "quickLinks": "快速連結",
     "home": "首頁",
