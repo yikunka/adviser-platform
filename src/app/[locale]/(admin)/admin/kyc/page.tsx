@@ -536,7 +536,8 @@ export default function KYCQueuePage() {
                 </tr>
               ) : records.map((r) => {
                 const client = clientPortalAccount(r)
-                const missingDocs = missingDocumentTypes(r)
+                const showMissingDocs = r.kycStatus !== 'REJECTED' && r.kycStatus !== 'INACTIVE'
+                const missingDocs = showMissingDocs ? missingDocumentTypes(r) : []
                 return (
                 <tr
                   key={r.id}

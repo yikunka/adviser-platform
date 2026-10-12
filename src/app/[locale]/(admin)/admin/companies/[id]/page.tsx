@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { DatePickerPopover } from '@/components/ui/date-picker-popover'
 import { BUSINESS_NATURE_OPTIONS } from '@/lib/kyc/kycFieldOptions'
-import { type NAR1UiAnalysisResult } from '@/lib/company/nar1-analysis'
 import { COMPANY_LEGAL_TYPE_VALUES, normalizeCompanyLegalType } from '@/lib/company/company-legal-type'
 import { COMPANY_STATUS_LABELS } from '@/lib/company/company-status'
 import {
@@ -348,14 +347,10 @@ function YearGroupedDocs({
   docs,
   onPreview,
   onDelete,
-  onAnalyze,
-  analyzing,
 }: {
   docs: DocEntry[]
   onPreview: (id: string) => void
   onDelete: (id: string) => void
-  onAnalyze?: (id: string, fileName: string) => void
-  analyzing?: boolean
 }) {
   const currentYear = String(new Date().getFullYear())
   const [openYears, setOpenYears] = useState<Set<string>>(() => new Set([currentYear]))
@@ -399,18 +394,6 @@ function YearGroupedDocs({
                     <span className="text-sm truncate max-w-xs" style={{ color: 'var(--foreground)' }}>{doc.name}</span>
                     <div className="flex items-center gap-2 shrink-0 ml-3">
                       <span className="text-xs" style={{ color: '#5A5040' }}>{new Date(doc.createdAt).toLocaleDateString('en-HK')}</span>
-                      {onAnalyze && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 px-2 text-xs"
-                          style={{ color: '#C9A96E', borderColor: '#C9A96E' }}
-                          disabled={analyzing}
-                          onClick={() => onAnalyze(doc.id, doc.name)}
-                        >
-                          {analyzing ? 'Analyzing…' : 'Analyze'}
-                        </Button>
-                      )}
                       <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onPreview(doc.id)}>Preview</Button>
                       <Button size="sm" variant="outline" className="h-7 px-2 text-xs" style={{ color: '#ef4444', borderColor: '#ef4444' }} onClick={() => onDelete(doc.id)}>Delete</Button>
                     </div>
@@ -3065,167 +3048,6 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   )
 }
 
-// ── NAR1 Analysis Result Preview Component ────────────────────────────────
-
-interface Nar1AnalysisPreviewProps {
-  result: NAR1UiAnalysisResult
-  onConfirm: () => void
-  onClose: () => void
-  companyId: string
-  warning?: string
-  source?: 'bailian' | 'fallback'
-  pdfPagesRendered?: number
-}
-
-function Nar1AnalysisPreview({
-  result,
-  onConfirm,
-  onClose,
-  companyId,
-  annualReturnDate,
-  warning,
-  source,
-  pdfPagesRendered,
-}: Nar1AnalysisPreviewProps & { annualReturnDate?: string }) {
-  const [saving, setSaving] = useState(false)
-
-  async function handleSave() {
-    if (!window.confirm('将分析结果写入 ROD / ROM / ROSC（按姓名匹配已有 KYC，未匹配也会保存）。继续？')) return
-
-    setSaving(true)
-    try {
-      const res = await fetch(`/api/admin/companies/${companyId}/nar1-sync`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: result, annualReturnDate }),
-      })
-      const payload = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        toast.error(payload.error ?? '保存失败')
-        return
-      }
-
-      const s = payload.summary
-      toast.success(
-        `已同步：董事 ${s.directors.created} 新增 / ${s.directors.updated} 更新（${s.directors.kycLinked} 已关联 KYC）；`
-        + `成员 ${s.members.created}/${s.members.updated}（${s.members.kycLinked} KYC）；`
-        + `控权人 ${s.controllers.created}/${s.controllers.updated}（${s.controllers.kycLinked} KYC）`,
-      )
-      onConfirm()
-    } catch (error) {
-      console.error('[NAR1 Save] Error:', error)
-      toast.error('保存失败')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  function fmtDate(d?: string) {
-    if (!d) return '—'
-    try { return new Date(d).toLocaleDateString('en-HK') } catch { return d }
-  }
-
-  return (
-    <div className="space-y-4 max-h-[70vh] overflow-y-auto p-2">
-      {warning && (
-        <div className="rounded-lg p-3 text-sm" style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid #f59e0b', color: '#fbbf24' }}>
-          <p className="font-medium">分析提示</p>
-          <p className="mt-1 text-xs leading-relaxed">{warning}</p>
-          {source === 'fallback' && (
-            <p className="mt-1 text-[11px]" style={{ color: '#d97706' }}>当前结果为备用解析，建议核对后保存或重试。</p>
-          )}
-        </div>
-      )}
-      {pdfPagesRendered != null && pdfPagesRendered > 0 && (
-        <p className="text-[11px]" style={{ color: '#5A5040' }}>已渲染 PDF {pdfPagesRendered} 页用于视觉分析</p>
-      )}
-      {/* Directors Section */}
-      <div>
-        <h4 className="text-sm font-semibold mb-2" style={{ color: '#C9A96E' }}>Directors ({result.directors.length})</h4>
-        <div className="space-y-2">
-          {result.directors.map((d, i) => (
-            <div key={i} className="text-xs p-2 rounded bg-[var(--surface-panel)]" style={{ border: '1px solid var(--border-subtle)' }}>
-              <div className="flex justify-between">
-                <span style={{ color: 'var(--foreground)' }}>{d.nameEn}</span>
-                <span style={{ color: '#5A5040' }}>{fmtDate(d.dateOfAppointment)}</span>
-              </div>
-              {d.nameZh && <div style={{ color: '#5A5040' }}>{d.nameZh}</div>}
-              <div className="mt-1 text-[11px]" style={{ color: '#5A5040' }}>Address: {d.addressForService}</div>
-              {d.nationality && <div style={{ color: '#5A5040' }}>Nationality: {d.nationality}</div>}
-              {d.idNumber && <div style={{ color: '#5A5040' }}>ID: {d.idType ?? ''} {d.idNumber}</div>}
-              {d.status === 'resigned' && d.cessationDate && (
-                <div style={{ color: '#ef4444' }}>Resigned: {fmtDate(d.cessationDate)}</div>
-              )}
-            </div>
-          ))}
-          {result.directors.length === 0 && <p className="text-xs text-center" style={{ color: '#5A5040' }}>No directors found</p>}
-        </div>
-      </div>
-
-      {/* Members Section */}
-      <div>
-        <h4 className="text-sm font-semibold mb-2" style={{ color: '#C9A96E' }}>Members ({result.members.length})</h4>
-        <div className="space-y-2">
-          {result.members.map((m, i) => (
-            <div key={i} className="text-xs p-2 rounded bg-[var(--surface-panel)]" style={{ border: '1px solid var(--border-subtle)' }}>
-              <div className="flex justify-between">
-                <span style={{ color: 'var(--foreground)' }}>{m.nameEn}</span>
-                <span style={{ color: '#5A5040' }}>{fmtDate(m.becomingDate)}</span>
-              </div>
-              {m.nameZh && <div style={{ color: '#5A5040' }}>{m.nameZh}</div>}
-              <div className="mt-1 text-[11px]" style={{ color: '#5A5040' }}>Address: {m.address}</div>
-              <div style={{ color: '#5A5040' }}>
-                {m.shareClass ?? 'Ordinary'}
-                {m.sharesHeld != null ? ` · ${m.sharesHeld} 股` : ''}
-              </div>
-              {m.occupation && <div style={{ color: '#5A5040' }}>Occupation: {m.occupation}</div>}
-              {m.status === 'resigned' && m.cessationDate && (
-                <div style={{ color: '#ef4444' }}>Ceased: {fmtDate(m.cessationDate)}</div>
-              )}
-            </div>
-          ))}
-          {result.members.length === 0 && <p className="text-xs text-center" style={{ color: '#5A5040' }}>No members found</p>}
-        </div>
-      </div>
-
-      {/* Significant Controllers Section */}
-      <div>
-        <h4 className="text-sm font-semibold mb-2" style={{ color: '#C9A96E' }}>Significant Controllers ({result.significantControllers.length})</h4>
-        <div className="space-y-2">
-          {result.significantControllers.map((sc, i) => (
-            <div key={i} className="text-xs p-2 rounded bg-[var(--surface-panel)]" style={{ border: '1px solid var(--border-subtle)' }}>
-              <div className="flex justify-between">
-                <span style={{ color: 'var(--foreground)' }}>{sc.nameEn}</span>
-                <span style={{ color: '#5A5040' }}>{fmtDate(sc.becomingDate)}</span>
-              </div>
-              {sc.nameZh && <div style={{ color: '#5A5040' }}>{sc.nameZh}</div>}
-              <div className="mt-1 text-[11px]" style={{ color: '#5A5040' }}>Nature of Control: {sc.natureOfControl}</div>
-              {sc.isLegalEntity && sc.legalEntityRegNo && (
-                <div style={{ color: '#5A5040' }}>Reg No: {sc.legalEntityRegNo}</div>
-              )}
-              {!sc.isLegalEntity && sc.issuingCountry && (
-                <div style={{ color: '#5A5040' }}>Issuing Country: {sc.issuingCountry}</div>
-              )}
-              {sc.cessationDate && (
-                <div style={{ color: '#ef4444' }}>Ceased: {fmtDate(sc.cessationDate)}</div>
-              )}
-            </div>
-          ))}
-          {result.significantControllers.length === 0 && <p className="text-xs text-center" style={{ color: '#5A5040' }}>No significant controllers found</p>}
-        </div>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex justify-end gap-2 pt-2">
-        <Button type="button" variant="outline" size="sm" onClick={onClose}>Cancel</Button>
-        <Button type="button" size="sm" disabled={saving} onClick={handleSave}>
-          {saving ? '保存中…' : '保存至 ROD / ROM / ROSC'}
-        </Button>
-      </div>
-    </div>
-  )
-}
-
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function CompanyDetailPage() {
@@ -3253,15 +3075,6 @@ export default function CompanyDetailPage() {
   const [fileManagementForms, setFileManagementForms] = useState<Record<string, ReturnType<typeof defaultFileManagementForm>>>({})
   /** Whole 文件管理 detail block: forms + history. Collapsed by default. */
   const [fileManagementExpanded, setFileManagementExpanded] = useState(false)
-
-  // ── NAR1 Analysis state ──────────────────────────────────────────────────
-  const [analyzingNar1, setAnalyzingNar1] = useState(false)
-  const [nar1AnalysisResult, setNar1AnalysisResult] = useState<NAR1UiAnalysisResult | null>(null)
-  const [nar1AnalysisWarning, setNar1AnalysisWarning] = useState<string | undefined>()
-  const [nar1AnalysisSource, setNar1AnalysisSource] = useState<'bailian' | 'fallback' | undefined>()
-  const [nar1PdfPagesRendered, setNar1PdfPagesRendered] = useState<number | undefined>()
-  const [nar1AnnualReturnDate, setNar1AnnualReturnDate] = useState<string | undefined>()
-  const [showNar1AnalysisResult, setShowNar1AnalysisResult] = useState(false)
 
   // ── File Cases state ──────────────────────────────────────────────────────
   const [newCaseName, setNewCaseName] = useState('')
@@ -3337,55 +3150,6 @@ export default function CompanyDetailPage() {
   async function downloadDoc(docId: string) {
     const res = await fetch(`/api/documents/${docId}/download`)
     if (res.ok) { const { url } = await res.json(); window.open(url, '_blank') }
-  }
-
-  async function runNar1Analysis(docId: string) {
-    setAnalyzingNar1(true)
-    const clientTimeoutMs = 300_000
-    const controller = new AbortController()
-    const timer = window.setTimeout(() => controller.abort(), clientTimeoutMs)
-    try {
-      const formData = new FormData()
-      formData.append('documentId', docId)
-
-      const res = await fetch(`/api/admin/companies/${id}/nar1-analyze`, {
-        method: 'POST',
-        body: formData,
-        signal: controller.signal,
-      })
-
-      const payload = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        toast.error(payload.error ?? `NAR1 分析失败（HTTP ${res.status}）`, { duration: 10000 })
-        return
-      }
-
-      setNar1AnalysisResult(payload.data)
-      setNar1AnalysisWarning(payload.warning)
-      setNar1AnalysisSource(payload.source)
-      setNar1PdfPagesRendered(payload.pdfPagesRendered)
-      setNar1AnnualReturnDate(payload.annualReturnDate)
-      setShowNar1AnalysisResult(true)
-
-      if (payload.warning) {
-        toast.warning(payload.warning, { duration: 10000 })
-      } else if (payload.source === 'bailian') {
-        toast.success('NAR1 分析完成')
-      } else {
-        toast.success('NAR1 分析完成（备用解析，请核对结果）')
-      }
-    } catch (e) {
-      if (e instanceof DOMException && e.name === 'AbortError') {
-        toast.error('分析请求超时（超过 5 分钟）。可能是 PDF 页数过多、百炼 API 较慢，或 Nginx 代理超时，请稍后重试。', { duration: 12000 })
-      } else {
-        const msg = e instanceof Error ? e.message : 'NAR1 分析出错'
-        toast.error(msg, { duration: 10000 })
-      }
-      console.error(e)
-    } finally {
-      window.clearTimeout(timer)
-      setAnalyzingNar1(false)
-    }
   }
 
   async function generateDdrNow() {
@@ -3952,8 +3716,6 @@ export default function CompanyDetailPage() {
               docs={company.documents.filter(d => d.documentType === 'NAR1' && !isGeneratedDoc(d))}
               onPreview={downloadDoc}
               onDelete={deleteDoc}
-              onAnalyze={runNar1Analysis}
-              analyzing={analyzingNar1}
             />
           </div>
 
@@ -4808,35 +4570,6 @@ export default function CompanyDetailPage() {
         </Modal>
       )}
 
-      {/* NAR1 Analysis Result Preview Modal */}
-      {showNar1AnalysisResult && nar1AnalysisResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
-          <div className="w-full max-w-3xl bg-[var(--surface-raised)] rounded-lg shadow-xl border border-[var(--border-subtle)]" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-subtle)]">
-              <h3 className="text-base font-semibold" style={{ color: 'var(--foreground)' }}>NAR1 Analysis Preview</h3>
-              <button onClick={() => setShowNar1AnalysisResult(false)} className="text-xl leading-none" style={{ color: 'var(--muted-foreground)' }}>✕</button>
-            </div>
-            <Nar1AnalysisPreview
-              companyId={id}
-              result={nar1AnalysisResult}
-              annualReturnDate={nar1AnnualReturnDate}
-              warning={nar1AnalysisWarning}
-              source={nar1AnalysisSource}
-              pdfPagesRendered={nar1PdfPagesRendered}
-              onConfirm={() => {
-                setShowNar1AnalysisResult(false)
-                setNar1AnalysisResult(null)
-                setNar1AnalysisWarning(undefined)
-                setNar1AnalysisSource(undefined)
-                setNar1PdfPagesRendered(undefined)
-                setNar1AnnualReturnDate(undefined)
-                reload()
-              }}
-              onClose={() => setShowNar1AnalysisResult(false)}
-            />
-          </div>
-        </div>
-      )}
     </div>
   )
 }

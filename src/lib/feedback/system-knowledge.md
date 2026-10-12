@@ -50,7 +50,7 @@ Manages the full portfolio of client companies.
 - **File Cases** — document groupings for long-term / other case files on the company Files tab; listed undated first, then newest `caseDate`, then newest created date; supporting files within a case follow submission/created date descending; upload / download documents (CI, BR, AA, NNC1, ROD, ROM, ROSC, AR, NAR1, AUDIT_TAX, DDR, RESOLUTION, MINUTES, KYC, OTHER)
 - **Address Changes** — registered address change tracking; NND1 filing status
 - **Shareholder Changes** — ownership change tracking with filing status
-- **NAR1** — Annual return document upload (by year) and AI-assisted analysis/sync to company registers; no separate Annual Return Pre-fill download card
+- **NAR1** — Annual return document upload by year (preview / delete); no AI analyze/sync in company management
 - **Annual Filings** — status: `NOT_STARTED`, `IN_PREPARATION`, `FILED`, `OVERDUE`
 - **Document Analysis** — batch AI-assisted document review
 
@@ -382,7 +382,6 @@ Staff-only order desk for an offline trading company. There is no public JMM web
 ### AI Features
 - **"提交需求" widget**: floating button at the top-right of every admin page (below the header); opens a multi-turn chat dialog; LLM clarifies and structures the requirement; user confirms; saved to `adv_feature_requests`
 - **KYC document analysis**: batch AI-assisted review of uploaded KYC documents
-- **NAR1 sync**: AI-assisted data extraction from Companies Registry annual return documents
 - **SFS Diamond public chat** (`/api/sfsdiamond/chat`): NDJSON streaming endpoint; static knowledge base embedded in system prompt; no auth
 
 ### Internationalisation
