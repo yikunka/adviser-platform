@@ -30,7 +30,7 @@ Manages the full portfolio of client companies.
 - List with search (name / code / registration number), status badge, assigned client, company incorporation date, **周年申报截止日** (incorporation month/day + 42 days, shown as `MM-DD`), **現任董事** (active directors; Chinese name if present, otherwise English), **UBO** (look-through natural persons with effective ownership > 25%, name + %), financial-module toggle
 - Company statuses: `Active`, `Inactive`, `Deregistered`
 - Company create/edit uses **Jurisdiction** (`Hong Kong`, `BVI`, `Cayman`, `Bermuda`, `Marshall`, `PRC`) for code-prefix jurisdiction (`AA` / `BV` / `CA` / `BM` / `MS` / `PR`)
-- Company list shows a **註冊地** column with English jurisdiction labels (Hong Kong / BVI / Cayman / Bermuda / Marshall / PRC) and has jurisdiction + status filters next to search
+- Company list shows a **註冊地** column with English jurisdiction labels (Hong Kong / BVI / Cayman / Bermuda / Marshall / PRC); status is filtered by tabs (**Active** default / Inactive / Deregistered / All), with a jurisdiction dropdown next to search
 - Auto-generates company codes by jurisdiction: `AA#####` (HK), `BV#####` (BVI), `CA#####` (Cayman), `BM#####` (Bermuda), `MS#####` (Marshall), `PR#####` (PRC)
 - Company detail editing includes a separate **Company Type** field for legal/entity category values: `Private Company Limited by Shares`, `Public Company Limited by Shares`, `Company Limited by Guarantee`, `Private Unlimited Company`, `Public Unlimited Company`, and `Branch Office`; this field is independent from **Jurisdiction** and does not affect code generation
 - Company create/edit includes **Financial Year End** (before Business Nature): March 31st or December 31st checkboxes (mutually exclusive); stored as month `3` or `12`

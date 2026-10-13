@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { COMPANY_STATUS_LABELS, COMPANY_STATUSES } from '@/lib/company/company-status'
+import { COMPANY_STATUS_LABELS } from '@/lib/company/company-status'
 import {
   COMPANY_JURISDICTIONS,
   COMPANY_JURISDICTION_LABELS,
@@ -50,7 +50,7 @@ export default function CompaniesPage() {
   const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
   const [jurisdiction, setJurisdiction] = useState('')
-  const [status, setStatus] = useState('')
+  const [status, setStatus] = useState<string>('ACTIVE')
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
   const [updatingFinancialId, setUpdatingFinancialId] = useState<string | null>(null)
@@ -105,6 +105,36 @@ export default function CompaniesPage() {
         </Link>
       </div>
 
+      <div className="flex gap-2 flex-wrap items-center" role="tablist" aria-label={t('statusFilter')}>
+        {(
+          [
+            { value: 'ACTIVE', label: COMPANY_STATUS_LABELS.ACTIVE },
+            { value: 'INACTIVE', label: COMPANY_STATUS_LABELS.INACTIVE },
+            { value: 'DEREGISTERED', label: COMPANY_STATUS_LABELS.DEREGISTERED },
+            { value: '', label: t('statusAll') },
+          ] as const
+        ).map(tab => {
+          const active = status === tab.value
+          return (
+            <button
+              key={tab.value || 'all'}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => { setStatus(tab.value); setPage(1) }}
+              className="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+              style={{
+                background: active ? 'rgba(201,169,110,0.18)' : 'transparent',
+                color: active ? '#C9A96E' : 'var(--muted-foreground)',
+                border: active ? '1px solid #C9A96E' : '1px solid var(--border-subtle)',
+              }}
+            >
+              {tab.label}
+            </button>
+          )
+        })}
+      </div>
+
       <div className="flex gap-2 flex-wrap items-center">
         <Input
           placeholder={t('search')}
@@ -129,26 +159,6 @@ export default function CompaniesPage() {
           {COMPANY_JURISDICTIONS.map(j => (
             <option key={j} value={j} style={{ background: 'var(--surface-raised)' }}>
               {COMPANY_JURISDICTION_LABELS[j]}
-            </option>
-          ))}
-        </select>
-        <select
-          value={status}
-          onChange={e => { setStatus(e.target.value); setPage(1) }}
-          aria-label={t('statusFilter')}
-          className="h-9 rounded-md px-3 text-sm"
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border-subtle)',
-            color: 'var(--foreground)',
-            outline: 'none',
-            minWidth: '8rem',
-          }}
-        >
-          <option value="" style={{ background: 'var(--surface-raised)' }}>{t('statusAll')}</option>
-          {COMPANY_STATUSES.map(s => (
-            <option key={s} value={s} style={{ background: 'var(--surface-raised)' }}>
-              {COMPANY_STATUS_LABELS[s]}
             </option>
           ))}
         </select>
