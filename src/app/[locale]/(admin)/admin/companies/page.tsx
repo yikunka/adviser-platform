@@ -136,18 +136,18 @@ export default function CompaniesPage() {
           })}
         </div>
 
-        <div className="flex gap-2 flex-wrap items-center ml-auto">
+        <div className="flex flex-row flex-nowrap items-center justify-end gap-2 ml-auto" dir="ltr">
           <Input
             placeholder={t('search')}
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1) }}
-            className="max-w-xs"
+            className="w-56 sm:w-64 shrink-0"
           />
           <select
             value={jurisdiction}
             onChange={e => { setJurisdiction(e.target.value); setPage(1) }}
             aria-label={t('jurisdictionFilter')}
-            className="h-9 rounded-md px-3 text-sm"
+            className="h-9 shrink-0 rounded-md px-3 text-sm"
             style={{
               background: 'var(--surface)',
               border: '1px solid var(--border-subtle)',
