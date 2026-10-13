@@ -228,7 +228,7 @@ export default function KYCQueuePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [records, setRecords] = useState<KYCRecord[]>([])
-  const [filterStatus, setFilterStatus] = useState('')
+  const [filterStatus, setFilterStatus] = useState('DRAFT')
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [page, setPage] = useState(1)

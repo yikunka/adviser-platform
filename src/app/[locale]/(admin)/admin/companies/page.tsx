@@ -105,63 +105,65 @@ export default function CompaniesPage() {
         </Link>
       </div>
 
-      <div className="flex gap-2 flex-wrap items-center" role="tablist" aria-label={t('statusFilter')}>
-        {(
-          [
-            { value: 'ACTIVE', label: COMPANY_STATUS_LABELS.ACTIVE },
-            { value: 'INACTIVE', label: COMPANY_STATUS_LABELS.INACTIVE },
-            { value: 'DEREGISTERED', label: COMPANY_STATUS_LABELS.DEREGISTERED },
-            { value: '', label: t('statusAll') },
-          ] as const
-        ).map(tab => {
-          const active = status === tab.value
-          return (
-            <button
-              key={tab.value || 'all'}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => { setStatus(tab.value); setPage(1) }}
-              className="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
-              style={{
-                background: active ? 'rgba(201,169,110,0.18)' : 'transparent',
-                color: active ? '#C9A96E' : 'var(--muted-foreground)',
-                border: active ? '1px solid #C9A96E' : '1px solid var(--border-subtle)',
-              }}
-            >
-              {tab.label}
-            </button>
-          )
-        })}
-      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-2 flex-wrap items-center" role="tablist" aria-label={t('statusFilter')}>
+          {(
+            [
+              { value: 'ACTIVE', label: COMPANY_STATUS_LABELS.ACTIVE },
+              { value: 'INACTIVE', label: COMPANY_STATUS_LABELS.INACTIVE },
+              { value: 'DEREGISTERED', label: COMPANY_STATUS_LABELS.DEREGISTERED },
+              { value: '', label: t('statusAll') },
+            ] as const
+          ).map(tab => {
+            const active = status === tab.value
+            return (
+              <button
+                key={tab.value || 'all'}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => { setStatus(tab.value); setPage(1) }}
+                className="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+                style={{
+                  background: active ? 'rgba(201,169,110,0.18)' : 'transparent',
+                  color: active ? '#C9A96E' : 'var(--muted-foreground)',
+                  border: active ? '1px solid #C9A96E' : '1px solid var(--border-subtle)',
+                }}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
+        </div>
 
-      <div className="flex gap-2 flex-wrap items-center">
-        <Input
-          placeholder={t('search')}
-          value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1) }}
-          className="max-w-xs"
-        />
-        <select
-          value={jurisdiction}
-          onChange={e => { setJurisdiction(e.target.value); setPage(1) }}
-          aria-label={t('jurisdictionFilter')}
-          className="h-9 rounded-md px-3 text-sm"
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border-subtle)',
-            color: 'var(--foreground)',
-            outline: 'none',
-            minWidth: '9rem',
-          }}
-        >
-          <option value="" style={{ background: 'var(--surface-raised)' }}>{t('jurisdictionAll')}</option>
-          {COMPANY_JURISDICTIONS.map(j => (
-            <option key={j} value={j} style={{ background: 'var(--surface-raised)' }}>
-              {COMPANY_JURISDICTION_LABELS[j]}
-            </option>
-          ))}
-        </select>
+        <div className="flex gap-2 flex-wrap items-center ml-auto">
+          <Input
+            placeholder={t('search')}
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1) }}
+            className="max-w-xs"
+          />
+          <select
+            value={jurisdiction}
+            onChange={e => { setJurisdiction(e.target.value); setPage(1) }}
+            aria-label={t('jurisdictionFilter')}
+            className="h-9 rounded-md px-3 text-sm"
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border-subtle)',
+              color: 'var(--foreground)',
+              outline: 'none',
+              minWidth: '9rem',
+            }}
+          >
+            <option value="" style={{ background: 'var(--surface-raised)' }}>{t('jurisdictionAll')}</option>
+            {COMPANY_JURISDICTIONS.map(j => (
+              <option key={j} value={j} style={{ background: 'var(--surface-raised)' }}>
+                {COMPANY_JURISDICTION_LABELS[j]}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <Card>

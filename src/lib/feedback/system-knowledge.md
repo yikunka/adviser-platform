@@ -58,7 +58,7 @@ Company-level staff access: multiple staff users can be assigned to a company vi
 
 ### 3. KYC Queue (`/admin/kyc`; Chinese admin nav label: 自然人管理)
 Know Your Customer compliance workflow.
-- List with search; columns: KYC code, name, client email, related companies (aggregated), documents, date, status; row click opens full-page detail at `/admin/kyc/[id]`
+- List with search; status tabs default to **DRAFT**; columns: KYC code, name, client email, related companies (aggregated), documents, date, status; row click opens full-page detail at `/admin/kyc/[id]`
 - Related companies on each KYC: companies under the same portal client account (`clientUserId` / `pendingClientEmail`), explicit `CompanyKeyPerson` links, and companies where this person is linked as director / member / significant controller / designated representative; list shows first company +N; detail page lists all with role badges and links to company pages
 - In the queue list status column, records with missing required KYC files show a red missing marker for ID proof, address proof, and/or declaration when the latest file for that type is absent or rejected
 - KYC statuses: `DRAFT`, `APPROVED`, `REJECTED`, `INACTIVE` (legacy `SUBMITTED` / `PENDING_INFO` migrated to `DRAFT`)
