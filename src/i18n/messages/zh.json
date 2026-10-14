@@ -1225,6 +1225,7 @@
       "deleteFailed": "刪除發票失敗。",
       "confirmDelete": "確定永久刪除此草稿發票？此操作無法復原。",
       "notFound": "找不到發票。",
+      "downloadWord": "下載 Word",
       "downloadPdf": "下載 PDF",
       "markSent": "標記已發送",
       "markPaid": "標記已付款",

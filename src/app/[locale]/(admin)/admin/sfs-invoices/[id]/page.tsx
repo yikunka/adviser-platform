@@ -238,6 +238,10 @@ export default function SfsInvoiceDetailPage() {
     window.open(`/api/admin/sfs-invoices/${id}/pdf`, '_blank')
   }
 
+  function downloadWord() {
+    window.open(`/api/admin/sfs-invoices/${id}/docx`, '_blank')
+  }
+
   if (loading) {
     return <p style={{ color: 'var(--muted-foreground)' }}>{t('loading')}</p>
   }
@@ -264,6 +268,10 @@ export default function SfsInvoiceDetailPage() {
         <div className="flex flex-wrap items-center gap-4">
           <SfsInvoiceNumberDisplay value={invoice.invoiceNumber} />
           <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" onClick={downloadWord}>
+              <Download size={14} className="mr-1" />
+              {t('downloadWord')}
+            </Button>
             <Button variant="outline" onClick={downloadPdf}>
               <Download size={14} className="mr-1" />
               {t('downloadPdf')}

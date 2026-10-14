@@ -2,27 +2,20 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib'
 import type { SfsInvoice, SfsInvoiceLineItem, SfsOrder } from '@prisma/client'
+import {
+  SFS_INVOICE_ISSUER as ISSUER,
+  SFS_INVOICE_PAYMENT as PAYMENT_INFO,
+  sfsFmtAmount as fmtAmount,
+  sfsFmtDate as fmtDate,
+  sfsFmtMoney as fmtMoney,
+  sfsFmtQty as fmtQty,
+  sfsInvoiceBaseFilename,
+} from '@/lib/sfs-invoice/sfs-invoice-brand'
 import { loadSfsInvoiceFonts } from '@/lib/sfs-invoice/sfs-invoice-fonts'
 
 export type SfsInvoicePdfPayload = SfsInvoice & {
   lineItems: SfsInvoiceLineItem[]
   order: Pick<SfsOrder, 'memorialName' | 'sampleCode' | 'clientName'> | null
-}
-
-const ISSUER = {
-  nameEn: 'SFS Technical Group Co., Limited',
-  nameZh: '瑞福生科技集團有限公司',
-  address: 'RM7 20F BOSS COMMERCIAL CENTRE 28 FERRY STREET YAU MA TEI KOWLOON',
-  email: 'info@sfsdiamond.com',
-  website: 'www.sfsdiamond.com',
-}
-
-const PAYMENT_INFO = {
-  bank: 'DBS BANK (HONG KONG)',
-  swift: 'SWIFT: DHBKHKHH',
-  bankCode: 'Bank Code: 016',
-  accountNumber: 'Account Number: 478002236556',
-  accountName: 'A/C Name: SFS TECHNOLOGY GROUP CO., LIMITED',
 }
 
 /** Blue Luxury palette — matches SFS_Invoice_*_Logo_Blue_Luxury.docx */
@@ -40,26 +33,6 @@ function pdfText(s: string | null | undefined, supportsUnicode: boolean): string
     .replace(/·/g, '.')
   if (supportsUnicode) return normalized
   return normalized.replace(/[^\x00-\xFF]/g, '?')
-}
-
-function fmtDate(d: Date | string | null | undefined): string {
-  if (!d) return '-'
-  return new Date(d).toLocaleDateString('en-HK', { day: 'numeric', month: 'short', year: 'numeric' })
-}
-
-function fmtAmount(n: { toString(): string } | number): string {
-  const val = typeof n === 'number' ? n : Number(n.toString())
-  return val.toLocaleString('en-HK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-function fmtMoney(n: { toString(): string } | number, currency: string): string {
-  return `${currency} ${fmtAmount(n)}`
-}
-
-function fmtQty(n: { toString(): string } | number): string {
-  const val = typeof n === 'number' ? n : Number(n.toString())
-  if (Number.isInteger(val)) return String(val)
-  return val.toLocaleString('en-HK', { minimumFractionDigits: 0, maximumFractionDigits: 4 })
 }
 
 function wrapLines(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
@@ -108,8 +81,8 @@ function trackedWidth(text: string, size: number, font: PDFFont, trackingEm: num
   return w + gap * Math.max(0, text.length - 1)
 }
 
-async function loadEmblem(doc: PDFDocument): Promise<PDFImage | null> {
-  const full = path.join(/* turbopackIgnore: true */ process.cwd(), 'assets/sfs-invoice/sfs-emblem-navy.png')
+async function loadBrandLockup(doc: PDFDocument): Promise<PDFImage | null> {
+  const full = path.join(/* turbopackIgnore: true */ process.cwd(), 'assets/sfs-invoice/sfs-brand-lockup.png')
   try {
     await fs.access(full)
   } catch {
@@ -120,7 +93,7 @@ async function loadEmblem(doc: PDFDocument): Promise<PDFImage | null> {
 }
 
 export function sfsInvoicePdfFilename(invoice: Pick<SfsInvoice, 'invoiceNumber'>): string {
-  return `${pdfText(invoice.invoiceNumber, false).replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`
+  return `${sfsInvoiceBaseFilename(pdfText(invoice.invoiceNumber, false))}.pdf`
 }
 
 export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promise<Uint8Array> {
@@ -129,7 +102,7 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
   const { display, section, body, amount, cjk, supportsUnicode } = fonts
   const sans = await doc.embedFont(StandardFonts.Helvetica)
   const sansBold = await doc.embedFont(StandardFonts.HelveticaBold)
-  const emblem = await loadEmblem(doc)
+  const brandLockup = await loadBrandLockup(doc)
 
   const W = 595
   const H = 842
@@ -234,42 +207,43 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
   const titleTracking = 0.12
   const titleW = drawTracked(page, title, ML, headerTop - 4, titleSize, display, NAVY, titleTracking)
 
-  // Brand block (top-right): emblem + S.F.S. / MEMORIAL DIAMONDS
+  // Brand block (top-right): S.F.S. Memorial Diamonds lockup
   const brandRight = W - MR
-  const wordmark = 'S.F.S.'
-  const wordSize = 22
-  const wordW = sansBold.widthOfTextAtSize(wordmark, wordSize)
-  const tagline = 'MEMORIAL DIAMONDS'
-  const tagSize = 7
-  const tagTrack = 0.22
-  const tagW = trackedWidth(tagline, tagSize, sans, tagTrack)
-  const textBlockW = Math.max(wordW, tagW)
-  const emblemSize = 36
-  const brandGap = 10
-  const brandBlockW = (emblem ? emblemSize + brandGap : 0) + textBlockW
-  const brandLeft = brandRight - brandBlockW
-  const emblemY = headerTop - emblemSize + 6
-
-  if (emblem) {
-    page.drawImage(emblem, {
-      x: brandLeft,
-      y: emblemY,
-      width: emblemSize,
-      height: emblemSize,
+  const brandImgW = 140
+  const brandImgH = 52
+  let brandBottom = headerTop - 8
+  if (brandLockup) {
+    const brandX = brandRight - brandImgW
+    const brandY = headerTop - brandImgH + 8
+    page.drawImage(brandLockup, {
+      x: brandX,
+      y: brandY,
+      width: brandImgW,
+      height: brandImgH,
     })
+    brandBottom = brandY
+  } else {
+    const wordmark = 'S.F.S.'
+    const wordSize = 22
+    const wordW = sansBold.widthOfTextAtSize(wordmark, wordSize)
+    const tagline = 'MEMORIAL DIAMONDS'
+    const tagSize = 7
+    const tagTrack = 0.22
+    const tagW = trackedWidth(tagline, tagSize, sans, tagTrack)
+    const textBlockW = Math.max(wordW, tagW)
+    const textX = brandRight - textBlockW
+    const wordY = headerTop - 8
+    page.drawText(wordmark, { x: textX, y: wordY, size: wordSize, font: sansBold, color: NAVY })
+    const ruleY = wordY - 6
+    page.drawLine({
+      start: { x: textX, y: ruleY },
+      end: { x: textX + textBlockW, y: ruleY },
+      thickness: 0.6,
+      color: GOLD,
+    })
+    drawTracked(page, tagline, textX, ruleY - 12, tagSize, sans, NAVY, tagTrack)
+    brandBottom = ruleY - 14
   }
-
-  const textX = brandLeft + (emblem ? emblemSize + brandGap : 0)
-  const wordY = headerTop - 8
-  page.drawText(wordmark, { x: textX, y: wordY, size: wordSize, font: sansBold, color: NAVY })
-  const ruleY = wordY - 6
-  page.drawLine({
-    start: { x: textX, y: ruleY },
-    end: { x: textX + textBlockW, y: ruleY },
-    thickness: 0.6,
-    color: GOLD,
-  })
-  drawTracked(page, tagline, textX, ruleY - 12, tagSize, sans, NAVY, tagTrack)
 
   // Gold rule under INVOICE (extends to just past title, not full width)
   const invoiceRuleY = headerTop - 18
@@ -281,7 +255,7 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
   })
 
   // Meta row: Invoice No. | Issue date | Status
-  y = Math.min(invoiceRuleY, emblemY) - 22
+  y = Math.min(invoiceRuleY, brandBottom) - 22
   const metaTop = y + 12
   const metaBottom = y - 6
   const metaCols = [

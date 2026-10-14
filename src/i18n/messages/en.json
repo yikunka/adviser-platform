@@ -1225,6 +1225,7 @@
       "deleteFailed": "Failed to delete invoice.",
       "confirmDelete": "Permanently delete this draft invoice? This cannot be undone.",
       "notFound": "Invoice not found.",
+      "downloadWord": "Download Word",
       "downloadPdf": "Download PDF",
       "markSent": "Mark as sent",
       "markPaid": "Mark as paid",
