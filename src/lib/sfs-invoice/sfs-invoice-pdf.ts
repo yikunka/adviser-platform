@@ -1,9 +1,10 @@
 /**
  * SFS invoice PDF — same Blue Luxury layout as renderSfsInvoiceDocx (Word).
+ * Uses Times/Helvetica (+ CJK) so Latin glyphs render reliably.
  */
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib'
+import { PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib'
 import type { SfsInvoice, SfsInvoiceLineItem, SfsOrder } from '@prisma/client'
 import {
   SFS_INVOICE_ISSUER as ISSUER,
@@ -35,6 +36,11 @@ function pdfText(s: string | null | undefined, supportsUnicode: boolean): string
     .replace(/·/g, '.')
   if (supportsUnicode) return normalized
   return normalized.replace(/[^\x00-\xFF]/g, '?')
+}
+
+/** Prefer CJK font when the string contains CJK characters. */
+function fontFor(text: string, latin: PDFFont, cjk: PDFFont): PDFFont {
+  return /[\u3000-\u9FFF\uF900-\uFAFF]/.test(text) ? cjk : latin
 }
 
 function wrapLines(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
@@ -100,9 +106,7 @@ export function sfsInvoicePdfFilename(invoice: Pick<SfsInvoice, 'invoiceNumber'>
 export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promise<Uint8Array> {
   const doc = await PDFDocument.create()
   const fonts = await loadSfsInvoiceFonts(doc)
-  const { display, section, body, amount, cjk, supportsUnicode } = fonts
-  const sans = await doc.embedFont(StandardFonts.Helvetica)
-  const sansBold = await doc.embedFont(StandardFonts.HelveticaBold)
+  const { display, section, body, amount, sans, sansBold, cjk, supportsUnicode } = fonts
   const brandLockup = await loadBrandLockup(doc)
 
   // Match Word: A4 + 0.5" margins
@@ -115,13 +119,11 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
   const colDescW = CW * (5600 / 10466)
   const colQtyW = CW * (1200 / 10466)
   const colUnitW = CW * (1800 / 10466)
-  const colAmtW = CW - colDescW - colQtyW - colUnitW
   const xDesc = M
   const xQty = M + colDescW
   const xUnit = xQty + colQtyW
   const xAmt = xUnit + colUnitW
 
-  // Footer strip (website | thank you | page) — payment lives in body like Word
   const FOOTER_H = 40
   const CONTENT_BOTTOM = FOOTER_H + 16
 
@@ -154,6 +156,19 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
     })
   }
 
+  function drawText(
+    text: string,
+    x: number,
+    atY: number,
+    size: number,
+    font: PDFFont,
+    color = NAVY,
+  ) {
+    const t = pdfText(text, supportsUnicode)
+    const f = fontFor(t, font, cjk)
+    page.drawText(t, { x, y: atY, size, font: f, color })
+  }
+
   function drawRight(
     text: string,
     rightEdge: number,
@@ -163,14 +178,14 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
     color = NAVY,
   ) {
     const t = pdfText(text, supportsUnicode)
-    page.drawText(t, { x: rightEdge - font.widthOfTextAtSize(t, size), y: atY, size, font, color })
+    const f = fontFor(t, font, cjk)
+    page.drawText(t, { x: rightEdge - f.widthOfTextAtSize(t, size), y: atY, size, font: f, color })
   }
 
   function drawTableHeader() {
     const hdrH = 22
     const hdrY = y - hdrH
     page.drawRectangle({ x: M, y: hdrY, width: CW, height: hdrH, color: NAVY })
-    // gold outer border around header
     page.drawRectangle({
       x: M,
       y: hdrY,
@@ -207,45 +222,14 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
 
   preparePage(page)
 
-  // ── Header: INVOICE | brand lockup (same as Word) ───────────────────────
-  const headerTop = y - 4
+  // ── Header: INVOICE | brand lockup ──────────────────────────────────────
   const titleSize = 28
-  const titleTracking = 0.12
-  const titleW = drawTracked(page, 'INVOICE', M, headerTop - titleSize + 10, titleSize, display, NAVY, titleTracking)
+  const titleBaseline = y - titleSize
+  const titleTracking = 0.1
+  const titleW = drawTracked(page, 'INVOICE', M, titleBaseline, titleSize, display, NAVY, titleTracking)
 
-  // Word ImageRun 168×63 px ≈ 126×47 pt at 96dpi
-  const brandImgW = 126
-  const brandImgH = 47
-  let brandBottom = headerTop - 8
-  if (brandLockup) {
-    const brandX = W - M - brandImgW
-    const brandY = headerTop - brandImgH + 6
-    page.drawImage(brandLockup, { x: brandX, y: brandY, width: brandImgW, height: brandImgH })
-    brandBottom = brandY
-  } else {
-    const wordmark = 'S.F.S.'
-    const wordSize = 20
-    const wordW = sansBold.widthOfTextAtSize(wordmark, wordSize)
-    const tagline = 'MEMORIAL DIAMONDS'
-    const tagSize = 7
-    const tagTrack = 0.22
-    const textBlockW = Math.max(wordW, trackedWidth(tagline, tagSize, sans, tagTrack))
-    const textX = W - M - textBlockW
-    const wordY = headerTop - 6
-    page.drawText(wordmark, { x: textX, y: wordY, size: wordSize, font: sansBold, color: NAVY })
-    const ruleY = wordY - 6
-    page.drawLine({
-      start: { x: textX, y: ruleY },
-      end: { x: textX + textBlockW, y: ruleY },
-      thickness: 0.6,
-      color: GOLD,
-    })
-    drawTracked(page, tagline, textX, ruleY - 11, tagSize, sans, NAVY, tagTrack)
-    brandBottom = ruleY - 14
-  }
-
-  // Gold underline under INVOICE only (matches Word paragraph border)
-  const invoiceRuleY = headerTop - titleSize + 2
+  // Gold underline under INVOICE
+  const invoiceRuleY = titleBaseline - 4
   page.drawLine({
     start: { x: M, y: invoiceRuleY },
     end: { x: M + titleW + 4, y: invoiceRuleY },
@@ -253,8 +237,39 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
     color: GOLD,
   })
 
+  // Brand lockup top-right (Word ImageRun 168×63 px ≈ 126×47 pt)
+  const brandImgW = 126
+  const brandImgH = 47
+  let brandBottom = invoiceRuleY
+  if (brandLockup) {
+    const brandX = W - M - brandImgW
+    const brandY = y - brandImgH
+    page.drawImage(brandLockup, { x: brandX, y: brandY, width: brandImgW, height: brandImgH })
+    brandBottom = brandY
+  } else {
+    const wordmark = 'S.F.S.'
+    const wordSize = 18
+    const wordW = sansBold.widthOfTextAtSize(wordmark, wordSize)
+    const tagline = 'MEMORIAL DIAMONDS'
+    const tagSize = 7
+    const tagTrack = 0.2
+    const textBlockW = Math.max(wordW, trackedWidth(tagline, tagSize, sans, tagTrack))
+    const textX = W - M - textBlockW
+    const wordY = y - wordSize
+    page.drawText(wordmark, { x: textX, y: wordY, size: wordSize, font: sansBold, color: NAVY })
+    const ruleY = wordY - 5
+    page.drawLine({
+      start: { x: textX, y: ruleY },
+      end: { x: textX + textBlockW, y: ruleY },
+      thickness: 0.6,
+      color: GOLD,
+    })
+    drawTracked(page, tagline, textX, ruleY - 10, tagSize, sans, NAVY, tagTrack)
+    brandBottom = ruleY - 12
+  }
+
   // ── Meta row ────────────────────────────────────────────────────────────
-  y = Math.min(invoiceRuleY, brandBottom) - 18
+  y = Math.min(invoiceRuleY, brandBottom) - 16
   const metaTop = y + 10
   const metaBottom = y - 4
   const metaCols = [
@@ -266,10 +281,10 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
   metaCols.forEach((col, i) => {
     const cx = M + i * metaColW
     if (i > 0) drawVRule(cx, metaTop, metaBottom, RULE_SOFT, 0.5)
-    const label = col.label + ' '
-    page.drawText(label, { x: cx + 8, y: y, size: 8, font: section, color: NAVY })
+    const label = `${col.label} `
+    page.drawText(label, { x: cx + 8, y, size: 8, font: section, color: NAVY })
     const labelW = section.widthOfTextAtSize(label, 8)
-    page.drawText(pdfText(col.value, supportsUnicode), {
+    page.drawText(pdfText(col.value, false), {
       x: cx + 8 + labelW,
       y,
       size: 11,
@@ -289,31 +304,22 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
   const rightMaxW = W - M - rightX
   const issuerStartY = y
 
-  page.drawText(pdfText(ISSUER.nameEn, supportsUnicode), {
-    x: M, y, size: 11, font: amount, color: NAVY,
-  })
+  drawText(ISSUER.nameEn, M, y, 11, amount)
   y -= 13
-  page.drawText(pdfText(ISSUER.nameZh, supportsUnicode), {
-    x: M, y, size: 9, font: cjk, color: NAVY,
-  })
+  // Chinese name — always CJK font
+  page.drawText(pdfText(ISSUER.nameZh, true), { x: M, y, size: 9, font: cjk, color: NAVY })
   y -= 12
   for (const line of wrapLines(ISSUER.address, body, 8, leftMaxW)) {
-    page.drawText(pdfText(line, supportsUnicode), {
-      x: M, y, size: 8, font: body, color: NAVY,
-    })
+    drawText(line, M, y, 8, body)
     y -= 10
   }
-  page.drawText(pdfText(ISSUER.email, supportsUnicode), {
-    x: M, y, size: 8, font: body, color: NAVY,
-  })
+  drawText(ISSUER.email, M, y, 8, body)
   const issuerBottom = y
 
   y = issuerStartY
   page.drawText('BILL TO', { x: rightX, y, size: 8, font: sansBold, color: GOLD })
   y -= 13
-  page.drawText(pdfText(invoice.billToName, supportsUnicode), {
-    x: rightX, y, size: 12, font: amount, color: NAVY,
-  })
+  drawText(invoice.billToName, rightX, y, 12, amount)
   y -= 13
 
   const billLines = [
@@ -325,9 +331,7 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
   ].filter((v): v is string => Boolean(v))
 
   for (const line of billLines) {
-    page.drawText(pdfText(line, supportsUnicode), {
-      x: rightX, y, size: 9, font: body, color: NAVY,
-    })
+    drawText(line, rightX, y, 9, body)
     y -= 11
   }
 
@@ -344,9 +348,7 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
     const parts: string[] = []
     if (invoice.order.sampleCode) parts.push(`Sample ID: ${invoice.order.sampleCode}`)
     if (invoice.order.memorialName) parts.push(`Memorial: ${invoice.order.memorialName}`)
-    page.drawText(pdfText(parts.join('   |   '), supportsUnicode), {
-      x: M, y, size: 10, font: amount, color: NAVY,
-    })
+    drawText(parts.join('   |   '), M, y, 10, amount)
     y -= 12
     drawGoldRule(y)
     y -= 12
@@ -362,7 +364,8 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
 
   for (const line of sorted) {
     const desc = pdfText(line.description, supportsUnicode)
-    const descLines = wrapLines(desc, body, bodySize, colDescW - 16)
+    const descFont = fontFor(desc, body, cjk)
+    const descLines = wrapLines(desc, descFont, bodySize, colDescW - 16)
     const pad = 6
     const rowH = Math.max(22, descLines.length * bodyLeading + pad * 2)
     ensureSpace(rowH + 2)
@@ -370,7 +373,6 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
     const rowTop = y
     const rowBottom = y - rowH
 
-    // gold cell grid (same as Word GOLD_GRID)
     page.drawRectangle({
       x: M,
       y: rowBottom,
@@ -385,7 +387,7 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
 
     let textY = rowTop - pad - bodySize + 1
     for (const part of descLines) {
-      page.drawText(part, { x: xDesc + 8, y: textY, size: bodySize, font: body, color: NAVY })
+      page.drawText(part, { x: xDesc + 8, y: textY, size: bodySize, font: descFont, color: NAVY })
       textY -= bodyLeading
     }
 
@@ -397,7 +399,7 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
     y = rowBottom
   }
 
-  // ── Subtotal + TOTAL (same geometry as Word totals table) ───────────────
+  // ── Subtotal + TOTAL ────────────────────────────────────────────────────
   y -= 10
   ensureSpace(52)
   const totalsLabelW = CW * (2200 / 10466)
@@ -437,22 +439,23 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
   drawRight(sfsFmtMoney(invoice.total, invoice.currency), totalsRight - 4, totalBarY + 7, 12, amount, NAVY)
   y = totalBarY - 14
 
-  // ── Notes (body, before payment — same as Word) ─────────────────────────
+  // ── Notes ───────────────────────────────────────────────────────────────
   if (invoice.notes?.trim()) {
     ensureSpace(40)
     page.drawText('NOTES', { x: M, y, size: 8, font: sansBold, color: GOLD })
     y -= 12
-    for (const part of wrapLines(pdfText(invoice.notes, supportsUnicode), body, 9, CW)) {
+    const noteText = pdfText(invoice.notes, supportsUnicode)
+    const noteFont = fontFor(noteText, body, cjk)
+    for (const part of wrapLines(noteText, noteFont, 9, CW)) {
       ensureSpace(12)
-      page.drawText(part, { x: M, y, size: 9, font: body, color: NAVY })
+      page.drawText(part, { x: M, y, size: 9, font: noteFont, color: NAVY })
       y -= 12
     }
     y -= 4
   }
 
-  // ── Payment information (body block — same as Word, not fixed footer) ───
-  const paymentNeeded = 78
-  if (y - paymentNeeded < CONTENT_BOTTOM) {
+  // ── Payment information (body) ──────────────────────────────────────────
+  if (y - 78 < CONTENT_BOTTOM) {
     page = doc.addPage([W, H])
     preparePage(page)
     y = H - M
@@ -464,23 +467,17 @@ export async function renderSfsInvoicePdf(invoice: SfsInvoicePdfPayload): Promis
     x: M, y, size: 8, font: sansBold, color: GOLD,
   })
   y -= 14
-  page.drawText(pdfText(PAYMENT.bank, supportsUnicode), {
-    x: M, y, size: 9, font: amount, color: NAVY,
-  })
+  page.drawText(PAYMENT.bank, { x: M, y, size: 9, font: amount, color: NAVY })
   y -= 11
-  page.drawText(pdfText(`${PAYMENT.swift}  ·  ${PAYMENT.bankCode}`, supportsUnicode), {
+  page.drawText(`${PAYMENT.swift}  .  ${PAYMENT.bankCode}`, {
     x: M, y, size: 8, font: body, color: NAVY,
   })
   y -= 11
-  page.drawText(pdfText(PAYMENT.accountNumber, supportsUnicode), {
-    x: M, y, size: 8, font: body, color: NAVY,
-  })
+  page.drawText(PAYMENT.accountNumber, { x: M, y, size: 8, font: body, color: NAVY })
   y -= 11
-  page.drawText(pdfText(PAYMENT.accountName, supportsUnicode), {
-    x: M, y, size: 8, font: body, color: NAVY,
-  })
+  page.drawText(PAYMENT.accountName, { x: M, y, size: 8, font: body, color: NAVY })
 
-  // ── Footer on every page (website | thank you | page) ───────────────────
+  // ── Footer ──────────────────────────────────────────────────────────────
   const pages = doc.getPages()
   const totalPages = pages.length
   pages.forEach((p, idx) => {
