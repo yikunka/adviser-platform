@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
+import { contentDispositionHeader } from '@/lib/http/content-disposition'
 import { renderSfsInvoicePdf, sfsInvoicePdfFilename } from '@/lib/sfs-invoice/sfs-invoice-pdf'
 
 export async function GET(
@@ -20,16 +21,20 @@ export async function GET(
   })
   if (!invoice) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const bytes = await renderSfsInvoicePdf(invoice)
-  const body = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
-  const filename = sfsInvoicePdfFilename(invoice)
-
-  return new NextResponse(body, {
-    status: 200,
-    headers: {
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${filename}"`,
-      'Cache-Control': 'private, no-store',
-    },
-  })
+  try {
+    const bytes = await renderSfsInvoicePdf(invoice)
+    const filename = sfsInvoicePdfFilename(invoice)
+    return new NextResponse(Buffer.from(bytes), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': contentDispositionHeader('attachment', filename),
+        'Cache-Control': 'private, no-store',
+      },
+    })
+  } catch (err) {
+    console.error('[sfs-invoices/pdf]', err)
+    const message = err instanceof Error ? err.message : 'PDF generation failed'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
 }
