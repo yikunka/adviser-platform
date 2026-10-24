@@ -706,7 +706,7 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
         </div>
       </div>
 
-      {/* Shape — pictures already have names; no text label needed */}
+      {/* Shape */}
       <div>
         <p className="text-sm font-medium mb-3" style={{ color: DARK }}>
           Shape<span style={{ color: GOLD }}> *</span>
@@ -719,7 +719,6 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
               src={cut.imageUrl}
               selected={item.shape === cut.value}
               onClick={() => onChange({ shape: cut.value })}
-              hideLabel
               priceLabel={formatSfsPriceLabel(cut.price, { additive: true })}
             />
           ))}
