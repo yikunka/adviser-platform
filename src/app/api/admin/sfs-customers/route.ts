@@ -115,6 +115,10 @@ export async function GET(req: NextRequest) {
   const approvalFilter = approval === 'PENDING' || approval === 'APPROVED' || approval === 'REJECTED'
     ? approval
     : null
+  const sourceParam = searchParams.get('source')
+  const sourceFilter = sourceParam === 'ACCOUNT' || sourceParam === 'MANUAL' || sourceParam === 'ORDER_ONLY'
+    ? sourceParam
+    : null
 
   const [customers, users, orders] = await Promise.all([
     prisma.sfsCustomer.findMany({
@@ -266,6 +270,7 @@ export async function GET(req: NextRequest) {
   const filtered = rows
     .filter(row => rowMatches(row, q))
     .filter(row => !approvalFilter || row.accountApprovalStatus === approvalFilter)
+    .filter(row => !sourceFilter || row.source === sourceFilter)
     .sort((a, b) => {
       if (approvalFilter === 'PENDING') {
         return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()

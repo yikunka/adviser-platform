@@ -3,24 +3,19 @@ import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { requireRole } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
-import type { Platform } from '@prisma/client'
 
 // ── GET /api/admin/users ──────────────────────────────────────────────
-// Returns all CLIENT users across all platforms.
-// Query params:
-//   ?platform=ADVISER|SFS_DIAMOND  — filter by platform (optional)
-//   ?q=<search>                    — search by email or name (optional)
+// Advise (TCSP) CLIENT portal accounts only. SFS logins are managed under SFS Customers.
 export async function GET(req: NextRequest) {
   const { error } = await requireRole('STAFF', { adminMenu: 'users' })
   if (error) return error
 
-  const platform = req.nextUrl.searchParams.get('platform') as Platform | null
   const q = req.nextUrl.searchParams.get('q')?.trim().toLowerCase() ?? ''
 
   const users = await prisma.user.findMany({
     where: {
       role: 'CLIENT',
-      ...(platform ? { platform } : {}),
+      platform: 'ADVISER',
       ...(q
         ? {
             OR: [
@@ -48,13 +43,11 @@ export async function GET(req: NextRequest) {
 }
 
 // ── POST /api/admin/users ─────────────────────────────────────────────
-// Admin creates a new CLIENT user and assigns them to a platform.
-// Admin-created accounts are pre-verified (emailVerified set immediately).
+// Create an Advise CLIENT account (pre-verified).
 const createSchema = z.object({
-  email:    z.string().email().max(255),
-  nameEn:   z.string().min(1).max(100),
+  email: z.string().email().max(255),
+  nameEn: z.string().min(1).max(100),
   password: z.string().min(8).max(100),
-  platform: z.enum(['ADVISER', 'SFS_DIAMOND']),
 })
 
 export async function POST(req: NextRequest) {
@@ -67,7 +60,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
   }
 
-  const { nameEn, password, platform } = parsed.data
+  const { nameEn, password } = parsed.data
   const email = parsed.data.email.trim().toLowerCase()
 
   const existing = await prisma.user.findFirst({
@@ -84,9 +77,10 @@ export async function POST(req: NextRequest) {
       email,
       nameEn,
       passwordHash,
-      platform,
+      platform: 'ADVISER',
       role: 'CLIENT',
-      emailVerified: new Date(), // admin-created users are pre-verified
+      emailVerified: new Date(),
+      accountApprovalStatus: 'APPROVED',
     },
     select: {
       id: true,

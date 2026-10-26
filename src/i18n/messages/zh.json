@@ -30,7 +30,7 @@
     "forms": "表格下载",
     "tcspPricing": "TCSP服务价格单",
     "settings": "設定",
-    "users": "客戶帳號管理",
+    "users": "Advise 客戶帳號",
     "sfsCustomers": "SFS 客戶",
     "sfsOrders": "SFS 訂單",
     "sfsOrderTracker": "訂單跟踪",
@@ -712,7 +712,7 @@
       "system": "系統"
     },
     "users": {
-      "title": "用戶管理",
+      "title": "Advise 客戶帳號",
       "addUser": "新增用戶",
       "all": "全部",
       "adviser": "Advise",

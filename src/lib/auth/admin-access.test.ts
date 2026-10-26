@@ -38,6 +38,8 @@ describe('SFS Diamond access', () => {
     expect(ADMIN_MENU_KEYS).toContain('sfsFactory')
     expect(MENU_PLATFORM.sfsOrders).toBe('SFS_DIAMOND')
     expect(MENU_PLATFORM.sfsFactory).toBe('SFS_DIAMOND')
+    expect(MENU_PLATFORM.users).toBe('ADVISER')
+    expect(MENU_PLATFORM.sfsCustomers).toBe('SFS_DIAMOND')
     expect(isValidPermission('sfsOrders.create')).toBe(true)
     expect(isValidPermission('sfsOrders.delete')).toBe(true)
     expect(isValidPermission('sfsOrders.manageSteps')).toBe(true)

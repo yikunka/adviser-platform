@@ -27,8 +27,8 @@ export async function PATCH(
 
   const target = await prisma.user.findUnique({ where: { id } })
   if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 })
-  if (target.role !== 'CLIENT') {
-    return NextResponse.json({ error: 'Cannot modify staff accounts' }, { status: 403 })
+  if (target.role !== 'CLIENT' || target.platform !== 'ADVISER') {
+    return NextResponse.json({ error: 'Only Advise client accounts can be managed here. Use SFS Customers for SFS logins.' }, { status: 403 })
   }
 
   const updates: { nameEn?: string; email?: string; isActive?: boolean } = {}
@@ -67,8 +67,8 @@ export async function DELETE(
 
   const target = await prisma.user.findUnique({ where: { id } })
   if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 })
-  if (target.role !== 'CLIENT') {
-    return NextResponse.json({ error: 'Cannot delete staff accounts' }, { status: 403 })
+  if (target.role !== 'CLIENT' || target.platform !== 'ADVISER') {
+    return NextResponse.json({ error: 'Only Advise client accounts can be managed here. Use SFS Customers for SFS logins.' }, { status: 403 })
   }
 
   await prisma.user.delete({ where: { id } })

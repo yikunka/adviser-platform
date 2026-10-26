@@ -78,6 +78,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/contracts', key: 'contracts', Icon: FileText },
       { href: '/admin/forms', key: 'forms', Icon: FileSpreadsheet },
       { href: '/admin/tcsp-pricing', key: 'tcspPricing', Icon: HandCoins },
+      { href: '/admin/users', key: 'users', Icon: Users },
     ],
   },
   {
@@ -113,7 +114,6 @@ const NAV_GROUPS: NavGroup[] = [
   {
     labelKey: 'system',
     items: [
-      { href: '/admin/users', key: 'users', Icon: Users },
       { href: '/admin/team', key: 'adminTeam', Icon: UserCog },
       { href: '/admin/admin-roles', key: 'adminRoles', labelKey: 'adminRoles', Icon: ShieldCheck },
       { href: '/admin/settings', key: 'settings', Icon: Settings },

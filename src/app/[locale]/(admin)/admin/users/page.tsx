@@ -4,8 +4,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { toast } from 'sonner'
 import { UserPlus, Search, Eye, EyeOff, Pencil, Trash2, Ban, CheckCircle } from 'lucide-react'
 
-type PlatformKey = 'ALL' | 'ADVISER' | 'SFS_DIAMOND'
-
 type User = {
   id: string
   email: string
@@ -41,17 +39,6 @@ const td: React.CSSProperties = {
   borderBottom: '1px solid #1E1C15',
 }
 
-const PLATFORM_BADGE: Record<'ADVISER' | 'SFS_DIAMOND', { bg: string; text: string; label: string }> = {
-  ADVISER:     { bg: 'rgba(201,169,110,0.15)', text: '#C9A96E', label: 'Adviser'    },
-  SFS_DIAMOND: { bg: 'rgba(56,189,248,0.15)',  text: '#38bdf8', label: 'SFS Diamond' },
-}
-
-const TABS: { key: PlatformKey; label: string }[] = [
-  { key: 'ALL',        label: 'All'        },
-  { key: 'ADVISER',    label: 'Adviser'    },
-  { key: 'SFS_DIAMOND',label: 'SFS Diamond'},
-]
-
 function inputStyle(focused: boolean): React.CSSProperties {
   return {
     background: 'var(--surface-panel)',
@@ -66,7 +53,6 @@ function AddUserModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const [nameEn, setNameEn]     = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw]     = useState(false)
-  const [platform, setPlatform] = useState<'ADVISER' | 'SFS_DIAMOND'>('ADVISER')
   const [loading, setLoading]   = useState(false)
   const [focusField, setFocusField] = useState('')
 
@@ -77,7 +63,7 @@ function AddUserModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
       const res = await fetch('/api/admin/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, nameEn, password, platform }),
+        body: JSON.stringify({ email, nameEn, password }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -142,24 +128,9 @@ function AddUserModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
               </button>
             </div>
           </div>
-          <div className="space-y-2">
-            <label className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>Platform</label>
-            <div className="grid grid-cols-2 gap-2">
-              {(['ADVISER', 'SFS_DIAMOND'] as const).map(p => {
-                const badge = PLATFORM_BADGE[p]
-                const selected = platform === p
-                return (
-                  <button key={p} type="button" onClick={() => setPlatform(p)}
-                    className="flex items-center gap-2.5 rounded-lg px-4 py-3 text-sm font-medium transition-all"
-                    style={{ background: selected ? badge.bg : 'var(--surface-panel)', border: `1px solid ${selected ? badge.text + '55' : 'var(--border-subtle)'}`, color: selected ? badge.text : 'var(--muted-foreground)' }}
-                  >
-                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: selected ? badge.text : '#4A4030' }} />
-                    {badge.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+            Creates an Advise (TCSP) client portal login. Manage SFS partner logins under SFS Customers.
+          </p>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm font-medium" style={{ border: '1px solid var(--border-subtle)', color: 'var(--muted-foreground)' }}>Cancel</button>
             <button type="submit" disabled={loading} className="flex-1 py-2.5 rounded-lg text-sm font-medium disabled:opacity-60" style={{ background: '#C9A96E', color: '#0A0805' }}>
@@ -302,7 +273,6 @@ function DeleteConfirmModal({ user, onClose, onDeleted }: { user: User; onClose:
 export default function AdminUsersPage() {
   const [users, setUsers]             = useState<User[]>([])
   const [loading, setLoading]         = useState(true)
-  const [tab, setTab]                 = useState<PlatformKey>('ALL')
   const [search, setSearch]           = useState('')
   const [showAddModal, setShowAddModal]   = useState(false)
   const [editTarget, setEditTarget]       = useState<User | null>(null)
@@ -313,7 +283,6 @@ export default function AdminUsersPage() {
     setLoading(true)
     try {
       const params = new URLSearchParams()
-      if (tab !== 'ALL') params.set('platform', tab)
       if (search.trim()) params.set('q', search.trim())
       const res = await fetch(`/api/admin/users?${params}`)
       const data = await res.json()
@@ -323,7 +292,7 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false)
     }
-  }, [tab, search])
+  }, [search])
 
   useEffect(() => {
     const t = setTimeout(fetchUsers, search ? 300 : 0)
@@ -355,8 +324,13 @@ export default function AdminUsersPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>Users</h1>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>Advise Customer Accounts</h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
+            TCSP / Advise client portal logins only. SFS partners are managed under SFS Customers.
+          </p>
+        </div>
         <button
           onClick={() => setShowAddModal(true)}
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-85"
@@ -369,22 +343,6 @@ export default function AdminUsersPage() {
 
       {/* Filters */}
       <div style={card} className="p-4 flex flex-col sm:flex-row gap-3">
-        <div className="flex gap-1 rounded-lg p-1" style={{ background: 'var(--surface-input)' }}>
-          {TABS.map(t => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
-              style={{
-                background: tab === t.key ? '#1E1C14' : 'transparent',
-                color: tab === t.key ? '#C9A96E' : 'var(--muted-foreground)',
-                border: tab === t.key ? '1px solid var(--border-subtle)' : '1px solid transparent',
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
         <div className="relative flex-1 sm:max-w-xs">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
           <input
@@ -410,7 +368,6 @@ export default function AdminUsersPage() {
                 <tr>
                   <th style={th}>Email</th>
                   <th style={th}>Name</th>
-                  <th style={th}>Platform</th>
                   <th style={th}>Status</th>
                   <th style={th}>Joined</th>
                   <th style={{ ...th, textAlign: 'right' }}>Actions</th>
@@ -418,7 +375,6 @@ export default function AdminUsersPage() {
               </thead>
               <tbody>
                 {users.map(u => {
-                  const badge    = PLATFORM_BADGE[u.platform] ?? { bg: 'rgba(148,163,184,0.15)', text: '#94a3b8', label: u.platform }
                   const verified = !!u.emailVerified
                   const disabled = !u.isActive
                   return (
@@ -434,12 +390,6 @@ export default function AdminUsersPage() {
                     >
                       <td style={{ ...td, color: 'var(--foreground)', fontWeight: 500 }}>{u.email}</td>
                       <td style={td}>{u.nameEn}</td>
-                      <td style={td}>
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: badge.bg, color: badge.text }}>
-                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: badge.text }} />
-                          {badge.label}
-                        </span>
-                      </td>
                       <td style={td}>
                         {disabled ? (
                           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>

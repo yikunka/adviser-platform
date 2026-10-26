@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ContactRound, Download, FileText, Mail, MapPin, Pencil, Phone, Search, Trash2, Upload, UserPlus, X } from 'lucide-react'
+import { Ban, CheckCircle, ContactRound, Download, FileText, KeyRound, Mail, MapPin, Pencil, Phone, Search, Trash2, Upload, UserPlus, X } from 'lucide-react'
 
 type CustomerRow = {
   id: string
@@ -461,18 +461,97 @@ function CustomerModal({
   )
 }
 
+type ListFilter = 'ALL' | 'PENDING' | 'ACCOUNT' | 'MANUAL' | 'ORDER_ONLY'
+
+function CreateLoginModal({
+  customer,
+  onClose,
+  onCreated,
+}: {
+  customer: CustomerRow
+  onClose: () => void
+  onCreated: () => void
+}) {
+  const [email, setEmail] = useState(customer.email ?? '')
+  const [password, setPassword] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/admin/sfs-customers/${encodeURIComponent(customer.id)}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim() || undefined,
+          password,
+          nameEn: customer.name,
+        }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error ?? 'Failed to create login')
+      toast.success('SFS login created and approved.')
+      onCreated()
+      onClose()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create login.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl p-6 space-y-4"
+        style={{ background: 'var(--surface-modal)', border: '1px solid var(--border-subtle)' }}
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>Create SFS login</h2>
+          <button type="button" onClick={onClose} style={{ color: 'var(--muted-foreground)' }}>✕</button>
+        </div>
+        <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+          Creates a partner login for <span style={{ color: 'var(--foreground)' }}>{customer.name}</span>,
+          binds it to this profile, and marks it approved.
+        </p>
+        <form onSubmit={e => void handleSubmit(e)} className="space-y-3">
+          <div className="space-y-1">
+            <label className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Email</label>
+            <Input type="email" required value={email} onChange={e => setEmail(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Temporary password</label>
+            <Input type="text" required minLength={8} value={password} onChange={e => setPassword(e.target.value)} placeholder="Min. 8 characters" />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={saving}>{saving ? 'Creating…' : 'Create login'}</Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 export default function SfsCustomersPage() {
   const [customers, setCustomers] = useState<CustomerRow[]>([])
   const [total, setTotal] = useState(0)
   const [pageSize, setPageSize] = useState(20)
   const [search, setSearch] = useState('')
-  const [approvalFilter, setApprovalFilter] = useState<'ALL' | 'PENDING'>('ALL')
+  const [listFilter, setListFilter] = useState<ListFilter>('ALL')
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<CustomerRow | null>(null)
+  const [loginTarget, setLoginTarget] = useState<CustomerRow | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [approvingId, setApprovingId] = useState<string | null>(null)
+  const [togglingLoginId, setTogglingLoginId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [mergeTargetId, setMergeTargetId] = useState<string>('')
   const [merging, setMerging] = useState(false)
@@ -482,7 +561,10 @@ export default function SfsCustomersPage() {
     try {
       const params = new URLSearchParams({ page: String(page) })
       if (search.trim()) params.set('q', search.trim())
-      if (approvalFilter === 'PENDING') params.set('approval', 'PENDING')
+      if (listFilter === 'PENDING') params.set('approval', 'PENDING')
+      if (listFilter === 'ACCOUNT' || listFilter === 'MANUAL' || listFilter === 'ORDER_ONLY') {
+        params.set('source', listFilter)
+      }
       const res = await fetch(`/api/admin/sfs-customers?${params}`)
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json.error ?? 'Failed to load customers')
@@ -494,7 +576,7 @@ export default function SfsCustomersPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search, approvalFilter])
+  }, [page, search, listFilter])
 
   useEffect(() => {
     const t = setTimeout(fetchCustomers, search ? 250 : 0)
@@ -615,13 +697,37 @@ export default function SfsCustomersPage() {
     }
   }
 
+  async function handleToggleLogin(customer: CustomerRow) {
+    if (!customer.userId) {
+      toast.error('No login on this customer.')
+      return
+    }
+    const nextActive = !(customer.isActive ?? true)
+    setTogglingLoginId(customer.id)
+    try {
+      const res = await fetch(`/api/admin/sfs-customers/${encodeURIComponent(customer.id)}/login`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: nextActive }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error ?? 'Failed to update login')
+      toast.success(nextActive ? 'Login enabled.' : 'Login disabled.')
+      fetchCustomers()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update login.')
+    } finally {
+      setTogglingLoginId(null)
+    }
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>SFS Customers</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-            {total} customer record{total === 1 ? '' : 's'}
+            {total} customer record{total === 1 ? '' : 's'} · partner CRM + login (Advise accounts are separate)
           </p>
         </div>
         <Button onClick={() => setShowCreate(true)}>
@@ -640,17 +746,20 @@ export default function SfsCustomersPage() {
             className="pl-8"
           />
         </div>
-        <div className="flex items-center gap-1 rounded-lg p-1" style={{ border: '1px solid var(--border-subtle)', background: 'var(--surface)' }}>
+        <div className="flex flex-wrap items-center gap-1 rounded-lg p-1" style={{ border: '1px solid var(--border-subtle)', background: 'var(--surface)' }}>
           {([
             ['ALL', 'All'],
-            ['PENDING', '待審批 partners'],
+            ['PENDING', '待審批'],
+            ['ACCOUNT', '已注册'],
+            ['MANUAL', '手工档案'],
+            ['ORDER_ONLY', '仅订单'],
           ] as const).map(([value, label]) => {
-            const active = approvalFilter === value
+            const active = listFilter === value
             return (
               <button
                 key={value}
                 type="button"
-                onClick={() => { setApprovalFilter(value); setPage(1) }}
+                onClick={() => { setListFilter(value); setPage(1) }}
                 className="px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
                 style={{
                   background: active ? 'rgba(201,169,110,0.18)' : 'transparent',
@@ -744,7 +853,11 @@ export default function SfsCustomersPage() {
                       <td className="px-4 py-3 min-w-[220px]">
                         <div className="font-medium" style={{ color: 'var(--foreground)' }}>{customer.name}</div>
                         <div className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                          {customer.userId ? 'Registered platform account' : customer.customerId ? 'Manual profile' : 'From order data'}
+                          {customer.userId
+                            ? (customer.isActive === false ? 'Registered · login disabled' : 'Registered platform account')
+                            : customer.customerId
+                              ? 'Manual profile'
+                              : 'From order data'}
                         </div>
                         {(customer.company || customer.market || customer.expectedVolume) && (
                           <div className="mt-2 space-y-0.5 text-xs" style={{ color: 'var(--muted-foreground)' }}>
@@ -834,11 +947,32 @@ export default function SfsCustomersPage() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--muted-foreground)' }}>{formatDate(customer.createdAt)}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-2 flex-wrap">
                           <Button variant="outline" size="sm" onClick={() => setEditingCustomer(customer)}>
                             <Pencil size={13} />
                             Edit
                           </Button>
+                          {customer.userId ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={togglingLoginId === customer.id}
+                              onClick={() => void handleToggleLogin(customer)}
+                              title={customer.isActive === false ? 'Enable login' : 'Disable login'}
+                            >
+                              {customer.isActive === false ? <CheckCircle size={13} /> : <Ban size={13} />}
+                              {customer.isActive === false ? 'Enable login' : 'Disable login'}
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setLoginTarget(customer)}
+                            >
+                              <KeyRound size={13} />
+                              Create login
+                            </Button>
+                          )}
                           {customer.customerId && customer.orderCount === 0 && (
                             <Button
                               variant="outline"
@@ -883,6 +1017,13 @@ export default function SfsCustomersPage() {
           customer={editingCustomer}
           onClose={() => setEditingCustomer(null)}
           onSaved={fetchCustomers}
+        />
+      )}
+      {loginTarget && (
+        <CreateLoginModal
+          customer={loginTarget}
+          onClose={() => setLoginTarget(null)}
+          onCreated={fetchCustomers}
         />
       )}
     </div>

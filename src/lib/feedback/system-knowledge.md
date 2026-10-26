@@ -193,11 +193,11 @@ Dynamic permission roles. **SUPER_ADMIN only.**
 - System roles cannot be deleted
 - Assigned to staff via Team Management; effective permissions = role permissions + direct menu key grants
 
-### 8. User Accounts (`/admin/users`)
-Client portal account management.
-- View and manage `CLIENT` role accounts
-- Link clients to their companies
-- Account activation; email verification status
+### 8. Advise Customer Accounts (`/admin/users`)
+Advise / TCSP client portal logins only (`CLIENT` + `platform=ADVISER`).
+- Create, edit, enable/disable, delete Advise client accounts
+- SFS partner logins are **not** managed here — use SFS Customers
+- Menu sits under Adviser; permission key `users` is scoped to platform `ADVISER`
 
 ### 9. Requirements / Feedback (`/admin/feedback`)
 AI-powered feature request management. **SUPER_ADMIN only.**
@@ -264,19 +264,19 @@ Memorial diamond jewellery service (lab-grown diamonds from cremation remains). 
 - Authenticated SFS Dashboard pages and the order edit flow include an English AI request chat widget for submitting feature requests or improvement ideas
 
 ### SFS Customers Admin (`/admin/sfs-customers`)
-Customer registry for SFS Diamond.
-- Lists SFS platform registered client accounts, manually created customer profiles, and historical order-only contact records
-- Shows customer name, email, phone, mailing address, source type, **權限** dropdown (待審批 / 已批准 / 已拒絕 for registered logins — staff change status here), order count, and latest order link/status
-- Staff change account **權限** directly in the customer list; only 已批准 accounts can open dashboard/order details
-- Create manual SFS customer records without creating or binding an official platform login account/email
-- Edit SFS customer profile fields (name, email, phone, mailing address, notes); order-only contacts are converted to bound customer profiles when edited
-- Staff can multi-select customer rows and **Merge into primary**: orders, contracts, and client price overrides move to the kept profile; source registered logins are deactivated and emptied source profiles are removed
-- Delete customer profiles that have no order history; customers linked to any order cannot be deleted; deletion requires a confirmation dialog
-- Each bound customer profile includes a cooperation-contract attachments module on the edit dialog: upload, view, download, and delete partnership agreement files (PDF, Word, JPG, PNG, WEBP; max 10 MB)
-- Customer-specific prices are managed under **价格管理** (`/admin/sfs-factory`), not on the customer edit dialog
-- Logged-in approved SFS partners see **live option prices and estimated totals** while placing an order (`/sfsdiamond/order`); guests cannot open the order form; personalised lists apply when the account has a bound SfsCustomer with overrides
-- Public registration (`/sfsdiamond/register`) is a partner application: name, company, market, expected volume, email, and password. Those fields are stored on the SFS customer profile (`company`, `market`, `expectedVolume`). Staff can also set `territoryNote` and `moqNote`. The account stays pending until staff approve it in SFS Customers. Approving or rejecting sends an English email when Resend is configured
-- SFS Customers list has an **待審批 partners** filter. Each registered row shows company, market, and expected volume when present
+Sole ops desk for SFS Diamond partners (CRM + login). Advise/TCSP client accounts stay under `/admin/users`.
+- Lists SFS registered logins, manually created profiles, and historical order-only contacts
+- Filter tabs: All / 待審批 / 已注册 / 手工档案 / 仅订单
+- Shows name, contact, address, source, **權限** (待審批 / 已批准 / 已拒絕 for registered logins), order count, latest order
+- Staff change **權限** in-list; only 已批准 accounts can open dashboard/order details
+- **Create login** on manual / order-only rows: creates `SFS_DIAMOND` CLIENT (pre-verified + APPROVED), binds to the profile, reassigns that profile's orders to the new user
+- **Disable / Enable login** on registered rows (does not delete the profile)
+- Create manual SFS customer records without a login; edit converts order-only contacts into profiles
+- Multi-select **Merge into primary**: orders, contracts, price overrides move; source logins deactivated; empty source profiles removed
+- Delete profiles with no order history (confirmation required)
+- Cooperation-contract attachments on the edit dialog (PDF/Word/JPG/PNG/WEBP; max 10 MB)
+- Per-customer prices under **价格管理** (`/admin/sfs-factory`)
+- Public registration stays pending until staff approve here; approval/rejection can email when Resend is configured
 - When staff set an order to `QUOTED` with a quoted amount, the partner can **Accept quote** (status → `CONFIRMED`) or **Request a change** (status → `PENDING`, note appended to customer and admin notes) from the order detail page
 - Public contact is +86 19129444364 with both `tel:` and WhatsApp (`https://wa.me/8619129444364`) links on the homepage, footer, Company, and Partners pages. The site stays English for public and partner UI
 

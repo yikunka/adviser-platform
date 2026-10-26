@@ -30,7 +30,7 @@
     "forms": "Form downloads",
     "tcspPricing": "TCSP Pricing",
     "settings": "Settings",
-    "users": "Customer Account Management",
+    "users": "Advise Customer Accounts",
     "sfsCustomers": "SFS Customers",
     "sfsOrders": "SFS Orders",
     "sfsOrderTracker": "Order tracking",
@@ -712,7 +712,7 @@
       "system": "System"
     },
     "users": {
-      "title": "Users",
+      "title": "Advise Customer Accounts",
       "addUser": "Add User",
       "all": "All",
       "adviser": "Advise",
