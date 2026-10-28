@@ -53,12 +53,17 @@ export type EffectiveNaturalOwner = {
   effectivePercent: number
 }
 
-function normalizeName(name: string | null | undefined) {
+/** Normalize company/person names for look-through matching across the portfolio. */
+export function normalizeName(name: string | null | undefined) {
   return (name ?? '')
     .trim()
     .toLowerCase()
-    .replace(/[.,，。()（）]/g, '')
+    .replace(/[.,，。()（）'']/g, ' ')
+    .replace(/[-–—_/\\]+/g, ' ')
+    .replace(/\bco\b/g, 'company')
+    .replace(/\bltd\b/g, 'limited')
     .replace(/\s+/g, ' ')
+    .trim()
 }
 
 function latestShares(member: CompanyWithMembers['members'][number]) {
