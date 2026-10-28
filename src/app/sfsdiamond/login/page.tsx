@@ -122,9 +122,14 @@ export default function SFSLoginPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium uppercase tracking-wider" style={{ color: '#9A8060' }}>
-              Password
-            </label>
+            <div className="flex items-center justify-between gap-3">
+              <label className="text-xs font-medium uppercase tracking-wider" style={{ color: '#9A8060' }}>
+                Password
+              </label>
+              <Link href="/sfsdiamond/forgot-password" className="text-xs font-medium" style={{ color: '#C9A96E' }}>
+                Forgot password?
+              </Link>
+            </div>
             <input
               type="password"
               {...form.register('password')}

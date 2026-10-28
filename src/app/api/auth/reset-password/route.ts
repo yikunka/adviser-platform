@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
 
   const record = await prisma.verificationToken.findFirst({
     where: { token, type: 'PASSWORD_RESET' },
+    include: { user: { select: { platform: true } } },
   })
 
   if (!record) {
@@ -39,5 +40,8 @@ export async function POST(req: NextRequest) {
   })
   await prisma.verificationToken.delete({ where: { id: record.id } })
 
-  return NextResponse.json({ message: 'Password reset successfully' })
+  return NextResponse.json({
+    message: 'Password reset successfully',
+    platform: record.user.platform,
+  })
 }

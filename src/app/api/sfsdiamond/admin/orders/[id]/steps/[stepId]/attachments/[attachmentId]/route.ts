@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requirePermission } from '@/lib/auth/rbac'
 import { prisma } from '@/lib/db/prisma'
 import { createNotification } from '@/lib/notifications'
+import { sendSfsProductionImageEmail } from '@/lib/email/resend'
 
 const updateSchema = z.object({
   reviewStatus: z.enum(['PENDING', 'APPROVED', 'REJECTED']),
@@ -28,7 +29,15 @@ export async function PATCH(
       step: {
         select: {
           particular: true,
-          order: { select: { id: true, memorialName: true, sampleCode: true, userId: true } },
+          order: {
+            select: {
+              id: true,
+              memorialName: true,
+              sampleCode: true,
+              userId: true,
+              user: { select: { email: true, nameEn: true } },
+            },
+          },
         },
       },
     },
@@ -46,14 +55,27 @@ export async function PATCH(
     },
   })
 
-  if (nextStatus === 'APPROVED' && attachment.reviewStatus !== 'APPROVED' && attachment.step.order.userId) {
-    const orderLabel = attachment.step.order.sampleCode ?? attachment.step.order.memorialName
-    await createNotification(
-      attachment.step.order.userId,
-      'GENERAL',
-      `New SFS Diamond production image is ready to view for ${orderLabel}.`,
-      attachment.step.order.id,
-    )
+  const partnerUserId = attachment.step.order.userId
+  if (nextStatus === 'APPROVED' && attachment.reviewStatus !== 'APPROVED' && partnerUserId) {
+    const order = attachment.step.order
+    const orderLabel = order.sampleCode ?? order.memorialName
+    await Promise.allSettled([
+      createNotification(
+        partnerUserId,
+        'GENERAL',
+        `New SFS Diamond production image is ready to view for ${orderLabel}.`,
+        order.id,
+        'Production image ready',
+      ),
+      order.user?.email
+        ? sendSfsProductionImageEmail(order.user.email, {
+            partnerName: order.user.nameEn,
+            orderId: order.id,
+            sampleCode: order.sampleCode,
+            memorialName: order.memorialName,
+          })
+        : Promise.resolve(),
+    ])
   }
 
   return NextResponse.json({ attachment: updated })

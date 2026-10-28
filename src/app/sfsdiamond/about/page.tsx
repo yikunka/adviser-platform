@@ -1,6 +1,14 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
+import {
+  SFS_SALES_EMAIL,
+  SFS_SALES_MAILTO_PARTNERSHIP,
+  SFS_SALES_PHONE_DISPLAY,
+  SFS_SALES_TEL_HREF,
+  SFS_SALES_WHATSAPP_HREF,
+} from '@/lib/sfs/sales-contact'
+
 
 export const metadata: Metadata = {
   title: 'About SFS',
@@ -144,11 +152,11 @@ export default function AboutPage() {
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wider mb-1.5" style={{ color: '#C9A96E' }}>Phone</p>
-                <a href="tel:+8619129444364" className="text-sm hover:opacity-70 transition-opacity" style={{ color: '#1A1A1A' }}>
-                  +86 19129444364 (phone / WhatsApp)
+                <a href={SFS_SALES_TEL_HREF} className="text-sm hover:opacity-70 transition-opacity" style={{ color: '#1A1A1A' }}>
+                  {SFS_SALES_PHONE_DISPLAY}
                 </a>
                 <a
-                  href="https://wa.me/8619129444364"
+                  href={SFS_SALES_WHATSAPP_HREF}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="block text-sm mt-1 hover:opacity-70 transition-opacity"
@@ -159,8 +167,8 @@ export default function AboutPage() {
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wider mb-1.5" style={{ color: '#C9A96E' }}>Email</p>
-                <a href="mailto:patricklau@sfsdiamonds.com" className="text-sm hover:opacity-70 transition-opacity" style={{ color: '#1A1A1A' }}>
-                  patricklau@sfsdiamonds.com
+                <a href={`mailto:${SFS_SALES_EMAIL}`} className="text-sm hover:opacity-70 transition-opacity" style={{ color: '#1A1A1A' }}>
+                  {SFS_SALES_EMAIL}
                 </a>
               </div>
               <div>
@@ -208,7 +216,7 @@ export default function AboutPage() {
               </p>
               <div className="flex flex-col gap-3">
                 <a
-                  href="mailto:patricklau@sfsdiamonds.com?subject=SFS%20Distributor%20Partnership"
+                  href={SFS_SALES_MAILTO_PARTNERSHIP}
                   className="px-6 py-3 rounded-full font-medium text-sm text-center transition-all hover:opacity-90"
                   style={{ background: '#1A1A1A', color: '#F5F0E8' }}
                 >

@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
 import { SFS_TOTAL_PREDEFINED_STEPS } from '@/lib/sfs/order-predefined-steps'
 import CustomerInternalOrderCodeField from '@/app/sfsdiamond/components/CustomerInternalOrderCodeField'
+import PartnerNotifications from '@/app/sfsdiamond/components/PartnerNotifications'
+import PartnerInvoicesPanel from '@/app/sfsdiamond/components/PartnerInvoicesPanel'
 
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   PENDING:   { bg: 'rgba(201,169,110,0.12)', color: '#C9A96E'  },
@@ -16,10 +18,45 @@ const TOTAL_STEPS = SFS_TOTAL_PREDEFINED_STEPS
 
 export default async function SFSDashboardPage() {
   const session = await auth()
-  const orders = await prisma.sfsOrder.findMany({
-    where: { userId: session!.user.id },
-    orderBy: { createdAt: 'desc' },
-    include: { _count: { select: { steps: true } } },
+  const [orders, invoices] = await Promise.all([
+    prisma.sfsOrder.findMany({
+      where: { userId: session!.user.id },
+      orderBy: { createdAt: 'desc' },
+      include: { _count: { select: { steps: true } } },
+    }),
+    prisma.sfsInvoice.findMany({
+      where: {
+        status: { in: ['SENT', 'PAID'] },
+        orderId: { not: null },
+        order: { userId: session!.user.id },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        invoiceNumber: true,
+        status: true,
+        currency: true,
+        total: true,
+        issueDate: true,
+        order: { select: { id: true, sampleCode: true, memorialName: true } },
+      },
+    }),
+  ])
+
+  const quotedCount = orders.filter(o => o.status === 'QUOTED').length
+  const partnerInvoices = invoices.flatMap(inv => {
+    if (!inv.order) return []
+    return [{
+      id: inv.id,
+      invoiceNumber: inv.invoiceNumber,
+      status: inv.status,
+      currency: inv.currency,
+      total: Number(inv.total),
+      issueDate: inv.issueDate,
+      orderId: inv.order.id,
+      sampleCode: inv.order.sampleCode,
+      memorialName: inv.order.memorialName,
+    }]
   })
 
   const GOLD   = '#C9A96E'
@@ -33,7 +70,6 @@ export default async function SFSDashboardPage() {
     <div className="min-h-screen" style={{ background: BG }}>
       <main className="max-w-4xl mx-auto px-6 py-10 space-y-8">
 
-        {/* Welcome + Place Order */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold" style={{ fontFamily: 'Georgia, serif', color: DARK }}>
@@ -43,26 +79,29 @@ export default async function SFSDashboardPage() {
               Welcome back, {session!.user.name ?? 'partner'}
             </p>
           </div>
-          <Link
-            href="/sfsdiamond/order"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm transition-all hover:opacity-90 self-start sm:self-auto"
-            style={{ background: GOLD, color: '#0A0805' }}
-          >
-            Place new order
-          </Link>
+          <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
+            <PartnerNotifications />
+            <Link
+              href="/sfsdiamond/order"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm transition-all hover:opacity-90"
+              style={{ background: GOLD, color: '#0A0805' }}
+            >
+              Place new order
+            </Link>
+          </div>
         </div>
 
-        {orders.some(o => o.status === 'QUOTED') && (
+        {quotedCount > 0 && (
           <div className="rounded-2xl px-5 py-4 text-sm" style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', color: DARK }}>
-            You have {orders.filter(o => o.status === 'QUOTED').length} quote{orders.filter(o => o.status === 'QUOTED').length === 1 ? '' : 's'} waiting for your accept or change request. Open the order to respond.
+            You have {quotedCount} quote{quotedCount === 1 ? '' : 's'} waiting for your accept or change request. Open the order to respond.
           </div>
         )}
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
           {[
             { label: 'Total Orders', value: orders.length },
             { label: 'Pending',      value: orders.filter(o => o.status === 'PENDING').length },
+            { label: 'Quoted',       value: quotedCount },
             { label: 'Confirmed',    value: orders.filter(o => o.status === 'CONFIRMED').length },
             { label: 'Completed',    value: orders.filter(o => o.status === 'COMPLETED').length },
           ].map(s => (
@@ -77,7 +116,8 @@ export default async function SFSDashboardPage() {
           ))}
         </div>
 
-        {/* Order list */}
+        <PartnerInvoicesPanel invoices={partnerInvoices} />
+
         <div>
           <h2 className="text-xs font-medium uppercase tracking-wider mb-3" style={{ color: MUTED }}>
             My Orders
@@ -120,7 +160,6 @@ export default async function SFSDashboardPage() {
                     className="flex items-center gap-4 px-5 py-4"
                     style={{ borderBottom: i < orders.length - 1 ? `1px solid ${BORDER}` : 'none' }}
                   >
-                    {/* Diamond count bubble */}
                     <div
                       className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
                       style={{ background: 'rgba(201,169,110,0.1)', color: GOLD, border: '1px solid rgba(201,169,110,0.2)' }}
@@ -128,7 +167,6 @@ export default async function SFSDashboardPage() {
                       {diamonds.length}
                     </div>
 
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate" style={{ color: DARK }}>{order.memorialName}</p>
                       {order.sampleCode && (
@@ -155,7 +193,6 @@ export default async function SFSDashboardPage() {
                       )}
                     </div>
 
-                    {/* Status + date + link */}
                     <div className="flex flex-col items-end gap-2 flex-shrink-0">
                       <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold" style={{ background: badge.bg, color: badge.color }}>
                         {order.status}

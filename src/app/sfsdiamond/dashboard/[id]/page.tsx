@@ -96,7 +96,17 @@ export default async function SFSOrderDetailPage({
         orderBy: [{ phase: 'asc' }, { stepNumber: 'asc' }],
         include: { attachments: { orderBy: { createdAt: 'asc' } } },
       },
-      invoices: { select: { status: true } },
+      invoices: {
+        select: {
+          id: true,
+          invoiceNumber: true,
+          status: true,
+          currency: true,
+          total: true,
+          issueDate: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      },
     },
   })
 
@@ -200,6 +210,32 @@ export default async function SFSOrderDetailPage({
           collectionStatus={billing.collectionStatus}
           tone="client"
         />
+
+        {issuedInvoices.length > 0 && (
+          <div className="rounded-2xl p-5 space-y-3" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+            <h2 className="text-xs font-medium uppercase tracking-wider" style={{ color: MUTED }}>
+              Invoices
+            </h2>
+            {issuedInvoices.map(inv => (
+              <div key={inv.id} className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium" style={{ color: DARK }}>{inv.invoiceNumber}</p>
+                  <p className="text-xs mt-0.5" style={{ color: MUTED }}>
+                    {inv.status} · {inv.currency}{' '}
+                    {Number(inv.total).toLocaleString('en-HK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+                <a
+                  href={`/api/sfsdiamond/invoices/${inv.id}/pdf`}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                  style={{ background: 'rgba(201,169,110,0.12)', color: GOLD, border: '1px solid rgba(201,169,110,0.25)' }}
+                >
+                  Download PDF
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Admin remark to customer */}
         {order.customerRemark && (

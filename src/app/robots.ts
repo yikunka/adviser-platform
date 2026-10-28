@@ -24,6 +24,8 @@ export default function robots(): MetadataRoute.Robots {
         '/sfsdiamond/dashboard/',
         '/sfsdiamond/login',
         '/sfsdiamond/register',
+        '/sfsdiamond/forgot-password',
+        '/sfsdiamond/reset-password',
         '/sfsdiamond/order',
       ],
     },

@@ -3,6 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import CollectionShowcase from '../components/CollectionShowcase'
 import SfsProductImageDisclaimer from '../components/SfsProductImageDisclaimer'
+import { SFS_SALES_MAILTO_PARTNERSHIP } from '@/lib/sfs/sales-contact'
 
 export const metadata: Metadata = {
   title: 'Memorial Diamonds',
@@ -149,7 +150,7 @@ export default function MemorialDiamondsPage() {
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <a
-              href="mailto:patricklau@sfsdiamonds.com?subject=SFS%20Distributor%20Partnership"
+              href={SFS_SALES_MAILTO_PARTNERSHIP}
               className="px-8 py-3.5 rounded-full font-medium text-sm transition-all hover:opacity-90"
               style={{ background: '#1A1A1A', color: '#F5F0E8' }}
             >

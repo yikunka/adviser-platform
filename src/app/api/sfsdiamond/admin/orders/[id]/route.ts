@@ -7,6 +7,8 @@ import { z } from 'zod'
 import { resolveOrderStepPlan } from '@/lib/sfs/order-step-plan'
 import { resolveSfsOrderPricingEstimate } from '@/lib/sfs/order-pricing-snapshot'
 import type { SfsPricingDiamond } from '@/lib/sfs/pricing'
+import { createNotification } from '@/lib/notifications'
+import { sendSfsQuoteReadyEmail } from '@/lib/email/resend'
 
 const updateSchema = z.object({
   status:               z.enum(['PENDING', 'QUOTED', 'CONFIRMED', 'COMPLETED', 'CANCELLED']).optional(),
@@ -109,7 +111,14 @@ export async function PATCH(
 
   const existing = await prisma.sfsOrder.findUnique({
     where: { id },
-    select: { quotedAmount: true },
+    select: {
+      status: true,
+      quotedAmount: true,
+      memorialName: true,
+      sampleCode: true,
+      userId: true,
+      user: { select: { email: true, nameEn: true } },
+    },
   })
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -153,6 +162,30 @@ export async function PATCH(
       deliveryDetails:       dates.deliveryDetails,
     },
   })
+
+  const becameQuoted =
+    order.status === 'QUOTED'
+    && (existing.status !== 'QUOTED' || quoteChanged)
+  if (becameQuoted && existing.userId && existing.user?.email) {
+    const orderLabel = order.sampleCode ?? order.memorialName
+    const amount = order.quotedAmount == null ? null : Number(order.quotedAmount)
+    await Promise.allSettled([
+      createNotification(
+        existing.userId,
+        'GENERAL',
+        `A quotation is ready for ${orderLabel}. Open the order to accept or request a change.`,
+        order.id,
+        'Quote ready',
+      ),
+      sendSfsQuoteReadyEmail(existing.user.email, {
+        partnerName: existing.user.nameEn,
+        orderId: order.id,
+        sampleCode: order.sampleCode,
+        memorialName: order.memorialName,
+        quotedAmount: amount,
+      }),
+    ])
+  }
 
   return NextResponse.json({
     ...order,

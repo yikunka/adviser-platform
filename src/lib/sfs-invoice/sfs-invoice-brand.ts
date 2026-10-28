@@ -1,11 +1,13 @@
 /** Shared Blue Luxury brand constants for SFS invoice PDF / Word. */
 
+import { SFS_ISSUER_EMAIL, SFS_PUBLIC_WEBSITE_HOST } from '@/lib/sfs/sales-contact'
+
 export const SFS_INVOICE_ISSUER = {
   nameEn: 'SFS Technical Group Co., Limited',
   nameZh: '瑞福生科技集團有限公司',
   address: 'RM7 20F BOSS COMMERCIAL CENTRE 28 FERRY STREET YAU MA TEI KOWLOON',
-  email: 'info@sfsdiamond.com',
-  website: 'www.sfsdiamond.com',
+  email: SFS_ISSUER_EMAIL,
+  website: SFS_PUBLIC_WEBSITE_HOST,
 } as const
 
 export const SFS_INVOICE_PAYMENT = {

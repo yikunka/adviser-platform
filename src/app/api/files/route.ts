@@ -32,6 +32,41 @@ const MIME_MAP: Record<string, string> = {
 }
 
 const STAFF_ROLES = ['STAFF', 'COMPLIANCE', 'SUPER_ADMIN']
+/** Catalog images for the public SFS order / collection UIs (local-storage fallback). */
+const PUBLIC_KEY_PREFIXES = ['sfsdiamond/spec-options/'] as const
+
+function isPublicCatalogKey(key: string): boolean {
+  return PUBLIC_KEY_PREFIXES.some(prefix => key.startsWith(prefix))
+}
+
+async function authorizeDesignAttachment(
+  designId: string | null,
+  key: string | null,
+  userId: string | undefined,
+  role: string | undefined,
+): Promise<{ key: string; allowed: boolean } | null> {
+  if (!designId && !key) return null
+
+  const design = designId
+    ? await prisma.sfsOrderDesignAttachment.findUnique({
+        where: { id: designId },
+        select: { storageKey: true, order: { select: { userId: true } } },
+      })
+    : await prisma.sfsOrderDesignAttachment.findFirst({
+        where: { storageKey: key! },
+        select: { storageKey: true, order: { select: { userId: true } } },
+      })
+
+  if (!design) return null
+
+  if (role && STAFF_ROLES.includes(role)) {
+    return { key: design.storageKey, allowed: true }
+  }
+  if (userId && design.order.userId === userId) {
+    return { key: design.storageKey, allowed: true }
+  }
+  return { key: design.storageKey, allowed: false }
+}
 
 async function authorizeKey(
   key: string,
@@ -40,6 +75,7 @@ async function authorizeKey(
   _email: string,
 ): Promise<boolean> {
   if (STAFF_ROLES.includes(role)) return true
+  if (isPublicCatalogKey(key)) return true
 
   const emailNorm = _email.toLowerCase()
   const [doc, kycDoc, sfsAttachment, sfsDesign] = await Promise.all([
@@ -122,33 +158,28 @@ export async function GET(req: NextRequest) {
   const designAttachmentId = req.nextUrl.searchParams.get('designAttachmentId')
   let key = req.nextUrl.searchParams.get('key')
   let allowed = false
-  if (designAttachmentId) {
-    const design = await prisma.sfsOrderDesignAttachment.findUnique({
-      where: { id: designAttachmentId },
-      select: { storageKey: true },
-    })
-    if (design) {
-      key = design.storageKey
-      // SFS custom designs intentionally retain the established anonymous-read
-      // rule. The attachment ID is opaque and the storage key stays server-side.
-      allowed = true
-    }
+
+  const designAuth = await authorizeDesignAttachment(
+    designAttachmentId,
+    designAttachmentId ? null : key,
+    session?.user?.id,
+    session?.user?.role,
+  )
+  if (designAuth) {
+    key = designAuth.key
+    allowed = designAuth.allowed
+  } else if (designAttachmentId) {
+    return NextResponse.json({ error: 'File not found' }, { status: 404 })
   } else if (key) {
-    const anonymousDesign = await prisma.sfsOrderDesignAttachment.findFirst({
-      where: { storageKey: key },
-      select: { id: true },
-    })
-    if (anonymousDesign) {
+    if (isPublicCatalogKey(key)) {
       allowed = true
     } else if (session?.user?.id) {
       allowed = await authorizeKey(key, session.user.id, session.user.role, session.user.email)
     }
   }
+
   if (!key) {
-    return NextResponse.json(
-      { error: designAttachmentId ? 'File not found' : 'Missing file reference' },
-      { status: designAttachmentId ? 404 : 400 },
-    )
+    return NextResponse.json({ error: 'Missing file reference' }, { status: 400 })
   }
   if (!allowed) {
     return NextResponse.json(

@@ -1,4 +1,8 @@
 import { Resend } from 'resend'
+import {
+  SFS_PUBLIC_WEBSITE,
+  SFS_SALES_CONTACT_LINE,
+} from '@/lib/sfs/sales-contact'
 
 let _resend: Resend | null = null
 function getResend() {
@@ -9,6 +13,14 @@ function getResend() {
 const FROM = process.env.EMAIL_FROM ?? 'noreply@6amadvise.com'
 
 const DEV_NO_EMAIL = !process.env.RESEND_API_KEY
+
+function sfsPartnerLoginUrl() {
+  return `${SFS_PUBLIC_WEBSITE}/sfsdiamond/login`
+}
+
+function sfsOrderUrl(orderId: string) {
+  return `${SFS_PUBLIC_WEBSITE}/sfsdiamond/dashboard/${orderId}`
+}
 
 export async function sendOTPEmail(to: string, otp: string, locale: string = 'zh') {
   if (DEV_NO_EMAIL) {
@@ -58,8 +70,8 @@ export async function sendSfsPartnerApprovalEmail(
       subject: 'SFS Diamond — partner account approved',
       html: `<p>Hello ${name},</p>
 <p>Your SFS Diamond distributor account is approved. You can sign in and place orders here:</p>
-<p><a href="https://sfsdiamond.com/sfsdiamond/login">Partner login</a></p>
-<p>Sales contact: +86 19129444364 (phone / WhatsApp) · patricklau@sfsdiamonds.com</p>`,
+<p><a href="${sfsPartnerLoginUrl()}">Partner login</a></p>
+<p>Sales contact: ${SFS_SALES_CONTACT_LINE}</p>`,
     })
   }
 
@@ -69,6 +81,66 @@ export async function sendSfsPartnerApprovalEmail(
     subject: 'SFS Diamond — partner application update',
     html: `<p>Hello ${name},</p>
 <p>Your SFS Diamond partner application was not approved. If you believe this is a mistake, contact our sales manager:</p>
-<p>+86 19129444364 (phone / WhatsApp) · patricklau@sfsdiamonds.com</p>`,
+<p>${SFS_SALES_CONTACT_LINE}</p>`,
+  })
+}
+
+export async function sendSfsQuoteReadyEmail(
+  to: string,
+  opts: {
+    partnerName?: string | null
+    orderId: string
+    sampleCode?: string | null
+    memorialName: string
+    quotedAmount?: number | null
+  },
+) {
+  const name = opts.partnerName?.trim() || 'Partner'
+  const orderLabel = opts.sampleCode?.trim() || opts.memorialName
+  const amountLine =
+    opts.quotedAmount != null
+      ? `<p>Quoted amount: <strong>HK$${Number(opts.quotedAmount).toLocaleString('en-HK', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</strong></p>`
+      : ''
+  if (DEV_NO_EMAIL) {
+    console.log(`[DEV] SFS quote email skipped for ${to} (${orderLabel})`)
+    return { data: null, error: null }
+  }
+
+  return getResend().emails.send({
+    from: FROM,
+    to,
+    subject: `SFS Diamond — quote ready (${orderLabel})`,
+    html: `<p>Hello ${name},</p>
+<p>A quotation is ready for order <strong>${orderLabel}</strong> (${opts.memorialName}).</p>
+${amountLine}
+<p><a href="${sfsOrderUrl(opts.orderId)}">Review and accept or request a change</a></p>
+<p>Sales contact: ${SFS_SALES_CONTACT_LINE}</p>`,
+  })
+}
+
+export async function sendSfsProductionImageEmail(
+  to: string,
+  opts: {
+    partnerName?: string | null
+    orderId: string
+    sampleCode?: string | null
+    memorialName: string
+  },
+) {
+  const name = opts.partnerName?.trim() || 'Partner'
+  const orderLabel = opts.sampleCode?.trim() || opts.memorialName
+  if (DEV_NO_EMAIL) {
+    console.log(`[DEV] SFS production image email skipped for ${to} (${orderLabel})`)
+    return { data: null, error: null }
+  }
+
+  return getResend().emails.send({
+    from: FROM,
+    to,
+    subject: `SFS Diamond — production image ready (${orderLabel})`,
+    html: `<p>Hello ${name},</p>
+<p>A new production image is ready to view for order <strong>${orderLabel}</strong> (${opts.memorialName}).</p>
+<p><a href="${sfsOrderUrl(opts.orderId)}">Open order</a></p>
+<p>Sales contact: ${SFS_SALES_CONTACT_LINE}</p>`,
   })
 }

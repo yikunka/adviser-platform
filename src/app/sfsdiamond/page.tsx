@@ -4,6 +4,12 @@ import type { ReactNode } from 'react'
 import VideoPlayer from './components/VideoPlayer'
 import EternityRing from './components/EternityRing'
 import { ossImg } from '@/lib/oss-img'
+import {
+  SFS_SALES_MAILTO_PARTNERSHIP,
+  SFS_SALES_PHONE_DISPLAY,
+  SFS_SALES_TEL_HREF,
+  SFS_SALES_WHATSAPP_HREF,
+} from '@/lib/sfs/sales-contact'
 
 const GOLD = '#C9A96E'
 const INK = '#0A0805'
@@ -177,7 +183,7 @@ export default function SFSHomePage() {
             certification, packaging, and partner systems under one roof.
           </p>
           <div className="flex flex-wrap gap-3">
-            <CtaPrimary href="mailto:patricklau@sfsdiamonds.com?subject=SFS%20Distributor%20Partnership">
+            <CtaPrimary href={SFS_SALES_MAILTO_PARTNERSHIP}>
               Partner with SFS
             </CtaPrimary>
             <CtaGhost href="/sfsdiamond/technology" dark>
@@ -424,13 +430,13 @@ export default function SFSHomePage() {
                 businesses in their regions.
               </p>
               <div className="flex flex-wrap gap-3">
-                <CtaPrimary href="mailto:patricklau@sfsdiamonds.com?subject=SFS%20Distributor%20Partnership">
+                <CtaPrimary href={SFS_SALES_MAILTO_PARTNERSHIP}>
                   Become a distributor
                 </CtaPrimary>
-                <CtaGhost href="tel:+8619129444364" dark>
-                  +86 19129444364 (phone / WhatsApp)
+                <CtaGhost href={SFS_SALES_TEL_HREF} dark>
+                  {SFS_SALES_PHONE_DISPLAY}
                 </CtaGhost>
-                <CtaGhost href="https://wa.me/8619129444364" dark>
+                <CtaGhost href={SFS_SALES_WHATSAPP_HREF} dark>
                   WhatsApp
                 </CtaGhost>
               </div>
@@ -594,13 +600,13 @@ export default function SFSHomePage() {
             you own the client relationship.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            <CtaPrimary href="mailto:patricklau@sfsdiamonds.com?subject=SFS%20Distributor%20Partnership">
+            <CtaPrimary href={SFS_SALES_MAILTO_PARTNERSHIP}>
               Become a distributor
             </CtaPrimary>
-            <CtaGhost href="tel:+8619129444364">
-              +86 19129444364 (phone / WhatsApp)
+            <CtaGhost href={SFS_SALES_TEL_HREF}>
+              {SFS_SALES_PHONE_DISPLAY}
             </CtaGhost>
-            <CtaGhost href="https://wa.me/8619129444364">
+            <CtaGhost href={SFS_SALES_WHATSAPP_HREF}>
               WhatsApp
             </CtaGhost>
             <CtaGhost href="/sfsdiamond/order">

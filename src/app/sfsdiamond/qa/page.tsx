@@ -2,6 +2,12 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import {
+  SFS_SALES_EMAIL,
+  SFS_SALES_PHONE_DISPLAY,
+  SFS_SALES_TEL_HREF,
+  SFS_SALES_WHATSAPP_HREF,
+} from '@/lib/sfs/sales-contact'
 
 const PARTNER_FAQS = [
   {
@@ -131,14 +137,14 @@ export default function QAPage() {
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <a
-              href="tel:+8619129444364"
+              href={SFS_SALES_TEL_HREF}
               className="px-8 py-3.5 rounded-full font-medium text-sm transition-all hover:opacity-90"
               style={{ background: '#1A1A1A', color: '#F5F0E8' }}
             >
-              +86 19129444364 (phone / WhatsApp)
+              {SFS_SALES_PHONE_DISPLAY}
             </a>
             <a
-              href="https://wa.me/8619129444364"
+              href={SFS_SALES_WHATSAPP_HREF}
               target="_blank"
               rel="noopener noreferrer"
               className="px-8 py-3.5 rounded-full font-medium text-sm border transition-all hover:bg-black/5"
@@ -147,11 +153,11 @@ export default function QAPage() {
               WhatsApp
             </a>
             <a
-              href="mailto:patricklau@sfsdiamonds.com"
+              href={`mailto:${SFS_SALES_EMAIL}`}
               className="px-8 py-3.5 rounded-full font-medium text-sm border transition-all hover:bg-black/5"
               style={{ border: '1px solid #C9A96E', color: '#1A1A1A' }}
             >
-              patricklau@sfsdiamonds.com
+              {SFS_SALES_EMAIL}
             </a>
           </div>
         </div>

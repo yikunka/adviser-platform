@@ -8,6 +8,7 @@ import crypto from 'crypto'
 const schema = z.object({
   email: z.string().email().max(255),
   locale: z.enum(['zh', 'en']).default('zh'),
+  platform: z.enum(['ADVISER', 'SFS_DIAMOND', 'JMM_TRADING']).optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -20,10 +21,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
   }
 
-  const { email, locale } = parsed.data
+  const { email, locale, platform } = parsed.data
 
   // Always return success to prevent email enumeration
-  const user = await prisma.user.findUnique({ where: { email } })
+  const user = await prisma.user.findFirst({
+    where: {
+      email,
+      ...(platform ? { platform } : {}),
+    },
+  })
   if (!user || !user.emailVerified) {
     return NextResponse.json({ message: 'If the email exists, a reset link has been sent.' })
   }
@@ -39,8 +45,11 @@ export async function POST(req: NextRequest) {
   })
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-  const link = `${appUrl}/${locale}/reset-password?token=${token}`
-  await sendPasswordResetEmail(email, link, locale)
+  const link =
+    user.platform === 'SFS_DIAMOND'
+      ? `${appUrl}/sfsdiamond/reset-password?token=${token}`
+      : `${appUrl}/${locale}/reset-password?token=${token}`
+  await sendPasswordResetEmail(email, link, user.platform === 'SFS_DIAMOND' ? 'en' : locale)
 
   return NextResponse.json({ message: 'If the email exists, a reset link has been sent.' })
 }

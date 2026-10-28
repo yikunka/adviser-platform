@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { AccountApprovalStatus } from '@prisma/client'
+import { SFS_SALES_MAILTO_APPROVAL } from '@/lib/sfs/sales-contact'
 
 const GOLD = '#C9A96E'
 const DARK = '#1A1A1A'
@@ -35,7 +36,7 @@ export default function SfsPendingApprovalNotice({
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <a
-              href="mailto:patricklau@sfsdiamonds.com?subject=SFS%20Account%20Approval"
+              href={SFS_SALES_MAILTO_APPROVAL}
               className="px-6 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
               style={{ background: GOLD, color: '#0A0805' }}
             >

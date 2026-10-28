@@ -6,12 +6,13 @@ export async function createNotification(
   type: NotificationType,
   message: string,
   relatedEntityId?: string,
+  title?: string,
 ) {
   return prisma.notification.create({
     data: {
       userId,
       type,
-      title: type.replace(/_/g, ' '),
+      title: title ?? type.replace(/_/g, ' '),
       message,
       relatedEntityId,
     },

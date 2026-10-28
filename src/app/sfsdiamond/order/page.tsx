@@ -3,6 +3,7 @@ import OrderWizard from '@/app/sfsdiamond/components/OrderWizard'
 import { auth } from '@/lib/auth/auth'
 import { getSfsAccountAccess } from '@/lib/sfs/account-approval'
 import { getSfsOrderSpecOptions } from '@/lib/sfs/diamond-spec-options-server'
+import { SFS_SALES_MAILTO_PARTNERSHIP } from '@/lib/sfs/sales-contact'
 
 function PartnerApply({ state }: { state: 'guest' | 'pending' | 'rejected' }) {
   const title = state === 'pending'
@@ -43,7 +44,7 @@ function PartnerApply({ state }: { state: 'guest' | 'pending' | 'rejected' }) {
             </Link>
           )}
           <a
-            href="mailto:patricklau@sfsdiamonds.com?subject=SFS%20Distributor%20Partnership"
+            href={SFS_SALES_MAILTO_PARTNERSHIP}
             className="px-7 py-3 rounded-full text-sm font-medium border"
             style={{ border: '1px solid #C9A96E', color: '#1A1A1A' }}
           >

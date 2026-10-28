@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import SignOutButton from './SignOutButton'
+import { SFS_SALES_MAILTO_PARTNERSHIP } from '@/lib/sfs/sales-contact'
 
 const NAV = [
   { label: 'Home',     href: '/sfsdiamond' },
@@ -92,7 +93,7 @@ export default function SFSHeader() {
                 Partner login
               </Link>
               <a
-                href="mailto:patricklau@sfsdiamonds.com?subject=SFS%20Distributor%20Partnership"
+                href={SFS_SALES_MAILTO_PARTNERSHIP}
                 className="text-sm font-semibold px-5 py-1.5 rounded-full transition-opacity duration-150 hover:opacity-90"
                 style={{ background: '#C9A96E', color: '#0A0805' }}
               >
@@ -159,7 +160,7 @@ export default function SFSHeader() {
                   Partner login
                 </Link>
                 <a
-                  href="mailto:patricklau@sfsdiamonds.com?subject=SFS%20Distributor%20Partnership"
+                  href={SFS_SALES_MAILTO_PARTNERSHIP}
                   className="text-sm font-semibold px-4 py-2 rounded-full text-center"
                   style={{ background: '#C9A96E', color: '#0A0805' }}
                 >
