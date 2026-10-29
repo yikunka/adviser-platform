@@ -11,51 +11,140 @@ export type DdrTodoItem = {
   href: string
   title: string
   detail: string
+  /** Period label, e.g. H1 2026 / H2 2026 */
   quarterLabel: string
   at: Date
 }
 
-/** Calendar quarter bounds in local wall time (caller should pass HKT-aligned "now"). */
-export function calendarQuarterRange(date = new Date()) {
+export type HalfYearRange = {
+  year: number
+  half: 1 | 2
+  start: Date
+  /** Exclusive end */
+  end: Date
+  dueDate: Date
+  /** List/notify from this instant (1 month before dueDate) */
+  notifyFrom: Date
+  label: string
+}
+
+/** Semi-annual bounds: H1 = Jan–Jun (due Jun 30), H2 = Jul–Dec (due Dec 31). */
+export function calendarHalfYearRange(date = new Date()): HalfYearRange {
   const year = date.getFullYear()
-  const q = Math.floor(date.getMonth() / 3) // 0..3
-  const start = new Date(year, q * 3, 1, 0, 0, 0, 0)
-  const end = new Date(year, q * 3 + 3, 1, 0, 0, 0, 0)
+  const month = date.getMonth() // 0–11
+  if (month <= 5) {
+    const dueDate = new Date(year, 5, 30, 23, 59, 59, 999)
+    return {
+      year,
+      half: 1,
+      start: new Date(year, 0, 1, 0, 0, 0, 0),
+      end: new Date(year, 6, 1, 0, 0, 0, 0),
+      dueDate,
+      notifyFrom: dueDateNotifyFrom(dueDate),
+      label: `H1 ${year}`,
+    }
+  }
+  const dueDate = new Date(year, 11, 31, 23, 59, 59, 999)
   return {
     year,
-    quarter: q + 1,
-    start,
-    end,
-    label: `Q${q + 1} ${year}`,
+    half: 2,
+    start: new Date(year, 6, 1, 0, 0, 0, 0),
+    end: new Date(year + 1, 0, 1, 0, 0, 0, 0),
+    dueDate,
+    notifyFrom: dueDateNotifyFrom(dueDate),
+    label: `H2 ${year}`,
   }
 }
 
-export function previousCalendarQuarterRange(date = new Date()) {
-  const { start } = calendarQuarterRange(date)
+/** @deprecated Use calendarHalfYearRange — kept for callers still naming "quarter". */
+export function calendarQuarterRange(date = new Date()) {
+  const h = calendarHalfYearRange(date)
+  return {
+    year: h.year,
+    quarter: h.half,
+    start: h.start,
+    end: h.end,
+    label: h.label,
+  }
+}
+
+export function previousHalfYearRange(date = new Date()): HalfYearRange {
+  const { start } = calendarHalfYearRange(date)
   const prev = new Date(start)
   prev.setDate(prev.getDate() - 1)
-  return calendarQuarterRange(prev)
+  return calendarHalfYearRange(prev)
+}
+
+/** @deprecated Use previousHalfYearRange */
+export function previousCalendarQuarterRange(date = new Date()) {
+  return calendarQuarterRange(previousHalfYearRange(date).start)
+}
+
+/** One calendar month before the due date (Jun 30 → May 30, Dec 31 → Nov 30). */
+export function dueDateNotifyFrom(dueDate: Date): Date {
+  const y = dueDate.getFullYear()
+  const m = dueDate.getMonth()
+  const day = dueDate.getDate()
+  // Clamp day so Dec 31 − 1 month stays Nov 30 (not Dec 1 via overflow).
+  const lastDayPrevMonth = new Date(y, m, 0).getDate()
+  return new Date(y, m - 1, Math.min(day, lastDayPrevMonth), 0, 0, 0, 0)
+}
+
+/**
+ * First DDR due after subject start (`createdAt` for companies).
+ * Open Jan–Jun → Dec 31 same year; open Jul–Dec → Jun 30 next year.
+ */
+export function firstDdrDueDate(subjectSince: Date): Date {
+  const y = subjectSince.getFullYear()
+  const m = subjectSince.getMonth()
+  if (m <= 5) return new Date(y, 11, 31, 23, 59, 59, 999)
+  return new Date(y + 1, 5, 30, 23, 59, 59, 999)
 }
 
 export function classifyDdrCompliance(opts: {
   now?: Date
-  /** When the subject first became subject to DDR (ACTIVE / first relevant date). */
+  /** Company createdAt / person kycApprovedAt ?? createdAt */
   subjectSince: Date
-  /** Latest DDR timestamp (company effectiveDate/createdAt, person uploadedAt). */
   lastDdrAt: Date | null
-  /** True if a DDR exists inside the current calendar quarter. */
+  /** True if a DDR exists inside the current half-year. */
   hasCurrentQuarterDdr: boolean
 }): DdrComplianceStatus {
   if (opts.hasCurrentQuarterDdr) return 'ok'
+
   const now = opts.now ?? new Date()
-  const current = calendarQuarterRange(now)
-  const previous = previousCalendarQuarterRange(now)
+  const current = calendarHalfYearRange(now)
+  const previous = previousHalfYearRange(now)
+  const firstDue = firstDdrDueDate(opts.subjectSince)
+  const firstNotify = dueDateNotifyFrom(firstDue)
 
-  // New this quarter: still due for first/current filing, not yet "overdue prior quarter"
-  if (opts.subjectSince.getTime() >= current.start.getTime()) return 'due'
+  // Before the 1-month window of the first due date — not on the list yet
+  if (now.getTime() < firstNotify.getTime()) return 'ok'
 
-  const last = opts.lastDdrAt
-  if (!last || last.getTime() < previous.start.getTime()) return 'overdue'
+  const lastCoversHalf = (half: HalfYearRange) =>
+    !!opts.lastDdrAt
+    && opts.lastDdrAt.getTime() >= half.start.getTime()
+    && opts.lastDdrAt.getTime() < half.end.getTime()
+
+  // Missed a prior half that was already an obligation
+  if (
+    previous.dueDate.getTime() >= firstDue.getTime()
+    && now.getTime() > previous.dueDate.getTime()
+    && !lastCoversHalf(previous)
+  ) {
+    // If last DDR is after previous start it might be late filing in current half —
+    // only overdue when previous half itself has no covering DDR.
+    return 'overdue'
+  }
+
+  // Current half is not yet an obligation (first due is a later half)
+  if (current.dueDate.getTime() < firstDue.getTime()) return 'ok'
+
+  // Wait until 1 month before current half's due date
+  if (now.getTime() < current.notifyFrom.getTime()) return 'ok'
+
+  // Past current due date without a current-half DDR
+  if (now.getTime() > current.dueDate.getTime()) return 'overdue'
+
   return 'due'
 }
 
@@ -104,9 +193,9 @@ export async function personHasDdrInRange(keyPersonId: string, start: Date, end:
   return count > 0
 }
 
-/** Hard gate: KYC may only move to APPROVED when a PERSON_DDR exists in the current calendar quarter. */
+/** Hard gate: KYC may only move to APPROVED when a PERSON_DDR exists in the current half-year. */
 export async function assertPersonDdrForApproval(keyPersonId: string, now = new Date()) {
-  const { start, end, label } = calendarQuarterRange(now)
+  const { start, end, label } = calendarHalfYearRange(now)
   const ok = await personHasDdrInRange(keyPersonId, start, end)
   if (!ok) {
     throw new Error(
@@ -116,7 +205,7 @@ export async function assertPersonDdrForApproval(keyPersonId: string, now = new 
 }
 
 export async function listDdrComplianceTodos(now = new Date(), limit = 40): Promise<DdrTodoItem[]> {
-  const current = calendarQuarterRange(now)
+  const current = calendarHalfYearRange(now)
   const items: DdrTodoItem[] = []
 
   const [companies, persons, companyDdrDocs, personDdrDocs] = await Promise.all([
@@ -173,7 +262,7 @@ export async function listDdrComplianceTodos(now = new Date(), limit = 40): Prom
     return dates.reduce((a, b) => (a.getTime() >= b.getTime() ? a : b))
   }
 
-  function inCurrentQuarter(dates: Date[] | undefined): boolean {
+  function inCurrentHalf(dates: Date[] | undefined): boolean {
     if (!dates?.length) return false
     return dates.some(d => d.getTime() >= current.start.getTime() && d.getTime() < current.end.getTime())
   }
@@ -181,7 +270,7 @@ export async function listDdrComplianceTodos(now = new Date(), limit = 40): Prom
   for (const company of companies) {
     const dates = companyDdrById.get(company.id)
     const lastDdrAt = latestOf(dates)
-    const hasCurrent = inCurrentQuarter(dates)
+    const hasCurrent = inCurrentHalf(dates)
     const status = classifyDdrCompliance({
       now,
       subjectSince: company.createdAt,
@@ -197,8 +286,8 @@ export async function listDdrComplianceTodos(now = new Date(), limit = 40): Prom
       title: company.companyCode ? `${company.companyCode} · ${company.nameEn}` : company.nameEn,
       detail:
         status === 'overdue'
-          ? `公司 DDR 已逾期 · ${current.label}`
-          : `公司 DDR 本季到期 · ${current.label}`,
+          ? `公司 DDR 已逾期 · ${current.label}（到期 ${current.dueDate.toLocaleDateString('en-HK')}）`
+          : `公司 DDR 半年到期 · ${current.label}（到期 ${current.dueDate.toLocaleDateString('en-HK')}）`,
       quarterLabel: current.label,
       at: lastDdrAt ?? company.createdAt,
     })
@@ -207,7 +296,7 @@ export async function listDdrComplianceTodos(now = new Date(), limit = 40): Prom
   for (const person of persons) {
     const dates = personDdrById.get(person.id)
     const lastDdrAt = latestOf(dates)
-    const hasCurrent = inCurrentQuarter(dates)
+    const hasCurrent = inCurrentHalf(dates)
     const subjectSince = person.kycApprovedAt ?? person.createdAt
 
     const status = classifyDdrCompliance({
@@ -225,8 +314,8 @@ export async function listDdrComplianceTodos(now = new Date(), limit = 40): Prom
       title: person.kycCode ? `${person.kycCode} · ${person.nameEn}` : person.nameEn,
       detail:
         status === 'overdue'
-          ? `自然人 DDR 已逾期 · ${current.label}`
-          : `自然人 DDR 本季到期 · ${current.label}`,
+          ? `自然人 DDR 已逾期 · ${current.label}（到期 ${current.dueDate.toLocaleDateString('en-HK')}）`
+          : `自然人 DDR 半年到期 · ${current.label}（到期 ${current.dueDate.toLocaleDateString('en-HK')}）`,
       quarterLabel: current.label,
       at: lastDdrAt ?? subjectSince,
     })

@@ -72,5 +72,5 @@ export function startAMLScheduler() {
     }
   }, { timezone: 'UTC' })
 
-  console.log('[Scheduler] Scheduled daily job at 02:00 HKT; quarterly DDR is manual (dashboard reminders)')
+  console.log('[Scheduler] Scheduled daily job at 02:00 HKT; semi-annual DDR is manual (dashboard reminders)')
 }

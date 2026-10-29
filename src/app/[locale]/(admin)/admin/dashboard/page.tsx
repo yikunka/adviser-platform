@@ -9,7 +9,7 @@ import {
   type AdminMenuKey,
 } from '@/lib/auth/admin-access'
 import {
-  calendarQuarterRange,
+  calendarHalfYearRange,
   listDdrComplianceTodos,
   type DdrTodoItem,
 } from '@/lib/docgen/ddr-quarter'
@@ -108,7 +108,7 @@ export default async function AdminDashboardPage() {
   const showDdrTodos = canSee('companies') || canSee('kyc')
   const showArReminders = canSee('companies')
   const showBookingProgress = canSee('financial')
-  const quarter = calendarQuarterRange(today)
+  const ddrPeriod = calendarHalfYearRange(today)
 
   const [totalCompanies, pendingKyc, amlAlerts, arReminders, ddrTodosRaw, bookingRows] = await Promise.all([
     prisma.company.count({ where: { status: 'ACTIVE' } }),
@@ -138,7 +138,7 @@ export default async function AdminDashboardPage() {
     { label: t('upcomingAR'), value: upcomingAR, href: '/admin/companies', accent: '#10b981' },
     ...(showDdrTodos
       ? [
-          { label: t('ddrDueQuarter', { quarter: quarter.label }), value: ddrDueCount, href: '/admin/dashboard', accent: '#f59e0b' },
+          { label: t('ddrDueQuarter', { quarter: ddrPeriod.label }), value: ddrDueCount, href: '/admin/dashboard', accent: '#f59e0b' },
           { label: t('ddrOverdue'), value: ddrOverdueCount, href: '/admin/dashboard', accent: '#ef4444' },
         ]
       : []),
@@ -424,7 +424,7 @@ export default async function AdminDashboardPage() {
           {showDdrTodos && (
             <div>
               <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--foreground)' }}>
-                {t('ddrTodoTitle', { quarter: quarter.label })}
+                {t('ddrTodoTitle', { quarter: ddrPeriod.label })}
               </h3>
               <p className="text-xs mb-3" style={{ color: 'var(--muted-foreground)' }}>
                 {t('ddrTodoHint')}
