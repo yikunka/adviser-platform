@@ -68,6 +68,8 @@ export default function NewCompanyPage() {
   const [companyUploads, setCompanyUploads] = useState<CompanyUpload[]>([])
   const [clientMode, setClientMode] = useState<'verified' | 'email' | 'later'>('verified')
   const [useOfficeAddress, setUseOfficeAddress] = useState(false)
+  const [previewCode, setPreviewCode] = useState<string | null>(null)
+  const [previewCodeLoading, setPreviewCodeLoading] = useState(false)
   const [form, setForm] = useState({
     nameEn: '',
     nameZh: '',
@@ -99,6 +101,33 @@ export default function NewCompanyPage() {
     void load()
     return () => { cancelled = true }
   }, [])
+
+  useEffect(() => {
+    if (!form.companyType) {
+      setPreviewCode(null)
+      setPreviewCodeLoading(false)
+      return
+    }
+    let cancelled = false
+    setPreviewCodeLoading(true)
+    void fetch(`/api/admin/companies/next-code?jurisdiction=${encodeURIComponent(form.companyType)}`)
+      .then(async res => {
+        const data = await res.json().catch(() => ({}))
+        if (cancelled) return
+        if (!res.ok || typeof data?.code !== 'string') {
+          setPreviewCode(null)
+          return
+        }
+        setPreviewCode(data.code)
+      })
+      .catch(() => {
+        if (!cancelled) setPreviewCode(null)
+      })
+      .finally(() => {
+        if (!cancelled) setPreviewCodeLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [form.companyType])
 
   function set(field: string, value: string) {
     setForm(f => ({ ...f, [field]: value }))
@@ -416,20 +445,45 @@ export default function NewCompanyPage() {
           </div>
         </div>
 
-        <div>
-          <label style={labelStyle}>Jurisdiction</label>
-          <select
-            value={form.companyType}
-            onChange={e => set('companyType', e.target.value)}
-            style={fieldStyle}
-          >
-            <option value="" style={{ background: 'var(--surface-raised)' }}>— Select jurisdiction —</option>
-            {COMPANY_JURISDICTIONS.map(j => (
-              <option key={j} value={j} style={{ background: 'var(--surface-raised)' }}>
-                {COMPANY_JURISDICTION_LABELS[j]}
-              </option>
-            ))}
-          </select>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label style={labelStyle}>Jurisdiction</label>
+            <select
+              value={form.companyType}
+              onChange={e => set('companyType', e.target.value)}
+              style={fieldStyle}
+            >
+              <option value="" style={{ background: 'var(--surface-raised)' }}>— Select jurisdiction —</option>
+              {COMPANY_JURISDICTIONS.map(j => (
+                <option key={j} value={j} style={{ background: 'var(--surface-raised)' }}>
+                  {COMPANY_JURISDICTION_LABELS[j]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Company Code</label>
+            <Input
+              style={{
+                ...fieldStyle,
+                color: previewCode ? '#C9A96E' : 'var(--text-cream)',
+                fontWeight: previewCode ? 600 : 400,
+              }}
+              value={
+                !form.companyType
+                  ? ''
+                  : previewCodeLoading
+                    ? '…'
+                    : (previewCode ?? '')
+              }
+              readOnly
+              placeholder="Select jurisdiction first"
+              title="Preview only — final code is assigned on save"
+            />
+            <p className="mt-1 text-[11px]" style={{ color: '#7A7060' }}>
+              Auto-assigned by jurisdiction (AA / BV / CA / BM / MS / PR + sequence). Confirmed on save.
+            </p>
+          </div>
         </div>
 
         <div className="grid sm:grid-cols-2 gap-4">

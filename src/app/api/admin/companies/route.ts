@@ -11,10 +11,8 @@ import {
   COMPANY_SERVICE_OPTIONS,
   normalizeCompanyServiceTiers,
 } from '@/lib/company/service-tiers'
-import {
-  COMPANY_JURISDICTION_CODE_PREFIX,
-  COMPANY_JURISDICTIONS,
-} from '@/lib/company/jurisdiction'
+import { COMPANY_JURISDICTIONS } from '@/lib/company/jurisdiction'
+import { nextCompanyCode } from '@/lib/company/next-company-code'
 import { COMPANY_STATUSES } from '@/lib/company/company-status'
 import {
   buildCompanyOwnershipNode,
@@ -24,18 +22,6 @@ import {
   loadAllCompaniesWithMembers,
 } from '@/lib/aml/ownershipLookThrough'
 import { z } from 'zod'
-
-async function nextCompanyCode(companyType: string): Promise<string> {
-  const prefix =
-    COMPANY_JURISDICTION_CODE_PREFIX[companyType as keyof typeof COMPANY_JURISDICTION_CODE_PREFIX] ?? 'AA'
-  const rows = await prisma.$queryRaw<Array<{ max_no: number | null }>>`
-    SELECT MAX(CAST(SUBSTRING("companyCode" FROM 3) AS INTEGER)) AS max_no
-    FROM companies
-    WHERE "companyCode" ~ ${`^${prefix}[0-9]{5}$`}
-  `
-  const next = (rows[0]?.max_no ?? 0) + 1
-  return `${prefix}${String(next).padStart(5, '0')}`
-}
 
 const createSchema = z
   .object({
