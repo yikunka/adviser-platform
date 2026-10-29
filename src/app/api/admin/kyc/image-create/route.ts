@@ -22,9 +22,8 @@ export async function POST(req: NextRequest) {
 
   const formData = await req.formData()
   const file = formData.get('file') as File | null
-  const clientUserId = String(formData.get('clientUserId') ?? '').trim()
+  const clientUserId = String(formData.get('clientUserId') ?? '').trim() || null
 
-  if (!clientUserId) return NextResponse.json({ error: 'clientRequired' }, { status: 400 })
   if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
   if (!ALLOWED_TYPES.has(file.type)) {
     return NextResponse.json({ error: 'Only JPG, PNG, and PDF files are allowed.' }, { status: 400 })
@@ -33,11 +32,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'File too large. Max 10MB.' }, { status: 400 })
   }
 
-  const client = await prisma.user.findFirst({
-    where: { id: clientUserId, role: 'CLIENT' },
-    select: { id: true },
-  })
-  if (!client) return NextResponse.json({ error: 'Invalid client account' }, { status: 400 })
+  if (clientUserId) {
+    const client = await prisma.user.findFirst({
+      where: { id: clientUserId, role: 'CLIENT', platform: 'ADVISER' },
+      select: { id: true },
+    })
+    if (!client) {
+      return NextResponse.json(
+        { error: 'Invalid client account — choose an Advise customer account or leave blank' },
+        { status: 400 },
+      )
+    }
+  }
 
   let fields
   try {
@@ -53,7 +59,7 @@ export async function POST(req: NextRequest) {
 
   const bytes = Buffer.from(await file.arrayBuffer())
   const ext = file.type === 'application/pdf' ? 'pdf' : file.type === 'image/png' ? 'png' : 'jpg'
-  const key = `kyc/${clientUserId}/${crypto.randomUUID()}.${ext}`
+  const key = `kyc/${clientUserId ?? 'unassigned'}/${crypto.randomUUID()}.${ext}`
 
   try {
     await uploadToR2(key, bytes, file.type)
@@ -80,7 +86,7 @@ export async function POST(req: NextRequest) {
       dateOfBirth: fields.dateOfBirth ? new Date(fields.dateOfBirth) : undefined,
       nationality: fields.nationality,
       homeAddress: fields.homeAddress,
-      submittedByUserId: clientUserId,
+      submittedByUserId: clientUserId ?? undefined,
       kycStatus: 'APPROVED',
       kycApprovedById: session!.user.id,
       kycApprovedAt: now,

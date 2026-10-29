@@ -6,8 +6,13 @@ export async function GET() {
   const { error } = await requireRole('STAFF', { adminMenu: 'kyc' })
   if (error) return error
 
+  // Advise / TCSP portal clients only — not SFS Diamond or other platforms
   const clients = await prisma.user.findMany({
-    where: { role: 'CLIENT', emailVerified: { not: null } },
+    where: {
+      role: 'CLIENT',
+      platform: 'ADVISER',
+      emailVerified: { not: null },
+    },
     select: {
       id: true,
       email: true,

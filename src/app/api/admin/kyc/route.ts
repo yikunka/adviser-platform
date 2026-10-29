@@ -166,10 +166,15 @@ export async function POST(req: NextRequest) {
 
   if (clientUserId) {
     const client = await prisma.user.findFirst({
-      where: { id: clientUserId, role: 'CLIENT' },
+      where: { id: clientUserId, role: 'CLIENT', platform: 'ADVISER' },
       select: { id: true },
     })
-    if (!client) return NextResponse.json({ error: 'Invalid client account' }, { status: 400 })
+    if (!client) {
+      return NextResponse.json(
+        { error: 'Invalid client account — choose an Advise customer account or leave blank' },
+        { status: 400 },
+      )
+    }
   }
 
   const data = inputToKeyPersonAdminUpdate(person) as Record<string, unknown>

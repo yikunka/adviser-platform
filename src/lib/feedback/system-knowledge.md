@@ -38,6 +38,7 @@ Manages the full portfolio of client companies.
 - Company detail overview includes a **文件管理** group with three toggles for `公司盒`, `公司方印`, and `公司圆印`; a single expand/collapse control beside the section title shows or hides all enabled items' IN/OUT forms and full movement history (collapsed by default); each enabled item can store dated `IN` / `OUT` movement records with handler and notes
 - Company create/edit **Service Tier** is multi-select checkboxes: `Comp Set Up`, `Comp Secretary Service`, `Virtue Office`, `Acct Service`, `Other Service` (stored as `serviceTiers` string array; legacy single tiers CS / CS+VO / CS+BK / CS+VO+BK migrated on deploy)
 - Create new company; assign client user, pending-client email, or **以後提供 / Provide later** (no client linked yet; can assign later on edit); assign staff; Registered Address has a **使用本公司地址** checkbox that fills `RM7 20F Boss Commercial Center 28 Ferry Street Yau Ma Tei Kowloon Hong Kong`
+- On create, selecting **Jurisdiction** previews the next internal **Company Code** (prefix by jurisdiction: Hong Kong `AA`, BVI `BV`, Cayman `CA`, Bermuda `BM`, Marshall `MS`, PRC `PR`, then a 5-digit sequence per prefix, e.g. `AA00001`); the final code is assigned on save
 - Companies with the financial module enabled can optionally be assigned a **Financial Manager** from existing active back-office staff accounts; assignment can be left blank and filled later from the company edit form
 
 **Company detail sub-pages** (`/admin/companies/[id]/...`):
@@ -59,6 +60,7 @@ Company-level staff access: multiple staff users can be assigned to a company vi
 ### 3. KYC Queue (`/admin/kyc`; Chinese admin nav label: 自然人管理)
 Know Your Customer compliance workflow.
 - List with search; status tabs default to **DRAFT**; columns: KYC code, name, client email, related companies (aggregated), documents, date, status; row click opens full-page detail at `/admin/kyc/[id]`
+- **Add KYC** / image create / edit: client account picker lists only **Advise 客戶帳號** (`platform: ADVISER`, verified CLIENT), or **blank** (no portal link); SFS / other platform logins are excluded; APIs reject non-Advise client ids
 - Related companies on each KYC: companies under the same portal client account (`clientUserId` / `pendingClientEmail`), explicit `CompanyKeyPerson` links, and companies where this person is linked as director / member / significant controller / designated representative; list shows first company +N; detail page lists all with role badges and links to company pages
 - In the queue list status column, records with missing required KYC files show a red missing marker for ID proof, address proof, and/or declaration when the latest file for that type is absent or rejected
 - KYC statuses: `DRAFT`, `APPROVED`, `REJECTED`, `INACTIVE` (legacy `SUBMITTED` / `PENDING_INFO` migrated to `DRAFT`)

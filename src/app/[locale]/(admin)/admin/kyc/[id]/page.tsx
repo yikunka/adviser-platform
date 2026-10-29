@@ -914,7 +914,7 @@ export default function KYCDetailPage() {
           ) : null}
           <div className="rounded-lg border border-[var(--border-subtle)] p-3">
             <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
-              Client Account
+              Client Account (Advise 客戶帳號)
             </label>
             <select
               value={editClientId}
@@ -923,13 +923,25 @@ export default function KYCDetailPage() {
               className="mb-3 w-full rounded-md px-3 py-2 text-sm"
               style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)', outline: 'none' }}
             >
-              <option value="" style={{ background: 'var(--surface-raised)' }}>No client account</option>
+              <option value="" style={{ background: 'var(--surface-raised)' }}>No client account (blank)</option>
+              {editClientId
+                && selected?.submittedByUser
+                && !clients.some(c => c.id === editClientId)
+                ? (
+                  <option value={editClientId} style={{ background: 'var(--surface-raised)' }}>
+                    {selected.submittedByUser.email} — {selected.submittedByUser.nameEn} (current)
+                  </option>
+                )
+                : null}
               {clients.map(client => (
                 <option key={client.id} value={client.id} style={{ background: 'var(--surface-raised)' }}>
                   {client.email} — {client.nameEn}{client.nameZh ? ` (${client.nameZh})` : ''}
                 </option>
               ))}
             </select>
+            <p className="mb-3 text-[11px]" style={{ color: '#7A7060' }}>
+              Advise 客戶帳號 only — or leave blank. Saving a non-Advise account is blocked.
+            </p>
             <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
               KYC Status
             </label>

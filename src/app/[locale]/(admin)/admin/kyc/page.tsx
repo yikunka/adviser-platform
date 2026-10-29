@@ -300,10 +300,6 @@ export default function KYCQueuePage() {
   }
 
   async function createApprovedKyc() {
-    if (!createClientId) {
-      toast.error('Select a client account')
-      return
-    }
     if (!createImage) {
       toast.error('Upload a KYC image')
       return
@@ -312,7 +308,7 @@ export default function KYCQueuePage() {
     setCreating(true)
     try {
       const fd = new FormData()
-      fd.append('clientUserId', createClientId)
+      if (createClientId) fd.append('clientUserId', createClientId)
       fd.append('file', createImage)
       const res = await fetch('/api/admin/kyc/image-create', { method: 'POST', body: fd })
       const json = await res.json().catch(() => ({}))
@@ -346,18 +342,13 @@ export default function KYCQueuePage() {
   }
 
   async function saveCreate(action: 'SAVE_DRAFT' | 'SUBMIT') {
-    if (!manualClientId) {
-      toast.error('Select a client account')
-      return
-    }
-
     setSavingCreate(true)
     try {
       const res = await fetch('/api/admin/kyc', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          clientUserId: manualClientId,
+          clientUserId: manualClientId || null,
           action,
           person: createValues,
         }),
@@ -411,13 +402,16 @@ export default function KYCQueuePage() {
                 className="mt-2 w-full rounded-md px-3 py-2 text-sm"
                 style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)', outline: 'none' }}
               >
-                <option value="" style={{ background: 'var(--surface-raised)' }}>Select client account</option>
+                <option value="" style={{ background: 'var(--surface-raised)' }}>No client account (blank)</option>
                 {clients.map(client => (
                   <option key={client.id} value={client.id} style={{ background: 'var(--surface-raised)' }}>
                     {client.email} — {client.nameEn}{client.nameZh ? ` (${client.nameZh})` : ''}
                   </option>
                 ))}
               </select>
+              <p className="mt-1 text-[11px]" style={{ color: '#7A7060' }}>
+                Advise 客戶帳號 only — or leave blank
+              </p>
             </div>
 
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -657,7 +651,7 @@ export default function KYCQueuePage() {
 
                 <div>
                   <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
-                    Client Account <span style={{ color: '#ef4444', fontWeight: 700 }}>*</span>
+                    Client Account (Advise 客戶帳號)
                   </label>
                   <select
                     value={manualClientId}
@@ -666,7 +660,7 @@ export default function KYCQueuePage() {
                     className="w-full rounded-md px-3 py-2 text-sm"
                     style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)', outline: 'none' }}
                   >
-                    <option value="" style={{ background: 'var(--surface-raised)' }}>Select client account</option>
+                    <option value="" style={{ background: 'var(--surface-raised)' }}>No client account (blank)</option>
                     {clients.map(client => (
                       <option key={client.id} value={client.id} style={{ background: 'var(--surface-raised)' }}>
                         {client.email} — {client.nameEn}{client.nameZh ? ` (${client.nameZh})` : ''}
