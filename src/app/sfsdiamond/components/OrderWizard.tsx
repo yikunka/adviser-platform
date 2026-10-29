@@ -163,10 +163,13 @@ function CheckCard({ checked, onChange, children }: { checked: boolean; onChange
 function ImageCard({ label, src, selected, onClick, tall, hideLabel, priceLabel }: {
   label: string; src: string | null; selected: boolean; onClick: () => void; tall?: boolean; hideLabel?: boolean; priceLabel?: string | null
 }) {
+  const title = label.trim() || 'Option'
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-label={title}
+      aria-pressed={selected}
       className="flex flex-col items-center gap-2 rounded-2xl border-2 p-3 transition-all"
       style={{
         borderColor: selected ? GOLD : BORDER,
@@ -176,16 +179,19 @@ function ImageCard({ label, src, selected, onClick, tall, hideLabel, priceLabel 
     >
       <div className={`relative w-full ${tall ? 'h-32' : 'h-24'} rounded-xl overflow-hidden`}>
         {src ? (
-          <img src={src} alt={label} className="h-full w-full object-contain" />
+          <img src={src} alt={title} className="h-full w-full object-contain" />
         ) : (
           <div className="h-full w-full flex items-center justify-center text-xs" style={{ color: MUTED }}>
-            {label}
+            {title}
           </div>
         )}
       </div>
       {!hideLabel && (
-        <span className="text-xs font-semibold text-center" style={{ color: selected ? GOLD : MUTED }}>
-          {label}
+        <span
+          className="min-h-[1.25rem] text-sm font-semibold text-center leading-snug"
+          style={{ color: selected ? GOLD : DARK }}
+        >
+          {title}
         </span>
       )}
       {priceLabel && (
@@ -625,7 +631,8 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
   specOptions: SfsOrderSpecOptions
 }) {
   const designOptionGroups = getDesignOptionGroupsForSettingType(item.type, specOptions)
-  const summary = [item.carat ? `${item.carat} ct` : '', item.shape, item.type].filter(Boolean).join(' · ')
+  const shapeLabel = specOptions.shapes.find(s => s.value === item.shape)?.label || item.shape
+  const summary = [item.carat ? `${item.carat} ct` : '', shapeLabel, item.type].filter(Boolean).join(' · ')
 
   if (collapsed) {
     return (
@@ -706,16 +713,21 @@ function DiamondRow({ index, item, onChange, onRemove, showRemove, collapsed, on
         </div>
       </div>
 
-      {/* Shape */}
+      {/* Shape — always show the option label under each cut image */}
       <div>
         <p className="text-sm font-medium mb-3" style={{ color: DARK }}>
           Shape<span style={{ color: GOLD }}> *</span>
+          {item.shape ? (
+            <span className="ml-2 font-semibold" style={{ color: GOLD }}>
+              — {specOptions.shapes.find(s => s.value === item.shape)?.label || item.shape}
+            </span>
+          ) : null}
         </p>
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {specOptions.shapes.map(cut => (
             <ImageCard
               key={cut.id}
-              label={cut.label}
+              label={cut.label?.trim() || cut.value}
               src={cut.imageUrl}
               selected={item.shape === cut.value}
               onClick={() => onChange({ shape: cut.value })}
