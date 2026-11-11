@@ -4,6 +4,10 @@ import { prisma } from '@/lib/db/prisma'
 import type { AMLCheckResult, AMLEntityType, AMLScreenScope, AMLSubjectType } from '@prisma/client'
 import { runAdverseMediaScreen, shouldRunAdverseMedia } from './adverseMedia'
 import { loadAllFatfJurisdictionEntries } from './fatfLists'
+import {
+  normalizeJurisdiction,
+  scoreJurisdiction,
+} from './fatfJurisdictionMatch'
 import { matchOpenSanctionsPep } from './openSanctionsPep'
 
 const STRONG_HIT_THRESHOLD = 0.98
@@ -15,11 +19,7 @@ const FATF_SEQ = [14, 15]
 export const OPENSANCTIONS_PEP_SEQ = 16
 
 function normalize(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, '')
-    .replace(/\s+/g, ' ')
-    .trim()
+  return normalizeJurisdiction(name)
 }
 
 function scoreNames(candidate: string, targets: string[]): number {
@@ -31,25 +31,6 @@ function scoreNames(candidate: string, targets: string[]): number {
     if (!normT) continue
     const score = compareTwoStrings(normCandidate, normT)
     if (score > best) best = score
-  }
-  return best
-}
-
-/** Jurisdiction / passport-country match: exact, containment, then fuzzy. */
-function scoreJurisdiction(subject: string, targets: string[]): number {
-  const normSubject = normalize(subject)
-  if (!normSubject) return 0
-  let best = 0
-  for (const t of targets) {
-    const normT = normalize(t)
-    if (!normT) continue
-    if (normSubject === normT) return 1
-    // e.g. "Tehran Iran" contains "Iran"; Chinese "伊朗德黑兰" contains "伊朗"
-    if (normSubject.includes(normT) || normT.includes(normSubject)) {
-      best = Math.max(best, 0.95)
-      continue
-    }
-    best = Math.max(best, compareTwoStrings(normSubject, normT))
   }
   return best
 }
