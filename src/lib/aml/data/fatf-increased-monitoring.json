@@ -1,129 +1,105 @@
 {
-  "asOf": "2026-06-19",
+  "asOf": "2026-10-30",
   "list": "increased-monitoring",
   "titleEn": "FATF Jurisdictions under Increased Monitoring",
   "titleZh": "FATF 加強監控司法管轄區（灰名單）",
-  "referenceUrl": "https://www.fatf-gafi.org/en/topics/high-risk-and-other-monitored-jurisdictions.html",
+  "referenceUrl": "https://www.fatf-gafi.org/en/publications/High-risk-and-other-monitored-jurisdictions/increased-monitoring-october-2026.html",
   "entries": [
     {
       "name": "Angola",
       "aliases": ["Republic of Angola", "安哥拉"],
-      "listingReason": "FATF Increased Monitoring (as of 2026-06-19)",
-      "listingDate": "2026-06-19"
+      "listingReason": "FATF Increased Monitoring (as of 2026-10-30)",
+      "listingDate": "2026-10-30"
     },
     {
       "name": "Bolivia",
       "aliases": ["Plurinational State of Bolivia", "玻利維亞", "玻利维亚"],
-      "listingReason": "FATF Increased Monitoring (as of 2026-06-19)",
-      "listingDate": "2026-06-19"
+      "listingReason": "FATF Increased Monitoring (as of 2026-10-30)",
+      "listingDate": "2026-10-30"
     },
     {
       "name": "Bosnia and Herzegovina",
       "aliases": ["Bosnia & Herzegovina", "BiH", "波士尼亞與赫塞哥維納", "波黑"],
-      "listingReason": "FATF Increased Monitoring (as of 2026-06-19)",
-      "listingDate": "2026-06-19"
-    },
-    {
-      "name": "Bulgaria",
-      "aliases": ["Republic of Bulgaria", "保加利亞", "保加利亚"],
-      "listingReason": "FATF Increased Monitoring (as of 2026-06-19)",
-      "listingDate": "2026-06-19"
+      "listingReason": "FATF Increased Monitoring (as of 2026-10-30)",
+      "listingDate": "2026-10-30"
     },
     {
       "name": "Cameroon",
       "aliases": ["Republic of Cameroon", "喀麥隆", "喀麦隆"],
-      "listingReason": "FATF Increased Monitoring (as of 2026-06-19)",
-      "listingDate": "2026-06-19"
-    },
-    {
-      "name": "Côte d'Ivoire",
-      "aliases": ["Cote d'Ivoire", "Ivory Coast", "科特迪瓦", "象牙海岸"],
-      "listingReason": "FATF Increased Monitoring (as of 2026-06-19)",
-      "listingDate": "2026-06-19"
-    },
-    {
-      "name": "Democratic Republic of the Congo",
-      "aliases": ["DRC", "Congo (Democratic Republic)", "DR Congo", "剛果民主共和國", "刚果民主共和国"],
-      "listingReason": "FATF Increased Monitoring (as of 2026-06-19)",
-      "listingDate": "2026-06-19"
+      "listingReason": "FATF Increased Monitoring (as of 2026-10-30)",
+      "listingDate": "2026-10-30"
     },
     {
       "name": "Haiti",
       "aliases": ["Republic of Haiti", "海地"],
-      "listingReason": "FATF Increased Monitoring (as of 2026-06-19)",
-      "listingDate": "2026-06-19"
+      "listingReason": "FATF Increased Monitoring (as of 2026-10-30)",
+      "listingDate": "2026-10-30"
     },
     {
       "name": "Iraq",
       "aliases": ["Republic of Iraq", "伊拉克"],
-      "listingReason": "FATF Increased Monitoring (as of 2026-06-19)",
-      "listingDate": "2026-06-19"
+      "listingReason": "FATF Increased Monitoring (as of 2026-10-30)",
+      "listingDate": "2026-10-30"
     },
     {
       "name": "Kenya",
       "aliases": ["Republic of Kenya", "肯尼亞", "肯尼亚", "肯亞"],
-      "listingReason": "FATF Increased Monitoring (as of 2026-06-19)",
-      "listingDate": "2026-06-19"
+      "listingReason": "FATF Increased Monitoring (as of 2026-10-30)",
+      "listingDate": "2026-10-30"
     },
     {
       "name": "Kuwait",
       "aliases": ["State of Kuwait", "科威特"],
-      "listingReason": "FATF Increased Monitoring (as of 2026-06-19)",
-      "listingDate": "2026-06-19"
+      "listingReason": "FATF Increased Monitoring (as of 2026-10-30)",
+      "listingDate": "2026-10-30"
     },
     {
       "name": "Lao PDR",
       "aliases": ["Laos", "Lao People's Democratic Republic", "老撾", "寮國", "老挝"],
-      "listingReason": "FATF Increased Monitoring (as of 2026-06-19)",
-      "listingDate": "2026-06-19"
+      "listingReason": "FATF Increased Monitoring (as of 2026-10-30)",
+      "listingDate": "2026-10-30"
     },
     {
       "name": "Lebanon",
       "aliases": ["Lebanese Republic", "黎巴嫩"],
-      "listingReason": "FATF Increased Monitoring (as of 2026-06-19)",
-      "listingDate": "2026-06-19"
-    },
-    {
-      "name": "Monaco",
-      "aliases": ["Principality of Monaco", "摩納哥", "摩纳哥"],
-      "listingReason": "FATF Increased Monitoring (as of 2026-06-19)",
-      "listingDate": "2026-06-19"
+      "listingReason": "FATF Increased Monitoring (as of 2026-10-30)",
+      "listingDate": "2026-10-30"
     },
     {
       "name": "Nepal",
       "aliases": ["Federal Democratic Republic of Nepal", "尼泊爾", "尼泊尔"],
-      "listingReason": "FATF Increased Monitoring (as of 2026-06-19)",
-      "listingDate": "2026-06-19"
+      "listingReason": "FATF Increased Monitoring (as of 2026-10-30)",
+      "listingDate": "2026-10-30"
     },
     {
       "name": "Papua New Guinea",
       "aliases": ["PNG", "Independent State of Papua New Guinea", "巴布亞新幾內亞", "巴布亚新几内亚"],
-      "listingReason": "FATF Increased Monitoring (as of 2026-06-19)",
-      "listingDate": "2026-06-19"
+      "listingReason": "FATF Increased Monitoring (as of 2026-10-30)",
+      "listingDate": "2026-10-30"
     },
     {
       "name": "South Sudan",
       "aliases": ["Republic of South Sudan", "南蘇丹", "南苏丹"],
-      "listingReason": "FATF Increased Monitoring (as of 2026-06-19)",
-      "listingDate": "2026-06-19"
+      "listingReason": "FATF Increased Monitoring (as of 2026-10-30)",
+      "listingDate": "2026-10-30"
     },
     {
       "name": "Syria",
       "aliases": ["Syrian Arab Republic", "敘利亞", "叙利亚"],
-      "listingReason": "FATF Increased Monitoring (as of 2026-06-19)",
-      "listingDate": "2026-06-19"
+      "listingReason": "FATF Increased Monitoring (as of 2026-10-30)",
+      "listingDate": "2026-10-30"
     },
     {
       "name": "Venezuela",
       "aliases": ["Bolivarian Republic of Venezuela", "委內瑞拉", "委内瑞拉"],
-      "listingReason": "FATF Increased Monitoring (as of 2026-06-19)",
-      "listingDate": "2026-06-19"
+      "listingReason": "FATF Increased Monitoring (as of 2026-10-30)",
+      "listingDate": "2026-10-30"
     },
     {
       "name": "Vietnam",
       "aliases": ["Viet Nam", "Socialist Republic of Viet Nam", "越南"],
-      "listingReason": "FATF Increased Monitoring (as of 2026-06-19)",
-      "listingDate": "2026-06-19"
+      "listingReason": "FATF Increased Monitoring (as of 2026-10-30)",
+      "listingDate": "2026-10-30"
     },
     {
       "name": "Virgin Islands (UK)",
@@ -135,14 +111,14 @@
         "英属维尔京群岛",
         "英屬處女群島"
       ],
-      "listingReason": "FATF Increased Monitoring (as of 2026-06-19)",
-      "listingDate": "2026-06-19"
+      "listingReason": "FATF Increased Monitoring (as of 2026-10-30)",
+      "listingDate": "2026-10-30"
     },
     {
       "name": "Yemen",
       "aliases": ["Republic of Yemen", "也門", "也门"],
-      "listingReason": "FATF Increased Monitoring (as of 2026-06-19)",
-      "listingDate": "2026-06-19"
+      "listingReason": "FATF Increased Monitoring (as of 2026-10-30)",
+      "listingDate": "2026-10-30"
     }
   ]
 }
