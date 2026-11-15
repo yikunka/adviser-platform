@@ -5,6 +5,7 @@ import {
   Check, Building2, BarChart2, Globe, Landmark, Ship, CreditCard, ShieldCheck, ArrowRight
 } from 'lucide-react'
 import PublicPageHero from '@/components/public/PublicPageHero'
+import PublicPageMotion from '@/components/public/PublicPageMotion'
 import { absoluteUrl } from '@/lib/seo'
 
 type MetadataProps = { params: Promise<{ locale: string }> }
@@ -74,20 +75,20 @@ export default async function ServicesPage() {
   ] as const
 
   return (
-    <div>
+    <PublicPageMotion>
       <PublicPageHero title={t('title')} subtitle={t('subtitle')} />
 
       {/* ══════════════════════════════════
           Overview — 3 core service anchors
       ══════════════════════════════════ */}
-      <section style={{ background: '#0C0C0C', borderBottom: '1px solid #1E1A12' }}>
+      <section className="public-reveal" style={{ background: '#0C0C0C', borderBottom: '1px solid #1E1A12' }}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
           <div className="grid sm:grid-cols-3 gap-4">
             {CORE_SERVICES.map(({ key, Icon, num }) => (
               <a
                 key={key}
                 href={`#${key}`}
-                className="public-panel public-card-hover flex items-center gap-4 rounded-xl px-5 py-4"
+                className="public-reveal-item public-panel public-card-hover flex items-center gap-4 rounded-xl px-5 py-4"
                 style={{ textDecoration: 'none' }}
               >
                 <div
@@ -386,6 +387,6 @@ export default async function ServicesPage() {
           </div>
         </div>
       </section>
-    </div>
+    </PublicPageMotion>
   )
 }

@@ -4,6 +4,7 @@ import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { Scale, Target, Handshake, Building, PieChart, FileText, Phone, Mail, MapPin, Clock } from 'lucide-react'
 import PublicPageHero from '@/components/public/PublicPageHero'
+import PublicPageMotion from '@/components/public/PublicPageMotion'
 import { absoluteUrl } from '@/lib/seo'
 
 type MetadataProps = { params: Promise<{ locale: string }> }
@@ -46,14 +47,14 @@ export default async function AboutPage() {
   const t = await getTranslations('about')
 
   return (
-    <div>
+    <PublicPageMotion>
       <PublicPageHero title={t('title')} subtitle={t('subtitle')} />
 
-      <section style={{ background: '#0A0A0A' }}>
+      <section className="public-reveal" style={{ background: '#0A0A0A' }}>
         <div className="public-section-rule" />
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-20 md:py-28">
           <div className="grid md:grid-cols-5 gap-10 items-start">
-            <div className="md:col-span-2 space-y-3">
+            <div className="public-reveal-item md:col-span-2 space-y-3">
               <p className="text-xs uppercase tracking-[0.28em]" style={{ color: '#C9A96E' }}>
                 {t('positioningEyebrow')}
               </p>
@@ -80,10 +81,10 @@ export default async function AboutPage() {
         </div>
       </section>
 
-      <section style={{ background: '#0C0C0C' }}>
+      <section className="public-reveal" style={{ background: '#0C0C0C' }}>
         <div className="public-section-rule" />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 md:py-28">
-          <div className="text-center mb-14 space-y-3">
+          <div className="public-reveal-item text-center mb-14 space-y-3">
             <p className="text-xs uppercase tracking-[0.28em]" style={{ color: '#C9A96E' }}>
               {t('coresEyebrow')}
             </p>
@@ -97,7 +98,7 @@ export default async function AboutPage() {
               return (
                 <div
                   key={core}
-                  className="public-panel public-card-hover rounded-xl p-7 flex flex-col gap-5"
+                  className="public-reveal-item public-panel public-card-hover rounded-xl p-7 flex flex-col gap-5"
                 >
                   <div style={{ height: '2px', width: '2rem', background: '#C9A96E', borderRadius: 1 }} />
                   <div
@@ -239,6 +240,6 @@ export default async function AboutPage() {
           </div>
         </div>
       </section>
-    </div>
+    </PublicPageMotion>
   )
 }

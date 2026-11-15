@@ -860,6 +860,15 @@ html {
 .public-fade-up-delay-3 { animation-delay: 0.3s; }
 .public-fade-up-delay-4 { animation-delay: 0.42s; }
 
+/* GSAP entrance targets — hidden until PublicGsapMotion runs (see prefers-reduced-motion below). */
+.public-hero-brand,
+.public-hero-title,
+.public-hero-sub,
+.public-hero-ctas,
+.public-hero-meta {
+  opacity: 0;
+}
+
 .public-marquee-track {
   display: flex;
   width: max-content;
@@ -1016,6 +1025,15 @@ html {
   .public-fade-up {
     opacity: 1;
     transform: none;
+  }
+  .public-hero-brand,
+  .public-hero-title,
+  .public-hero-sub,
+  .public-hero-ctas,
+  .public-hero-meta,
+  .public-reveal-item {
+    opacity: 1 !important;
+    transform: none !important;
   }
   .public-console {
     transform: none;

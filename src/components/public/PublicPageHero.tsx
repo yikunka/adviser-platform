@@ -10,6 +10,7 @@ type Props = {
 
 /**
  * Dramatic inner-page hero — left-weighted brand + title.
+ * Pair with PublicGsapMotion for entrance animation (classes: public-hero-*).
  */
 export default function PublicPageHero({ title, subtitle, eyebrow, showBrand = true }: Props) {
   return (
@@ -18,7 +19,7 @@ export default function PublicPageHero({ title, subtitle, eyebrow, showBrand = t
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 md:py-24">
         <div className="max-w-3xl">
           {showBrand ? (
-            <div className="public-fade-up flex items-center gap-2.5 mb-6">
+            <div className="public-hero-brand flex items-center gap-2.5 mb-6">
               <Image src="/logo.png" width={28} height={28} alt="" className="opacity-95" />
               <span className="font-mono-public text-[11px] tracking-[0.3em] uppercase" style={{ color: '#C9A96E' }}>
                 6AM Advisory
@@ -27,24 +28,24 @@ export default function PublicPageHero({ title, subtitle, eyebrow, showBrand = t
           ) : null}
           {eyebrow ? (
             <p
-              className="public-fade-up public-fade-up-delay-1 font-mono-public text-[11px] uppercase tracking-[0.3em] mb-4"
+              className="public-hero-brand font-mono-public text-[11px] uppercase tracking-[0.3em] mb-4"
               style={{ color: '#C9A96E' }}
             >
               {eyebrow}
             </p>
           ) : null}
           <h1
-            className="public-fade-up public-fade-up-delay-2 font-display font-light leading-[1.08] tracking-tight"
+            className="public-hero-title font-display font-light leading-[1.08] tracking-tight"
             style={{ color: '#F7F1E4', fontSize: 'clamp(2.4rem, 5.5vw, 4rem)' }}
           >
             {title}
           </h1>
           <div
-            className="public-fade-up public-fade-up-delay-3 mt-5 h-px w-20"
+            className="public-hero-sub mt-5 h-px w-20"
             style={{ background: 'linear-gradient(90deg, #C9A96E, transparent)' }}
           />
           <p
-            className="public-fade-up public-fade-up-delay-4 mt-5 text-base md:text-lg max-w-2xl leading-relaxed"
+            className="public-hero-sub mt-5 text-base md:text-lg max-w-2xl leading-relaxed"
             style={{ color: '#B8A890' }}
           >
             {subtitle}
