@@ -1,6 +1,4 @@
 import type { Metadata } from 'next'
-import { GeistSans } from 'geist/font/sans'
-import { GeistMono } from 'geist/font/mono'
 import PublicHeader from '@/components/layout/PublicHeader'
 import PublicFooter from '@/components/layout/PublicFooter'
 import { absoluteUrl, sixAmSeo } from '@/lib/seo'
@@ -46,23 +44,11 @@ export async function generateMetadata({ params }: Omit<Props, 'children'>): Pro
 export default function PublicLayout({ children }: Props) {
   return (
     <div
-      className={`tcsp-public theme-dark flex min-h-dvh flex-col antialiased ${GeistSans.variable} ${GeistMono.variable}`}
-      style={{
-        background: '#000000',
-        color: '#FFFFFF',
-        fontFamily: 'var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif',
-      }}
+      style={{ background: '#0A0A0A', color: '#F5F0E6' }}
+      className="theme-dark flex min-h-screen flex-col"
     >
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:text-black"
-      >
-        Skip to content
-      </a>
       <PublicHeader />
-      <main id="main-content" className="flex-1">
-        {children}
-      </main>
+      <main className="flex-1">{children}</main>
       <PublicFooter />
     </div>
   )

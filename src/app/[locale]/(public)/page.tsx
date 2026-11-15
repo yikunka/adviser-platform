@@ -4,19 +4,19 @@ import Image from 'next/image'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import {
-  Buildings,
-  ChartBar,
+  Building2,
+  BarChart2,
   Globe,
   ArrowRight,
   UserPlus,
-  MagnifyingGlass,
-  ArrowsClockwise,
-} from '@phosphor-icons/react'
+  FileSearch,
+  RefreshCw,
+} from 'lucide-react'
 import PublicHeroBackground from '@/components/public/PublicHeroBackground'
 import PublicGsapMotion from '@/components/public/PublicGsapMotion'
 
 const PILLAR_KEYS = ['secretarial', 'accounting', 'advisory'] as const
-const PILLAR_ICONS = { secretarial: Buildings, accounting: ChartBar, advisory: Globe } as const
+const PILLAR_ICONS = { secretarial: Building2, accounting: BarChart2, advisory: Globe } as const
 const PILLAR_HREFS = {
   secretarial: '/services#secretarial',
   accounting: '/services#accounting',
@@ -30,95 +30,143 @@ export default function HomePage() {
 
   return (
     <PublicGsapMotion variant="home">
-      {/* Hero — left-weighted brand signal */}
-      <section className="relative overflow-hidden min-h-[min(100dvh,46rem)] flex flex-col bg-black">
+      {/* ── Quiet hero ── */}
+      <section
+        className="relative overflow-hidden min-h-[min(92svh,46rem)] flex flex-col"
+        style={{ background: '#080808' }}
+      >
         <div className="public-hero-media absolute inset-0">
           <PublicHeroBackground intensity="soft" />
         </div>
 
-        <div className="relative flex-1 mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 pt-20 md:pt-28 pb-16 flex flex-col justify-center">
-          <div className="max-w-[42rem]">
-            <div className="public-hero-brand flex items-center gap-3 mb-8">
-              <Image src="/logo.png" width={40} height={40} alt="" priority className="opacity-95" />
-              <p className="text-xs font-medium tracking-[0.2em] uppercase text-[#9B9B9B]">
-                6AM Advisory
-              </p>
-            </div>
+        <div className="relative flex-1 mx-auto w-full max-w-3xl px-4 sm:px-6 lg:px-8 pt-20 md:pt-28 pb-16 flex flex-col justify-center text-center">
+          <div className="public-hero-brand flex justify-center mb-8">
+            <Image
+              src="/logo.png"
+              width={48}
+              height={48}
+              alt=""
+              priority
+              className="opacity-95"
+            />
+          </div>
 
-            <h1 className="public-hero-title tcsp-hero-heading text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight leading-none mb-6">
-              {t('heroTitleSub')}
-            </h1>
+          <p
+            className="public-hero-brand font-display font-light tracking-[0.12em] uppercase mb-5"
+            style={{
+              color: '#C9A96E',
+              fontSize: 'clamp(0.95rem, 1.8vw, 1.15rem)',
+            }}
+          >
+            6AM Advisory
+          </p>
 
-            <p className="public-hero-sub text-base md:text-lg leading-7 text-[#9B9B9B] max-w-xl mb-4 text-pretty">
-              {t('heroSubtitle')}
-            </p>
+          <h1
+            className="public-hero-title font-display font-light leading-[1.25] mb-6"
+            style={{
+              fontSize: 'clamp(1.85rem, 4.2vw, 2.85rem)',
+              color: '#F5F0E6',
+              letterSpacing: '0.01em',
+            }}
+          >
+            {t('heroTitleSub')}
+          </h1>
 
-            <p className="public-hero-sub text-sm leading-6 text-[#666666] max-w-md mb-10 text-pretty">
-              {t('heroMeet')}
-            </p>
+          <p
+            className="public-hero-sub text-base md:text-lg leading-relaxed mx-auto max-w-xl mb-4"
+            style={{ color: '#B8A890' }}
+          >
+            {t('heroSubtitle')}
+          </p>
 
-            <div className="public-hero-ctas flex flex-col sm:flex-row items-start gap-3 mb-8">
-              <Link
-                href="/contact"
-                className="tcsp-btn-primary inline-flex items-center gap-2 rounded-md px-3 py-2 text-base font-semibold"
-              >
-                {t('heroCtaStart')}
-                <ArrowRight size={16} weight="bold" />
-              </Link>
-              <Link
-                href="/services"
-                className="tcsp-btn-ghost inline-flex items-center rounded-md px-3 py-2 text-sm font-semibold"
-              >
-                {t('heroCtaLearn')}
-              </Link>
-            </div>
+          <p
+            className="public-hero-sub text-sm leading-relaxed mx-auto max-w-md mb-10"
+            style={{ color: '#8A7A60' }}
+          >
+            {t('heroMeet')}
+          </p>
 
-            <div className="public-hero-meta flex flex-col sm:flex-row items-start sm:items-center gap-x-6 gap-y-2 text-sm text-[#9B9B9B]">
-              <a href={`tel:${tContact('phoneValue')}`} className="transition-colors duration-300 hover:text-white">
-                {tContact('phoneValue')}
-              </a>
-              <span className="hidden sm:inline text-[#313131]">·</span>
-              <a href={`mailto:${tContact('emailValue')}`} className="transition-colors duration-300 hover:text-white">
-                {tContact('emailValue')}
-              </a>
-            </div>
+          <div className="public-hero-ctas flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
+            <Link
+              href="/contact"
+              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-sm text-sm font-semibold tracking-wide transition-transform hover:scale-[1.02] hover:opacity-90"
+              style={{ background: '#C9A96E', color: '#0C0C0C' }}
+            >
+              {t('heroCtaStart')}
+              <ArrowRight size={15} />
+            </Link>
+            <Link
+              href="/services"
+              className="px-7 py-3.5 rounded-sm text-sm font-medium tracking-wide transition-colors hover:bg-[rgba(180,148,92,0.08)]"
+              style={{
+                border: '1px solid rgba(180,148,92,0.35)',
+                color: '#D0C0A8',
+              }}
+            >
+              {t('heroCtaLearn')}
+            </Link>
+          </div>
+
+          <div
+            className="public-hero-meta flex flex-col sm:flex-row items-center justify-center gap-x-6 gap-y-2 text-sm"
+            style={{ color: '#9A8A70' }}
+          >
+            <a href={`tel:${tContact('phoneValue')}`} className="hover:opacity-80 transition-opacity">
+              {tContact('phoneValue')}
+            </a>
+            <span className="hidden sm:inline" style={{ color: '#3A3020' }}>
+              ·
+            </span>
+            <a
+              href={`mailto:${tContact('emailValue')}`}
+              className="hover:opacity-80 transition-opacity"
+            >
+              {tContact('emailValue')}
+            </a>
           </div>
         </div>
 
-        <div className="relative border-t border-[#272727] py-4">
-          <p className="public-hero-meta mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 text-xs tracking-wide text-[#666666]">
+        <div
+          className="relative border-t py-4 text-center"
+          style={{ borderColor: 'rgba(201,169,110,0.15)' }}
+        >
+          <p className="public-hero-meta text-xs tracking-wide" style={{ color: '#7A6A55' }}>
             {t('heroLicenceLine')}
           </p>
         </div>
       </section>
 
-      {/* Meeting — zigzag */}
-      <section className="public-reveal bg-black">
-        <div className="grid md:grid-cols-12 min-h-[22rem] md:min-h-[28rem]">
-          <div className="public-reveal-item md:col-span-5 flex flex-col justify-center px-4 sm:px-8 lg:px-12 py-14 md:py-16 order-2 md:order-1">
-            <p className="text-xs font-medium tracking-[0.2em] uppercase text-[#9B9B9B] mb-4">
+      {/* ── Meeting room: one-to-one ── */}
+      <section className="public-reveal" style={{ background: '#0A0A0A' }}>
+        <div className="grid md:grid-cols-2 min-h-[22rem] md:min-h-[28rem]">
+          <div className="public-reveal-item flex flex-col justify-center px-4 sm:px-8 lg:px-12 py-14 md:py-16 order-2 md:order-1">
+            <p className="text-xs uppercase tracking-[0.22em] mb-4" style={{ color: '#C9A96E' }}>
               {t('meeting.eyebrow')}
             </p>
-            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white leading-tight mb-4 text-balance">
+            <h2
+              className="font-display font-light leading-snug mb-4"
+              style={{ color: '#F5F0E6', fontSize: 'clamp(1.5rem, 3vw, 2.15rem)' }}
+            >
               {t('meeting.title')}
             </h2>
-            <p className="text-sm leading-6 text-[#9B9B9B] max-w-md mb-8 text-pretty">
+            <p className="text-sm leading-relaxed max-w-md mb-8" style={{ color: '#A89880' }}>
               {t('meeting.desc')}
             </p>
             <Link
               href="/contact"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-white transition-opacity duration-300 hover:opacity-80"
+              className="inline-flex items-center gap-2 text-sm w-fit transition-opacity hover:opacity-80"
+              style={{ color: '#C9A96E' }}
             >
               {t('meeting.cta')}
-              <ArrowRight size={14} weight="bold" />
+              <ArrowRight size={14} />
             </Link>
           </div>
-          <div className="public-reveal-item relative min-h-[16rem] md:min-h-full md:col-span-7 order-1 md:order-2">
+          <div className="public-reveal-item relative min-h-[16rem] md:min-h-full order-1 md:order-2">
             <Image
               src="/marketing/office-meeting-room.jpg"
               alt={t('meeting.imageAlt')}
               fill
-              sizes="(max-width: 768px) 100vw, 58vw"
+              sizes="(max-width: 768px) 100vw, 50vw"
               className="object-cover object-center"
               priority
             />
@@ -126,26 +174,35 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Place */}
-      <section className="public-reveal relative overflow-hidden bg-[#181818]">
+      {/* ── Place: beside the high-speed rail ── */}
+      <section className="public-reveal relative overflow-hidden" style={{ background: '#080808' }}>
         <div className="relative w-full aspect-[16/9] md:aspect-[21/9] max-h-[28rem]">
           <Image
             src="/marketing/office-neighbourhood-hsr.jpg"
             alt={t('place.imageAlt')}
             fill
             sizes="100vw"
-            className="object-cover object-[center_35%] opacity-70"
+            className="object-cover object-[center_35%]"
           />
-          <div className="absolute inset-0 bg-black/50" />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(180deg, rgba(8,8,8,0.12) 0%, rgba(8,8,8,0.2) 50%, rgba(8,8,8,0.88) 100%)',
+            }}
+          />
           <div className="absolute inset-x-0 bottom-0 px-4 sm:px-6 lg:px-8 pb-8 md:pb-10">
-            <div className="public-reveal-item mx-auto max-w-6xl space-y-2">
-              <p className="text-xs font-medium tracking-[0.2em] uppercase text-[#9B9B9B]">
+            <div className="public-reveal-item mx-auto max-w-7xl space-y-1.5">
+              <p className="text-xs uppercase tracking-[0.22em]" style={{ color: '#C9A96E' }}>
                 {t('place.eyebrow')}
               </p>
-              <p className="text-2xl md:text-3xl font-semibold tracking-tight text-white max-w-xl leading-tight text-balance">
+              <p
+                className="font-display font-light max-w-xl leading-snug"
+                style={{ color: '#F5F0E6', fontSize: 'clamp(1.25rem, 2.5vw, 1.75rem)' }}
+              >
                 {t('place.title')}
               </p>
-              <p className="text-sm max-w-lg leading-6 text-[#9B9B9B] text-pretty">
+              <p className="text-sm max-w-lg leading-relaxed" style={{ color: '#B8A890' }}>
                 {t('place.desc')}
               </p>
             </div>
@@ -153,85 +210,76 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Engagement — asymmetric 2+1 */}
-      <section className="public-reveal bg-black">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-20 md:py-24">
-          <div className="public-reveal-item mb-12 max-w-xl space-y-3">
-            <p className="text-xs font-medium tracking-[0.2em] uppercase text-[#9B9B9B]">
+      {/* ── Situations we handle ── */}
+      <section className="public-reveal" style={{ background: '#0A0A0A' }}>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 md:py-24">
+          <div className="public-reveal-item mb-12 space-y-3 max-w-2xl">
+            <p className="text-xs uppercase tracking-[0.22em]" style={{ color: '#C9A96E' }}>
               {t('engagement.eyebrow')}
             </p>
-            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white leading-tight text-balance">
+            <h2
+              className="font-display font-light leading-snug"
+              style={{ color: '#F5F0E6', fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)' }}
+            >
               {t('engagement.title')}
             </h2>
-            <p className="text-sm leading-6 text-[#9B9B9B] text-pretty">
+            <p className="text-sm leading-relaxed" style={{ color: '#A89880' }}>
               {t('engagement.desc')}
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 md:gap-10 mb-10">
-            {(['holding', 'succession'] as const).map((key) => (
-              <div key={key} className="public-reveal-item space-y-3 border-t border-[#272727] pt-6">
-                <h3 className="text-xl font-semibold text-white tracking-tight">
+          <div className="grid sm:grid-cols-3 gap-10 md:gap-12 mb-10">
+            {(['holding', 'succession', 'governance'] as const).map((key) => (
+              <div key={key} className="public-reveal-item space-y-3">
+                <h3 className="font-display text-xl font-light" style={{ color: '#F5F0E6' }}>
                   {t(`engagement.${key}.title`)}
                 </h3>
-                <p className="text-sm leading-6 text-[#9B9B9B] text-pretty">
+                <p className="text-sm leading-relaxed" style={{ color: '#A89880' }}>
                   {t(`engagement.${key}.desc`)}
                 </p>
               </div>
             ))}
-            <div className="public-reveal-item md:col-span-2 space-y-3 border-t border-[#272727] pt-6 md:max-w-xl">
-              <h3 className="text-xl font-semibold text-white tracking-tight">
-                {t('engagement.governance.title')}
-              </h3>
-              <p className="text-sm leading-6 text-[#9B9B9B] text-pretty">
-                {t('engagement.governance.desc')}
-              </p>
-            </div>
           </div>
 
-          <p className="public-reveal-item text-sm leading-6 max-w-2xl text-[#666666] text-pretty">
+          <p className="public-reveal-item text-sm leading-relaxed max-w-2xl" style={{ color: '#7A6A55' }}>
             {t('engagement.confidentiality')}
           </p>
         </div>
       </section>
 
-      {/* Journey — horizontal numbered strip */}
-      <section className="public-reveal bg-[#181818]">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-20 md:py-24">
-          <div className="public-reveal-item max-w-xl mb-12 space-y-3">
-            <p className="text-xs font-medium tracking-[0.2em] uppercase text-[#9B9B9B]">
+      {/* ── How we work together ── */}
+      <section className="public-reveal" style={{ background: '#080808' }}>
+        <div className="public-section-rule" />
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 md:py-24">
+          <div className="public-reveal-item max-w-2xl mb-12 space-y-3">
+            <p className="text-xs uppercase tracking-[0.22em]" style={{ color: '#C9A96E' }}>
               {t('journeyEyebrow')}
             </p>
-            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white leading-tight text-balance">
+            <h2
+              className="font-display font-light leading-snug"
+              style={{ color: '#F5F0E6', fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)' }}
+            >
               {t('journeyTitle')}
             </h2>
-            <p className="text-sm leading-6 text-[#9B9B9B] text-pretty">
+            <p className="text-sm leading-relaxed" style={{ color: '#A89880' }}>
               {t('journeyDesc')}
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-0 border border-[#272727] rounded-xl overflow-hidden">
+          <div className="grid md:grid-cols-3 gap-10 md:gap-12">
             {(
               [
                 { key: 'onboard' as const, Icon: UserPlus },
-                { key: 'kyc' as const, Icon: MagnifyingGlass },
-                { key: 'ongoing' as const, Icon: ArrowsClockwise },
+                { key: 'kyc' as const, Icon: FileSearch },
+                { key: 'ongoing' as const, Icon: RefreshCw },
               ]
-            ).map(({ key, Icon }, i) => (
-              <div
-                key={key}
-                className={`public-reveal-item space-y-3 bg-black p-6 md:p-8 ${
-                  i < 2 ? 'border-b md:border-b-0 md:border-r border-[#272727]' : ''
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon size={18} className="text-white" weight="regular" />
-                  <span className="text-xs font-medium text-[#666666] tabular-nums">0{i + 1}</span>
-                </div>
-                <h3 className="text-lg font-semibold text-white tracking-tight">
+            ).map(({ key, Icon }) => (
+              <div key={key} className="public-reveal-item space-y-3">
+                <Icon size={18} style={{ color: '#C9A96E' }} />
+                <h3 className="font-display text-lg" style={{ color: '#F5F0E6' }}>
                   {t(`journey.${key}.title`)}
                 </h3>
-                <p className="text-sm leading-6 text-[#9B9B9B] text-pretty">
+                <p className="text-sm leading-relaxed" style={{ color: '#A89880' }}>
                   {t(`journey.${key}.desc`)}
                 </p>
               </div>
@@ -240,48 +288,54 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Pillars — stacked rows not equal cards */}
-      <section className="public-reveal bg-black">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-20 md:py-24">
+      {/* ── What we do ── */}
+      <section className="public-reveal" style={{ background: '#0A0A0A' }}>
+        <div className="public-section-rule" />
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 md:py-24">
           <div className="public-reveal-item flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-12">
             <div className="space-y-3 max-w-xl">
-              <p className="text-xs font-medium tracking-[0.2em] uppercase text-[#9B9B9B]">
+              <p className="text-xs uppercase tracking-[0.22em]" style={{ color: '#C9A96E' }}>
                 {t('pillarsEyebrow')}
               </p>
-              <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white leading-tight text-balance">
+              <h2
+                className="font-display font-light leading-tight"
+                style={{ color: '#F5F0E6', fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)' }}
+              >
                 {t('pillarsTitle')}
               </h2>
             </div>
             <Link
               href="/services"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-white transition-opacity duration-300 hover:opacity-80"
+              className="inline-flex items-center gap-2 text-sm"
+              style={{ color: '#C9A96E' }}
             >
-              {t('heroCtaLearn')} <ArrowRight size={14} weight="bold" />
+              {t('heroCtaLearn')} <ArrowRight size={14} />
             </Link>
           </div>
 
-          <div className="border-t border-[#272727]">
+          <div className="space-y-0 border-t" style={{ borderColor: '#1E1A12' }}>
             {PILLAR_KEYS.map((key) => {
               const Icon = PILLAR_ICONS[key]
               return (
                 <Link
                   key={key}
                   href={PILLAR_HREFS[key]}
-                  className="public-reveal-item group flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-8 py-8 border-b border-[#272727] transition-colors duration-300 hover:bg-[#181818]/40"
+                  className="public-reveal-item group flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-8 py-8 border-b transition-colors hover:bg-[rgba(201,169,110,0.03)]"
+                  style={{ borderColor: '#1E1A12' }}
                 >
-                  <Icon size={18} className="mt-1 shrink-0 text-white" weight="regular" />
+                  <Icon size={18} className="mt-1 shrink-0" style={{ color: '#C9A96E' }} />
                   <div className="min-w-0 flex-1 space-y-2">
-                    <h3 className="text-xl md:text-2xl font-semibold tracking-tight text-white">
+                    <h3 className="font-display text-xl md:text-2xl font-light" style={{ color: '#F5F0E6' }}>
                       {t(`pillars.${key}.title`)}
                     </h3>
-                    <p className="text-sm leading-6 max-w-2xl text-[#9B9B9B] text-pretty">
+                    <p className="text-sm leading-relaxed max-w-2xl" style={{ color: '#A89880' }}>
                       {t(`pillars.${key}.desc`)}
                     </p>
                   </div>
                   <ArrowRight
                     size={16}
-                    className="hidden sm:block mt-2 shrink-0 text-[#666666] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-1 group-hover:text-white"
-                    weight="bold"
+                    className="hidden sm:block mt-2 shrink-0 transition-transform group-hover:translate-x-1"
+                    style={{ color: '#8A7A60' }}
                   />
                 </Link>
               )
@@ -290,26 +344,32 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Closing */}
-      <section className="public-reveal bg-[#181818]">
-        <div className="public-reveal-item mx-auto max-w-xl px-4 sm:px-6 lg:px-8 py-20 md:py-28 text-left md:text-center space-y-6">
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white leading-tight text-balance">
+      {/* ── Closing ── */}
+      <section className="public-reveal" style={{ background: '#080808' }}>
+        <div className="public-section-rule" />
+        <div className="public-reveal-item mx-auto max-w-2xl px-4 sm:px-6 lg:px-8 py-20 md:py-28 text-center space-y-6">
+          <h2
+            className="font-display font-light"
+            style={{ color: '#F5F0E6', fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)' }}
+          >
             {t('ctaTitle')}
           </h2>
-          <p className="text-sm leading-6 text-[#9B9B9B] text-pretty">
+          <p className="text-sm leading-relaxed" style={{ color: '#A89880' }}>
             {t('ctaDesc')}
           </p>
-          <div className="flex flex-col sm:flex-row md:justify-center items-start md:items-center gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <Link
               href="/contact"
-              className="tcsp-btn-primary inline-flex items-center gap-2 rounded-md px-3 py-2 text-base font-semibold"
+              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-sm text-sm font-semibold transition-transform hover:scale-[1.02] hover:opacity-90"
+              style={{ background: '#C9A96E', color: '#0C0C0C' }}
             >
               {tNav('contact')}
-              <ArrowRight size={14} weight="bold" />
+              <ArrowRight size={14} />
             </Link>
             <Link
               href="/about"
-              className="text-sm font-medium text-[#9B9B9B] transition-colors duration-300 hover:text-white"
+              className="text-sm transition-opacity hover:opacity-80"
+              style={{ color: '#9A8A70' }}
             >
               {tNav('about')}
             </Link>

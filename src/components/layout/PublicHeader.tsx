@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { useTranslations } from 'next-intl'
 import { usePathname, useParams } from 'next/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
-import { List, X } from '@phosphor-icons/react'
+import { Menu, X } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 
 const NAV_LINKS = [
@@ -34,11 +34,24 @@ export default function PublicHeader() {
   const strippedPath = pathname.replace(/^\/(zh|en)/, '') || '/'
 
   return (
-    <header className="sticky top-0 z-50 w-full px-3 pt-3 sm:px-4">
+    <header
+      style={{
+        background: 'rgba(8,8,8,0.88)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: '1px solid rgba(42,36,24,0.9)',
+      }}
+      className="sticky top-0 z-50 w-full"
+    >
       <div
-        className="mx-auto max-w-6xl rounded-xl border border-[#272727] bg-black/70 shadow-[0_8px_32px_rgba(0,0,0,0.45)] backdrop-blur-xl"
-      >
-        <div className="flex h-14 items-center justify-between px-4 sm:px-5">
+        className="absolute bottom-0 left-0 right-0 h-px pointer-events-none opacity-60"
+        style={{
+          background: 'linear-gradient(90deg, transparent, rgba(201,169,110,0.35), transparent)',
+        }}
+        aria-hidden
+      />
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-[4.25rem] items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
             <Image src="/logo.png" width={28} height={28} alt="6AM Advisory logo mark" />
             <Image
@@ -46,11 +59,55 @@ export default function PublicHeader() {
               width={118}
               height={28}
               alt="6AM Advisory"
-              style={{ objectFit: 'contain', filter: 'grayscale(1) brightness(1.35)' }}
+              style={{ objectFit: 'contain' }}
             />
           </Link>
 
-          <nav className="hidden md:flex items-center gap-1" aria-label="Primary">
+          <nav className="hidden md:flex items-center gap-1">
+            {NAV_LINKS.map(({ href, key }) => {
+              const isActive =
+                href === '/' ? strippedPath === '/' : strippedPath.startsWith(href)
+              return (
+                <NavLink key={key} href={href} active={isActive}>
+                  {t(key)}
+                </NavLink>
+              )
+            })}
+          </nav>
+
+          <div className="hidden md:flex items-center gap-3">
+            <LocaleToggle label={otherLocale === 'zh' ? '中文' : 'EN'} onClick={switchLocale} />
+            {status === 'authenticated' ? (
+              <GetStartedButton href="/dashboard" label={t('dashboard', { defaultValue: 'My Dashboard' })} />
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  style={{ color: '#C9A96E' }}
+                  className="text-sm px-3 py-1.5 rounded transition-opacity hover:opacity-80"
+                >
+                  {t('login')}
+                </Link>
+                <GetStartedButton href="/contact" label={t('getStarted')} />
+              </>
+            )}
+          </div>
+
+          <button
+            className="md:hidden p-2"
+            style={{ color: '#9A8060' }}
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label="Toggle menu"
+          >
+            {menuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
+
+        {menuOpen && (
+          <div
+            style={{ borderTop: '1px solid #2A2418' }}
+            className="md:hidden pb-5 pt-3 space-y-1"
+          >
             {NAV_LINKS.map(({ href, key }) => {
               const isActive =
                 href === '/' ? strippedPath === '/' : strippedPath.startsWith(href)
@@ -58,114 +115,40 @@ export default function PublicHeader() {
                 <Link
                   key={key}
                   href={href}
-                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-                    isActive
-                      ? 'bg-[#1F1F1F] text-white'
-                      : 'text-[#9B9B9B] hover:bg-[#181818] hover:text-white'
-                  }`}
-                  aria-current={isActive ? 'page' : undefined}
+                  className="block px-2 py-2.5 text-sm rounded"
+                  style={{ color: isActive ? '#C9A96E' : '#A89880' }}
+                  onClick={() => setMenuOpen(false)}
                 >
                   {t(key)}
                 </Link>
               )
             })}
-          </nav>
-
-          <div className="hidden md:flex items-center gap-3">
-            <button
-              type="button"
-              onClick={switchLocale}
-              className="rounded-md border border-[#272727] px-2.5 py-1 text-xs font-medium text-[#9B9B9B] transition-colors duration-300 hover:border-[#313131] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9B9B9B]"
+            <div
+              style={{ borderTop: '1px solid #2A2418' }}
+              className="flex items-center gap-3 pt-3 mt-2"
             >
-              {otherLocale === 'zh' ? '中文' : 'EN'}
-            </button>
-            {status === 'authenticated' ? (
-              <Link
-                href="/dashboard"
-                className="tcsp-btn-primary rounded-md px-3 py-2 text-sm font-semibold"
-              >
-                {t('dashboard', { defaultValue: 'My Dashboard' })}
-              </Link>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="text-sm font-medium text-[#9B9B9B] transition-colors duration-300 hover:text-white"
-                >
-                  {t('login')}
-                </Link>
-                <Link
-                  href="/contact"
-                  className="tcsp-btn-primary rounded-md px-3 py-2 text-sm font-semibold"
-                >
-                  {t('getStarted')}
-                </Link>
-              </>
-            )}
-          </div>
-
-          <button
-            type="button"
-            className="md:hidden rounded-md p-2 text-[#9B9B9B] transition-colors duration-300 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9B9B9B]"
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={menuOpen}
-          >
-            {menuOpen ? <X size={22} weight="bold" /> : <List size={22} weight="bold" />}
-          </button>
-        </div>
-
-        {menuOpen && (
-          <div className="space-y-1 border-t border-[#272727] px-4 pb-4 pt-3 md:hidden">
-            {NAV_LINKS.map(({ href, key }, index) => {
-              const isActive =
-                href === '/' ? strippedPath === '/' : strippedPath.startsWith(href)
-              return (
-                <Link
-                  key={key}
-                  href={href}
-                  className={`block rounded-md px-2 py-2.5 text-sm font-medium transition-colors duration-300 ${
-                    isActive ? 'bg-[#1F1F1F] text-white' : 'text-[#9B9B9B] hover:text-white'
-                  }`}
-                  style={{ transitionDelay: `${index * 60}ms` }}
-                  onClick={() => setMenuOpen(false)}
-                >
-                  {t(key)}
-                </Link>
-              )
-            })}
-            <div className="mt-2 flex items-center gap-3 border-t border-[#272727] pt-3">
-              <button
-                type="button"
-                onClick={switchLocale}
-                className="rounded-md border border-[#272727] px-2.5 py-1 text-xs font-medium text-[#9B9B9B]"
-              >
-                {otherLocale === 'zh' ? '中文' : 'EN'}
-              </button>
+              <LocaleToggle label={otherLocale === 'zh' ? '中文' : 'EN'} onClick={switchLocale} />
               {status === 'authenticated' ? (
-                <Link
+                <GetStartedButton
                   href="/dashboard"
-                  className="tcsp-btn-primary rounded-md px-3 py-2 text-sm font-semibold"
+                  label={t('dashboard', { defaultValue: 'My Dashboard' })}
                   onClick={() => setMenuOpen(false)}
-                >
-                  {t('dashboard', { defaultValue: 'My Dashboard' })}
-                </Link>
+                />
               ) : (
                 <>
                   <Link
                     href="/login"
-                    className="text-sm font-medium text-[#9B9B9B]"
+                    style={{ color: '#C9A96E' }}
+                    className="text-sm"
                     onClick={() => setMenuOpen(false)}
                   >
                     {t('login')}
                   </Link>
-                  <Link
+                  <GetStartedButton
                     href="/contact"
-                    className="tcsp-btn-primary rounded-md px-3 py-2 text-sm font-semibold"
+                    label={t('getStarted')}
                     onClick={() => setMenuOpen(false)}
-                  >
-                    {t('getStarted')}
-                  </Link>
+                  />
                 </>
               )}
             </div>
@@ -173,5 +156,76 @@ export default function PublicHeader() {
         )}
       </div>
     </header>
+  )
+}
+
+function NavLink({
+  href,
+  active,
+  children,
+}: {
+  href: string
+  active: boolean
+  children: React.ReactNode
+}) {
+  const [hovered, setHovered] = useState(false)
+  return (
+    <Link
+      href={href}
+      className="text-sm px-3 py-1.5 rounded-md transition-colors relative"
+      style={{
+        color: active || hovered ? '#C9A96E' : '#A89880',
+        background: active ? 'rgba(201,169,110,0.08)' : hovered ? 'rgba(201,169,110,0.04)' : 'transparent',
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {children}
+    </Link>
+  )
+}
+
+function LocaleToggle({ label, onClick }: { label: string; onClick: () => void }) {
+  const [hovered, setHovered] = useState(false)
+  return (
+    <button
+      onClick={onClick}
+      className="text-xs px-2.5 py-1 rounded-md transition-colors"
+      style={{
+        border: hovered ? '1px solid #C9A96E' : '1px solid #2A2418',
+        color: hovered ? '#C9A96E' : '#8A7A68',
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {label}
+    </button>
+  )
+}
+
+function GetStartedButton({
+  href,
+  label,
+  onClick,
+}: {
+  href: string
+  label: string
+  onClick?: () => void
+}) {
+  const [hovered, setHovered] = useState(false)
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      className="text-sm font-medium px-4 py-2 rounded-md transition-colors"
+      style={{
+        background: hovered ? '#D4B47A' : '#C9A96E',
+        color: '#0C0C0C',
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {label}
+    </Link>
   )
 }

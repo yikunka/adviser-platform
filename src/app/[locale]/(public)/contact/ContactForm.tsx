@@ -23,7 +23,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 const fieldClass =
-  'border-[#272727] bg-[#181818] text-[#FFFFFF] placeholder:text-[#666666] focus-visible:border-[#9B9B9B] focus-visible:ring-[#9B9B9B]/30'
+  'border-[#2A2418] bg-[#141414] text-[#F0EAD8] placeholder:text-[#5C5448] focus-visible:border-[#C9A96E] focus-visible:ring-[#C9A96E]/30'
 
 export default function ContactForm() {
   const t = useTranslations('contact')
@@ -57,7 +57,7 @@ export default function ContactForm() {
       <div>
         <h2
           className="text-xl font-semibold font-display tracking-tight mb-6"
-          style={{ color: '#FFFFFF' }}
+          style={{ color: '#F5F0E6' }}
         >
           {t('formTitle')}
         </h2>
@@ -65,14 +65,14 @@ export default function ContactForm() {
           <div
             className="p-6 rounded-2xl border"
             style={{
-              background: '#181818',
-              borderColor: '#272727',
+              background: 'rgba(201, 169, 110, 0.08)',
+              borderColor: 'rgba(201, 169, 110, 0.25)',
             }}
           >
-            <p className="font-medium" style={{ color: '#9B9B9B' }}>
+            <p className="font-medium" style={{ color: '#C9A96E' }}>
               {t('sentSuccess')}
             </p>
-            <p className="text-sm mt-1" style={{ color: '#9B9B9B' }}>
+            <p className="text-sm mt-1" style={{ color: '#A89880' }}>
               {t('sentDesc')}
             </p>
           </div>
@@ -80,7 +80,7 @@ export default function ContactForm() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="name" className="text-[#9B9B9B]">
+                <Label htmlFor="name" className="text-[#9A8060]">
                   {t('name')}
                 </Label>
                 <Input id="name" className={fieldClass} {...form.register('name')} />
@@ -89,14 +89,14 @@ export default function ContactForm() {
                 )}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="phone" className="text-[#9B9B9B]">
+                <Label htmlFor="phone" className="text-[#9A8060]">
                   {t('phone')}
                 </Label>
                 <Input id="phone" type="tel" className={fieldClass} {...form.register('phone')} />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-[#9B9B9B]">
+              <Label htmlFor="email" className="text-[#9A8060]">
                 {t('email')}
               </Label>
               <Input id="email" type="email" className={fieldClass} {...form.register('email')} />
@@ -105,7 +105,7 @@ export default function ContactForm() {
               )}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="subject" className="text-[#9B9B9B]">
+              <Label htmlFor="subject" className="text-[#9A8060]">
                 {t('subject')}
               </Label>
               <Input id="subject" className={fieldClass} {...form.register('subject')} />
@@ -114,7 +114,7 @@ export default function ContactForm() {
               )}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="message" className="text-[#9B9B9B]">
+              <Label htmlFor="message" className="text-[#9A8060]">
                 {t('message')}
               </Label>
               <Textarea
@@ -130,7 +130,7 @@ export default function ContactForm() {
             <Button
               type="submit"
               className="w-full h-10 font-semibold"
-              style={{ background: '#FFFFFF', color: '#000000' }}
+              style={{ background: '#C9A96E', color: '#0C0C0C' }}
               disabled={loading}
             >
               {loading ? t('sending') : t('send')}
@@ -142,13 +142,13 @@ export default function ContactForm() {
       <div className="space-y-6">
         <h2
           className="text-xl font-semibold font-display tracking-tight"
-          style={{ color: '#FFFFFF' }}
+          style={{ color: '#F5F0E6' }}
         >
           {t('officeTitle')}
         </h2>
         <div
           className="h-px w-10 mb-2"
-          style={{ background: 'linear-gradient(90deg, #9B9B9B, transparent)' }}
+          style={{ background: 'linear-gradient(90deg, #C9A96E, transparent)' }}
         />
         <div className="relative w-full aspect-[4/3] overflow-hidden rounded-sm">
           <Image
@@ -161,44 +161,44 @@ export default function ContactForm() {
         </div>
         <dl className="space-y-5 text-sm">
           <div>
-            <dt className="text-xs uppercase tracking-wider mb-1" style={{ color: '#9B9B9B' }}>
+            <dt className="text-xs uppercase tracking-wider mb-1" style={{ color: '#8A7A68' }}>
               {t('address')}
             </dt>
-            <dd style={{ color: '#9B9B9B' }}>{t('addressValue')}</dd>
+            <dd style={{ color: '#C9B896' }}>{t('addressValue')}</dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wider mb-1" style={{ color: '#9B9B9B' }}>
+            <dt className="text-xs uppercase tracking-wider mb-1" style={{ color: '#8A7A68' }}>
               {t('phone')}
             </dt>
             <dd>
               <a
                 href={`tel:${t('phoneValue')}`}
                 className="public-link-hover transition-colors"
-                style={{ color: '#9B9B9B' }}
+                style={{ color: '#C9A96E' }}
               >
                 {t('phoneValue')}
               </a>
             </dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wider mb-1" style={{ color: '#9B9B9B' }}>
+            <dt className="text-xs uppercase tracking-wider mb-1" style={{ color: '#8A7A68' }}>
               {t('emailLabel')}
             </dt>
             <dd>
               <a
                 href={`mailto:${t('emailValue')}`}
                 className="public-link-hover transition-colors"
-                style={{ color: '#9B9B9B' }}
+                style={{ color: '#C9A96E' }}
               >
                 {t('emailValue')}
               </a>
             </dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wider mb-1" style={{ color: '#9B9B9B' }}>
+            <dt className="text-xs uppercase tracking-wider mb-1" style={{ color: '#8A7A68' }}>
               {t('hours')}
             </dt>
-            <dd style={{ color: '#9B9B9B' }}>{t('hoursValue')}</dd>
+            <dd style={{ color: '#C9B896' }}>{t('hoursValue')}</dd>
           </div>
         </dl>
       </div>
