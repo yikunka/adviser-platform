@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
 import PublicPageHero from '@/components/public/PublicPageHero'
-import PublicPageMotion from '@/components/public/PublicPageMotion'
 import FAQList from './FAQList'
 import { absoluteUrl } from '@/lib/seo'
 
@@ -33,14 +32,14 @@ export default async function FAQPage() {
   const t = await getTranslations('faq')
 
   return (
-    <PublicPageMotion>
+    <div>
       <PublicPageHero title={t('title')} subtitle={t('subtitle')} />
-      <section className="public-reveal" style={{ background: '#0A0A0A' }}>
+      <section style={{ background: '#0A0A0A' }}>
         <div className="public-section-rule" />
-        <div className="public-reveal-item mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-16 md:py-20">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-16 md:py-20">
           <FAQList />
         </div>
       </section>
-    </PublicPageMotion>
+    </div>
   )
 }
