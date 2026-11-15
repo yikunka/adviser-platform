@@ -2,7 +2,18 @@ import type { Metadata } from 'next'
 import Image from 'next/image'
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
-import { Scale, Target, Handshake, Building, PieChart, FileText, Phone, Mail, MapPin, Clock } from 'lucide-react'
+import {
+  Scales,
+  Target,
+  Handshake,
+  Buildings,
+  ChartPie,
+  FileText,
+  Phone,
+  EnvelopeSimple,
+  MapPin,
+  Clock,
+} from '@phosphor-icons/react/dist/ssr'
 import PublicPageHero from '@/components/public/PublicPageHero'
 import PublicPageMotion from '@/components/public/PublicPageMotion'
 import { absoluteUrl } from '@/lib/seo'
@@ -32,14 +43,14 @@ export async function generateMetadata({ params }: MetadataProps): Promise<Metad
 }
 
 const valueIcons = {
-  integrity: Scale,
+  integrity: Scales,
   expertise: Target,
   partnership: Handshake,
 } as const
 
 const coreIcons = {
-  formation: Building,
-  financial: PieChart,
+  formation: Buildings,
+  financial: ChartPie,
   secretarial: FileText,
 } as const
 
@@ -50,30 +61,30 @@ export default async function AboutPage() {
     <PublicPageMotion>
       <PublicPageHero title={t('title')} subtitle={t('subtitle')} />
 
-      <section className="public-reveal" style={{ background: '#0A0A0A' }}>
+      <section className="public-reveal" style={{ background: '#000000' }}>
         <div className="public-section-rule" />
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-20 md:py-28">
           <div className="grid md:grid-cols-5 gap-10 items-start">
             <div className="public-reveal-item md:col-span-2 space-y-3">
-              <p className="text-xs uppercase tracking-[0.28em]" style={{ color: '#C9A96E' }}>
+              <p className="text-xs uppercase tracking-[0.28em]" style={{ color: '#9B9B9B' }}>
                 {t('positioningEyebrow')}
               </p>
               <p
                 className="text-xs px-2.5 py-1.5 rounded-md inline-block"
                 style={{
-                  color: '#C9A96E',
-                  border: '1px solid rgba(201,169,110,0.28)',
-                  background: 'rgba(201,169,110,0.07)',
+                  color: '#9B9B9B',
+                  border: '1px solid rgba(155,155,155,0.28)',
+                  background: 'rgba(155,155,155,0.07)',
                 }}
               >
                 {t('tcspLicence')}
               </p>
             </div>
             <div className="md:col-span-3 space-y-4">
-              <p className="text-base md:text-lg leading-relaxed" style={{ color: '#F5F0E6' }}>
+              <p className="text-base md:text-lg leading-relaxed" style={{ color: '#FFFFFF' }}>
                 {t('intro')}
               </p>
-              <p className="text-sm leading-relaxed" style={{ color: '#A89880' }}>
+              <p className="text-sm leading-relaxed" style={{ color: '#9B9B9B' }}>
                 {t('positioningDesc')}
               </p>
             </div>
@@ -81,14 +92,14 @@ export default async function AboutPage() {
         </div>
       </section>
 
-      <section className="public-reveal" style={{ background: '#0C0C0C' }}>
+      <section className="public-reveal" style={{ background: '#000000' }}>
         <div className="public-section-rule" />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 md:py-28">
           <div className="public-reveal-item text-center mb-14 space-y-3">
-            <p className="text-xs uppercase tracking-[0.28em]" style={{ color: '#C9A96E' }}>
+            <p className="text-xs uppercase tracking-[0.28em]" style={{ color: '#9B9B9B' }}>
               {t('coresEyebrow')}
             </p>
-            <h2 className="font-display text-3xl md:text-4xl font-light" style={{ color: '#F5F0E6' }}>
+            <h2 className="font-display text-3xl md:text-4xl font-light" style={{ color: '#FFFFFF' }}>
               {t('coresTitle')}
             </h2>
           </div>
@@ -100,17 +111,17 @@ export default async function AboutPage() {
                   key={core}
                   className="public-reveal-item public-panel public-card-hover rounded-xl p-7 flex flex-col gap-5"
                 >
-                  <div style={{ height: '2px', width: '2rem', background: '#C9A96E', borderRadius: 1 }} />
+                  <div style={{ height: '2px', width: '2rem', background: '#9B9B9B', borderRadius: 1 }} />
                   <div
                     className="w-11 h-11 rounded-xl flex items-center justify-center"
-                    style={{ background: 'rgba(201,169,110,0.1)', border: '1px solid rgba(201,169,110,0.18)' }}
+                    style={{ background: 'rgba(155,155,155,0.1)', border: '1px solid rgba(155,155,155,0.18)' }}
                   >
-                    <Icon size={20} style={{ color: '#C9A96E' }} />
+                    <Icon size={20} style={{ color: '#9B9B9B' }} />
                   </div>
-                  <h3 className="font-display text-lg font-semibold leading-snug" style={{ color: '#F5F0E6' }}>
+                  <h3 className="font-display text-lg font-semibold leading-snug" style={{ color: '#FFFFFF' }}>
                     {t(`cores.${core}.title`)}
                   </h3>
-                  <p className="text-sm leading-relaxed" style={{ color: '#A89880' }}>
+                  <p className="text-sm leading-relaxed" style={{ color: '#9B9B9B' }}>
                     {t(`cores.${core}.desc`)}
                   </p>
                 </div>
@@ -120,10 +131,10 @@ export default async function AboutPage() {
         </div>
       </section>
 
-      <section style={{ background: '#0A0A0A' }}>
+      <section style={{ background: '#000000' }}>
         <div className="public-section-rule" />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 md:py-28">
-          <h2 className="font-display text-2xl md:text-3xl font-light mb-10" style={{ color: '#F5F0E6' }}>
+          <h2 className="font-display text-2xl md:text-3xl font-light mb-10" style={{ color: '#FFFFFF' }}>
             {t('valuesTitle')}
           </h2>
           <div className="grid sm:grid-cols-3 gap-5">
@@ -136,14 +147,14 @@ export default async function AboutPage() {
                 >
                   <div
                     className="w-10 h-10 rounded-lg flex items-center justify-center"
-                    style={{ background: 'rgba(201,169,110,0.1)', border: '1px solid rgba(201,169,110,0.2)' }}
+                    style={{ background: 'rgba(155,155,155,0.1)', border: '1px solid rgba(155,155,155,0.2)' }}
                   >
-                    <Icon size={20} style={{ color: '#C9A96E' }} />
+                    <Icon size={20} style={{ color: '#9B9B9B' }} />
                   </div>
-                  <h3 className="font-display text-lg font-medium" style={{ color: '#F5F0E6' }}>
+                  <h3 className="font-display text-lg font-medium" style={{ color: '#FFFFFF' }}>
                     {t(`values.${value}.title`)}
                   </h3>
-                  <p className="text-sm leading-relaxed" style={{ color: '#A89880' }}>
+                  <p className="text-sm leading-relaxed" style={{ color: '#9B9B9B' }}>
                     {t(`values.${value}.desc`)}
                   </p>
                 </div>
@@ -153,10 +164,10 @@ export default async function AboutPage() {
         </div>
       </section>
 
-      <section style={{ background: '#0C0C0C' }}>
+      <section style={{ background: '#000000' }}>
         <div className="public-section-rule" />
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-20 md:py-28">
-          <h2 className="font-display text-2xl md:text-3xl font-light mb-10" style={{ color: '#F5F0E6' }}>
+          <h2 className="font-display text-2xl md:text-3xl font-light mb-10" style={{ color: '#FFFFFF' }}>
             {t('officeTitle')}
           </h2>
           <div className="grid md:grid-cols-2 gap-8 md:gap-10 items-start mb-10">
@@ -171,57 +182,57 @@ export default async function AboutPage() {
             </div>
             <div className="space-y-5">
               <div className="flex gap-3 items-start">
-                <MapPin size={16} style={{ color: '#C9A96E', marginTop: 2, flexShrink: 0 }} />
+                <MapPin size={16} style={{ color: '#9B9B9B', marginTop: 2, flexShrink: 0 }} />
                 <div>
-                  <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: '#8A7A68' }}>
+                  <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: '#9B9B9B' }}>
                     {t('address')}
                   </p>
-                  <p className="text-sm leading-relaxed" style={{ color: '#C9B896' }}>
+                  <p className="text-sm leading-relaxed" style={{ color: '#9B9B9B' }}>
                     {t('addressValue')}
                   </p>
                 </div>
               </div>
               <div className="flex gap-3 items-start">
-                <Clock size={16} style={{ color: '#C9A96E', marginTop: 2, flexShrink: 0 }} />
+                <Clock size={16} style={{ color: '#9B9B9B', marginTop: 2, flexShrink: 0 }} />
                 <div>
-                  <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: '#8A7A68' }}>
+                  <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: '#9B9B9B' }}>
                     {t('hours')}
                   </p>
-                  <p className="text-sm" style={{ color: '#C9B896' }}>{t('hoursValue')}</p>
+                  <p className="text-sm" style={{ color: '#9B9B9B' }}>{t('hoursValue')}</p>
                 </div>
               </div>
               <div className="flex gap-3 items-start">
-                <Phone size={16} style={{ color: '#C9A96E', marginTop: 2, flexShrink: 0 }} />
+                <Phone size={16} style={{ color: '#9B9B9B', marginTop: 2, flexShrink: 0 }} />
                 <div>
-                  <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: '#8A7A68' }}>
+                  <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: '#9B9B9B' }}>
                     {t('phone')}
                   </p>
                   <a
                     href={`tel:${t('phoneValue')}`}
                     className="public-link-hover text-sm block"
-                    style={{ color: '#C9A96E' }}
+                    style={{ color: '#9B9B9B' }}
                   >
                     {t('phoneValue')}
                   </a>
                   <a
                     href={`tel:${t('teamPhone2')}`}
                     className="public-link-hover text-sm block mt-0.5"
-                    style={{ color: '#C9B896' }}
+                    style={{ color: '#9B9B9B' }}
                   >
                     {t('teamPhone2')}
                   </a>
                 </div>
               </div>
               <div className="flex gap-3 items-start">
-                <Mail size={16} style={{ color: '#C9A96E', marginTop: 2, flexShrink: 0 }} />
+                <EnvelopeSimple size={16} style={{ color: '#9B9B9B', marginTop: 2, flexShrink: 0 }} />
                 <div>
-                  <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: '#8A7A68' }}>
+                  <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: '#9B9B9B' }}>
                     {t('email')}
                   </p>
                   <a
                     href={`mailto:${t('emailValue')}`}
                     className="public-link-hover text-sm"
-                    style={{ color: '#C9A96E' }}
+                    style={{ color: '#9B9B9B' }}
                   >
                     {t('emailValue')}
                   </a>
@@ -233,7 +244,7 @@ export default async function AboutPage() {
             <Link
               href="/contact"
               className="inline-flex items-center justify-center gap-2 px-8 py-3 rounded-md text-sm font-semibold transition-opacity hover:opacity-90"
-              style={{ background: '#C9A96E', color: '#0C0C0C' }}
+              style={{ background: '#FFFFFF', color: '#000000' }}
             >
               {t('contactUs')}
             </Link>
