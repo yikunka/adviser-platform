@@ -185,6 +185,9 @@ export default async function SFSOrderDetailPage({
                 style={{ background: 'rgba(201,169,110,0.12)', color: GOLD, border: `1px solid rgba(201,169,110,0.25)` }}
               >
                 ✦ {order.sampleCode}
+                {order.customerInternalOrderCode?.trim()
+                  ? ` · ${order.customerInternalOrderCode.trim()}`
+                  : ''}
               </span>
             )}
             {order.status === 'COMPLETED' && (
@@ -296,7 +299,10 @@ export default async function SFSOrderDetailPage({
               </span>
             )}
           </div>
-          <DiamondCards diamonds={diamonds} />
+          <DiamondCards
+            diamonds={diamonds}
+            clientReference={order.customerInternalOrderCode}
+          />
         </div>
 
         {/* Production progress */}

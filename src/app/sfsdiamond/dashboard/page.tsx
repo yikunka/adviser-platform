@@ -172,8 +172,16 @@ export default async function SFSDashboardPage() {
                       {order.sampleCode && (
                         <p className="text-[11px] mt-0.5 font-mono truncate" style={{ color: GOLD }}>
                           Order ID: {order.sampleCode}
+                          {order.customerInternalOrderCode?.trim()
+                            ? ` · ${order.customerInternalOrderCode.trim()}`
+                            : ''}
                         </p>
                       )}
+                      {!order.sampleCode && order.customerInternalOrderCode?.trim() ? (
+                        <p className="text-[11px] mt-0.5 font-mono truncate" style={{ color: GOLD }}>
+                          Ref: {order.customerInternalOrderCode.trim()}
+                        </p>
+                      ) : null}
                       <CustomerInternalOrderCodeField
                         orderId={order.id}
                         initialValue={order.customerInternalOrderCode}

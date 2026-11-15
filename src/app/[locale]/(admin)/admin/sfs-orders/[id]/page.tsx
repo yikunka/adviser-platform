@@ -1067,7 +1067,11 @@ export default function AdminSfsOrderDetailPage() {
               </span>
             </div>
             <p className="text-sm mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
-              {order.sampleCode && <span className="font-mono mr-2" style={{ color: '#C9A96E' }}>{order.sampleCode}</span>}
+              {(order.sampleCode || order.customerInternalOrderCode?.trim()) && (
+                <span className="font-mono mr-2" style={{ color: '#C9A96E' }}>
+                  {[order.sampleCode, order.customerInternalOrderCode?.trim()].filter(Boolean).join(' · ')}
+                </span>
+              )}
               {order.clientName} · {order.email}
             </p>
           </div>
@@ -1156,6 +1160,7 @@ export default function AdminSfsOrderDetailPage() {
           </div>
           <DiamondCards
             diamonds={diamonds}
+            clientReference={order.customerInternalOrderCode}
             cardBg="var(--muted)"
             textColor="var(--foreground)"
             mutedColor="var(--muted-foreground)"
@@ -1370,6 +1375,10 @@ export default function AdminSfsOrderDetailPage() {
                   <div key={index} className="space-y-2">
                     <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
                       Diamond #{index + 1}
+                      {diamond.code ? ` · ${diamond.code}` : ''}
+                      {order.customerInternalOrderCode?.trim()
+                        ? ` · ${order.customerInternalOrderCode.trim()}`
+                        : ''}
                       {diamond.design ? ` · ${diamond.design}` : ''}
                       {diamond.metal ? ` · ${diamond.metal}` : ''}
                     </p>

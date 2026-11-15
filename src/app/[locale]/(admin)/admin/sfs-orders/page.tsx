@@ -9,9 +9,10 @@ import { useAdminPermission } from '@/components/admin/AdminPermissionContext'
 
 const STATUS_VALUES = ['PENDING', 'QUOTED', 'CONFIRMED', 'COMPLETED', 'CANCELLED'] as const
 
+/** Default list view: confirmed (in-production) orders. Explicit ?status= still wins. */
 function initialStatusFromSearch(raw: string | null): string {
-  if (!raw) return ''
-  return (STATUS_VALUES as readonly string[]).includes(raw) ? raw : ''
+  if (raw == null || raw === '') return 'CONFIRMED'
+  return (STATUS_VALUES as readonly string[]).includes(raw) ? raw : 'CONFIRMED'
 }
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   PENDING:   { bg: 'rgba(201,169,110,0.12)', color: '#C9A96E' },
@@ -42,6 +43,7 @@ const td: React.CSSProperties = {
 type Order = {
   id: string
   sampleCode: string | null
+  customerInternalOrderCode?: string | null
   memorialName: string
   clientName: string
   email: string
@@ -70,7 +72,10 @@ export default function AdminSfsOrdersPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
-    setStatus(initialStatusFromSearch(searchParams.get('status')))
+    const raw = searchParams.get('status')
+    // Only sync from URL when a status is present so local "All" is not overwritten.
+    if (raw == null) return
+    setStatus(initialStatusFromSearch(raw))
     setPage(1)
   }, [searchParams])
 
@@ -233,7 +238,12 @@ export default function AdminSfsOrdersPage() {
                       }}
                     >
                       <td style={{ ...td, color: '#C9A96E', fontFamily: 'monospace' }}>
-                        {order.sampleCode ?? '—'}
+                        <div>{order.sampleCode ?? '—'}</div>
+                        {order.customerInternalOrderCode?.trim() ? (
+                          <div className="text-[11px] mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+                            Ref: {order.customerInternalOrderCode.trim()}
+                          </div>
+                        ) : null}
                       </td>
                       <td style={{ ...td, color: 'var(--foreground)', fontWeight: 500 }}>
                         {order.memorialName}

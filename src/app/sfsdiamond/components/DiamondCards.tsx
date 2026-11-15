@@ -22,6 +22,40 @@ const MUTED  = '#6B5E4A'
 const BORDER = '#EDE7D8'
 const BG     = '#FAFAF8'
 
+/** SFS sample diamond code + shared order-level client reference. */
+export function formatDiamondCodes(sfsCode?: string | null, clientReference?: string | null) {
+  const code = sfsCode?.trim() || ''
+  const ref = clientReference?.trim() || ''
+  if (code && ref) return { primary: code, secondary: ref }
+  if (code) return { primary: code, secondary: null as string | null }
+  if (ref) return { primary: ref, secondary: null as string | null }
+  return { primary: null as string | null, secondary: null as string | null }
+}
+
+function CodeLine({
+  sfsCode,
+  clientReference,
+  className,
+}: {
+  sfsCode?: string | null
+  clientReference?: string | null
+  className?: string
+}) {
+  const { primary, secondary } = formatDiamondCodes(sfsCode, clientReference)
+  if (!primary) return null
+  return (
+    <p className={className} style={{ color: GOLD }}>
+      <span className="font-mono font-semibold tracking-wider">{primary}</span>
+      {secondary ? (
+        <span className="font-mono font-medium tracking-wide opacity-80">
+          {' · '}
+          <span title="Client reference">{secondary}</span>
+        </span>
+      ) : null}
+    </p>
+  )
+}
+
 function Row({ label, value }: { label: string; value?: string }) {
   if (!value) return null
   return (
@@ -32,7 +66,17 @@ function Row({ label, value }: { label: string; value?: string }) {
   )
 }
 
-function Modal({ diamond, index, onClose }: { diamond: DiamondDetail; index: number; onClose: () => void }) {
+function Modal({
+  diamond,
+  index,
+  clientReference,
+  onClose,
+}: {
+  diamond: DiamondDetail
+  index: number
+  clientReference?: string | null
+  onClose: () => void
+}) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -54,11 +98,11 @@ function Modal({ diamond, index, onClose }: { diamond: DiamondDetail; index: num
               {index + 1}
             </div>
             <div>
-              {diamond.code && (
-                <p className="text-xs font-mono font-semibold tracking-wider mb-0.5" style={{ color: GOLD }}>
-                  {diamond.code}
-                </p>
-              )}
+              <CodeLine
+                sfsCode={diamond.code}
+                clientReference={clientReference}
+                className="text-xs mb-0.5"
+              />
               <p className="font-bold text-base" style={{ fontFamily: 'Georgia, serif', color: DARK }}>
                 {[diamond.carat && `${diamond.carat} ct`, diamond.shape].filter(Boolean).join(' · ') || `#${index + 1}`}
               </p>
@@ -75,6 +119,8 @@ function Modal({ diamond, index, onClose }: { diamond: DiamondDetail; index: num
 
         {/* Body */}
         <div className="px-6 py-4">
+          <Row label="SFS code" value={diamond.code} />
+          <Row label="Client ref." value={clientReference?.trim() || undefined} />
           <Row label="Carat"      value={diamond.carat ? `${diamond.carat} ct` : undefined} />
           <Row label="Shape"      value={diamond.shape} />
           <Row label="Setting"    value={diamond.type} />
@@ -106,12 +152,15 @@ function Modal({ diamond, index, onClose }: { diamond: DiamondDetail; index: num
 
 export default function DiamondCards({
   diamonds,
+  clientReference,
   cardBg = BG,
   textColor = DARK,
   mutedColor = MUTED,
   borderColor = BORDER,
 }: {
   diamonds: DiamondDetail[]
+  /** Order-level partner internal order code — shown beside each diamond SFS code. */
+  clientReference?: string | null
   cardBg?: string
   textColor?: string
   mutedColor?: string
@@ -125,6 +174,7 @@ export default function DiamondCards({
         {diamonds.map((d, i) => {
           const summary = [d.carat && `${d.carat} ct`, d.shape, d.type].filter(Boolean).join(' · ')
           const detail  = [d.design, d.metal, d.ringSize && `Size ${d.ringSize}`, d.chainLength && `Length ${d.chainLength}`].filter(Boolean).join(' · ')
+          const codes = formatDiamondCodes(d.code, clientReference)
           return (
             <button
               key={i}
@@ -144,10 +194,12 @@ export default function DiamondCards({
                   {summary || `Diamond #${i + 1}`}
                 </p>
                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                  {d.code && (
-                    <span className="text-xs font-mono font-semibold tracking-wide" style={{ color: GOLD }}>
-                      {d.code}
-                    </span>
+                  {codes.primary && (
+                    <CodeLine
+                      sfsCode={d.code}
+                      clientReference={clientReference}
+                      className="text-xs truncate"
+                    />
                   )}
                   {detail && (
                     <p className="text-xs truncate" style={{ color: mutedColor }}>{detail}</p>
@@ -166,6 +218,7 @@ export default function DiamondCards({
         <Modal
           diamond={diamonds[selected]}
           index={selected}
+          clientReference={clientReference}
           onClose={() => setSelected(null)}
         />
       )}
