@@ -47,3 +47,27 @@ export function companyJurisdictionLabel(companyType: string | null | undefined)
   if (!companyType) return null
   return COMPANY_JURISDICTION_LABELS[companyType as CompanyJurisdiction] ?? companyType
 }
+
+/** BVI / Cayman / Marshall / Bermuda — HK statutory overview items do not apply. */
+export const OFFSHORE_NO_HK_STATUTORY_JURISDICTIONS = [
+  'BVI',
+  'CAYMAN',
+  'MARSHALL',
+  'BERMUDA',
+] as const satisfies readonly CompanyJurisdiction[]
+
+export type OffshoreNoHkStatutoryJurisdiction =
+  (typeof OFFSHORE_NO_HK_STATUTORY_JURISDICTIONS)[number]
+
+/**
+ * True for BVI, Cayman, Marshall, Bermuda: company overview hides HK-only
+ * fields (business nature, AR deadline, round seal, NNC1, BR, NAR1).
+ */
+export function isOffshoreNoHkStatutoryJurisdiction(
+  companyType: string | null | undefined,
+): companyType is OffshoreNoHkStatutoryJurisdiction {
+  return (
+    !!companyType
+    && (OFFSHORE_NO_HK_STATUTORY_JURISDICTIONS as readonly string[]).includes(companyType)
+  )
+}

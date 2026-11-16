@@ -14,6 +14,7 @@ import { COMPANY_STATUS_LABELS } from '@/lib/company/company-status'
 import {
   COMPANY_JURISDICTIONS,
   COMPANY_JURISDICTION_LABELS,
+  isOffshoreNoHkStatutoryJurisdiction,
   type CompanyJurisdiction,
 } from '@/lib/company/jurisdiction'
 import { annualReturnDeadlineMonthDay } from '@/lib/company/annual-return-deadline'
@@ -3230,6 +3231,7 @@ export default function CompanyDetailPage() {
   const ddrDocs = company.documents
     .filter(d => d.documentType === 'DDR' && isGeneratedDoc(d))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  const hideHkStatutoryOverview = isOffshoreNoHkStatutoryJurisdiction(company.companyType)
   const fileManagementSections = buildCompanyFileManagementSections(
     {
       hasCompanyBox: company.hasCompanyBox,
@@ -3237,7 +3239,21 @@ export default function CompanyDetailPage() {
       hasCompanyRoundSeal: company.hasCompanyRoundSeal,
     },
     company.fileManagementRecords ?? [],
-  )
+  ).filter(section => !(hideHkStatutoryOverview && section.assetType === 'COMPANY_ROUND_SEAL'))
+
+  const overviewRows: Array<[string, string]> = [
+    ['Registered Address', company.registeredAddress ?? '—'],
+    ['Date of Incorporation', company.dateOfIncorporation ? new Date(company.dateOfIncorporation).toLocaleDateString('en-HK') : '—'],
+    ['Jurisdiction', COMPANY_JURISDICTION_LABELS[company.companyType as CompanyJurisdiction] ?? company.companyType ?? '—'],
+    ['Company Type', normalizeCompanyLegalType(company.companyLegalType) ?? company.companyLegalType ?? '—'],
+    ['Financial Year End', company.financialYearEndMonth === 3 ? 'March 31st' : company.financialYearEndMonth === 12 ? 'December 31st' : '—'],
+  ]
+  if (!hideHkStatutoryOverview) {
+    overviewRows.push(
+      ['Business Nature', company.businessNature ?? '—'],
+      ['周年申报截止日', annualReturnDeadline(company.dateOfIncorporation)],
+    )
+  }
 
   return (
     <div className="p-6 space-y-4">
@@ -3289,15 +3305,7 @@ export default function CompanyDetailPage() {
         {/* Overview */}
         <TabsContent value="overview" className="mt-4 space-y-4">
           <div style={{ ...cardStyle, overflow: 'visible' }} className="divide-y divide-[var(--border-subtle)]">
-            {[
-              ['Registered Address', company.registeredAddress ?? '—'],
-              ['Date of Incorporation', company.dateOfIncorporation ? new Date(company.dateOfIncorporation).toLocaleDateString('en-HK') : '—'],
-              ['Jurisdiction', COMPANY_JURISDICTION_LABELS[company.companyType as CompanyJurisdiction] ?? company.companyType ?? '—'],
-              ['Company Type', normalizeCompanyLegalType(company.companyLegalType) ?? company.companyLegalType ?? '—'],
-              ['Financial Year End', company.financialYearEndMonth === 3 ? 'March 31st' : company.financialYearEndMonth === 12 ? 'December 31st' : '—'],
-              ['Business Nature', company.businessNature ?? '—'],
-              ['周年申报截止日', annualReturnDeadline(company.dateOfIncorporation)],
-            ].map(([label, value]) => (
+            {overviewRows.map(([label, value]) => (
               <div key={label} className="flex px-4 py-3">
                 <span className="w-52 shrink-0 text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>{label}</span>
                 <span className="text-sm" style={{ color: 'var(--foreground)' }}>{value}</span>
@@ -3462,7 +3470,7 @@ export default function CompanyDetailPage() {
           </div>
 
           {/* Company statutory uploads */}
-          {(['CI', 'NNC1', 'AA'] as const).map(docType => {
+          {((hideHkStatutoryOverview ? (['CI', 'AA'] as const) : (['CI', 'NNC1', 'AA'] as const))).map(docType => {
             const labels = {
               CI: 'Certificate of Incorporation (CI)',
               NNC1: 'Incorporation Form (NNC1)',
@@ -3514,7 +3522,8 @@ export default function CompanyDetailPage() {
             )
           })}
 
-          {/* BR — year-tagged upload */}
+          {/* BR — year-tagged upload (HK statutory; hidden for BVI / Cayman / Marshall / Bermuda) */}
+          {!hideHkStatutoryOverview && (
           <div style={cardStyle}>
             <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
               <div>
@@ -3553,8 +3562,10 @@ export default function CompanyDetailPage() {
               onDelete={deleteDoc}
             />
           </div>
+          )}
 
-          {/* NAR1 — year-tagged upload */}
+          {/* NAR1 — year-tagged upload (HK statutory; hidden for BVI / Cayman / Marshall / Bermuda) */}
+          {!hideHkStatutoryOverview && (
           <div style={cardStyle}>
             <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
               <div>
@@ -3593,6 +3604,7 @@ export default function CompanyDetailPage() {
               onDelete={deleteDoc}
             />
           </div>
+          )}
 
           {/* Audit and Tax Computation — year-tagged, multiple files per year */}
           <div style={cardStyle}>
