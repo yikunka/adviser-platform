@@ -1320,7 +1320,7 @@
         "escalated": "Escalated — start EDD",
         "rejected": "Reject — terminate / refuse",
         "pending": "Pending Review",
-        "choiceHint": "False positive: continue relationship. Escalated: begin enhanced due diligence (EDD). Reject: stop onboarding / terminate — no EDD. Use templates/AMLO_Hit_Disposition_Memo.docx for the officer memo.",
+        "choiceHint": "False positive: continue relationship. Escalated: begin EDD (return here later to upload the EDD pack and complete). Reject: stop onboarding / terminate — no EDD. Use templates/AMLO_Hit_Disposition_Memo.docx for the officer memo.",
         "notes": "Review Notes",
         "notesPlaceholder": "Document your review findings...",
         "supporting": "Supporting document",
@@ -1333,6 +1333,25 @@
         "fileTooLarge": "File too large. Max 10MB.",
         "saved": "Resolution saved",
         "saveFailed": "Failed to save resolution"
+      },
+      "edd": {
+        "title": "EDD — upload & complete",
+        "hint": "After finishing enhanced due diligence offline, upload the EDD pack and record the outcome. Continue unlocks PEP CLEAR for the person (Adverse media). Reject terminates / refuses after EDD.",
+        "inProgress": "EDD in progress",
+        "notes": "EDD completion notes",
+        "notesPlaceholder": "Summarise EDD findings and why the relationship may continue or must be refused…",
+        "notesRequired": "EDD completion notes are required",
+        "pack": "EDD pack",
+        "packHint": "Required. Upload the completed EDD pack as PDF, JPG, or PNG (max 10MB).",
+        "uploadPack": "Upload EDD pack",
+        "fileRequired": "Upload the EDD pack before completing",
+        "completeContinue": "Complete EDD — continue CDD",
+        "completeReject": "Complete EDD — reject",
+        "completedTitle": "EDD completed",
+        "outcomeContinue": "EDD completed — continue",
+        "outcomeReject": "EDD completed — reject",
+        "saved": "EDD completed",
+        "saveFailed": "Failed to complete EDD"
       }
     },
     "directors": {

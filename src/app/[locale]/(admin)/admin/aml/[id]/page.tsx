@@ -24,6 +24,13 @@ type AlertDetail = {
   evidenceFileName: string | null
   evidenceMimeType: string | null
   evidenceFileSize: number | null
+  eddStorageKey: string | null
+  eddFileName: string | null
+  eddMimeType: string | null
+  eddFileSize: number | null
+  eddNotes: string | null
+  eddCompletedAt: string | null
+  eddOutcome: string | null
   amlRecord: {
     primaryName: string
     aliases: string[]
@@ -77,17 +84,25 @@ export default function AMLAlertDetailPage() {
   const router = useRouter()
   const id = params.id as string
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const eddFileInputRef = useRef<HTMLInputElement>(null)
 
   const [alert, setAlert] = useState<AlertDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [notes, setNotes] = useState('')
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null)
+  const [eddNotes, setEddNotes] = useState('')
+  const [eddFile, setEddFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     fetch(`/api/aml/alerts/${id}`)
       .then(r => r.json())
-      .then(data => { setAlert(data); setNotes(data.reviewNotes ?? ''); setLoading(false) })
+      .then(data => {
+        setAlert(data)
+        setNotes(data.reviewNotes ?? '')
+        setEddNotes(data.eddNotes ?? '')
+        setLoading(false)
+      })
   }, [id])
 
   async function resolve(resolution: 'FALSE_POSITIVE' | 'ESCALATED' | 'REJECTED') {
@@ -105,6 +120,12 @@ export default function AMLAlertDetailPage() {
       const json = await res.json().catch(() => ({}))
       if (res.ok) {
         toast.success(t('resolution.saved'))
+        if (resolution === 'ESCALATED') {
+          const refreshed = await fetch(`/api/aml/alerts/${id}`).then(r => r.json())
+          setAlert(refreshed)
+          setSubmitting(false)
+          return
+        }
         router.back()
         return
       }
@@ -116,10 +137,49 @@ export default function AMLAlertDetailPage() {
     }
   }
 
+  async function completeEdd(outcome: 'CONTINUE' | 'REJECT') {
+    if (!eddNotes.trim()) {
+      toast.error(t('edd.notesRequired'))
+      return
+    }
+    if (!eddFile) {
+      toast.error(t('edd.fileRequired'))
+      return
+    }
+    setSubmitting(true)
+    try {
+      const fd = new FormData()
+      fd.append('outcome', outcome)
+      fd.append('eddNotes', eddNotes.trim())
+      fd.append('file', eddFile)
+
+      const res = await fetch(`/api/aml/alerts/${id}/edd`, {
+        method: 'POST',
+        body: fd,
+      })
+      const json = await res.json().catch(() => ({}))
+      if (res.ok) {
+        toast.success(t('edd.saved'))
+        const refreshed = await fetch(`/api/aml/alerts/${id}`).then(r => r.json())
+        setAlert(refreshed)
+        setEddFile(null)
+        setSubmitting(false)
+        return
+      }
+      toast.error(typeof json?.error === 'string' ? json.error : t('edd.saveFailed'))
+      setSubmitting(false)
+    } catch {
+      toast.error(t('edd.saveFailed'))
+      setSubmitting(false)
+    }
+  }
+
   if (loading) return <div className="p-8" style={{ color: 'var(--muted-foreground)' }}>Loading...</div>
   if (!alert) return <div className="p-8" style={{ color: '#ef4444' }}>Alert not found</div>
 
-  const isResolved = alert.resolution !== 'PENDING'
+  const isPending = alert.resolution === 'PENDING'
+  const needsEdd = alert.resolution === 'ESCALATED' && !alert.eddCompletedAt
+  const eddDone = Boolean(alert.eddCompletedAt)
   const resultStyle = RESULT_COLOR[alert.result] ?? { banner: 'bg-[rgba(120,113,108,0.1)] border-[var(--border-subtle)]', text: 'text-[#9A8060]' }
 
   return (
@@ -234,7 +294,7 @@ export default function AMLAlertDetailPage() {
         <JsonBlock label="Raw Source Record" value={alert.amlRecord.rawData} />
       </div>
 
-      {!isResolved ? (
+      {isPending ? (
         <div className="rounded-lg p-4 space-y-4" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
           <h2 className="font-semibold" style={{ color: 'var(--foreground)' }}>Resolution</h2>
           <div className="space-y-2">
@@ -335,6 +395,16 @@ export default function AMLAlertDetailPage() {
           <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
             <span className="font-medium" style={{ color: 'var(--foreground)' }}>Resolution:</span>{' '}
             {alert.resolution.replace('_', ' ')}
+            {needsEdd && (
+              <span className="ml-2 text-xs font-medium" style={{ color: '#c084fc' }}>
+                · {t('edd.inProgress')}
+              </span>
+            )}
+            {eddDone && alert.eddOutcome && (
+              <span className="ml-2 text-xs font-medium" style={{ color: alert.eddOutcome === 'CONTINUE' ? '#10b981' : '#ef4444' }}>
+                · {alert.eddOutcome === 'CONTINUE' ? t('edd.outcomeContinue') : t('edd.outcomeReject')}
+              </span>
+            )}
           </p>
           {alert.reviewNotes && (
             <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
@@ -357,6 +427,142 @@ export default function AMLAlertDetailPage() {
               )}
             </p>
           )}
+          {eddDone && (
+            <div className="mt-3 space-y-1 border-t pt-3" style={{ borderColor: 'var(--border-subtle)' }}>
+              <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{t('edd.completedTitle')}</p>
+              {alert.eddCompletedAt && (
+                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                  {new Date(alert.eddCompletedAt).toLocaleString()}
+                </p>
+              )}
+              {alert.eddNotes && (
+                <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                  <span className="font-medium" style={{ color: 'var(--foreground)' }}>{t('edd.notes')}:</span>{' '}
+                  {alert.eddNotes}
+                </p>
+              )}
+              {alert.eddStorageKey && alert.eddFileName && (
+                <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                  <span className="font-medium" style={{ color: 'var(--foreground)' }}>{t('edd.pack')}:</span>{' '}
+                  <a
+                    href={`/api/files?key=${encodeURIComponent(alert.eddStorageKey)}&download=1&filename=${encodeURIComponent(alert.eddFileName)}`}
+                    className="hover:underline"
+                    style={{ color: '#C9A96E' }}
+                  >
+                    {alert.eddFileName}
+                  </a>
+                  {alert.eddFileSize != null && (
+                    <span> · {formatFileSize(alert.eddFileSize)}</span>
+                  )}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {needsEdd && (
+        <div
+          className="rounded-lg p-4 space-y-4"
+          style={{ background: 'var(--card)', border: '1px solid rgba(168,85,247,0.35)' }}
+        >
+          <div>
+            <h2 className="font-semibold" style={{ color: 'var(--foreground)' }}>{t('edd.title')}</h2>
+            <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--muted-foreground)' }}>
+              {t('edd.hint')}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="eddNotes" style={{ color: 'var(--muted-foreground)' }}>{t('edd.notes')}</Label>
+            <Textarea
+              id="eddNotes"
+              value={eddNotes}
+              onChange={e => setEddNotes(e.target.value)}
+              placeholder={t('edd.notesPlaceholder')}
+              rows={4}
+              style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', color: 'var(--foreground)' }}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label style={{ color: 'var(--muted-foreground)' }}>{t('edd.pack')}</Label>
+            <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+              {t('edd.packHint')}
+            </p>
+            <div
+              className="flex flex-wrap items-center gap-3 rounded-md border border-dashed px-3 py-3"
+              style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface)' }}
+            >
+              <button
+                type="button"
+                onClick={() => eddFileInputRef.current?.click()}
+                disabled={submitting}
+                className="text-sm font-medium hover:underline disabled:opacity-50"
+                style={{ color: '#C9A96E' }}
+              >
+                {eddFile ? t('resolution.changeFile') : t('edd.uploadPack')}
+              </button>
+              <input
+                ref={eddFileInputRef}
+                type="file"
+                accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png"
+                className="hidden"
+                onChange={e => {
+                  const file = e.target.files?.[0] ?? null
+                  if (!file) {
+                    setEddFile(null)
+                    return
+                  }
+                  if (!ALLOWED_CLIENT_TYPES.has(file.type) && !/\.(pdf|jpe?g|png)$/i.test(file.name)) {
+                    toast.error(t('resolution.invalidFileType'))
+                    e.target.value = ''
+                    return
+                  }
+                  if (file.size > 10 * 1024 * 1024) {
+                    toast.error(t('resolution.fileTooLarge'))
+                    e.target.value = ''
+                    return
+                  }
+                  setEddFile(file)
+                }}
+              />
+              {eddFile ? (
+                <div className="flex min-w-0 flex-1 items-center gap-2 text-sm" style={{ color: 'var(--foreground)' }}>
+                  <span className="truncate">{eddFile.name}</span>
+                  <span style={{ color: 'var(--muted-foreground)' }}>{formatFileSize(eddFile.size)}</span>
+                  <button
+                    type="button"
+                    className="shrink-0 text-xs hover:underline"
+                    style={{ color: '#ef4444' }}
+                    onClick={() => {
+                      setEddFile(null)
+                      if (eddFileInputRef.current) eddFileInputRef.current.value = ''
+                    }}
+                  >
+                    {t('resolution.removeFile')}
+                  </button>
+                </div>
+              ) : (
+                <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                  {t('resolution.noFileSelected')}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <Button
+              onClick={() => completeEdd('CONTINUE')}
+              disabled={submitting}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              {t('edd.completeContinue')}
+            </Button>
+            <Button variant="destructive" onClick={() => completeEdd('REJECT')} disabled={submitting}>
+              {t('edd.completeReject')}
+            </Button>
+          </div>
         </div>
       )}
     </div>

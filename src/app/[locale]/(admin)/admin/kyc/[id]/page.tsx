@@ -33,6 +33,8 @@ type AMLAlert = {
   reviewNotes: string | null
   isActive?: boolean
   reviewedAt?: string | null
+  eddCompletedAt?: string | null
+  eddOutcome?: string | null
   amlRecord: {
     primaryName: string
     aliases: string[]
@@ -204,6 +206,18 @@ function ScreeningAlertCard({ alert }: { alert: AMLAlert }) {
           <span className={`block text-[11px] font-medium ${ALERT_RESOLUTION_COLOR[alert.resolution] ?? 'text-[var(--muted-foreground)]'}`}>
             {alert.resolution.replace('_', ' ')}
           </span>
+          {alert.resolution === 'ESCALATED' && !alert.eddCompletedAt && (
+            <span className="block text-[11px] font-medium text-[#c084fc]">EDD in progress</span>
+          )}
+          {alert.eddCompletedAt && alert.eddOutcome && (
+            <span
+              className={`block text-[11px] font-medium ${
+                alert.eddOutcome === 'CONTINUE' ? 'text-[#10b981]' : 'text-[#ef4444]'
+              }`}
+            >
+              {alert.eddOutcome === 'CONTINUE' ? 'EDD done — continue' : 'EDD done — reject'}
+            </span>
+          )}
         </div>
       </div>
       {alert.amlRecord.aliases.length > 0 && (
@@ -225,7 +239,9 @@ function ScreeningAlertCard({ alert }: { alert: AMLAlert }) {
         className="inline-flex text-xs font-medium hover:underline"
         style={{ color: '#C9A96E' }}
       >
-        Review alert →
+        {alert.resolution === 'ESCALATED' && !alert.eddCompletedAt
+          ? 'Upload EDD / complete →'
+          : 'Review alert →'}
       </Link>
     </li>
   )

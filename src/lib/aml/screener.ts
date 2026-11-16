@@ -550,7 +550,12 @@ export async function getKeyPersonScreenGate(keyPersonId: string) {
           check?.matches
           && typeof check.matches === 'object'
           && !Array.isArray(check.matches)
-            ? (check.matches as { skipped?: boolean; manualPass?: boolean; manual?: boolean })
+            ? (check.matches as {
+                skipped?: boolean
+                manualPass?: boolean
+                manual?: boolean
+                eddCompleted?: boolean
+              })
             : null
         const skipped = Boolean(matchesObj?.skipped)
         return check
@@ -560,7 +565,9 @@ export async function getKeyPersonScreenGate(keyPersonId: string) {
               // Skipped (e.g. missing API key) must never unlock the next step / DDR
               passed: check.result === 'CLEAR' && !skipped,
               skipped,
-              manualPass: Boolean(matchesObj?.manualPass || matchesObj?.manual),
+              manualPass: Boolean(
+                matchesObj?.manualPass || matchesObj?.manual || matchesObj?.eddCompleted,
+              ),
             }
           : { result: null, checkedAt: null, passed: false, skipped: false, manualPass: false }
       })(),
@@ -652,6 +659,52 @@ export async function recordManualPepPass(
         isActive: false,
       },
     })
+  })
+
+  return 'CLEAR'
+}
+
+/**
+ * After EDD is filed on an escalated alert: write a CLEAR PEP check so Adverse Media unlocks.
+ * Does not rewrite other alerts — the completing alert is updated by the caller.
+ */
+export async function recordEddPepClear(
+  keyPersonId: string,
+  notes: string,
+  opts: { alertId: string; triggeredById?: string },
+): Promise<AMLCheckResult> {
+  const trimmed = notes.trim()
+  if (!trimmed) throw new Error('EDD completion notes are required')
+
+  const person = await prisma.keyPerson.findUnique({ where: { id: keyPersonId }, select: { id: true } })
+  if (!person) throw new Error(`KeyPerson ${keyPersonId} not found`)
+
+  const gate = await getKeyPersonScreenGate(keyPersonId)
+  if (!gate.canRunPep) {
+    throw new Error('Run AML and FATF first and get CLEAR before completing EDD for PEP')
+  }
+  if (gate.pep.passed) {
+    return 'CLEAR'
+  }
+  if (!gate.pep.result) {
+    throw new Error('Run PEP screening first before completing EDD')
+  }
+
+  await prisma.aMLCheck.create({
+    data: {
+      subjectType: 'KEY_PERSON',
+      keyPersonId,
+      trigger: 'MANUAL',
+      triggeredById: opts.triggeredById,
+      result: 'CLEAR',
+      scope: 'PEP',
+      matches: {
+        eddCompleted: true,
+        alertId: opts.alertId,
+        notes: trimmed,
+        priorResult: gate.pep.result,
+      } as never,
+    },
   })
 
   return 'CLEAR'

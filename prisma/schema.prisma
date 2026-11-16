@@ -353,6 +353,7 @@ model User {
   kycSubmissions                      KeyPerson[]                   @relation("ClientKycSubmissions")
   amlChecksTriggered                  AMLCheck[]                    @relation("AMLCheckTrigger")
   amlAlertsReviewed                   AMLAlert[]                    @relation("AMLAlertReviewer")
+  amlAlertsEddCompleted               AMLAlert[]                    @relation("AMLAlertEddCompleter")
   adverseMediaReviewed                AdverseMediaFinding[]         @relation("AdverseMediaReviewer")
   auditLogs                           AuditLog[]
   notifications                       Notification[]
@@ -941,12 +942,23 @@ model AMLAlert {
   evidenceFileName   String?
   evidenceMimeType   String?
   evidenceFileSize   Int?
+  /// EDD pack uploaded after escalate (when EDD work is finished)
+  eddStorageKey   String?
+  eddFileName     String?
+  eddMimeType     String?
+  eddFileSize     Int?
+  eddNotes        String?
+  eddCompletedAt  DateTime?
+  eddCompletedById String?
+  /// CONTINUE = cleared after EDD; REJECT = refuse after EDD
+  eddOutcome      String?
   isActive     Boolean            @default(true)
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 
-  amlRecord  AMLRecord @relation(fields: [amlRecordId], references: [id])
-  reviewedBy User?     @relation("AMLAlertReviewer", fields: [reviewedById], references: [id])
+  amlRecord      AMLRecord @relation(fields: [amlRecordId], references: [id])
+  reviewedBy     User?     @relation("AMLAlertReviewer", fields: [reviewedById], references: [id])
+  eddCompletedBy User?     @relation("AMLAlertEddCompleter", fields: [eddCompletedById], references: [id])
 
   @@map("aml_alerts")
 }

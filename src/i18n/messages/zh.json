@@ -1320,7 +1320,7 @@
         "escalated": "已升級 — 啟動加強盡職審查（EDD）",
         "rejected": "拒絕 — 終止／不提供服務",
         "pending": "待審查",
-        "choiceHint": "誤報：繼續業務關係。已升級：啟動加強盡職審查（EDD）。拒絕：停止開戶／終止關係，不啟動 EDD。書面備忘請用 templates/AMLO_Hit_Disposition_Memo.docx。",
+        "choiceHint": "誤報：繼續業務關係。已升級：啟動 EDD（稍後回到此頁上傳 EDD 檔案並完成）。拒絕：停止開戶／終止關係，不啟動 EDD。書面備忘請用 templates/AMLO_Hit_Disposition_Memo.docx。",
         "notes": "審查備註",
         "notesPlaceholder": "記錄審查發現…",
         "supporting": "支持文件",
@@ -1333,6 +1333,25 @@
         "fileTooLarge": "文件過大，最大 10MB。",
         "saved": "決議已保存",
         "saveFailed": "保存決議失敗"
+      },
+      "edd": {
+        "title": "EDD — 上傳並完成",
+        "hint": "離線完成加強盡職審查後，請上傳 EDD 檔案並記錄結果。「繼續」會為該人士寫入 PEP CLEAR（解鎖不良媒體步驟）；「拒絕」表示 EDD 後終止／不提供服務。",
+        "inProgress": "EDD 進行中",
+        "notes": "EDD 完成備註",
+        "notesPlaceholder": "概述 EDD 發現，以及可繼續關係或必須拒絕的理由…",
+        "notesRequired": "請填寫 EDD 完成備註",
+        "pack": "EDD 檔案",
+        "packHint": "必填。上傳已完成的 EDD 檔案（PDF / JPG / PNG，最大 10MB）。",
+        "uploadPack": "上傳 EDD 檔案",
+        "fileRequired": "完成前請先上傳 EDD 檔案",
+        "completeContinue": "完成 EDD — 繼續盡職審查",
+        "completeReject": "完成 EDD — 拒絕",
+        "completedTitle": "EDD 已完成",
+        "outcomeContinue": "EDD 已完成 — 繼續",
+        "outcomeReject": "EDD 已完成 — 拒絕",
+        "saved": "EDD 已完成",
+        "saveFailed": "無法完成 EDD"
       }
     },
     "directors": {
