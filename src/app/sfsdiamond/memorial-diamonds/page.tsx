@@ -3,11 +3,11 @@ import Image from 'next/image'
 import Link from 'next/link'
 import CollectionShowcase from '../components/CollectionShowcase'
 import SfsProductImageDisclaimer from '../components/SfsProductImageDisclaimer'
-import { SFS_SALES_MAILTO_PARTNERSHIP } from '@/lib/sfs/sales-contact'
+import { SFS_SALES_MAILTO_OEM } from '@/lib/sfs/sales-contact'
 
 export const metadata: Metadata = {
   title: 'Memorial Diamonds',
-  description: 'Eternity Cut memorial diamonds for professional distributors — CVD, certification, and jewellery settings.',
+  description: 'Eternity Cut memorial diamonds for OEM and white-label brands — CVD, certification, and jewellery settings.',
   alternates: { canonical: '/sfsdiamond/memorial-diamonds' },
 }
 
@@ -143,18 +143,18 @@ export default function MemorialDiamondsPage() {
       <section className="py-20 text-center" style={{ background: '#F2EDE3' }}>
         <div className="max-w-xl mx-auto px-6">
           <h2 className="text-2xl md:text-3xl font-bold mb-4" style={{ fontFamily: 'Georgia, serif', color: '#1A1A1A' }}>
-            Offer this programme in your market
+            Offer this programme under your brand
           </h2>
           <p className="text-sm leading-relaxed mb-8" style={{ color: '#4A3E30' }}>
-            Ask for distributor terms. Approved partners place orders in the portal after staff approval.
+            Request an OEM quote or trial. Approved B2B accounts place ongoing orders in the portal after staff approval.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <a
-              href={SFS_SALES_MAILTO_PARTNERSHIP}
+              href={SFS_SALES_MAILTO_OEM}
               className="px-8 py-3.5 rounded-full font-medium text-sm transition-all hover:opacity-90"
               style={{ background: '#1A1A1A', color: '#F5F0E8' }}
             >
-              Become a distributor
+              Request OEM quote
             </a>
             <Link
               href="/sfsdiamond/login"

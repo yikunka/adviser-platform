@@ -10,8 +10,11 @@ export const SFS_SALES_WHATSAPP_HREF = `https://wa.me/8619129444364`
 
 /** Partner sales inbox (live mailbox). */
 export const SFS_SALES_EMAIL = 'patricklau@sfsdiamonds.com'
-export const SFS_SALES_MAILTO_PARTNERSHIP =
-  `mailto:${SFS_SALES_EMAIL}?subject=SFS%20Distributor%20Partnership`
+/** Primary public CTA — OEM / white-label enquiry. */
+export const SFS_SALES_MAILTO_OEM =
+  `mailto:${SFS_SALES_EMAIL}?subject=SFS%20OEM%20%2F%20White-label%20Enquiry`
+/** @deprecated Prefer SFS_SALES_MAILTO_OEM for public site CTAs. */
+export const SFS_SALES_MAILTO_PARTNERSHIP = SFS_SALES_MAILTO_OEM
 export const SFS_SALES_MAILTO_APPROVAL =
   `mailto:${SFS_SALES_EMAIL}?subject=SFS%20Account%20Approval`
 

@@ -11,8 +11,12 @@ import {
 
 const PARTNER_FAQS = [
   {
-    q: 'Who can place an order?',
-    a: 'Approved distributor accounts. The public site is not a consumer checkout. Apply with your company, market, and expected volume. Staff approve the account before order details and the order form open.',
+    q: 'Do you offer OEM / white-label manufacturing?',
+    a: 'Yes. The public site is focused on OEM and white-label programmes. You sell under your brand; we manufacture. Request a quote or trial with sales, then an approved B2B account can use the order portal for ongoing commissions.',
+  },
+  {
+    q: 'Who can place ongoing portal orders?',
+    a: 'Approved B2B / OEM accounts. The public site is not a consumer checkout. Staff approve the account before order details and the order form open.',
   },
   {
     q: 'How long does production take?',
@@ -36,7 +40,7 @@ const PARTNER_FAQS = [
   },
   {
     q: 'Can the programme include pets?',
-    a: 'Yes. Gempets is the pet line on the same CVD process. Ask us if that market is part of your agreement.',
+    a: 'Yes. Gempets is the pet line on the same CVD process. Ask us if that market is part of your OEM programme.',
   },
 ]
 
@@ -97,9 +101,9 @@ export default function QAPage() {
       {/* ── Hero ── */}
       <section className="py-24 text-center" style={{ background: '#111111' }}>
         <div className="max-w-2xl mx-auto px-6">
-          <p className="text-xs uppercase tracking-widest mb-4" style={{ color: '#C9A96E' }}>For partners</p>
+          <p className="text-xs uppercase tracking-widest mb-4" style={{ color: '#C9A96E' }}>For OEM brands</p>
           <h1 className="text-4xl md:text-5xl font-bold" style={{ color: '#F5F0E8', fontFamily: 'Georgia, serif' }}>
-            What distributors<br />need to know
+            What OEM partners<br />need to know
           </h1>
           <p className="mt-6 text-sm leading-relaxed" style={{ color: '#7A6A58' }}>
             Lead time, materials, colour, and certificates — the facts you use with your own clients.
@@ -111,7 +115,7 @@ export default function QAPage() {
       <section className="py-20" style={{ background: '#FAFAF8' }}>
         <div className="max-w-3xl mx-auto px-6 flex flex-col gap-10">
           <div className="flex flex-col gap-3">
-            <h2 className="text-sm uppercase tracking-widest" style={{ color: '#C9A96E' }}>Partner questions</h2>
+            <h2 className="text-sm uppercase tracking-widest" style={{ color: '#C9A96E' }}>OEM questions</h2>
             {PARTNER_FAQS.map(({ q, a }) => (
               <FAQItem key={q} q={q} a={a} />
             ))}

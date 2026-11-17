@@ -6,13 +6,13 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import SignOutButton from './SignOutButton'
-import { SFS_SALES_MAILTO_PARTNERSHIP } from '@/lib/sfs/sales-contact'
+import { SFS_SALES_MAILTO_OEM } from '@/lib/sfs/sales-contact'
 
 const NAV = [
   { label: 'Home',     href: '/sfsdiamond' },
   { label: 'Products', href: '/sfsdiamond/memorial-diamonds' },
   { label: 'Factory',  href: '/sfsdiamond/technology' },
-  { label: 'Partners', href: '/sfsdiamond/qa' },
+  { label: 'OEM',      href: '/sfsdiamond/qa' },
   { label: 'Company',  href: '/sfsdiamond/about' },
 ]
 
@@ -93,11 +93,11 @@ export default function SFSHeader() {
                 Partner login
               </Link>
               <a
-                href={SFS_SALES_MAILTO_PARTNERSHIP}
+                href={SFS_SALES_MAILTO_OEM}
                 className="text-sm font-semibold px-5 py-1.5 rounded-full transition-opacity duration-150 hover:opacity-90"
                 style={{ background: '#C9A96E', color: '#0A0805' }}
               >
-                Become a distributor
+                Request OEM quote
               </a>
             </>
           )}
@@ -160,11 +160,11 @@ export default function SFSHeader() {
                   Partner login
                 </Link>
                 <a
-                  href={SFS_SALES_MAILTO_PARTNERSHIP}
+                  href={SFS_SALES_MAILTO_OEM}
                   className="text-sm font-semibold px-4 py-2 rounded-full text-center"
                   style={{ background: '#C9A96E', color: '#0A0805' }}
                 >
-                  Become a distributor
+                  Request OEM quote
                 </a>
               </>
             )}

@@ -3,7 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import {
   SFS_SALES_EMAIL,
-  SFS_SALES_MAILTO_PARTNERSHIP,
+  SFS_SALES_MAILTO_OEM,
   SFS_SALES_PHONE_DISPLAY,
   SFS_SALES_TEL_HREF,
   SFS_SALES_WHATSAPP_HREF,
@@ -12,7 +12,7 @@ import {
 
 export const metadata: Metadata = {
   title: 'About SFS',
-  description: 'SFS Technology Group — a Hong Kong memorial-diamond manufacturer for professional distributors.',
+  description: 'SFS Technology Group — a Hong Kong memorial-diamond OEM and white-label manufacturer.',
   alternates: { canonical: '/sfsdiamond/about' },
 }
 
@@ -37,24 +37,24 @@ export default function AboutPage() {
       <section className="py-24" style={{ background: '#FAFAF8' }}>
         <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-14 items-center">
           <div>
-            <p className="text-xs uppercase tracking-widest mb-4" style={{ color: '#C9A96E' }}>Who we supply</p>
+            <p className="text-xs uppercase tracking-widest mb-4" style={{ color: '#C9A96E' }}>Who we manufacture for</p>
             <h2 className="text-3xl md:text-4xl font-bold mb-6" style={{ fontFamily: 'Georgia, serif', color: '#1A1A1A' }}>
-              A factory partners can put their name beside
+              A factory brands can put their name beside
             </h2>
             <div className="space-y-4 text-sm leading-relaxed" style={{ color: '#4A3E30' }}>
               <p>
-                SFS Technology Group manufactures memorial diamonds in Hong Kong for professional
-                distributors. We extract carbon from human or pet remains and grow certified
+                SFS Technology Group manufactures memorial diamonds in Hong Kong for OEM and
+                white-label brand programmes. We extract carbon from human or pet remains and grow certified
                 lab-grown diamonds with Chemical Vapor Deposition (CVD).
               </p>
               <p>
                 We are a <strong>heavy-asset company</strong>: we own and operate the laboratory
                 and the CVD factory. Carbon extraction, growth, cutting, and certification stay
-                inside one production system, so a partner is not buying from a trading desk.
+                inside one production system — not a trading desk.
               </p>
               <p>
-                A partner receives the stone, the official certificate, packaging for client
-                handover, and live production status. You keep the client relationship.
+                Your brand receives the stone, the official certificate, white-label packaging for client
+                handover, and live production status. You keep the brand and the client relationship.
               </p>
               <p>
                 <em>The story your client hears:</em> love never fades — it takes a new form.
@@ -209,18 +209,18 @@ export default function AboutPage() {
               </a>
             </div>
             <div className="rounded-2xl p-8" style={{ background: '#F2EDE3' }}>
-              <h3 className="font-semibold text-base mb-3" style={{ color: '#1A1A1A' }}>Apply for a market</h3>
+              <h3 className="font-semibold text-base mb-3" style={{ color: '#1A1A1A' }}>Start an OEM programme</h3>
               <p className="text-sm leading-relaxed mb-5" style={{ color: '#4A3E30' }}>
-                Tell us your company, the market you cover, and the volume you expect. We manufacture;
-                you own the client relationship.
+                Tell us your brand, packaging needs, and trial volume. We manufacture under your label;
+                you own the brand and the client relationship.
               </p>
               <div className="flex flex-col gap-3">
                 <a
-                  href={SFS_SALES_MAILTO_PARTNERSHIP}
+                  href={SFS_SALES_MAILTO_OEM}
                   className="px-6 py-3 rounded-full font-medium text-sm text-center transition-all hover:opacity-90"
                   style={{ background: '#1A1A1A', color: '#F5F0E8' }}
                 >
-                  Become a distributor
+                  Request OEM quote
                 </a>
                 <Link
                   href="/sfsdiamond/memorial-diamonds"

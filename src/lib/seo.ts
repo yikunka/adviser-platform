@@ -99,17 +99,18 @@ export const sixAmSeo = {
 }
 
 export const sfsSeo = {
-  title: 'SFS Diamond | Memorial Diamonds from Ashes and Hair in Hong Kong',
+  title: 'SFS Diamond | Memorial Diamond OEM & White-label Manufacturing',
   description:
-    'SFS Diamond creates certified lab-grown memorial diamonds from cremated ashes or hair using CVD technology, with secure tracking and bespoke jewellery in Hong Kong.',
+    'Factory-backed CVD memorial diamond OEM and white-label manufacturing for brands — certification, packaging, optional jewellery finishing, trial orders, and production tracking.',
   keywords: [
     'SFS Diamond',
-    'memorial diamond Hong Kong',
-    'diamonds from ashes',
-    'ashes to diamonds',
-    'hair to diamond',
-    'lab grown memorial diamond',
-    'CVD diamond Hong Kong',
+    'memorial diamond OEM',
+    'white label memorial diamond',
+    'CVD diamond manufacturer',
+    'diamonds from ashes OEM',
+    'ashes to diamonds factory',
+    'memorial diamond white label',
+    'lab grown memorial diamond OEM',
   ],
   image: '/sfsdiamond/hero-diamond.jpg',
 }
