@@ -249,7 +249,7 @@ Routes under `/[locale]/(client)/`. Accessible by `CLIENT` role users only.
 
 ## SFS Diamond Platform
 
-Memorial diamond jewellery service (lab-grown diamonds from cremation remains). Public site at `sfsdiamond.com`; SEO `metadataBase` / Open Graph / canonical use **sfsdiamond.com** (not 6AM `NEXT_PUBLIC_APP_URL`); public contact is +86 19129444364 (phone / WhatsApp); admin under Adviser console. **Public homepage positioning is OEM / white-label manufacturing** (not distributor recruitment): what can be manufactured, what can be customised, trial/quote path; primary CTA emails `SFS OEM / White-label Enquiry`.
+Memorial diamond jewellery service (lab-grown diamonds from cremation remains). Public site at `sfsdiamonds.com`; SEO `metadataBase` / Open Graph / canonical use **sfsdiamonds.com** via `sfsPageMetadata` per page (not 6AM `NEXT_PUBLIC_APP_URL`; titles use `absolute` so they never append `6AM Advisory`); public contact is +86 19129444364 (phone / WhatsApp); admin under Adviser console. **Public homepage positioning is OEM / white-label manufacturing** (not distributor recruitment): what can be manufactured, what can be customised, trial/quote path; primary CTA emails `SFS OEM / White-label Enquiry`.
 
 ### Public Pages (`/sfsdiamond/`)
 - **Home**: OEM / white-label hero and sections (OEM scope, customisation, trial → scale); CTAs **Request OEM quote** / trial enquiry

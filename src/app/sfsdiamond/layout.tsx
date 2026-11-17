@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { sfsAbsoluteUrl, sfsSeo, sfsSiteUrl } from '@/lib/seo'
+import { sfsPageMetadata, sfsSeo, sfsSiteUrl } from '@/lib/seo'
 import SFSHeader from './components/SFSHeader'
 import SFSFooter from './components/SFSFooter'
 import SFSProviders from './components/SFSProviders'
@@ -11,36 +11,29 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 }
 
+const homeMeta = sfsPageMetadata({
+  title: sfsSeo.title,
+  description: sfsSeo.description,
+  path: '/sfsdiamond',
+  image: sfsSeo.image,
+})
+
 export const metadata: Metadata = {
   metadataBase: sfsSiteUrl,
-  title: {
-    default: sfsSeo.title,
-    template: '%s | SFS Diamond',
-  },
-  description: sfsSeo.description,
   applicationName: 'SFS Diamond',
   keywords: sfsSeo.keywords,
   authors: [{ name: 'SFS Diamond' }],
   creator: 'SFS Diamond',
   publisher: 'SFS Diamond',
-  alternates: {
-    canonical: '/sfsdiamond',
+  // `absolute` blocks root layout `%s | 6AM Advisory` from appending
+  title: {
+    absolute: sfsSeo.title,
+    template: '%s | SFS Diamond',
   },
-  openGraph: {
-    title: sfsSeo.title,
-    description: sfsSeo.description,
-    url: sfsAbsoluteUrl('/sfsdiamond'),
-    siteName: 'SFS Diamond',
-    type: 'website',
-    locale: 'en_HK',
-    images: [{ url: sfsAbsoluteUrl(sfsSeo.image), width: 1200, height: 630, alt: 'SFS Diamond memorial diamond' }],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: sfsSeo.title,
-    description: sfsSeo.description,
-    images: [sfsAbsoluteUrl(sfsSeo.image)],
-  },
+  description: homeMeta.description,
+  alternates: homeMeta.alternates,
+  openGraph: homeMeta.openGraph,
+  twitter: homeMeta.twitter,
 }
 
 export default function SFSDiamondLayout({ children }: { children: React.ReactNode }) {

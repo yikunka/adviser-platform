@@ -1,7 +1,7 @@
 /** Public SFS sales / brand contact — single source for site, chat, and emails. */
 
-export const SFS_PUBLIC_WEBSITE = 'https://sfsdiamond.com'
-export const SFS_PUBLIC_WEBSITE_HOST = 'www.sfsdiamond.com'
+export const SFS_PUBLIC_WEBSITE = 'https://sfsdiamonds.com'
+export const SFS_PUBLIC_WEBSITE_HOST = 'www.sfsdiamonds.com'
 
 export const SFS_SALES_PHONE_DISPLAY = '+86 19129444364 (phone / WhatsApp)'
 export const SFS_SALES_PHONE_E164 = '+8619129444364'

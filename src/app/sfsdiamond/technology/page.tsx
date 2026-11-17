@@ -1,12 +1,14 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
+import { sfsPageMetadata } from '@/lib/seo'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = sfsPageMetadata({
   title: 'Memorial Diamond Technology',
-  description: 'How SFS Technology uses CVD — Chemical Vapor Deposition — to transform cremated ashes into real certified diamonds.',
-  alternates: { canonical: '/sfsdiamond/technology' },
-}
+  description:
+    'How SFS Technology uses CVD — Chemical Vapor Deposition — to transform cremated ashes into real certified diamonds.',
+  path: '/sfsdiamond/technology',
+})
 
 const EXTRACTION_STEPS = [
   { num: '1.1', title: 'Labelling & Tracking',      desc: 'Each sample is assigned a unique identification code for full traceability throughout the process.',           img: '/sfsdiamond/extract-1-labelling.png' },

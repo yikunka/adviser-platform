@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
+import { sfsPageMetadata } from '@/lib/seo'
 import {
   SFS_SALES_EMAIL,
   SFS_SALES_MAILTO_OEM,
@@ -9,12 +10,11 @@ import {
   SFS_SALES_WHATSAPP_HREF,
 } from '@/lib/sfs/sales-contact'
 
-
-export const metadata: Metadata = {
+export const metadata: Metadata = sfsPageMetadata({
   title: 'About SFS',
   description: 'SFS Technology Group — a Hong Kong memorial-diamond OEM and white-label manufacturer.',
-  alternates: { canonical: '/sfsdiamond/about' },
-}
+  path: '/sfsdiamond/about',
+})
 
 export default function AboutPage() {
   return (

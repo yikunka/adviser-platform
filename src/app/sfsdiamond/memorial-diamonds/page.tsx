@@ -3,13 +3,15 @@ import Image from 'next/image'
 import Link from 'next/link'
 import CollectionShowcase from '../components/CollectionShowcase'
 import SfsProductImageDisclaimer from '../components/SfsProductImageDisclaimer'
+import { sfsPageMetadata } from '@/lib/seo'
 import { SFS_SALES_MAILTO_OEM } from '@/lib/sfs/sales-contact'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = sfsPageMetadata({
   title: 'Memorial Diamonds',
-  description: 'Eternity Cut memorial diamonds for OEM and white-label brands — CVD, certification, and jewellery settings.',
-  alternates: { canonical: '/sfsdiamond/memorial-diamonds' },
-}
+  description:
+    'Eternity Cut memorial diamonds for OEM and white-label brands — CVD, certification, and jewellery settings.',
+  path: '/sfsdiamond/memorial-diamonds',
+})
 
 const MEANINGS = [
   {

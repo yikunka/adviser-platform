@@ -67,7 +67,7 @@ Use platform-specific table name prefixes in Prisma (e.g., `sfs_` for sfsdiamond
 ### 5. Nginx routing
 Each platform's domain is pointed at the same Next.js server via nginx. The nginx config maps domains to paths:
 ```nginx
-# sfsdiamond.com → /sfsdiamond/*
+# sfsdiamonds.com → /sfsdiamond/*
 location / {
   proxy_pass http://localhost:3000/sfsdiamond;
 }
@@ -92,4 +92,4 @@ Platform is served at `http://localhost:3000/<platform-name>` — no locale pref
 
 | Platform | Folder | Domain | DB prefix | Status |
 |---|---|---|---|---|
-| SFS Diamond | `src/app/sfsdiamond/` | sfsdiamond.com | `sfs_` | ✅ Built |
+| SFS Diamond | `src/app/sfsdiamond/` | sfsdiamonds.com | `sfs_` | ✅ Built |

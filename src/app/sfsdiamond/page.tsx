@@ -1,15 +1,24 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import VideoPlayer from './components/VideoPlayer'
 import EternityRing from './components/EternityRing'
 import { ossImg } from '@/lib/oss-img'
+import { sfsPageMetadata, sfsSeo } from '@/lib/seo'
 import {
   SFS_SALES_MAILTO_OEM,
   SFS_SALES_PHONE_DISPLAY,
   SFS_SALES_TEL_HREF,
   SFS_SALES_WHATSAPP_HREF,
 } from '@/lib/sfs/sales-contact'
+
+export const metadata: Metadata = sfsPageMetadata({
+  title: sfsSeo.title,
+  description: sfsSeo.description,
+  path: '/sfsdiamond',
+  image: sfsSeo.image,
+})
 
 const GOLD = '#C9A96E'
 const INK = '#0A0805'
