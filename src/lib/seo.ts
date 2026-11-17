@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { SFS_PUBLIC_WEBSITE } from '@/lib/sfs/sales-contact'
 
 export const siteUrl = (() => {
   const raw = process.env.NEXT_PUBLIC_APP_URL || 'https://www.6amadvise.com'
@@ -11,6 +12,20 @@ export const siteUrl = (() => {
 
 export function absoluteUrl(path = '/') {
   return new URL(path, siteUrl).toString()
+}
+
+/** Public SFS Diamond site origin (never inherit 6AM `NEXT_PUBLIC_APP_URL`). */
+export const sfsSiteUrl = (() => {
+  const raw = process.env.NEXT_PUBLIC_SFS_URL || SFS_PUBLIC_WEBSITE
+  try {
+    return new URL(raw)
+  } catch {
+    return new URL(SFS_PUBLIC_WEBSITE)
+  }
+})()
+
+export function sfsAbsoluteUrl(path = '/') {
+  return new URL(path, sfsSiteUrl).toString()
 }
 
 type BrandSeo = {

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { absoluteUrl, sfsSeo } from '@/lib/seo'
+import { sfsAbsoluteUrl, sfsSeo, sfsSiteUrl } from '@/lib/seo'
 import SFSHeader from './components/SFSHeader'
 import SFSFooter from './components/SFSFooter'
 import SFSProviders from './components/SFSProviders'
@@ -12,29 +12,34 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
+  metadataBase: sfsSiteUrl,
   title: {
     default: sfsSeo.title,
     template: '%s | SFS Diamond',
   },
   description: sfsSeo.description,
+  applicationName: 'SFS Diamond',
   keywords: sfsSeo.keywords,
+  authors: [{ name: 'SFS Diamond' }],
+  creator: 'SFS Diamond',
+  publisher: 'SFS Diamond',
   alternates: {
     canonical: '/sfsdiamond',
   },
   openGraph: {
     title: sfsSeo.title,
     description: sfsSeo.description,
-    url: absoluteUrl('/sfsdiamond'),
+    url: sfsAbsoluteUrl('/sfsdiamond'),
     siteName: 'SFS Diamond',
     type: 'website',
     locale: 'en_HK',
-    images: [{ url: absoluteUrl(sfsSeo.image), width: 1200, height: 630, alt: 'SFS Diamond memorial diamond' }],
+    images: [{ url: sfsAbsoluteUrl(sfsSeo.image), width: 1200, height: 630, alt: 'SFS Diamond memorial diamond' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: sfsSeo.title,
     description: sfsSeo.description,
-    images: [absoluteUrl(sfsSeo.image)],
+    images: [sfsAbsoluteUrl(sfsSeo.image)],
   },
 }
 
