@@ -4,9 +4,13 @@ import {
   type CompanyJurisdiction,
 } from '@/lib/company/jurisdiction'
 
+/** Digit width for new codes (AA0001, BV0003, …). */
+const CODE_DIGITS = 4
+
 /**
- * Next internal company code for a jurisdiction: PREFIX + 5 digits
- * (e.g. AA00001, BV00002). Sequence is per prefix.
+ * Next internal company code: jurisdiction PREFIX + shared global sequence.
+ * Example: HK → AA0001, AA0002; next BVI → BV0003 (one counter across all jurisdictions).
+ * Max is taken from any existing `XX####…` code so legacy 5-digit rows still advance the sequence.
  */
 export async function nextCompanyCode(companyType: string): Promise<string> {
   const prefix =
@@ -14,8 +18,8 @@ export async function nextCompanyCode(companyType: string): Promise<string> {
   const rows = await prisma.$queryRaw<Array<{ max_no: number | null }>>`
     SELECT MAX(CAST(SUBSTRING("companyCode" FROM 3) AS INTEGER)) AS max_no
     FROM companies
-    WHERE "companyCode" ~ ${`^${prefix}[0-9]{5}$`}
+    WHERE "companyCode" ~ '^[A-Z]{2}[0-9]+$'
   `
   const next = (rows[0]?.max_no ?? 0) + 1
-  return `${prefix}${String(next).padStart(5, '0')}`
+  return `${prefix}${String(next).padStart(CODE_DIGITS, '0')}`
 }

@@ -544,7 +544,7 @@ function CompanyEditForm({ company, onDone }: { company: Company; onDone: () => 
         </div>
         <div>
           <label style={labelStyle}>Company Code</label>
-          <Input style={fieldStyle} value={form.companyCode} onChange={e => set('companyCode', e.target.value)} placeholder="e.g. AA00001" />
+          <Input style={fieldStyle} value={form.companyCode} onChange={e => set('companyCode', e.target.value)} placeholder="e.g. AA0001" />
         </div>
       </div>
       <div>
